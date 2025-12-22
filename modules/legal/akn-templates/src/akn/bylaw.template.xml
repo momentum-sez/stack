@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <doc name="bylaw" contains="originalVersion">
+    <meta>
+      <identification source="#msez">
+        <FRBRWork>
+          <FRBRthis value="/akn/{{JURISDICTION_NAME}}/bylaw/{{AUTHORITY_NAME}}/0.1.0"/>
+          <FRBRuri value="/akn/{{JURISDICTION_NAME}}/bylaw/{{AUTHORITY_NAME}}"/>
+          <FRBRdate date="{{EFFECTIVE_DATE}}" name="Generation"/>
+          <FRBRauthor href="#{{AUTHORITY_NAME}}"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/{{JURISDICTION_NAME}}/bylaw/{{AUTHORITY_NAME}}/0.1.0/eng@/main"/>
+          <FRBRuri value="/akn/{{JURISDICTION_NAME}}/bylaw/{{AUTHORITY_NAME}}/eng@/main"/>
+          <FRBRdate date="{{EFFECTIVE_DATE}}" name="Generation"/>
+          <FRBRauthor href="#{{AUTHORITY_NAME}}"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/{{JURISDICTION_NAME}}/bylaw/{{AUTHORITY_NAME}}/0.1.0/eng@/main.xml"/>
+          <FRBRuri value="/akn/{{JURISDICTION_NAME}}/bylaw/{{AUTHORITY_NAME}}/eng@/main.xml"/>
+          <FRBRdate date="{{EFFECTIVE_DATE}}" name="Generation"/>
+          <FRBRauthor href="#{{AUTHORITY_NAME}}"/>
+        </FRBRManifestation>
+      </identification>
+    </meta>
+
+    <body>
+      <section eId="sec_1">
+        <num>1</num>
+        <heading>Authority rulebook</heading>
+        <content>
+          <p eId="sec_1__p_1">This bylaw sets operational rules for Authority procedures, digital filing, and supervision.</p>
+        </content>
+      </section>
+
+      <section eId="sec_2">
+        <num>2</num>
+        <heading>Digital filing and service standards</heading>
+        <content>
+          <p eId="sec_2__p_1">The Authority SHALL accept digital filings and publish service standards.</p>
+          <p eId="sec_2__p_2">The Authority MAY require submissions in machine-readable formats.</p>
+        </content>
+      </section>
+
+      <section eId="sec_3">
+        <num>3</num>
+        <heading>Supervision and inspections</heading>
+        <content>
+          <p eId="sec_3__p_1">The Authority MAY conduct inspections and require information as prescribed.</p>
+        </content>
+      </section>
+    </body>
+  </doc>
+</akomaNtoso>

@@ -1,0 +1,13 @@
+module_id: org.momentum.msez.ops.incident-response
+version: 0.2.0
+kind: operational
+license: Apache-2.0
+description: "Incident Response (stub)."
+variants:
+  - baseline
+depends_on: []
+provides:
+  - interface: msez.ops.incident-response.v1
+    path: docs/README.md
+    media_type: text/markdown
+parameters: {}

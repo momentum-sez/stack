@@ -1,0 +1,3 @@
+# Banking Adapter
+
+Stub module.

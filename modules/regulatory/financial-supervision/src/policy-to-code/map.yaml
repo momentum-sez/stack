@@ -1,0 +1,7 @@
+- domain: financial-supervision
+  requirement: "Financial Supervision Framework controls are attestable"
+  mass_primitive: consent
+  attestation:
+    type: "financial-supervision_controls_attested"
+    event: "financial-supervision_controls_attested(entity_id)"
+  regulator_view: "pass_fail + timestamp"

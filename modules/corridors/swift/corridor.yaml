@@ -1,0 +1,27 @@
+corridor_id: org.momentum.msez.corridor.swift.iso20022-cross-border
+title: "SWIFT / ISO20022 Correspondent Banking"
+participants: []
+settlement:
+  type: "fiat-correspondent"
+  currency: "${settlement_currency}"
+  max_single_transfer: ${max_single_transfer}
+recognition:
+  passporting:
+    - "msez.licensing.application.v1"
+attestations:
+  required:
+    - kyb_verified
+    - bo_verified
+    - sanctions_screened
+    - aml_program_attested
+    - license_valid
+    - periodic_return_filed
+dispute_resolution:
+  method: arbitration
+  escalation:
+    - "operator-to-operator"
+    - "supervisor-to-supervisor"
+    - "formal-arbitration"
+
+trust_anchors_path: trust-anchors.yaml
+key_rotation_path: key-rotation.yaml

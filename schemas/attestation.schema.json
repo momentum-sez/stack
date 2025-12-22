@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/attestation.schema.json",
+  "title": "MSEZ Attestation (generic envelope)",
+  "type": "object",
+  "required": [
+    "attestation_type",
+    "issuer",
+    "subject",
+    "issued_at",
+    "claims",
+    "proof"
+  ],
+  "properties": {
+    "attestation_type": {
+      "type": "string"
+    },
+    "issuer": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "claims": {
+      "type": "object"
+    },
+    "proof": {
+      "type": "object",
+      "required": [
+        "type",
+        "verification_method",
+        "signature"
+      ],
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "verification_method": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

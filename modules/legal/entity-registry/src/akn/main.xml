@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act contains="originalVersion">
+    <meta>
+      <identification source="#msez">
+        <FRBRWork>
+          <FRBRthis value="/akn/{{JURISDICTION_NAME}}/act/entity-registry/0.2.0"/>
+          <FRBRuri value="/akn/{{JURISDICTION_NAME}}/act/entity-registry"/>
+          <FRBRdate date="{{EFFECTIVE_DATE}}" name="Generation"/>
+          <FRBRauthor href="#{{AUTHORITY_NAME}}"/>
+        </FRBRWork>
+      </identification>
+    </meta>
+    <preface><p eId="pre_1">Entity Registry — model text.</p></preface>
+    <body>
+      <section eId="sec_1">
+        <num>1</num>
+        <heading>Core requirement</heading>
+        <content>
+          <p eId="sec_1__p_1">The Authority MUST publish this instrument in machine-readable form.</p>
+        </content>
+      </section>
+    </body>
+  </act>
+</akomaNtoso>

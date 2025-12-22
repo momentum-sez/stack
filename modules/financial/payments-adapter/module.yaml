@@ -1,0 +1,13 @@
+module_id: org.momentum.msez.fin.payments-adapter
+version: 0.1.0
+kind: financial
+license: Apache-2.0
+description: "Payments adapter interface + example connector spec."
+variants:
+  - iso20022-mapping
+depends_on: []
+provides:
+  - interface: msez.fin.payments-adapter.v1
+    path: spec/
+    media_type: text/markdown
+parameters: {}

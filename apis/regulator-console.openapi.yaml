@@ -1,0 +1,37 @@
+openapi: 3.1.0
+info:
+  title: Regulator Console API (Reference)
+  version: 0.1.0
+  description: >
+    Reference interface for regulator access: role-gated, auditable, and revocable query endpoints.
+servers:
+  - url: https://{zone_node}/regulator
+    variables:
+      zone_node:
+        default: example.zone
+paths:
+  /v1/query/attestations:
+    post:
+      summary: Query attestations (with policy-based access control)
+      operationId: queryAttestations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filter:
+                  type: object
+      responses:
+        '200':
+          description: Results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '../schemas/attestation.schema.json'

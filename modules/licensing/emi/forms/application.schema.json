@@ -1,0 +1,310 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Electronic Money Institution License Application",
+  "type": "object",
+  "required": [
+    "application_id",
+    "submitted_at",
+    "applicant",
+    "business_model",
+    "controls",
+    "attachments",
+    "declarations"
+  ],
+  "properties": {
+    "application_id": {
+      "type": "string"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "applicant": {
+      "type": "object",
+      "required": [
+        "legal_name",
+        "registration_number",
+        "jurisdiction",
+        "registered_address"
+      ],
+      "properties": {
+        "legal_name": {
+          "type": "string"
+        },
+        "registration_number": {
+          "type": "string"
+        },
+        "jurisdiction": {
+          "type": "string"
+        },
+        "registered_address": {
+          "type": "string"
+        },
+        "website": {
+          "type": "string"
+        },
+        "directors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "full_name",
+              "date_of_birth",
+              "nationality",
+              "id_document"
+            ],
+            "properties": {
+              "full_name": {
+                "type": "string"
+              },
+              "date_of_birth": {
+                "type": "string",
+                "format": "date"
+              },
+              "nationality": {
+                "type": "string"
+              },
+              "id_document": {
+                "type": "object",
+                "required": [
+                  "type",
+                  "number"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "number": {
+                    "type": "string"
+                  }
+                }
+              },
+              "pep": {
+                "type": "boolean",
+                "default": false
+              },
+              "sanctions_screened": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          }
+        },
+        "beneficial_owners": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "full_name",
+              "date_of_birth",
+              "nationality",
+              "id_document"
+            ],
+            "properties": {
+              "full_name": {
+                "type": "string"
+              },
+              "date_of_birth": {
+                "type": "string",
+                "format": "date"
+              },
+              "nationality": {
+                "type": "string"
+              },
+              "id_document": {
+                "type": "object",
+                "required": [
+                  "type",
+                  "number"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "number": {
+                    "type": "string"
+                  }
+                }
+              },
+              "pep": {
+                "type": "boolean",
+                "default": false
+              },
+              "sanctions_screened": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "business_model": {
+      "type": "object",
+      "required": [
+        "summary",
+        "products",
+        "target_markets",
+        "delivery_channels"
+      ],
+      "properties": {
+        "summary": {
+          "type": "string"
+        },
+        "products": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "target_markets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "delivery_channels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "customer_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expected_volume_monthly": {
+          "type": "number"
+        }
+      }
+    },
+    "controls": {
+      "type": "object",
+      "required": [
+        "aml_program",
+        "sanctions_screening",
+        "governance",
+        "risk_management",
+        "cybersecurity"
+      ],
+      "properties": {
+        "aml_program": {
+          "type": "object",
+          "properties": {
+            "mlro": {
+              "type": "string"
+            },
+            "risk_assessment": {
+              "type": "string"
+            },
+            "policies_attached": {
+              "type": "boolean"
+            }
+          }
+        },
+        "sanctions_screening": {
+          "type": "object",
+          "properties": {
+            "vendor": {
+              "type": "string"
+            },
+            "frequency": {
+              "type": "string"
+            }
+          }
+        },
+        "governance": {
+          "type": "object",
+          "properties": {
+            "board_members": {
+              "type": "integer"
+            },
+            "independent_directors": {
+              "type": "integer"
+            }
+          }
+        },
+        "risk_management": {
+          "type": "object",
+          "properties": {
+            "framework": {
+              "type": "string"
+            },
+            "outsourcing": {
+              "type": "string"
+            }
+          }
+        },
+        "cybersecurity": {
+          "type": "object",
+          "properties": {
+            "standard": {
+              "type": "string"
+            },
+            "incident_response": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "financials": {
+      "type": "object",
+      "properties": {
+        "paid_up_capital": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "audited_financials_attached": {
+          "type": "boolean"
+        },
+        "safeguarding_model": {
+          "type": "string"
+        }
+      }
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "type"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "hash": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "declarations": {
+      "type": "object",
+      "required": [
+        "truthful",
+        "consent_to_checks"
+      ],
+      "properties": {
+        "truthful": {
+          "type": "boolean"
+        },
+        "consent_to_checks": {
+          "type": "boolean"
+        },
+        "pep_disclosure_complete": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+corridor_id: org.momentum.msez.corridor.openbanking.api-based
+title: "Open Banking / Account-to-Account Corridor"
+participants: []
+settlement:
+  type: "domestic-a2a"
+  currency: "${settlement_currency}"
+  max_single_transfer: ${max_single_transfer}
+recognition:
+  passporting:
+    - "msez.licensing.application.v1"
+attestations:
+  required:
+    - kyb_verified
+    - bo_verified
+    - consent_granted
+    - api_security_attested
+    - incident_reporting_ready
+    - license_valid
+dispute_resolution:
+  method: arbitration
+  escalation:
+    - "operator-to-operator"
+    - "supervisor-to-supervisor"
+    - "formal-arbitration"
+
+trust_anchors_path: trust-anchors.yaml
+key_rotation_path: key-rotation.yaml

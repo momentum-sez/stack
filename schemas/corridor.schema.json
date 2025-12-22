@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/corridor.schema.json",
+  "title": "MSEZ Corridor Manifest",
+  "type": "object",
+  "required": [
+    "corridor_id",
+    "settlement",
+    "recognition",
+    "attestations"
+  ],
+  "properties": {
+    "corridor_id": {
+      "type": "string"
+    },
+    "participants": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "settlement": {
+      "type": "object"
+    },
+    "recognition": {
+      "type": "object"
+    },
+    "attestations": {
+      "type": "object"
+    },
+    "dispute_resolution": {
+      "type": "object"
+    },
+    "trust_anchors_path": {
+      "type": "string"
+    },
+    "key_rotation_path": {
+      "type": "string"
+    }
+  }
+}

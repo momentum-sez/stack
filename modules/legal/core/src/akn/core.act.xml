@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act contains="originalVersion">
+    <meta>
+      <identification source="#msez">
+        <FRBRWork>
+          <FRBRthis value="/akn/org.momentum.msez/act/core/0.1.0"/>
+          <FRBRuri value="/akn/org.momentum.msez/act/core"/>
+          <FRBRdate date="2025-12-21" name="Generation"/>
+          <FRBRauthor href="#msez"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/org.momentum.msez/act/core/0.1.0/eng@/main"/>
+          <FRBRuri value="/akn/org.momentum.msez/act/core/eng@/main"/>
+          <FRBRdate date="2025-12-21" name="Generation"/>
+          <FRBRauthor href="#msez"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/org.momentum.msez/act/core/0.1.0/eng@/main.xml"/>
+          <FRBRuri value="/akn/org.momentum.msez/act/core/eng@/main.xml"/>
+          <FRBRdate date="2025-12-21" name="Generation"/>
+          <FRBRauthor href="#msez"/>
+        </FRBRManifestation>
+      </identification>
+    </meta>
+    <body>
+      <section eId="sec_1">
+        <num>1</num>
+        <heading>Purpose</heading>
+        <content>
+          <p>This Act is a model core statute for a programmable SEZ stack. Replace text via jurisdiction overlays.</p>
+        </content>
+      </section>
+    </body>
+  </act>
+</akomaNtoso>

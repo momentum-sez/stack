@@ -1,0 +1,11 @@
+version: 1
+trust_anchors:
+  - anchor_id: zone-authority
+    type: did
+    identifier: did:web:example.zone-authority
+    allowed_attestations:
+      - kyb_verified
+      - bo_verified
+      - license_valid
+    metadata:
+      notes: "Placeholder trust anchor; deployments must replace with real issuers."

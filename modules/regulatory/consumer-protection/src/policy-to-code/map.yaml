@@ -1,0 +1,7 @@
+- domain: consumer-protection
+  requirement: "Consumer Protection controls are attestable"
+  mass_primitive: consent
+  attestation:
+    type: "consumer-protection_controls_attested"
+    event: "consumer-protection_controls_attested(entity_id)"
+  regulator_view: "pass_fail + timestamp"

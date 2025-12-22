@@ -1,0 +1,68 @@
+openapi: 3.1.0
+info:
+  title: Mass Node Integration API (Reference)
+  version: 0.1.0
+  description: >
+    Reference interface for integrating a Zone Node stack with a Mass Node.
+    This file is a *spec scaffold* and should be refined against the Mass API.
+servers:
+  - url: https://{zone_node}/api
+    variables:
+      zone_node:
+        default: example.zone
+paths:
+  /v1/entities:
+    post:
+      summary: Create an entity (incorporation / registration)
+      operationId: createEntity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEntityRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entity'
+  /v1/attestations:
+    post:
+      summary: Submit an attestation (compliance proof)
+      operationId: submitAttestation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/attestation.schema.json'
+      responses:
+        '202':
+          description: Accepted
+components:
+  schemas:
+    CreateEntityRequest:
+      type: object
+      required: [entity_type, legal_name]
+      properties:
+        entity_type:
+          type: string
+          description: e.g., LLC, Corp, DAO-LLC, Foundation
+        legal_name:
+          type: string
+        jurisdiction_id:
+          type: string
+        beneficial_owners:
+          type: array
+          items:
+            type: object
+    Entity:
+      type: object
+      required: [entity_id, entity_type, legal_name, status]
+      properties:
+        entity_id: { type: string }
+        entity_type: { type: string }
+        legal_name: { type: string }
+        status: { type: string }

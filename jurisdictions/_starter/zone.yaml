@@ -1,0 +1,16 @@
+zone_id: org.momentum.msez.zone.example
+jurisdiction_id: ex
+zone_name: Example Zone
+profile:
+  profile_id: org.momentum.msez.profile.digital-financial-center
+  version: "0.1.0"
+overlays: []
+params_overrides: {}
+corridors:
+  - org.momentum.msez.corridor.swift.iso20022-cross-border
+trust_anchors: []
+key_rotation_policy:
+  default:
+    rotation_days: 90
+    grace_days: 14
+lockfile_path: stack.lock

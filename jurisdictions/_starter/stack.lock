@@ -1,0 +1,2 @@
+# This file is generated. Run:
+#   python tools/msez.py lock jurisdictions/_starter/zone.yaml --out jurisdictions/_starter/stack.lock

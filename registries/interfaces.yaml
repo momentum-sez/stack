@@ -1,0 +1,19 @@
+# Interface registry
+
+- interface_id: msez.zone.manifest.v1
+  canonical_artifact: schemas/zone.schema.json
+
+- interface_id: msez.stack.lock.v1
+  canonical_artifact: schemas/stack.lock.schema.json
+
+- interface_id: msez.corridor.trust-anchors.v1
+  canonical_artifact: schemas/trust-anchors.schema.json
+
+- interface_id: msez.corridor.key-rotation.v1
+  canonical_artifact: schemas/key-rotation.schema.json
+
+- interface_id: msez.render.html.v1
+  canonical_artifact: tools/akoma/xslt/akn2html.xsl
+
+- interface_id: msez.render.pdf.v1
+  canonical_artifact: tools/akoma/render.py

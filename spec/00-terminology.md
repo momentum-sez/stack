@@ -1,0 +1,13 @@
+# Terminology & Normative Language
+
+This specification uses the key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **MAY**, and **OPTIONAL** as described in RFC 2119 and RFC 8174.
+
+## Core terms
+
+- **Stack Spec**: The normative specification describing the module system, manifests, interfaces, and conformance rules.
+- **Module**: A versioned, self-contained unit that produces one or more artifacts (legal texts, regulatory rules, schemas, APIs, forms, workflows).
+- **Variant**: A named implementation of a module with different policy choices (e.g., `dispute.arbitration-first` vs `dispute.courts-first`).
+- **Profile**: A bundle of modules + versions + parameters representing a deployable “style” (e.g., `digital-financial-center`).
+- **Zone Node**: An instantiated deployment of a profile in a real jurisdiction (a “Mass network node” in the project context).
+- **Corridor**: A configuration + institutional agreement pattern enabling cross-node interoperability (passporting, recognition, settlement).
+

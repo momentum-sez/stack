@@ -1,0 +1,30 @@
+{
+  "application_id": "APP-BANK-SPONSOR-0001",
+  "submitted_at": "2025-12-22T12:00:00Z",
+  "applicant": {
+    "legal_name": "Example Co",
+    "registration_number": "REG-1",
+    "jurisdiction": "example"
+  },
+  "business_model": {
+    "summary": "Bank Sponsor / Settlement Bank services",
+    "products": [
+      "core"
+    ]
+  },
+  "controls": {
+    "aml_program": {
+      "mlro": "Name"
+    },
+    "risk_management": {
+      "framework": "3LoD"
+    },
+    "cybersecurity": {
+      "standard": "ISO27001"
+    }
+  },
+  "declarations": {
+    "truthful": true,
+    "consent_to_checks": true
+  }
+}

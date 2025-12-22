@@ -1,0 +1,13 @@
+module_id: org.momentum.msez.ops.data-classification
+version: 0.1.0
+kind: operational
+license: CC-BY-4.0
+description: "Reference data classification scheme and cross-border handling rules."
+variants:
+  - baseline
+depends_on: []
+provides:
+  - interface: msez.data.classification.v1
+    path: docs/classification.md
+    media_type: text/markdown
+parameters: {}

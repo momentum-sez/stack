@@ -1,0 +1,7 @@
+- domain: sanctions
+  requirement: "Sanctions Compliance controls are attestable"
+  mass_primitive: consent
+  attestation:
+    type: "sanctions_controls_attested"
+    event: "sanctions_controls_attested(entity_id)"
+  regulator_view: "pass_fail + timestamp"

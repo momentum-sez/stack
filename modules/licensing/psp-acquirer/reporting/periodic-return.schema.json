@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Payment Service Provider / Acquirer Periodic Return",
+  "type": "object",
+  "required": [
+    "reporting_period",
+    "license_id",
+    "signoff"
+  ],
+  "properties": {
+    "reporting_period": {
+      "type": "string"
+    },
+    "license_id": {
+      "type": "string"
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "signoff": {
+      "type": "object",
+      "required": [
+        "signed_by",
+        "signed_at"
+      ],
+      "properties": {
+        "signed_by": {
+          "type": "string"
+        },
+        "signed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

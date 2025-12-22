@@ -1,0 +1,23 @@
+module_id: org.momentum.msez.ops.regulator-console
+version: 0.1.0
+kind: operational
+license: Apache-2.0
+description: "Operational module defining regulator console controls: access policy, audit logging, and query schemas."
+variants:
+  - read-only-rbac
+depends_on:
+  - org.momentum.msez.reg.aml-cft
+provides:
+  - interface: msez.api.regulator-console.v1
+    path: api/regulator-console.openapi.yaml
+    media_type: application/yaml
+  - interface: msez.policy.opa.bundle.v1
+    path: policy/
+    media_type: text/plain
+  - interface: msez.audit.events.v1
+    path: schemas/audit-event.schema.json
+    media_type: application/json
+parameters:
+  retention_days:
+    type: integer
+    default: 365

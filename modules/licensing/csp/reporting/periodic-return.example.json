@@ -1,0 +1,30 @@
+{
+  "reporting_period": "2025-Q4",
+  "license_id": "LIC-CSP-0001",
+  "licensee_metrics": {
+    "active_customers": 120,
+    "transactions_count": 3000,
+    "transactions_value": 5000000,
+    "aum_or_float": 1000000,
+    "complaints_count": 2
+  },
+  "compliance_metrics": {
+    "sanctions_hits": 0,
+    "suspicious_activity_reports_filed": 1,
+    "kyc_refresh_overdue_count": 3,
+    "enhanced_due_diligence_completed": true,
+    "audit_findings_summary": "No material issues"
+  },
+  "incidents": [
+    {
+      "date": "2025-11-02",
+      "type": "cyber",
+      "severity": "low",
+      "summary": "Phishing attempt blocked"
+    }
+  ],
+  "signoff": {
+    "signed_by": "Alex MLRO",
+    "signed_at": "2025-12-31T23:59:00Z"
+  }
+}

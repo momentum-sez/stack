@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://momentum-sez.org/schemas/key-rotation.schema.json",
+  "title": "Key rotation policy",
+  "type": "object",
+  "required": [
+    "version",
+    "policy"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer"
+    },
+    "policy": {
+      "type": "object",
+      "required": [
+        "rotation_days",
+        "grace_days",
+        "max_key_age_days",
+        "revocation"
+      ],
+      "properties": {
+        "rotation_days": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "grace_days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_key_age_days": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "revocation": {
+          "type": "object",
+          "required": [
+            "method"
+          ],
+          "properties": {
+            "method": {
+              "type": "string",
+              "enum": [
+                "http",
+                "dns",
+                "did",
+                "manual"
+              ]
+            },
+            "uri": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

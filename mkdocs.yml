@@ -1,0 +1,35 @@
+site_name: Momentum SEZ Stack
+repo_url: https://github.com/momentum-sez/stack
+theme:
+  name: readthedocs
+nav:
+  - Home: README.md
+  - Docs:
+      - Getting started: docs/getting-started.md
+      - Authoring:
+          - Modules: docs/authoring/modules.md
+          - Akoma: docs/authoring/akoma.md
+          - Licensing pack: docs/authoring/licensing-pack.md
+          - Corridors: docs/authoring/corridors.md
+      - Corridors:
+          - Overview: docs/corridors/overview.md
+          - Playbooks: docs/corridors/playbooks.md
+      - Attestations: docs/attestations/catalog.md
+  - Spec:
+      - Mission: spec/01-mission.md
+      - Invariants: spec/02-invariants.md
+      - Standard structure: spec/03-standard-structure.md
+      - Design rubric: spec/04-design-rubric.md
+      - Architecture overview: spec/11-architecture-overview.md
+      - Mass primitives mapping: spec/12-mass-primitives-mapping.md
+      - Regulator console: spec/71-regulator-console.md
+      - Provenance: spec/90-provenance.md
+      - Lockfile: spec/95-lockfile.md
+
+      - Terminology: spec/00-terminology.md
+      - Repo layout: spec/10-repo-layout.md
+      - Module system: spec/20-module-system.md
+      - Profile system: spec/30-profile-system.md
+      - Corridors: spec/40-corridors.md
+      - Conformance: spec/50-conformance.md
+      - Security & privacy: spec/80-security-privacy.md

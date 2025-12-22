@@ -1,0 +1,3 @@
+# Treasury Module
+
+Stub module.

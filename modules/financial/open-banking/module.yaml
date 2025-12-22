@@ -1,0 +1,13 @@
+module_id: org.momentum.msez.fin.open-banking
+version: 0.2.0
+kind: financial
+license: Apache-2.0
+description: "Open Banking Module (stub)."
+variants:
+  - baseline
+depends_on: []
+provides:
+  - interface: msez.fin.open-banking.v1
+    path: spec/README.md
+    media_type: text/markdown
+parameters: {}

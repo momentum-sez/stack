@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Regulator Console Audit Event",
+  "type": "object",
+  "required": [
+    "event_id",
+    "timestamp",
+    "actor",
+    "action",
+    "resource",
+    "decision",
+    "reason"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "actor": {
+      "type": "object",
+      "required": [
+        "subject",
+        "roles"
+      ],
+      "properties": {
+        "subject": {
+          "type": "string"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "action": {
+      "type": "string"
+    },
+    "resource": {
+      "type": "string"
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "allow",
+        "deny"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "request_hash": {
+      "type": "string"
+    }
+  }
+}

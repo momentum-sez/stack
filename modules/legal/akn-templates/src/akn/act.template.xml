@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act contains="originalVersion">
+    <meta>
+      <identification source="#msez">
+        <FRBRWork>
+          <FRBRthis value="/akn/{{JURISDICTION_NAME}}/act/{{ZONE_NAME}}-enabling/0.1.0"/>
+          <FRBRuri value="/akn/{{JURISDICTION_NAME}}/act/{{ZONE_NAME}}-enabling"/>
+          <FRBRdate date="{{EFFECTIVE_DATE}}" name="Generation"/>
+          <FRBRauthor href="#{{AUTHORITY_NAME}}"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/{{JURISDICTION_NAME}}/act/{{ZONE_NAME}}-enabling/0.1.0/eng@/main"/>
+          <FRBRuri value="/akn/{{JURISDICTION_NAME}}/act/{{ZONE_NAME}}-enabling/eng@/main"/>
+          <FRBRdate date="{{EFFECTIVE_DATE}}" name="Generation"/>
+          <FRBRauthor href="#{{AUTHORITY_NAME}}"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/{{JURISDICTION_NAME}}/act/{{ZONE_NAME}}-enabling/0.1.0/eng@/main.xml"/>
+          <FRBRuri value="/akn/{{JURISDICTION_NAME}}/act/{{ZONE_NAME}}-enabling/eng@/main.xml"/>
+          <FRBRdate date="{{EFFECTIVE_DATE}}" name="Generation"/>
+          <FRBRauthor href="#{{AUTHORITY_NAME}}"/>
+        </FRBRManifestation>
+      </identification>
+      <references source="#msez">
+        <TLCPerson eId="auth_1" href="#{{AUTHORITY_NAME}}" showAs="{{AUTHORITY_NAME}}"/>
+      </references>
+    </meta>
+
+    <preface>
+      <p eId="pre_1">An Act to establish the {{ZONE_NAME}} Special Economic Zone and provide for its governance, regulatory framework, and digital administration.</p>
+    </preface>
+
+    <body>
+
+      <section eId="sec_1">
+        <num>1</num>
+        <heading>Short title and commencement</heading>
+        <content>
+          <p eId="sec_1__p_1">This Act may be cited as the <b>{{ZONE_NAME}} Enabling Act</b>.</p>
+          <p eId="sec_1__p_2">This Act commences on {{EFFECTIVE_DATE}} or such later date as the Minister may appoint by notice.</p>
+        </content>
+      </section>
+
+      <section eId="sec_2">
+        <num>2</num>
+        <heading>Interpretation</heading>
+        <content>
+          <p eId="sec_2__p_1">In this Act, unless the context otherwise requires—</p>
+          <blockList eId="sec_2__defs">
+            <item eId="def_authority">
+              <num>(a)</num>
+              <p><b>Authority</b> means the {{AUTHORITY_NAME}} established under section 4.</p>
+            </item>
+            <item eId="def_zone">
+              <num>(b)</num>
+              <p><b>Zone</b> means the geographic and/or digital boundary designated under section 3.</p>
+            </item>
+            <item eId="def_entity">
+              <num>(c)</num>
+              <p><b>Entity</b> means a body corporate or other legal person registered under the Zone registry.</p>
+            </item>
+          </blockList>
+        </content>
+      </section>
+
+      <section eId="sec_3">
+        <num>3</num>
+        <heading>Designation of the Zone</heading>
+        <content>
+          <p eId="sec_3__p_1">The Minister may, by notice, designate an area as a Special Economic Zone and define its boundary, including any digital perimeter for online services.</p>
+        </content>
+      </section>
+
+      <section eId="sec_4">
+        <num>4</num>
+        <heading>Establishment of the Zone Authority</heading>
+        <content>
+          <p eId="sec_4__p_1">There is established an Authority to administer the Zone, including rulemaking powers as provided in this Act.</p>
+        </content>
+      </section>
+
+      <section eId="sec_5">
+        <num>5</num>
+        <heading>Rulemaking and regulations</heading>
+        <content>
+          <p eId="sec_5__p_1">The Authority MAY issue bylaws and the Minister MAY issue regulations for the administration of this Act.</p>
+          <p eId="sec_5__p_2">Regulations and bylaws MUST be published in the official gazette and in machine-readable form.</p>
+        </content>
+      </section>
+
+      <section eId="sec_6">
+        <num>6</num>
+        <heading>Digital administration and records</heading>
+        <content>
+          <p eId="sec_6__p_1">The Zone MAY maintain electronic registries and recognize digital signatures consistent with applicable law.</p>
+          <p eId="sec_6__p_2">Where an attestation is produced by an approved system, it MAY be admissible as evidence subject to regulations.</p>
+        </content>
+      </section>
+
+      <section eId="sec_7">
+        <num>7</num>
+        <heading>Appeals and review</heading>
+        <content>
+          <p eId="sec_7__p_1">A person aggrieved by an administrative decision of the Authority MAY appeal in accordance with regulations.</p>
+        </content>
+      </section>
+
+      <section eId="sec_8">
+        <num>8</num>
+        <heading>Schedules</heading>
+        <content>
+          <p eId="sec_8__p_1">Schedules form part of this Act.</p>
+        </content>
+      </section>
+
+      <attachment eId="sch_1">
+        <heading>Schedule 1 — Matters that may be regulated</heading>
+        <doc>
+          <p eId="sch_1__p_1">This schedule lists illustrative matters: entity registry procedures, licensing conditions, reporting obligations, and corridor eligibility.</p>
+        </doc>
+      </attachment>
+
+    </body>
+  </act>
+</akomaNtoso>

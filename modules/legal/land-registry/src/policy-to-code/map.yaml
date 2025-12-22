@@ -1,0 +1,10 @@
+- domain: legal_publication
+  requirement: "Instrument publication in machine-readable form"
+  mass_primitive: consent
+  legal_refs:
+    - eId: "sec_1__p_1"
+      note: "MUST clause anchor"
+  attestation:
+    type: "instrument_published_mr"
+    event: "instrument_published_mr(instrument_id)"
+  regulator_view: "publication_timestamp + hashes"

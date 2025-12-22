@@ -1,0 +1,3 @@
+# Safeguarding Module
+
+Stub module.

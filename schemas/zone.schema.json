@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://momentum-sez.org/schemas/zone.schema.json",
+  "title": "MSEZ Zone Manifest",
+  "type": "object",
+  "required": [
+    "zone_id",
+    "jurisdiction_id",
+    "zone_name",
+    "profile",
+    "corridors"
+  ],
+  "properties": {
+    "zone_id": {
+      "type": "string"
+    },
+    "jurisdiction_id": {
+      "type": "string",
+      "description": "Short identifier, e.g. gm, ae, kz"
+    },
+    "zone_name": {
+      "type": "string"
+    },
+    "profile": {
+      "type": "object",
+      "required": [
+        "profile_id",
+        "version"
+      ],
+      "properties": {
+        "profile_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "overlays": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "module_id",
+          "patches"
+        ],
+        "properties": {
+          "module_id": {
+            "type": "string"
+          },
+          "patches": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "params_overrides": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "description": "Map module_id -> params override object"
+    },
+    "corridors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of enabled corridor IDs"
+    },
+    "trust_anchors": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Optional global trust anchors"
+    },
+    "key_rotation_policy": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "lockfile_path": {
+      "type": "string",
+      "default": "stack.lock"
+    }
+  }
+}

@@ -1,0 +1,3 @@
+# Settlement Adapter
+
+Stub module.

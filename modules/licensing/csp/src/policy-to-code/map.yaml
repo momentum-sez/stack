@@ -1,0 +1,34 @@
+# Policy-to-code map for Corporate Service Provider licensing (reference)
+# Each entry links a legal/regulatory requirement to:
+# - Mass primitive
+# - attestation event/type
+# - regulator view and reporting
+
+- domain: licensing
+  requirement: "Applicant identity and beneficial ownership verified"
+  mass_primitive: identity
+  legal_refs:
+    - akn://{JURISDICTION_NAME}/regulation/{ZONE_NAME}-reg/art_2
+  attestation:
+    type: "kyb_verified"
+    event: "kyb_verified(entity_id)"
+  regulator_view: "pass_fail + timestamp"
+  evidence:
+    - vc_type: "KYBVerificationCredential"
+
+- domain: aml_cft
+  requirement: "AML program appointed and documented (MLRO, RBA, policies)"
+  mass_primitive: consent
+  attestation:
+    type: "aml_program_attested"
+    event: "aml_program_attested(entity_id)"
+  regulator_view: "document_hashes + signoff"
+
+- domain: reporting
+  requirement: "Periodic returns filed quarterly"
+  mass_primitive: consent
+  attestation:
+    type: "periodic_return_filed"
+    event: "periodic_return_filed(license_id, period)"
+  regulator_view: "on-time/late + key metrics"
+

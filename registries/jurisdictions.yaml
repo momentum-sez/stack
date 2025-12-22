@@ -1,0 +1,7 @@
+# Jurisdiction Registry (examples)
+- jurisdiction_id: gm
+  name: The Gambia (example id)
+- jurisdiction_id: ae-dubai
+  name: UAE - Dubai Free Zones (example id)
+- jurisdiction_id: kz-alatau
+  name: Kazakhstan - Alatau City (example id)

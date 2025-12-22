@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Fund Administrator License Application",
+  "type": "object",
+  "required": [
+    "application_id",
+    "submitted_at",
+    "applicant",
+    "business_model",
+    "controls",
+    "declarations"
+  ],
+  "properties": {
+    "application_id": {
+      "type": "string"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "applicant": {
+      "type": "object",
+      "required": [
+        "legal_name",
+        "registration_number"
+      ],
+      "properties": {
+        "legal_name": {
+          "type": "string"
+        },
+        "registration_number": {
+          "type": "string"
+        },
+        "jurisdiction": {
+          "type": "string"
+        }
+      }
+    },
+    "business_model": {
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "string"
+        },
+        "products": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controls": {
+      "type": "object",
+      "properties": {
+        "aml_program": {
+          "type": "object"
+        },
+        "risk_management": {
+          "type": "object"
+        },
+        "cybersecurity": {
+          "type": "object"
+        }
+      }
+    },
+    "declarations": {
+      "type": "object",
+      "required": [
+        "truthful",
+        "consent_to_checks"
+      ],
+      "properties": {
+        "truthful": {
+          "type": "boolean"
+        },
+        "consent_to_checks": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

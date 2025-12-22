@@ -1,0 +1,7 @@
+- domain: licensing
+  requirement: "License validity is attestable"
+  mass_primitive: consent
+  attestation:
+    type: "license_valid"
+    event: "license_valid(license_id)"
+  regulator_view: "status + timestamp"

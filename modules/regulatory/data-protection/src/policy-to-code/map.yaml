@@ -1,0 +1,7 @@
+- domain: data-protection
+  requirement: "Data Protection controls are attestable"
+  mass_primitive: consent
+  attestation:
+    type: "data-protection_controls_attested"
+    event: "data-protection_controls_attested(entity_id)"
+  regulator_view: "pass_fail + timestamp"

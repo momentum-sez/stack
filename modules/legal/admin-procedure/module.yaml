@@ -1,0 +1,29 @@
+module_id: org.momentum.msez.legal.admin-procedure
+version: 0.2.0
+kind: legal
+license: CC-BY-4.0
+description: "Administrative Procedure (stub with Akoma Ntoso)."
+variants:
+  - baseline
+depends_on:
+  - org.momentum.msez.legal.akn-templates
+provides:
+  - interface: msez.legal.akn.act.v1
+    path: src/akn/main.xml
+    media_type: application/xml
+  - interface: msez.policy.policy-to-code-map.v1
+    path: src/policy-to-code/map.yaml
+    media_type: application/yaml
+parameters:
+  jurisdiction_name:
+    type: string
+    default: "{JURISDICTION_NAME}"
+  zone_name:
+    type: string
+    default: "{ZONE_NAME}"
+  authority_name:
+    type: string
+    default: "{AUTHORITY_NAME}"
+  effective_date:
+    type: string
+    default: "{EFFECTIVE_DATE}"

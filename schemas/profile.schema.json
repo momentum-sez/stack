@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/profile.schema.json",
+  "title": "MSEZ Profile Manifest",
+  "type": "object",
+  "required": [
+    "profile_id",
+    "stack_spec_version",
+    "modules"
+  ],
+  "properties": {
+    "profile_id": {
+      "type": "string"
+    },
+    "stack_spec_version": {
+      "type": "string"
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "module_id",
+          "version",
+          "variant"
+        ],
+        "properties": {
+          "module_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          },
+          "params": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "corridors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

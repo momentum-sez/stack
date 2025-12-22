@@ -1,0 +1,16 @@
+{
+  "incident_id": "INC-0001",
+  "reported_at": "2025-12-01T10:00:00Z",
+  "license_id": "LIC-CUSTODY-0001",
+  "category": "cyber",
+  "severity": "medium",
+  "summary": "API key exposure suspected; keys rotated.",
+  "actions_taken": "Keys rotated, logs reviewed, customers notified where applicable.",
+  "regulatory_notices": [
+    {
+      "authority": "Zone Authority",
+      "date": "2025-12-01",
+      "reference": "NOTICE-123"
+    }
+  ]
+}

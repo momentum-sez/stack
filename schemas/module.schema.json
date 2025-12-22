@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/module.schema.json",
+  "title": "MSEZ Module Manifest",
+  "type": "object",
+  "required": [
+    "module_id",
+    "version",
+    "kind",
+    "license",
+    "provides"
+  ],
+  "properties": {
+    "module_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_.-]+$"
+    },
+    "version": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "legal",
+        "regulatory",
+        "financial",
+        "corridor",
+        "operational",
+        "data",
+        "api",
+        "licensing"
+      ]
+    },
+    "license": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "variants": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "depends_on": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "provides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "interface",
+          "path"
+        ],
+        "properties": {
+          "interface": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "parameters": {
+      "type": "object"
+    }
+  }
+}

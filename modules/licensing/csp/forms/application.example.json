@@ -1,0 +1,97 @@
+{
+  "application_id": "APP-CSP-0001",
+  "submitted_at": "2025-12-21T12:00:00Z",
+  "applicant": {
+    "legal_name": "Example Applicant Ltd",
+    "registration_number": "REG-12345",
+    "jurisdiction": "example",
+    "registered_address": "1 Example Street",
+    "website": "https://example.com",
+    "directors": [
+      {
+        "full_name": "Jane Director",
+        "date_of_birth": "1985-01-01",
+        "nationality": "Exampleland",
+        "id_document": {
+          "type": "passport",
+          "number": "P123"
+        },
+        "pep": false,
+        "sanctions_screened": true
+      }
+    ],
+    "beneficial_owners": [
+      {
+        "full_name": "John Owner",
+        "date_of_birth": "1979-05-20",
+        "nationality": "Exampleland",
+        "id_document": {
+          "type": "passport",
+          "number": "P999"
+        },
+        "pep": false,
+        "sanctions_screened": true
+      }
+    ]
+  },
+  "business_model": {
+    "summary": "Provides Corporate Service Provider services to SMEs.",
+    "products": [
+      "onboarding",
+      "accounts"
+    ],
+    "target_markets": [
+      "domestic",
+      "international"
+    ],
+    "delivery_channels": [
+      "web",
+      "api"
+    ],
+    "customer_types": [
+      "SME"
+    ],
+    "expected_volume_monthly": 1000000
+  },
+  "controls": {
+    "aml_program": {
+      "mlro": "Alex MLRO",
+      "risk_assessment": "Initial RBA attached",
+      "policies_attached": true
+    },
+    "sanctions_screening": {
+      "vendor": "ExampleScreen",
+      "frequency": "real-time"
+    },
+    "governance": {
+      "board_members": 3,
+      "independent_directors": 1
+    },
+    "risk_management": {
+      "framework": "3 lines of defense",
+      "outsourcing": "None"
+    },
+    "cybersecurity": {
+      "standard": "ISO27001-aligned",
+      "incident_response": true
+    }
+  },
+  "financials": {
+    "paid_up_capital": 250000,
+    "currency": "USD",
+    "audited_financials_attached": false,
+    "safeguarding_model": "segregated"
+  },
+  "attachments": [
+    {
+      "name": "AML Policy",
+      "type": "policy",
+      "hash": "sha256:..."
+    }
+  ],
+  "declarations": {
+    "truthful": true,
+    "consent_to_checks": true,
+    "pep_disclosure_complete": true
+  }
+}

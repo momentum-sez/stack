@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Digital Asset Custody Incident Report",
+  "type": "object",
+  "required": [
+    "incident_id",
+    "reported_at",
+    "license_id",
+    "category",
+    "severity",
+    "summary",
+    "actions_taken",
+    "regulatory_notices"
+  ],
+  "properties": {
+    "incident_id": {
+      "type": "string"
+    },
+    "reported_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "license_id": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "aml",
+        "sanctions",
+        "cyber",
+        "operational",
+        "customer-harm",
+        "market-integrity",
+        "other"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "summary": {
+      "type": "string"
+    },
+    "actions_taken": {
+      "type": "string"
+    },
+    "regulatory_notices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "authority": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "reference": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

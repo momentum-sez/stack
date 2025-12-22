@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Policy-to-code map",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "domain",
+      "requirement",
+      "mass_primitive",
+      "attestation"
+    ],
+    "properties": {
+      "domain": {
+        "type": "string"
+      },
+      "requirement": {
+        "type": "string"
+      },
+      "mass_primitive": {
+        "type": "string",
+        "enum": [
+          "entities",
+          "ownership",
+          "instruments",
+          "identity",
+          "consent",
+          "payments",
+          "other"
+        ]
+      },
+      "legal_refs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "attestation": {
+        "type": "object",
+        "required": [
+          "type",
+          "event"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string"
+          }
+        }
+      },
+      "regulator_view": {
+        "type": "string"
+      },
+      "evidence": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

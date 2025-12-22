@@ -1,0 +1,7 @@
+- domain: cybersecurity
+  requirement: "Cybersecurity controls are attestable"
+  mass_primitive: consent
+  attestation:
+    type: "cybersecurity_controls_attested"
+    event: "cybersecurity_controls_attested(entity_id)"
+  regulator_view: "pass_fail + timestamp"

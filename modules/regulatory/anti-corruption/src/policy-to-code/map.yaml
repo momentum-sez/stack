@@ -1,0 +1,7 @@
+- domain: anti-corruption
+  requirement: "Anti-Corruption controls are attestable"
+  mass_primitive: consent
+  attestation:
+    type: "anti-corruption_controls_attested"
+    event: "anti-corruption_controls_attested(entity_id)"
+  regulator_view: "pass_fail + timestamp"

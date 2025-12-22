@@ -1,0 +1,16 @@
+# Corridors registry
+
+- corridor_id: org.momentum.msez.corridor.swift.iso20022-cross-border
+  latest: 0.2.0
+
+- corridor_id: org.momentum.msez.corridor.stablecoin.regulated-stablecoin
+  latest: 0.2.0
+
+- corridor_id: org.momentum.msez.corridor.openbanking.api-based
+  latest: 0.2.0
+
+- corridor_id: org.momentum.msez.corridor.correspondent.baseline
+  latest: 0.2.0
+
+- corridor_id: org.momentum.msez.corridor.passporting.baseline
+  latest: 0.2.0

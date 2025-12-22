@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Digital Asset Custody Periodic Return",
+  "type": "object",
+  "required": [
+    "reporting_period",
+    "license_id",
+    "licensee_metrics",
+    "compliance_metrics",
+    "signoff"
+  ],
+  "properties": {
+    "reporting_period": {
+      "type": "string",
+      "description": "e.g. 2025-Q4"
+    },
+    "license_id": {
+      "type": "string"
+    },
+    "licensee_metrics": {
+      "type": "object",
+      "properties": {
+        "active_customers": {
+          "type": "integer"
+        },
+        "transactions_count": {
+          "type": "integer"
+        },
+        "transactions_value": {
+          "type": "number"
+        },
+        "aum_or_float": {
+          "type": "number"
+        },
+        "complaints_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "compliance_metrics": {
+      "type": "object",
+      "properties": {
+        "sanctions_hits": {
+          "type": "integer"
+        },
+        "suspicious_activity_reports_filed": {
+          "type": "integer"
+        },
+        "kyc_refresh_overdue_count": {
+          "type": "integer"
+        },
+        "enhanced_due_diligence_completed": {
+          "type": "boolean"
+        },
+        "audit_findings_summary": {
+          "type": "string"
+        }
+      }
+    },
+    "incidents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "type": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "signoff": {
+      "type": "object",
+      "required": [
+        "signed_by",
+        "signed_at"
+      ],
+      "properties": {
+        "signed_by": {
+          "type": "string"
+        },
+        "signed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

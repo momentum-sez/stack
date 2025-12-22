@@ -1,0 +1,49 @@
+openapi: 3.1.0
+info:
+  title: Regulator Console API (MSEZ Standard)
+  version: 1.0.0
+  description: >
+    Read-only, role-gated, audited regulator query interface. Implementations MUST emit an audit event
+    for every successful or failed access attempt.
+servers:
+  - url: https://{zone}/regulator
+    variables:
+      zone:
+        default: example.zone
+paths:
+  /v1/attestations/query:
+    post:
+      summary: Query attestations
+      operationId: queryAttestations
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filter:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Attestation results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '../../../schemas/attestation.schema.json'
+        '403':
+          description: Forbidden
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

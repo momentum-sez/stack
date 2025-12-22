@@ -1,0 +1,7 @@
+- domain: market-conduct
+  requirement: "Market Conduct controls are attestable"
+  mass_primitive: consent
+  attestation:
+    type: "market-conduct_controls_attested"
+    event: "market-conduct_controls_attested(entity_id)"
+  regulator_view: "pass_fail + timestamp"

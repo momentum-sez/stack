@@ -2,31 +2,35 @@ module_id: org.momentum.msez.corridor.correspondent
 version: 0.2.0
 kind: corridor
 license: CC-BY-4.0
-description: "Correspondent Banking Corridor (generic) corridor module (stub)."
+description: Correspondent Banking Corridor (generic) corridor module (stub).
 variants:
-  - baseline
+- baseline
 depends_on:
-  - org.momentum.msez.fin.payments-adapter
+- module_id: org.momentum.msez.fin.payments-adapter
+  constraint: '>=0.1.0,<0.3.0'
 provides:
-  - interface: msez.corridor.manifest.v1
-    path: corridor.yaml
-    media_type: application/yaml
-  - interface: msez.corridor.required-attestations.v1
-    path: required-attestations.yaml
-    media_type: application/yaml
-  - interface: msez.corridor.trust-anchors.v1
-    path: trust-anchors.yaml
-    media_type: application/yaml
-  - interface: msez.corridor.key-rotation.v1
-    path: key-rotation.yaml
-    media_type: application/yaml
-  - interface: msez.corridor.playbook.v1
-    path: docs/playbook.md
-    media_type: text/markdown
-  - interface: msez.corridor.tradeoffs.v1
-    path: docs/tradeoffs.md
-    media_type: text/markdown
+- interface: msez.corridor.manifest.v1
+  path: corridor.yaml
+  media_type: application/yaml
+- interface: msez.corridor.required-attestations.v1
+  path: required-attestations.yaml
+  media_type: application/yaml
+- interface: msez.corridor.trust-anchors.v1
+  path: trust-anchors.yaml
+  media_type: application/yaml
+- interface: msez.corridor.key-rotation.v1
+  path: key-rotation.yaml
+  media_type: application/yaml
+- interface: msez.corridor.playbook.v1
+  path: docs/playbook.md
+  media_type: text/markdown
+- interface: msez.corridor.tradeoffs.v1
+  path: docs/tradeoffs.md
+  media_type: text/markdown
+- interface: msez.corridor.vc.definition.v1
+  path: corridor.vc.json
+  media_type: application/vc+json
 parameters:
   settlement_currency:
     type: string
-    default: "USD"
+    default: USD

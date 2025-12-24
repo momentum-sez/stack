@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 — Unreleased
+
+### New in v0.3 (corridor cryptographic substrate)
+
+- Corridor Agreement VC participant-specific party semantics (`credentialSubject.party`, `party_terms`, `commitment`)
+- Multiple agreement VC files (per-party) supported and validated (threshold activation)
+- `msez corridor status` CLI for human + JSON activation status
+- `stack.lock` includes corridor agreement digests + best-effort activation status when configured
+
 ## 0.2.0 — 2025-12-22
 
 ### New in v0.2
@@ -17,4 +26,3 @@
 ## 0.1.0 — 2025-12-21
 
 - Initial expanded skeleton: Akoma templates, licensing pack, corridors, docs, CI, validator
-

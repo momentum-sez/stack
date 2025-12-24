@@ -10,7 +10,7 @@ Key required properties:
 
 - `module_id` (globally unique)
 - `version` (semver)
-- `kind` (legal, regulatory, licensing, financial, corridor, operational, api, data)
+- `kind` (legal, regulatory, licensing, financial, corridor, operational, governance, api, data)
 - `license`
 - `depends_on` (explicit dependencies)
 - `provides` (interfaces + artifact paths)

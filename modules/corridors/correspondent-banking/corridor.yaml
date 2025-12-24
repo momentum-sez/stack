@@ -1,23 +1,25 @@
 corridor_id: org.momentum.msez.corridor.correspondent.baseline
-title: "Correspondent Banking Corridor (generic)"
+title: Correspondent Banking Corridor (generic)
 participants: []
 settlement:
-  type: "fiat-correspondent"
-  currency: "${settlement_currency}"
+  type: fiat-correspondent
+  currency: ${settlement_currency}
 recognition:
   passporting: []
 attestations:
   required:
-    - kyb_verified
-    - bo_verified
-    - sanctions_screened
-    - aml_program_attested
-    - license_valid
+  - kyb_verified
+  - bo_verified
+  - sanctions_screened
+  - aml_program_attested
+  - license_valid
 dispute_resolution:
   method: arbitration
   escalation:
-    - "operator-to-operator"
-    - "supervisor-to-supervisor"
-    - "formal-arbitration"
+  - operator-to-operator
+  - supervisor-to-supervisor
+  - formal-arbitration
 trust_anchors_path: trust-anchors.yaml
 key_rotation_path: key-rotation.yaml
+definition_vc_path: corridor.vc.json
+verification_ruleset: msez.corridor.verification.v1

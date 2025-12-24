@@ -42,3 +42,8 @@ The MSEZ Stack is a layered system. Deployments SHOULD implement all layers rele
 - attestation streams
 - audit logging, incident response, transparency reporting
 
+## Layer G — Civic governance & diffusion (optional)
+
+- consent mechanisms (voting, delegation, quadratic mechanisms)
+- privacy-preserving participation patterns (e.g., ZK eligibility proofs)
+- network diffusion and experimentation (telemetry, success metrics, A/B tests)

@@ -1,4 +1,7 @@
+import json
 import pathlib, re, yaml
+
+from jsonschema import Draft202012Validator
 from lxml import etree
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
@@ -9,12 +12,14 @@ def load_yaml(p): return yaml.safe_load(p.read_text(encoding="utf-8"))
 
 def extract_must_clause_eids(xml_path: pathlib.Path):
     doc = etree.parse(str(xml_path))
-    # Look at paragraphs with eId and text containing MUST/SHALL
+    # Only match *direct* text nodes containing MUST/SHALL to avoid capturing parent containers
+    # (e.g., a <section> that merely contains a <p> with MUST).
+    must_nodes = doc.xpath("//*[text()[contains(., 'MUST') or contains(., 'SHALL')]]")
     eids = []
-    for el in doc.xpath('//*[@eId]'):
-        text = " ".join([t.strip() for t in el.xpath(".//text()") if str(t).strip()])
-        if MUST_RE.search(text):
-            eids.append(el.get("eId"))
+    for node in must_nodes:
+        eid = node.get("eId")
+        if eid:
+            eids.append(eid)
     return eids
 
 def map_covers_eid(map_data, eid: str) -> bool:
@@ -29,10 +34,26 @@ def map_covers_eid(map_data, eid: str) -> bool:
     return False
 
 def test_every_must_clause_is_mapped_when_map_exists_or_required():
+    # Validate all policy-to-code maps against schema (where present)
+    schema_path = REPO / "schemas" / "policy-to-code.schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    validator = Draft202012Validator(schema)
+    for map_path in REPO.glob("modules/**/src/policy-to-code/map.yaml"):
+        map_data = load_yaml(map_path)
+        errors = [e.message for e in validator.iter_errors(map_data)]
+        assert not errors, f"Invalid policy-to-code map {map_path}: {errors}"
+
     # Rule: if a module has MUST/SHALL clauses in src/akn/*.xml, it MUST have src/policy-to-code/map.yaml
     # and that map MUST reference each MUST/SHALL clause by eId (best effort).
     for mod in REPO.glob("modules/**/module.yaml"):
         mod_dir = mod.parent
+        manifest = load_yaml(mod)
+
+        # Skip Akoma template modules: they contain instructional MUST/SHALL language,
+        # but they are not deployable legal instruments that require policy-to-code mapping.
+        provides = manifest.get("provides") or []
+        if any(p.get("interface") == "msez.legal.akn.templates.v1" for p in provides if isinstance(p, dict)):
+            continue
         akn_dir = mod_dir / "src" / "akn"
         if not akn_dir.exists():
             continue

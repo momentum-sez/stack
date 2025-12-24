@@ -1,0 +1,43 @@
+{
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1",
+    "https://schemas.momentum-sez.org/contexts/msez/v1",
+    "https://schemas.momentum-sez.org/contexts/msez/corridor/v1"
+  ],
+  "id": "urn:msez:vc:corridor-definition:fixture.2of2",
+  "type": [
+    "VerifiableCredential",
+    "MSEZCorridorDefinitionCredential"
+  ],
+  "issuer": "did:key:z6MkiwVVR6BAAnxmH8sLxKpzGaMCjZJZU2pqNEKiJz6ef8ze",
+  "issuanceDate": "2025-12-22T00:00:00Z",
+  "credentialSubject": {
+    "corridor_id": "org.momentum.msez.corridor.fixture.2of2",
+    "ruleset": "msez.corridor.verification.v1",
+    "artifacts": {
+      "corridor_manifest": {
+        "path": "corridor.yaml",
+        "sha256": "eae3ed66b4d0fe2b75dc59906a7b71a83d34fe214ee5bb91a60faaf635ea7161"
+      },
+      "trust_anchors": {
+        "path": "trust-anchors.yaml",
+        "sha256": "d563f56d5754793964c8f90f8b03a3aff1ceadf5a6a3a5f4e86e6aa751435a3c"
+      },
+      "key_rotation": {
+        "path": "key-rotation.yaml",
+        "sha256": "7c90b33162a106e5902c1537643eaa512fd1c970925646dbf38373d1b150ce73"
+      }
+    },
+    "version": "0.2.0",
+    "maintainer": "MSEZ test fixture (dev key)"
+  },
+  "proof": [
+    {
+      "type": "MsezEd25519Signature2025",
+      "created": "2025-12-22T00:00:00Z",
+      "verificationMethod": "did:key:z6MkiwVVR6BAAnxmH8sLxKpzGaMCjZJZU2pqNEKiJz6ef8ze#key-1",
+      "proofPurpose": "assertionMethod",
+      "jws": "XROqRirwmJsXmo398418mwPvURWuxC0Zvx1B78TtLqxvIffAdNto07j6YgY5O08iNXbNJWmYmAoALOaxgjBiDw"
+    }
+  ]
+}

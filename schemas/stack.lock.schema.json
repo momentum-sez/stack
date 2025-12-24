@@ -102,7 +102,12 @@
       "items": {
         "type": "object",
         "required": [
-          "corridor_id"
+          "corridor_id",
+          "trust_anchors_sha256",
+          "key_rotation_sha256",
+          "corridor_manifest_sha256",
+          "corridor_definition_vc_sha256",
+          "corridor_definition_signers"
         ],
         "properties": {
           "corridor_id": {
@@ -113,6 +118,54 @@
           },
           "key_rotation_sha256": {
             "type": "string"
+          },
+          "corridor_manifest_sha256": {
+            "type": "string"
+          },
+          "corridor_definition_vc_sha256": {
+            "type": "string"
+          },
+          "corridor_definition_signers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "corridor_agreement_vc_sha256": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "SHA256 digest(s) of Corridor Agreement VC file(s) referenced by corridor.yaml. Present when agreement_vc_path is configured."
+          },
+          "corridor_agreement_signers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Signer DIDs observed in Corridor Agreement VC proof(s) or signed_parties summary."
+          },
+          "corridor_activated": {
+            "type": "boolean",
+            "description": "Best-effort activation status at lock generation time (True when agreement VC thresholds verify)."
+          },
+          "corridor_agreement_set_sha256": {
+            "type": "string",
+            "description": "Content-addressed digest of (definition payload hash + agreement VC payload hashes)."
+          },
+          "corridor_agreement_payload_sha256_by_path": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Per agreement VC file payload sha256 (proof-excluded), keyed by relative path."
+          },
+          "corridor_activation_blockers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Human-readable blocker strings (e.g., '<partyDid>:withdraw') when a commitment blocks activation."
           }
         }
       }

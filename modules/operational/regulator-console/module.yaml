@@ -6,7 +6,8 @@ description: "Operational module defining regulator console controls: access pol
 variants:
   - read-only-rbac
 depends_on:
-  - org.momentum.msez.reg.aml-cft
+  - module_id: org.momentum.msez.reg.aml-cft
+    constraint: ">=0.1.0,<0.3.0"
 provides:
   - interface: msez.api.regulator-console.v1
     path: api/regulator-console.openapi.yaml

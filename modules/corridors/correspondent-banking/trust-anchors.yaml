@@ -1,2 +1,10 @@
 version: 1
-trust_anchors: []
+trust_anchors:
+- anchor_id: corridor-governance
+  type: did
+  identifier: did:key:z6Mkp8BMuNpEfPPWC4La2djUue1kpwNzEVn1ivpcSythWvqb
+  allowed_attestations:
+  - corridor_definition
+  metadata:
+    notes: Example corridor governance key for signed corridor definition VC. Replace
+      in deployments.

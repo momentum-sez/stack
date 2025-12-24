@@ -1,0 +1,27 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "msez": "https://schemas.momentum-sez.org/vocab/msez#",
+    "sha256": "msez:sha256",
+    "path": "msez:path",
+    "ruleset": "msez:ruleset",
+    "artifacts": "msez:artifacts",
+    "corridor_id": "msez:corridor_id",
+    "participants": "msez:participants",
+    "CorridorManifest": "msez:CorridorManifest",
+    "MSEZCorridorDefinitionCredential": "msez:MSEZCorridorDefinitionCredential",
+    "MSEZCorridorAgreementCredential": "msez:MSEZCorridorAgreementCredential",
+    "definition_payload_sha256": "msez:definition_payload_sha256",
+    "definition_vc_id": "msez:definition_vc_id",
+    "activation": "msez:activation",
+    "thresholds": "msez:thresholds",
+    "role": "msez:role",
+    "required": "msez:required",
+    "of": "msez:of",
+    "terms": "msez:terms",
+    "party": "msez:party",
+    "party_terms": "msez:party_terms",
+    "commitment": "msez:commitment",
+    "accept_commitments": "msez:accept_commitments"
+  }
+}

@@ -29,7 +29,10 @@ nav:
       - Terminology: spec/00-terminology.md
       - Repo layout: spec/10-repo-layout.md
       - Module system: spec/20-module-system.md
+      - Templating & overlays: spec/22-templating-and-overlays.md
       - Profile system: spec/30-profile-system.md
       - Corridors: spec/40-corridors.md
+      - Civic governance: spec/60-governance.md
+      - Network diffusion: spec/61-network-diffusion.md
       - Conformance: spec/50-conformance.md
       - Security & privacy: spec/80-security-privacy.md

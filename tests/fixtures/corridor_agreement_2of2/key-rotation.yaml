@@ -1,0 +1,7 @@
+version: 1
+policy:
+  rotation_days: 90
+  grace_days: 7
+  max_key_age_days: 365
+  revocation:
+    method: manual

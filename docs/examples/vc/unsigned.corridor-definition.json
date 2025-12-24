@@ -1,0 +1,34 @@
+{
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1",
+    "https://schemas.momentum-sez.org/contexts/msez/v1",
+    "https://schemas.momentum-sez.org/contexts/msez/corridor/v1"
+  ],
+  "id": "urn:msez:example:unsigned-corridor-definition",
+  "type": [
+    "VerifiableCredential",
+    "MSEZCorridorDefinitionCredential"
+  ],
+  "issuer": "did:key:z6MkiwVVR6BAAnxmH8sLxKpzGaMCjZJZU2pqNEKiJz6ef8ze",
+  "issuanceDate": "2025-12-22T00:00:00Z",
+  "credentialSubject": {
+    "corridor_id": "org.momentum.msez.corridor.example",
+    "ruleset": "msez.corridor.verification.v1",
+    "artifacts": {
+      "corridor_manifest": {
+        "path": "corridor.yaml",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "trust_anchors": {
+        "path": "trust-anchors.yaml",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "key_rotation": {
+        "path": "key-rotation.yaml",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "version": "0.2.0",
+    "maintainer": "Example (DO NOT USE IN PROD)"
+  }
+}

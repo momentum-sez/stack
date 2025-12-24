@@ -1,0 +1,13 @@
+- metric_id: msez.time_to_business_registration
+  name: Time to business registration
+  unit: hours
+  method: Median time from submission to issuance for entity registry.
+  privacy_class: internal
+  version: '1'
+- metric_id: msez.corridor.activation_time
+  name: Corridor activation time
+  unit: hours
+  method: Time from agreement VC publication to activation (threshold satisfied, blockers
+    cleared).
+  privacy_class: internal
+  version: '1'

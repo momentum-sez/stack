@@ -1,0 +1,29 @@
+module_id: org.momentum.msez.governance.core
+version: 0.1.0
+kind: governance
+license: Apache-2.0
+description: Core governance schemas and interoperability objects (proposals, votes,
+  delegations, tallies).
+variants:
+- baseline
+depends_on: []
+provides:
+- interface: msez.gov.proposal.v1
+  path: schemas/proposal.schema.json
+  media_type: application/json
+- interface: msez.gov.vote.v1
+  path: schemas/vote.schema.json
+  media_type: application/json
+- interface: msez.gov.delegation.v1
+  path: schemas/delegation.schema.json
+  media_type: application/json
+- interface: msez.gov.tally.v1
+  path: schemas/tally.schema.json
+  media_type: application/json
+- interface: msez.gov.zk-eligibility-proof.v1
+  path: schemas/zk-eligibility-proof.schema.json
+  media_type: application/json
+- interface: msez.gov.docs.core.v1
+  path: docs/overview.md
+  media_type: text/markdown
+parameters: {}

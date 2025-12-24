@@ -1,13 +1,8 @@
-# Profiles registry
-
 - profile_id: org.momentum.msez.profile.minimal-mvp
-  latest: 0.2.0
-
+  latest: 0.4.0
 - profile_id: org.momentum.msez.profile.digital-native-free-zone
-  latest: 0.2.0
-
+  latest: 0.4.0
 - profile_id: org.momentum.msez.profile.digital-financial-center
-  latest: 0.2.0
-
+  latest: 0.4.0
 - profile_id: org.momentum.msez.profile.charter-city
-  latest: 0.2.0
+  latest: 0.4.0

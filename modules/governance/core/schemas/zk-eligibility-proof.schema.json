@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ZK eligibility proof (placeholder)",
+  "type": "object",
+  "required": [
+    "proof_type",
+    "statement",
+    "proof"
+  ],
+  "properties": {
+    "proof_type": {
+      "type": "string",
+      "description": "E.g., groth16, plonk, bulletproofs."
+    },
+    "statement": {
+      "type": "string",
+      "description": "Human-readable statement proved."
+    },
+    "proof": {
+      "type": "string",
+      "description": "Proof bytes (base64 or hex)."
+    },
+    "verifier": {
+      "type": "string",
+      "description": "Identifier for verifier circuit / parameters."
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

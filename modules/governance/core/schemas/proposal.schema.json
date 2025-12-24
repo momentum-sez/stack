@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Governance proposal",
+  "type": "object",
+  "required": [
+    "proposal_id",
+    "title",
+    "created_at",
+    "opens_at",
+    "closes_at",
+    "mechanism"
+  ],
+  "properties": {
+    "proposal_id": {
+      "type": "string",
+      "description": "Stable identifier for the proposal (content-addressable recommended)."
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "opens_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "closes_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "mechanism": {
+      "type": "string",
+      "description": "Mechanism identifier (e.g., binary, approval, quadratic-voting)."
+    },
+    "scope": {
+      "type": "string",
+      "description": "Decision scope (zone-wide, sub-jurisdiction, corridor, etc.)."
+    },
+    "eligibility": {
+      "type": "object",
+      "description": "Eligibility policy reference (can be open or restricted).",
+      "properties": {
+        "policy_id": {
+          "type": "string"
+        },
+        "policy_uri": {
+          "type": "string"
+        },
+        "zk_allowed": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Optional references to artifacts this proposal governs (module ids, corridor ids, licenses, etc.)."
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,315 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/vc.corridor-agreement.schema.json",
+  "title": "MSEZ Corridor Agreement Credential",
+  "type": "object",
+  "required": [
+    "@context",
+    "type",
+    "issuer",
+    "issuanceDate",
+    "credentialSubject",
+    "proof"
+  ],
+  "properties": {
+    "@context": {
+      "description": "JSON-LD context(s).",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          },
+          "minItems": 1
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "description": "Credential types. MUST include 'VerifiableCredential'.",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "issuer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "issuanceDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expirationDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "credentialSubject": {
+      "type": "object",
+      "required": [
+        "corridor_id",
+        "definition_payload_sha256",
+        "participants",
+        "activation"
+      ],
+      "properties": {
+        "corridor_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "definition_vc_id": {
+          "type": "string"
+        },
+        "definition_payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "participants": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "role"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "role": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "jurisdiction": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "activation": {
+          "type": "object",
+          "required": [
+            "thresholds"
+          ],
+          "properties": {
+            "thresholds": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": [
+                  "role",
+                  "required"
+                ],
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "required": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "of": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "effectiveFrom": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "effectiveUntil": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "accept_commitments": {
+              "description": "List of commitment verb(s) that count as affirmative for activation. Default is ['agree'] when omitted.",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "terms": {
+          "description": "Optional agreement terms reference (URI/hash) or embedded terms object.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "additionalProperties": true
+            }
+          ]
+        },
+        "version": {
+          "type": "string"
+        },
+        "maintainer": {
+          "type": "string"
+        },
+        "party": {
+          "description": "Participant-specific party descriptor. If present, this VC is interpreted as that party's individual consent statement.",
+          "type": "object",
+          "required": [
+            "id",
+            "role"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "role": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": {
+              "type": "string"
+            },
+            "jurisdiction": {
+              "type": "string"
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        },
+        "commitment": {
+          "description": "Optional commitment verb (e.g., agree|suspend|withdraw).",
+          "type": "string",
+          "minLength": 1
+        },
+        "party_terms": {
+          "description": "Optional participant-specific terms reference (URI/hash) or embedded terms object. Use this for party-specific carveouts while keeping credentialSubject.terms global/shared.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "additionalProperties": true
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "proof": {
+      "description": "One or more cryptographic proofs over the credential payload (excluding the proof field).",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "created",
+            "verificationMethod",
+            "proofPurpose",
+            "jws"
+          ],
+          "properties": {
+            "type": {
+              "const": "MsezEd25519Signature2025"
+            },
+            "created": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "verificationMethod": {
+              "type": "string",
+              "minLength": 1
+            },
+            "proofPurpose": {
+              "type": "string",
+              "minLength": 1
+            },
+            "jws": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "type",
+              "created",
+              "verificationMethod",
+              "proofPurpose",
+              "jws"
+            ],
+            "properties": {
+              "type": {
+                "const": "MsezEd25519Signature2025"
+              },
+              "created": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "verificationMethod": {
+                "type": "string",
+                "minLength": 1
+              },
+              "proofPurpose": {
+                "type": "string",
+                "minLength": 1
+              },
+              "jws": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

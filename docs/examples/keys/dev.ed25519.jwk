@@ -1,0 +1,7 @@
+{
+  "kty": "OKP",
+  "crv": "Ed25519",
+  "x": "Qqo2hIdzkJOivw6dZ2nFfH1JjvQCoxd1E4ihpheJiis",
+  "d": "oaMkOt1bv_JCzB8gaNw14FY82E0KDv_oSHA3V-FtGNE",
+  "kid": "dev-example-ed25519"
+}

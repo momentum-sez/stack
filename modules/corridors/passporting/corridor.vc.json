@@ -1,0 +1,43 @@
+{
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1",
+    "https://schemas.momentum-sez.org/contexts/msez/v1",
+    "https://schemas.momentum-sez.org/contexts/msez/corridor/v1"
+  ],
+  "id": "urn:msez:vc:corridor-definition:org.momentum.msez.corridor.passporting.baseline:8877040d63834586",
+  "type": [
+    "VerifiableCredential",
+    "MSEZCorridorDefinitionCredential"
+  ],
+  "issuer": "did:key:z6Mkp8BMuNpEfPPWC4La2djUue1kpwNzEVn1ivpcSythWvqb",
+  "issuanceDate": "2025-12-22T00:00:00Z",
+  "credentialSubject": {
+    "corridor_id": "org.momentum.msez.corridor.passporting.baseline",
+    "ruleset": "msez.corridor.verification.v1",
+    "artifacts": {
+      "corridor_manifest": {
+        "path": "corridor.yaml",
+        "sha256": "8877040d638345867f46e2c8695a98a77cfd52b41c01a1779abe46f8a88b1eb7"
+      },
+      "trust_anchors": {
+        "path": "trust-anchors.yaml",
+        "sha256": "8fe86b313a40af507fe6d3b834520bab96fca5b0f55bfb70626f21490cc5a512"
+      },
+      "key_rotation": {
+        "path": "key-rotation.yaml",
+        "sha256": "127ce61debf3074c6469f33f54acf16ad833c750b62581ccbeb4a79758e7b04e"
+      }
+    },
+    "version": "0.2.0",
+    "maintainer": "Momentum SEZ Stack (example key)"
+  },
+  "proof": [
+    {
+      "type": "MsezEd25519Signature2025",
+      "created": "2025-12-22T00:00:00Z",
+      "verificationMethod": "did:key:z6Mkp8BMuNpEfPPWC4La2djUue1kpwNzEVn1ivpcSythWvqb#key-1",
+      "proofPurpose": "assertionMethod",
+      "jws": "dQur4epqSulJLjM72qYB8B12oaqDMIxZo-1vHGdTnFw3uu4jdJynIIs9lRIsKlbFmwBa09dn99W05E6mR91dAw"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "msez": "https://schemas.momentum-sez.org/vocab/msez#",
+    "corridor_id": "msez:corridor_id",
+    "participants": "msez:participants",
+    "artifacts": "msez:artifacts",
+    "corridor_manifest": "msez:corridor_manifest",
+    "trust_anchors": "msez:trust_anchors",
+    "key_rotation": "msez:key_rotation",
+    "definition_vc_path": "msez:definition_vc_path",
+    "agreement_vc_path": "msez:agreement_vc_path",
+    "effectiveFrom": {
+      "@id": "msez:effectiveFrom",
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+    "effectiveUntil": {
+      "@id": "msez:effectiveUntil",
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+    "definition_payload_sha256": "msez:definition_payload_sha256",
+    "definition_vc_id": "msez:definition_vc_id",
+    "activation": "msez:activation",
+    "thresholds": "msez:thresholds",
+    "role": "msez:role",
+    "required": "msez:required",
+    "of": "msez:of",
+    "terms": "msez:terms",
+    "participant": "msez:participant",
+    "party": "msez:party",
+    "party_terms": "msez:party_terms",
+    "commitment": "msez:commitment",
+    "accept_commitments": "msez:accept_commitments"
+  }
+}

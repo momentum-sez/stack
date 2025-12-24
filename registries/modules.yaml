@@ -150,3 +150,39 @@
 
 - module_id: org.momentum.msez.ops.transparency-dashboard
   latest: 0.2.0
+
+- module_id: org.momentum.msez.governance.core
+  latest: 0.1.0
+
+- module_id: org.momentum.msez.governance.binary-voting
+  latest: 0.1.0
+
+- module_id: org.momentum.msez.governance.ranked-choice
+  latest: 0.1.0
+
+- module_id: org.momentum.msez.governance.approval-voting
+  latest: 0.1.0
+
+- module_id: org.momentum.msez.governance.score-voting
+  latest: 0.1.0
+
+- module_id: org.momentum.msez.governance.quadratic-voting
+  latest: 0.1.0
+
+- module_id: org.momentum.msez.governance.quadratic-funding
+  latest: 0.1.0
+
+- module_id: org.momentum.msez.governance.liquid-democracy
+  latest: 0.1.0
+
+- module_id: org.momentum.msez.governance.zk-participation
+  latest: 0.1.0
+
+- module_id: org.momentum.msez.ops.deployment-telemetry
+  latest: 0.1.0
+
+- module_id: org.momentum.msez.ops.success-metric-registry
+  latest: 0.1.0
+
+- module_id: org.momentum.msez.ops.ab-testing-framework
+  latest: 0.1.0

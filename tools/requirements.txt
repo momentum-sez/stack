@@ -2,3 +2,4 @@ pyyaml
 jsonschema
 lxml
 pytest
+cryptography

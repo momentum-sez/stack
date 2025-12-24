@@ -1,0 +1,19 @@
+module_id: org.momentum.msez.ops.ab-testing-framework
+version: 0.1.0
+kind: operational
+license: Apache-2.0
+description: Experiment descriptor schema and audit expectations for staged rollouts
+  (A/B tests).
+variants:
+- baseline
+depends_on:
+- module_id: org.momentum.msez.ops.deployment-telemetry
+  constraint: '>=0.1.0,<0.2.0'
+provides:
+- interface: msez.ops.experiment.v1
+  path: schemas/experiment.schema.json
+  media_type: application/json
+- interface: msez.ops.docs.experiments.v1
+  path: docs/overview.md
+  media_type: text/markdown
+parameters: {}

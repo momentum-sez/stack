@@ -1,0 +1,20 @@
+corridor_id: org.momentum.msez.corridor.fixture.2of2
+participants:
+- did:key:z6MkpcPvSoHcaxHrowuHYv6NKhBVpvUsptJUUrQenEQ1aYJX
+- did:key:z6MkrcX3jnavDvJcR4Kcr6i8G1D4LzZ3X2XZdo3dc91QZbvo
+settlement:
+  type: fiat-correspondent
+  currency: USD
+recognition:
+  passporting: []
+attestations:
+  required: []
+dispute_resolution:
+  method: arbitration
+trust_anchors_path: trust-anchors.yaml
+key_rotation_path: key-rotation.yaml
+definition_vc_path: corridor.vc.json
+agreement_vc_path:
+- corridor.agreement.zone-a.vc.json
+- corridor.agreement.zone-b.vc.json
+verification_ruleset: msez.corridor.verification.v1

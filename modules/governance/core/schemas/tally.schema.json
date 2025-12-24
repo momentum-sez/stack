@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Governance tally / outcome",
+  "type": "object",
+  "required": [
+    "proposal_id",
+    "tallied_at",
+    "outcome"
+  ],
+  "properties": {
+    "proposal_id": {
+      "type": "string"
+    },
+    "tallied_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "outcome": {
+      "type": "string",
+      "description": "High-level outcome label (accepted/rejected/etc.)."
+    },
+    "results": {
+      "type": "object",
+      "description": "Mechanism-specific result breakdown.",
+      "additionalProperties": true
+    },
+    "audit": {
+      "type": "object",
+      "properties": {
+        "ballots_digest": {
+          "type": "string"
+        },
+        "tally_method": {
+          "type": "string"
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

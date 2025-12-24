@@ -1,0 +1,21 @@
+module_id: org.momentum.msez.governance.quadratic-funding
+version: 0.1.0
+kind: governance
+license: Apache-2.0
+description: Quadratic funding allocation mechanism.
+variants:
+- baseline
+depends_on:
+- module_id: org.momentum.msez.governance.core
+  constraint: '>=0.1.0,<0.2.0'
+provides:
+- interface: msez.gov.mechanism.quadratic-funding.v1
+  path: docs/spec.md
+  media_type: text/markdown
+parameters:
+  voting_period_hours:
+    type: integer
+    default: 168
+  quorum_fraction:
+    type: number
+    default: 0.0

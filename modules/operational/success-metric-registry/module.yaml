@@ -1,0 +1,22 @@
+module_id: org.momentum.msez.ops.success-metric-registry
+version: 0.1.0
+kind: operational
+license: Apache-2.0
+description: Schema and registry conventions for naming, versioning, and reporting
+  success metrics.
+variants:
+- baseline
+depends_on:
+- module_id: org.momentum.msez.ops.deployment-telemetry
+  constraint: '>=0.1.0,<0.2.0'
+provides:
+- interface: msez.ops.success-metric.v1
+  path: schemas/success-metric.schema.json
+  media_type: application/json
+- interface: msez.ops.docs.metrics.v1
+  path: docs/overview.md
+  media_type: text/markdown
+- interface: msez.ops.metrics-registry.v1
+  path: registry/metrics.yaml
+  media_type: application/yaml
+parameters: {}

@@ -1,0 +1,23 @@
+version: 1
+trust_anchors:
+- anchor_id: zone-a-authority
+  type: did
+  identifier: did:key:z6MkpcPvSoHcaxHrowuHYv6NKhBVpvUsptJUUrQenEQ1aYJX
+  allowed_attestations:
+  - corridor_agreement
+  metadata:
+    role: zone_authority
+- anchor_id: zone-b-authority
+  type: did
+  identifier: did:key:z6MkrcX3jnavDvJcR4Kcr6i8G1D4LzZ3X2XZdo3dc91QZbvo
+  allowed_attestations:
+  - corridor_agreement
+  metadata:
+    role: zone_authority
+- anchor_id: corridor-governance
+  type: did
+  identifier: did:key:z6MkiwVVR6BAAnxmH8sLxKpzGaMCjZJZU2pqNEKiJz6ef8ze
+  allowed_attestations:
+  - corridor_definition
+  metadata:
+    role: corridor_governance

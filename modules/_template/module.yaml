@@ -1,8 +1,8 @@
-module_id: org.momentum.msez.<kind>.<name>
+module_id: org.momentum.msez.template.module
 version: 0.1.0
 kind: legal
 license: CC-BY-4.0
-description: Short description.
+description: "Template module manifest. Copy this folder and replace module_id/kind/name fields."
 variants:
   - default
 depends_on: []

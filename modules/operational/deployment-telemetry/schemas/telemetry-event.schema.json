@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Deployment telemetry event",
+  "type": "object",
+  "required": [
+    "event_type",
+    "ts",
+    "zone_id",
+    "stack_spec_version"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string"
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "zone_id": {
+      "type": "string"
+    },
+    "jurisdiction_id": {
+      "type": "string"
+    },
+    "stack_spec_version": {
+      "type": "string"
+    },
+    "stack_lock_sha256": {
+      "type": "string"
+    },
+    "privacy_class": {
+      "type": "string",
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted"
+      ],
+      "default": "internal"
+    },
+    "attributes": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

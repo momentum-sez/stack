@@ -6,7 +6,8 @@ description: "Licensing scaffolding pack for Payment Service Provider / Acquirer
 variants:
   - baseline
 depends_on:
-  - org.momentum.msez.legal.core
+  - module_id: org.momentum.msez.legal.core
+    constraint: ">=0.1.0,<0.3.0"
 provides:
   - interface: msez.licensing.application.v1
     path: forms/application.schema.json

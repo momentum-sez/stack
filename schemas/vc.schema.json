@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/vc.schema.json",
+  "title": "Verifiable Credential (MSEZ minimal profile)",
+  "type": "object",
+  "required": [
+    "@context",
+    "type",
+    "issuer",
+    "issuanceDate",
+    "credentialSubject",
+    "proof"
+  ],
+  "properties": {
+    "@context": {
+      "description": "JSON-LD context(s).",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          },
+          "minItems": 1
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "description": "Credential types. MUST include 'VerifiableCredential'.",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "issuer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "issuanceDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expirationDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "credentialSubject": {
+      "type": "object"
+    },
+    "proof": {
+      "description": "One or more cryptographic proofs over the credential payload (excluding the proof field).",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "created",
+            "verificationMethod",
+            "proofPurpose",
+            "jws"
+          ],
+          "properties": {
+            "type": {
+              "const": "MsezEd25519Signature2025"
+            },
+            "created": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "verificationMethod": {
+              "type": "string",
+              "minLength": 1
+            },
+            "proofPurpose": {
+              "type": "string",
+              "minLength": 1
+            },
+            "jws": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "type",
+              "created",
+              "verificationMethod",
+              "proofPurpose",
+              "jws"
+            ],
+            "properties": {
+              "type": {
+                "const": "MsezEd25519Signature2025"
+              },
+              "created": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "verificationMethod": {
+                "type": "string",
+                "minLength": 1
+              },
+              "proofPurpose": {
+                "type": "string",
+                "minLength": 1
+              },
+              "jws": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

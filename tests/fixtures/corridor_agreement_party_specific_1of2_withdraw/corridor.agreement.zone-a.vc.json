@@ -1,0 +1,66 @@
+{
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1",
+    "https://schemas.momentum-sez.org/contexts/msez/v1",
+    "https://schemas.momentum-sez.org/contexts/msez/corridor/v1"
+  ],
+  "id": "urn:msez:vc:corridor-agreement:fixture.party.zone-a",
+  "type": [
+    "VerifiableCredential",
+    "MSEZCorridorAgreementCredential"
+  ],
+  "issuer": "did:key:z6MkpcPvSoHcaxHrowuHYv6NKhBVpvUsptJUUrQenEQ1aYJX",
+  "issuanceDate": "2025-12-22T00:00:00Z",
+  "credentialSubject": {
+    "corridor_id": "org.momentum.msez.corridor.fixture.2of2",
+    "definition_vc_id": "urn:msez:vc:corridor-definition:fixture.2of2",
+    "definition_payload_sha256": "f4efa02d2b7cea74edb434a102791908ce7eb8337454698d18e320abead7049d",
+    "participants": [
+      {
+        "id": "did:key:z6MkpcPvSoHcaxHrowuHYv6NKhBVpvUsptJUUrQenEQ1aYJX",
+        "role": "zone_authority",
+        "name": "Zone A (fixture)"
+      },
+      {
+        "id": "did:key:z6MkrcX3jnavDvJcR4Kcr6i8G1D4LzZ3X2XZdo3dc91QZbvo",
+        "role": "zone_authority",
+        "name": "Zone B (fixture)"
+      }
+    ],
+    "activation": {
+      "thresholds": [
+        {
+          "role": "zone_authority",
+          "required": 1,
+          "of": 2,
+          "description": "1-of-2 zone authorities must sign (but any non-affirmative commitment blocks activation)"
+        }
+      ],
+      "effectiveFrom": "2025-12-22T00:00:00Z"
+    },
+    "terms": {
+      "reference": "urn:msez:fixture:agreement-terms",
+      "notes": "fixture only"
+    },
+    "version": "0.2.0",
+    "maintainer": "MSEZ test fixture",
+    "party": {
+      "id": "did:key:z6MkpcPvSoHcaxHrowuHYv6NKhBVpvUsptJUUrQenEQ1aYJX",
+      "role": "zone_authority",
+      "name": "Zone A (fixture)"
+    },
+    "party_terms": {
+      "notes": "zone-a addendum (fixture)"
+    },
+    "commitment": "agree"
+  },
+  "proof": [
+    {
+      "type": "MsezEd25519Signature2025",
+      "created": "2025-12-22T00:00:00Z",
+      "verificationMethod": "did:key:z6MkpcPvSoHcaxHrowuHYv6NKhBVpvUsptJUUrQenEQ1aYJX#key-1",
+      "proofPurpose": "assertionMethod",
+      "jws": "DZc7onv06xnI6IrTaErvjcUEY0ctR3jz6GK_-V0Ymx5UCWYyCFtm92oB9TT7BdAzEOOzRDraIIxB1VG7UjfxAw"
+    }
+  ]
+}

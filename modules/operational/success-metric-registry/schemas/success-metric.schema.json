@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Success metric definition",
+  "type": "object",
+  "required": [
+    "metric_id",
+    "name",
+    "unit",
+    "method"
+  ],
+  "properties": {
+    "metric_id": {
+      "type": "string",
+      "description": "Stable metric identifier (dot-separated recommended)."
+    },
+    "name": {
+      "type": "string"
+    },
+    "unit": {
+      "type": "string"
+    },
+    "method": {
+      "type": "string",
+      "description": "How the metric is measured (data sources, inclusion/exclusion)."
+    },
+    "privacy_class": {
+      "type": "string",
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted"
+      ],
+      "default": "internal"
+    },
+    "version": {
+      "type": "string",
+      "description": "Metric schema/version for evolution."
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

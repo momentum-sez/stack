@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Governance vote / ballot",
+  "type": "object",
+  "required": [
+    "proposal_id",
+    "voter_id",
+    "cast_at",
+    "ballot"
+  ],
+  "properties": {
+    "proposal_id": {
+      "type": "string"
+    },
+    "voter_id": {
+      "type": "string",
+      "description": "Participant identifier (DID recommended)."
+    },
+    "cast_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ballot": {
+      "type": "object",
+      "description": "Mechanism-specific ballot encoding.",
+      "additionalProperties": true
+    },
+    "proof": {
+      "type": "object",
+      "description": "Optional cryptographic proof of eligibility/integrity.",
+      "additionalProperties": true
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

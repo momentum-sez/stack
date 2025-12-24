@@ -17,3 +17,24 @@
 
 - interface_id: msez.render.pdf.v1
   canonical_artifact: tools/akoma/render.py
+
+- interface_id: msez.gov.proposal.v1
+  canonical_artifact: modules/governance/core/schemas/proposal.schema.json
+
+- interface_id: msez.gov.vote.v1
+  canonical_artifact: modules/governance/core/schemas/vote.schema.json
+
+- interface_id: msez.gov.delegation.v1
+  canonical_artifact: modules/governance/core/schemas/delegation.schema.json
+
+- interface_id: msez.gov.tally.v1
+  canonical_artifact: modules/governance/core/schemas/tally.schema.json
+
+- interface_id: msez.ops.telemetry-event.v1
+  canonical_artifact: modules/operational/deployment-telemetry/schemas/telemetry-event.schema.json
+
+- interface_id: msez.ops.success-metric.v1
+  canonical_artifact: modules/operational/success-metric-registry/schemas/success-metric.schema.json
+
+- interface_id: msez.ops.experiment.v1
+  canonical_artifact: modules/operational/ab-testing-framework/schemas/experiment.schema.json

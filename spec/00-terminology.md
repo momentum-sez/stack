@@ -11,3 +11,10 @@ This specification uses the key words **MUST**, **MUST NOT**, **REQUIRED**, **SH
 - **Zone Node**: An instantiated deployment of a profile in a real jurisdiction (a “Mass network node” in the project context).
 - **Corridor**: A configuration + institutional agreement pattern enabling cross-node interoperability (passporting, recognition, settlement).
 
+- **Corridor Agreement VC**: A Verifiable Credential used to express participant-specific acceptance of a corridor definition and define activation thresholds.
+- **Agreement-set digest**: A content-addressed SHA256 digest over (definition VC payload hash + agreement VC payload hashes) used to pin an activated corridor state deterministically.
+- **Activation blockers**: A list of `<partyDid>:<commitment>` strings identifying non-affirmative commitments that prevent corridor activation.
+- **Governance module**: A module that implements decision/consent mechanisms (voting, delegation, quadratic mechanisms) for zone governance workflows.
+
+- **Verifiable Credential (VC)**: A digitally signed data structure (per the W3C VC model) used in MSEZ to bind critical artifacts (e.g., corridor manifests) to an issuer identity (typically a DID) in a tamper-evident way.
+- **Proof**: A cryptographic signature attached to a VC. MSEZ supports multi-proof credentials for multi-party co‑signing.

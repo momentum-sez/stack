@@ -3,7 +3,7 @@
 
 This repository is a **reference specification + reference library** for building *programmable Special Economic Zones (SEZs)* as modular, forkable, and composable “jurisdiction nodes” in the Momentum/Mass network.
 
-It is designed to function like an **open standard**: modular, versioned, testable, and implementable by multiple vendors.
+It is designed to function as an **open standard**: modular, versioned, testable, and implementable by multiple vendors.
 
 > **Not legal advice.** This repository contains model texts, technical specs, and interoperability schemas. Deployments require local legal review, political authorization, and licensed financial/regulatory operators.
 

@@ -1,0 +1,16 @@
+{
+  "ruleset_id": "msez.transition.example.transfer.v1",
+  "title": "Example Transfer Transition Ruleset (v1)",
+  "version": "1.0.0",
+  "description": "Illustrative ruleset descriptor for a corridor transition kind. Implementations may use this pattern to define deterministic transition validation semantics.",
+  "transition_kind": "msez.example.transfer.v1",
+  "payload_schema": "schemas/transition.payload.example.transfer.v1.schema.json",
+  "validation": {
+    "must_validate_payload_against_schema": true,
+    "must_reject_floats_in_canonicalization": true,
+    "notes": [
+      "Nonce uniqueness and balance accounting are corridor-specific and typically enforced by the corridor operator or a ZK proof.",
+      "This descriptor is a placeholder to demonstrate schema+ruleset digests in the transition type registry."
+    ]
+  }
+}

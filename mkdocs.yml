@@ -9,6 +9,7 @@ nav:
       - Authoring:
           - Modules: docs/authoring/modules.md
           - Akoma: docs/authoring/akoma.md
+          - Legal corpus: docs/authoring/legal-corpus.md
           - Licensing pack: docs/authoring/licensing-pack.md
           - Corridors: docs/authoring/corridors.md
       - Corridors:

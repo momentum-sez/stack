@@ -80,8 +80,31 @@
           "type": "string"
         },
         "definition_payload_sha256": {
-          "type": "string",
-          "pattern": "^[a-f0-9]{64}$"
+          "description": "SHA256(JCS(definition_vc_without_proof)) commitment. Legacy form is a raw sha256 digest; preferred form is an ArtifactRef with artifact_type='vc'.",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                },
+                {
+                  "properties": {
+                    "artifact_type": {
+                      "const": "vc"
+                    }
+                  },
+                  "required": [
+                    "artifact_type",
+                    "digest_sha256"
+                  ]
+                }
+              ]
+            }
+          ]
         },
         "participants": {
           "type": "array",
@@ -170,6 +193,37 @@
           },
           "additionalProperties": true
         },
+        "state_channel": {
+          "description": "Optional state-channel policy bindings for corridor operation (v0.4.14+).",
+          "type": "object",
+          "properties": {
+            "receipt_signing": {
+              "description": "Receipt signing thresholds for corridor state transitions (fork resistance).",
+              "type": "object",
+              "properties": {
+                "thresholds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "required": ["role", "required", "of"],
+                    "properties": {
+                      "role": { "type": "string", "minLength": 1 },
+                      "required": { "type": "integer", "minimum": 0 },
+                      "of": { "type": "integer", "minimum": 0 },
+                      "description": { "type": "string" }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "effectiveFrom": { "type": "string", "format": "date-time" },
+                "description": { "type": "string" }
+              },
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        },
         "terms": {
           "description": "Optional agreement terms reference (URI/hash) or embedded terms object.",
           "oneOf": [
@@ -233,6 +287,65 @@
               "additionalProperties": true
             }
           ]
+        },
+        "pinned_lawpacks": {
+          "type": "array",
+          "description": "Participant-pinned lawpack digests (party-specific agreements) that the signer attests are active for their zone.",
+          "items": {
+            "type": "object",
+            "required": [
+              "jurisdiction_id",
+              "domain",
+              "lawpack_digest_sha256"
+            ],
+            "properties": {
+              "jurisdiction_id": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string"
+              },
+              "lawpack_digest_sha256": {
+                "description": "Pinned lawpack digest (hex) OR an ArtifactRef pointing to the pinned lawpack artifact (recommended).",
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                      },
+                      {
+                        "properties": {
+                          "artifact_type": {
+                            "const": "lawpack"
+                          }
+                        },
+                        "required": [
+                          "artifact_type",
+                          "digest_sha256"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "lawpack_lock_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "as_of_date": {
+                "type": "string",
+                "format": "date"
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
         }
       },
       "additionalProperties": true

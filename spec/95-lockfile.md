@@ -20,8 +20,40 @@ The lockfile ensures:
 - `zone_id`
 - `profile` (`profile_id` + `version`)
 - `modules[]` (resolved module list, including at least `module_id`, `version`, `variant`, and a `module_manifest_sha256`)
+- `lawpacks[]` (pinned lawpack digests for jurisdictional corpora; see `spec/96-lawpacks.md`)
 - `overlays[]` (patch digests, when overlays are used)
 - `corridors[]` (corridor integrity state; see below)
+
+## Lawpack lock entries
+
+Each `lawpacks[]` entry MUST include, at minimum:
+
+- `jurisdiction_id`
+- `domain`
+- `lawpack_digest_sha256`
+
+`lawpack_digest_sha256` MAY be either:
+- a raw sha256 digest string (legacy), or
+- an **ArtifactRef** with `artifact_type: lawpack` and `digest_sha256` equal to the lawpack digest.
+
+Tooling MAY emit ArtifactRefs by default. The reference tool supports:
+
+```bash
+msez lock --emit-artifactrefs <zone.yaml>
+```
+
+(v0.4.14+)
+
+Implementations MUST treat the commitment as the digest value (`digest_sha256`) and use `artifact_type` only to determine the CAS resolution path.
+
+If the pin was produced from a `lawpack.lock.json`, the entry SHOULD also include:
+
+- `lawpack_lock_path`
+- `lawpack_lock_sha256`
+- `lawpack_artifact_path`
+- `as_of_date`
+
+Lawpack digest semantics are defined in `spec/96-lawpacks.md`.
 
 ## Corridor lock entries
 
@@ -33,6 +65,8 @@ Each `corridors[]` entry MUST include:
 - `key_rotation_sha256` (hash of `key-rotation.yaml`)
 - `corridor_definition_vc_sha256` (hash of the Corridor Definition VC file **including** `proof`)
 - `corridor_definition_signers[]` (DIDs observed in Corridor Definition VC proof(s))
+
+Digest-bearing corridor lock fields (`*_sha256`) MAY also be expressed as **ArtifactRef** objects (v0.4.13+). Legacy raw digest strings remain valid.
 
 When `corridor.yaml` configures `agreement_vc_path`, the lock entry MUST additionally include:
 

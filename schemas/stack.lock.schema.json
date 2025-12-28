@@ -9,6 +9,7 @@
     "zone_id",
     "profile",
     "modules",
+    "lawpacks",
     "corridors"
   ],
   "properties": {
@@ -114,16 +115,52 @@
             "type": "string"
           },
           "trust_anchors_sha256": {
-            "type": "string"
+            "description": "SHA256 digest of trust-anchors.yaml (legacy) or a typed ArtifactRef commitment.",
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              }
+            ]
           },
           "key_rotation_sha256": {
-            "type": "string"
+            "description": "SHA256 digest of key-rotation.yaml (legacy) or a typed ArtifactRef commitment.",
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              }
+            ]
           },
           "corridor_manifest_sha256": {
-            "type": "string"
+            "description": "SHA256 digest of corridor.yaml (legacy) or a typed ArtifactRef commitment.",
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              }
+            ]
           },
           "corridor_definition_vc_sha256": {
-            "type": "string"
+            "description": "SHA256 digest of the Corridor Definition VC file (including proof) (legacy) or a typed ArtifactRef commitment.",
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              }
+            ]
           },
           "corridor_definition_signers": {
             "type": "array",
@@ -134,7 +171,16 @@
           "corridor_agreement_vc_sha256": {
             "type": "array",
             "items": {
-              "type": "string"
+              "description": "SHA256 digest of the Corridor Agreement VC file (including proof) (legacy) or a typed ArtifactRef commitment.",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                {
+                  "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                }
+              ]
             },
             "description": "SHA256 digest(s) of Corridor Agreement VC file(s) referenced by corridor.yaml. Present when agreement_vc_path is configured."
           },
@@ -151,12 +197,14 @@
           },
           "corridor_agreement_set_sha256": {
             "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
             "description": "Content-addressed digest of (definition payload hash + agreement VC payload hashes)."
           },
           "corridor_agreement_payload_sha256_by_path": {
             "type": "object",
             "additionalProperties": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
             },
             "description": "Per agreement VC file payload sha256 (proof-excluded), keyed by relative path."
           },
@@ -168,6 +216,68 @@
             "description": "Human-readable blocker strings (e.g., '<partyDid>:withdraw') when a commitment blocks activation."
           }
         }
+      }
+    },
+    "lawpacks": {
+      "type": "array",
+      "description": "Pinned lawpack digests for jurisdictional corpora used by this zone.",
+      "items": {
+        "type": "object",
+        "required": [
+          "jurisdiction_id",
+          "domain",
+          "lawpack_digest_sha256"
+        ],
+        "properties": {
+          "jurisdiction_id": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "lawpack_digest_sha256": {
+            "description": "SHA256 digest over canonicalized lawpack content (see spec/96-lawpacks.md). Legacy form is a raw digest; preferred form is an ArtifactRef with artifact_type='lawpack'.",
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "allOf": [
+                  {
+                    "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                  },
+                  {
+                    "properties": {
+                      "artifact_type": {
+                        "const": "lawpack"
+                      }
+                    },
+                    "required": [
+                      "artifact_type",
+                      "digest_sha256"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "lawpack_lock_path": {
+            "type": "string",
+            "description": "Relative path to the lawpack.lock.json source for this pin."
+          },
+          "lawpack_lock_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "lawpack_artifact_path": {
+            "type": "string"
+          },
+          "as_of_date": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
       }
     }
   }

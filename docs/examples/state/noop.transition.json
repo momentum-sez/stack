@@ -1,0 +1,4 @@
+{
+  "kind": "noop",
+  "notes": "Example transition payload; replace with corridor-specific operations (settlement, attestations, etc.)"
+}

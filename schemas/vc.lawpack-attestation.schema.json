@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MSEZ Lawpack Validity Attestation Verifiable Credential",
+  "description": "A Verifiable Credential by a legal authority (or other recognized issuer) attesting that a given lawpack digest corresponds to a legally valid body of law for a specified jurisdiction+domain as-of a date. This credential is intended to narrow the legal-cryptographic gap by binding a lawpack digest to an assertion of legal force.",
+  "type": "object",
+  "required": ["@context", "type", "issuer", "issuanceDate", "credentialSubject", "proof"],
+  "properties": {
+    "@context": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1
+    },
+    "id": {"type": "string"},
+    "type": {
+      "type": "array",
+      "items": {"type": "string"},
+      "contains": {"const": "MSEZLawpackAttestationCredential"}
+    },
+    "issuer": {
+      "oneOf": [
+        {"type": "string"},
+        {
+          "type": "object",
+          "required": ["id"],
+          "properties": {
+            "id": {"type": "string"},
+            "name": {"type": "string"}
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "issuanceDate": {"type": "string"},
+    "expirationDate": {"type": "string"},
+    "credentialSubject": {
+      "type": "object",
+      "required": ["jurisdiction_id", "domain", "lawpack_digest_sha256", "as_of_date", "assertion"],
+      "properties": {
+        "jurisdiction_id": {"type": "string"},
+        "domain": {"type": "string"},
+        "lawpack_digest_sha256": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "$ref": "artifact-ref.schema.json",
+              "properties": {
+                "artifact_type": {"const": "lawpack"}
+              }
+            }
+          ]
+        },
+        "as_of_date": {
+          "description": "The legal point-in-time this attestation refers to.",
+          "type": "string",
+          "format": "date"
+        },
+        "assertion": {
+          "type": "object",
+          "required": ["status", "statement"],
+          "properties": {
+            "status": {
+              "description": "A coarse status label.",
+              "type": "string",
+              "enum": ["asserted_valid", "asserted_invalid", "asserted_superseded", "asserted_partial"]
+            },
+            "statement": {
+              "description": "Human-readable attestation statement.",
+              "type": "string",
+              "minLength": 1
+            },
+            "attestor_role": {
+              "description": "Role/capacity of the issuer (e.g. gazette authority, ministry, court clerk, licensed counsel).",
+              "type": "string"
+            },
+            "sources": {
+              "description": "Evidence artifacts backing the attestation (gazette PDFs, links, hash commitments).",
+              "type": "array",
+              "items": {"$ref": "artifact-ref.schema.json"}
+            },
+            "notes": {"type": "string"}
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "proof": {
+      "oneOf": [
+        {"type": "object"},
+        {
+          "type": "array",
+          "items": {"type": "object"},
+          "minItems": 1
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

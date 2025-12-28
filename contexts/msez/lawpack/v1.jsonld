@@ -1,0 +1,16 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "msez": "https://schemas.momentum-sez.org/vocab/msez#",
+    "MSEZLawpackAttestationCredential": "msez:MSEZLawpackAttestationCredential",
+    "lawpack": "msez:lawpack",
+    "domain": "msez:domain",
+    "as_of_date": "msez:as_of_date",
+    "assertion": "msez:assertion",
+    "status": "msez:status",
+    "statement": "msez:statement",
+    "sources": "msez:sources",
+    "evidence": "msez:evidence",
+    "notes": "msez:notes"
+  }
+}

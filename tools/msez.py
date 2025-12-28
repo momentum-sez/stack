@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MSEZ Stack tool (reference implementation) — v0.4.0
+"""MSEZ Stack tool (reference implementation) — v0.4.14
 
 Capabilities:
 - validate modules/profiles/zones against schemas
@@ -13,6 +13,7 @@ Capabilities:
 - publish rendered artifacts (Akoma -> HTML/PDF) for distribution
 - sign/verify Verifiable Credentials (VC) for corridor integrity
 - verify corridor cryptographic bindings (manifest + security artifacts + VC)
+- corridor state channels (genesis root + signed receipts + state root verification)
 
 This tool is a **reference implementation**. Production implementations may differ while still conforming to the spec.
 """
@@ -28,21 +29,24 @@ import re
 import shutil
 import subprocess
 import sys
-import sys
 from datetime import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 from jsonschema import Draft202012Validator
+from referencing import Registry, Resource
+from referencing.jsonschema import DRAFT202012
 from lxml import etree
-
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 # Ensure imports like `tools.akoma.render` work even when this file is executed
 # as a script (sys.path[0] becomes the tools/ directory).
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
-STACK_SPEC_VERSION = "0.4.0"
+
+# Local (repo) imports (after sys.path fix)
+from tools import artifacts as artifact_cas
+STACK_SPEC_VERSION = "0.4.14"
 
 # Templating: we intentionally support two simple placeholder syntaxes used in v0.4 (safe placeholder subset)
 # - {{ VAR_NAME }} (common in Akoma templates)
@@ -62,9 +66,188 @@ def sha256_bytes(b: bytes) -> str:
 def sha256_file(path: pathlib.Path) -> str:
     return sha256_bytes(path.read_bytes())
 
+def _coerce_sha256(value: Any) -> str:
+    """Coerce either a raw sha256 hex string or an ArtifactRef-like dict into a digest string.
+
+    This enables backward-compatible schemas where a field may be either:
+    - a sha256 hex string, or
+    - an object containing {digest_sha256: <hex>} (e.g., an ArtifactRef).
+    """
+    if isinstance(value, dict):
+        return str(value.get("digest_sha256") or "").strip().lower()
+    if isinstance(value, str):
+        return value.strip().lower()
+    return ""
+
+
+def make_artifact_ref(
+    artifact_type: str,
+    digest_sha256: str,
+    *,
+    uri: str = "",
+    display_name: str = "",
+    media_type: str = "",
+    byte_length: int | None = None,
+) -> Dict[str, Any]:
+    """Construct a minimally-populated ArtifactRef object.
+
+    We use ArtifactRefs as the universal typed digest commitment substrate.
+    Keeping this helper centralized makes it harder for different commands
+    to drift in how they emit typed references.
+    """
+    d = str(digest_sha256 or "").strip().lower()
+    out: Dict[str, Any] = {
+        "artifact_type": str(artifact_type or "").strip(),
+        "digest_sha256": d,
+    }
+    u = str(uri or "").strip()
+    if u:
+        out["uri"] = u
+    dn = str(display_name or "").strip()
+    if dn:
+        out["display_name"] = dn
+    mt = str(media_type or "").strip()
+    if mt:
+        out["media_type"] = mt
+    if byte_length is not None:
+        try:
+            out["byte_length"] = int(byte_length)
+        except Exception:
+            pass
+    return out
+
+
+def load_authority_registry(
+    module_dir: pathlib.Path,
+    corridor_cfg: Dict[str, Any],
+) -> tuple[Dict[str, set[str]], list[str]]:
+    """Load + verify an optional Authority Registry VC referenced by a corridor module.
+
+    This provides an external signer authorization layer intended to mitigate trust-anchor
+    circularity. If corridor.yaml includes an `authority_registry_vc_path`, verifiers
+    can require that any signer authorized in trust-anchors.yaml is also explicitly
+    listed in the registry for the corresponding attestation.
+
+    Returns:
+      (allowed_by_attestation, errors)
+
+    Where allowed_by_attestation maps attestation names (e.g. "corridor_definition") to a
+    set of base DIDs authorized for that attestation.
+    """
+
+    rel = ""
+    try:
+        rel = str((corridor_cfg or {}).get("authority_registry_vc_path") or "").strip()
+    except Exception:
+        rel = ""
+
+    if not rel:
+        return ({}, [])
+
+    errs: list[str] = []
+    vc_path = module_dir / rel
+    if not vc_path.exists():
+        return ({}, [f"{rel}: authority registry VC not found"])
+
+    try:
+        vc = load_json(vc_path)
+    except Exception as ex:
+        return ({}, [f"{rel}: failed to parse authority registry VC: {ex}"])
+
+    # Schema validation (offline)
+    schema = schema_validator(REPO_ROOT / 'schemas' / 'vc.authority-registry.schema.json')
+    for e in validate_with_schema(vc, schema):
+        errs.append(f"{rel}: {e}")
+
+    # Cryptographic VC verification
+    try:
+        from tools.vc import base_did, verify_credential
+
+        results = verify_credential(vc)
+        if not results or not any(r.ok for r in results):
+            errs.append(f"{rel}: authority registry VC has no valid proof")
+
+        allowed: Dict[str, set[str]] = {}
+        subj = vc.get("credentialSubject") or {}
+        authorities = subj.get("authorities") or []
+        if not isinstance(authorities, list):
+            authorities = []
+
+        for a in authorities:
+            if not isinstance(a, dict):
+                continue
+            did = base_did(a.get("did") or a.get("id") or "")
+            if not did:
+                continue
+
+            att = a.get("allowed_attestations")
+            if isinstance(att, str):
+                att_list = [att]
+            elif isinstance(att, list):
+                att_list = att
+            else:
+                # No explicit attestation list means "registry knows about this DID".
+                # Callers may treat this as wildcard depending on policy.
+                att_list = []
+
+            for name in att_list:
+                if not isinstance(name, str):
+                    continue
+                n = name.strip()
+                if not n:
+                    continue
+                allowed.setdefault(n, set()).add(did)
+
+            # Support wildcard authorization in registries.
+            if any(str(x).strip() == "*" for x in att_list):
+                allowed.setdefault("*", set()).add(did)
+
+        return (allowed, errs)
+
+    except Exception as ex:
+        errs.append(f"{rel}: authority registry VC verification failed: {ex}")
+        return ({}, errs)
+
+
+_SCHEMA_REGISTRY: Optional[Registry] = None
+
+
+def _schema_registry(repo_root: pathlib.Path = REPO_ROOT) -> Registry:
+    """Build an in-memory registry of known schemas keyed by $id.
+
+    This enables offline validation of schemas that use $ref across the stack.
+    """
+    global _SCHEMA_REGISTRY
+    if _SCHEMA_REGISTRY is not None:
+        return _SCHEMA_REGISTRY
+
+    reg = Registry()
+    schemas_dir = repo_root / 'schemas'
+    if schemas_dir.exists():
+        for sp in sorted(schemas_dir.glob('*.schema.json')):
+            try:
+                sj = load_json(sp)
+            except Exception:
+                continue
+            sid = sj.get('$id')
+            if not sid or not isinstance(sid, str):
+                continue
+            try:
+                reg = reg.with_resource(sid, Resource.from_contents(sj, default_specification=DRAFT202012))
+            except Exception:
+                # Fallback: accept unknown metaschemas/annotation-only docs
+                try:
+                    reg = reg.with_resource(sid, Resource.from_contents(sj))
+                except Exception:
+                    pass
+
+    _SCHEMA_REGISTRY = reg
+    return reg
+
+
 def schema_validator(schema_path: pathlib.Path) -> Draft202012Validator:
     schema = load_json(schema_path)
-    return Draft202012Validator(schema)
+    return Draft202012Validator(schema, registry=_schema_registry())
 
 def validate_with_schema(obj: Any, validator: Draft202012Validator) -> List[str]:
     errors = []
@@ -782,6 +965,8 @@ def digest_dir(path: pathlib.Path) -> str:
     return h.hexdigest()
 
 def cmd_lock(args: argparse.Namespace) -> int:
+    emit_artifactrefs = bool(getattr(args, "emit_artifactrefs", False))
+
     zone_path = pathlib.Path(args.zone)
     if not zone_path.is_absolute():
         zone_path = REPO_ROOT / zone_path
@@ -817,6 +1002,7 @@ def cmd_lock(args: argparse.Namespace) -> int:
         "zone_id": zone["zone_id"],
         "profile": {"profile_id": profile_id, "version": profile_version},
         "modules": [],
+        "lawpacks": [],
         "overlays": [],
         "corridors": []
     }
@@ -852,6 +1038,73 @@ def cmd_lock(args: argparse.Namespace) -> int:
                 patch_hashes.append("MISSING")
         lock["overlays"].append({"module_id": module_id, "patches_sha256": patch_hashes})
 
+    # lawpacks (jurisdictional legal corpus pins)
+    # Zones may optionally declare a jurisdiction_stack (multiple governing layers), and lawpack_domains.
+    jurisdiction_stack = zone.get("jurisdiction_stack") or [zone.get("jurisdiction_id")]
+    if not isinstance(jurisdiction_stack, list) or not jurisdiction_stack:
+        jurisdiction_stack = [zone.get("jurisdiction_id")]
+    lawpack_domains = zone.get("lawpack_domains") or ["civil", "financial"]
+    if not isinstance(lawpack_domains, list) or not lawpack_domains:
+        lawpack_domains = ["civil", "financial"]
+
+    for jid in jurisdiction_stack:
+        if not jid:
+            continue
+        for dom in lawpack_domains:
+            if not dom:
+                continue
+            # expected module location: modules/legal/jurisdictions/<jid segments>/<domain>
+            mdir = REPO_ROOT / "modules" / "legal" / "jurisdictions"
+            for seg in str(jid).split("-"):
+                mdir = mdir / seg
+            mdir = mdir / str(dom)
+            lp_lock_path = mdir / "lawpack.lock.json"
+
+            entry = {
+                "jurisdiction_id": str(jid),
+                "domain": str(dom),
+                "lawpack_digest_sha256": "MISSING",
+                "lawpack_lock_path": str(lp_lock_path.relative_to(REPO_ROOT)),
+                "lawpack_lock_sha256": "MISSING",
+                "lawpack_artifact_path": "",
+                "as_of_date": "",
+            }
+
+            if lp_lock_path.exists():
+                try:
+                    lp_lock = load_json(lp_lock_path)
+                    entry["lawpack_digest_sha256"] = str(lp_lock.get("lawpack_digest_sha256") or "MISSING")
+                    entry["lawpack_lock_sha256"] = sha256_file(lp_lock_path)
+                    entry["lawpack_artifact_path"] = str(lp_lock.get("artifact_path") or "")
+
+
+                    # Prefer the canonical CAS convention when present:
+                    # dist/artifacts/lawpack/<digest>.lawpack.zip
+                    dg = str(entry.get("lawpack_digest_sha256") or "").strip().lower()
+                    if SHA256_HEX_RE.match(dg):
+                        cas_candidate = REPO_ROOT / "dist" / "artifacts" / "lawpack" / f"{dg}.lawpack.zip"
+                        if cas_candidate.exists():
+                            try:
+                                entry["lawpack_artifact_path"] = str(cas_candidate.relative_to(REPO_ROOT))
+                            except Exception:
+                                entry["lawpack_artifact_path"] = str(cas_candidate)
+                    entry["as_of_date"] = str(lp_lock.get("as_of_date") or "")
+                except Exception:
+                    pass
+
+            # Optional v0.4.14+ emission: use ArtifactRef as the default digest substrate.
+            dg_final = str(entry.get("lawpack_digest_sha256") or "").strip().lower()
+            if emit_artifactrefs and SHA256_HEX_RE.match(dg_final):
+                # Resolution hint: prefer CAS path if known, otherwise point to lawpack.lock.json.
+                hint = str(entry.get("lawpack_artifact_path") or "").strip() or str(entry.get("lawpack_lock_path") or "").strip()
+                entry["lawpack_digest_sha256"] = make_artifact_ref(
+                    "lawpack",
+                    dg_final,
+                    uri=hint,
+                )
+
+            lock["lawpacks"].append(entry)
+
     # corridors
     for cid in zone.get("corridors", []) or []:
         # best effort: locate corridor module by corridor_id
@@ -859,9 +1112,14 @@ def cmd_lock(args: argparse.Namespace) -> int:
         rot_hash = ""
         manifest_hash = ""
         vc_hash = ""
+        trust_uri = ""
+        rot_uri = ""
+        manifest_uri = ""
+        vc_uri = ""
         signers: List[str] = []
 
         agreement_hashes: List[str] = []
+        agreement_uris: List[str] = []
         agreement_signers: List[str] = []
         activated: bool | None = None
 
@@ -879,17 +1137,37 @@ def cmd_lock(args: argparse.Namespace) -> int:
                 continue
 
             # Digests for security artifacts + corridor manifest
-            ta = mdir / (c.get("trust_anchors_path") or "trust-anchors.yaml")
-            kr = mdir / (c.get("key_rotation_path") or "key-rotation.yaml")
+            ta_rel = str(c.get("trust_anchors_path") or "trust-anchors.yaml")
+            kr_rel = str(c.get("key_rotation_path") or "key-rotation.yaml")
+            ta = mdir / ta_rel
+            kr = mdir / kr_rel
             trust_hash = sha256_file(ta) if ta.exists() else "MISSING"
             rot_hash = sha256_file(kr) if kr.exists() else "MISSING"
             manifest_hash = sha256_file(cy) if cy.exists() else "MISSING"
+
+            # URI hints (repo-relative) for typed ArtifactRef emission
+            try:
+                trust_uri = str(ta.relative_to(REPO_ROOT))
+            except Exception:
+                trust_uri = str(ta)
+            try:
+                rot_uri = str(kr.relative_to(REPO_ROOT))
+            except Exception:
+                rot_uri = str(kr)
+            try:
+                manifest_uri = str(cy.relative_to(REPO_ROOT))
+            except Exception:
+                manifest_uri = str(cy)
 
             # Corridor Definition VC (required in v0.3+; optional in older stacks)
             vc_rel = (c.get("definition_vc_path") or "").strip()
             vc_path = (mdir / vc_rel) if vc_rel else None
             if vc_path and vc_path.exists():
                 vc_hash = sha256_file(vc_path)
+                try:
+                    vc_uri = str(vc_path.relative_to(REPO_ROOT))
+                except Exception:
+                    vc_uri = str(vc_path)
                 try:
                     vcj = load_json(vc_path)
                     pr = vcj.get("proof")
@@ -909,6 +1187,10 @@ def cmd_lock(args: argparse.Namespace) -> int:
                 if ap.exists():
                     agreement_hashes.append(sha256_file(ap))
                     try:
+                        agreement_uris.append(str(ap.relative_to(REPO_ROOT)))
+                    except Exception:
+                        agreement_uris.append(str(ap))
+                    try:
                         avcj = load_json(ap)
                         pr = avcj.get("proof")
                         if isinstance(pr, dict):
@@ -919,6 +1201,7 @@ def cmd_lock(args: argparse.Namespace) -> int:
                         pass
                 else:
                     agreement_hashes.append("MISSING")
+                    agreement_uris.append(str(rel))
 
             agreement_signers = sorted({s.split("#", 1)[0] for s in agreement_signers if s})
 
@@ -947,8 +1230,34 @@ def cmd_lock(args: argparse.Namespace) -> int:
             "corridor_definition_signers": signers,
         }
 
+        # Optional v0.4.14+ emission: use ArtifactRef as the default digest substrate.
+        if emit_artifactrefs:
+            mh = str(entry.get("corridor_manifest_sha256") or "").strip().lower()
+            th = str(entry.get("trust_anchors_sha256") or "").strip().lower()
+            rh = str(entry.get("key_rotation_sha256") or "").strip().lower()
+            vh = str(entry.get("corridor_definition_vc_sha256") or "").strip().lower()
+            if SHA256_HEX_RE.match(mh):
+                entry["corridor_manifest_sha256"] = make_artifact_ref("blob", mh, uri=manifest_uri)
+            if SHA256_HEX_RE.match(th):
+                entry["trust_anchors_sha256"] = make_artifact_ref("blob", th, uri=trust_uri)
+            if SHA256_HEX_RE.match(rh):
+                entry["key_rotation_sha256"] = make_artifact_ref("blob", rh, uri=rot_uri)
+            if SHA256_HEX_RE.match(vh):
+                entry["corridor_definition_vc_sha256"] = make_artifact_ref("blob", vh, uri=vc_uri)
+
         if agreement_hashes:
-            entry["corridor_agreement_vc_sha256"] = agreement_hashes
+            if emit_artifactrefs:
+                refs: List[Any] = []
+                for i, dg in enumerate(agreement_hashes):
+                    dgn = str(dg or "").strip().lower()
+                    if SHA256_HEX_RE.match(dgn):
+                        uri = agreement_uris[i] if i < len(agreement_uris) else ""
+                        refs.append(make_artifact_ref("blob", dgn, uri=uri))
+                    else:
+                        refs.append(dg)
+                entry["corridor_agreement_vc_sha256"] = refs
+            else:
+                entry["corridor_agreement_vc_sha256"] = agreement_hashes
             entry["corridor_agreement_signers"] = agreement_signers
             entry["corridor_activated"] = bool(activated) if activated is not None else False
             # Optional: content-addressed agreement set digest + per-file payload hashes
@@ -1072,6 +1381,216 @@ def cmd_check_coverage(args: argparse.Namespace) -> int:
         print("OK: policy-to-code coverage checks passed")
         return 0
     return 2
+
+
+def cmd_law_list(args: argparse.Namespace) -> int:
+    """List jurisdictional legal corpus modules (placeholders or populated)."""
+    out: List[Dict[str, Any]] = []
+    for mp in REPO_ROOT.glob("modules/legal/jurisdictions/**/module.yaml"):
+        mod_dir = mp.parent
+        rel = mod_dir.relative_to(REPO_ROOT)
+        parts = rel.parts
+        # modules/legal/jurisdictions/<jid_path...>/<domain>
+        if len(parts) < 5:
+            continue
+        domain = parts[-1]
+        jid_parts = parts[3:-1]
+        jurisdiction_id = "-".join(jid_parts)
+        if args.jurisdiction and args.jurisdiction != jurisdiction_id:
+            continue
+        if args.domain and args.domain != domain:
+            continue
+        manifest = load_yaml(mp)
+        out.append({
+            "jurisdiction_id": jurisdiction_id,
+            "domain": domain,
+            "module_id": manifest.get("module_id"),
+            "path": str(rel),
+            "version": manifest.get("version"),
+            "license": manifest.get("license"),
+        })
+
+    out = sorted(out, key=lambda r: (r["jurisdiction_id"], r["domain"]))
+    if args.json:
+        print(json.dumps(out, indent=2, sort_keys=True))
+    else:
+        for r in out:
+            print(f"{r['jurisdiction_id']:>14}  {r['domain']:<10}  {r['module_id']}  ({r['path']})")
+    return 0
+
+
+def cmd_law_coverage(args: argparse.Namespace) -> int:
+    """Report whether the scaffolded corpus modules exist for each registry jurisdiction."""
+    reg_path = REPO_ROOT / "registries" / "jurisdictions.yaml"
+    if not reg_path.exists():
+        print("registries/jurisdictions.yaml not found")
+        return 2
+    reg = load_yaml(reg_path) or []
+    domains = ["civil", "financial"]
+    rows: List[Dict[str, Any]] = []
+    for e in reg:
+        if not isinstance(e, dict):
+            continue
+        jid = e.get("jurisdiction_id", "")
+        name = e.get("name", "")
+        if not jid:
+            continue
+        base = REPO_ROOT / "modules" / "legal" / "jurisdictions"
+        for seg in jid.split("-"):
+            base = base / seg
+        row = {"jurisdiction_id": jid, "name": name}
+        for d in domains:
+            row[d] = (base / d / "module.yaml").exists()
+        rows.append(row)
+
+    rows = sorted(rows, key=lambda r: r["jurisdiction_id"])
+    if args.json:
+        print(json.dumps(rows, indent=2, sort_keys=True))
+    else:
+        print(f"{'jurisdiction_id':<18}  {'civil':<5}  {'financial':<9}  name")
+        print("-" * 88)
+        for r in rows:
+            civ = "yes" if r['civil'] else "no"
+            fin = "yes" if r['financial'] else "no"
+            print(f"{r['jurisdiction_id']:<18}  {civ:<5}  {fin:<9}  {r['name']}")
+    return 0
+
+
+def cmd_law_ingest(args: argparse.Namespace) -> int:
+    """Ingest a jurisdiction corpus module into a content-addressed lawpack.zip.
+
+    This builds:
+      - dist/lawpacks/<jurisdiction_id>/<domain>/<digest>.lawpack.zip (implementation output)
+      - dist/artifacts/lawpack/<digest>.lawpack.zip (canonical CAS copy; see spec/97-artifacts.md)
+      - <module_dir>/lawpack.lock.json
+
+    The lock entry is later pinned into stack.lock via `msez lock`.
+    """
+    from tools.lawpack import ingest_lawpack  # type: ignore
+
+    module_dir = pathlib.Path(args.module)
+    if not module_dir.is_absolute():
+        module_dir = REPO_ROOT / module_dir
+
+    out_dir = pathlib.Path(args.out_dir) if args.out_dir else (REPO_ROOT / "dist" / "lawpacks")
+    if not out_dir.is_absolute():
+        out_dir = REPO_ROOT / out_dir
+
+    as_of_date = str(args.as_of_date or "").strip()
+    if not as_of_date:
+        print("ERROR: --as-of-date is required (YYYY-MM-DD)", file=sys.stderr)
+        return 2
+
+    try:
+        lock_obj = ingest_lawpack(
+            module_dir=module_dir,
+            out_dir=out_dir,
+            as_of_date=as_of_date,
+            repo_root=REPO_ROOT,
+            fetch=bool(getattr(args, "fetch", False)),
+            include_raw=bool(getattr(args, "include_raw", False)),
+            tool_version=STACK_SPEC_VERSION,
+        )
+    except Exception as ex:
+        print(f"ERROR: law ingest failed: {ex}", file=sys.stderr)
+        return 2
+
+    # v0.4.7+: store a canonical CAS copy: dist/artifacts/lawpack/<digest>.lawpack.zip
+    cas_artifact_path: str = ""
+    try:
+        digest = str(lock_obj.get("lawpack_digest_sha256") or "").strip().lower()
+        apath = str(lock_obj.get("artifact_path") or "").strip()
+        if digest and apath:
+            src = pathlib.Path(apath)
+            if not src.is_absolute():
+                src = REPO_ROOT / src
+            if src.exists():
+                cas_path = artifact_cas.store_artifact_file(
+                    "lawpack",
+                    digest,
+                    src,
+                    repo_root=REPO_ROOT,
+                    store_root=None,
+                    dest_name=None,
+                    overwrite=False,
+                )
+                try:
+                    cas_artifact_path = str(cas_path.relative_to(REPO_ROOT))
+                except Exception:
+                    cas_artifact_path = str(cas_path)
+    except Exception as ex:
+        print(f"WARN: unable to store lawpack artifact in dist/artifacts: {ex}", file=sys.stderr)
+        cas_artifact_path = ""
+
+    if args.json:
+        out = dict(lock_obj)
+        if cas_artifact_path:
+            out["cas_artifact_path"] = cas_artifact_path
+        print(json.dumps(out, indent=2, sort_keys=True))
+    else:
+        print("LAWPACK OK:")
+        print("  jurisdiction_id:", lock_obj.get("jurisdiction_id"))
+        print("  domain:", lock_obj.get("domain"))
+        print("  as_of_date:", lock_obj.get("as_of_date"))
+        print("  digest:", lock_obj.get("lawpack_digest_sha256"))
+        print("  artifact_path:", lock_obj.get("artifact_path"))
+        if cas_artifact_path:
+            print("  cas_artifact_path:", cas_artifact_path)
+        print("  lock_path:", (module_dir / "lawpack.lock.json").relative_to(REPO_ROOT))
+    return 0
+
+
+def cmd_law_attest_init(args: argparse.Namespace) -> int:
+    """Initialize a Lawpack Validity Attestation VC skeleton.
+
+    This does not add a proof; use `msez vc sign` to sign the generated VC.
+    """
+
+    jurisdiction_id = str(getattr(args, "jurisdiction_id", "") or "").strip()
+    domain = str(getattr(args, "domain", "") or "").strip()
+    as_of_date = str(getattr(args, "as_of_date", "") or "").strip()
+    issuer = str(getattr(args, "issuer", "") or "").strip() or "did:key:REPLACE_ME"
+
+    dg = _coerce_sha256(getattr(args, "lawpack_digest", ""))
+    if not SHA256_HEX_RE.match(dg):
+        print("ERROR: --lawpack-digest must be a 64-hex sha256 digest", file=sys.stderr)
+        return 2
+
+    vc: Dict[str, Any] = {
+        "@context": [
+            "https://www.w3.org/2018/credentials/v1",
+            "https://schemas.momentum-sez.org/contexts/msez/v1.jsonld",
+            "https://schemas.momentum-sez.org/contexts/msez/lawpack/v1.jsonld",
+        ],
+        "id": f"urn:uuid:{uuid.uuid4()}",
+        "type": ["VerifiableCredential", "MSEZLawpackAttestationCredential"],
+        "issuer": {"id": issuer},
+        "issuanceDate": now_rfc3339(),
+        "credentialSubject": {
+            "jurisdiction_id": jurisdiction_id,
+            "domain": domain,
+            "as_of_date": as_of_date,
+            "lawpack": make_artifact_ref("lawpack", dg),
+            "assertion": {
+                "status": "asserted_valid",
+                "statement": (
+                    "I attest that the referenced lawpack digest corresponds to a legally valid body of law "
+                    "for the stated jurisdiction and domain as-of the specified date."
+                ),
+                "sources": [],
+                "evidence": [],
+            },
+        },
+    }
+
+    out_path = pathlib.Path(str(getattr(args, "out", "") or "") or f"lawpack-attestation.{dg[:8]}.vc.json")
+    if not out_path.is_absolute():
+        out_path = REPO_ROOT / out_path
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(vc, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(str(out_path.relative_to(REPO_ROOT)))
+    return 0
+
 
 def cmd_diff(args: argparse.Namespace) -> int:
     """Diff two stack.lock files for upgrade impact analysis."""
@@ -1259,29 +1778,56 @@ def verify_corridor_definition_vc(module_dir: pathlib.Path) -> List[str]:
         errs.append(f"{vc_rel}: VC verification error: {ex}")
         ok_methods = []
 
-    # Binding checks: sha256
+    # Binding checks: artifact sha256 pins
     subj = (vcj.get("credentialSubject") or {})
     if isinstance(subj, dict):
         art = subj.get("artifacts") or {}
-        def get_hash(name: str) -> str:
-            try:
-                return str(((art.get(name) or {}).get("sha256") or "")).strip()
-            except Exception:
-                return ""
-        expected_manifest = get_hash("corridor_manifest")
-        expected_ta = get_hash("trust_anchors")
-        expected_kr = get_hash("key_rotation")
+        if isinstance(art, dict):
+            for name, spec in art.items():
+                if not isinstance(spec, dict):
+                    continue
 
-        if expected_manifest and expected_manifest != sha256_file(corridor_path):
-            errs.append(f"{vc_rel}: corridor_manifest.sha256 mismatch (VC vs file)")
-        if expected_ta and expected_ta != sha256_file(ta_path):
-            errs.append(f"{vc_rel}: trust_anchors.sha256 mismatch (VC vs file)")
-        if expected_kr and expected_kr != sha256_file(kr_path):
-            errs.append(f"{vc_rel}: key_rotation.sha256 mismatch (VC vs file)")
+                # Legacy form: {path, sha256}
+                if ("sha256" in spec) or ("path" in spec):
+                    rel = str(spec.get("path") or "").strip()
+                    expected = str(spec.get("sha256") or "").strip().lower()
+                # ArtifactRef form: {artifact_type, digest_sha256, uri?, ...}
+                else:
+                    rel = str(spec.get("uri") or spec.get("path") or "").strip()
+                    expected = str(spec.get("digest_sha256") or "").strip().lower()
+                    if not rel:
+                        # Name-based defaults for the standard corridor package layout.
+                        if name == "corridor_manifest":
+                            rel = "corridor.yaml"
+                        elif name == "trust_anchors":
+                            rel = str(ta_path.name)
+                        elif name == "key_rotation":
+                            rel = str(kr_path.name)
+
+                if not rel or not expected:
+                    continue
+
+                # If the hint is a non-local URI, we can't validate on-disk binding here.
+                if "://" in rel or rel.startswith("ipfs:") or rel.startswith("urn:"):
+                    continue
+
+                fpath = module_dir / rel
+                if not fpath.exists():
+                    errs.append(f"{vc_rel}: artifacts.{name}.path missing: {rel}")
+                    continue
+                actual = sha256_file(fpath)
+                if actual != expected:
+                    errs.append(f"{vc_rel}: artifacts.{name}.sha256 mismatch (VC vs file)")
 
         vc_cid = subj.get("corridor_id")
         if vc_cid and vc_cid != c.get("corridor_id"):
             errs.append(f"{vc_rel}: corridor_id mismatch (VC={vc_cid} vs manifest={c.get('corridor_id')})")
+
+    # Optional external authority registry constraint (mitigates trust-anchor circularity).
+    reg_allowed, reg_errs = load_authority_registry(module_dir, c)
+    if reg_errs:
+        errs.extend(reg_errs)
+    reg_def_allowed = set(reg_allowed.get("corridor_definition", set())) | set(reg_allowed.get("*", set()))
 
     # Authorization checks against trust anchors
     try:
@@ -1293,6 +1839,16 @@ def verify_corridor_definition_vc(module_dir: pathlib.Path) -> List[str]:
                 continue
             if "corridor_definition" in (a.get("allowed_attestations") or []):
                 allowed.add(str(a.get("identifier") or "").split("#", 1)[0])
+
+        # If a registry is present, the corridor module trust-anchor set must be a subset of it.
+        if reg_def_allowed:
+            for did in allowed:
+                if did and did not in reg_def_allowed:
+                    errs.append(f"{vc_rel}: trust anchor {did} is not authorized by authority-registry for corridor_definition")
+
+            # Enforce that corridor_definition signers are drawn from the registry-constrained set.
+            allowed = allowed.intersection(reg_def_allowed)
+
         for vm in ok_methods:
             did = str(vm).split("#", 1)[0]
             if allowed and did not in allowed:
@@ -1389,6 +1945,7 @@ def corridor_agreement_summary(module_dir: pathlib.Path) -> Tuple[List[str], Dic
         def_vcj = load_json(def_path)
         from tools.vc import signing_input  # type: ignore
         def_payload_sha256 = sha256_bytes(signing_input(def_vcj))
+        def_lawpack_compat = ((def_vcj.get('credentialSubject') or {}).get('lawpack_compatibility'))
         def_vc_id = str(def_vcj.get('id') or '').strip()
         summary['definition_payload_sha256'] = def_payload_sha256
         if def_vc_id:
@@ -1411,6 +1968,19 @@ def corridor_agreement_summary(module_dir: pathlib.Path) -> Tuple[List[str], Dic
     except Exception:
         pass
 
+    # Optional external authority registry constraint (mitigates trust-anchor circularity).
+    reg_allowed, reg_errs = load_authority_registry(module_dir, c)
+    if reg_errs:
+        errs.extend(reg_errs)
+    reg_ag_allowed = set(reg_allowed.get("corridor_agreement", set())) | set(reg_allowed.get("*", set()))
+    if reg_ag_allowed:
+        for did in sorted(list(allowed_agreement)):
+            if did and did not in reg_ag_allowed:
+                errs.append(
+                    f"{ta_path.name}: trust anchor {did} is not authorized by authority-registry for corridor_agreement"
+                )
+        allowed_agreement = allowed_agreement.intersection(reg_ag_allowed)
+
     if not allowed_agreement:
         errs.append(
             f"{ta_path.name}: no trust anchors authorize corridor_agreement (allowed_attestations includes 'corridor_agreement')"
@@ -1428,6 +1998,7 @@ def corridor_agreement_summary(module_dir: pathlib.Path) -> Tuple[List[str], Dic
     party_role_by_vc: Dict[str, str] = {}
     party_commitment_by_party: Dict[str, str] = {}
     party_path_by_party: Dict[str, str] = {}
+    pinned_lawpacks_by_party: Dict[str, List[Dict[str, Any]]] = {}
 
     vc_schema = schema_validator(REPO_ROOT / 'schemas' / 'vc.corridor-agreement.schema.json')
 
@@ -1526,6 +2097,15 @@ def corridor_agreement_summary(module_dir: pathlib.Path) -> Tuple[List[str], Dic
                     party_commitment_by_party[party_id] = commitment_norm
                     party_path_by_party[party_id] = rel
 
+                    # Lawpack pins (v0.4.1+): participant attests to the exact legal corpus digests in force.
+                    pinned = subj.get("pinned_lawpacks")
+                    if pinned is None:
+                        pinned_lawpacks_by_party[party_id] = []
+                    elif isinstance(pinned, list):
+                        pinned_lawpacks_by_party[party_id] = pinned
+                    else:
+                        errs.append(f"{rel}: credentialSubject.pinned_lawpacks must be an array when present")
+
                     # For participant-specific agreement VCs, issuer SHOULD equal party.id (keeps provenance clear)
                     if issuer_did and issuer_did != party_id:
                         errs.append(
@@ -1598,6 +2178,9 @@ def corridor_agreement_summary(module_dir: pathlib.Path) -> Tuple[List[str], Dic
             if pid and role:
                 role_by_did[pid] = role
 
+    # Expose the participant role mapping for downstream verifiers (e.g. receipt threshold enforcement).
+    summary['role_by_did'] = {k: role_by_did[k] for k in sorted(role_by_did.keys())}
+
     # If corridor.yaml participants are specified (non-empty), require exact match with VC participants.
     corridor_participants = c.get('participants') or []
     if isinstance(corridor_participants, list) and corridor_participants:
@@ -1643,6 +2226,27 @@ def corridor_agreement_summary(module_dir: pathlib.Path) -> Tuple[List[str], Dic
     if not isinstance(thresholds, list) or not thresholds:
         errs.append('agreement: missing activation.thresholds')
         return (errs, summary)
+
+    # v0.4.14+: receipt signing thresholds (fork resistance)
+    #
+    # Receipt signing policy lives in credentialSubject.state_channel.receipt_signing.
+    # If absent, we fall back to activation.thresholds (backward compatible) but verifiers
+    # SHOULD prefer unanimity for bilateral corridors (2-of-2) to prevent valid forks.
+    summary['activation_thresholds'] = thresholds
+    rs_obj = None
+    if isinstance(base_subject.get('state_channel'), dict):
+        rs_obj = (base_subject.get('state_channel') or {}).get('receipt_signing')
+    if rs_obj is None:
+        rs_obj = base_subject.get('receipt_signing')
+
+    rs_thresholds: List[Dict[str, Any]] = []
+    if isinstance(rs_obj, dict):
+        t = rs_obj.get('thresholds')
+        if isinstance(t, list):
+            rs_thresholds = [x for x in t if isinstance(x, dict)]
+    if not rs_thresholds:
+        rs_thresholds = [x for x in thresholds if isinstance(x, dict)]
+    summary['receipt_signing_thresholds'] = rs_thresholds
 
     accept_set = set(accept_commitments)
 
@@ -1740,6 +2344,54 @@ def corridor_agreement_summary(module_dir: pathlib.Path) -> Tuple[List[str], Dic
             signed_by_role.setdefault(role, []).append(did)
     summary['signed_by_role'] = {r: sorted(dids) for r, dids in signed_by_role.items()}
 
+    summary['pinned_lawpacks_by_party'] = pinned_lawpacks_by_party
+
+    # Lawpack compatibility enforcement (v0.4.1+)
+    if isinstance(def_lawpack_compat, dict):
+        req_domains = def_lawpack_compat.get("required_domains") or []
+        allowed_list = def_lawpack_compat.get("allowed") or []
+        allowed_map: Dict[Tuple[str, str], set] = {}
+
+        if isinstance(allowed_list, list):
+            for ent in allowed_list:
+                if not isinstance(ent, dict):
+                    continue
+                jid = str(ent.get("jurisdiction_id") or "").strip()
+                dom = str(ent.get("domain") or "").strip()
+                digests = ent.get("digests_sha256") or []
+                if jid and dom and isinstance(digests, list):
+                    allowed_map[(jid, dom)] = set(str(d).strip() for d in digests if isinstance(d, str) and d.strip())
+
+        # Required domain coverage (only meaningful for party-specific agreements)
+        if isinstance(req_domains, list) and req_domains and agreement_pattern == "party-specific":
+            for pid in sorted(role_by_did.keys()):
+                pinned = pinned_lawpacks_by_party.get(pid, [])
+                present = set()
+                for lp in pinned:
+                    if isinstance(lp, dict):
+                        present.add(str(lp.get("domain") or "").strip())
+                for dom in req_domains:
+                    if str(dom) not in present:
+                        errs.append(f"lawpacks: party {pid} missing pinned lawpack for required domain '{dom}'")
+
+        # Allowlist enforcement (only if provided)
+        if allowed_map:
+            for pid, pinned in pinned_lawpacks_by_party.items():
+                for lp in pinned:
+                    if not isinstance(lp, dict):
+                        continue
+                    jid = str(lp.get("jurisdiction_id") or "").strip()
+                    dom = str(lp.get("domain") or "").strip()
+                    digest = _coerce_sha256(lp.get("lawpack_digest_sha256"))
+                    if not (jid and dom and digest):
+                        continue
+                    allowed = allowed_map.get((jid, dom))
+                    if allowed is None:
+                        errs.append(f"lawpacks: {pid} pinned {jid}/{dom} digest {digest} but definition has no allowlist entry for that jurisdiction/domain")
+                    elif digest not in allowed:
+                        errs.append(f"lawpacks: {pid} pinned {jid}/{dom} digest {digest} which is not in definition allowlist")
+
+
     summary['activated'] = bool(agreement_paths) and activated and (len(errs) == 0)
 
     return (errs, summary)
@@ -1756,6 +2408,2116 @@ def verify_corridor_agreement_vc(module_dir: pathlib.Path) -> List[str]:
     errs, _summary = corridor_agreement_summary(module_dir)
     return errs
 
+
+
+# --- Corridor state channels (v0.4.3+) ----------------------------------------
+
+SHA256_HEX_RE = re.compile(r"^[a-f0-9]{64}$")
+
+
+def _normalize_digest_set(values):
+    """Normalize a digest list into a sorted unique list.
+
+    This is used to ensure digest sets are stable (order-independent) prior to hashing.
+    """
+    out: List[str] = []
+    seen = set()
+    for v in (values or []):
+        # Backwards compatible: accept either raw digest strings or ArtifactRef-like
+        # objects carrying {digest_sha256: <hex>}.
+        s = _coerce_sha256(v)
+        if not s:
+            continue
+        if not SHA256_HEX_RE.match(s):
+            raise ValueError(f"invalid sha256 digest: {v}")
+        if s in seen:
+            continue
+        seen.add(s)
+        out.append(s)
+    out.sort()
+    return out
+
+
+def _load_rulesets_registry() -> dict:
+    """Load registries/rulesets.yaml mapping ruleset_id -> descriptor path."""
+    rp = REPO_ROOT / "registries" / "rulesets.yaml"
+    if not rp.exists():
+        return {}
+    reg = load_yaml(rp) or {}
+    mapping = {}
+    for ent in (reg.get("rulesets") or []):
+        if not isinstance(ent, dict):
+            continue
+        rid = str(ent.get("ruleset_id") or "").strip()
+        path = str(ent.get("path") or "").strip()
+        if rid and path:
+            mapping[rid] = path
+    return mapping
+
+
+def ruleset_descriptor_digest_sha256(ruleset_id: str) -> str:
+    """Compute the sha256 digest of a ruleset descriptor (content-addressed)."""
+    rid = str(ruleset_id or "").strip()
+    if not rid:
+        raise ValueError("ruleset_id is required")
+
+    reg = _load_rulesets_registry()
+    rel = reg.get(rid)
+    if not rel:
+        raise ValueError(f"ruleset_id not found in registries/rulesets.yaml: {rid}")
+
+    path = pathlib.Path(rel)
+    if not path.is_absolute():
+        path = REPO_ROOT / path
+    if not path.exists():
+        raise FileNotFoundError(f"ruleset descriptor missing: {rel}")
+
+    data = load_json(path)
+    from tools.lawpack import jcs_canonicalize  # type: ignore
+    return sha256_bytes(jcs_canonicalize(data))
+
+
+def corridor_expected_ruleset_digest_set(module_dir: pathlib.Path) -> List[str]:
+    """Return the ruleset digest set that MUST govern corridor state receipts.
+
+    By default this includes:
+    - the corridor verification ruleset (corridor.yaml verification_ruleset)
+    - the corridor state transition ruleset (corridor.yaml state_channel.transition_ruleset or default)
+    """
+    c = load_yaml(module_dir / "corridor.yaml")
+    verification_ruleset = str(c.get("verification_ruleset") or "msez.corridor.verification.v1").strip()
+    state_cfg = c.get("state_channel") if isinstance(c, dict) else None
+    if not isinstance(state_cfg, dict):
+        state_cfg = {}
+    transition_ruleset = str(state_cfg.get("transition_ruleset") or "msez.corridor.state-transition.v2").strip()
+
+    digests = [
+        ruleset_descriptor_digest_sha256(verification_ruleset),
+        ruleset_descriptor_digest_sha256(transition_ruleset),
+    ]
+    return _normalize_digest_set(digests)
+
+
+def corridor_expected_lawpack_digest_set(module_dir: pathlib.Path) -> List[str]:
+    """Return the union of pinned lawpack digests from the activated agreement set.
+
+    This is best-effort when no agreement is configured.
+    """
+    try:
+        errs, summary = corridor_agreement_summary(module_dir)
+        # If agreements exist but are invalid, keep deterministic behavior by still using what we can parse.
+        pinned_by_party = (summary or {}).get("pinned_lawpacks_by_party") or {}
+        digests = []
+        if isinstance(pinned_by_party, dict):
+            for _party, pinned in pinned_by_party.items():
+                if not isinstance(pinned, list):
+                    continue
+                for lp in pinned:
+                    if not isinstance(lp, dict):
+                        continue
+                    d = _coerce_sha256(lp.get("lawpack_digest_sha256"))
+                    if d:
+                        digests.append(d)
+        return _normalize_digest_set(digests)
+    except Exception:
+        return []
+
+
+def _jcs_sha256_of_json_file(path: pathlib.Path) -> str:
+    """Compute SHA256(JCS(json)) for a JSON file.
+
+    Used for content-addressed digests where insignificant whitespace/ordering should not matter.
+    """
+    data = load_json(path)
+    from tools.lawpack import jcs_canonicalize  # type: ignore
+    return sha256_bytes(jcs_canonicalize(data))
+
+
+def _resolve_path_repo_or_module(module_dir: pathlib.Path, rel: str) -> pathlib.Path:
+    """Resolve a path that may be repo-relative or module-relative.
+
+    Resolution order (v0.4.7+):
+    1) absolute paths
+    2) module-relative (to support overlays/bundles overriding shared names)
+    3) repo-relative (shared artifacts like schemas/rulesets)
+
+    This bias toward module-relative paths is intentional: it prevents accidental capture
+    of a repo-root file when verifying a built bundle directory.
+    """
+    p = pathlib.Path(str(rel))
+    if p.is_absolute():
+        return p
+    p_mod = module_dir / p
+    if p_mod.exists():
+        return p_mod
+    p_repo = REPO_ROOT / p
+    if p_repo.exists():
+        return p_repo
+    return p_mod
+
+
+def _build_transition_type_registry_mapping(base_dir: pathlib.Path, reg_obj: Dict[str, Any], *, label: str) -> Dict[str, Dict[str, Any]]:
+    """Build a `kind -> entry` mapping from a transition type registry object.
+
+    Best-effort fills missing digest fields from referenced artifacts.
+
+    Parameters:
+      base_dir: directory to resolve module-relative paths (fallback when repo-relative does not exist)
+      reg_obj: loaded registry object (already schema-validated)
+      label: human label used in error messages
+    """
+    mapping: Dict[str, Dict[str, Any]] = {}
+    for ent in (reg_obj.get("transition_types") or []):
+        if not isinstance(ent, dict):
+            continue
+        kind = str(ent.get("kind") or "").strip()
+        if not kind:
+            continue
+        if kind in mapping:
+            raise ValueError(f"duplicate transition kind in registry ({label}): {kind}")
+
+        # Copy and best-effort fill missing digests from referenced artifacts.
+        e = dict(ent)
+
+        # Schema digest: compute from schema_path when digest omitted.
+        if not _coerce_sha256(e.get("schema_digest_sha256")):
+            sp = str(e.get("schema_path") or "").strip()
+            if sp:
+                try:
+                    s_path = _resolve_path_repo_or_module(base_dir, sp)
+                    if s_path.exists():
+                        e["schema_digest_sha256"] = _jcs_sha256_of_json_file(s_path)
+                except Exception:
+                    pass
+
+        # Ruleset digest: prefer ruleset_id lookup; fall back to ruleset_path.
+        if not _coerce_sha256(e.get("ruleset_digest_sha256")):
+            rid = str(e.get("ruleset_id") or "").strip()
+            if rid:
+                try:
+                    e["ruleset_digest_sha256"] = ruleset_descriptor_digest_sha256(rid)
+                except Exception:
+                    pass
+            rp = str(e.get("ruleset_path") or "").strip()
+            if rp and not _coerce_sha256(e.get("ruleset_digest_sha256")):
+                try:
+                    r_path = _resolve_path_repo_or_module(base_dir, rp)
+                    if r_path.exists():
+                        e["ruleset_digest_sha256"] = _jcs_sha256_of_json_file(r_path)
+                except Exception:
+                    pass
+
+        # ZK circuit digest is not auto-computed unless a local path is provided (future-proof).
+
+        mapping[kind] = e
+
+    return mapping
+
+
+def corridor_transition_type_registry(module_dir: pathlib.Path) -> Tuple[Optional[pathlib.Path], Dict[str, Any], Dict[str, Dict[str, Any]]]:
+    """Load the corridor's transition type registry (if configured).
+
+    The registry maps `transition.kind` -> optional digest references:
+    - schema_digest_sha256 (payload format)
+    - ruleset_digest_sha256 (validation semantics)
+    - zk_circuit_digest_sha256 (proof-carrying transitions)
+
+    The registry path is taken from corridor.yaml:
+      state_channel.transition_type_registry_path
+
+    Returns (registry_path, registry_object, mapping).
+    """
+    c = load_yaml(module_dir / "corridor.yaml")
+    state_cfg = c.get("state_channel") if isinstance(c, dict) else None
+    if not isinstance(state_cfg, dict):
+        state_cfg = {}
+    rel = str(state_cfg.get("transition_type_registry_path") or "").strip()
+    if not rel:
+        return None, {}, {}
+
+    reg_path = _resolve_path_repo_or_module(module_dir, rel)
+    if not reg_path.exists():
+        raise FileNotFoundError(f"transition type registry not found: {rel}")
+
+    reg_obj = load_yaml(reg_path) or {}
+    reg_schema = schema_validator(REPO_ROOT / "schemas" / "transition-types.registry.schema.json")
+    verrs = validate_with_schema(reg_obj, reg_schema)
+    if verrs:
+        raise ValueError(f"transition type registry invalid ({rel}): {verrs[0]}")
+
+    mapping = _build_transition_type_registry_mapping(module_dir, reg_obj, label=rel)
+    return reg_path, reg_obj, mapping
+
+
+def fill_transition_envelope_from_registry(env: Dict[str, Any], entry: Dict[str, Any]) -> Dict[str, Any]:
+    """Fill a transition envelope's digest references from a registry entry.
+
+    If the envelope already specifies a digest reference that disagrees with the registry entry,
+    this function raises ValueError.
+    """
+    out = dict(env)
+    for field in ["schema_digest_sha256", "ruleset_digest_sha256", "zk_circuit_digest_sha256"]:
+        expected = _coerce_sha256(entry.get(field))
+        if not expected:
+            continue
+        actual = _coerce_sha256(out.get(field))
+        if actual and actual != expected:
+            raise ValueError(f"transition.{field} mismatch for kind '{out.get('kind')}'")
+        out[field] = expected
+    return out
+
+
+def verify_transition_envelope_against_registry(
+    env: Dict[str, Any],
+    entry: Dict[str, Any],
+    *,
+    enforce: bool = False,
+    allow_overrides: bool = False,
+) -> List[str]:
+    """Verify that a transition envelope's digest references are consistent with a registry entry.
+
+    By default this is *non-strict*: if a registry defines a digest but the envelope omits it,
+    verification passes. Set enforce=True to require presence.
+    """
+    errs: List[str] = []
+    kind = str(env.get("kind") or "").strip()
+    for field in ["schema_digest_sha256", "ruleset_digest_sha256", "zk_circuit_digest_sha256"]:
+        expected = _coerce_sha256(entry.get(field))
+        actual = _coerce_sha256(env.get(field))
+        if expected:
+            if actual and actual != expected:
+                if not allow_overrides:
+                    errs.append(f"transition.{field} mismatch for kind '{kind}'")
+            elif (not actual) and enforce:
+                errs.append(f"transition.{field} missing for kind '{kind}' (required by registry)")
+    return errs
+
+
+TRANSITION_TYPES_SNAPSHOT_TAG = "msez.transition-types.registry.snapshot.v1"
+
+
+def transition_type_registry_snapshot(registry_version: int, reg_map: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    """Build the canonical transition-type registry snapshot used for content addressing.
+
+    The snapshot intentionally commits only to semantics-relevant fields:
+    - kind
+    - schema_digest_sha256
+    - ruleset_digest_sha256
+    - zk_circuit_digest_sha256
+
+    Any descriptive/provenance metadata should live outside the snapshot.
+    """
+    items: List[Dict[str, Any]] = []
+    for kind in sorted(reg_map.keys()):
+        e = reg_map[kind] or {}
+        item: Dict[str, Any] = {"kind": kind}
+        for f in ["schema_digest_sha256", "ruleset_digest_sha256", "zk_circuit_digest_sha256"]:
+            v = str(e.get(f) or "").strip().lower()
+            if v:
+                item[f] = v
+        items.append(item)
+
+    return {
+        "tag": TRANSITION_TYPES_SNAPSHOT_TAG,
+        "registry_version": int(registry_version or 1),
+        "transition_types": items,
+    }
+
+
+def transition_type_registry_snapshot_digest(snapshot: Dict[str, Any]) -> str:
+    """Compute SHA256(JCS(snapshot))."""
+    from tools.lawpack import jcs_canonicalize  # type: ignore
+    return sha256_bytes(jcs_canonicalize(snapshot))
+
+
+def build_transition_type_registry_lock(
+    *,
+    reg_path: pathlib.Path,
+    reg_obj: Dict[str, Any],
+    reg_map: Dict[str, Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Build a transition type registry lock object.
+
+    The lock contains:
+    - provenance (source registry path + sha256 of canonicalized YAML)
+    - snapshot (canonical semantics)
+    - snapshot_digest_sha256 (content address)
+    """
+    from tools.lawpack import canonicalize_yaml  # type: ignore
+
+    registry_version = int((reg_obj or {}).get("version") or 1)
+    snapshot = transition_type_registry_snapshot(registry_version, reg_map)
+    digest = transition_type_registry_snapshot_digest(snapshot)
+
+    # Prefer a repo-relative path when possible (helps portability).
+    try:
+        rel = os.path.relpath(reg_path, REPO_ROOT)
+    except Exception:
+        rel = str(reg_path)
+
+    lock_obj: Dict[str, Any] = {
+        "transition_types_lock_version": 1,
+        "generated_at": datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+        "source": {
+            "registry_path": rel,
+            "registry_sha256": sha256_bytes(canonicalize_yaml(reg_path)),
+        },
+        "snapshot": snapshot,
+        "snapshot_digest_sha256": digest,
+    }
+    return lock_obj
+
+
+def load_transition_type_registry_lock(lock_path: pathlib.Path) -> Tuple[Dict[str, Any], Dict[str, Dict[str, Any]], str]:
+    """Load and validate a transition type registry lock.
+
+    Returns (lock_object, mapping, snapshot_digest_sha256).
+    """
+    lock_obj = load_json(lock_path) or {}
+    schema = schema_validator(REPO_ROOT / "schemas" / "transition-types.lock.schema.json")
+    errs = validate_with_schema(lock_obj, schema)
+    if errs:
+        raise ValueError(f"transition type registry lock invalid ({lock_path}): {errs[0]}")
+
+    snap = lock_obj.get("snapshot")
+    if not isinstance(snap, dict):
+        raise ValueError("transition type registry lock missing snapshot")
+    if str(snap.get("tag") or "") != TRANSITION_TYPES_SNAPSHOT_TAG:
+        raise ValueError("transition type registry lock snapshot.tag mismatch")
+
+    digest = transition_type_registry_snapshot_digest(snap)
+    expected = str(lock_obj.get("snapshot_digest_sha256") or "").strip().lower()
+    if expected and digest != expected:
+        raise ValueError("transition type registry lock snapshot_digest_sha256 mismatch")
+    lock_obj["snapshot_digest_sha256"] = digest
+
+    mapping: Dict[str, Dict[str, Any]] = {}
+    for ent in (snap.get("transition_types") or []):
+        if not isinstance(ent, dict):
+            continue
+        kind = str(ent.get("kind") or "").strip()
+        if not kind:
+            continue
+        if kind in mapping:
+            raise ValueError(f"duplicate transition kind in lock snapshot: {kind}")
+        mapping[kind] = dict(ent)
+    return lock_obj, mapping, digest
+
+
+
+TRANSITION_TYPES_LOCK_CAS_SUFFIX = ".transition-types.lock.json"
+
+
+def transition_types_lock_store_dirs(repo_root: pathlib.Path = REPO_ROOT) -> List[pathlib.Path]:
+    """Return directories to search for content-addressed Transition Type Registry lock snapshots.
+
+    Canonical CAS location (v0.4.7+):
+      - dist/artifacts/transition-types
+
+    The generic artifact store roots may be extended via:
+      - MSEZ_ARTIFACT_STORE_DIRS (os.pathsep-separated)
+
+    For backwards compatibility, this function also honors:
+      - MSEZ_TRANSITION_TYPES_STORE_DIRS (type directories; legacy)
+
+    Each store directory is expected to contain files named:
+
+      <digest>.transition-types.lock.json
+
+    where <digest> is the lock's snapshot_digest_sha256.
+    """
+    repo_root = repo_root.resolve()
+
+    dirs: List[pathlib.Path] = []
+
+    # Legacy override: directories that already point at transition-type lock files.
+    legacy_env = (os.environ.get("MSEZ_TRANSITION_TYPES_STORE_DIRS") or "").strip()
+    if legacy_env:
+        for part in legacy_env.split(os.pathsep):
+            p = part.strip()
+            if not p:
+                continue
+            pp = pathlib.Path(p)
+            if not pp.is_absolute():
+                pp = repo_root / pp
+            dirs.append(pp)
+
+    # New generic store roots (dist/artifacts/*)
+    for root in artifact_cas.artifact_store_roots(repo_root):
+        # artifact_store_roots returns absolute paths.
+        dirs.append(pathlib.Path(root) / "transition-types")
+
+    # Legacy default (pre-v0.4.7)
+    dirs.append(repo_root / "dist" / "registries" / "transition-types")
+
+    # Deduplicate while preserving order.
+    out: List[pathlib.Path] = []
+    seen = set()
+    for d in dirs:
+        try:
+            key = str(d.resolve())
+        except Exception:
+            key = str(d)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(d)
+    return out
+
+
+def transition_types_lock_cas_path(
+    digest_sha256: str,
+    *,
+    store_dir: Optional[pathlib.Path] = None,
+    repo_root: pathlib.Path = REPO_ROOT,
+) -> pathlib.Path:
+    """Return the canonical content-addressed path for a transition type registry lock snapshot.
+
+    Canonical location (v0.4.7+):
+      dist/artifacts/transition-types/<digest>.transition-types.lock.json
+
+    ``store_dir`` may be used to override the *type directory*.
+    """
+    d = str(digest_sha256 or "").strip().lower()
+    if not SHA256_HEX_RE.match(d):
+        raise ValueError("digest must be 64 lowercase hex chars")
+
+    base = store_dir or (repo_root / "dist" / "artifacts" / "transition-types")
+    if not base.is_absolute():
+        base = repo_root / base
+
+    return base / f"{d}{TRANSITION_TYPES_LOCK_CAS_SUFFIX}"
+
+
+def store_transition_type_registry_lock_to_cas(
+    lock_path: pathlib.Path,
+    *,
+    store_dir: Optional[pathlib.Path] = None,
+    repo_root: pathlib.Path = REPO_ROOT,
+) -> Tuple[pathlib.Path, str]:
+    """Store a Transition Type Registry lock file into the content-addressed registry store.
+
+    Returns (cas_path, snapshot_digest_sha256).
+    """
+    if not lock_path.exists():
+        raise FileNotFoundError(f"lock not found: {lock_path}")
+
+    lock_obj, _mapping, digest = load_transition_type_registry_lock(lock_path)
+
+    cas_path = transition_types_lock_cas_path(digest, store_dir=store_dir, repo_root=repo_root)
+    cas_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Write a normalized JSON representation (stable formatting; digest is over snapshot, not file bytes).
+    cas_path.write_text(json.dumps(lock_obj, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return cas_path, digest
+
+
+def resolve_transition_type_registry_lock_by_digest(
+    digest_sha256: str,
+    *,
+    module_dir: Optional[pathlib.Path] = None,
+    store_dirs: Optional[List[pathlib.Path]] = None,
+    repo_root: pathlib.Path = REPO_ROOT,
+) -> pathlib.Path:
+    """Resolve a Transition Type Registry lock snapshot by digest.
+
+    Search order:
+    1) content-addressed store(s) (default: dist/artifacts/transition-types)
+    2) module-local conventional names (best-effort)
+    3) repo fallback (registries/transition-types.lock.json) when it matches the digest
+    """
+    d = str(digest_sha256 or "").strip().lower()
+    if not SHA256_HEX_RE.match(d):
+        raise ValueError("digest must be 64 lowercase hex chars")
+
+    dirs = store_dirs or transition_types_lock_store_dirs(repo_root)
+
+    # 1) CAS store(s)
+    for sd in dirs:
+        sdp = sd
+        if not sdp.is_absolute():
+            sdp = repo_root / sdp
+        cand = sdp / f"{d}{TRANSITION_TYPES_LOCK_CAS_SUFFIX}"
+        if cand.exists():
+            return cand
+
+    # 2) module-local conventional names
+    if module_dir is not None:
+        for rel in ["transition-types.lock.json", "registries/transition-types.lock.json"]:
+            cand = module_dir / rel
+            if cand.exists():
+                try:
+                    _lock_obj, _mapping, dig = load_transition_type_registry_lock(cand)
+                    if dig == d:
+                        return cand
+                except Exception:
+                    pass
+
+    # 3) repo fallback
+    fallback = repo_root / "registries" / "transition-types.lock.json"
+    if fallback.exists():
+        try:
+            _lock_obj, _mapping, dig = load_transition_type_registry_lock(fallback)
+            if dig == d:
+                return fallback
+        except Exception:
+            pass
+
+    raise FileNotFoundError(f"transition type registry lock not found for digest {d}")
+
+
+def corridor_transition_type_registry_snapshot(module_dir: pathlib.Path) -> Tuple[Optional[str], Dict[str, Dict[str, Any]]]:
+    """Return (transition_type_registry_digest_sha256, mapping) best-effort.
+
+    Preference order:
+    1) transition_type_registry_lock_path (JSON lock)
+    2) transition_type_registry_path (YAML registry -> derived snapshot)
+    """
+    c = load_yaml(module_dir / "corridor.yaml")
+    state_cfg = c.get("state_channel") if isinstance(c, dict) else None
+    if not isinstance(state_cfg, dict):
+        state_cfg = {}
+
+    reg_rel = str(state_cfg.get("transition_type_registry_path") or "").strip()
+    lock_rel = str(state_cfg.get("transition_type_registry_lock_path") or "").strip()
+
+    # Derive a default lock name when a registry is configured.
+    if not lock_rel and reg_rel:
+        rp = pathlib.Path(reg_rel)
+        if rp.suffix.lower() in {".yaml", ".yml"}:
+            lock_rel = str(rp.with_suffix(".lock.json"))
+        else:
+            lock_rel = reg_rel + ".lock.json"
+
+    if lock_rel:
+        lp = _resolve_path_repo_or_module(module_dir, lock_rel)
+        if lp.exists():
+            lock_obj, mapping, digest = load_transition_type_registry_lock(lp)
+            return digest, mapping
+
+    if reg_rel:
+        _rp, reg_obj, mapping = corridor_transition_type_registry(module_dir)
+        if mapping:
+            registry_version = int((reg_obj or {}).get("version") or 1)
+            snap = transition_type_registry_snapshot(registry_version, mapping)
+            digest = transition_type_registry_snapshot_digest(snap)
+            return digest, mapping
+
+    return None, {}
+
+
+def cmd_registry_transition_types_lock(args: argparse.Namespace) -> int:
+    """Generate a content-addressed Transition Type Registry lock file.
+
+    The lock captures a deterministic snapshot (kind -> digests) and emits:
+    - snapshot (canonical JSON)
+    - snapshot_digest_sha256 = sha256(JCS(snapshot))
+    """
+    reg_arg = str(getattr(args, "registry", "") or "").strip()
+    if not reg_arg:
+        print("registry path is required", file=sys.stderr)
+        return 2
+
+    reg_path = pathlib.Path(reg_arg)
+    if not reg_path.is_absolute():
+        reg_path = REPO_ROOT / reg_path
+    if not reg_path.exists():
+        print(f"Registry not found: {reg_path}", file=sys.stderr)
+        return 2
+
+    try:
+        reg_obj = load_yaml(reg_path)
+    except Exception as ex:
+        print(f"ERROR: invalid YAML: {ex}", file=sys.stderr)
+        return 2
+
+    schema = schema_validator(REPO_ROOT / "schemas" / "transition-types.registry.schema.json")
+    errs = validate_with_schema(reg_obj, schema)
+    if errs:
+        for e in errs:
+            print("  -", e, file=sys.stderr)
+        return 2
+
+    try:
+        reg_map = _build_transition_type_registry_mapping(reg_path.parent, reg_obj, label=str(reg_path))
+        lock_obj = build_transition_type_registry_lock(reg_path=reg_path, reg_obj=reg_obj, reg_map=reg_map)
+    except Exception as ex:
+        print(f"ERROR: unable to build transition type registry lock: {ex}", file=sys.stderr)
+        return 2
+
+    out = str(getattr(args, "out", "") or "").strip()
+    if out:
+        out_path = pathlib.Path(out)
+        if not out_path.is_absolute():
+            out_path = REPO_ROOT / out_path
+    else:
+        if reg_path.suffix.lower() in {".yaml", ".yml"}:
+            out_path = reg_path.with_suffix(".lock.json")
+        else:
+            out_path = pathlib.Path(str(reg_path) + ".lock.json")
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(lock_obj, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    # v0.4.6+: store lock snapshots; v0.4.7+: canonical store is dist/artifacts/transition-types
+    cas_path: Optional[pathlib.Path] = None
+    if not bool(getattr(args, 'no_store', False)):
+        try:
+            sd_arg = str(getattr(args, 'store_dir', '') or '').strip()
+            sd_path: Optional[pathlib.Path] = pathlib.Path(sd_arg) if sd_arg else None
+            if sd_path is not None and not sd_path.is_absolute():
+                sd_path = REPO_ROOT / sd_path
+            cas_path, _dig = store_transition_type_registry_lock_to_cas(out_path, store_dir=sd_path, repo_root=REPO_ROOT)
+        except Exception as ex:
+            print(f"WARN: unable to store registry lock snapshot in content-addressed store: {ex}", file=sys.stderr)
+            cas_path = None
+
+    if getattr(args, "json", False):
+        print(
+            json.dumps(
+                {
+                    "path": str(out_path),
+                    "snapshot_digest_sha256": str(lock_obj.get("snapshot_digest_sha256") or ""),
+                    "stored_path": str(cas_path) if cas_path is not None else "",
+                },
+                indent=2,
+            )
+        )
+    else:
+        print(str(out_path))
+    return 0
+
+
+
+def cmd_registry_transition_types_store(args: argparse.Namespace) -> int:
+    """Store a transition type registry lock snapshot in the content-addressed registry store."""
+    lock_arg = str(getattr(args, "lock", "") or "").strip()
+    if not lock_arg:
+        print("lock path is required", file=sys.stderr)
+        return 2
+
+    lock_path = pathlib.Path(lock_arg)
+    if not lock_path.is_absolute():
+        lock_path = REPO_ROOT / lock_path
+    if not lock_path.exists():
+        print(f"Lock not found: {lock_path}", file=sys.stderr)
+        return 2
+
+    sd_arg = str(getattr(args, "store_dir", "") or "").strip()
+    sd_path: Optional[pathlib.Path] = pathlib.Path(sd_arg) if sd_arg else None
+    if sd_path is not None and not sd_path.is_absolute():
+        sd_path = REPO_ROOT / sd_path
+
+    try:
+        cas_path, digest = store_transition_type_registry_lock_to_cas(lock_path, store_dir=sd_path, repo_root=REPO_ROOT)
+    except Exception as ex:
+        print(f"ERROR: unable to store lock snapshot: {ex}", file=sys.stderr)
+        return 2
+
+    if getattr(args, "json", False):
+        print(json.dumps({"snapshot_digest_sha256": digest, "path": str(cas_path)}, indent=2))
+    else:
+        print(str(cas_path))
+    return 0
+
+
+def cmd_registry_transition_types_resolve(args: argparse.Namespace) -> int:
+    """Resolve a transition type registry lock snapshot by digest."""
+    dig = str(getattr(args, "digest", "") or "").strip().lower()
+    if not dig:
+        print("digest is required", file=sys.stderr)
+        return 2
+
+    # Start from default dirs (env + dist/...)
+    dirs = transition_types_lock_store_dirs(REPO_ROOT)
+
+    # Optional additional search dirs (searched first)
+    extra = getattr(args, "store_dir", None) or []
+    for sd in reversed(list(extra)):
+        s = str(sd or "").strip()
+        if not s:
+            continue
+        pth = pathlib.Path(s)
+        if not pth.is_absolute():
+            pth = REPO_ROOT / pth
+        if pth not in dirs:
+            dirs.insert(0, pth)
+
+    try:
+        lp = resolve_transition_type_registry_lock_by_digest(dig, module_dir=None, store_dirs=dirs, repo_root=REPO_ROOT)
+    except Exception as ex:
+        print(f"ERROR: unable to resolve lock snapshot: {ex}", file=sys.stderr)
+        return 2
+
+    if getattr(args, "show", False):
+        try:
+            obj = load_json(lp)
+            print(json.dumps(obj, indent=2, ensure_ascii=False))
+        except Exception as ex:
+            print(f"ERROR: unable to read lock at {lp}: {ex}", file=sys.stderr)
+            return 2
+        return 0
+
+    if getattr(args, "json", False):
+        # Validate by loading (also recomputes digest)
+        try:
+            _lock_obj, _mapping, digest = load_transition_type_registry_lock(lp)
+        except Exception as ex:
+            print(f"ERROR: invalid lock snapshot at {lp}: {ex}", file=sys.stderr)
+            return 2
+        print(json.dumps({"snapshot_digest_sha256": digest, "path": str(lp)}, indent=2))
+    else:
+        print(str(lp))
+    return 0
+
+
+def corridor_state_genesis_root(module_dir: pathlib.Path) -> str:
+    """Compute the corridor genesis root binding the state channel to corridor substrate.
+
+    genesis_root = SHA256(JCS({
+      tag, corridor_id, definition_payload_sha256, agreement_set_sha256,
+      lawpack_digest_set, ruleset_digest_set
+    }))
+    """
+    corridor_path = module_dir / "corridor.yaml"
+    if not corridor_path.exists():
+        raise FileNotFoundError("Missing corridor.yaml")
+    c = load_yaml(corridor_path)
+    corridor_id = str((c or {}).get("corridor_id") or "").strip()
+    if not corridor_id:
+        raise ValueError("corridor.yaml missing corridor_id")
+
+    def_rel = str((c or {}).get("definition_vc_path") or "").strip()
+    if not def_rel:
+        raise ValueError("corridor.yaml missing definition_vc_path")
+    def_path = module_dir / def_rel
+    if not def_path.exists():
+        raise FileNotFoundError(f"Missing Corridor Definition VC: {def_rel}")
+
+    from tools.vc import signing_input  # type: ignore
+    def_vcj = load_json(def_path)
+    definition_payload_sha256 = sha256_bytes(signing_input(def_vcj))
+
+    # Agreement set digest is optional (corridors may be single-operator). When no agreement is configured,
+    # agreement_set_sha256 is set to "" and the genesis still binds to definition+digest-sets.
+    agreement_set_sha256 = ""
+    try:
+        _errs, summary = corridor_agreement_summary(module_dir)
+        agreement_set_sha256 = str((summary or {}).get("agreement_set_sha256") or "").strip()
+    except Exception:
+        agreement_set_sha256 = ""
+
+    lawpack_digest_set = corridor_expected_lawpack_digest_set(module_dir)
+    ruleset_digest_set = corridor_expected_ruleset_digest_set(module_dir)
+
+    from tools.lawpack import jcs_canonicalize  # type: ignore
+    payload = {
+        "tag": "msez.corridor.state.genesis.v1",
+        "corridor_id": corridor_id,
+        "definition_payload_sha256": definition_payload_sha256,
+        "agreement_set_sha256": agreement_set_sha256,
+        "lawpack_digest_set": lawpack_digest_set,
+        "ruleset_digest_set": ruleset_digest_set,
+    }
+    return sha256_bytes(jcs_canonicalize(payload))
+
+
+def corridor_state_next_root(receipt: Dict[str, Any]) -> str:
+    """Compute next_root for a corridor receipt (excludes proof + next_root)."""
+    if not isinstance(receipt, dict):
+        raise ValueError("receipt must be an object")
+    tmp = dict(receipt)
+    tmp.pop("proof", None)
+    tmp.pop("next_root", None)
+    from tools.lawpack import jcs_canonicalize  # type: ignore
+    return sha256_bytes(jcs_canonicalize(tmp))
+
+
+def cmd_corridor_state_genesis_root(args: argparse.Namespace) -> int:
+    p = pathlib.Path(args.path)
+    if not p.is_absolute():
+        p = REPO_ROOT / p
+    module_dir = p if p.is_dir() else p.parent
+
+    try:
+        root = corridor_state_genesis_root(module_dir)
+    except Exception as ex:
+        print(f"ERROR: {ex}", file=sys.stderr)
+        return 2
+
+    if getattr(args, "json", False):
+        out = {
+            "corridor": str(module_dir),
+            "genesis_root": root,
+        }
+        print(json.dumps(out, indent=2))
+    else:
+        print(root)
+    return 0
+
+
+def _load_transition_envelope(path: str) -> Dict[str, Any]:
+    """Load a transition input and coerce it into a typed transition envelope.
+
+    v0.4.4+ RECOMMENDS a typed envelope of the form:
+
+      {
+        "type": "MSEZTransitionEnvelope",
+        "kind": "...",
+        "schema": "...",                    # optional (URI)
+        "schema_digest_sha256": "<sha256>", # optional (payload schema)
+        "ruleset_digest_sha256": "<sha256>",# optional (transition validation semantics)
+        "zk_circuit_digest_sha256": "<sha256>", # optional (proof-carrying transitions)
+        "payload": { ... },            # optional (may be omitted for privacy)
+        "payload_sha256": "<sha256>",  # required when payload omitted
+        "attachments": [...],          # optional
+        "meta": {...}                  # optional
+      }
+
+    Backward compatible input forms:
+    - empty path => noop envelope
+    - legacy object with top-level 'kind' => treated as {kind, payload=<remaining fields>}
+    - any other JSON value => treated as payload with kind='generic'
+    """
+    from tools.lawpack import jcs_canonicalize  # type: ignore
+
+    if not path:
+        payload: Any = {}
+        payload_sha256 = sha256_bytes(jcs_canonicalize(payload))
+        return {
+            "type": "MSEZTransitionEnvelope",
+            "kind": "noop",
+            "payload": payload,
+            "payload_sha256": payload_sha256,
+        }
+
+    pp = pathlib.Path(path)
+    if not pp.is_absolute():
+        pp = REPO_ROOT / pp
+    if not pp.exists():
+        raise FileNotFoundError(f"transition file not found: {path}")
+
+    data = load_json(pp)
+
+    # If already an envelope, normalize/complete it.
+    if isinstance(data, dict) and str(data.get("type") or "") == "MSEZTransitionEnvelope":
+        env = dict(data)
+    elif isinstance(data, dict) and "kind" in data and "payload" in data:
+        env = {"type": "MSEZTransitionEnvelope", **data}
+    elif isinstance(data, dict) and "kind" in data:
+        kind = str(data.get("kind") or "generic").strip() or "generic"
+        payload = {k: v for (k, v) in data.items() if k != "kind"}
+        env = {"type": "MSEZTransitionEnvelope", "kind": kind, "payload": payload}
+    else:
+        env = {"type": "MSEZTransitionEnvelope", "kind": "generic", "payload": data}
+
+    kind = str(env.get("kind") or "").strip()
+    if not kind:
+        raise ValueError("transition envelope missing kind")
+
+    # If payload is present, compute and (re)write payload_sha256.
+    if "payload" in env:
+        payload_sha256 = sha256_bytes(jcs_canonicalize(env.get("payload")))
+        existing = str(env.get("payload_sha256") or "").strip().lower()
+        if existing and existing != payload_sha256:
+            raise ValueError("transition envelope payload_sha256 does not match computed SHA256(JCS(payload))")
+        env["payload_sha256"] = payload_sha256
+    else:
+        # No payload embedded: require payload_sha256.
+        ps = str(env.get("payload_sha256") or "").strip().lower()
+        if not SHA256_HEX_RE.match(ps):
+            raise ValueError("transition envelope must include payload_sha256 when payload is omitted")
+        env["payload_sha256"] = ps
+
+    env["type"] = "MSEZTransitionEnvelope"
+    env["kind"] = kind
+    return env
+
+
+def cmd_corridor_state_receipt_init(args: argparse.Namespace) -> int:
+    """Create a corridor state receipt and optionally sign it.
+
+    By default:
+    - prev_root is the corridor genesis_root
+    - lawpack_digest_set is derived from the activated agreement-set (if present)
+    - ruleset_digest_set is derived from the corridor verification + state-transition rulesets
+    """
+    from tools.vc import now_rfc3339, add_ed25519_proof, load_ed25519_private_key_from_jwk  # type: ignore
+
+    p = pathlib.Path(args.path)
+    if not p.is_absolute():
+        p = REPO_ROOT / p
+    module_dir = p if p.is_dir() else p.parent
+
+    c = load_yaml(module_dir / "corridor.yaml")
+    corridor_id = str((c or {}).get("corridor_id") or "").strip()
+    if not corridor_id:
+        print("corridor.yaml missing corridor_id", file=sys.stderr)
+        return 2
+
+    # digest sets
+    try:
+        lp_set = getattr(args, "lawpack_digest", None) or []
+        if lp_set:
+            lawpack_digest_set = _normalize_digest_set(lp_set)
+        else:
+            lawpack_digest_set = corridor_expected_lawpack_digest_set(module_dir)
+
+        rs_set = getattr(args, "ruleset_digest", None) or []
+        if rs_set:
+            ruleset_digest_set = _normalize_digest_set(rs_set)
+        else:
+            ruleset_digest_set = corridor_expected_ruleset_digest_set(module_dir)
+    except Exception as ex:
+        print(f"ERROR: {ex}", file=sys.stderr)
+        return 2
+
+    # prev root
+    prev_root_arg = str(getattr(args, "prev_root", "") or "").strip().lower()
+    try:
+        if not prev_root_arg or prev_root_arg in {"genesis", "genesis_root"}:
+            prev_root = corridor_state_genesis_root(module_dir)
+        else:
+            if not SHA256_HEX_RE.match(prev_root_arg):
+                raise ValueError("--prev-root must be 64 lowercase hex chars or 'genesis'")
+            prev_root = prev_root_arg
+    except Exception as ex:
+        print(f"ERROR: {ex}", file=sys.stderr)
+        return 2
+
+    try:
+        seq = int(getattr(args, "sequence", 0))
+        if seq < 0:
+            raise ValueError("sequence must be >= 0")
+    except Exception:
+        print("--sequence must be a non-negative integer", file=sys.stderr)
+        return 2
+
+    ts = str(getattr(args, "timestamp", "") or "").strip()
+    if not ts:
+        ts = now_rfc3339()
+
+    try:
+        transition = _load_transition_envelope(str(getattr(args, "transition", "") or "").strip())
+    except Exception as ex:
+        print(f"ERROR: {ex}", file=sys.stderr)
+        return 2
+
+    # Optional Transition Type Registry (v0.4.4+) and Registry Lock (v0.4.5+):
+    # If corridor.yaml configures a registry and/or lock, receipts MAY commit to the registry snapshot digest
+    # (transition_type_registry_digest_sha256). When this digest is present, receipts can avoid repeating
+    # per-transition digest references.
+    fill_transition_digests = bool(getattr(args, "fill_transition_digests", False))
+    ttr_digest: str = ""
+    ttr_map: Dict[str, Dict[str, Any]] = {}
+    try:
+        _d, _m = corridor_transition_type_registry_snapshot(module_dir)
+        ttr_digest = str(_d or "").strip().lower()
+        ttr_map = _m or {}
+        if ttr_map:
+            kind = str(transition.get("kind") or "").strip()
+            if kind and kind in ttr_map and fill_transition_digests:
+                transition = fill_transition_envelope_from_registry(transition, ttr_map[kind])
+                # If the transition references a ruleset digest, ensure it is included in the receipt-level ruleset_digest_set.
+                trd = _coerce_sha256(transition.get("ruleset_digest_sha256"))
+                if trd:
+                    ruleset_digest_set = _normalize_digest_set(list(ruleset_digest_set) + [trd])
+    except Exception as ex:
+        print(f"ERROR: transition type registry: {ex}", file=sys.stderr)
+        return 2
+
+    receipt: Dict[str, Any] = {
+        "type": "MSEZCorridorStateReceipt",
+        "corridor_id": corridor_id,
+        "sequence": seq,
+        "timestamp": ts,
+        "prev_root": prev_root,
+        "lawpack_digest_set": lawpack_digest_set,
+        "ruleset_digest_set": ruleset_digest_set,
+        "transition": transition,
+    }
+
+    # Bind the receipt to the transition type registry snapshot (single commitment) when configured.
+    if ttr_digest:
+        receipt["transition_type_registry_digest_sha256"] = ttr_digest
+
+    # Compute next_root deterministically and attach
+    try:
+        receipt["next_root"] = corridor_state_next_root(receipt)
+    except Exception as ex:
+        print(f"ERROR: unable to compute next_root: {ex}", file=sys.stderr)
+        return 2
+
+    # Optional signing
+    if getattr(args, "sign", False):
+        key_path = str(getattr(args, "key", "") or "").strip()
+        if not key_path:
+            print("--key is required when --sign is set", file=sys.stderr)
+            return 2
+        kp = pathlib.Path(key_path)
+        if not kp.is_absolute():
+            kp = REPO_ROOT / kp
+        jwk = load_json(kp)
+        priv, did = load_ed25519_private_key_from_jwk(jwk)
+
+        vm = str(getattr(args, "verification_method", "") or "").strip()
+        if not vm:
+            vm = f"{did}#key-1"
+        add_ed25519_proof(receipt, priv, vm, proof_purpose=str(getattr(args, "purpose", "assertionMethod")))
+
+    out = str(getattr(args, "out", "") or "").strip()
+    if out:
+        out_path = pathlib.Path(out)
+        if not out_path.is_absolute():
+            out_path = REPO_ROOT / out_path
+    else:
+        out_path = pathlib.Path(f"corridor-receipt.{seq}.json")
+        if not out_path.is_absolute():
+            out_path = REPO_ROOT / out_path
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(receipt, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(str(out_path))
+    return 0
+
+
+def _collect_receipt_paths(path: pathlib.Path) -> List[pathlib.Path]:
+    if path.is_dir():
+        return sorted([p for p in path.glob("*.json") if p.is_file()])
+    return [path]
+
+
+def cmd_corridor_state_verify(args: argparse.Namespace) -> int:
+    """Verify a corridor state receipt chain.
+
+    Validates:
+    - schema
+    - signature(s)
+    - next_root recomputation
+    - digest-set bindings (best-effort)
+    - root continuity (prev_root chaining, monotonic sequence)
+    """
+    from tools.vc import verify_credential  # type: ignore
+
+    p = pathlib.Path(args.path)
+    if not p.is_absolute():
+        p = REPO_ROOT / p
+    module_dir = p if p.is_dir() else p.parent
+
+    receipts_arg = str(getattr(args, "receipts", "") or "").strip()
+    if not receipts_arg:
+        print("--receipts is required", file=sys.stderr)
+        return 2
+    rpath = pathlib.Path(receipts_arg)
+    if not rpath.is_absolute():
+        rpath = REPO_ROOT / rpath
+    if not rpath.exists():
+        print(f"Receipts path not found: {rpath}", file=sys.stderr)
+        return 2
+
+    receipt_schema = schema_validator(REPO_ROOT / "schemas" / "corridor.receipt.schema.json")
+
+    # Expected substrate
+    try:
+        expected_genesis = corridor_state_genesis_root(module_dir)
+    except Exception as ex:
+        print(f"ERROR: unable to compute genesis_root: {ex}", file=sys.stderr)
+        return 2
+
+    expected_ruleset_set = []
+    try:
+        expected_ruleset_set = corridor_expected_ruleset_digest_set(module_dir)
+    except Exception:
+        expected_ruleset_set = []
+
+    expected_lawpack_set = []
+    try:
+        expected_lawpack_set = corridor_expected_lawpack_digest_set(module_dir)
+    except Exception:
+        expected_lawpack_set = []
+
+    # Transition-type enforcement (v0.4.4+) and registry snapshot binding (v0.4.5+).
+    #
+    # v0.4.6+: receipts may commit to historical registry lock snapshots by digest, even if the corridor module later updates.
+    enforce_transition_types = bool(getattr(args, "enforce_transition_types", False))
+
+
+    # Commitment completeness (v0.4.8+): optionally fail verification if any digest commitments
+    # in receipts cannot be resolved via the artifact CAS.
+    require_artifacts = bool(getattr(args, "require_artifacts", False))
+    _artifact_store_roots = artifact_cas.artifact_store_roots(REPO_ROOT)
+    _artifact_checked: set[tuple[str, str]] = set()
+
+    def _require_artifact(atype: str, digest: str, where: str) -> None:
+        if not require_artifacts:
+            return
+        d = str(digest or "").strip().lower()
+        if not d:
+            return
+        key = (atype, d)
+        if key in _artifact_checked:
+            return
+        _artifact_checked.add(key)
+        try:
+            artifact_cas.resolve_artifact_by_digest(atype, d, repo_root=REPO_ROOT, store_roots=_artifact_store_roots)
+        except Exception as ex:
+            errors.append(f"{where}: missing artifact {atype}:{d} ({ex})")
+
+    corridor_ttr_digest: Optional[str] = None
+    corridor_ttr_map: Dict[str, Dict[str, Any]] = {}
+    try:
+        corridor_ttr_digest, corridor_ttr_map = corridor_transition_type_registry_snapshot(module_dir)
+    except Exception:
+        corridor_ttr_digest = None
+        corridor_ttr_map = {}
+
+    # Cache for resolved registry snapshots (digest -> mapping)
+    _ttr_cache: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    if corridor_ttr_digest and corridor_ttr_map:
+        _ttr_cache[corridor_ttr_digest] = corridor_ttr_map
+
+    _ttr_store_dirs = transition_types_lock_store_dirs(REPO_ROOT)
+
+    # Optional trust-anchor enforcement
+    enforce_trust = bool(getattr(args, "enforce_trust_anchors", False))
+
+    # Optional receipt threshold enforcement (v0.4.14+)
+    #
+    # This is the primary fork-resistance mechanism for corridors operating as verifiable state channels:
+    # if N-of-M required parties sign every receipt, two conflicting receipts cannot both be valid
+    # unless a signer double-signs (which is cryptographically provable).
+    enforce_receipt_threshold = bool(getattr(args, "enforce_receipt_threshold", False))
+    receipt_thresholds: List[Dict[str, Any]] = []
+    receipt_role_by_did: Dict[str, str] = {}
+    allowed_receipt_signers = set()
+    if enforce_trust:
+        try:
+            c = load_yaml(module_dir / "corridor.yaml")
+            ta_rel = str((c or {}).get("trust_anchors_path") or "trust-anchors.yaml")
+            ta_path = module_dir / ta_rel
+            ta = load_yaml(ta_path)
+            for a in (ta.get("trust_anchors") or []):
+                if not isinstance(a, dict):
+                    continue
+                if "corridor_receipt" in (a.get("allowed_attestations") or []):
+                    ident = str(a.get("identifier") or "").split("#", 1)[0]
+                    if ident:
+                        allowed_receipt_signers.add(ident)
+        except Exception:
+            allowed_receipt_signers = set()
+
+    # Load receipts
+    paths = _collect_receipt_paths(rpath)
+    receipts = []
+    errors = []
+
+    # Load receipt signing policy from the corridor agreement set (if requested).
+    #
+    # This uses the participant roles declared in the agreement VC(s), and the receipt_signing_thresholds
+    # negotiated by the parties. If the agreement does not specify a receipt signing policy, we fall
+    # back to activation thresholds (backward compatible).
+    if enforce_receipt_threshold:
+        try:
+            aerrs, asummary = corridor_agreement_summary(module_dir)
+            if aerrs:
+                errors.extend([f"agreement: {e}" for e in aerrs])
+            receipt_thresholds = asummary.get("receipt_signing_thresholds") or []
+            receipt_role_by_did = asummary.get("role_by_did") or {}
+            if not isinstance(receipt_thresholds, list) or not receipt_thresholds:
+                errors.append("agreement: missing receipt_signing_thresholds (cannot enforce receipt thresholds)")
+        except Exception as ex:
+            errors.append(f"agreement: unable to load agreement receipt signing policy: {ex}")
+
+    for rp in paths:
+        try:
+            receipt = load_json(rp)
+        except Exception as ex:
+            errors.append(f"{rp}: invalid JSON: {ex}")
+            continue
+
+        # Schema
+        serrs = validate_with_schema(receipt, receipt_schema)
+        if serrs:
+            errors.extend([f"{rp}: {e}" for e in serrs])
+            continue
+
+        # Signature(s)
+        ok_dids: set[str] = set()
+        try:
+            results = verify_credential(receipt)
+            if not results:
+                errors.append(f"{rp}: missing proof(s)")
+                continue
+            bad = [r for r in results if not r.ok]
+            if bad:
+                for b in bad:
+                    errors.append(f"{rp}: invalid proof for {b.verification_method}: {b.error}")
+            ok_methods = [r.verification_method for r in results if r.ok]
+            ok_dids = {str(vm).split('#', 1)[0] for vm in ok_methods if vm}
+            if enforce_trust and allowed_receipt_signers:
+                if not (ok_dids & allowed_receipt_signers):
+                    errors.append(f"{rp}: no valid receipt proof from an allowed trust anchor")
+        except Exception as ex:
+            errors.append(f"{rp}: proof verification error: {ex}")
+
+        # Receipt signing threshold enforcement (v0.4.14+)
+        if enforce_receipt_threshold and receipt_thresholds:
+            # Count only signers who are declared participants in the activated agreement set.
+            counts_by_role: Dict[str, int] = {}
+            for did in ok_dids:
+                role = receipt_role_by_did.get(did)
+                if role:
+                    counts_by_role[role] = counts_by_role.get(role, 0) + 1
+
+            for thr in receipt_thresholds:
+                if not isinstance(thr, dict):
+                    continue
+                role = str(thr.get("role") or "").strip()
+                required = int(thr.get("required") or 0)
+                if not role or required <= 0:
+                    continue
+                have = counts_by_role.get(role, 0)
+                if have < required:
+                    errors.append(
+                        f"{rp}: receipt signing threshold not met for role '{role}': have {have}, need {required}"
+                    )
+
+        # next_root recomputation
+        try:
+            computed = corridor_state_next_root(receipt)
+            if computed != str(receipt.get("next_root") or ""):
+                errors.append(f"{rp}: next_root mismatch (computed {computed})")
+        except Exception as ex:
+            errors.append(f"{rp}: unable to compute next_root: {ex}")
+
+        # digest-set bindings
+        try:
+            r_rules = _normalize_digest_set(receipt.get("ruleset_digest_set") or [])
+            if expected_ruleset_set:
+                missing = [d for d in expected_ruleset_set if d not in r_rules]
+                if missing:
+                    errors.append(f"{rp}: ruleset_digest_set missing expected digest(s)")
+        except Exception as ex:
+            errors.append(f"{rp}: invalid ruleset_digest_set: {ex}")
+
+        try:
+            r_law = _normalize_digest_set(receipt.get("lawpack_digest_set") or [])
+            if expected_lawpack_set and r_law != expected_lawpack_set:
+                errors.append(f"{rp}: lawpack_digest_set mismatch")
+        except Exception as ex:
+            errors.append(f"{rp}: invalid lawpack_digest_set: {ex}")
+
+
+        # Commitment completeness (optional): require that any committed digest can be resolved via CAS.
+        if require_artifacts:
+            try:
+                for d in _normalize_digest_set(receipt.get("lawpack_digest_set") or []):
+                    _require_artifact("lawpack", d, f"{rp}: lawpack_digest_set")
+            except Exception:
+                pass
+            try:
+                for d in _normalize_digest_set(receipt.get("ruleset_digest_set") or []):
+                    _require_artifact("ruleset", d, f"{rp}: ruleset_digest_set")
+            except Exception:
+                pass
+
+        # Transition Type Registry checks (v0.4.4+) with snapshot binding (v0.4.5+) and
+        # content-addressed lock resolution (v0.4.6+).
+        try:
+            r_ttr = _coerce_sha256(receipt.get("transition_type_registry_digest_sha256"))
+
+
+            # Commitment completeness: ensure the committed transition registry snapshot can be resolved.
+            if require_artifacts and r_ttr:
+                _require_artifact("transition-types", r_ttr, f"{rp}: transition_type_registry_digest_sha256")
+
+            # Determine effective registry mapping for this receipt.
+            effective_registry: Dict[str, Dict[str, Any]] = corridor_ttr_map
+            if r_ttr:
+                if r_ttr in _ttr_cache:
+                    effective_registry = _ttr_cache[r_ttr]
+                else:
+                    lp = resolve_transition_type_registry_lock_by_digest(
+                        r_ttr,
+                        module_dir=module_dir,
+                        store_dirs=_ttr_store_dirs,
+                        repo_root=REPO_ROOT,
+                    )
+                    _lock_obj, mapping, digest = load_transition_type_registry_lock(lp)
+                    _ttr_cache[digest] = mapping
+                    effective_registry = mapping
+
+                if enforce_transition_types and not effective_registry:
+                    errors.append(
+                        f"{rp}: transition_type_registry_digest_sha256 present but resolved registry snapshot is empty"
+                    )
+
+            t = receipt.get("transition")
+            if isinstance(t, dict) and str(t.get("type") or "") == "MSEZTransitionEnvelope":
+                kind = str(t.get("kind") or "").strip()
+                entry = effective_registry.get(kind) if (effective_registry and kind) else None
+
+                # Commitment completeness: resolve any schema/ruleset/circuit digests referenced
+                # by the transition envelope or its registry entry (if present).
+                if require_artifacts:
+                    # Explicit per-receipt overrides (when present) are direct commitments.
+                    sd = _coerce_sha256(t.get("schema_digest_sha256"))
+                    if sd:
+                        _require_artifact("schema", sd, f"{rp}: transition.schema_digest_sha256")
+                    rd = _coerce_sha256(t.get("ruleset_digest_sha256"))
+                    if rd:
+                        _require_artifact("ruleset", rd, f"{rp}: transition.ruleset_digest_sha256")
+                    cd = _coerce_sha256(t.get("zk_circuit_digest_sha256"))
+                    if cd:
+                        _require_artifact("circuit", cd, f"{rp}: transition.zk_circuit_digest_sha256")
+
+                    # Attachments are typed artifact references (v0.4.10+), but legacy receipts
+                    # may omit artifact_type; those default to blob.
+                    atts = t.get("attachments")
+                    if isinstance(atts, list):
+                        for a in atts:
+                            if not isinstance(a, dict):
+                                continue
+                            ad = str(a.get("digest_sha256") or "").strip().lower()
+                            if not ad:
+                                continue
+                            at = str(a.get("artifact_type") or "").strip().lower()
+                            if not at:
+                                at = "blob"
+                            _require_artifact(at, ad, f"{rp}: transition.attachments[]")
+
+                    # If the receipt binds to a registry snapshot digest, that digest commits to the
+                    # registry entry's digests. In require mode, we require those to be resolvable too.
+                    if entry and kind:
+                        esd = _coerce_sha256(entry.get("schema_digest_sha256"))
+                        if esd:
+                            _require_artifact("schema", esd, f"{rp}: registry[{kind}].schema_digest_sha256")
+                        erd = _coerce_sha256(entry.get("ruleset_digest_sha256"))
+                        if erd:
+                            _require_artifact("ruleset", erd, f"{rp}: registry[{kind}].ruleset_digest_sha256")
+                        ecd = _coerce_sha256(entry.get("zk_circuit_digest_sha256"))
+                        if ecd:
+                            _require_artifact("circuit", ecd, f"{rp}: registry[{kind}].zk_circuit_digest_sha256")
+
+                if effective_registry and kind:
+                    if not entry:
+                        if enforce_transition_types:
+                            errors.append(f"{rp}: transition.kind '{kind}' not found in transition type registry snapshot")
+                    else:
+                        allow_overrides = bool(t.get("registry_override") or False)
+                        enforce_fields = bool(enforce_transition_types and not r_ttr)
+                        terrs = verify_transition_envelope_against_registry(
+                            t,
+                            entry,
+                            enforce=enforce_fields,
+                            allow_overrides=allow_overrides,
+                        )
+                        for te in terrs:
+                            errors.append(f"{rp}: {te}")
+
+                else:
+                    # No registry mapping available. In enforce mode, require explicit digest references.
+                    if enforce_transition_types and not r_ttr:
+                        has_any = bool(
+                            _coerce_sha256(t.get("schema_digest_sha256"))
+                            or _coerce_sha256(t.get("ruleset_digest_sha256"))
+                            or _coerce_sha256(t.get("zk_circuit_digest_sha256"))
+                        )
+                        if kind and not has_any:
+                            errors.append(f"{rp}: transition has no registry snapshot digest and no explicit digest references")
+
+                # If transition references a ruleset digest, it SHOULD be present in receipt.ruleset_digest_set.
+                trd = _coerce_sha256(t.get("ruleset_digest_sha256"))
+                if trd:
+                    try:
+                        rr = _normalize_digest_set(receipt.get("ruleset_digest_set") or [])
+                        if trd not in rr:
+                            errors.append(f"{rp}: transition.ruleset_digest_sha256 not included in ruleset_digest_set")
+                    except Exception:
+                        pass
+
+                # If both envelope and receipt include a circuit digest, they MUST match.
+                tcd = _coerce_sha256(t.get("zk_circuit_digest_sha256"))
+                rzk = receipt.get("zk")
+                if tcd and isinstance(rzk, dict):
+                    rcd = _coerce_sha256(rzk.get("circuit_digest_sha256"))
+                    if rcd and rcd != tcd:
+                        errors.append(f"{rp}: zk.circuit_digest_sha256 mismatch (receipt vs transition)")
+
+
+            # Commitment completeness: resolve ZK proof artifacts when referenced.
+            if require_artifacts:
+                zk = receipt.get("zk")
+                if isinstance(zk, dict):
+                    zcd = _coerce_sha256(zk.get("circuit_digest_sha256"))
+                    if zcd:
+                        _require_artifact("circuit", zcd, f"{rp}: zk.circuit_digest_sha256")
+                    zvk = _coerce_sha256(zk.get("verifier_key_digest_sha256"))
+                    if zvk:
+                        _require_artifact("proof-key", zvk, f"{rp}: zk.verifier_key_digest_sha256")
+                    zph = _coerce_sha256(zk.get("proof_sha256"))
+                    if zph:
+                        _require_artifact("blob", zph, f"{rp}: zk.proof_sha256")
+        except Exception as ex:
+            errors.append(f"{rp}: transition type registry verification error: {ex}")
+
+        receipts.append((rp, receipt))
+
+    if errors:
+        print("STATE FAIL:")
+        for e in errors:
+            print("  -", e)
+        return 2
+
+    # Sort by sequence and verify continuity
+    receipts.sort(key=lambda x: int(x[1].get("sequence") or 0))
+    if not receipts:
+        print("STATE FAIL: no receipts", file=sys.stderr)
+        return 2
+
+    expected_prev = expected_genesis
+    expected_seq = int(receipts[0][1].get("sequence") or 0)
+
+    # First receipt MUST chain from genesis_root
+    first_prev = str(receipts[0][1].get("prev_root") or "")
+    if first_prev != expected_prev:
+        print(f"STATE FAIL: first receipt prev_root does not equal genesis_root ({first_prev} != {expected_prev})", file=sys.stderr)
+        return 2
+
+    last_next = ""
+    for rp, receipt in receipts:
+        seq = int(receipt.get("sequence") or 0)
+        prev = str(receipt.get("prev_root") or "")
+        nxt = str(receipt.get("next_root") or "")
+        if seq != expected_seq:
+            print(f"STATE FAIL: non-contiguous sequence at {rp} (got {seq}, expected {expected_seq})", file=sys.stderr)
+            return 2
+        if prev != expected_prev:
+            print(f"STATE FAIL: prev_root mismatch at {rp} (got {prev}, expected {expected_prev})", file=sys.stderr)
+            return 2
+        expected_prev = nxt
+        expected_seq += 1
+        last_next = nxt
+
+    if getattr(args, "json", False):
+        out = {
+            "corridor": str(module_dir),
+            "genesis_root": expected_genesis,
+            "receipt_count": len(receipts),
+            "final_root": last_next,
+        }
+        print(json.dumps(out, indent=2))
+    else:
+        print(last_next)
+    return 0
+
+
+
+
+# --- Receipt accumulator (MMR) + inclusion proofs (v0.4.3+) -----------------
+
+
+def _corridor_state_load_verified_receipts(module_dir: pathlib.Path, receipts_path: pathlib.Path, enforce_trust: bool = False):
+    """Load and verify receipts, returning (genesis_root, receipts_sorted, final_root).
+
+    This is a shared helper for checkpoint/proof commands.
+    """
+    from tools.vc import verify_credential  # type: ignore
+
+    receipt_schema = schema_validator(REPO_ROOT / "schemas" / "corridor.receipt.schema.json")
+
+    # Expected substrate
+    expected_genesis = corridor_state_genesis_root(module_dir)
+
+    expected_ruleset_set = []
+    try:
+        expected_ruleset_set = corridor_expected_ruleset_digest_set(module_dir)
+    except Exception:
+        expected_ruleset_set = []
+
+    expected_lawpack_set = []
+    try:
+        expected_lawpack_set = corridor_expected_lawpack_digest_set(module_dir)
+    except Exception:
+        expected_lawpack_set = []
+
+    # Transition Type Registry checks (v0.4.4+) with snapshot binding (v0.4.5+) and
+    # content-addressed lock resolution (v0.4.6+): best-effort checks
+    enforce_transition_types = False
+
+    corridor_ttr_digest: Optional[str] = None
+    corridor_ttr_map: Dict[str, Dict[str, Any]] = {}
+    try:
+        corridor_ttr_digest, corridor_ttr_map = corridor_transition_type_registry_snapshot(module_dir)
+    except Exception:
+        corridor_ttr_digest = None
+        corridor_ttr_map = {}
+
+    _ttr_cache: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    if corridor_ttr_digest and corridor_ttr_map:
+        _ttr_cache[corridor_ttr_digest] = corridor_ttr_map
+    _ttr_store_dirs = transition_types_lock_store_dirs(REPO_ROOT)
+
+    # Optional trust-anchor enforcement (same semantics as `corridor state verify`)
+    allowed_receipt_signers = set()
+    if enforce_trust:
+        try:
+            c = load_yaml(module_dir / "corridor.yaml")
+            ta_rel = str((c or {}).get("trust_anchors_path") or "trust-anchors.yaml")
+            ta_path = module_dir / ta_rel
+            ta = load_yaml(ta_path)
+            for a in (ta.get("trust_anchors") or []):
+                if not isinstance(a, dict):
+                    continue
+                if "corridor_receipt" in (a.get("allowed_attestations") or []):
+                    ident = str(a.get("identifier") or "").split("#", 1)[0]
+                    if ident:
+                        allowed_receipt_signers.add(ident)
+        except Exception:
+            allowed_receipt_signers = set()
+
+    # Load receipts
+    paths = _collect_receipt_paths(receipts_path)
+    receipts = []
+    errors = []
+
+    for rp in paths:
+        try:
+            receipt = load_json(rp)
+        except Exception as ex:
+            errors.append(f"{rp}: invalid JSON: {ex}")
+            continue
+
+        serrs = validate_with_schema(receipt, receipt_schema)
+        if serrs:
+            errors.extend([f"{rp}: {e}" for e in serrs])
+            continue
+
+        # Signature(s)
+        try:
+            results = verify_credential(receipt)
+            if not results:
+                errors.append(f"{rp}: missing proof(s)")
+                continue
+            bad = [r for r in results if not r.ok]
+            if bad:
+                for b in bad:
+                    errors.append(f"{rp}: invalid proof for {b.verification_method}: {b.error}")
+            ok_methods = [r.verification_method for r in results if r.ok]
+            ok_dids = {str(vm).split('#', 1)[0] for vm in ok_methods if vm}
+            if enforce_trust and allowed_receipt_signers:
+                if not (ok_dids & allowed_receipt_signers):
+                    errors.append(f"{rp}: no valid receipt proof from an allowed trust anchor")
+        except Exception as ex:
+            errors.append(f"{rp}: proof verification error: {ex}")
+
+        # next_root recomputation
+        try:
+            computed = corridor_state_next_root(receipt)
+            if computed != str(receipt.get("next_root") or ""):
+                errors.append(f"{rp}: next_root mismatch (computed {computed})")
+        except Exception as ex:
+            errors.append(f"{rp}: unable to compute next_root: {ex}")
+
+        # digest-set bindings
+        try:
+            r_rules = _normalize_digest_set(receipt.get("ruleset_digest_set") or [])
+            if expected_ruleset_set:
+                missing = [d for d in expected_ruleset_set if d not in r_rules]
+                if missing:
+                    errors.append(f"{rp}: ruleset_digest_set missing expected digest(s)")
+        except Exception as ex:
+            errors.append(f"{rp}: invalid ruleset_digest_set: {ex}")
+
+        try:
+            r_law = _normalize_digest_set(receipt.get("lawpack_digest_set") or [])
+            if expected_lawpack_set and r_law != expected_lawpack_set:
+                errors.append(f"{rp}: lawpack_digest_set mismatch")
+        except Exception as ex:
+            errors.append(f"{rp}: invalid lawpack_digest_set: {ex}")
+
+        # Optional Transition Type Registry checks (v0.4.4+) with snapshot binding (v0.4.5+) and
+        # content-addressed lock resolution (v0.4.6+)
+        try:
+            r_ttr = _coerce_sha256(receipt.get("transition_type_registry_digest_sha256"))
+
+            effective_registry: Dict[str, Dict[str, Any]] = corridor_ttr_map
+            if r_ttr:
+                if r_ttr in _ttr_cache:
+                    effective_registry = _ttr_cache[r_ttr]
+                else:
+                    lp = resolve_transition_type_registry_lock_by_digest(
+                        r_ttr,
+                        module_dir=module_dir,
+                        store_dirs=_ttr_store_dirs,
+                        repo_root=REPO_ROOT,
+                    )
+                    _lock_obj, mapping, digest = load_transition_type_registry_lock(lp)
+                    _ttr_cache[digest] = mapping
+                    effective_registry = mapping
+
+            tr = receipt.get("transition")
+            if isinstance(tr, dict) and str(tr.get("type") or "") == "MSEZTransitionEnvelope" and effective_registry:
+                kind = str(tr.get("kind") or "").strip()
+                entry = effective_registry.get(kind)
+                if entry:
+                    allow_overrides = bool(tr.get("registry_override") or False)
+                    enforce_fields = bool(enforce_transition_types and not r_ttr)
+                    terrs = verify_transition_envelope_against_registry(
+                        tr,
+                        entry,
+                        enforce=enforce_fields,
+                        allow_overrides=allow_overrides,
+                    )
+                    errors.extend([f"{rp}: {e}" for e in terrs])
+
+                    # If a transition references a ruleset digest, it SHOULD be included in the receipt's ruleset_digest_set.
+                    t_ruleset = _coerce_sha256(tr.get("ruleset_digest_sha256"))
+                    if t_ruleset:
+                        rr = _normalize_digest_set(receipt.get("ruleset_digest_set") or [])
+                        if t_ruleset not in rr:
+                            errors.append(f"{rp}: transition.ruleset_digest_sha256 not present in ruleset_digest_set")
+
+                    # If both transition and receipt carry circuit digests, they must agree.
+                    t_circuit = _coerce_sha256(tr.get("zk_circuit_digest_sha256"))
+                    zk = receipt.get("zk")
+                    if t_circuit and isinstance(zk, dict):
+                        r_circuit = _coerce_sha256(zk.get("circuit_digest_sha256"))
+                        if r_circuit and r_circuit != t_circuit:
+                            errors.append(f"{rp}: receipt.zk.circuit_digest_sha256 does not match transition.zk_circuit_digest_sha256")
+        except Exception as ex:
+            errors.append(f"{rp}: transition type registry check error: {ex}")
+
+        receipts.append((rp, receipt))
+
+    if errors:
+        raise ValueError("; ".join(errors[:10]) + (" ..." if len(errors) > 10 else ""))
+
+    receipts.sort(key=lambda x: int(x[1].get("sequence") or 0))
+    if not receipts:
+        raise ValueError("no receipts")
+
+    # Verify continuity
+    expected_prev = expected_genesis
+    first_seq = int(receipts[0][1].get("sequence") or 0)
+    if first_seq != 0:
+        raise ValueError(f"first receipt sequence must be 0 for MMR indexing (got {first_seq})")
+    expected_seq = 0
+
+    first_prev = str(receipts[0][1].get("prev_root") or "")
+    if first_prev != expected_prev:
+        raise ValueError(f"first receipt prev_root does not equal genesis_root ({first_prev} != {expected_prev})")
+
+    last_next = ""
+    for rp, receipt in receipts:
+        seq = int(receipt.get("sequence") or 0)
+        prev = str(receipt.get("prev_root") or "")
+        nxt = str(receipt.get("next_root") or "")
+        if seq != expected_seq:
+            raise ValueError(f"non-contiguous sequence at {rp} (got {seq}, expected {expected_seq})")
+        if prev != expected_prev:
+            raise ValueError(f"prev_root mismatch at {rp} (got {prev}, expected {expected_prev})")
+        expected_prev = nxt
+        expected_seq += 1
+        last_next = nxt
+
+    return expected_genesis, [r for (_p, r) in receipts], last_next
+
+
+def cmd_corridor_state_checkpoint(args: argparse.Namespace) -> int:
+    """Create a signed checkpoint committing to the corridor state head and receipt MMR root."""
+    from tools.vc import now_rfc3339, add_ed25519_proof, load_ed25519_private_key_from_jwk  # type: ignore
+    from tools.mmr import mmr_root_from_next_roots  # type: ignore
+
+    p = pathlib.Path(args.path)
+    if not p.is_absolute():
+        p = REPO_ROOT / p
+    module_dir = p if p.is_dir() else p.parent
+
+    receipts_arg = str(getattr(args, "receipts", "") or "").strip()
+    if not receipts_arg:
+        print("--receipts is required", file=sys.stderr)
+        return 2
+    rpath = pathlib.Path(receipts_arg)
+    if not rpath.is_absolute():
+        rpath = REPO_ROOT / rpath
+    if not rpath.exists():
+        print(f"Receipts path not found: {rpath}", file=sys.stderr)
+        return 2
+
+    try:
+        genesis_root, receipts, final_root = _corridor_state_load_verified_receipts(
+            module_dir, rpath, enforce_trust=bool(getattr(args, "enforce_trust_anchors", False))
+        )
+    except Exception as ex:
+        print(f"STATE FAIL: {ex}", file=sys.stderr)
+        return 2
+
+    c = load_yaml(module_dir / "corridor.yaml")
+    corridor_id = str((c or {}).get("corridor_id") or "").strip()
+
+    # Prefer the digest sets as actually carried in receipts (after normalization).
+    lawpack_digest_set = _normalize_digest_set((receipts[0].get("lawpack_digest_set") or []))
+    ruleset_digest_set = _normalize_digest_set((receipts[0].get("ruleset_digest_set") or []))
+
+    next_roots = [str(r.get("next_root") or "").strip().lower() for r in receipts]
+    mmr_info = mmr_root_from_next_roots(next_roots)
+
+    checkpoint: Dict[str, Any] = {
+        "type": "MSEZCorridorStateCheckpoint",
+        "corridor_id": corridor_id,
+        "timestamp": now_rfc3339(),
+        "genesis_root": genesis_root,
+        "final_state_root": final_root,
+        "receipt_count": len(receipts),
+        "lawpack_digest_set": lawpack_digest_set,
+        "ruleset_digest_set": ruleset_digest_set,
+        "mmr": {
+            "type": "MSEZReceiptMMR",
+            "algorithm": "sha256",
+            "size": mmr_info["size"],
+            "root": mmr_info["root"],
+            "peaks": mmr_info.get("peaks", []),
+        },
+    }
+
+    # Optional signing
+    if getattr(args, "sign", False):
+        key_path = str(getattr(args, "key", "") or "").strip()
+        if not key_path:
+            print("--key is required when --sign is set", file=sys.stderr)
+            return 2
+        kp = pathlib.Path(key_path)
+        if not kp.is_absolute():
+            kp = REPO_ROOT / kp
+        jwk = load_json(kp)
+        priv, did = load_ed25519_private_key_from_jwk(jwk)
+
+        vm = str(getattr(args, "verification_method", "") or "").strip()
+        if not vm:
+            vm = f"{did}#key-1"
+        add_ed25519_proof(checkpoint, priv, vm, proof_purpose=str(getattr(args, "purpose", "assertionMethod")))
+
+    out = str(getattr(args, "out", "") or "").strip() or "corridor.checkpoint.json"
+    out_path = pathlib.Path(out)
+    if not out_path.is_absolute():
+        out_path = REPO_ROOT / out_path
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(checkpoint, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(str(out_path))
+    return 0
+
+
+def cmd_corridor_state_inclusion_proof(args: argparse.Namespace) -> int:
+    """Generate an MMR inclusion proof for a receipt sequence (leaf index)."""
+    from tools.vc import now_rfc3339  # type: ignore
+    from tools.mmr import build_inclusion_proof  # type: ignore
+    from tools.lawpack import jcs_canonicalize  # type: ignore
+
+    p = pathlib.Path(args.path)
+    if not p.is_absolute():
+        p = REPO_ROOT / p
+    module_dir = p if p.is_dir() else p.parent
+
+    receipts_arg = str(getattr(args, "receipts", "") or "").strip()
+    if not receipts_arg:
+        print("--receipts is required", file=sys.stderr)
+        return 2
+    rpath = pathlib.Path(receipts_arg)
+    if not rpath.is_absolute():
+        rpath = REPO_ROOT / rpath
+    if not rpath.exists():
+        print(f"Receipts path not found: {rpath}", file=sys.stderr)
+        return 2
+
+    try:
+        _genesis_root, receipts, _final_root = _corridor_state_load_verified_receipts(
+            module_dir, rpath, enforce_trust=bool(getattr(args, "enforce_trust_anchors", False))
+        )
+    except Exception as ex:
+        print(f"STATE FAIL: {ex}", file=sys.stderr)
+        return 2
+
+    c = load_yaml(module_dir / "corridor.yaml")
+    corridor_id = str((c or {}).get("corridor_id") or "").strip()
+
+    seq_arg = getattr(args, "sequence", None)
+    if seq_arg is None:
+        print("--sequence is required", file=sys.stderr)
+        return 2
+    try:
+        seq = int(seq_arg)
+        if seq < 0:
+            raise ValueError()
+    except Exception:
+        print("--sequence must be a non-negative integer", file=sys.stderr)
+        return 2
+
+    next_roots = [str(r.get("next_root") or "").strip().lower() for r in receipts]
+    if seq >= len(next_roots):
+        print(f"--sequence out of range (have {len(next_roots)} receipts)", file=sys.stderr)
+        return 2
+
+    base = build_inclusion_proof(next_roots, seq)
+
+    proof_obj: Dict[str, Any] = {
+        "type": "MSEZCorridorReceiptInclusionProof",
+        "corridor_id": corridor_id,
+        "generated_at": now_rfc3339(),
+        "mmr": {
+            "type": "MSEZReceiptMMR",
+            "algorithm": "sha256",
+            "size": base["size"],
+            "root": base["root"],
+        },
+        "leaf_index": base["leaf_index"],
+        "receipt_next_root": base["receipt_next_root"],
+        "leaf_hash": base["leaf_hash"],
+        "peak_index": base["peak_index"],
+        "peak_height": base["peak_height"],
+        "path": base["path"],
+        "peaks": base["peaks"],
+        "computed_peak_root": base.get("computed_peak_root", ""),
+    }
+
+    # Optional checkpoint binding: include digest of a checkpoint payload (excluding proof)
+    cp_path = str(getattr(args, "checkpoint", "") or "").strip()
+    if cp_path:
+        cpp = pathlib.Path(cp_path)
+        if not cpp.is_absolute():
+            cpp = REPO_ROOT / cpp
+        if not cpp.exists():
+            print(f"Checkpoint not found: {cpp}", file=sys.stderr)
+            return 2
+        cp = load_json(cpp)
+        # Verify it matches the MMR root/size.
+        try:
+            cp_mmr = (cp or {}).get("mmr") or {}
+            if str(cp_mmr.get("root") or "").strip().lower() != str(base["root"]).strip().lower():
+                print("Checkpoint mmr.root does not match computed proof root", file=sys.stderr)
+                return 2
+            if int(cp_mmr.get("size") or 0) != int(base["size"]):
+                print("Checkpoint mmr.size does not match computed proof size", file=sys.stderr)
+                return 2
+        except Exception:
+            print("Invalid checkpoint format", file=sys.stderr)
+            return 2
+
+        tmp = dict(cp)
+        tmp.pop("proof", None)
+        checkpoint_digest = sha256_bytes(jcs_canonicalize(tmp))
+        proof_obj["checkpoint_digest_sha256"] = checkpoint_digest
+        proof_obj["checkpoint_path"] = str(cpp)
+        proof_obj["checkpoint_mmr_root"] = str((cp_mmr or {}).get("root") or "")
+        proof_obj["checkpoint_receipt_count"] = int((cp_mmr or {}).get("size") or 0)
+        proof_obj["checkpoint_final_state_root"] = str((cp or {}).get("final_state_root") or "")
+        proof_obj["checkpoint_ref"] = {
+            "artifact_type": "checkpoint",
+            "digest_sha256": checkpoint_digest,
+            "uri": str(cpp),
+            "media_type": "application/json",
+        }
+
+    out = str(getattr(args, "out", "") or "").strip() or f"corridor.inclusion-proof.{seq}.json"
+    out_path = pathlib.Path(out)
+    if not out_path.is_absolute():
+        out_path = REPO_ROOT / out_path
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(proof_obj, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(str(out_path))
+    return 0
+
+
+def cmd_corridor_state_verify_inclusion(args: argparse.Namespace) -> int:
+    """Verify an inclusion proof against a signed checkpoint and a receipt.
+
+    Validates:
+    - Receipt signature(s)
+    - Checkpoint signature(s)
+    - Receipt next_root recomputation
+    - MMR inclusion proof: receipt.next_root included in checkpoint.mmr.root
+
+    If --enforce-trust-anchors is set, requires at least one valid signature from a trust anchor
+    authorized for:
+    - corridor_receipt (receipt)
+    - corridor_checkpoint (checkpoint) OR corridor_receipt (fallback)
+    """
+    from tools.vc import verify_credential  # type: ignore
+    from tools.mmr import verify_inclusion_proof  # type: ignore
+
+    # Resolve corridor module
+    p = pathlib.Path(args.path)
+    if not p.is_absolute():
+        p = REPO_ROOT / p
+    module_dir = p if p.is_dir() else p.parent
+
+    c = load_yaml(module_dir / "corridor.yaml")
+    corridor_id = str((c or {}).get("corridor_id") or "").strip()
+
+    enforce_trust = bool(getattr(args, "enforce_trust_anchors", False))
+    allowed_receipt_signers = set()
+    allowed_checkpoint_signers = set()
+
+    if enforce_trust:
+        try:
+            ta_rel = str((c or {}).get("trust_anchors_path") or "trust-anchors.yaml")
+            ta = load_yaml(module_dir / ta_rel)
+            for a in (ta.get("trust_anchors") or []):
+                if not isinstance(a, dict):
+                    continue
+                ident = str(a.get("identifier") or "").split("#", 1)[0]
+                if not ident:
+                    continue
+                allowed = set(a.get("allowed_attestations") or [])
+                if "corridor_receipt" in allowed:
+                    allowed_receipt_signers.add(ident)
+                # corridor_checkpoint is preferred; corridor_receipt is accepted for backwards compatibility.
+                if "corridor_checkpoint" in allowed or "corridor_receipt" in allowed:
+                    allowed_checkpoint_signers.add(ident)
+        except Exception:
+            allowed_receipt_signers = set()
+            allowed_checkpoint_signers = set()
+
+    # Inputs
+    receipt_path = pathlib.Path(str(getattr(args, "receipt", "") or "").strip())
+    proof_path = pathlib.Path(str(getattr(args, "proof", "") or "").strip())
+    checkpoint_path = pathlib.Path(str(getattr(args, "checkpoint", "") or "").strip())
+
+    for name, pp in [("--receipt", receipt_path), ("--proof", proof_path), ("--checkpoint", checkpoint_path)]:
+        if not str(pp):
+            print(f"{name} is required", file=sys.stderr)
+            return 2
+        if not pp.is_absolute():
+            pp2 = REPO_ROOT / pp
+        else:
+            pp2 = pp
+        if not pp2.exists():
+            print(f"{name} not found: {pp2}", file=sys.stderr)
+            return 2
+
+    # Normalize absolute paths
+    if not receipt_path.is_absolute():
+        receipt_path = REPO_ROOT / receipt_path
+    if not proof_path.is_absolute():
+        proof_path = REPO_ROOT / proof_path
+    if not checkpoint_path.is_absolute():
+        checkpoint_path = REPO_ROOT / checkpoint_path
+
+    receipt = load_json(receipt_path)
+    proof = load_json(proof_path)
+    checkpoint = load_json(checkpoint_path)
+
+    # Corridor id binding (best-effort)
+    if corridor_id:
+        for obj_name, obj in [("receipt", receipt), ("checkpoint", checkpoint), ("proof", proof)]:
+            obj_cid = str((obj or {}).get("corridor_id") or "").strip()
+            if obj_cid and obj_cid != corridor_id:
+                print(f"FAIL: {obj_name}.corridor_id does not match corridor.yaml", file=sys.stderr)
+                return 2
+
+    # Verify receipt proof(s)
+    rres = verify_credential(receipt)
+    if not rres or any(not r.ok for r in rres):
+        print("FAIL: receipt signature invalid", file=sys.stderr)
+        return 2
+    if enforce_trust and allowed_receipt_signers:
+        ok_dids = {str(r.verification_method).split('#', 1)[0] for r in rres if r.ok and r.verification_method}
+        if not (ok_dids & allowed_receipt_signers):
+            print("FAIL: receipt not signed by an allowed trust anchor", file=sys.stderr)
+            return 2
+
+    # Verify checkpoint proof(s)
+    cres = verify_credential(checkpoint)
+    if not cres or any(not r.ok for r in cres):
+        print("FAIL: checkpoint signature invalid", file=sys.stderr)
+        return 2
+    if enforce_trust and allowed_checkpoint_signers:
+        ok_dids = {str(r.verification_method).split('#', 1)[0] for r in cres if r.ok and r.verification_method}
+        if not (ok_dids & allowed_checkpoint_signers):
+            print("FAIL: checkpoint not signed by an allowed trust anchor", file=sys.stderr)
+            return 2
+
+    # Verify receipt next_root
+    computed = corridor_state_next_root(receipt)
+    if computed != str(receipt.get("next_root") or ""):
+        print("FAIL: receipt next_root mismatch", file=sys.stderr)
+        return 2
+
+    # Ensure proof binds to this receipt digest
+    if str(proof.get("receipt_next_root") or "").strip().lower() != str(receipt.get("next_root") or "").strip().lower():
+        print("FAIL: proof receipt_next_root does not match receipt", file=sys.stderr)
+        return 2
+
+    # Optional: sequence binding
+    try:
+        if int(proof.get("leaf_index") or -1) != int(receipt.get("sequence") or -2):
+            print("FAIL: proof.leaf_index does not match receipt.sequence", file=sys.stderr)
+            return 2
+    except Exception:
+        pass
+
+    # Ensure proof binds to checkpoint root
+    cp_mmr = (checkpoint or {}).get("mmr") or {}
+    pr_mmr = (proof or {}).get("mmr") or {}
+    if str(cp_mmr.get("root") or "").strip().lower() != str(pr_mmr.get("root") or "").strip().lower():
+        print("FAIL: proof mmr.root does not match checkpoint", file=sys.stderr)
+        return 2
+    if int(cp_mmr.get("size") or 0) != int(pr_mmr.get("size") or 0):
+        print("FAIL: proof mmr.size does not match checkpoint", file=sys.stderr)
+        return 2
+    try:
+        if int(checkpoint.get("receipt_count") or 0) and int(checkpoint.get("receipt_count") or 0) != int(cp_mmr.get("size") or 0):
+            print("FAIL: checkpoint receipt_count does not match checkpoint.mmr.size", file=sys.stderr)
+            return 2
+    except Exception:
+        pass
+
+    # Optional proof binding: checkpoint digest commitment (v0.4.11+)
+    expected_cp_digest = ""
+    if isinstance((proof or {}).get("checkpoint_ref"), dict):
+        expected_cp_digest = _coerce_sha256((proof or {}).get("checkpoint_ref"))
+    if not expected_cp_digest:
+        expected_cp_digest = str((proof or {}).get("checkpoint_digest_sha256") or "").strip().lower()
+    if expected_cp_digest:
+        try:
+            from tools.lawpack import jcs_canonicalize  # type: ignore
+            tmp = dict(checkpoint)
+            tmp.pop("proof", None)
+            computed_cp_digest = sha256_bytes(jcs_canonicalize(tmp))
+            if computed_cp_digest != expected_cp_digest:
+                print("FAIL: checkpoint digest does not match proof commitment", file=sys.stderr)
+                return 2
+        except Exception:
+            pass
+
+    # Optional informational bindings
+    try:
+        if (proof or {}).get("checkpoint_final_state_root") and (checkpoint or {}).get("final_state_root"):
+            if str((proof or {}).get("checkpoint_final_state_root") or "").strip().lower() != str((checkpoint or {}).get("final_state_root") or "").strip().lower():
+                print("FAIL: proof checkpoint_final_state_root does not match checkpoint", file=sys.stderr)
+                return 2
+    except Exception:
+        pass
+
+    # Verify MMR inclusion proof
+    mmr_proof = {
+        "size": int(pr_mmr.get("size") or 0),
+        "root": str(pr_mmr.get("root") or "").strip().lower(),
+        "leaf_index": int(proof.get("leaf_index") or 0),
+        "receipt_next_root": str(proof.get("receipt_next_root") or "").strip().lower(),
+        "leaf_hash": str(proof.get("leaf_hash") or "").strip().lower(),
+        "peak_index": int(proof.get("peak_index") or 0),
+        "peak_height": int(proof.get("peak_height") or 0),
+        "path": proof.get("path"),
+        "peaks": proof.get("peaks"),
+    }
+
+    if not verify_inclusion_proof(mmr_proof):
+        print("FAIL: invalid inclusion proof", file=sys.stderr)
+        return 2
+
+    print("OK")
+    return 0
 
 
 def cmd_vc_keygen(args: argparse.Namespace) -> int:
@@ -1935,6 +4697,85 @@ def cmd_corridor_vc_init_definition(args: argparse.Namespace) -> int:
             },
         },
     }
+
+    # Optional transition type registry artifact pins (v0.4.4+) and lock pin (v0.4.5+)
+    try:
+        state_cfg = c.get("state_channel") if isinstance(c, dict) else None
+        if not isinstance(state_cfg, dict):
+            state_cfg = {}
+
+        ttr_rel = str(state_cfg.get("transition_type_registry_path") or "").strip()
+        ttl_rel = str(state_cfg.get("transition_type_registry_lock_path") or "").strip()
+
+        # Derive a default lock name when a registry is configured.
+        if not ttl_rel and ttr_rel:
+            rp = pathlib.Path(ttr_rel)
+            if rp.suffix.lower() in {".yaml", ".yml"}:
+                ttl_rel = str(rp.with_suffix(".lock.json"))
+            else:
+                ttl_rel = ttr_rel + ".lock.json"
+
+        # Pin the lock artifact first (preferred).
+        if ttl_rel:
+            ttl_path = _resolve_path_repo_or_module(module_dir, ttl_rel)
+            if not ttl_path.exists():
+                print(f"Missing {ttl_rel}", file=sys.stderr)
+                return 2
+            vcj["credentialSubject"]["artifacts"]["transition_type_registry_lock"] = {
+                "path": ttl_rel,
+                "sha256": sha256_file(ttl_path),
+            }
+
+        # Optionally also pin the human-authored registry YAML.
+        if ttr_rel:
+            ttr_path = _resolve_path_repo_or_module(module_dir, ttr_rel)
+            if not ttr_path.exists():
+                print(f"Missing {ttr_rel}", file=sys.stderr)
+                return 2
+            vcj["credentialSubject"]["artifacts"]["transition_type_registry"] = {
+                "path": ttr_rel,
+                "sha256": sha256_file(ttr_path),
+            }
+    except Exception as ex:
+        print(f"ERROR: unable to pin transition type registry artifacts: {ex}", file=sys.stderr)
+        return 2
+
+    # Ruleset digest pins (v0.4.3+)
+    # Provides content-addressed identifiers for the verifier logic governing this corridor.
+    try:
+        state_cfg = c.get("state_channel") if isinstance(c, dict) else None
+        if not isinstance(state_cfg, dict):
+            state_cfg = {}
+        transition_ruleset = str(state_cfg.get("transition_ruleset") or "msez.corridor.state-transition.v2").strip()
+        vcj["credentialSubject"]["ruleset_digest_set"] = _normalize_digest_set([
+            ruleset_descriptor_digest_sha256(ruleset),
+            ruleset_descriptor_digest_sha256(transition_ruleset),
+        ])
+    except Exception:
+        # Best-effort: allow authoring even if ruleset registry is missing.
+        pass
+
+    # Lawpack compatibility scaffold (v0.4.1+)
+    # By default we require each participant to pin (and sign) civil + financial lawpacks.
+    # To additionally *constrain* which digests are compatible, pass --allow-lawpack one or more times.
+    from tools.lawpack import parse_lawpack_ref  # type: ignore
+    req_domains = getattr(args, "require_domain", None) or ["civil", "financial"]
+    allow_refs = getattr(args, "allow_lawpack", None) or []
+    lawpack_compat: Dict[str, Any] = {"required_domains": req_domains}
+
+    if allow_refs:
+        allowed_map: Dict[Tuple[str, str], set] = {}
+        for ref in allow_refs:
+            lr = parse_lawpack_ref(ref)
+            key = (lr["jurisdiction_id"], lr["domain"])
+            allowed_map.setdefault(key, set()).add(lr["lawpack_digest_sha256"])
+        allowed_list: List[Dict[str, Any]] = []
+        for (jid, dom), digests in sorted(allowed_map.items(), key=lambda x: (x[0][0], x[0][1])):
+            allowed_list.append({"jurisdiction_id": jid, "domain": dom, "digests_sha256": sorted(digests)})
+        lawpack_compat["allowed"] = allowed_list
+
+    vcj["credentialSubject"]["lawpack_compatibility"] = lawpack_compat
+
     if version:
         vcj["credentialSubject"]["version"] = version
     if maintainer:
@@ -2104,6 +4945,15 @@ def cmd_corridor_vc_init_agreement(args: argparse.Namespace) -> int:
             "effectiveFrom": now_rfc3339(),
             "accept_commitments": accept_commitments,
         },
+        # v0.4.14+: state-channel receipt signing policy.
+        # Default is unanimity per role (safe against forks unless a signer equivocates).
+        "state_channel": {
+            "receipt_signing": {
+                "thresholds": thresholds,
+                "effectiveFrom": now_rfc3339(),
+                "description": "receipt signing thresholds for corridor state transitions",
+            }
+        },
         "terms": {"reference": terms_ref},
     }
     if version:
@@ -2115,6 +4965,52 @@ def cmd_corridor_vc_init_agreement(args: argparse.Namespace) -> int:
         subj["party"] = {"id": party, "role": party_role}
         subj["commitment"] = commitment
         subj["party_terms"] = {}
+
+        # Participant-specific lawpack pins (v0.4.1+)
+        from tools.lawpack import parse_lawpack_ref  # type: ignore
+        pinned: List[Dict[str, Any]] = []
+
+        # 1) pull from a zone's stack.lock (recommended)
+        zl = str(getattr(args, "from_zone_lock", "") or "").strip()
+        if zl:
+            zl_path = pathlib.Path(zl)
+            if not zl_path.is_absolute():
+                zl_path = REPO_ROOT / zl_path
+            try:
+                zl_obj = load_yaml(zl_path)
+                for lp in (zl_obj.get("lawpacks") or []):
+                    if not isinstance(lp, dict):
+                        continue
+                    digest = _coerce_sha256(lp.get("lawpack_digest_sha256"))
+                    if not digest or digest == "MISSING":
+                        continue
+                    pinned.append({
+                        "jurisdiction_id": str(lp.get("jurisdiction_id") or ""),
+                        "domain": str(lp.get("domain") or ""),
+                        "lawpack_digest_sha256": digest,
+                        "lawpack_lock_sha256": str(lp.get("lawpack_lock_sha256") or ""),
+                        "as_of_date": str(lp.get("as_of_date") or ""),
+                    })
+            except Exception as ex:
+                print(f"WARNING: could not load zone lock {zl_path}: {ex}", file=sys.stderr)
+
+        # 2) explicit refs
+        for ref in (getattr(args, "pinned_lawpack", None) or []):
+            try:
+                pinned.append(parse_lawpack_ref(ref))
+            except Exception as ex:
+                print(f"WARNING: ignoring invalid --pinned-lawpack '{ref}': {ex}", file=sys.stderr)
+
+        # de-dup (jurisdiction_id, domain, digest)
+        seen = set()
+        dedup: List[Dict[str, Any]] = []
+        for lp in pinned:
+            key = (str(lp.get("jurisdiction_id") or ""), str(lp.get("domain") or ""), _coerce_sha256(lp.get("lawpack_digest_sha256")))
+            if key in seen:
+                continue
+            seen.add(key)
+            dedup.append(lp)
+        subj["pinned_lawpacks"] = dedup
 
     vcj: Dict[str, Any] = {
         "@context": [
@@ -2236,6 +5132,323 @@ def cmd_corridor_status(args: argparse.Namespace) -> int:
         return 2
     return 0
 
+
+
+# --- Generic artifact CAS (v0.4.7+) ------------------------------------------
+
+ARTIFACT_TYPES_KNOWN = [
+    "lawpack",
+    "ruleset",
+    "transition-types",
+    "circuit",
+    "schema",
+    "vc",
+    "checkpoint",
+    "proof-key",
+    "blob",
+]
+
+
+def resolve_artifact_commitment(
+    artifact_type: str,
+    digest_sha256: str,
+    *,
+    repo_root: pathlib.Path = REPO_ROOT,
+    store_roots: Optional[List[pathlib.Path]] = None,
+    module_dir: Optional[pathlib.Path] = None,
+) -> pathlib.Path:
+    """Resolve an artifact commitment (type + sha256 digest) to a concrete path.
+
+    Primary resolution uses the generic CAS convention:
+
+      dist/artifacts/<type>/<digest>.*
+
+    For backwards compatibility, this function provides best-effort legacy fallbacks:
+    - transition-types: dist/artifacts/transition-types + (legacy fallbacks)
+    - lawpack: dist/lawpacks/**/<digest>.lawpack.zip
+    - ruleset: scan rulesets declared in registries/rulesets.yaml and compare digests
+
+    The intent is that any digest commitment appearing in receipts/VCs has an obvious
+    resolution path.
+    """
+
+    repo_root = repo_root.resolve()
+    at = artifact_cas.normalize_artifact_type(artifact_type)
+    dg = artifact_cas.normalize_digest(digest_sha256)
+
+    roots = store_roots or artifact_cas.artifact_store_roots(repo_root)
+
+    # 1) Generic CAS lookup.
+    try:
+        return artifact_cas.resolve_artifact_by_digest(at, dg, repo_root=repo_root, store_roots=roots)
+    except FileNotFoundError:
+        pass
+
+    # 2) Legacy fallbacks (type-specific).
+    if at == "transition-types":
+        return resolve_transition_type_registry_lock_by_digest(dg, module_dir=module_dir, repo_root=repo_root)
+
+    if at == "lawpack":
+        legacy_root = repo_root / "dist" / "lawpacks"
+        if legacy_root.exists():
+            for cand in sorted(legacy_root.rglob(f"{dg}.lawpack.zip")):
+                if cand.is_file():
+                    return cand
+        raise FileNotFoundError(f"lawpack artifact not found for digest {dg}")
+
+    if at == "ruleset":
+        # Ruleset digests are SHA256(JCS(ruleset_descriptor_json)).
+        reg = _load_rulesets_registry()
+        for rid, rel in reg.items():
+            try:
+                dig = ruleset_descriptor_digest_sha256(rid)
+            except Exception:
+                continue
+            if dig != dg:
+                continue
+            p = pathlib.Path(rel)
+            if not p.is_absolute():
+                p = repo_root / p
+            if p.exists():
+                return p
+        raise FileNotFoundError(f"ruleset descriptor not found for digest {dg}")
+
+    raise FileNotFoundError(f"artifact not found for type '{at}' digest {dg}")
+
+
+def cmd_artifact_store(args: argparse.Namespace) -> int:
+    at = str(getattr(args, "type", "") or "").strip()
+    digest = str(getattr(args, "digest", "") or "").strip()
+    src = pathlib.Path(str(getattr(args, "path", "") or "").strip())
+    if not (at and digest and str(src)):
+        print("type, digest and path are required", file=sys.stderr)
+        return 2
+
+    store_root = str(getattr(args, "store_root", "") or "").strip()
+    name = str(getattr(args, "name", "") or "").strip()
+    overwrite = bool(getattr(args, "overwrite", False))
+
+    dest = artifact_cas.store_artifact_file(
+        at,
+        digest,
+        src,
+        repo_root=REPO_ROOT,
+        store_root=pathlib.Path(store_root) if store_root else None,
+        dest_name=name or None,
+        overwrite=overwrite,
+    )
+
+    if getattr(args, "json", False):
+        print(json.dumps({"stored": dest.as_posix(), "type": artifact_cas.normalize_artifact_type(at), "digest": artifact_cas.normalize_digest(digest)}, indent=2))
+    else:
+        print(dest.as_posix())
+    return 0
+
+
+def cmd_artifact_resolve(args: argparse.Namespace) -> int:
+    at = str(getattr(args, "type", "") or "").strip()
+    digest = str(getattr(args, "digest", "") or "").strip()
+    if not (at and digest):
+        print("type and digest are required", file=sys.stderr)
+        return 2
+
+    extra_roots = getattr(args, "store_root", None) or []
+    roots = []
+    for r in extra_roots:
+        rr = str(r or "").strip()
+        if not rr:
+            continue
+        roots.append(pathlib.Path(rr))
+
+    p = resolve_artifact_commitment(
+        at,
+        digest,
+        repo_root=REPO_ROOT,
+        store_roots=roots if roots else None,
+    )
+
+    if getattr(args, "show", False):
+        # Only show text-like artifacts.
+        if p.suffix.lower() in {".json", ".yaml", ".yml", ".md", ".txt"}:
+            print(p.read_text(encoding="utf-8"))
+        else:
+            print(p.as_posix())
+    else:
+        if getattr(args, "json", False):
+            print(json.dumps({"path": p.as_posix(), "type": artifact_cas.normalize_artifact_type(at), "digest": artifact_cas.normalize_digest(digest)}, indent=2))
+        else:
+            print(p.as_posix())
+    return 0
+
+
+def cmd_artifact_index_rulesets(args: argparse.Namespace) -> int:
+    """Populate dist/artifacts/ruleset with content-addressed copies of declared rulesets."""
+    store_root = str(getattr(args, "store_root", "") or "").strip()
+    overwrite = bool(getattr(args, "overwrite", False))
+
+    reg = _load_rulesets_registry()
+    if not reg:
+        print("No rulesets found in registries/rulesets.yaml", file=sys.stderr)
+        return 2
+
+    stored = []
+    for rid, rel in sorted(reg.items()):
+        try:
+            digest = ruleset_descriptor_digest_sha256(rid)
+        except Exception as ex:
+            print(f"WARN: could not digest ruleset {rid}: {ex}", file=sys.stderr)
+            continue
+        src = pathlib.Path(rel)
+        if not src.is_absolute():
+            src = REPO_ROOT / src
+        if not src.exists():
+            print(f"WARN: missing ruleset file for {rid}: {src}", file=sys.stderr)
+            continue
+        dest = artifact_cas.store_artifact_file(
+            "ruleset",
+            digest,
+            src,
+            repo_root=REPO_ROOT,
+            store_root=pathlib.Path(store_root) if store_root else None,
+            overwrite=overwrite,
+        )
+        stored.append({"ruleset_id": rid, "digest": digest, "path": dest.as_posix()})
+
+    if getattr(args, "json", False):
+        print(json.dumps({"stored": stored, "count": len(stored)}, indent=2))
+    else:
+        print(f"Stored {len(stored)} ruleset artifacts")
+    return 0
+
+
+def cmd_artifact_index_lawpacks(args: argparse.Namespace) -> int:
+    """Populate dist/artifacts/lawpack by copying any local dist/lawpacks/**/*.lawpack.zip files."""
+    store_root = str(getattr(args, "store_root", "") or "").strip()
+    overwrite = bool(getattr(args, "overwrite", False))
+
+    legacy_root = REPO_ROOT / "dist" / "lawpacks"
+    if not legacy_root.exists():
+        print("dist/lawpacks not found", file=sys.stderr)
+        return 2
+
+    stored = []
+    for lp in sorted(legacy_root.rglob("*.lawpack.zip")):
+        name = lp.name
+        digest = name.split(".", 1)[0].strip().lower()
+        if not SHA256_HEX_RE.match(digest):
+            continue
+        dest = artifact_cas.store_artifact_file(
+            "lawpack",
+            digest,
+            lp,
+            repo_root=REPO_ROOT,
+            store_root=pathlib.Path(store_root) if store_root else None,
+            overwrite=overwrite,
+        )
+        stored.append({"digest": digest, "src": lp.as_posix(), "dest": dest.as_posix()})
+
+    if getattr(args, "json", False):
+        print(json.dumps({"stored": stored, "count": len(stored)}, indent=2))
+    else:
+        print(f"Stored {len(stored)} lawpack artifacts")
+    return 0
+
+
+def cmd_artifact_index_schemas(args: argparse.Namespace) -> int:
+    """Populate dist/artifacts/schema with content-addressed copies of JSON Schemas."""
+    store_root = str(getattr(args, "store_root", "") or "").strip()
+    overwrite = bool(getattr(args, "overwrite", False))
+
+    schema_dir = REPO_ROOT / "schemas"
+    if not schema_dir.exists():
+        print("schemas/ not found", file=sys.stderr)
+        return 2
+
+    stored = []
+    for sp in sorted(schema_dir.rglob("*.schema.json")):
+        if not sp.is_file():
+            continue
+        try:
+            digest = _jcs_sha256_of_json_file(sp)
+        except Exception as ex:
+            print(f"WARN: could not digest schema {sp}: {ex}", file=sys.stderr)
+            continue
+
+        dest = artifact_cas.store_artifact_file(
+            "schema",
+            digest,
+            sp,
+            repo_root=REPO_ROOT,
+            store_root=pathlib.Path(store_root) if store_root else None,
+            overwrite=overwrite,
+        )
+        stored.append({
+            "schema": sp.relative_to(REPO_ROOT).as_posix(),
+            "digest": digest,
+            "path": dest.as_posix(),
+        })
+
+    if getattr(args, "json", False):
+        print(json.dumps({"stored": stored, "count": len(stored)}, indent=2))
+    else:
+        print(f"Stored {len(stored)} schema artifacts")
+    return 0
+
+
+def cmd_artifact_index_vcs(args: argparse.Namespace) -> int:
+    """Populate dist/artifacts/vc with content-addressed copies of VCs (payload digest)."""
+    store_root = str(getattr(args, "store_root", "") or "").strip()
+    overwrite = bool(getattr(args, "overwrite", False))
+
+    from tools.vc import signing_input  # type: ignore
+
+    search_roots = [
+        REPO_ROOT / "modules",
+        REPO_ROOT / "docs" / "examples" / "vc",
+        REPO_ROOT / "tests" / "fixtures",
+    ]
+
+    stored = []
+    seen_paths = set()
+
+    for root in search_roots:
+        if not root.exists():
+            continue
+        for vp in sorted(root.rglob("*.vc.json")):
+            if not vp.is_file():
+                continue
+            try:
+                rel = vp.relative_to(REPO_ROOT).as_posix()
+            except Exception:
+                rel = vp.as_posix()
+            if rel in seen_paths:
+                continue
+            seen_paths.add(rel)
+
+            try:
+                vcj = load_json(vp)
+                digest = sha256_bytes(signing_input(vcj))
+            except Exception as ex:
+                print(f"WARN: could not digest VC {vp}: {ex}", file=sys.stderr)
+                continue
+
+            dest = artifact_cas.store_artifact_file(
+                "vc",
+                digest,
+                vp,
+                repo_root=REPO_ROOT,
+                store_root=pathlib.Path(store_root) if store_root else None,
+                overwrite=overwrite,
+            )
+            stored.append({"vc": rel, "digest": digest, "path": dest.as_posix()})
+
+    if getattr(args, "json", False):
+        print(json.dumps({"stored": stored, "count": len(stored)}, indent=2))
+    else:
+        print(f"Stored {len(stored)} VC artifacts")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -2268,6 +5481,14 @@ def main() -> int:
     l = sub.add_parser("lock")
     l.add_argument("zone")
     l.add_argument("--out", default="")
+    l.add_argument(
+        "--emit-artifactrefs",
+        action="store_true",
+        help=(
+            "Emit typed ArtifactRef objects for digest-bearing fields (lawpacks + corridor artifacts) "
+            "instead of legacy raw sha256 strings."
+        ),
+    )
     l.set_defaults(func=cmd_lock)
 
     vc = sub.add_parser("vc")
@@ -2307,6 +5528,8 @@ def main() -> int:
     cdef.add_argument("--issuer", required=True, help="Issuer DID for the Corridor Definition VC")
     cdef.add_argument("--id", default="", help="Credential id (default: urn:msez:vc:corridor-definition:<corridor_id>)")
     cdef.add_argument("--ruleset", default="", help="Verification ruleset override (default: corridor.yaml verification_ruleset)")
+    cdef.add_argument("--require-domain", dest="require_domain", action="append", default=[], help="Require a lawpack domain for corridor participants (repeatable; default: civil+financial)")
+    cdef.add_argument("--allow-lawpack", dest="allow_lawpack", action="append", default=[], help="Allow a specific lawpack digest (<jurisdiction_id>:<domain>:<sha256>) (repeatable)")
     cdef.add_argument("--version", default="", help="credentialSubject.version")
     cdef.add_argument("--maintainer", default="", help="credentialSubject.maintainer")
     cdef.add_argument("--out", default="", help="Output path (default: corridor.vc.unsigned.json or corridor.vc.json when --sign)")
@@ -2324,6 +5547,8 @@ def main() -> int:
     cagr.add_argument("--commitment", default="agree", help="Party commitment verb (default: agree)")
     cagr.add_argument("--accept-commitments", dest="accept_commitments", default="", help="Comma-separated affirmative commitment verbs (default: agree)")
     cagr.add_argument("--terms-ref", default="", help="Terms reference (default: urn:msez:terms:TODO)")
+    cagr.add_argument("--from-zone-lock", dest="from_zone_lock", default="", help="Populate pinned_lawpacks from a zone stack.lock")
+    cagr.add_argument("--pinned-lawpack", dest="pinned_lawpack", action="append", default=[], help="Pinned lawpack ref (<jurisdiction_id>:<domain>:<sha256>) (repeatable)")
     cagr.add_argument("--id", default="", help="Credential id override")
     cagr.add_argument("--version", default="", help="credentialSubject.version")
     cagr.add_argument("--maintainer", default="", help="credentialSubject.maintainer")
@@ -2340,10 +5565,200 @@ def main() -> int:
     cors.set_defaults(func=cmd_corridor_status)
 
 
+
+    # Corridor state channels (verifiable receipts)
+    cstate = cor_sub.add_parser("state")
+    cstate_sub = cstate.add_subparsers(dest="corridor_state_cmd", required=True)
+
+    cg = cstate_sub.add_parser("genesis-root", help="Compute corridor genesis_root")
+    cg.add_argument("path", help="Corridor module directory or corridor.yaml path")
+    cg.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    cg.set_defaults(func=cmd_corridor_state_genesis_root)
+
+    cri = cstate_sub.add_parser("receipt-init", help="Create a corridor state receipt and optionally sign it")
+    cri.add_argument("path", help="Corridor module directory or corridor.yaml path")
+    cri.add_argument("--sequence", type=int, default=0, help="Receipt sequence number (default: 0)")
+    cri.add_argument("--prev-root", default="genesis", help="prev_root (default: genesis). Use 64-hex or 'genesis'")
+    cri.add_argument("--timestamp", default="", help="RFC3339 timestamp override")
+    cri.add_argument("--transition", default="", help="Path to a JSON transition object (default: noop)")
+    cri.add_argument(
+        "--fill-transition-digests",
+        action="store_true",
+        help="Populate transition envelope digest references from the configured transition type registry (default: omit and rely on the registry snapshot digest commitment)",
+    )
+    cri.add_argument("--lawpack-digest", dest="lawpack_digest", action="append", default=[], help="Lawpack digest sha256 to include (repeatable; default: derive from agreement-set)")
+    cri.add_argument("--ruleset-digest", dest="ruleset_digest", action="append", default=[], help="Ruleset digest sha256 to include (repeatable; default: derive from corridor rulesets)")
+    cri.add_argument("--out", default="", help="Output path (default: corridor-receipt.<seq>.json)")
+    cri.add_argument("--sign", action="store_true", help="Sign the receipt")
+    cri.add_argument("--key", default="", help="Private OKP/Ed25519 JWK for signing (required with --sign)")
+    cri.add_argument("--verification-method", default="", help="verificationMethod override (default: did:key derived from JWK + '#key-1')")
+    cri.add_argument("--purpose", default="assertionMethod", help="proofPurpose (default: assertionMethod)")
+    cri.set_defaults(func=cmd_corridor_state_receipt_init)
+
+    csv = cstate_sub.add_parser("verify", help="Verify a corridor receipt chain and print the final root")
+    csv.add_argument("path", help="Corridor module directory or corridor.yaml path")
+    csv.add_argument("--receipts", required=True, help="Receipt file or directory containing receipt JSON files")
+    csv.add_argument("--enforce-trust-anchors", action="store_true", help="Require at least one valid proof from a trust anchor authorized for corridor_receipt")
+    csv.add_argument(
+        "--enforce-receipt-threshold",
+        action="store_true",
+        help=(
+            "Enforce receipt signing thresholds derived from Corridor Agreement VC(s) (recommended for fork resistance). "
+            "Defaults to the agreement's state_channel.receipt_signing thresholds when present; otherwise falls back to activation thresholds."
+        ),
+    )
+    csv.add_argument(
+        "--enforce-transition-types",
+        action="store_true",
+        help="Require that receipt transitions resolve against the corridor's transition type registry; when a receipt does not bind to a registry snapshot digest, require explicit per-transition digest references",
+    )
+    csv.add_argument(
+        "--require-artifacts",
+        action="store_true",
+        help="Fail verification if any digest commitment in receipts cannot be resolved via the artifact CAS (dist/artifacts/<type>/<digest>.* or configured store roots)",
+    )
+    csv.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    csv.set_defaults(func=cmd_corridor_state_verify)
+
+
+    ccp = cstate_sub.add_parser("checkpoint", help="Create a corridor state checkpoint (MMR root) and optionally sign it")
+    ccp.add_argument("path", help="Corridor module directory or corridor.yaml path")
+    ccp.add_argument("--receipts", required=True, help="Receipt file or directory containing receipt JSON files")
+    ccp.add_argument("--enforce-trust-anchors", action="store_true", help="Require at least one valid proof from a trust anchor authorized for corridor_receipt")
+    ccp.add_argument("--out", default="", help="Output path (default: corridor.checkpoint.json)")
+    ccp.add_argument("--sign", action="store_true", help="Sign the checkpoint")
+    ccp.add_argument("--key", default="", help="Private OKP/Ed25519 JWK for signing (required with --sign)")
+    ccp.add_argument("--verification-method", default="", help="verificationMethod override (default: did:key derived from JWK + '#key-1')")
+    ccp.add_argument("--purpose", default="assertionMethod", help="proofPurpose (default: assertionMethod)")
+    ccp.set_defaults(func=cmd_corridor_state_checkpoint)
+
+    cpr = cstate_sub.add_parser("proof", help="Generate an MMR inclusion proof for a receipt sequence")
+    cpr.add_argument("path", help="Corridor module directory or corridor.yaml path")
+    cpr.add_argument("--receipts", required=True, help="Receipt directory containing receipt JSON files")
+    cpr.add_argument("--sequence", required=True, type=int, help="Receipt sequence number (leaf index) to prove")
+    cpr.add_argument("--checkpoint", default="", help="Optional checkpoint path; when provided, the proof is checked against it")
+    cpr.add_argument("--enforce-trust-anchors", action="store_true", help="Verify receipt signatures and require trust anchors")
+    cpr.add_argument("--out", default="", help="Output path (default: corridor.inclusion-proof.<seq>.json)")
+    cpr.set_defaults(func=cmd_corridor_state_inclusion_proof)
+
+    civ = cstate_sub.add_parser("verify-inclusion", help="Verify an inclusion proof against a signed checkpoint")
+    civ.add_argument("path", help="Corridor module directory or corridor.yaml path")
+    civ.add_argument("--receipt", required=True, help="Receipt JSON file")
+    civ.add_argument("--proof", required=True, help="Inclusion proof JSON file")
+    civ.add_argument("--checkpoint", required=True, help="Signed checkpoint JSON file")
+    civ.add_argument("--enforce-trust-anchors", action="store_true", help="Require receipt/checkpoint signatures from trust anchors")
+    civ.set_defaults(func=cmd_corridor_state_verify_inclusion)
+
+
     c = sub.add_parser("check-coverage")
     c.add_argument("--profile", default="", help="Restrict check to modules in a profile.yaml")
     c.add_argument("--zone", default="", help="Restrict check to modules in the zone's profile")
     c.set_defaults(func=cmd_check_coverage)
+
+
+    law = sub.add_parser("law")
+    law_sub = law.add_subparsers(dest="law_cmd", required=True)
+
+    ll = law_sub.add_parser("list")
+    ll.add_argument("--jurisdiction", default="", help="Filter by jurisdiction_id (e.g., us-ca)")
+    ll.add_argument("--domain", default="", help="Filter by domain (civil|financial)")
+    ll.add_argument("--json", action="store_true")
+    ll.set_defaults(func=cmd_law_list)
+
+    lc = law_sub.add_parser("coverage")
+    lc.add_argument("--json", action="store_true")
+    lc.set_defaults(func=cmd_law_coverage)
+
+
+    li = law_sub.add_parser("ingest")
+    li.add_argument("module", help="Path to a jurisdiction corpus module directory (e.g., modules/legal/jurisdictions/us/ca/civil)")
+    li.add_argument("--as-of-date", dest="as_of_date", required=True, help="Snapshot date (YYYY-MM-DD)")
+    li.add_argument("--out-dir", dest="out_dir", default="dist/lawpacks", help="Output directory for lawpack artifacts")
+    li.add_argument("--fetch", action="store_true", help="Fetch declared sources into src/raw (best-effort)")
+    li.add_argument("--include-raw", dest="include_raw", action="store_true", help="Include src/raw files inside the lawpack.zip (license permitting)")
+    li.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    li.set_defaults(func=cmd_law_ingest)
+
+    latt = law_sub.add_parser("attest-init", help="Initialize a Lawpack Validity Attestation VC skeleton")
+    latt.add_argument("--jurisdiction-id", required=True)
+    latt.add_argument("--domain", required=True)
+    latt.add_argument("--lawpack-digest", required=True)
+    latt.add_argument("--as-of-date", required=True, help="Snapshot date (YYYY-MM-DD)")
+    latt.add_argument("--issuer", default="", help="Issuer DID (e.g., did:key:z6Mk...)")
+    latt.add_argument("--out", default="", help="Output path for the VC JSON")
+    latt.set_defaults(func=cmd_law_attest_init)
+
+
+
+    art = sub.add_parser("artifact")
+    art_sub = art.add_subparsers(dest="artifact_cmd", required=True)
+
+    astore = art_sub.add_parser("store", help="Store an artifact into the content-addressed CAS")
+    astore.add_argument("type", help="Artifact type (e.g., lawpack|ruleset|transition-types|circuit|schema|vc|checkpoint|proof-key|blob)")
+    astore.add_argument("digest", help="sha256 digest (64-hex)")
+    astore.add_argument("path", help="Source file path")
+    astore.add_argument("--store-root", dest="store_root", default="", help="Store root (default: dist/artifacts)")
+    astore.add_argument("--name", default="", help="Optional destination filename override")
+    astore.add_argument("--overwrite", action="store_true", help="Overwrite existing file if present")
+    astore.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    astore.set_defaults(func=cmd_artifact_store)
+
+    ares = art_sub.add_parser("resolve", help="Resolve an artifact by (type,digest) via CAS")
+    ares.add_argument("type", help="Artifact type")
+    ares.add_argument("digest", help="sha256 digest (64-hex)")
+    ares.add_argument("--store-root", dest="store_root", action="append", default=[], help="Additional store root to search (repeatable)")
+    ares.add_argument("--show", action="store_true", help="Print text artifacts instead of just the path")
+    ares.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    ares.set_defaults(func=cmd_artifact_resolve)
+
+    air = art_sub.add_parser("index-rulesets", help="Populate dist/artifacts/ruleset with content-addressed ruleset descriptors")
+    air.add_argument("--store-root", dest="store_root", default="", help="Store root (default: dist/artifacts)")
+    air.add_argument("--overwrite", action="store_true", help="Overwrite existing files")
+    air.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    air.set_defaults(func=cmd_artifact_index_rulesets)
+
+    ail = art_sub.add_parser("index-lawpacks", help="Populate dist/artifacts/lawpack by copying local dist/lawpacks/**/*.lawpack.zip")
+    ail.add_argument("--store-root", dest="store_root", default="", help="Store root (default: dist/artifacts)")
+    ail.add_argument("--overwrite", action="store_true", help="Overwrite existing files")
+    ail.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    ail.set_defaults(func=cmd_artifact_index_lawpacks)
+
+
+    ais = art_sub.add_parser("index-schemas", help="Populate dist/artifacts/schema with content-addressed JSON Schemas")
+    ais.add_argument("--store-root", dest="store_root", default="", help="Store root (default: dist/artifacts)")
+    ais.add_argument("--overwrite", action="store_true", help="Overwrite existing files")
+    ais.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    ais.set_defaults(func=cmd_artifact_index_schemas)
+
+    aiv = art_sub.add_parser("index-vcs", help="Populate dist/artifacts/vc with content-addressed VCs (payload digests)")
+    aiv.add_argument("--store-root", dest="store_root", default="", help="Store root (default: dist/artifacts)")
+    aiv.add_argument("--overwrite", action="store_true", help="Overwrite existing files")
+    aiv.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    aiv.set_defaults(func=cmd_artifact_index_vcs)
+
+    reg = sub.add_parser("registry")
+    reg_sub = reg.add_subparsers(dest="registry_cmd", required=True)
+
+    rtl = reg_sub.add_parser("transition-types-lock", help="Generate a transition type registry lock (transition-types.lock.json)")
+    rtl.add_argument("registry", help="Path to a transition type registry YAML (transition-types.yaml)")
+    rtl.add_argument("--out", default="", help="Output path (default: <registry>.lock.json)")
+    rtl.add_argument("--no-store", action="store_true", help="Do not write a content-addressed copy into dist/artifacts/transition-types")
+    rtl.add_argument("--store-dir", default="", help="Content-addressed store directory (default: dist/artifacts/transition-types)")
+    rtl.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    rtl.set_defaults(func=cmd_registry_transition_types_lock)
+
+    rts = reg_sub.add_parser("transition-types-store", help="Store a transition type registry lock snapshot by digest")
+    rts.add_argument("lock", help="Path to a transition-types.lock.json")
+    rts.add_argument("--store-dir", default="", help="Store directory (default: dist/artifacts/transition-types)")
+    rts.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    rts.set_defaults(func=cmd_registry_transition_types_store)
+
+    rtr = reg_sub.add_parser("transition-types-resolve", help="Resolve a transition type registry lock snapshot by digest")
+    rtr.add_argument("digest", help="snapshot_digest_sha256 (64-hex)")
+    rtr.add_argument("--store-dir", action="append", default=[], help="Additional search directory (repeatable)")
+    rtr.add_argument("--show", action="store_true", help="Print the lock JSON instead of the path")
+    rtr.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    rtr.set_defaults(func=cmd_registry_transition_types_resolve)
 
     d = sub.add_parser("diff")
     d.add_argument("a", help="First stack.lock path")

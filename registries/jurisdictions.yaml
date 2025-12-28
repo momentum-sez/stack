@@ -1,7 +1,205 @@
-# Jurisdiction Registry (examples)
-- jurisdiction_id: gm
-  name: The Gambia (example id)
+# Jurisdiction Registry
+#
+# This registry is a convenience catalog of jurisdiction identifiers used in zone.yaml and module manifests.
+# It is NOT exhaustive and is NOT legal advice. Names and scope may evolve; rely on authoritative sources.
+
+- jurisdiction_id: ex
+  name: Example (starter)
+- jurisdiction_id: us
+  name: United States (federal)
+- jurisdiction_id: us-ak
+  name: United States - Alaska
+- jurisdiction_id: us-al
+  name: United States - Alabama
+- jurisdiction_id: us-ar
+  name: United States - Arkansas
+- jurisdiction_id: us-az
+  name: United States - Arizona
+- jurisdiction_id: us-ca
+  name: United States - California
+- jurisdiction_id: us-co
+  name: United States - Colorado
+- jurisdiction_id: us-ct
+  name: United States - Connecticut
+- jurisdiction_id: us-de
+  name: United States - Delaware
+- jurisdiction_id: us-fl
+  name: United States - Florida
+- jurisdiction_id: us-ga
+  name: United States - Georgia
+- jurisdiction_id: us-hi
+  name: United States - Hawaii
+- jurisdiction_id: us-ia
+  name: United States - Iowa
+- jurisdiction_id: us-id
+  name: United States - Idaho
+- jurisdiction_id: us-il
+  name: United States - Illinois
+- jurisdiction_id: us-in
+  name: United States - Indiana
+- jurisdiction_id: us-ks
+  name: United States - Kansas
+- jurisdiction_id: us-ky
+  name: United States - Kentucky
+- jurisdiction_id: us-la
+  name: United States - Louisiana
+- jurisdiction_id: us-ma
+  name: United States - Massachusetts
+- jurisdiction_id: us-md
+  name: United States - Maryland
+- jurisdiction_id: us-me
+  name: United States - Maine
+- jurisdiction_id: us-mi
+  name: United States - Michigan
+- jurisdiction_id: us-mn
+  name: United States - Minnesota
+- jurisdiction_id: us-mo
+  name: United States - Missouri
+- jurisdiction_id: us-ms
+  name: United States - Mississippi
+- jurisdiction_id: us-mt
+  name: United States - Montana
+- jurisdiction_id: us-nc
+  name: United States - North Carolina
+- jurisdiction_id: us-nd
+  name: United States - North Dakota
+- jurisdiction_id: us-ne
+  name: United States - Nebraska
+- jurisdiction_id: us-nh
+  name: United States - New Hampshire
+- jurisdiction_id: us-nj
+  name: United States - New Jersey
+- jurisdiction_id: us-nm
+  name: United States - New Mexico
+- jurisdiction_id: us-nv
+  name: United States - Nevada
+- jurisdiction_id: us-ny
+  name: United States - New York
+- jurisdiction_id: us-oh
+  name: United States - Ohio
+- jurisdiction_id: us-ok
+  name: United States - Oklahoma
+- jurisdiction_id: us-or
+  name: United States - Oregon
+- jurisdiction_id: us-pa
+  name: United States - Pennsylvania
+- jurisdiction_id: us-ri
+  name: United States - Rhode Island
+- jurisdiction_id: us-sc
+  name: United States - South Carolina
+- jurisdiction_id: us-sd
+  name: United States - South Dakota
+- jurisdiction_id: us-tn
+  name: United States - Tennessee
+- jurisdiction_id: us-tx
+  name: United States - Texas
+- jurisdiction_id: us-ut
+  name: United States - Utah
+- jurisdiction_id: us-va
+  name: United States - Virginia
+- jurisdiction_id: us-vt
+  name: United States - Vermont
+- jurisdiction_id: us-wa
+  name: United States - Washington
+- jurisdiction_id: us-wi
+  name: United States - Wisconsin
+- jurisdiction_id: us-wv
+  name: United States - West Virginia
+- jurisdiction_id: us-wy
+  name: United States - Wyoming
+- jurisdiction_id: us-as
+  name: United States - American Samoa
+- jurisdiction_id: us-dc
+  name: United States - District of Columbia
+- jurisdiction_id: us-gu
+  name: United States - Guam
+- jurisdiction_id: us-mp
+  name: United States - Northern Mariana Islands
+- jurisdiction_id: us-pr
+  name: United States - Puerto Rico
+- jurisdiction_id: us-vi
+  name: United States - U.S. Virgin Islands
+- jurisdiction_id: ae
+  name: United Arab Emirates (federal)
 - jurisdiction_id: ae-dubai
-  name: UAE - Dubai Free Zones (example id)
+  name: United Arab Emirates - Dubai (emirate)
+- jurisdiction_id: ae-abudhabi
+  name: United Arab Emirates - Abu Dhabi (emirate)
+- jurisdiction_id: ae-dubai-dafza
+  name: UAE - Dubai - Dubai Airport Free Zone (DAFZA)
+- jurisdiction_id: ae-dubai-dubiotech
+  name: UAE - Dubai - Dubai Biotechnology & Research Park (DuBiotech)
+- jurisdiction_id: ae-dubai-ducamz
+  name: UAE - Dubai - Dubai Car and Automotive City Free Zone (DUCAMZ)
+- jurisdiction_id: ae-dubai-dccc
+  name: UAE - Dubai - Dubai CommerCity Free Zone (DCC)
+- jurisdiction_id: ae-dubai-d3
+  name: UAE - Dubai - Dubai Design District (d3)
+- jurisdiction_id: ae-dubai-dhcc
+  name: UAE - Dubai - Dubai Healthcare City (DHCC)
+- jurisdiction_id: ae-dubai-diac
+  name: UAE - Dubai - Dubai International Academic City (DIAC)
+- jurisdiction_id: ae-dubai-dic
+  name: UAE - Dubai - Dubai Internet City (DIC)
+- jurisdiction_id: ae-dubai-difc
+  name: UAE - Dubai - Dubai International Financial Centre (DIFC)
+- jurisdiction_id: ae-dubai-dkp
+  name: UAE - Dubai - Dubai Knowledge Park (DKP)
+- jurisdiction_id: ae-dubai-dmc-maritime
+  name: UAE - Dubai - Dubai Maritime City
+- jurisdiction_id: ae-dubai-dmc-media
+  name: UAE - Dubai - Dubai Media City (DMC)
+- jurisdiction_id: ae-dubai-dmcc
+  name: UAE - Dubai - Dubai Multi Commodities Centre (DMCC)
+- jurisdiction_id: ae-dubai-dpc
+  name: UAE - Dubai - Dubai Production City
+- jurisdiction_id: ae-dubai-dsp
+  name: UAE - Dubai - Dubai Science Park (DSP)
+- jurisdiction_id: ae-dubai-dso
+  name: UAE - Dubai - Dubai Silicon Oasis (DSO)
+- jurisdiction_id: ae-dubai-dwtc
+  name: UAE - Dubai - Dubai World Trade Centre (DWTC)
+- jurisdiction_id: ae-dubai-dubai-south
+  name: UAE - Dubai - Dubai World Central (Dubai South)
+- jurisdiction_id: ae-dubai-ihc
+  name: UAE - Dubai - International Humanitarian City (IHC)
+- jurisdiction_id: ae-dubai-jafza
+  name: UAE - Dubai - Jebel Ali Free Zone (JAFZA)
+- jurisdiction_id: ae-dubai-meydan
+  name: UAE - Dubai - Meydan Free Zone
+- jurisdiction_id: ae-dubai-ifza
+  name: UAE - Dubai - International Free Zone Authority (IFZA)
+- jurisdiction_id: ae-dubai-doc
+  name: UAE - Dubai - Dubai Outsource City
+- jurisdiction_id: ae-dubai-dubai-studio-city
+  name: UAE - Dubai - Dubai Studio City
+- jurisdiction_id: ae-dubai-dubai-technopark
+  name: UAE - Dubai - Dubai Techno Park
+- jurisdiction_id: ae-dubai-dubai-industrial-city
+  name: UAE - Dubai - Dubai Industrial City
+- jurisdiction_id: ae-dubai-dubai-textile-city
+  name: UAE - Dubai - Dubai Textile City
+- jurisdiction_id: ae-dubai-dubai-logistics-city
+  name: UAE - Dubai - Dubai Logistics City
+- jurisdiction_id: ae-abudhabi-adafz
+  name: UAE - Abu Dhabi - Abu Dhabi Airports Free Zone (ADAFZ)
+- jurisdiction_id: ae-abudhabi-adgm
+  name: UAE - Abu Dhabi - Abu Dhabi Global Market (ADGM)
+- jurisdiction_id: ae-abudhabi-masdar
+  name: UAE - Abu Dhabi - Masdar City Free Zone
+- jurisdiction_id: ae-abudhabi-kizad
+  name: UAE - Abu Dhabi - Khalifa Industrial Zone Abu Dhabi (KIZAD)
+- jurisdiction_id: ae-abudhabi-twofour54
+  name: UAE - Abu Dhabi - twofour54 Abu Dhabi (media free zone)
+- jurisdiction_id: vg
+  name: British Virgin Islands (BVI)
+- jurisdiction_id: ky
+  name: Cayman Islands
+- jurisdiction_id: hn
+  name: Honduras
+- jurisdiction_id: hn-prospera
+  name: Honduras - Próspera ZEDE (Prospera)
+- jurisdiction_id: gm
+  name: The Gambia
 - jurisdiction_id: kz-alatau
-  name: Kazakhstan - Alatau City (example id)
+  name: Kazakhstan - Alatau City

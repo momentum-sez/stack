@@ -1,0 +1,34 @@
+{
+  "lawpack_digest_sha256": "e45e1acac2751e01453603bbe842a41ba276a9e879543fad70a8829abf470971",
+  "jurisdiction_id": "ex",
+  "domain": "financial",
+  "as_of_date": "2025-01-01",
+  "artifact_path": "dist/lawpacks/ex/financial/e45e1acac2751e01453603bbe842a41ba276a9e879543fad70a8829abf470971.lawpack.zip",
+  "artifact_sha256": "03d8416278ae9049588923bf8f1fa94b92147962bb474dac4695bf26b4174a97",
+  "components": {
+    "lawpack_yaml_sha256": "74a5b8b3884ec8f8f7958762f7875c75826b28c344c8a8fdff019be2f501c2e4",
+    "index_json_sha256": "7a14fc41df097b3e1ac19b09359867ef31bc0aa37a561168e31215fa48a7cf93",
+    "akn_sha256": {
+      "akn/main.xml": "3e6e6c9a32680cf666e0b9d7efc0a4b597338a0c8e8aaf8ee09204e7de5f85ea"
+    },
+    "sources_sha256": "937face6c346450b3964368ffa0f7a967715a00f26d9bcfb2cbc0ee98c88b8c9"
+  },
+  "provenance": {
+    "module_manifest_path": "module.yaml",
+    "sources_manifest_path": "sources.yaml",
+    "raw_sources": {},
+    "normalization": {
+      "recipe_id": "msez.law.normalization.v1",
+      "tool": "msez",
+      "tool_version": "0.4.1",
+      "inputs": [
+        {
+          "module_id": "org.momentum.msez.legal.ex.financial.corpus",
+          "module_version": "0.1.0",
+          "sources_manifest_sha256": "937face6c346450b3964368ffa0f7a967715a00f26d9bcfb2cbc0ee98c88b8c9"
+        }
+      ],
+      "notes": ""
+    }
+  }
+}

@@ -1,9 +1,14 @@
 import pathlib
 import re
+import sys
 
 import yaml
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
+
+# Import the tool's declared stack spec version to keep tests aligned with version bumps.
+sys.path.insert(0, str(REPO))
+from tools.msez import STACK_SPEC_VERSION  # type: ignore
 
 
 def load_yaml(path: pathlib.Path):
@@ -82,7 +87,7 @@ def test_profiles_resolve_modules_variants_and_dependencies():
 
     for ppath in REPO.glob("profiles/**/profile.yaml"):
         profile = load_yaml(ppath)
-        assert profile.get("stack_spec_version") == "0.4.0", f"{ppath} has wrong stack_spec_version"
+        assert profile.get("stack_spec_version") == STACK_SPEC_VERSION, f"{ppath} has wrong stack_spec_version"
         mods = profile.get("modules") or []
         assert isinstance(mods, list)
         profile_module_ids = {m.get("module_id") for m in mods if isinstance(m, dict)}

@@ -1,0 +1,16 @@
+module_id: org.momentum.msez.legal.us.pa.financial.corpus
+version: 0.1.0
+kind: legal
+license: NOASSERTION
+description: United States - Pennsylvania — financial legal corpus (placeholder).
+  Populate via ingestion pipeline; this repo ships scaffolding only.
+variants:
+- baseline
+depends_on:
+- module_id: org.momentum.msez.legal.akn-templates
+  constraint: '>=0.1.0,<1.0.0'
+provides:
+- interface: msez.legal.akn.act.v1
+  path: src/akn/main.xml
+  media_type: application/xml
+parameters: {}

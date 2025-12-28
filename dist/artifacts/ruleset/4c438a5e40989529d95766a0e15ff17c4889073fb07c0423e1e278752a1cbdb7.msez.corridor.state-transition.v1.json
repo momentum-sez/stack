@@ -1,0 +1,22 @@
+{
+  "ruleset_id": "msez.corridor.state-transition.v1",
+  "title": "MSEZ Corridor State Channel Transition Ruleset",
+  "version": "1.0.0",
+  "description": "Defines the canonical receipt payload, genesis_root, and next_root computation for verifiable corridor state channels.",
+  "receipt_schema": "schemas/corridor.receipt.schema.json",
+  "state_root": {
+    "algorithm": "sha256",
+    "canonicalization": "JCS (RFC8785 for objects without floats)",
+    "encoding": "lowercase-hex"
+  },
+  "genesis_root_definition": "genesis_root = SHA256(JCS({tag:'msez.corridor.state.genesis.v1', corridor_id, definition_payload_sha256, agreement_set_sha256, lawpack_digest_set, ruleset_digest_set}))",
+  "next_root_definition": "next_root = SHA256(JCS(receipt_without_proof_and_next_root))",
+  "zk_scaffold": {
+    "supported": true,
+    "notes": "ZK proofs are optional and included as digests inside the receipt; verification and capability negotiation are corridor-specific."
+  },
+  "anchoring_scaffold": {
+    "supported": true,
+    "notes": "Roots may be periodically anchored to an external chain without changing the root model."
+  }
+}

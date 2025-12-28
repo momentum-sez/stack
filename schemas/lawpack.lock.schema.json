@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/lawpack.lock.schema.json",
+  "title": "MSEZ Lawpack Lock Entry (lawpack.lock.json)",
+  "type": "object",
+  "required": [
+    "lawpack_digest_sha256",
+    "jurisdiction_id",
+    "domain",
+    "as_of_date",
+    "artifact_path",
+    "components"
+  ],
+  "properties": {
+    "lawpack_digest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "jurisdiction_id": {
+      "type": "string"
+    },
+    "domain": {
+      "type": "string"
+    },
+    "as_of_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "artifact_path": {
+      "type": "string",
+      "description": "Relative path (repo-root) to the emitted lawpack zip."
+    },
+    "artifact_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "components": {
+      "type": "object",
+      "required": [
+        "lawpack_yaml_sha256",
+        "index_json_sha256",
+        "akn_sha256"
+      ],
+      "properties": {
+        "lawpack_yaml_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "index_json_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "akn_sha256": {
+          "type": "object",
+          "description": "Mapping of akn/<file> -> sha256 (canonical XML).",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "sources_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": true
+    },
+    "provenance": {
+      "type": "object",
+      "description": "Optional provenance, fetch logs, licenses, etc.",
+      "additionalProperties": true
+    },
+    "lawpack_ref": {
+      "description": "Optional typed ArtifactRef to the lawpack artifact (lawpack.zip). When present, artifact_type MUST be \"lawpack\".",
+      "allOf": [
+        {
+          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+        },
+        {
+          "properties": {
+            "artifact_type": {
+              "const": "lawpack"
+            }
+          },
+          "required": [
+            "artifact_type",
+            "digest_sha256"
+          ]
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

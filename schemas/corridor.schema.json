@@ -57,6 +57,62 @@
         }
       ]
     },
+    "state_channel": {
+      "type": "object",
+      "description": "Optional corridor state channel configuration (verifiable receipts, optional ZK proofs, optional anchoring).",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "receipt_schema": {
+          "type": "string",
+          "description": "Receipt schema identifier/path (default: schemas/corridor.receipt.schema.json)."
+        },
+        "transition_ruleset": {
+          "type": "string",
+          "description": "Ruleset id for state transitions (default: msez.corridor.state-transition.v2)."
+        },
+        "transition_type_registry_path": {
+          "type": "string",
+          "description": "Optional path to a transition type registry YAML file mapping transition kinds to schema/ruleset/ZK circuit digests. When present, receipt tooling may fill and/or validate transition digest references."
+        },
+        "transition_type_registry_lock_path": {
+          "type": "string",
+          "description": "Optional path to a transition type registry lock JSON file (content-addressed snapshot). When present, receipts MAY reference the snapshot_digest_sha256 instead of repeating per-transition digests."
+        },
+        "accumulator": {
+          "type": "object",
+          "description": "Optional receipt accumulator configuration (default: MMR) used to produce inclusion proofs without disclosing all receipts.",
+          "properties": {
+            "type": {
+              "type": "string",
+              "default": "mmr"
+            },
+            "checkpoint_schema": {
+              "type": "string",
+              "description": "Checkpoint schema identifier/path (default: schemas/corridor.checkpoint.schema.json)."
+            },
+            "inclusion_proof_schema": {
+              "type": "string",
+              "description": "Inclusion proof schema identifier/path (default: schemas/corridor.inclusion-proof.schema.json)."
+            }
+          },
+          "additionalProperties": true
+        },
+        "zk": {
+          "type": "object",
+          "description": "Optional ZK acceptance configuration (proof systems, circuit/verifier digests).",
+          "additionalProperties": true
+        },
+        "anchor": {
+          "type": "object",
+          "description": "Optional anchoring configuration for external chain commitments.",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
     "verification_ruleset": {
       "type": "string",
       "description": "Ruleset identifier for corridor verification."

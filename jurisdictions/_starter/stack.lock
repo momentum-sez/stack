@@ -1,2 +1,91 @@
-# This file is generated. Run:
-#   python tools/msez.py lock jurisdictions/_starter/zone.yaml --out jurisdictions/_starter/stack.lock
+stack_spec_version: 0.4.14
+generated_at: '2025-12-24T02:24:14Z'
+zone_id: org.momentum.msez.zone.example
+profile:
+  profile_id: org.momentum.msez.profile.digital-financial-center
+  version: 0.4.7
+modules:
+- module_id: org.momentum.msez.legal.core
+  version: 0.1.0
+  variant: commonlaw-minimal
+  params: {}
+  manifest_sha256: 84ada3e399679cf9cea8bc4ac88895df06f839effd14fa20203d938c5e79cb5d
+  content_sha256: cc8cac20c0de7517f8c8ee5194749c762890fbd3734f752035791d566c138a3e
+  provides:
+  - interface: msez.legal.akn.v1
+    path: src/akn/
+    media_type: application/xml
+- module_id: org.momentum.msez.reg.aml-cft
+  version: 0.1.0
+  variant: risk-based
+  params:
+    kyc_tier_required: 2
+    max_amount_without_enhanced_due_diligence: 10000
+  manifest_sha256: 39daa2fae0734615361d076c6da83750601eb015d4f4b84b427e5303034d55d7
+  content_sha256: 4acda430f43dbb41bdb015d4aa72c93515fec3232967af348365af5298ed50dc
+  provides:
+  - interface: msez.policy.opa.v1
+    path: src/policy/
+    media_type: text/plain
+- module_id: org.momentum.msez.fin.payments-adapter
+  version: 0.1.0
+  variant: iso20022-mapping
+  params: {}
+  manifest_sha256: 5ae8a0c2a42f9bb65447294509a49d6763b9371fb6a78c0fa7b07d2663279cc5
+  content_sha256: ee433f0b67bcd9e0dde58c9ff955d6adf8040fc61f0c6cb4c7f4ac835bf292a5
+  provides:
+  - interface: msez.fin.payments-adapter.v1
+    path: spec/
+    media_type: text/markdown
+- module_id: org.momentum.msez.corridor.swift
+  version: 0.1.0
+  variant: iso20022-cross-border
+  params: {}
+  manifest_sha256: bc64dc5da20c0851d627f0055623c2b53f2c507c455b4b46f0b1da2671925d0c
+  content_sha256: 3ba217dcb500f84d6062521be8f1fbc8bad369126a42a0d5e9ff7569739db5b1
+  provides:
+  - interface: msez.corridor.trust-anchors.v1
+    path: trust-anchors.yaml
+    media_type: application/yaml
+  - interface: msez.corridor.key-rotation.v1
+    path: key-rotation.yaml
+    media_type: application/yaml
+  - interface: msez.corridor.manifest.v1
+    path: corridor.yaml
+    media_type: application/yaml
+  - interface: msez.corridor.required-attestations.v1
+    path: required-attestations.yaml
+    media_type: application/yaml
+  - interface: msez.corridor.playbook.v1
+    path: docs/playbook.md
+    media_type: text/markdown
+  - interface: msez.corridor.tradeoffs.v1
+    path: docs/tradeoffs.md
+    media_type: text/markdown
+  - interface: msez.corridor.vc.definition.v1
+    path: corridor.vc.json
+    media_type: application/vc+json
+lawpacks:
+- jurisdiction_id: ex
+  domain: civil
+  lawpack_digest_sha256: 1de4d5d9922ef9c0caba67bbeb2d98d125fc5c2b456c62a7c1f2a56b97c713b8
+  lawpack_lock_path: modules/legal/jurisdictions/ex/civil/lawpack.lock.json
+  lawpack_lock_sha256: 08fc8344a735b5f5974301729fc2a42110aae4544e26d995d8c5d74cd738e2be
+  lawpack_artifact_path: dist/artifacts/lawpack/1de4d5d9922ef9c0caba67bbeb2d98d125fc5c2b456c62a7c1f2a56b97c713b8.lawpack.zip
+  as_of_date: '2025-01-01'
+- jurisdiction_id: ex
+  domain: financial
+  lawpack_digest_sha256: e45e1acac2751e01453603bbe842a41ba276a9e879543fad70a8829abf470971
+  lawpack_lock_path: modules/legal/jurisdictions/ex/financial/lawpack.lock.json
+  lawpack_lock_sha256: 52706f01e7907cab200e5f87519ff5709c54dcfed97cc84a37dd7fb80c038bcc
+  lawpack_artifact_path: dist/artifacts/lawpack/e45e1acac2751e01453603bbe842a41ba276a9e879543fad70a8829abf470971.lawpack.zip
+  as_of_date: '2025-01-01'
+overlays: []
+corridors:
+- corridor_id: org.momentum.msez.corridor.swift.iso20022-cross-border
+  corridor_manifest_sha256: 1d803bf72c3a26cd3832e41ad92b47380639b9b9a2c762f201db1d00c34b3d22
+  trust_anchors_sha256: 0ff565fcc02f15515d88ca9bc2bdba6ebd7d469059aa72c0cc9e779be3d3ce6d
+  key_rotation_sha256: 0b6f2a8380a474fe14ffc425d1bf08028d7b99b396188ab3462153fadba3b08d
+  corridor_definition_vc_sha256: 02290fcc742d1dfc467ce0c46619154f5fd33e549683b55a3bb2f9727d18644c
+  corridor_definition_signers:
+  - did:key:z6Mkp8BMuNpEfPPWC4La2djUue1kpwNzEVn1ivpcSythWvqb

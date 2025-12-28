@@ -1,0 +1,32 @@
+{
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1",
+    "contexts/msez/v1.jsonld",
+    "contexts/msez/lawpack/v1.jsonld"
+  ],
+  "id": "urn:uuid:00000000-0000-0000-0000-000000000001",
+  "type": [
+    "VerifiableCredential",
+    "MSEZLawpackAttestationCredential"
+  ],
+  "issuer": {
+    "id": "did:key:REPLACE_ME"
+  },
+  "issuanceDate": "2025-01-01T00:00:00Z",
+  "credentialSubject": {
+    "jurisdiction_id": "ex",
+    "domain": "civil",
+    "as_of_date": "2025-01-01",
+    "lawpack": {
+      "artifact_type": "lawpack",
+      "digest_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "uri": "dist/artifacts/lawpack/<digest>.lawpack.zip"
+    },
+    "assertion": {
+      "status": "asserted_valid",
+      "statement": "I attest that the referenced lawpack digest corresponds to an enforceable legal corpus for the specified jurisdiction+domain as of the as_of_date.",
+      "authority_role": "legal_authority",
+      "sources": []
+    }
+  }
+}

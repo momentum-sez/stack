@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MSEZ Authority Registry Verifiable Credential",
+  "description": "A Verifiable Credential that lists authorized authority DIDs (zone authorities, legal authorities, auditors, etc.) and the attestation kinds they are permitted to sign. This is intended to provide an out-of-band root-of-trust layer to mitigate trust-anchor circularity.",
+  "type": "object",
+  "required": ["@context", "type", "issuer", "issuanceDate", "credentialSubject", "proof"],
+  "properties": {
+    "@context": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1
+    },
+    "id": {"type": "string"},
+    "type": {
+      "type": "array",
+      "items": {"type": "string"},
+      "contains": {"const": "MSEZAuthorityRegistryCredential"}
+    },
+    "issuer": {
+      "oneOf": [
+        {"type": "string"},
+        {
+          "type": "object",
+          "required": ["id"],
+          "properties": {
+            "id": {"type": "string"},
+            "name": {"type": "string"}
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "issuanceDate": {"type": "string"},
+    "expirationDate": {"type": "string"},
+    "credentialSubject": {
+      "type": "object",
+      "required": ["registry_id", "authorities"],
+      "properties": {
+        "registry_id": {
+          "description": "A stable identifier for this registry snapshot.",
+          "type": "string"
+        },
+        "as_of_date": {
+          "description": "Date the registry snapshot is asserted to represent (e.g., enactment as-of).",
+          "type": "string",
+          "format": "date"
+        },
+        "jurisdiction_id": {
+          "description": "Optional: the jurisdiction this registry pertains to.",
+          "type": "string"
+        },
+        "zone_id": {
+          "description": "Optional: the zone this registry pertains to.",
+          "type": "string"
+        },
+        "corridor_id": {
+          "description": "Optional: the corridor this registry pertains to.",
+          "type": "string"
+        },
+        "authorities": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["did"],
+            "properties": {
+              "did": {
+                "description": "Base DID for the authority (no fragment).",
+                "type": "string"
+              },
+              "name": {"type": "string"},
+              "roles": {
+                "type": "array",
+                "items": {"type": "string"}
+              },
+              "allowed_attestations": {
+                "description": "Attestation kinds the authority may sign. Use '*' to denote any.",
+                "oneOf": [
+                  {"type": "string"},
+                  {"type": "array", "items": {"type": "string"}}
+                ]
+              },
+              "evidence": {
+                "description": "Optional evidence artifacts supporting the authority claim (appointment letters, gazette notices, etc.).",
+                "type": "array",
+                "items": {"$ref": "artifact-ref.schema.json"}
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "proof": {
+      "oneOf": [
+        {"type": "object"},
+        {"type": "array", "items": {"type": "object"}}
+      ]
+    }
+  },
+  "additionalProperties": true
+}

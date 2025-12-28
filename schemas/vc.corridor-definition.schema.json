@@ -88,55 +88,79 @@
           ],
           "properties": {
             "corridor_manifest": {
-              "type": "object",
-              "required": [
-                "path",
-                "sha256"
-              ],
-              "properties": {
-                "path": {
-                  "type": "string"
+              "description": "Reference to the corridor manifest (corridor.yaml). New form is ArtifactRef; legacy form is {path, sha256}.",
+              "oneOf": [
+                {
+                  "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
                 },
-                "sha256": {
-                  "type": "string",
-                  "pattern": "^[a-f0-9]{64}$"
+                {
+                  "type": "object",
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  },
+                  "additionalProperties": false
                 }
-              },
-              "additionalProperties": false
+              ]
             },
             "trust_anchors": {
-              "type": "object",
-              "required": [
-                "path",
-                "sha256"
-              ],
-              "properties": {
-                "path": {
-                  "type": "string"
+              "description": "Reference to the corridor trust anchors (trust-anchors.yaml). New form is ArtifactRef; legacy form is {path, sha256}.",
+              "oneOf": [
+                {
+                  "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
                 },
-                "sha256": {
-                  "type": "string",
-                  "pattern": "^[a-f0-9]{64}$"
+                {
+                  "type": "object",
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  },
+                  "additionalProperties": false
                 }
-              },
-              "additionalProperties": false
+              ]
             },
             "key_rotation": {
-              "type": "object",
-              "required": [
-                "path",
-                "sha256"
-              ],
-              "properties": {
-                "path": {
-                  "type": "string"
+              "description": "Reference to the corridor key rotation policy (key-rotation.yaml). New form is ArtifactRef; legacy form is {path, sha256}.",
+              "oneOf": [
+                {
+                  "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
                 },
-                "sha256": {
-                  "type": "string",
-                  "pattern": "^[a-f0-9]{64}$"
+                {
+                  "type": "object",
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  },
+                  "additionalProperties": false
                 }
-              },
-              "additionalProperties": false
+              ]
             }
           },
           "additionalProperties": true
@@ -146,6 +170,106 @@
         },
         "maintainer": {
           "type": "string"
+        },
+        "lawpack_compatibility": {
+          "type": "object",
+          "description": "Optional lawpack compatibility constraints used by corridor verification rules.",
+          "properties": {
+            "required_domains": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Domains each participant must pin (e.g., ['civil','financial'])."
+            },
+            "allowed": {
+              "type": "array",
+              "description": "Allow-list of compatible lawpack digests by jurisdiction and domain.",
+              "items": {
+                "type": "object",
+                "required": [
+                  "jurisdiction_id",
+                  "domain",
+                  "digests_sha256"
+                ],
+                "properties": {
+                  "jurisdiction_id": {
+                    "type": "string"
+                  },
+                  "domain": {
+                    "type": "string"
+                  },
+                  "digests_sha256": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "description": "A raw sha256 digest string (legacy) OR an ArtifactRef (recommended; artifact_type MUST be 'lawpack').",
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        {
+                          "allOf": [
+                            {
+                              "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                            },
+                            {
+                              "properties": {
+                                "artifact_type": {
+                                  "const": "lawpack"
+                                }
+                              },
+                              "required": [
+                                "artifact_type",
+                                "digest_sha256"
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "ruleset_digest_set": {
+          "type": "array",
+          "description": "Optional content-addressed digests of ruleset descriptor(s) governing corridor verification and state transitions.",
+          "items": {
+            "description": "A raw sha256 digest string (legacy) OR an ArtifactRef (recommended; artifact_type MUST be 'ruleset').",
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "allOf": [
+                  {
+                    "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                  },
+                  {
+                    "properties": {
+                      "artifact_type": {
+                        "const": "ruleset"
+                      }
+                    },
+                    "required": [
+                      "artifact_type",
+                      "digest_sha256"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
         }
       },
       "additionalProperties": true

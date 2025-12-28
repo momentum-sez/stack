@@ -47,3 +47,6 @@ The MSEZ Stack is a layered system. Deployments SHOULD implement all layers rele
 - consent mechanisms (voting, delegation, quadratic mechanisms)
 - privacy-preserving participation patterns (e.g., ZK eligibility proofs)
 - network diffusion and experimentation (telemetry, success metrics, A/B tests)
+
+
+In v0.4.1, zones and corridors additionally bind to **Lawpacks**: content-addressed legal corpus snapshots (Akoma Ntoso + indices) pinned in `stack.lock` and referenced by corridor VCs (see `spec/96-lawpacks.md`).

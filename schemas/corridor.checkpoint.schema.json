@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/corridor.checkpoint.schema.json",
+  "title": "MSEZ Corridor State Checkpoint",
+  "type": "object",
+  "required": [
+    "type",
+    "corridor_id",
+    "timestamp",
+    "genesis_root",
+    "final_state_root",
+    "receipt_count",
+    "lawpack_digest_set",
+    "ruleset_digest_set",
+    "mmr",
+    "proof"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZCorridorStateCheckpoint",
+      "description": "Checkpoint kind identifier. A checkpoint commits to the state channel head AND an inclusion-proof-friendly receipt accumulator."
+    },
+    "corridor_id": {"type": "string", "minLength": 1},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "genesis_root": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "final_state_root": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "The last receipt next_root (i.e., the current corridor_state_root)."
+    },
+    "receipt_count": {"type": "integer", "minimum": 1},
+    "lawpack_digest_set": {
+      "type": "array",
+      "items": {
+        "description": "A raw sha256 digest string (legacy) OR an ArtifactRef (recommended; artifact_type MUST be 'lawpack').",
+        "oneOf": [
+          {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              },
+              {
+                "properties": {
+                  "artifact_type": {
+                    "const": "lawpack"
+                  }
+                },
+                "required": [
+                  "artifact_type",
+                  "digest_sha256"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "description": "Sorted set of lawpack digests governing this checkpoint window."
+    },
+    "ruleset_digest_set": {
+      "type": "array",
+      "items": {
+        "description": "A raw sha256 digest string (legacy) OR an ArtifactRef (recommended; artifact_type MUST be 'ruleset').",
+        "oneOf": [
+          {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              },
+              {
+                "properties": {
+                  "artifact_type": {
+                    "const": "ruleset"
+                  }
+                },
+                "required": [
+                  "artifact_type",
+                  "digest_sha256"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "description": "Sorted set of ruleset digests governing this checkpoint window."
+    },
+    "mmr": {
+      "type": "object",
+      "required": ["type", "algorithm", "size", "root"],
+      "properties": {
+        "type": {"const": "MSEZReceiptMMR"},
+        "algorithm": {"const": "sha256"},
+        "size": {"type": "integer", "minimum": 1},
+        "root": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "peaks": {
+          "type": "array",
+          "description": "Optional peak list to aid verifiers (root is computed by bagging peaks).",
+          "items": {
+            "type": "object",
+            "required": ["height", "hash"],
+            "properties": {
+              "height": {"type": "integer", "minimum": 0},
+              "hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "notes": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "anchor": {
+      "type": "object",
+      "description": "Optional anchoring metadata for external chain commitments.",
+      "additionalProperties": true
+    },
+    "proof": {
+      "description": "One or more cryptographic proofs over the checkpoint payload (excluding the proof field).",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "created", "verificationMethod", "proofPurpose", "jws"],
+          "properties": {
+            "type": {"const": "MsezEd25519Signature2025"},
+            "created": {"type": "string", "format": "date-time"},
+            "verificationMethod": {"type": "string", "minLength": 1},
+            "proofPurpose": {"type": "string", "minLength": 1},
+            "jws": {"type": "string", "minLength": 1}
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["type", "created", "verificationMethod", "proofPurpose", "jws"],
+            "properties": {
+              "type": {"const": "MsezEd25519Signature2025"},
+              "created": {"type": "string", "format": "date-time"},
+              "verificationMethod": {"type": "string", "minLength": 1},
+              "proofPurpose": {"type": "string", "minLength": 1},
+              "jws": {"type": "string", "minLength": 1}
+            },
+            "additionalProperties": false
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

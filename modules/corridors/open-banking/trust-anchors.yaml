@@ -8,6 +8,7 @@ trust_anchors:
   - bo_verified
   - license_valid
   - corridor_agreement
+  - corridor_receipt
   metadata:
     notes: Placeholder trust anchor; deployments must replace with real issuers.
 - anchor_id: corridor-governance
@@ -15,6 +16,7 @@ trust_anchors:
   identifier: did:key:z6Mkp8BMuNpEfPPWC4La2djUue1kpwNzEVn1ivpcSythWvqb
   allowed_attestations:
   - corridor_definition
+  - corridor_receipt
   metadata:
     notes: Example corridor governance key for signed corridor definition VC. Replace
       in deployments.

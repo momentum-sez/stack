@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/node.schema.json",
+  "title": "MSEZ Node Descriptor (node.yaml)",
+  "type": "object",
+  "required": [
+    "node_id",
+    "zone_id",
+    "endpoints"
+  ],
+  "properties": {
+    "node_id": {
+      "type": "string",
+      "description": "Node identity (DID recommended)."
+    },
+    "zone_id": {
+      "type": "string",
+      "description": "Zone the node operates for."
+    },
+    "operator": {
+      "type": "object",
+      "description": "Optional operator metadata.",
+      "properties": {
+        "did": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "contact": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "endpoints": {
+      "type": "object",
+      "description": "Discovery endpoints for the node.",
+      "properties": {
+        "api": {
+          "type": "string",
+          "description": "HTTP(S) API base URL."
+        },
+        "p2p": {
+          "type": "string",
+          "description": "P2P multiaddr or equivalent."
+        },
+        "rpc": {
+          "type": "string",
+          "description": "RPC endpoint."
+        }
+      },
+      "additionalProperties": true
+    },
+    "capabilities": {
+      "type": "object",
+      "description": "Declared node capabilities (ZK, transport, security, etc.).",
+      "properties": {
+        "protocols": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "zk": {
+          "type": "object",
+          "properties": {
+            "proof_systems": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "curves": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "verifying_keys": {
+              "type": "array",
+              "items": {
+                "description": "Preferred form is an ArtifactRef with artifact_type='proof-key'. Legacy form is {key_id, sha256}.",
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "key_id",
+                      "sha256"
+                    ],
+                    "properties": {
+                      "key_id": {
+                        "type": "string"
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "notes": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                      },
+                      {
+                        "properties": {
+                          "artifact_type": {
+                            "const": "proof-key"
+                          }
+                        },
+                        "required": [
+                          "artifact_type",
+                          "digest_sha256"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "security": {
+          "type": "object",
+          "properties": {
+            "tee": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "remote_attestation": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "attestations": {
+      "type": "array",
+      "description": "Optional references to signed node capability attestations (VCs).",
+      "items": {
+        "description": "Preferred form is an ArtifactRef with artifact_type='vc'. Legacy form is {vc_path, vc_sha256}.",
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "vc_path": {
+                "type": "string"
+              },
+              "vc_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "anyOf": [
+              {"required": ["vc_sha256"]},
+              {"required": ["vc_path"]}
+            ],
+            "additionalProperties": true
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              },
+              {
+                "properties": {
+                  "artifact_type": {
+                    "const": "vc"
+                  }
+                },
+                "required": [
+                  "artifact_type",
+                  "digest_sha256"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": true
+}

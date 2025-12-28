@@ -4,7 +4,6 @@ import sys
 
 
 import yaml
-from jsonschema import Draft202012Validator
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
@@ -19,7 +18,8 @@ def load_json(path: pathlib.Path):
 
 
 def test_corridor_definition_vcs_exist_and_verify():
-    vc_schema = Draft202012Validator(load_json(REPO / "schemas" / "vc.corridor-definition.schema.json"))
+    from tools.msez import schema_validator  # type: ignore
+    vc_schema = schema_validator(REPO / "schemas" / "vc.corridor-definition.schema.json")
 
     from tools.vc import verify_credential  # type: ignore
 

@@ -1,0 +1,18 @@
+version: 1
+transition_types:
+  - kind: noop
+    description: "No-op transition used when no transition payload is supplied."
+    notes: "A noop still commits to a payload_sha256 (typically SHA256(JCS({})))."
+
+  - kind: generic
+    description: "Generic transition kind used when an untyped payload is supplied."
+
+  - kind: msez.example.transfer.v1
+    description: "Illustrative example transfer transition kind for documentation/testing."
+    schema_id: "https://schemas.momentum-sez.org/msez/transition.payload.example.transfer.v1.schema.json"
+    schema_path: "schemas/transition.payload.example.transfer.v1.schema.json"
+    schema_digest_sha256: "28249476f011e934f7615a506a37f1e4bf9ba634b4e335194460d6a6296b9efa"
+    ruleset_id: "msez.transition.example.transfer.v1"
+    ruleset_path: "rulesets/msez.transition.example.transfer.v1.json"
+    ruleset_digest_sha256: "c4510fbe06b7f778cf34a846ea5fcb777ac78143a1257b47ce119a7bd161fda4"
+    notes: "This entry is a template; production ecosystems SHOULD publish real transition kinds, schemas, and rulesets."

@@ -1,9 +1,9 @@
-# Momentum SEZ Stack (MSEZ) — v0.4.0
+# Momentum SEZ Stack (MSEZ) — v0.4.14
 
 
 This repository is a **reference specification + reference library** for building *programmable Special Economic Zones (SEZs)* as modular, forkable, and composable “jurisdiction nodes” in the Momentum/Mass network.
 
-It is designed to function as an **open standard**: modular, versioned, testable, and implementable by multiple vendors.
+It is designed to function like an **open standard**: modular, versioned, testable, and implementable by multiple vendors.
 
 > **Not legal advice.** This repository contains model texts, technical specs, and interoperability schemas. Deployments require local legal review, political authorization, and licensed financial/regulatory operators.
 
@@ -13,6 +13,7 @@ It is designed to function as an **open standard**: modular, versioned, testable
 - **`modules/`** — reference modules (legal/regulatory/financial/corridor/etc.) with machine-readable sources
 - **`profiles/`** — curated “base templates/styles” (bundles of modules + parameters)
 - **`schemas/`** — JSON Schemas for manifests, attestations, corridors
+- **`rulesets/`** — content-addressed ruleset descriptors (pins verifier logic)
 - **`apis/`** — OpenAPI specs for Mass integration + regulator console APIs
 - **`tools/`** — build/validate/publish tools (reference implementations)
 - **`registries/`** — registries of module IDs, jurisdiction IDs, corridor IDs
@@ -48,37 +49,64 @@ Skeleton created: 2025-12-21.
 - Corridor manifests + playbooks for SWIFT, stablecoin settlement, open banking (`modules/corridors/*`)
 - Operational modules: regulator console and data classification (`modules/operational/*`)
 - Documentation guides (`docs/`) and CI workflow (`.github/workflows/ci.yml`)
+- Foundational upgrade / fortification plan (`docs/fortification/foundational-upgrade-v0.4.14.md`) (v0.4.14)
 
 
-## v0.4 commands
+## Tooling commands (v0.4+)
 
-
-
-# 4) verify a corridor is cryptographically bound (manifest + security artifacts + VC)
+```bash
+# corridor cryptographic verification (VCs + agreements)
 python tools/msez.py corridor verify modules/corridors/swift
-
-# 4b) show corridor activation status and blockers (thresholds + commitments)
 python tools/msez.py corridor status modules/corridors/swift
 
-# 5) sign and verify a VC (for co-signing / governance flows)
-python tools/msez.py vc sign docs/examples/vc/unsigned.corridor-definition.json --key docs/examples/keys/dev.ed25519.jwk --out /tmp/signed.json
+# corridor state channels (verifiable receipts)
+python tools/msez.py corridor state genesis-root modules/corridors/swift
+python tools/msez.py corridor state receipt-init modules/corridors/swift   --sequence 0   --transition docs/examples/state/noop.transition.json   --sign --key docs/examples/keys/dev.ed25519.jwk   --out /tmp/receipt0.json
+python tools/msez.py corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json
+python tools/msez.py corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json --require-artifacts
+
+# transition type registries + lock snapshots (v0.4.5+; CAS v0.4.7+)
+python tools/msez.py registry transition-types-lock registries/transition-types.yaml
+python tools/msez.py registry transition-types-store registries/transition-types.lock.json
+python tools/msez.py registry transition-types-resolve d8f22c0aa0114b30f961c208e48f08b17403655cdd0c25c9027b2373609fd207
+
+# generic artifact CAS (dist/artifacts/<type>/<digest>.*) (v0.4.7+; schema/vc/checkpoint/proof-key types v0.4.8+; blob type v0.4.9+)
+python tools/msez.py artifact resolve transition-types d8f22c0aa0114b30f961c208e48f08b17403655cdd0c25c9027b2373609fd207
+python tools/msez.py artifact index-rulesets
+python tools/msez.py artifact index-lawpacks
+python tools/msez.py artifact index-schemas
+python tools/msez.py artifact index-vcs
+
+# sign and verify VCs (for co-signing / governance flows)
+python tools/msez.py vc keygen --out /tmp/my.ed25519.jwk
+python tools/msez.py vc sign docs/examples/vc/unsigned.corridor-definition.json   --key docs/examples/keys/dev.ed25519.jwk --out /tmp/signed.definition.json
 python tools/msez.py vc verify /tmp/signed.definition.json
 
-# 6) generate an Ed25519 key (writes JWK, prints did:key)
-python tools/msez.py vc keygen --out /tmp/my.ed25519.jwk
+# lawpacks (v0.4.1+): ingest a jurisdiction corpus into a content-addressed lawpack
+python tools/msez.py law ingest modules/legal/jurisdictions/us/ca/civil --as-of-date 2025-01-01 --fetch
+```
 
-# 7) scaffold corridor VCs from a corridor package
-python tools/msez.py corridor vc-init-definition <corridor-dir> --issuer did:key:z... --out corridor.vc.unsigned.json
-python tools/msez.py corridor vc-init-agreement <corridor-dir> --party did:key:z... --role zone_authority --out agreement.unsigned.json
+## Development
 
 ```bash
 pip install -r tools/requirements.txt
-python tools/msez.py validate --all-modules
-python tools/msez.py fetch-akoma-schemas
 pytest -q
+
+# fetch Akoma Ntoso schema bundle (needed for schema validation)
+python tools/msez.py fetch-akoma-schemas
+
+# validate all modules
+python tools/msez.py validate --all-modules
+
+# render an Akoma template to HTML/PDF
 python tools/msez.py render modules/legal/akn-templates/src/akn/act.template.xml --pdf
+
+# generate a deterministic lockfile for a zone deployment
 python tools/msez.py lock jurisdictions/_starter/zone.yaml --out jurisdictions/_starter/stack.lock
-python tools/msez.py check-coverage --zone jurisdictions/_starter/zone.yaml
+
+# build a reproducible bundle (applies overlays + renders templates)
 python tools/msez.py build --zone jurisdictions/_starter/zone.yaml --out dist/
+
+# publish rendered artifacts
 python tools/msez.py publish dist/bundle --out-dir dist/publish --pdf
 ```

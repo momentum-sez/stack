@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act contains="originalVersion">
+    <meta>
+      <identification source="#msez">
+        <FRBRWork>
+          <FRBRthis value="/akn/ae-dubai-dmcc/act/financial-corpus/0.1.0"/>
+          <FRBRuri value="/akn/ae-dubai-dmcc/act/financial-corpus"/>
+          <FRBRdate date="2025-12-24" name="Generation"/>
+          <FRBRauthor href="#msez"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/ae-dubai-dmcc/act/financial-corpus/0.1.0/eng@"/>
+          <FRBRuri value="/akn/ae-dubai-dmcc/act/financial-corpus/eng@"/>
+          <FRBRdate date="2025-12-24" name="Generation"/>
+          <FRBRauthor href="#msez"/>
+          <FRBRlanguage language="eng"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/ae-dubai-dmcc/act/financial-corpus/0.1.0/eng@.xml"/>
+          <FRBRuri value="/akn/ae-dubai-dmcc/act/financial-corpus/eng@.xml"/>
+          <FRBRdate date="2025-12-24" name="Generation"/>
+          <FRBRauthor href="#msez"/>
+        </FRBRManifestation>
+      </identification>
+      <publication name="MSEZ Stack" showAs="MSEZ Stack" date="2025-12-24" number="0.1.0"/>
+    </meta>
+    <preface>
+      <p eId="p1">Placeholder corpus for UAE - Dubai - Dubai Multi Commodities Centre (DMCC) — domain: financial. Populate via the law ingestion pipeline.</p>
+    </preface>
+    <body>
+      <section eId="s1">
+        <heading>Placeholder</heading>
+        <p eId="s1.p1">No legal text is embedded in this repository for this corpus.</p>
+      </section>
+    </body>
+  </act>
+</akomaNtoso>

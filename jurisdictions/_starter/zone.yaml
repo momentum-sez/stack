@@ -3,7 +3,7 @@ jurisdiction_id: ex
 zone_name: Example Zone
 profile:
   profile_id: org.momentum.msez.profile.digital-financial-center
-  version: 0.4.0
+  version: 0.4.8
 overlays: []
 params_overrides: {}
 corridors:

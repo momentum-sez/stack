@@ -1,0 +1,26 @@
+{
+  "transition_types_lock_version": 1,
+  "generated_at": "2025-12-24T23:42:44Z",
+  "source": {
+    "registry_path": "registries/transition-types.yaml",
+    "registry_sha256": "4b2331d991593399c81a4121d1e99410cc3764b5009758e12b25f3b673a159a9"
+  },
+  "snapshot": {
+    "tag": "msez.transition-types.registry.snapshot.v1",
+    "registry_version": 1,
+    "transition_types": [
+      {
+        "kind": "generic"
+      },
+      {
+        "kind": "msez.example.transfer.v1",
+        "schema_digest_sha256": "28249476f011e934f7615a506a37f1e4bf9ba634b4e335194460d6a6296b9efa",
+        "ruleset_digest_sha256": "c4510fbe06b7f778cf34a846ea5fcb777ac78143a1257b47ce119a7bd161fda4"
+      },
+      {
+        "kind": "noop"
+      }
+    ]
+  },
+  "snapshot_digest_sha256": "d8f22c0aa0114b30f961c208e48f08b17403655cdd0c25c9027b2373609fd207"
+}

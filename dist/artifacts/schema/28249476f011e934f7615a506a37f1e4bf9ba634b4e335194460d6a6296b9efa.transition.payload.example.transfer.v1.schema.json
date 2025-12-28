@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/transition.payload.example.transfer.v1.schema.json",
+  "title": "Example Transfer Transition Payload (v1)",
+  "type": "object",
+  "required": ["asset_id", "from", "to", "amount", "nonce"],
+  "properties": {
+    "asset_id": {"type": "string", "minLength": 1},
+    "from": {"type": "string", "minLength": 1, "description": "Sender identifier (DID, account id, or corridor-specific identifier)."},
+    "to": {"type": "string", "minLength": 1, "description": "Recipient identifier (DID, account id, or corridor-specific identifier)."},
+    "amount": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+)?$",
+      "description": "Decimal amount encoded as a string to avoid floating-point ambiguity."
+    },
+    "asset_type": {"type": "string", "description": "Optional asset type/ticker."},
+    "memo": {"type": "string"},
+    "nonce": {"type": "string", "minLength": 1, "description": "Unique per-sender nonce for replay protection."}
+  },
+  "additionalProperties": true
+}

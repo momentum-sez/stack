@@ -89,6 +89,20 @@
     "lockfile_path": {
       "type": "string",
       "default": "stack.lock"
+    },
+    "jurisdiction_stack": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Optional ordered list of governing law layers (e.g., ['ae','ae-dubai','ae-dubai-difc']). Defaults to [jurisdiction_id]."
+    },
+    "lawpack_domains": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Optional list of lawpack domains to pin (default: ['civil','financial'])."
     }
   }
 }

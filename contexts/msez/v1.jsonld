@@ -48,6 +48,21 @@
     "media_type": "msez:media_type",
     "byte_length": "msez:byte_length",
     "display_name": "msez:display_name",
-    "notes": "msez:notes"
+    "notes": "msez:notes",
+    "MSEZArtifactAvailabilityCredential": "msez:MSEZArtifactAvailabilityCredential",
+    "as_of": "msez:as_of",
+    "service_endpoints": "msez:service_endpoints",
+    "MSEZTransitionEnvelope": "msez:MSEZTransitionEnvelope",
+    "transition": "msez:transition",
+    "kind": "msez:kind",
+    "schema": "msez:schema",
+    "schema_digest_sha256": "msez:schema_digest_sha256",
+    "ruleset_digest_sha256": "msez:ruleset_digest_sha256",
+    "zk_circuit_digest_sha256": "msez:zk_circuit_digest_sha256",
+    "registry_override": "msez:registry_override",
+    "payload": "msez:payload",
+    "payload_sha256": "msez:payload_sha256",
+    "attachments": "msez:attachments",
+    "meta": "msez:meta"
   }
 }

@@ -38,6 +38,28 @@ Reference tooling:
 
 Corridor verifiers MAY require lawpack attestations as a policy decision (e.g., for high-stakes corridors), while still allowing experimental or private deployments without them.
 
+## Operational availability attestations (artifact availability) (v0.4.15+)
+
+In addition to *legal validity* attestations, corridors benefit from a lightweight *operational resilience* signal: an attestor can state they can reliably serve specific artifacts (typically the corridor’s pinned lawpacks).
+
+v0.4.15 introduces an optional VC for this purpose:
+
+- `schemas/vc.artifact-availability.schema.json`
+- Credential type: `MSEZArtifactAvailabilityCredential`
+
+Typical uses:
+
+- Each corridor participant periodically attests they can serve the full corridor lawpack digest set.
+- Independent infrastructure providers can attest availability for redundancy.
+- Watchers/auditors can require a minimum k-of-n availability coverage before declaring a corridor “healthy.”
+
+Reference tooling:
+
+- `msez corridor availability-attest` creates an unsigned (or optionally signed) availability VC for a corridor.
+- `msez corridor availability-verify` checks a directory/file of availability VCs against a corridor’s expected lawpack digest set.
+
+Availability attestations do **not** replace content addressing or proofs; they are an operational commitment that can be monitored and enforced by policy.
+
 ## Lawpack artifact format
 
 A lawpack is distributed as a **zip** with the following structure:

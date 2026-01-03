@@ -1,0 +1,19 @@
+# Build outputs
+#
+# NOTE: We intentionally keep `dist/artifacts/...` under version control because it is
+# the canonical content-addressed store for commitments referenced by digests.
+#
+# We ignore *most* of dist/, but explicitly unignore dist/artifacts/**.
+dist/*
+!dist/artifacts/
+!dist/artifacts/**
+
+# Python
+__pycache__/
+*.pyc
+
+# Pytest
+.pytest_cache/
+
+# OS cruft
+.DS_Store

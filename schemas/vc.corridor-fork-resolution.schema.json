@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/vc.corridor-fork-resolution.schema.json",
+  "title": "MSEZ Corridor Fork Resolution Verifiable Credential",
+  "description": "A signed Verifiable Credential selecting the canonical receipt for a forked (sequence, prev_root) point in a corridor state channel.",
+  "allOf": [
+    {
+      "$ref": "https://schemas.momentum-sez.org/msez/vc.schema.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "credentialSubject"
+      ],
+      "properties": {
+        "@context": {
+          "type": "array"
+        },
+        "type": {
+          "type": "array",
+          "contains": {
+            "const": "MSEZCorridorForkResolutionCredential"
+          }
+        },
+        "credentialSubject": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://schemas.momentum-sez.org/msez/corridor.fork-resolution.schema.json",
+          "title": "MSEZ Corridor Fork Resolution",
+          "description": "A fork-resolution artifact selects the canonical receipt for a forked (sequence, prev_root) point. The recommended packaging is as a signed VC (vc.corridor-fork-resolution.schema.json).",
+          "type": "object",
+          "required": [
+            "type",
+            "corridor_id",
+            "sequence",
+            "prev_root",
+            "chosen_next_root",
+            "resolved_at"
+          ],
+          "properties": {
+            "type": {
+              "const": "MSEZCorridorForkResolution"
+            },
+            "resolution_id": {
+              "type": "string"
+            },
+            "corridor_id": {
+              "type": "string"
+            },
+            "resolved_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "prev_root": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "chosen_next_root": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "candidates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "next_root"
+                ],
+                "properties": {
+                  "next_root": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "receipt_ref": {
+                    "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "authority_registry_ref": {
+              "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+            },
+            "policy_ref": {
+              "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "meta": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,209 @@
+openapi: 3.1.0
+info:
+  title: MSEZ Corridor State API (Scaffold)
+  version: 0.4.18
+  description: |
+    Scaffold OpenAPI specification for corridor state-channel operations.
+    These endpoints mirror the CLI subcommands under `msez corridor state ...`.
+
+tags:
+  - name: corridor.state
+    description: Corridor state-channel operations (receipts, proposals, forks, anchors, finality).
+
+paths:
+  /corridor/state/propose:
+    post:
+      tags: [corridor.state]
+      summary: Propose the next corridor receipt
+      description: Equivalent to `msez corridor state propose` (unsigned proposal artifact).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [corridor_id, sequence, prev_root, transition]
+              properties:
+                corridor_id:
+                  type: string
+                sequence:
+                  type: integer
+                  minimum: 0
+                timestamp:
+                  type: string
+                  format: date-time
+                  description: If omitted, the server MAY set it to now().
+                prev_root:
+                  type: string
+                  pattern: '^[a-f0-9]{64}$'
+                transition:
+                  $ref: 'https://schemas.momentum-sez.org/msez/transition-envelope.schema.json'
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Receipt proposal
+          content:
+            application/json:
+              schema:
+                $ref: 'https://schemas.momentum-sez.org/msez/corridor.receipt-proposal.schema.json'
+
+  /corridor/state/fork-resolve:
+    post:
+      tags: [corridor.state]
+      summary: Resolve a receipt fork
+      description: Equivalent to `msez corridor state fork-resolve` (unsigned VC).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [corridor_id, sequence, prev_root, chosen_next_root, issuer]
+              properties:
+                corridor_id:
+                  type: string
+                sequence:
+                  type: integer
+                  minimum: 0
+                prev_root:
+                  type: string
+                  pattern: '^[a-f0-9]{64}$'
+                chosen_next_root:
+                  type: string
+                  pattern: '^[a-f0-9]{64}$'
+                candidates:
+                  type: array
+                  items:
+                    type: object
+                    required: [next_root]
+                    properties:
+                      next_root:
+                        type: string
+                        pattern: '^[a-f0-9]{64}$'
+                issuer:
+                  type: string
+                  description: DID of the fork-resolution VC issuer.
+      responses:
+        '200':
+          description: Fork-resolution Verifiable Credential
+          content:
+            application/json:
+              schema:
+                $ref: 'https://schemas.momentum-sez.org/msez/vc.corridor-fork-resolution.schema.json'
+
+  /corridor/state/anchor:
+    post:
+      tags: [corridor.state]
+      summary: Anchor a corridor head commitment
+      description: Equivalent to `msez corridor state anchor` (unsigned VC).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [corridor_id, head_commitment_digest_sha256, chain, issuer]
+              properties:
+                corridor_id:
+                  type: string
+                head_commitment_digest_sha256:
+                  type: string
+                  pattern: '^[a-f0-9]{64}$'
+                chain:
+                  type: object
+                  required: [network]
+                  properties:
+                    network:
+                      type: string
+                    chain_id:
+                      type: string
+                    tx_hash:
+                      type: string
+                    block_number:
+                      type: integer
+                      minimum: 0
+                    block_hash:
+                      type: string
+                    block_timestamp:
+                      type: string
+                      format: date-time
+                checkpoint_ref:
+                  $ref: 'https://schemas.momentum-sez.org/msez/artifact-ref.schema.json'
+                issuer:
+                  type: string
+      responses:
+        '200':
+          description: Corridor anchor Verifiable Credential
+          content:
+            application/json:
+              schema:
+                $ref: 'https://schemas.momentum-sez.org/msez/vc.corridor-anchor.schema.json'
+
+  /corridor/state/finality-status:
+    post:
+      tags: [corridor.state]
+      summary: Compute corridor finality status for a head
+      description: Equivalent to `msez corridor state finality-status`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [corridor_id, final_state_root, receipt_count, mmr_root, head_commitment_digest_sha256]
+              properties:
+                corridor_id:
+                  type: string
+                as_of:
+                  type: string
+                  format: date-time
+                receipt_count:
+                  type: integer
+                  minimum: 0
+                final_state_root:
+                  type: string
+                  pattern: '^[a-f0-9]{64}$'
+                mmr_root:
+                  type: string
+                  pattern: '^[a-f0-9]{64}$'
+                head_commitment_digest_sha256:
+                  type: string
+                  pattern: '^[a-f0-9]{64}$'
+                evidence:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Finality status object
+          content:
+            application/json:
+              schema:
+                $ref: 'https://schemas.momentum-sez.org/msez/corridor.finality-status.schema.json'
+
+components:
+  schemas:
+    TransitionEnvelope:
+      $ref: 'https://schemas.momentum-sez.org/msez/transition-envelope.schema.json'
+    CorridorReceiptProposal:
+      $ref: 'https://schemas.momentum-sez.org/msez/corridor.receipt-proposal.schema.json'
+    CorridorForkResolution:
+      $ref: 'https://schemas.momentum-sez.org/msez/corridor.fork-resolution.schema.json'
+    CorridorForkResolutionCredential:
+      $ref: 'https://schemas.momentum-sez.org/msez/vc.corridor-fork-resolution.schema.json'
+    CorridorAnchorCredential:
+      $ref: 'https://schemas.momentum-sez.org/msez/vc.corridor-anchor.schema.json'
+    CorridorFinalityStatus:
+      $ref: 'https://schemas.momentum-sez.org/msez/corridor.finality-status.schema.json'
+    CorridorLifecycle:
+      $ref: 'https://schemas.momentum-sez.org/msez/corridor.lifecycle.schema.json'
+    CorridorLifecycleTransitionCredential:
+      $ref: 'https://schemas.momentum-sez.org/msez/vc.corridor-lifecycle-transition.schema.json'
+    CorridorRoute:
+      $ref: 'https://schemas.momentum-sez.org/msez/corridor.routing.schema.json'
+    WatcherBondCredential:
+      $ref: 'https://schemas.momentum-sez.org/msez/vc.watcher-bond.schema.json'
+    DisputeClaimCredential:
+      $ref: 'https://schemas.momentum-sez.org/msez/vc.dispute-claim.schema.json'
+    ArbitrationAwardCredential:
+      $ref: 'https://schemas.momentum-sez.org/msez/vc.arbitration-award.schema.json'

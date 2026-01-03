@@ -9,6 +9,94 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 - TBD
 
 
+
+
+## 0.4.18
+
+### Added
+- Typed transition envelopes (`transition-envelope.schema.json`) and typed attachment support via `ArtifactRef`.
+- Receipt proposal artifacts (`corridor.receipt-proposal.schema.json`) for pre-signature negotiation.
+- Fork resolution artifacts + VC wrapper (`corridor.fork-resolution.schema.json`, `vc.corridor-fork-resolution.schema.json`).
+- Anchor VC (`vc.corridor-anchor.schema.json`) and finality status output schema (`corridor.finality-status.schema.json`).
+- Additional corridor governance / ops schemas: lifecycle, lifecycle transitions, routing, watcher bond, dispute claim, arbitration award.
+
+### Changed
+- Corridor receipt verification is now fork-aware (canonical chain selection no longer requires receipts to be pre-sorted).
+- Receipt transition payload schema is now referenced via `transition-envelope.schema.json`.
+
+### CLI
+- `msez corridor state propose`: generate unsigned receipt proposals.
+- `msez corridor state fork-resolve`: generate unsigned fork-resolution VCs.
+- `msez corridor state anchor`: generate unsigned corridor-anchor VCs.
+- `msez corridor state finality-status`: compute a `MSEZCorridorFinalityStatus` for a corridor head.
+
+## 0.4.17
+
+### Added
+- Watcher quorum + compact head commitments:
+  - `schemas/vc.corridor-watcher-attestation.schema.json` extends `credentialSubject` with:
+    - `genesis_root` (checkpoint-derived)
+    - `head_commitment_digest_sha256` — deterministic digest over the corridor head fields so identical heads dedupe cleanly even if checkpoint timestamps differ.
+  - `msez corridor state watcher-compare` gains quorum evaluation:
+    - `--quorum-threshold` (e.g., `3/5` or `majority`)
+    - `--max-staleness` (e.g., `1h`, `24h`, `PT1H`)
+    - JSON report now includes `quorum` + per-watcher status flags.
+- New schema: `schemas/watcher-compare-result.schema.json` for machine-readable watcher-compare output.
+- New schema: `schemas/finality-level.schema.json` enumerating finality levels (for downstream systems to converge on common semantics).
+- New documentation:
+  - `docs/architecture/*` (overview, security model, legal integration, Mass integration)
+  - `docs/operators/*` (zone deployment, corridor formation, incident response)
+
+### Changed
+- `msez corridor state watcher-attest` now emits `genesis_root` + `head_commitment_digest_sha256` by default.
+
+### Version
+- Stack spec version bumped to `0.4.17`.
+
+
+
+## 0.4.16
+
+### Added
+- Watcher attestation aggregation:
+  - `msez corridor state watcher-compare` — ingest multiple watcher attestation VCs and flag divergent `(receipt_count, final_state_root)` heads.
+  - Supports `--fail-on-lag` (treat receipt-count divergence as failure), `--enforce-authority-registry` (optional allow-list), and `--require-artifacts` (commitment completeness for referenced checkpoints).
+
+### Fixed
+- `schema_validator(...)` call sites in checkpoint-related and availability-related commands now pass proper `Path` values (previous `str(...)` usage could break execution).
+
+### Version
+- Stack spec version bumped to `0.4.16`.
+
+
+
+## 0.4.15
+
+### Added
+- Watcher integrity primitives:
+  - `schemas/vc.corridor-watcher-attestation.schema.json` + `msez corridor state watcher-attest`
+  - `schemas/vc.corridor-fork-alarm.schema.json` + `msez corridor state fork-alarm`
+- Operational resilience primitive:
+  - `schemas/vc.artifact-availability.schema.json`
+  - `msez corridor availability-attest` and `msez corridor availability-verify`
+
+### Changed
+- Corridor Agreement VC schema adds `credentialSubject.state_channel.checkpointing` (checkpoint policy + thresholds).
+- `msez corridor state verify` gains checkpoint-aware sync options:
+  - `--from-checkpoint` to bootstrap verification from a prior signed checkpoint
+  - `--checkpoint` to verify a head checkpoint matches the computed final root / receipt count
+  - `--enforce-checkpoint-policy` to enforce signing thresholds and (when bootstrapping) receipt-gap bounds
+- Authority registry support is extended for hierarchical chaining (treaty body → national → zone):
+  - corridor.yaml `authority_registry_vc_path` now accepts an ordered list
+  - `schemas/vc.authority-registry.schema.json` adds optional `credentialSubject.parent_registry_ref`
+
+### Fixed
+- Implemented `base_did()` helper used by authority registry verification.
+
+### Version
+- Stack spec version bumped to `0.4.15`.
+
+
 ## 0.4.14
 
 ### Added

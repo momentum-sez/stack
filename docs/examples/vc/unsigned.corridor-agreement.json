@@ -43,6 +43,14 @@
         "agree"
       ]
     },
+    "state_channel": {
+      "watcher_quorum": {
+        "mode": "required",
+        "threshold": "majority",
+        "max_staleness": "1h",
+        "description": "Require a majority of authorized watchers to agree on the corridor head (liveness monitoring)."
+      }
+    },
     "terms": {
       "reference": "urn:msez:example:terms:corridor-agreement",
       "notes": "Development example only; real deployments should reference a signed legal agreement artifact."

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/corridor.state-machine.schema.json",
+  "title": "MSEZ Corridor Lifecycle State Machine",
+  "description": "A declarative lifecycle state machine for corridor operations. This defines allowed transitions between corridor lifecycle states (e.g., PROPOSED \u2192 OPERATIONAL \u2192 HALTED \u2192 DEPRECATED).",
+  "type": "object",
+  "required": [
+    "type",
+    "states",
+    "initial_state",
+    "allowed_transitions"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZCorridorStateMachine"
+    },
+    "version": {
+      "type": "string"
+    },
+    "states": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "initial_state": {
+      "type": "string",
+      "minLength": 1
+    },
+    "terminal_states": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "allowed_transitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "from",
+          "to"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "minLength": 1
+          },
+          "to": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string"
+          },
+          "requires_finality_level": {
+            "$ref": "https://schemas.momentum-sez.org/msez/finality-level.schema.json"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "notes": {
+      "type": "string"
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

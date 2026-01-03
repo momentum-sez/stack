@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/vc.corridor-lifecycle-transition.schema.json",
+  "title": "MSEZ Corridor Lifecycle Transition Verifiable Credential",
+  "description": "A signed lifecycle transition for a corridor instance (e.g., PROPOSED \u2192 OPERATIONAL \u2192 HALTED \u2192 DEPRECATED).",
+  "allOf": [
+    {
+      "$ref": "https://schemas.momentum-sez.org/msez/vc.schema.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "credentialSubject"
+      ],
+      "properties": {
+        "type": {
+          "type": "array",
+          "contains": {
+            "const": "MSEZCorridorLifecycleTransitionCredential"
+          }
+        },
+        "credentialSubject": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "required": [
+            "type",
+            "corridor_id",
+            "from_state",
+            "to_state",
+            "transitioned_at"
+          ],
+          "properties": {
+            "type": {
+              "const": "MSEZCorridorLifecycleTransition"
+            },
+            "transition_id": {
+              "type": "string"
+            },
+            "corridor_id": {
+              "type": "string"
+            },
+            "from_state": {
+              "type": "string"
+            },
+            "to_state": {
+              "type": "string"
+            },
+            "transitioned_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "policy_ref": {
+              "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+            },
+            "meta": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        }
+      }
+    }
+  ]
+}

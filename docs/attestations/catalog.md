@@ -40,8 +40,11 @@ This catalog defines common attestation types used across modules and corridors.
 - `corridor_receipt` — signer attests to an operational corridor state receipt (state-channel transition)
 - `corridor_checkpoint` — signer attests to a corridor state checkpoint (MMR root + head state root)
 
+- `corridor_watcher_attestation` — watcher attests to an observed corridor head and checkpoint digest (cheap fork detection + soft finality)
+- `corridor_fork_alarm` — watcher reports a receipt-chain fork with evidence (conflicting receipts / checkpoints)
 
-## Legal and governance bindings (v0.4.14+)
+
+## Legal and governance bindings (v0.4.15+)
 
 - `lawpack_attestation` — signer attests that a given lawpack digest corresponds to legally valid law for a jurisdiction/domain as-of a date
 - `authority_registry` — signer attests to an authority registry snapshot (authorized DIDs + allowed attestation kinds)

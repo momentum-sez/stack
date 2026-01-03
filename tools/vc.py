@@ -121,6 +121,15 @@ def normalize_verification_method(vm: str) -> str:
     return vm.split("#", 1)[0]
 
 
+
+def base_did(did_or_vm: str) -> str:
+    """Return the base DID (strip any fragment).
+
+    This helper is used across the stack when comparing issuer DIDs and
+    verificationMethod values.
+    """
+    return str(did_or_vm or "").split("#", 1)[0]
+
 def now_rfc3339() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 

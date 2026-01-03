@@ -38,6 +38,21 @@
     "key_rotation_path": {
       "type": "string"
     },
+    "authority_registry_vc_path": {
+      "description": "Optional path(s) to signed Authority Registry VC(s). When present, verifiers may require trust anchors and VC signers to be authorized via this out-of-band registry chain (treaty → national → zone).",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    },
     "definition_vc_path": {
       "type": "string",
       "description": "Path to a signed Corridor Definition VC binding corridor.yaml + security artifacts (hashes) to this corridor_id."

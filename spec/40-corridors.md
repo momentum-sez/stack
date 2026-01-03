@@ -17,7 +17,7 @@ Trust anchors MUST be expressed as machine-readable artifacts conforming to:
 - `schemas/trust-anchors.schema.json`
 - `schemas/key-rotation.schema.json`
 
-### External signer authorization (authority registry) (v0.4.14+)
+### External signer authorization (authority registry) (v0.4.15+)
 
 The stack historically authorizes corridor signers via the corridor module's `trust-anchors.yaml`.
 This is sufficient for *technical* verification, but it creates a bootstrapping/circularity risk:
@@ -26,7 +26,23 @@ This is sufficient for *technical* verification, but it creates a bootstrapping/
 
 To mitigate this, corridor manifests MAY additionally reference an out-of-band **Authority Registry VC**:
 
+
+
+Chaining semantics (non-normative, but enforced by the reference tool when a list is provided):
+
+- Each registry VC MAY include `credentialSubject.parent_registry_ref`.
+- When a corridor supplies a list, the tool treats the **last** VC as the effective allow-list for corridor attestations.
+- For each adjacent pair in the chain, the *child* registry issuer MUST be authorized by the *parent* registry with `allowed_attestations` containing `authority_registry` (or wildcard `*`).
+
+This supports hierarchical delegation (treaty body → national authority → zone authority) while keeping corridor packages self-contained.
 - `authority_registry_vc_path: <path>`
+- `authority_registry_vc_path: [<treaty.vc.json>, <national.vc.json>, <zone.vc.json>]` (ordered chain: parent → child)
+
+Chaining semantics (v0.4.15+):
+
+- The registry chain represents hierarchical delegation: **treaty body → national authority → zone authority**.
+- For each adjacent pair in the chain, the *child* registry issuer MUST be authorized by the *parent* registry with `allowed_attestations` containing `authority_registry` (or wildcard `*`).
+- The **last** registry in the list is treated as the effective allow-list for corridor attestations.
 
 If present, verifiers SHOULD ensure that:
 
@@ -487,6 +503,83 @@ Verifiers SHOULD:
 - verify the inclusion proof against the checkpoint MMR root.
 
 
+### Checkpoint finality policy (v0.4.15+)
+
+Corridor Agreement VCs MAY specify a checkpointing policy under:
+
+- `credentialSubject.state_channel.checkpointing`
+
+Suggested fields (see schema):
+
+- `mode`: `optional` | `required`
+- `max_receipts_between_checkpoints`: soft operational bound for how many receipts may elapse between successive checkpoints
+- `thresholds`: signature quorum requirements for a checkpoint, expressed using the same role/threshold structure as `state_channel.receipt_signing.thresholds`
+
+When `mode` is `required`, verifiers SHOULD treat the absence of a head checkpoint as a policy violation.
+
+The reference tool supports scalable sync by allowing verifiers to bootstrap from a trusted checkpoint and verify only the tail receipts since that checkpoint.
+
+
+### Watcher attestations and fork alarms (v0.4.15+)
+
+Independent watchers can provide cheap, high-leverage integrity signals:
+
+- **Watcher attestations**: a watcher issues a VC (`schemas/vc.corridor-watcher-attestation.schema.json`) committing to an observed head and referencing a checkpoint digest.
+- **Fork alarms**: a watcher issues a VC (`schemas/vc.corridor-fork-alarm.schema.json`) presenting evidence of two conflicting receipts for the same `(corridor_id, sequence, prev_root)`.
+
+Watcher artifacts are designed to be publishable out-of-band (public transparency logs, partner portals, etc.) and can be used to rapidly detect and respond to forks.
+
+Reference tooling includes an aggregation primitive:
+
+- `msez corridor state watcher-compare <module> --vcs <dir-or-file>`
+
+The aggregator compares `(receipt_count, final_state_root)` across watcher attestations for the same `corridor_id`:
+
+- If two or more attestations report the same `receipt_count` but different `final_state_root`, verifiers SHOULD treat this as a **fork alarm** (strong signal).
+- If attestations disagree only on `receipt_count`, verifiers SHOULD treat this as **lag/out-of-sync** rather than a fork; implementations MAY fail verification in strict mode.
+
+
+#### Watcher quorum policy (v0.4.17+)
+
+Corridor Agreement VCs MAY specify a watcher quorum policy under:
+
+- `credentialSubject.state_channel.watcher_quorum`
+
+This policy is intended for **liveness monitoring** (and optional soft-finality):
+
+- A corridor operator (or third-party monitoring system) ingests signed watcher attestation VCs.
+- A quorum is reached when **K-of-N** authorized watchers agree on the same corridor head.
+- If a fork-like divergence is detected (same `receipt_count`, different `final_state_root`), any apparent quorum is overridden and treated as a **critical alarm**.
+
+The reference tool supports this via:
+
+```bash
+msez corridor state watcher-compare <corridor-module> \
+  --vcs ./watcher-attestations/ \
+  --quorum-threshold '3/5' \
+  --require-quorum \
+  --max-staleness '1h'
+```
+
+`--quorum-threshold` accepts values like:
+
+- `majority` (default)
+- `K/N` (e.g., `3/5`)
+
+Implementations MAY derive `N` from the authority registry allow-list for `corridor_watcher_attestation` (when configured); otherwise they MAY derive `N` from the set of observed watchers.
+
+
+#### Compact head commitments (gossip-friendly)
+
+Watcher attestation VCs include a deterministic head commitment digest:
+
+- `credentialSubject.head_commitment_digest_sha256`
+
+This digest is computed over a stable subset of head fields (excluding timestamps), so identical heads dedupe perfectly even when checkpoint objects differ in timestamp/proof metadata.
+
+Implementations SHOULD group attestations by `head_commitment_digest_sha256` when computing quorum and divergence signals.
+
+
 ### ZK proofs (optional)
 
 Receipts MAY include a `zk` object. When present, implementations SHOULD:
@@ -541,6 +634,8 @@ The reference implementation includes:
 - `msez corridor vc-init-agreement` — scaffold an unsigned Corridor Agreement VC from a corridor package
 - `msez corridor verify` — verify corridor definition, agreement, and activation
 - `msez corridor status` — summarize activation status and blockers across an agreement-set
+- `msez corridor availability-attest` — create a lawpack artifact availability attestation VC
+- `msez corridor availability-verify` — verify availability attestations cover the corridor lawpacks
 - `msez corridor state genesis-root` — compute corridor state-channel genesis_root
 - `msez corridor state receipt-init` — create a corridor state receipt (computes next_root; optionally signs)
 - `msez corridor state verify` — verify a receipt chain and print the final root

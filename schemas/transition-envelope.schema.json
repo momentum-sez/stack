@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/transition-envelope.schema.json",
+  "title": "MSEZ Transition Envelope",
+  "description": "Typed transition envelope for corridor state channels. Generic by design: payload schemas, validation rulesets, and optional ZK circuits are referenced by digest commitments or via a Transition Type Registry snapshot.",
+  "type": "object",
+  "required": [
+    "type",
+    "kind",
+    "payload_sha256"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZTransitionEnvelope"
+    },
+    "kind": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema": {
+      "type": "string",
+      "description": "Optional schema identifier/URI for the payload."
+    },
+    "schema_digest_sha256": {
+      "description": "Optional payload schema commitment. Legacy form is a raw sha256 digest; preferred form is an ArtifactRef with artifact_type='schema'.",
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+            },
+            {
+              "properties": {
+                "artifact_type": {
+                  "const": "schema"
+                }
+              },
+              "required": [
+                "artifact_type",
+                "digest_sha256"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ruleset_digest_sha256": {
+      "description": "Optional transition ruleset commitment. Legacy form is a raw sha256 digest; preferred form is an ArtifactRef with artifact_type='ruleset'.",
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+            },
+            {
+              "properties": {
+                "artifact_type": {
+                  "const": "ruleset"
+                }
+              },
+              "required": [
+                "artifact_type",
+                "digest_sha256"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "zk_circuit_digest_sha256": {
+      "description": "Optional ZK circuit commitment for proof-carrying transitions. Legacy form is a raw sha256 digest; preferred form is an ArtifactRef with artifact_type='circuit'.",
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+            },
+            {
+              "properties": {
+                "artifact_type": {
+                  "const": "circuit"
+                }
+              },
+              "required": [
+                "artifact_type",
+                "digest_sha256"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "registry_override": {
+      "description": "If true, allows this envelope to override registry-derived digests (schema/ruleset/circuit). Verifiers MAY reject overrides based on corridor policy.",
+      "type": "boolean"
+    },
+    "payload": {
+      "description": "Optional inlined payload. If omitted, payload_sha256 commits to an out-of-band payload.",
+      "oneOf": [
+        {
+          "type": "object"
+        },
+        {
+          "type": "array"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "payload_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256(JCS(payload)) when payload is present, otherwise SHA256 of an out-of-band payload per corridor policy."
+    },
+    "attachments": {
+      "type": "array",
+      "description": "Optional list of referenced artifacts committed by digest. Attachments are typed artifact references so they can point at blobs, schemas, VCs, checkpoints, etc.",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Legacy attachment reference (v0.4.9 and earlier): untyped digest treated as a `blob` artifact.",
+            "required": [
+              "uri",
+              "digest_sha256"
+            ],
+            "properties": {
+              "uri": {
+                "type": "string"
+              },
+              "digest_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "media_type": {
+                "type": "string"
+              },
+              "byte_length": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": true,
+            "not": {
+              "required": [
+                "artifact_type"
+              ]
+            }
+          },
+          {
+            "description": "Typed artifact attachment reference (v0.4.10+).",
+            "allOf": [
+              {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Optional free-form metadata.",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

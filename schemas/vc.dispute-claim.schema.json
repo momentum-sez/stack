@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/vc.dispute-claim.schema.json",
+  "title": "MSEZ Dispute Claim Verifiable Credential",
+  "description": "A signed VC representing the filing of a dispute claim under a corridor's dispute resolution policy.",
+  "allOf": [
+    {
+      "$ref": "https://schemas.momentum-sez.org/msez/vc.schema.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "credentialSubject"
+      ],
+      "properties": {
+        "type": {
+          "type": "array",
+          "contains": {
+            "const": "MSEZDisputeClaimCredential"
+          }
+        },
+        "credentialSubject": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "required": [
+            "type",
+            "dispute_id",
+            "corridor_id",
+            "claimant_id",
+            "respondent_id",
+            "filed_at",
+            "claim"
+          ],
+          "properties": {
+            "type": {
+              "const": "MSEZDisputeClaim"
+            },
+            "dispute_id": {
+              "type": "string"
+            },
+            "corridor_id": {
+              "type": "string"
+            },
+            "claimant_id": {
+              "type": "string"
+            },
+            "respondent_id": {
+              "type": "string"
+            },
+            "filed_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "head_commitment_digest_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "related_artifacts": {
+              "type": "array",
+              "items": {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              }
+            },
+            "evidence": {
+              "type": "array",
+              "items": {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              }
+            },
+            "forum": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "claim": {
+              "type": "string"
+            },
+            "requested_relief": {
+              "type": "string"
+            },
+            "meta": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        }
+      }
+    }
+  ]
+}

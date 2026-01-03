@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/corridor.receipt-proposal.schema.json",
+  "title": "MSEZ Corridor Receipt Proposal",
+  "description": "An unsigned proposal for a corridor state receipt. Used to negotiate the next transition before co-signing a receipt. Proposals are non-normative artifacts; verifiers SHOULD treat receipts as authoritative.",
+  "type": "object",
+  "required": [
+    "type",
+    "corridor_id",
+    "sequence",
+    "timestamp",
+    "prev_root",
+    "lawpack_digest_set",
+    "ruleset_digest_set",
+    "transition",
+    "computed_next_root"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZCorridorReceiptProposal"
+    },
+    "proposal_id": {
+      "type": "string"
+    },
+    "corridor_id": {
+      "type": "string"
+    },
+    "proposed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "proposed_by": {
+      "type": "string",
+      "description": "DID or identifier of the proposal author."
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "prev_root": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "computed_next_root": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "The next_root that would result if this proposal were materialized into an MSEZCorridorStateReceipt (excluding proof)."
+    },
+    "transition_type_registry_digest_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "lawpack_digest_set": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "ruleset_digest_set": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "transition": {
+      "$ref": "https://schemas.momentum-sez.org/msez/transition-envelope.schema.json"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

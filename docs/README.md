@@ -17,3 +17,16 @@ Start here:
 - `authoring/licensing-pack.md`
 - `corridors/overview.md`
 
+Architecture deep dives:
+
+- `architecture/OVERVIEW.md`
+- `architecture/SECURITY-MODEL.md`
+- `architecture/LEGAL-INTEGRATION.md`
+- `architecture/MASS-INTEGRATION.md`
+
+Operator guides:
+
+- `operators/ZONE-DEPLOYMENT-GUIDE.md`
+- `operators/CORRIDOR-FORMATION-GUIDE.md`
+- `operators/INCIDENT-RESPONSE.md`
+

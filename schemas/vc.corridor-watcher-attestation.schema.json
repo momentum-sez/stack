@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/vc.corridor-watcher-attestation.schema.json",
+  "title": "MSEZ Corridor Watcher Attestation Verifiable Credential",
+  "description": "A Verifiable Credential by an independent watcher/observer attesting to a corridor's observed head state (final_state_root, receipt_count) and committing to a specific checkpoint digest. Used for cheap fork detection (conflicting watcher attestations) and as a soft-finality signal.",
+  "type": "object",
+  "required": ["@context", "type", "issuer", "issuanceDate", "credentialSubject", "proof"],
+  "properties": {
+    "@context": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1
+    },
+    "id": {"type": "string"},
+    "type": {
+      "type": "array",
+      "items": {"type": "string"},
+      "contains": {"const": "MSEZCorridorWatcherAttestationCredential"}
+    },
+    "issuer": {
+      "oneOf": [
+        {"type": "string"},
+        {
+          "type": "object",
+          "required": ["id"],
+          "properties": {
+            "id": {"type": "string"},
+            "name": {"type": "string"}
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "issuanceDate": {"type": "string"},
+    "expirationDate": {"type": "string"},
+    "credentialSubject": {
+      "type": "object",
+      "required": ["corridor_id", "observed_at", "receipt_count", "final_state_root", "checkpoint_digest_sha256"],
+      "properties": {
+        "corridor_id": {"type": "string", "minLength": 1},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "genesis_root": {
+          "description": "Checkpoint-derived genesis root for the corridor state channel.",
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "receipt_count": {"type": "integer", "minimum": 1},
+        "final_state_root": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "mmr_root": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "head_commitment_digest_sha256": {
+          "description": "Deterministic digest over the corridor head fields (corridor_id, genesis_root, receipt_count, final_state_root, mmr_root). Enables gossip dedupe even if checkpoint timestamps differ.",
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "checkpoint_digest_sha256": {
+          "description": "Payload digest (sha256 over canonical checkpoint without proof).",
+          "oneOf": [
+            {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+            {
+              "allOf": [
+                {"$ref": "artifact-ref.schema.json"},
+                {
+                  "properties": {"artifact_type": {"const": "checkpoint"}},
+                  "required": ["artifact_type", "digest_sha256"]
+                }
+              ]
+            }
+          ]
+        },
+        "finality_level": {
+          "description": "Optional explicit finality level claim (for downstream systems).",
+          "$ref": "finality-level.schema.json"
+        },
+        "no_fork_observed": {
+          "description": "Optional explicit claim that the watcher has not observed any fork for this corridor up to receipt_count.",
+          "type": "boolean"
+        },
+        "notes": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "proof": {
+      "oneOf": [
+        {"type": "object"},
+        {"type": "array", "items": {"type": "object"}, "minItems": 1}
+      ]
+    }
+  },
+  "additionalProperties": true
+}

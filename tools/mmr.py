@@ -284,3 +284,43 @@ def verify_inclusion_proof(proof: Dict[str, Any]) -> bool:
 
     computed_root = bag_peaks(peaks2)
     return computed_root == root
+
+
+def peaks_from_json(peaks_json: Any) -> List[Peak]:
+    """Parse a checkpoint MMR peaks list from JSON."""
+    peaks: List[Peak] = []
+    if not isinstance(peaks_json, list):
+        return peaks
+    for p in peaks_json:
+        if not isinstance(p, dict):
+            continue
+        h = p.get("height")
+        d = p.get("hash")
+        if isinstance(h, int) and isinstance(d, str) and d:
+            peaks.append(Peak(height=h, hash=d))
+    return peaks
+
+
+def peaks_to_json(peaks: List[Peak]) -> List[Dict[str, Any]]:
+    return [{"height": int(p.height), "hash": str(p.hash)} for p in peaks]
+
+
+def append_peaks(existing_peaks: List[Peak], new_leaf_hashes: List[str]) -> List[Peak]:
+    """Incrementally append leaves to an existing MMR peak set.
+
+    This enables verifiers to start from a checkpoint (size + peaks) and extend the
+    accumulator with new receipts without replaying the entire history.
+
+    Algorithm: treat `existing_peaks` as the current stack of (height,hash) nodes. For each
+    new leaf hash, merge while the top of the stack has the same height.
+    """
+    stack: List[Tuple[int, str]] = [(int(p.height), str(p.hash)) for p in existing_peaks]
+    for leaf in new_leaf_hashes:
+        cur_h = 0
+        cur = str(leaf)
+        while stack and stack[-1][0] == cur_h:
+            left_h, left = stack.pop()
+            cur = mmr_node_hash(left, cur)
+            cur_h = left_h + 1
+        stack.append((cur_h, cur))
+    return [Peak(height=h, hash=d) for (h, d) in stack]

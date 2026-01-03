@@ -1,4 +1,4 @@
-# Momentum SEZ Stack (MSEZ) — v0.4.14
+# Momentum SEZ Stack (MSEZ) — v0.4.18
 
 
 This repository is a **reference specification + reference library** for building *programmable Special Economic Zones (SEZs)* as modular, forkable, and composable “jurisdiction nodes” in the Momentum/Mass network.
@@ -50,6 +50,10 @@ Skeleton created: 2025-12-21.
 - Operational modules: regulator console and data classification (`modules/operational/*`)
 - Documentation guides (`docs/`) and CI workflow (`.github/workflows/ci.yml`)
 - Foundational upgrade / fortification plan (`docs/fortification/foundational-upgrade-v0.4.14.md`) (v0.4.14)
+- High-leverage integrity upgrades (`docs/fortification/high-leverage-v0.4.15.md`) (v0.4.15)
+- Watcher attestation aggregation (`watcher-compare`) for instant fork alarms (v0.4.16)
+- Watcher quorum policy + compact head commitments (v0.4.17)
+- Fork-aware receipt verification + transition envelopes + fork resolutions + anchors/finality scaffolds (v0.4.18)
 
 
 ## Tooling commands (v0.4+)
@@ -58,12 +62,18 @@ Skeleton created: 2025-12-21.
 # corridor cryptographic verification (VCs + agreements)
 python tools/msez.py corridor verify modules/corridors/swift
 python tools/msez.py corridor status modules/corridors/swift
+python tools/msez.py corridor availability-attest modules/corridors/swift --issuer did:example:operator --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/availability.vc.json
+python tools/msez.py corridor availability-verify modules/corridors/swift --vcs /tmp/availability.vc.json
 
 # corridor state channels (verifiable receipts)
 python tools/msez.py corridor state genesis-root modules/corridors/swift
 python tools/msez.py corridor state receipt-init modules/corridors/swift   --sequence 0   --transition docs/examples/state/noop.transition.json   --sign --key docs/examples/keys/dev.ed25519.jwk   --out /tmp/receipt0.json
 python tools/msez.py corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json
 python tools/msez.py corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json --require-artifacts
+python tools/msez.py corridor state checkpoint modules/corridors/swift --receipts /tmp/receipt0.json --issuer did:example:zone --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/checkpoint.json
+python tools/msez.py corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json --checkpoint /tmp/checkpoint.json --enforce-checkpoint-policy
+python tools/msez.py corridor state watcher-attest modules/corridors/swift --checkpoint /tmp/checkpoint.json --issuer did:example:watcher --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/watcher.vc.json
+python tools/msez.py corridor state fork-alarm modules/corridors/swift --receipt-a /tmp/receipt0.json --receipt-b /tmp/receipt0_fork.json --issuer did:example:watcher --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/fork-alarm.vc.json
 
 # transition type registries + lock snapshots (v0.4.5+; CAS v0.4.7+)
 python tools/msez.py registry transition-types-lock registries/transition-types.yaml

@@ -1,4 +1,4 @@
-# Momentum SEZ Stack (MSEZ) — v0.4.18
+# Momentum SEZ Stack (MSEZ) — v0.4.20
 
 
 This repository is a **reference specification + reference library** for building *programmable Special Economic Zones (SEZs)* as modular, forkable, and composable “jurisdiction nodes” in the Momentum/Mass network.
@@ -54,6 +54,9 @@ Skeleton created: 2025-12-21.
 - Watcher attestation aggregation (`watcher-compare`) for instant fork alarms (v0.4.16)
 - Watcher quorum policy + compact head commitments (v0.4.17)
 - Fork-aware receipt verification + transition envelopes + fork resolutions + anchors/finality scaffolds (v0.4.18)
+- Lifecycle state machine + evidence-gated transitions (HALT/RESUME) (v0.4.19)
+- Fork resolution + lifecycle unit tests (v0.4.19)
+- CLI signing hardening + regression tests for watcher-attest/fork-alarm/availability-attest (v0.4.20)
 
 
 ## Tooling commands (v0.4+)

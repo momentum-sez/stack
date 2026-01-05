@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MSEZ Stack tool (reference implementation) — v0.4.18
+"""MSEZ Stack tool (reference implementation) — v0.4.20
 
 Capabilities:
 - validate modules/profiles/zones against schemas
@@ -29,6 +29,7 @@ import re
 import shutil
 import subprocess
 import sys
+import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -37,6 +38,11 @@ from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
 from lxml import etree
+
+# Common helpers used across CLI subcommands. Imported at module load so that
+# individual commands can remain small and tests can import `cmd_*` functions
+# without tripping `NameError` on shared utilities.
+from tools.vc import now_rfc3339  # type: ignore
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 # Ensure imports like `tools.akoma.render` work even when this file is executed
@@ -46,7 +52,7 @@ if str(REPO_ROOT) not in sys.path:
 
 # Local (repo) imports (after sys.path fix)
 from tools import artifacts as artifact_cas
-STACK_SPEC_VERSION = "0.4.18"
+STACK_SPEC_VERSION = "0.4.20"
 
 # Templating: we intentionally support two simple placeholder syntaxes used in v0.4 (safe placeholder subset)
 # - {{ VAR_NAME }} (common in Akoma templates)
@@ -159,6 +165,51 @@ def _coerce_sha256(value: Any) -> str:
     if isinstance(value, str):
         return value.strip().lower()
     return ""
+
+
+def _verified_base_dids(verify_results: Any) -> Set[str]:
+    """Extract base DIDs for all successfully-verified proofs.
+
+    The reference verifier (tools.vc.verify_credential) returns a list of ProofResult
+    objects. Older/alternate toolchains may return dict-like structures; we accept
+    those best-effort to keep the stack resilient.
+
+    Returns:
+      A set of base DIDs (did:key:..., did:web:..., etc).
+    """
+    out: Set[str] = set()
+    if not verify_results:
+        return out
+
+    # Legacy dict shape: {"verified": [{"verificationMethod": "..."}], ...}
+    if isinstance(verify_results, dict):
+        for ok in (verify_results.get("verified") or []):
+            if not isinstance(ok, dict):
+                continue
+            vm = str(ok.get("verificationMethod") or ok.get("verification_method") or "")
+            did = vm.split("#", 1)[0] if vm else ""
+            if did:
+                out.add(did)
+        return out
+
+    # Preferred list shape: [ProofResult, ...]
+    if isinstance(verify_results, list):
+        for r in verify_results:
+            try:
+                if isinstance(r, dict):
+                    ok = bool(r.get("ok") or r.get("verified") or r.get("valid"))
+                    vm = str(r.get("verificationMethod") or r.get("verification_method") or "")
+                else:
+                    ok = bool(getattr(r, "ok", False))
+                    vm = str(getattr(r, "verification_method", "") or getattr(r, "verificationMethod", "") or "")
+                if not ok:
+                    continue
+                did = vm.split("#", 1)[0] if vm else ""
+                if did:
+                    out.add(did)
+            except Exception:
+                continue
+    return out
 
 
 def make_artifact_ref(
@@ -4040,15 +4091,17 @@ def _corridor_state_build_chain(
             )
             continue
 
-        # Expected digest sets
+        # Expected digest sets (ArtifactRef-aware)
         if expected_ruleset_set:
-            declared_rulesets = receipt.get("ruleset_digest_set") or []
+            declared_rulesets_raw = receipt.get("ruleset_digest_set") or []
+            declared_rulesets = _normalize_digest_set(declared_rulesets_raw)
             missing = [x for x in expected_ruleset_set if x not in declared_rulesets]
             if missing:
                 errors.append(f"ruleset_digest_set missing expected entries {missing}: {rp}")
                 continue
         if expected_lawpack_set:
-            declared_lawpacks = receipt.get("lawpack_digest_set") or []
+            declared_lawpacks_raw = receipt.get("lawpack_digest_set") or []
+            declared_lawpacks = _normalize_digest_set(declared_lawpacks_raw)
             if set(declared_lawpacks) != set(expected_lawpack_set):
                 errors.append(
                     f"lawpack_digest_set mismatch: {rp}: expected {expected_lawpack_set} got {declared_lawpacks}"
@@ -4057,7 +4110,7 @@ def _corridor_state_build_chain(
 
         # Transition-type-registry binding checks (optional enforcement)
         if enforce_transition_types:
-            receipt_ttr_digest = receipt.get("transition_type_registry_digest_sha256")
+            receipt_ttr_digest = _coerce_sha256(receipt.get("transition_type_registry_digest_sha256"))
             if locked_ttr_digest:
                 if receipt_ttr_digest and receipt_ttr_digest != locked_ttr_digest:
                     errors.append(
@@ -4073,16 +4126,30 @@ def _corridor_state_build_chain(
 
         # Require artifacts (best-effort coverage)
         if require_artifacts:
-            for d in receipt.get("lawpack_digest_set") or []:
-                _require_artifact("lawpack", str(d), f"lawpack_digest_set[{d}]")
-            for d in receipt.get("ruleset_digest_set") or []:
-                _require_artifact("ruleset", str(d), f"ruleset_digest_set[{d}]")
+            # digest sets may contain raw digest strings OR ArtifactRefs.
+            for entry in receipt.get("lawpack_digest_set") or []:
+                dd = _coerce_sha256(entry)
+                if not dd:
+                    continue
+                at = "lawpack"
+                if isinstance(entry, dict) and entry.get("artifact_type"):
+                    at = str(entry.get("artifact_type") or at)
+                _require_artifact(at, dd, f"lawpack_digest_set[{dd}]")
+            for entry in receipt.get("ruleset_digest_set") or []:
+                dd = _coerce_sha256(entry)
+                if not dd:
+                    continue
+                at = "ruleset"
+                if isinstance(entry, dict) and entry.get("artifact_type"):
+                    at = str(entry.get("artifact_type") or at)
+                _require_artifact(at, dd, f"ruleset_digest_set[{dd}]")
             if receipt.get("transition_type_registry_digest_sha256"):
-                _require_artifact(
-                    "transition-types",
-                    str(receipt.get("transition_type_registry_digest_sha256")),
-                    "transition_type_registry_digest_sha256",
-                )
+                ttr_entry = receipt.get("transition_type_registry_digest_sha256")
+                dd = _coerce_sha256(ttr_entry)
+                at = "transition-types"
+                if isinstance(ttr_entry, dict) and ttr_entry.get("artifact_type"):
+                    at = str(ttr_entry.get("artifact_type") or at)
+                _require_artifact(at, dd, "transition_type_registry_digest_sha256")
 
             # transition envelope artifacts
             env = receipt.get("transition") or {}
@@ -4104,16 +4171,11 @@ def _corridor_state_build_chain(
                 elif isinstance(att, dict) and att.get("digest_sha256") and "artifact_type" not in att:
                     _require_artifact("blob", str(att.get("digest_sha256")), "transition.attachments[legacy]")
 
-        # Signature verification
+        # Signature verification (ProofResult-aware)
         from tools.vc import verify_credential
 
         vres = verify_credential(receipt)
-        ok_dids: Set[str] = set()
-        for ok in vres.get("verified", []):
-            vm = str(ok.get("verificationMethod") or "")
-            did = vm.split("#")[0] if vm else ""
-            if did:
-                ok_dids.add(did)
+        ok_dids: Set[str] = _verified_base_dids(vres)
 
         if not ok_dids:
             errors.append(f"receipt signature verification failed (no valid proofs): {rp}")
@@ -4151,7 +4213,8 @@ def _corridor_state_build_chain(
 
         from tools.vc import verify_credential
         ck_v = verify_credential(ck)
-        if not ck_v.get("verified"):
+        ck_ok_dids = _verified_base_dids(ck_v)
+        if not ck_ok_dids:
             errors.append(f"from-checkpoint signature verification failed: {from_checkpoint_path}")
             return {}, warnings, errors
 
@@ -4392,7 +4455,8 @@ def cmd_corridor_state_verify(args: argparse.Namespace) -> int:
             else:
                 from tools.vc import verify_credential
                 ck_v = verify_credential(ck)
-                checkpoint_verified = bool(ck_v.get("verified"))
+                ck_ok_dids = _verified_base_dids(ck_v)
+                checkpoint_verified = bool(ck_ok_dids)
                 if not checkpoint_verified:
                     errors.append(f"checkpoint signature verification failed: {ck_path}")
 
@@ -4417,12 +4481,7 @@ def cmd_corridor_state_verify(args: argparse.Namespace) -> int:
                     errors.extend(agreement_errs)
                     role_by_did = agreement_summary.get("role_by_did") or {}
                     ck_thresholds = agreement_summary.get("checkpoint_signing_thresholds") or []
-                    ok_dids: Set[str] = set()
-                    for ok in ck_v.get("verified", []):
-                        vm = str(ok.get("verificationMethod") or "")
-                        did = vm.split("#")[0] if vm else ""
-                        if did:
-                            ok_dids.add(did)
+                    ok_dids: Set[str] = set(ck_ok_dids)
                     for t in ck_thresholds:
                         role = str(t.get("role") or "")
                         req = int(t.get("required") or 0)
@@ -4880,7 +4939,7 @@ def cmd_corridor_state_finality_status(args: argparse.Namespace) -> int:
             else:
                 from tools.vc import verify_credential
                 ck_v = verify_credential(ck)
-                if not ck_v.get("verified"):
+                if not _verified_base_dids(ck_v):
                     warnings.append(f"checkpoint signature not verified: {ck_path}")
                 else:
                     # Match head
@@ -4950,7 +5009,7 @@ def cmd_corridor_state_finality_status(args: argparse.Namespace) -> int:
                     # Best-effort verify signature
                     from tools.vc import verify_credential
                     av = verify_credential(aobj)
-                    if av.get("verified"):
+                    if _verified_base_dids(av):
                         ad = sha256_bytes(af.read_bytes())
                         valid_anchors.append(make_artifact_ref("vc", ad, uri=str(af)))
             except Exception:
@@ -4979,7 +5038,7 @@ def cmd_corridor_state_finality_status(args: argparse.Namespace) -> int:
                 if isinstance(subj, dict) and str(subj.get("head_commitment_digest_sha256")) == head_commitment:
                     from tools.vc import verify_credential
                     av = verify_credential(aobj)
-                    if av.get("verified"):
+                    if _verified_base_dids(av):
                         ad = sha256_bytes(af.read_bytes())
                         valid_awards.append(make_artifact_ref("vc", ad, uri=str(af)))
             except Exception:
@@ -5591,8 +5650,8 @@ def cmd_corridor_state_watcher_attest(args: argparse.Namespace) -> int:
             return 2
         if not key_path.is_absolute():
             key_path = REPO_ROOT / key_path
-        kp = load_proof_keypair(key_path)
-        add_ed25519_proof(out_vc, kp)
+        priv, vm = load_proof_keypair(key_path)
+        add_ed25519_proof(out_vc, priv, vm)
 
     out_path = pathlib.Path(str(getattr(args, "out", "") or "").strip() or f"corridor.watcher.{corridor_id}.vc.unsigned.json")
     if not out_path.is_absolute():
@@ -6179,7 +6238,7 @@ def cmd_corridor_state_fork_alarm(args: argparse.Namespace) -> int:
     The fork alarm asserts two conflicting receipts exist for the same (sequence, prev_root).
     """
 
-    from tools.vc import add_ed25519_proof, load_proof_keypair  # type: ignore
+    from tools.vc import now_rfc3339, add_ed25519_proof, load_proof_keypair  # type: ignore
 
     # Resolve corridor module
     p = pathlib.Path(args.path)
@@ -6283,8 +6342,8 @@ def cmd_corridor_state_fork_alarm(args: argparse.Namespace) -> int:
             return 2
         if not key_path.is_absolute():
             key_path = REPO_ROOT / key_path
-        kp = load_proof_keypair(key_path)
-        add_ed25519_proof(out_vc, kp)
+        priv, vm = load_proof_keypair(key_path)
+        add_ed25519_proof(out_vc, priv, vm)
 
     out_path = pathlib.Path(str(getattr(args, "out", "") or "").strip() or f"corridor.fork-alarm.{corridor_id}.vc.unsigned.json")
     if not out_path.is_absolute():
@@ -6918,6 +6977,8 @@ def cmd_corridor_availability_attest(args: argparse.Namespace) -> int:
     Primary intent: lawpack availability attestations for operational resilience.
     """
 
+    from tools.vc import now_rfc3339, add_ed25519_proof, load_proof_keypair  # type: ignore
+
     module_dir = pathlib.Path(args.path).resolve()
     cfg = load_yaml(module_dir / "corridor.yaml")
     corridor_id = str(cfg.get("corridor_id") or "")
@@ -6926,7 +6987,7 @@ def cmd_corridor_availability_attest(args: argparse.Namespace) -> int:
         return 2
 
     # Compute the union of required (pinned) lawpacks.
-    expected_lawpacks = corridor_expected_lawpack_digest_set(module_dir, cfg)
+    expected_lawpacks = corridor_expected_lawpack_digest_set(module_dir)
     if not expected_lawpacks:
         print("AVAIL FAIL: no pinned lawpacks found for corridor (agreement VCs missing or empty)", file=sys.stderr)
         return 2
@@ -6956,8 +7017,8 @@ def cmd_corridor_availability_attest(args: argparse.Namespace) -> int:
     }
 
     if args.sign:
-        kp = load_proof_keypair(pathlib.Path(args.key))
-        vc = add_ed25519_proof(vc, kp, proof_purpose="assertionMethod")
+        priv, vm = load_proof_keypair(pathlib.Path(args.key))
+        add_ed25519_proof(vc, priv, vm, proof_purpose="assertionMethod")
 
     out_path = pathlib.Path(args.out) if args.out else (module_dir / "corridor.availability.vc.json")
     out_path.parent.mkdir(parents=True, exist_ok=True)

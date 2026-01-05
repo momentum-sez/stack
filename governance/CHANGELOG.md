@@ -11,6 +11,44 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 
 
+## 0.4.20
+
+### Added
+- `tools.vc.load_proof_keypair(...)`: uniform loader for Ed25519 private JWK files returning `(private_key, verification_method)` for VC/receipt signing flows.
+- CLI regression tests for signing subcommands:
+  - `msez corridor state watcher-attest --sign`
+  - `msez corridor state fork-alarm --sign`
+  - `msez corridor availability-attest --sign`
+
+### Fixed
+- Signing paths for watcher attestations, fork alarms, and availability attestations now use the correct `add_ed25519_proof(vc, private_key, verification_method)` convention.
+- `corridor availability-attest` now calls `corridor_expected_lawpack_digest_set(...)` with the correct signature.
+- `msez law attest-init` no longer risks `NameError` due to missing `now_rfc3339` availability.
+
+### Version
+- Stack spec version bumped to `0.4.20`.
+
+
+
+
+## 0.4.19
+
+### Added
+- Default corridor lifecycle state machine (`governance/corridor.lifecycle.state-machine.v1.json`) with evidence-gated HALT/RESUME transitions.
+- `tools/lifecycle.py`: reference implementation for applying lifecycle transition VCs with evidence verification and policy enforcement.
+- Unit tests for lifecycle evidence gating and fork resolution canonical chain selection.
+
+### Changed
+- `schemas/corridor.state-machine.schema.json` adds optional `requires_evidence_vc_types` for transition rules.
+- `schemas/vc.corridor-lifecycle-transition.schema.json` adds optional `evidence` (ArtifactRef array).
+
+### Fixed
+- Receipt verification is now ArtifactRef-aware for digest sets and ProofResult-aware for signature verification (fixes `--require-artifacts` + typed attachments paths).
+- Transition-type registry digest comparisons now coerce ArtifactRefs to digests.
+
+### Version
+- Stack spec version bumped to `0.4.19`.
+
 ## 0.4.18
 
 ### Added

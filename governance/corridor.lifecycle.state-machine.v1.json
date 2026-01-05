@@ -1,0 +1,35 @@
+{
+  "type": "MSEZCorridorStateMachine",
+  "version": "v1",
+  "states": ["PROPOSED", "OPERATIONAL", "HALTED", "DEPRECATED"],
+  "initial_state": "PROPOSED",
+  "allowed_transitions": [
+    {
+      "from": "PROPOSED",
+      "to": "OPERATIONAL",
+      "description": "Corridor becomes operational after activation criteria are met (e.g., agreement VCs satisfied)."
+    },
+    {
+      "from": "OPERATIONAL",
+      "to": "HALTED",
+      "description": "Emergency halt (e.g., detected fork / safety incident).",
+      "requires_evidence_vc_types": ["MSEZCorridorForkAlarmCredential"]
+    },
+    {
+      "from": "HALTED",
+      "to": "OPERATIONAL",
+      "description": "Resume operations after a fork is resolved and/or incident is mitigated.",
+      "requires_evidence_vc_types": ["MSEZCorridorForkResolutionCredential"]
+    },
+    {
+      "from": "OPERATIONAL",
+      "to": "DEPRECATED",
+      "description": "Corridor deprecation / sunset; receipts should stop and migration should begin."
+    },
+    {
+      "from": "HALTED",
+      "to": "DEPRECATED",
+      "description": "Deprecate a halted corridor after incident resolution / migration decision."
+    }
+  ]
+}

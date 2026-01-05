@@ -16,6 +16,7 @@ from __future__ import annotations
 import base64
 import json
 import hashlib
+import pathlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -220,6 +221,51 @@ def load_ed25519_private_key_from_jwk(jwk: Dict[str, Any]) -> Tuple[Ed25519Priva
     priv = Ed25519PrivateKey.from_private_bytes(priv_bytes)
     did = did_key_from_ed25519_public_key(pub_bytes)
     return priv, did
+
+
+def load_proof_keypair(path: Union[str, pathlib.Path], default_kid: str = "key-1") -> Tuple[Ed25519PrivateKey, str]:
+    """Load an Ed25519 keypair from a JSON file for use in VC proofs.
+
+    Accepted file shapes:
+
+    1) A private OKP JWK (Ed25519):
+
+      {"kty":"OKP","crv":"Ed25519","x":"...","d":"...","kid":"key-1"}
+
+    2) A wrapper object:
+
+      {"private_jwk": <jwk>, "verificationMethod": "did:key:...#key-1"}
+
+    Returns:
+      (private_key, verification_method)
+    """
+
+    p = pathlib.Path(path)
+    key_obj = json.loads(p.read_text(encoding="utf-8"))
+
+    vm = ""
+    jwk: Dict[str, Any]
+    if isinstance(key_obj, dict) and ("private_jwk" in key_obj or "jwk" in key_obj):
+        inner = key_obj.get("private_jwk") or key_obj.get("jwk")
+        if not isinstance(inner, dict):
+            raise ValueError("key file wrapper must contain a JWK object under 'private_jwk' or 'jwk'")
+        jwk = inner
+        vm = str(
+            key_obj.get("verificationMethod")
+            or key_obj.get("verification_method")
+            or key_obj.get("vm")
+            or ""
+        ).strip()
+    elif isinstance(key_obj, dict):
+        jwk = key_obj
+    else:
+        raise ValueError("key file must be a JSON object")
+
+    priv, did = load_ed25519_private_key_from_jwk(jwk)
+    kid = str(jwk.get("kid") or default_kid).strip() or default_kid
+    if not vm:
+        vm = f"{did}#{kid}"
+    return priv, vm
 
 
 def public_jwk_from_private_jwk(jwk: Dict[str, Any]) -> Dict[str, Any]:

@@ -61,6 +61,13 @@
           },
           "notes": {
             "type": "string"
+          },
+          "requires_evidence_vc_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional list of VC type strings required as evidence for this transition (e.g., MSEZCorridorForkAlarmCredential)."
           }
         },
         "additionalProperties": true

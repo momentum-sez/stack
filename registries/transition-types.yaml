@@ -1,18 +1,38 @@
 version: 1
 transition_types:
-  - kind: noop
-    description: "No-op transition used when no transition payload is supplied."
-    notes: "A noop still commits to a payload_sha256 (typically SHA256(JCS({})))."
-
-  - kind: generic
-    description: "Generic transition kind used when an untyped payload is supplied."
-
-  - kind: msez.example.transfer.v1
-    description: "Illustrative example transfer transition kind for documentation/testing."
-    schema_id: "https://schemas.momentum-sez.org/msez/transition.payload.example.transfer.v1.schema.json"
-    schema_path: "schemas/transition.payload.example.transfer.v1.schema.json"
-    schema_digest_sha256: "28249476f011e934f7615a506a37f1e4bf9ba634b4e335194460d6a6296b9efa"
-    ruleset_id: "msez.transition.example.transfer.v1"
-    ruleset_path: "rulesets/msez.transition.example.transfer.v1.json"
-    ruleset_digest_sha256: "c4510fbe06b7f778cf34a846ea5fcb777ac78143a1257b47ce119a7bd161fda4"
-    notes: "This entry is a template; production ecosystems SHOULD publish real transition kinds, schemas, and rulesets."
+- kind: noop
+  description: No-op transition type (allowed everywhere).
+  notes: Used for keep-alive receipts or empty batches; carries no semantic meaning.
+- kind: generic
+  description: Generic, untyped transition. Payload may be omitted.
+  notes: This kind is intentionally under-specified and SHOULD only be used in early
+    pilots or tests. Use the transition-type registry for interoperable semantics.
+- kind: msez.example.transfer.v1
+  description: Example transfer transition (demo).
+  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.example.transfer.v1.schema.json
+  schema_path: schemas/transition.payload.example.transfer.v1.schema.json
+  schema_digest_sha256: 28249476f011e934f7615a506a37f1e4bf9ba634b4e335194460d6a6296b9efa
+  ruleset_id: msez.transition.example.transfer.v1
+  ruleset_path: rulesets/msez.transition.example.transfer.v1.json
+  ruleset_digest_sha256: c4510fbe06b7f778cf34a846ea5fcb777ac78143a1257b47ce119a7bd161fda4
+  notes: Demonstration transition type for registry/lock plumbing.
+- kind: settle.swift.pacs008.v1
+  description: SWIFT ISO20022 pacs.008 settlement (stub).
+  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.settle.swift.pacs008.v1.schema.json
+  schema_path: schemas/transition.payload.settle.swift.pacs008.v1.schema.json
+  schema_digest_sha256: 561cdd316d2a02968ab82ba442deeff747cf0ddd7b5c4289c93dae8f66abcd10
+  ruleset_id: msez.transition.settle.swift.pacs008.v1
+  ruleset_path: rulesets/msez.transition.settle.swift.pacs008.v1.json
+  ruleset_digest_sha256: 683cd1dc6191d0cd2ce347360cf4dfccdba393dfa56d2da6f098dbce46a45ff6
+  notes: Integration boundary object; raw ISO20022 XML SHOULD be carried as an attachment
+    blob artifact for size/privacy.
+- kind: settle.usdc.circle.transfer.v1
+  description: Circle USDC transfer settlement (stub).
+  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.settle.usdc.circle.transfer.v1.schema.json
+  schema_path: schemas/transition.payload.settle.usdc.circle.transfer.v1.schema.json
+  schema_digest_sha256: f9288e6e045e9ac5388ee387e53a70662c959604ae7d2731756ca4a9fd4438b6
+  ruleset_id: msez.transition.settle.usdc.circle.transfer.v1
+  ruleset_path: rulesets/msez.transition.settle.usdc.circle.transfer.v1.json
+  ruleset_digest_sha256: 00731932e9ba546adbafab373b4fbf5c72e0e386c4ad010ddff289ba8a976b2a
+  notes: Integration boundary object; network calls are out-of-scope for core MSEZ
+    and belong in deployer-specific adapters.

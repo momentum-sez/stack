@@ -23,5 +23,5 @@ Notes:
 
 Populate:
 
-- use `python tools/msez.py corridor state checkpoint ...` to create a checkpoint
-- then store it with `python tools/msez.py artifact store checkpoint <digest> <path>`
+- use `python -m tools.msez corridor state checkpoint ...` to create a checkpoint
+- then store it with `python -m tools.msez artifact store checkpoint <digest> <path>`

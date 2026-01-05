@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/transition.payload.settle.swift.pacs008.v1.schema.json",
+  "title": "SWIFT ISO20022 pacs.008 settlement payload (v1)",
+  "description": "A minimal, deterministic JSON representation of a SWIFT ISO20022 pacs.008 customer credit transfer. This schema is intentionally conservative and is intended as an integration boundary stub. Full ISO20022 messages may be carried as attachment artifacts.",
+  "type": "object",
+  "required": ["message_type", "amount", "currency", "debtor", "creditor"],
+  "properties": {
+    "message_type": {
+      "const": "pacs.008.001.08"
+    },
+    "message_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "instruction_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "end_to_end_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "uetr": {
+      "type": "string",
+      "minLength": 1
+    },
+    "amount": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]{1,12})?$"
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "debtor": {
+      "type": "object",
+      "required": ["name", "account", "agent_bic"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "account": {"type": "string", "minLength": 1},
+        "agent_bic": {
+          "type": "string",
+          "pattern": "^[A-Z0-9]{8}([A-Z0-9]{3})?$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "creditor": {
+      "type": "object",
+      "required": ["name", "account", "agent_bic"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "account": {"type": "string", "minLength": 1},
+        "agent_bic": {
+          "type": "string",
+          "pattern": "^[A-Z0-9]{8}([A-Z0-9]{3})?$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "remittance_info": {
+      "type": "string"
+    },
+    "raw_message_base64": {
+      "type": "string",
+      "description": "Optional raw ISO20022 XML message (base64). Prefer carrying raw messages as attachment artifacts for privacy/size control."
+    }
+  },
+  "additionalProperties": false
+}

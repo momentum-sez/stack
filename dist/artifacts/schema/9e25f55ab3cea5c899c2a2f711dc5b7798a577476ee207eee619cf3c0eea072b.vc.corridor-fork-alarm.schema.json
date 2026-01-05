@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/vc.corridor-fork-alarm.schema.json",
+  "title": "MSEZ Corridor Fork Alarm Verifiable Credential",
+  "description": "A Verifiable Credential by a watcher/observer asserting evidence of a corridor receipt fork: two conflicting receipts exist for the same (sequence, prev_root) but lead to different next_root values.",
+  "type": "object",
+  "required": ["@context", "type", "issuer", "issuanceDate", "credentialSubject", "proof"],
+  "properties": {
+    "@context": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1
+    },
+    "id": {"type": "string"},
+    "type": {
+      "type": "array",
+      "items": {"type": "string"},
+      "contains": {"const": "MSEZCorridorForkAlarmCredential"}
+    },
+    "issuer": {
+      "oneOf": [
+        {"type": "string"},
+        {
+          "type": "object",
+          "required": ["id"],
+          "properties": {
+            "id": {"type": "string"},
+            "name": {"type": "string"}
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "issuanceDate": {"type": "string"},
+    "expirationDate": {"type": "string"},
+    "credentialSubject": {
+      "type": "object",
+      "required": ["corridor_id", "detected_at", "sequence", "prev_root", "next_root_a", "next_root_b"],
+      "properties": {
+        "corridor_id": {"type": "string", "minLength": 1},
+        "detected_at": {"type": "string", "format": "date-time"},
+        "sequence": {"type": "integer", "minimum": 0},
+        "prev_root": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "next_root_a": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "next_root_b": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "receipt_a": {
+          "description": "Optional attachment reference to one conflicting receipt (recommended: artifact_type 'blob').",
+          "$ref": "artifact-ref.schema.json"
+        },
+        "receipt_b": {
+          "description": "Optional attachment reference to the other conflicting receipt (recommended: artifact_type 'blob').",
+          "$ref": "artifact-ref.schema.json"
+        },
+        "notes": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "proof": {
+      "oneOf": [
+        {"type": "object"},
+        {"type": "array", "items": {"type": "object"}, "minItems": 1}
+      ]
+    }
+  },
+  "additionalProperties": true
+}

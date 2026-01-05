@@ -11,9 +11,9 @@ This repository is structured as a **standard + library**:
 
 ```bash
 python -m pip install -r tools/requirements.txt
-python tools/msez.py validate profiles/digital-financial-center/profile.yaml
-python tools/msez.py validate --all-modules
-python tools/msez.py build profiles/digital-financial-center/profile.yaml --out dist/
+python -m tools.msez validate profiles/digital-financial-center/profile.yaml
+python -m tools.msez validate --all-modules
+python -m tools.msez build profiles/digital-financial-center/profile.yaml --out dist/
 ```
 
 ## How to adopt

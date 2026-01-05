@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/transition.payload.settle.usdc.circle.transfer.v1.schema.json",
+  "title": "Circle USDC transfer settlement payload (v1)",
+  "description": "A minimal, deterministic JSON representation of a Circle USDC transfer initiation/result. This schema is a stub integration boundary.",
+  "type": "object",
+  "required": ["asset", "amount", "chain", "source_wallet", "destination_address"],
+  "properties": {
+    "asset": {"const": "USDC"},
+    "amount": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]{1,18})?$"
+    },
+    "chain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_wallet": {
+      "type": "string",
+      "minLength": 1
+    },
+    "destination_address": {
+      "type": "string",
+      "minLength": 1
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "circle_transfer_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tx_hash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "complete", "failed"]
+    }
+  },
+  "additionalProperties": false
+}

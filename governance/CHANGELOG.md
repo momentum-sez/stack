@@ -8,6 +8,79 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 - TBD
 
+## 0.4.23
+
+### Added
+- Deep transitive artifact completeness for transition type registry dependencies:
+  - When a `transition-types.lock` snapshot references a *ruleset* digest, the verifier now also scans the resolved ruleset artifact for embedded `ArtifactRef` objects and requires those to be resolvable via artifact CAS.
+  - This is forward-compatible hardening for proof-carrying transitions where rulesets commit to circuit/proof-key artifacts.
+- Scenario scaffold scaling improvements:
+  - Scenario scaffolds now skip at **module** level unless `MSEZ_RUN_SCAFFOLD=1` (keeps default CI fast).
+  - Smart-asset integration scaffold matrix expanded (zones/rails/privacy/asset_class/custody axes).
+
+### Fixed
+- Removed accidental `__pycache__`/`*.pyc` artifacts from the repository tree (enforced via `.gitignore`).
+
+### Tests
+- Added unit test asserting that `--transitive-require-artifacts` detects missing nested ArtifactRefs inside ruleset artifacts referenced from a registry snapshot.
+
+### Version
+- Stack spec version bumped to `0.4.23`.
+
+
+
+
+
+## 0.4.22
+
+### Added
+- `--transitive-require-artifacts` verification hardening:
+  - Treats `transition_type_registry_digest_sha256` as a commitment root.
+  - Verifies the referenced `transition-types.lock` snapshot exists *and* that all
+    schema/ruleset/circuit digests referenced inside that lock can be resolved via artifact CAS.
+- New test harness marker:
+  - `scaffold` marker gated by `MSEZ_RUN_SCAFFOLD=1` (large scenario libraries for roadmap closure).
+- Pre-0.5 roadmap integration:
+  - `docs/roadmap/ROADMAP_PRE_0.5.md`
+  - `docs/architecture/SMART-ASSET-INTEGRATION.md`
+- Smart Asset scaffolds:
+  - `apis/smart-assets.openapi.yaml`
+  - `schemas/smart-asset.attestation.schema.json`
+  - `schemas/smart-asset.checkpoint.schema.json`
+
+### Fixed
+- Receipt/fork inspection artifact resolution now uses the generic artifact CAS resolver.
+- Attachment artifact completeness checks now accept both legacy string digests (blob) and typed `ArtifactRef` objects.
+
+### Version
+- Stack spec version bumped to `0.4.22`.
+
+
+
+
+## 0.4.21
+
+### Added
+- `msez corridor state fork-inspect`: receipt-level fork forensics command (text or JSON output) emitting `MSEZCorridorForkInspectReport`.
+- `schemas/corridor.fork-inspect-report.schema.json` for machine-validated fork forensics output.
+- Performance harness support:
+  - pytest markers `perf`/`slow` with environment-gated execution (`MSEZ_RUN_PERF=1`).
+  - new perf tests for receipt verification throughput and watcher-compare scaling.
+- New transition-type integrations (stub-ready but digest-stable):
+  - `settle.swift.pacs008.v1` (SWIFT ISO20022 pacs.008 payload schema + ruleset)
+  - `settle.usdc.circle.transfer.v1` (Circle USDC transfer payload schema + ruleset)
+- Reference integration scaffolds:
+  - `tools.integrations.swift_iso20022` (minimal pacs.008 XML bridge)
+  - `tools.integrations.usdc_circle` (Circle adapter scaffold; dependency-light)
+
+### Fixed
+- Implemented missing trust-anchor loader and repaired receipt signature enforcement when `--enforce-trust-anchors` is enabled.
+- Trust-anchor receipt enforcement now respects `corridor.yaml`'s `trust_anchors_path` and normalizes `identifier`→base DID.
+- Corridor state CLI path handling now accepts either a corridor module directory or a direct `corridor.yaml` path.
+
+### Version
+- Stack spec version bumped to `0.4.21`.
+
 
 
 

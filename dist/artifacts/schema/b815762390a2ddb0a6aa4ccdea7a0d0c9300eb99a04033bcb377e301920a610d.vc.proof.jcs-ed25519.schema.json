@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json",
+  "title": "MSEZ JCS Ed25519 Proof",
+  "type": "object",
+  "required": [
+    "type",
+    "created",
+    "verificationMethod",
+    "proofPurpose",
+    "jws"
+  ],
+  "properties": {
+    "type": {
+      "const": "MsezEd25519Signature2025"
+    },
+    "created": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verificationMethod": {
+      "type": "string",
+      "minLength": 1
+    },
+    "proofPurpose": {
+      "type": "string",
+      "minLength": 1
+    },
+    "jws": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}

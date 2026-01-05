@@ -185,7 +185,7 @@ The reference schema is `schemas/lawpack.lock.schema.json` via interface `msez.l
 The reference CLI is:
 
 ```bash
-python tools/msez.py law ingest modules/legal/jurisdictions/us/ca/civil \
+python -m tools.msez law ingest modules/legal/jurisdictions/us/ca/civil \
   --as-of-date 2025-01-01 \
   --fetch
 ```

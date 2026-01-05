@@ -20,19 +20,19 @@ jobs:
 
       - name: Validate modules (schema + artifacts)
         run: |
-          python tools/msez.py validate --all-modules
+          python -m tools.msez validate --all-modules
 
       - name: Validate profiles
         run: |
-          python tools/msez.py validate --all-profiles
+          python -m tools.msez validate --all-profiles
 
       - name: Validate zones
         run: |
-          python tools/msez.py validate --all-zones
+          python -m tools.msez validate --all-zones
 
       - name: Fetch Akoma schemas (for schema validation tests)
         run: |
-          python tools/msez.py fetch-akoma-schemas
+          python -m tools.msez fetch-akoma-schemas
 
       - name: Run conformance tests
         run: |

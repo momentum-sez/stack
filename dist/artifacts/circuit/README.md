@@ -16,5 +16,5 @@ but the **digest MUST be a sha256 commitment** pinned in receipts and/or registr
 Store artifacts:
 
 ```bash
-python tools/msez.py artifact store circuit <digest> <path>
+python -m tools.msez artifact store circuit <digest> <path>
 ```

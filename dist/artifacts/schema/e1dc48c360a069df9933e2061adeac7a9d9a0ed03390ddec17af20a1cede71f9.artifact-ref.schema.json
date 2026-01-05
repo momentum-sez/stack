@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+  "title": "MSEZ ArtifactRef",
+  "description": "A content-addressed reference to an artifact committed by digest. ArtifactRefs provide a universal, typed resolution path via dist/artifacts/<artifact_type>/<digest>.*.",
+  "type": "object",
+  "required": [
+    "artifact_type",
+    "digest_sha256"
+  ],
+  "properties": {
+    "artifact_type": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+      "description": "Artifact category/type used for resolution (e.g., lawpack, ruleset, schema, vc, checkpoint, proof-key, circuit, blob)."
+    },
+    "digest_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 digest (hex) of the canonical artifact content. Resolves via dist/artifacts/<artifact_type>/<digest>.*."
+    },
+    "uri": {
+      "type": "string",
+      "description": "Optional location hint (non-normative). May be a repo-relative path, URL, IPFS URI, etc."
+    },
+    "media_type": {
+      "type": "string",
+      "description": "Optional media type hint (non-normative)."
+    },
+    "byte_length": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optional byte size hint (non-normative)."
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Optional human-readable label or filename (non-normative)."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional freeform notes (non-normative)."
+    }
+  },
+  "additionalProperties": true
+}

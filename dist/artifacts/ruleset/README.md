@@ -17,5 +17,5 @@ SHA256(JCS(ruleset_descriptor_json))
 Populate from the declared rulesets registry:
 
 ```bash
-python tools/msez.py artifact index-rulesets
+python -m tools.msez artifact index-rulesets
 ```

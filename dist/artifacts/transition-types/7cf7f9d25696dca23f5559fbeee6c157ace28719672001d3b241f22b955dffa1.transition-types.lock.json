@@ -1,0 +1,36 @@
+{
+  "transition_types_lock_version": 1,
+  "generated_at": "2026-01-05T01:49:58Z",
+  "source": {
+    "registry_path": "registries/transition-types.yaml",
+    "registry_sha256": "869c34b25caab652602c10d2ff73b4ee34653e35ddf6dfc450b298aeb5575513"
+  },
+  "snapshot": {
+    "tag": "msez.transition-types.registry.snapshot.v1",
+    "registry_version": 1,
+    "transition_types": [
+      {
+        "kind": "generic"
+      },
+      {
+        "kind": "msez.example.transfer.v1",
+        "schema_digest_sha256": "28249476f011e934f7615a506a37f1e4bf9ba634b4e335194460d6a6296b9efa",
+        "ruleset_digest_sha256": "c4510fbe06b7f778cf34a846ea5fcb777ac78143a1257b47ce119a7bd161fda4"
+      },
+      {
+        "kind": "noop"
+      },
+      {
+        "kind": "settle.swift.pacs008.v1",
+        "schema_digest_sha256": "561c8db8898c25cfd1fb152f59555c9ed1ce0dba4f025b4602ce0fcc84ee6d24",
+        "ruleset_digest_sha256": "683c1110882750d98f7f3bbe4d4bdb42bcbd779f3854f84506738b3e33c83583"
+      },
+      {
+        "kind": "settle.usdc.circle.transfer.v1",
+        "schema_digest_sha256": "f928cc47f32ed6c12800e65a02f463b7e4dd91b1f595791b7b219fab6bbed3bc",
+        "ruleset_digest_sha256": "0073ed7db2d864478d0d84f70af5c7418b40f4f17b6ebd54fa46c42d07d30b5c"
+      }
+    ]
+  },
+  "snapshot_digest_sha256": "7cf7f9d25696dca23f5559fbeee6c157ace28719672001d3b241f22b955dffa1"
+}

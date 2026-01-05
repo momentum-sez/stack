@@ -23,10 +23,15 @@ Architecture deep dives:
 - `architecture/SECURITY-MODEL.md`
 - `architecture/LEGAL-INTEGRATION.md`
 - `architecture/MASS-INTEGRATION.md`
+- `architecture/SMART-ASSET-INTEGRATION.md`
 
 Operator guides:
 
 - `operators/ZONE-DEPLOYMENT-GUIDE.md`
 - `operators/CORRIDOR-FORMATION-GUIDE.md`
 - `operators/INCIDENT-RESPONSE.md`
+
+Roadmaps:
+
+- `roadmap/ROADMAP_PRE_0.5.md`
 

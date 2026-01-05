@@ -20,7 +20,7 @@ Stack v0.4.13 applies the same pattern to additional supply-chain surfaces:
 Stack v0.4.14 adds a reference-tool option to make ArtifactRef the *default substrate produced by tooling*:
 
 ```bash
-python tools/msez.py lock --emit-artifactrefs <zone.yaml>
+python -m tools.msez lock --emit-artifactrefs <zone.yaml>
 ```
 
 ArtifactRef schema id: `https://schemas.momentum-sez.org/msez/artifact-ref.schema.json`
@@ -83,7 +83,7 @@ Given `(type, digest)`:
 
 The reference implementation is:
 - `tools/artifacts.py`
-- CLI: `python tools/msez.py artifact resolve <type> <digest>`
+- CLI: `python -m tools.msez artifact resolve <type> <digest>`
 
 ## Populating the store
 
@@ -92,31 +92,31 @@ Reference implementation helpers:
 - Populate rulesets:
 
 ```bash
-python tools/msez.py artifact index-rulesets
+python -m tools.msez artifact index-rulesets
 ```
 
 - Populate lawpacks (copies locally built `dist/lawpacks/**/*.lawpack.zip`):
 
 ```bash
-python tools/msez.py artifact index-lawpacks
+python -m tools.msez artifact index-lawpacks
 ```
 
 - Populate JSON Schemas (copies `schemas/**/*.schema.json`):
 
 ```bash
-python tools/msez.py artifact index-schemas
+python -m tools.msez artifact index-schemas
 ```
 
 - Populate VCs (copies common `*.vc.json` files in modules/docs/tests):
 
 ```bash
-python tools/msez.py artifact index-vcs
+python -m tools.msez artifact index-vcs
 ```
 
 - Store any specific artifact:
 
 ```bash
-python tools/msez.py artifact store <type> <digest> <path>
+python -m tools.msez artifact store <type> <digest> <path>
 ```
 
 ## Commitment completeness
@@ -126,7 +126,7 @@ Verifiers MAY choose to enforce that **every digest commitment is resolvable** v
 The reference CLI exposes this as:
 
 ```bash
-python tools/msez.py corridor state verify ... --require-artifacts
+python -m tools.msez corridor state verify ... --require-artifacts
 ```
 
 When enabled, verification fails if any committed digest in receipts cannot be resolved via `dist/artifacts/<type>/<digest>.*` (or configured store roots).

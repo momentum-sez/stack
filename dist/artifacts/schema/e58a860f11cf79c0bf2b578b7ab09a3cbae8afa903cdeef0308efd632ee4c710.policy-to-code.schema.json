@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/policy-to-code.schema.json",
+  "title": "MSEZ Policy-to-Code Mapping",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "domain",
+      "requirement",
+      "mass_primitive"
+    ],
+    "properties": {
+      "domain": {
+        "type": "string",
+        "description": "Compliance domain (e.g., sanctions, data_protection, legal_publication)."
+      },
+      "requirement": {
+        "type": "string",
+        "description": "Human-readable statement of the requirement being enforced."
+      },
+      "mass_primitive": {
+        "type": "string",
+        "description": "Which Mass primitive this requirement maps to (entities, ownership, instruments, identity, consent)."
+      },
+      "legal_refs": {
+        "type": "array",
+        "description": "References to authoritative legal text provisions. Prefer Akoma Ntoso eIds when available.",
+        "items": {
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "A free-form reference string (legacy)."
+            },
+            {
+              "type": "object",
+              "required": [
+                "eId"
+              ],
+              "properties": {
+                "eId": {
+                  "type": "string",
+                  "description": "Akoma Ntoso element identifier."
+                },
+                "uri": {
+                  "type": "string",
+                  "description": "Optional URI for the authoritative source provision."
+                },
+                "note": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true
+            }
+          ]
+        }
+      },
+      "policy_refs": {
+        "type": "array",
+        "description": "References to executable policy checks (e.g., OPA package/rule identifiers).",
+        "items": {
+          "type": "string"
+        }
+      },
+      "attestation": {
+        "type": "object",
+        "description": "Attestation emitted when the requirement is satisfied.",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Canonical attestation type identifier."
+          },
+          "event": {
+            "type": "string",
+            "description": "Event signature or event name emitted into an attestation stream."
+          },
+          "format": {
+            "type": "string",
+            "description": "Optional format hint (e.g., vc-jwt, vc-ld, msez-envelope)."
+          },
+          "claims_schema": {
+            "type": "string",
+            "description": "Optional JSON Schema reference for the credentialSubject/claims payload."
+          },
+          "expires_in": {
+            "type": "string",
+            "description": "Optional validity duration (ISO 8601 duration)."
+          }
+        },
+        "additionalProperties": true
+      },
+      "regulator_view": {
+        "type": "string",
+        "description": "What a regulator can view from this mapping (minimized supervisory lens)."
+      },
+      "evidence": {
+        "description": "Optional evidence artifacts required to support an audit trail.",
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": true
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        ]
+      },
+      "notes": {
+        "type": "string"
+      }
+    },
+    "anyOf": [
+      {
+        "required": [
+          "attestation"
+        ]
+      },
+      {
+        "required": [
+          "policy_refs"
+        ]
+      }
+    ],
+    "additionalProperties": true
+  }
+}

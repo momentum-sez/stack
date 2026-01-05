@@ -418,7 +418,7 @@ Verifiers MAY choose to enforce that **every digest commitment** in a receipt is
 (`spec/97-artifacts.md`). In this mode, verification fails if any referenced digest
 (lawpacks, rulesets, transition registry, schema/circuit/proof keys) cannot be located by `(type,digest)`.
 
-The reference CLI exposes this as `python tools/msez.py corridor state verify ... --require-artifacts`.
+The reference CLI exposes this as `python -m tools.msez corridor state verify ... --require-artifacts`.
 
 Overrides (optional):
 

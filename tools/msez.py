@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MSEZ Stack tool (reference implementation) — v0.4.20
+"""MSEZ Stack tool (reference implementation) — v0.4.23
 
 Capabilities:
 - validate modules/profiles/zones against schemas
@@ -52,7 +52,7 @@ if str(REPO_ROOT) not in sys.path:
 
 # Local (repo) imports (after sys.path fix)
 from tools import artifacts as artifact_cas
-STACK_SPEC_VERSION = "0.4.20"
+STACK_SPEC_VERSION = "0.4.23"
 
 # Templating: we intentionally support two simple placeholder syntaxes used in v0.4 (safe placeholder subset)
 # - {{ VAR_NAME }} (common in Akoma templates)
@@ -71,6 +71,86 @@ def sha256_bytes(b: bytes) -> str:
 
 def sha256_file(path: pathlib.Path) -> str:
     return sha256_bytes(path.read_bytes())
+
+
+
+def coerce_corridor_module_dir(path: pathlib.Path) -> pathlib.Path:
+    """Coerce a corridor module directory from either a module dir or a corridor.yaml path.
+
+    Many CLI commands accept either:
+      - a corridor module directory (containing corridor.yaml), or
+      - a path directly to a corridor.yaml file.
+
+    This helper also tries a REPO_ROOT-relative resolution when given a relative path
+    that does not exist from the current working directory.
+    """
+    cand = pathlib.Path(str(path))
+    candidates = [cand]
+    if not cand.is_absolute():
+        candidates.append(REPO_ROOT / cand)
+
+    for pth in candidates:
+        try:
+            if pth.is_file() and pth.name == 'corridor.yaml':
+                return pth.parent
+            if pth.is_dir() and (pth / 'corridor.yaml').exists():
+                return pth
+        except Exception:
+            continue
+
+    raise FileNotFoundError(f'Corridor module not found or missing corridor.yaml: {path}')
+
+
+def load_trust_anchors(path: pathlib.Path) -> List[Dict[str, Any]]:
+    """Load trust anchors YAML and return a normalized list.
+
+    The canonical trust-anchors.yaml shape is:
+      version: 1
+      trust_anchors:
+        - anchor_id: ...
+          type: did
+          identifier: did:key:...#key-1
+          allowed_attestations: [...]
+
+    For receipt enforcement we normalize to:
+      {"did": "did:key:...", "allowed_attestations": [...], "raw": {..}}
+
+    This helper is best-effort: schema validation is performed elsewhere.
+    """
+    pth = pathlib.Path(path)
+    if not pth.is_absolute() and not pth.exists():
+        pth = REPO_ROOT / pth
+
+    try:
+        obj = load_yaml(pth)
+    except Exception:
+        return []
+
+    anchors = []
+    if isinstance(obj, dict):
+        anchors = obj.get('trust_anchors') or []
+
+    if not isinstance(anchors, list):
+        return []
+
+    out: List[Dict[str, Any]] = []
+    for a in anchors:
+        if not isinstance(a, dict):
+            continue
+        ident = str(a.get('identifier') or a.get('did') or '').strip()
+        did = ident.split('#', 1)[0].strip()
+        if not did:
+            continue
+        allowed = a.get('allowed_attestations') or []
+        if not isinstance(allowed, list):
+            allowed = []
+        out.append({
+            'did': did,
+            'allowed_attestations': [str(x) for x in allowed if str(x).strip()],
+            'raw': a,
+        })
+
+    return out
 
 
 def parse_duration_to_seconds(s: str) -> int:
@@ -247,6 +327,172 @@ def make_artifact_ref(
         except Exception:
             pass
     return out
+
+
+
+# --- ArtifactRef discovery (transitive completeness) -------------------------
+
+
+def _iter_embedded_artifactrefs(obj: Any):
+    """Yield (artifact_type, digest_sha256) tuples from embedded ArtifactRef-shaped dicts.
+
+    We treat ArtifactRefs as the universal typed commitment substrate. This helper is used
+    by stronger verification modes (e.g., --transitive-require-artifacts) to recursively
+    require that *all* committed artifacts are resolvable via CAS.
+
+    NOTE: This intentionally only detects typed ArtifactRefs (artifact_type + digest_sha256).
+    Untyped digests (legacy) are handled elsewhere as `blob` commitments.
+    """
+
+    if isinstance(obj, dict):
+        at = obj.get("artifact_type")
+        dg = obj.get("digest_sha256")
+        if isinstance(at, str) and isinstance(dg, str):
+            at_s = at.strip()
+            dg_s = dg.strip().lower()
+            if at_s and _coerce_sha256(dg_s):
+                yield (at_s, dg_s)
+
+        for v in obj.values():
+            yield from _iter_embedded_artifactrefs(v)
+        return
+
+    if isinstance(obj, list):
+        for it in obj:
+            yield from _iter_embedded_artifactrefs(it)
+        return
+
+
+def _require_transition_types_lock_transitive(
+    registry_digest_sha256: str,
+    *,
+    errors: List[str],
+    label: str,
+    repo_root: pathlib.Path = REPO_ROOT,
+) -> None:
+    """Require that a transition type registry lock snapshot resolves *transitively*.
+
+    When corridor receipts commit to a `transition_type_registry_digest_sha256`, that digest
+    acts as a *commitment root* for the transition type universe at that point in time.
+
+    `--require-artifacts` verifies that the registry lock *itself* can be resolved. This helper
+    powers the stronger `--transitive-require-artifacts` mode, which additionally requires that
+    every schema/ruleset/circuit digest referenced by the lock snapshot is present in artifact
+    CAS.
+
+    This makes "commitment completeness" mechanically checkable: a verifier can refuse to accept
+    receipts that reference registry snapshots whose transitive dependencies cannot be resolved.
+    """
+
+    dd = str(registry_digest_sha256 or "").strip().lower()
+    if not dd:
+        return
+
+    # 1) Ensure the snapshot artifact exists.
+    try:
+        lock_path = artifact_cas.resolve_artifact_by_digest(
+            "transition-types", dd, repo_root=repo_root
+        )
+    except FileNotFoundError:
+        errors.append(f"missing artifact for {label}: transition-types:{dd}")
+        return
+    except Exception as e:
+        errors.append(f"artifact resolver error for {label}: transition-types:{dd}: {e}")
+        return
+
+    # 2) Load and schema-validate the lock (so we don't parse arbitrary JSON shapes).
+    try:
+        lock_obj = load_json(pathlib.Path(lock_path))
+    except Exception as e:
+        errors.append(f"failed to load transition-types lock for {label}: {lock_path}: {e}")
+        return
+
+    try:
+        v = schema_validator(repo_root / "schemas" / "transition-types.lock.schema.json")
+        ve = list(v.iter_errors(lock_obj))
+        if ve:
+            errors.append(f"invalid transition-types.lock schema for {label}: {lock_path}: {ve[0].message}")
+            return
+    except Exception as e:
+        errors.append(f"failed to validate transition-types.lock for {label}: {lock_path}: {e}")
+        return
+
+    snapshot = lock_obj.get("snapshot") if isinstance(lock_obj, dict) else None
+    types = (snapshot or {}).get("transition_types") if isinstance(snapshot, dict) else None
+    if not isinstance(types, list):
+        errors.append(f"transition-types.lock missing snapshot.transition_types list: {lock_path}")
+        return
+
+    # 3) Require all referenced artifacts (deduplicated).
+    seen: Set[Tuple[str, str]] = set()
+    for t in types:
+        if not isinstance(t, dict):
+            continue
+        kind = str(t.get("kind") or "").strip()
+        for field, expected_type in [
+            ("schema_digest_sha256", "schema"),
+            ("ruleset_digest_sha256", "ruleset"),
+            ("zk_circuit_digest_sha256", "circuit"),
+        ]:
+            val = t.get(field)
+            if not val:
+                continue
+            dig = _coerce_sha256(val)
+            if not dig:
+                continue
+
+            atype = expected_type
+            if isinstance(val, dict) and val.get("artifact_type"):
+                atype = str(val.get("artifact_type") or "").strip() or expected_type
+                if atype != expected_type:
+                    errors.append(
+                        f"transition-types.lock {lock_path} kind={kind}: {field} artifact_type={atype} expected {expected_type}"
+                    )
+                    continue
+
+            key = (atype, dig)
+            if key in seen:
+                continue
+            seen.add(key)
+
+            try:
+                resolved_path = artifact_cas.resolve_artifact_by_digest(atype, dig, repo_root=repo_root)
+            except FileNotFoundError:
+                errors.append(
+                    f"missing artifact referenced by transition-types.lock {lock_path} kind={kind}: {atype}:{dig} ({field})"
+                )
+                continue
+            except Exception as e:
+                errors.append(
+                    f"artifact resolver error for transition-types.lock {lock_path} kind={kind}: {atype}:{dig} ({field}): {e}"
+                )
+                continue
+
+            # Optional deeper completeness: if a referenced ruleset artifact embeds ArtifactRefs
+            # (e.g., proof keys, circuits, subordinate schemas), require those to resolve as well.
+            if atype == "ruleset":
+                try:
+                    ruleset_obj = load_json(pathlib.Path(resolved_path))
+                except Exception:
+                    ruleset_obj = None
+
+                if ruleset_obj is not None:
+                    nested_seen: set[tuple[str, str]] = set()
+                    for at2, d2 in _iter_embedded_artifactrefs(ruleset_obj):
+                        key2 = (str(at2), str(d2))
+                        if key2 in nested_seen:
+                            continue
+                        nested_seen.add(key2)
+                        try:
+                            _ = artifact_cas.resolve_artifact_by_digest(at2, d2, repo_root=repo_root)
+                        except FileNotFoundError:
+                            errors.append(
+                                f"missing artifact referenced transitively by ruleset {resolved_path} (from transition-types.lock {lock_path} kind={kind}): {at2}:{d2}"
+                            )
+                        except Exception as e:
+                            errors.append(
+                                f"artifact resolver error for transitive ref in ruleset {resolved_path} (from transition-types.lock {lock_path} kind={kind}): {at2}:{d2}: {e}"
+                            )
 
 
 def load_authority_registry(
@@ -3874,6 +4120,82 @@ def _load_fork_resolution_map(
     return res_map, errors
 
 
+def _load_fork_resolution_map_with_sources(
+    fork_resolutions_path: Optional[pathlib.Path],
+    *,
+    expected_corridor_id: Optional[str] = None,
+) -> Tuple[Dict[Tuple[int, str], str], Dict[Tuple[int, str], List[str]], List[str]]:
+    """Load fork-resolution artifacts and retain source paths.
+
+    This is useful for *forensics* tooling (e.g., fork-inspect) where the operator
+    wants to see which artifact(s) claimed a specific resolution.
+
+    Returns:
+      (resolution_map, sources_map, errors)
+      where:
+        resolution_map[(sequence, prev_root)] = chosen_next_root
+        sources_map[(sequence, prev_root)] = ["/path/to/vc.json", ...]
+    """
+    res_map: Dict[Tuple[int, str], str] = {}
+    sources: Dict[Tuple[int, str], List[str]] = {}
+    errors: List[str] = []
+    if not fork_resolutions_path:
+        return res_map, sources, errors
+
+    p = fork_resolutions_path
+    paths: List[pathlib.Path] = []
+    if p.is_dir():
+        paths = sorted([x for x in p.glob("*.json") if x.is_file()])
+    else:
+        paths = [p]
+
+    for fp in paths:
+        try:
+            obj = load_json(fp)
+        except Exception as e:
+            errors.append(f"fork-resolution load failed: {fp}: {e}")
+            continue
+
+        subj = None
+        if isinstance(obj, dict) and obj.get("type") == "MSEZCorridorForkResolution":
+            subj = obj
+        elif isinstance(obj, dict) and isinstance(obj.get("credentialSubject"), dict):
+            subj = obj.get("credentialSubject")
+        else:
+            errors.append(f"fork-resolution unsupported shape (expected raw or VC): {fp}")
+            continue
+
+        cid = str(subj.get("corridor_id") or "").strip()
+        if expected_corridor_id and cid and cid != expected_corridor_id:
+            errors.append(
+                f"fork-resolution corridor_id mismatch: {fp}: expected {expected_corridor_id}, got {cid}"
+            )
+
+        try:
+            seq = int(subj.get("sequence"))
+        except Exception:
+            errors.append(f"fork-resolution missing/invalid sequence: {fp}")
+            continue
+
+        prev_root = str(subj.get("prev_root") or "").strip()
+        chosen_next_root = str(subj.get("chosen_next_root") or "").strip()
+        if not prev_root or not chosen_next_root:
+            errors.append(f"fork-resolution missing prev_root/ chosen_next_root: {fp}")
+            continue
+
+        key = (seq, prev_root)
+        if key in res_map and res_map[key] != chosen_next_root:
+            errors.append(
+                f"fork-resolution duplicate conflict for (seq={seq}, prev_root={prev_root}): {fp} chooses {chosen_next_root}, previously {res_map[key]}"
+            )
+            continue
+
+        res_map[key] = chosen_next_root
+        sources.setdefault(key, []).append(str(fp))
+
+    return res_map, sources, errors
+
+
 def _group_receipt_candidates(
     receipt_rows: List[Tuple[pathlib.Path, Dict[str, Any], Set[str]]]
 ) -> Dict[Tuple[int, str, str], Dict[str, Any]]:
@@ -3969,6 +4291,7 @@ def _corridor_state_build_chain(
     enforce_checkpoint_policy: bool = False,
     enforce_transition_types: bool = False,
     require_artifacts: bool = False,
+    transitive_require_artifacts: bool = False,
     fork_resolutions_path: Optional[pathlib.Path] = None,
     from_checkpoint_path: Optional[pathlib.Path] = None,
 ) -> Tuple[Dict[str, Any], List[str], List[str]]:
@@ -4007,7 +4330,13 @@ def _corridor_state_build_chain(
     # Trust anchors (optional enforcement)
     allowed_receipt_signers: Set[str] = set()
     if enforce_trust_anchors:
-        trust_anchors = load_trust_anchors(module_dir / "trust-anchors.yaml")
+        try:
+            c_cfg = load_yaml(module_dir / "corridor.yaml")
+            ta_rel = str((c_cfg or {}).get("trust_anchors_path") or "trust-anchors.yaml")
+        except Exception:
+            ta_rel = "trust-anchors.yaml"
+
+        trust_anchors = load_trust_anchors(module_dir / ta_rel)
         allowed_receipt_signers = set(
             ta["did"]
             for ta in trust_anchors
@@ -4016,7 +4345,7 @@ def _corridor_state_build_chain(
         )
         if not allowed_receipt_signers:
             errors.append(
-                "--enforce-trust-anchors was set but trust-anchors.yaml contains no anchors permitting corridor_receipt"
+                f"--enforce-trust-anchors was set but {ta_rel} contains no anchors permitting corridor_receipt"
             )
 
     # Optional receipt threshold policy.
@@ -4069,6 +4398,10 @@ def _corridor_state_build_chain(
             locked_ttr_digest = str(lock_obj.get("digest_sha256") or "")
         except Exception as e:
             errors.append(f"failed to load transition-type-registry.lock.json: {e}")
+
+    # Cache to avoid re-scanning the same registry lock multiple times when
+    # verifying many receipts.
+    transitive_checked_ttr_digests: set[str] = set()
 
     for rp in receipt_paths:
         try:
@@ -4143,13 +4476,31 @@ def _corridor_state_build_chain(
                 if isinstance(entry, dict) and entry.get("artifact_type"):
                     at = str(entry.get("artifact_type") or at)
                 _require_artifact(at, dd, f"ruleset_digest_set[{dd}]")
-            if receipt.get("transition_type_registry_digest_sha256"):
-                ttr_entry = receipt.get("transition_type_registry_digest_sha256")
-                dd = _coerce_sha256(ttr_entry)
-                at = "transition-types"
+            # Transition type registry snapshot: in transitive mode we treat the registry digest
+            # as a *commitment root* and ensure all referenced schema/ruleset/circuit digests are
+            # present in CAS.
+            ttr_entry = receipt.get("transition_type_registry_digest_sha256")
+            ttr_dd = _coerce_sha256(ttr_entry)
+            if ttr_dd:
                 if isinstance(ttr_entry, dict) and ttr_entry.get("artifact_type"):
-                    at = str(ttr_entry.get("artifact_type") or at)
-                _require_artifact(at, dd, "transition_type_registry_digest_sha256")
+                    at = str(ttr_entry.get("artifact_type") or "transition-types")
+                    if at and at != "transition-types":
+                        errors.append(
+                            f"transition_type_registry_digest_sha256 ArtifactRef has artifact_type={at} (expected transition-types): {rp}"
+                        )
+                if not transitive_require_artifacts:
+                    _require_artifact("transition-types", ttr_dd, "transition_type_registry_digest_sha256")
+
+            if transitive_require_artifacts:
+                effective = ttr_dd or (locked_ttr_digest or "") or (corridor_ttr_digest or "")
+                if effective and effective not in transitive_checked_ttr_digests:
+                    transitive_checked_ttr_digests.add(effective)
+                    _require_transition_types_lock_transitive(
+                        effective,
+                        errors=errors,
+                        label="transition_type_registry_digest_sha256 (transitive)",
+                        repo_root=REPO_ROOT,
+                    )
 
             # transition envelope artifacts
             env = receipt.get("transition") or {}
@@ -4165,11 +4516,20 @@ def _corridor_state_build_chain(
                     _require_artifact(atype, str(val.get("digest_sha256")), f"transition.{field}.digest_sha256")
 
             for att in env.get("attachments") or []:
-                if isinstance(att, dict) and att.get("digest_sha256"):
+                # Preferred: typed ArtifactRef {artifact_type, digest_sha256, uri?, ...}
+                if isinstance(att, dict):
+                    dd = _coerce_sha256(att)
+                    if not dd:
+                        continue
                     at = str(att.get("artifact_type") or "blob")
-                    _require_artifact(at, str(att.get("digest_sha256")), f"transition.attachments[{at}]")
-                elif isinstance(att, dict) and att.get("digest_sha256") and "artifact_type" not in att:
-                    _require_artifact("blob", str(att.get("digest_sha256")), "transition.attachments[legacy]")
+                    _require_artifact(at, dd, f"transition.attachments[{at}]")
+                    continue
+
+                # Legacy form: raw digest string treated as a blob.
+                if isinstance(att, str):
+                    dd = att.strip().lower()
+                    if dd:
+                        _require_artifact("blob", dd, "transition.attachments[legacy]")
 
         # Signature verification (ProofResult-aware)
         from tools.vc import verify_credential
@@ -4397,7 +4757,7 @@ def cmd_corridor_state_verify(args: argparse.Namespace) -> int:
       - forks (same (sequence, prev_root), different next_root) via --fork-resolutions
       - bootstrap from a signed checkpoint via --from-checkpoint
     """
-    module_dir = pathlib.Path(args.path)
+    module_dir = coerce_corridor_module_dir(pathlib.Path(args.path))
     receipts_path = pathlib.Path(args.receipts)
 
     fork_resolutions_path = getattr(args, "fork_resolutions", None)
@@ -4411,6 +4771,9 @@ def cmd_corridor_state_verify(args: argparse.Namespace) -> int:
     enforce_trust = bool(getattr(args, "enforce_trust_anchors", False))
     enforce_transition_types = bool(getattr(args, "enforce_transition_types", False))
     require_artifacts = bool(getattr(args, "require_artifacts", False))
+    transitive_require_artifacts = bool(getattr(args, "transitive_require_artifacts", False))
+    if transitive_require_artifacts:
+        require_artifacts = True
     enforce_receipt_threshold = bool(getattr(args, "enforce_receipt_threshold", False))
     enforce_checkpoint_policy = bool(getattr(args, "enforce_checkpoint_policy", False))
 
@@ -4420,6 +4783,7 @@ def cmd_corridor_state_verify(args: argparse.Namespace) -> int:
         enforce_trust_anchors=enforce_trust,
         enforce_transition_types=enforce_transition_types,
         require_artifacts=require_artifacts,
+        transitive_require_artifacts=transitive_require_artifacts,
         enforce_receipt_threshold=enforce_receipt_threshold,
         enforce_checkpoint_policy=enforce_checkpoint_policy,
         fork_resolutions_path=fork_resolutions_path,
@@ -4530,6 +4894,432 @@ def cmd_corridor_state_verify(args: argparse.Namespace) -> int:
     return 2 if errors else 0
 
 
+def cmd_corridor_state_fork_inspect(args: argparse.Namespace) -> int:
+    """Inspect receipts for forks, duplicates, and resolution coverage.
+
+    This is an incident-response / forensic command. Unlike `msez corridor state verify`, it does
+    not require a fully-resolved canonical chain. Instead it emits a structured report describing:
+      - fork points (same (sequence, prev_root) with multiple next_root candidates)
+      - candidate receipts at each fork point (signers, file paths)
+      - whether fork-resolution artifacts cover the fork points
+      - an optional canonical head computation when resolutions are complete
+
+    By default this command verifies receipt signatures (did:key offline). Use --no-verify-proofs
+    for quick triage when signatures are not available (signer sets will be empty).
+    """
+    module_dir = coerce_corridor_module_dir(pathlib.Path(args.path))
+    corridor_id = _corridor_id_from_module(module_dir)
+
+    receipts_path = pathlib.Path(str(getattr(args, "receipts", "") or "").strip())
+    if not str(receipts_path):
+        print("--receipts is required", file=sys.stderr)
+        return 2
+    if not receipts_path.is_absolute():
+        receipts_path = REPO_ROOT / receipts_path
+
+    fork_resolutions_path = None
+    fr = str(getattr(args, "fork_resolutions", "") or "").strip()
+    if fr:
+        fp = pathlib.Path(fr)
+        if not fp.is_absolute():
+            fp = REPO_ROOT / fp
+        fork_resolutions_path = fp
+
+    from_checkpoint_path = None
+    fc = str(getattr(args, "from_checkpoint", "") or "").strip()
+    if fc:
+        cp = pathlib.Path(fc)
+        if not cp.is_absolute():
+            cp = REPO_ROOT / cp
+        from_checkpoint_path = cp
+
+    verify_proofs = not bool(getattr(args, "no_verify_proofs", False))
+    enforce_trust = bool(getattr(args, "enforce_trust_anchors", False)) and verify_proofs
+    enforce_transition_types = bool(getattr(args, "enforce_transition_types", False))
+    require_artifacts = bool(getattr(args, "require_artifacts", False))
+    transitive_require_artifacts = bool(getattr(args, "transitive_require_artifacts", False))
+    if transitive_require_artifacts:
+        require_artifacts = True
+
+    warnings: List[str] = []
+    errors: List[str] = []
+
+    # Corridor invariants
+    genesis_root = corridor_state_genesis_root(module_dir)
+
+    # Optional checkpoint bootstrap
+    start_seq = 0
+    start_prev_root = genesis_root
+    checkpoint_info: Optional[Dict[str, Any]] = None
+    if from_checkpoint_path:
+        try:
+            ck = load_json(from_checkpoint_path)
+        except Exception as e:
+            errors.append(f"failed to load from-checkpoint: {from_checkpoint_path}: {e}")
+            ck = None
+
+        if ck is not None:
+            ck_validator = schema_validator(REPO_ROOT / "schemas" / "corridor.checkpoint.schema.json")
+            ve = list(ck_validator.iter_errors(ck))
+            if ve:
+                errors.append(f"invalid from-checkpoint schema: {from_checkpoint_path}: {ve[0].message}")
+            else:
+                # Verify checkpoint proofs when possible.
+                ck_ok = False
+                ck_signers: List[str] = []
+                if verify_proofs:
+                    try:
+                        from tools.vc import verify_credential  # type: ignore
+                        vres = verify_credential(ck)
+                        ck_dids = sorted(_verified_base_dids(vres))
+                        ck_ok = bool(ck_dids)
+                        ck_signers = ck_dids
+                    except Exception as e:
+                        warnings.append(f"checkpoint proof verification failed: {from_checkpoint_path}: {e}")
+
+                start_seq = int((ck or {}).get("receipt_count") or 0)
+                start_prev_root = str((ck or {}).get("final_state_root") or "").strip().lower() or start_prev_root
+                checkpoint_info = {
+                    "path": str(from_checkpoint_path),
+                    "valid_proofs": bool(ck_ok) if verify_proofs else None,
+                    "signers": ck_signers,
+                    "receipt_count": start_seq,
+                    "final_state_root": start_prev_root,
+                    "mmr_root": str(((ck or {}).get("mmr") or {}).get("root") or "").strip().lower(),
+                }
+
+    # Fork-resolution artifacts (optional)
+    fork_map: Dict[Tuple[int, str], str] = {}
+    fork_sources: Dict[Tuple[int, str], List[str]] = {}
+    if fork_resolutions_path:
+        fork_map, fork_sources, fork_errs = _load_fork_resolution_map_with_sources(
+            fork_resolutions_path, expected_corridor_id=corridor_id
+        )
+        errors.extend(fork_errs)
+
+    # Transition type registry snapshot (optional but recommended)
+    corridor_ttr_digest, _corridor_ttr = corridor_transition_type_registry_snapshot(module_dir)
+
+    allowed_receipt_signers: Set[str] = set()
+    if enforce_trust:
+        try:
+            c_cfg = load_yaml(module_dir / "corridor.yaml")
+            ta_rel = str((c_cfg or {}).get("trust_anchors_path") or "trust-anchors.yaml")
+        except Exception:
+            ta_rel = "trust-anchors.yaml"
+        trust_anchors = load_trust_anchors(module_dir / ta_rel)
+        allowed_receipt_signers = set(
+            ta["did"]
+            for ta in trust_anchors
+            if "corridor_receipt" in (ta.get("allowed_attestations") or []) or "*" in (ta.get("allowed_attestations") or [])
+        )
+
+    import tools.artifacts as artifact_cas  # local import
+
+    # Cache to avoid re-reading registry locks for every receipt.
+    transitive_checked_ttr: set[str] = set()
+
+    def _require_artifact(artifact_type: str, digest: str, label: str) -> None:
+        if not digest:
+            return
+        try:
+            artifact_cas.resolve_artifact_by_digest(artifact_type, digest, repo_root=REPO_ROOT)
+        except Exception as e:
+            if isinstance(e, FileNotFoundError):
+                errors.append(f"missing artifact for {label}: {artifact_type}:{digest}")
+            else:
+                errors.append(f"artifact resolver error for {label}: {artifact_type}:{digest}: {e}")
+
+    receipt_validator = schema_validator(REPO_ROOT / "schemas" / "corridor.receipt.schema.json")
+
+    receipt_rows: List[Tuple[pathlib.Path, Dict[str, Any], Set[str]]] = []
+    invalid_receipts: List[Dict[str, Any]] = []
+
+    for rp in _collect_receipt_paths(receipts_path):
+        try:
+            receipt = load_json(rp)
+        except Exception as e:
+            invalid_receipts.append({"path": str(rp), "error": f"json parse failed: {e}"})
+            continue
+
+        ve = list(receipt_validator.iter_errors(receipt))
+        if ve:
+            invalid_receipts.append({"path": str(rp), "error": f"schema invalid: {ve[0].message}"})
+            continue
+
+        # corridor_id check
+        if str(receipt.get("corridor_id") or "").strip() != corridor_id:
+            invalid_receipts.append({"path": str(rp), "error": "corridor_id mismatch"})
+            continue
+
+        # next_root recomputation
+        try:
+            expected_next = corridor_state_next_root(receipt)
+            if str(receipt.get("next_root") or "").strip().lower() != expected_next:
+                invalid_receipts.append({"path": str(rp), "error": "next_root mismatch"})
+                continue
+        except Exception as e:
+            invalid_receipts.append({"path": str(rp), "error": f"next_root recompute failed: {e}"})
+            continue
+
+        # Optional transition type registry digest check (if present + corridor pinned)
+        if enforce_transition_types and corridor_ttr_digest:
+            r_ttr = _coerce_sha256(receipt.get("transition_type_registry_digest_sha256"))
+            if r_ttr and corridor_ttr_digest and r_ttr != corridor_ttr_digest:
+                invalid_receipts.append({"path": str(rp), "error": "transition_type_registry_digest mismatch"})
+                continue
+
+        # Artifact completeness check
+        if require_artifacts:
+            # typed digest-sets
+            for entry in receipt.get("lawpack_digest_set") or []:
+                if isinstance(entry, str):
+                    _require_artifact("lawpack", entry, f"lawpack_digest_set[{entry}]")
+                elif isinstance(entry, dict) and entry.get("digest_sha256"):
+                    _require_artifact(str(entry.get("artifact_type") or "lawpack"), str(entry.get("digest_sha256")), "lawpack_digest_set")
+
+            for entry in receipt.get("ruleset_digest_set") or []:
+                if isinstance(entry, str):
+                    _require_artifact("ruleset", entry, f"ruleset_digest_set[{entry}]")
+                elif isinstance(entry, dict) and entry.get("digest_sha256"):
+                    _require_artifact(str(entry.get("artifact_type") or "ruleset"), str(entry.get("digest_sha256")), "ruleset_digest_set")
+
+            # Transition type registry digest: in transitive mode we treat this as a commitment root.
+            r_ttr = _coerce_sha256(receipt.get("transition_type_registry_digest_sha256"))
+            if r_ttr and not transitive_require_artifacts:
+                _require_artifact("transition-types", r_ttr, "transition_type_registry_digest_sha256")
+
+            if transitive_require_artifacts:
+                effective = r_ttr or (corridor_ttr_digest or "")
+                if effective and effective not in transitive_checked_ttr:
+                    transitive_checked_ttr.add(effective)
+                    _require_transition_types_lock_transitive(
+                        effective,
+                        errors=errors,
+                        label="transition_type_registry_digest_sha256 (transitive)",
+                        repo_root=REPO_ROOT,
+                    )
+
+            env = receipt.get("transition") or {}
+            for field, atype in [
+                ("schema_digest_sha256", "schema"),
+                ("ruleset_digest_sha256", "ruleset"),
+                ("zk_circuit_digest_sha256", "circuit"),
+            ]:
+                val = env.get(field)
+                if isinstance(val, str):
+                    _require_artifact(atype, val, f"transition.{field}")
+                elif isinstance(val, dict) and val.get("digest_sha256"):
+                    _require_artifact(str(val.get("artifact_type") or atype), str(val.get("digest_sha256")), f"transition.{field}")
+
+            for att in env.get("attachments") or []:
+                if isinstance(att, dict) and att.get("digest_sha256"):
+                    _require_artifact(str(att.get("artifact_type") or "blob"), str(att.get("digest_sha256")), "transition.attachments")
+
+        # Signature verification (optional)
+        ok_dids: Set[str] = set()
+        if verify_proofs:
+            try:
+                from tools.vc import verify_credential  # type: ignore
+                vres = verify_credential(receipt)
+                ok_dids = _verified_base_dids(vres)
+            except Exception as e:
+                invalid_receipts.append({"path": str(rp), "error": f"proof verification failed: {e}"})
+                continue
+
+            if not ok_dids:
+                invalid_receipts.append({"path": str(rp), "error": "no valid proofs"})
+                continue
+
+            if enforce_trust and allowed_receipt_signers:
+                if not (ok_dids & allowed_receipt_signers):
+                    invalid_receipts.append({"path": str(rp), "error": f"signer not in trust anchors: {sorted(ok_dids)}"})
+                    continue
+
+        receipt_rows.append((rp, receipt, ok_dids))
+
+    grouped = _group_receipt_candidates(receipt_rows)
+
+    candidates_by_seq_prev: Dict[Tuple[int, str], List[Dict[str, Any]]] = {}
+    for (seq, prev_root, _next_root), data in grouped.items():
+        candidates_by_seq_prev.setdefault((seq, prev_root), []).append(data)
+
+    # Enumerate forks
+    fork_points: List[Dict[str, Any]] = []
+    for (seq, prev_root), cands in sorted(candidates_by_seq_prev.items(), key=lambda kv: (kv[0][0], kv[0][1])):
+        if len(cands) <= 1:
+            continue
+
+        point: Dict[str, Any] = {
+            "sequence": int(seq),
+            "prev_root": str(prev_root),
+            "candidates": [],
+        }
+
+        for c in cands:
+            rec = c.get("receipt") or {}
+            point["candidates"].append(
+                {
+                    "next_root": str(rec.get("next_root") or ""),
+                    "signer_count": len(c.get("signers") or []),
+                    "signers": sorted(list(c.get("signers") or [])),
+                    "paths": list(c.get("paths") or []),
+                }
+            )
+
+        chosen = fork_map.get((int(seq), str(prev_root)))
+        if chosen:
+            point["chosen_next_root"] = chosen
+            point["resolution_sources"] = fork_sources.get((int(seq), str(prev_root)), [])
+            point["resolved"] = any(str(cc.get("next_root") or "") == chosen for cc in point["candidates"])
+        else:
+            point["resolved"] = False
+
+        fork_points.append(point)
+
+    total_forks = len(fork_points)
+    resolved_forks = sum(1 for fp in fork_points if bool(fp.get("resolved")))
+    unresolved_forks = total_forks - resolved_forks
+
+    # Canonical chain head (best-effort)
+    canonical_head: Optional[Dict[str, Any]] = None
+    if candidates_by_seq_prev:
+        chain, sel_warn, sel_err = _select_canonical_chain(
+            candidates_by_seq_prev,
+            start_seq=start_seq,
+            start_prev_root=start_prev_root,
+            fork_resolution_map=fork_map if fork_map else None,
+        )
+        warnings.extend(sel_warn)
+        # do not treat selection errors as fatal for the report
+        if sel_err:
+            warnings.extend(sel_err)
+
+        if chain:
+            receipt_count = start_seq + len(chain)
+            final_state_root = str(chain[-1].get("next_root") or "").strip().lower()
+            canonical_head = {
+                "receipt_count": receipt_count,
+                "final_state_root": final_state_root,
+                "last_sequence": receipt_count - 1,
+            }
+        else:
+            # With no receipts selected, the checkpoint head (if any) is still informative.
+            if checkpoint_info is not None:
+                canonical_head = {
+                    "receipt_count": int(checkpoint_info.get("receipt_count") or 0),
+                    "final_state_root": str(checkpoint_info.get("final_state_root") or "").strip().lower(),
+                    "last_sequence": int(checkpoint_info.get("receipt_count") or 0) - 1,
+                }
+
+    recommendations: List[str] = []
+    if unresolved_forks:
+        recommendations.append(
+            "UNRESOLVED_FORKS: issue fork-resolution VC(s) selecting a canonical receipt per fork point; HALT corridor lifecycle until resolved."
+        )
+    if invalid_receipts:
+        recommendations.append(
+            "INVALID_RECEIPTS_PRESENT: review invalid receipt files; forensics may require signature/key rotation checks and artifact completeness checks."
+        )
+
+    report: Dict[str, Any] = {
+        "type": "MSEZCorridorForkInspectReport",
+        "corridor_id": corridor_id,
+        "genesis_root": genesis_root,
+        "from_checkpoint": checkpoint_info,
+        "receipts": {
+            "total": len(_collect_receipt_paths(receipts_path)),
+            "valid": len(receipt_rows),
+            "invalid": len(invalid_receipts),
+            "invalid_details": invalid_receipts,
+        },
+        "forks": {
+            "total": total_forks,
+            "resolved": resolved_forks,
+            "unresolved": unresolved_forks,
+            "points": fork_points,
+        },
+        "canonical_head": canonical_head,
+        "recommendations": recommendations,
+        "warnings": warnings,
+        "errors": errors,
+    }
+
+    # Validate report shape
+    try:
+        v = schema_validator(REPO_ROOT / "schemas" / "corridor.fork-inspect-report.schema.json")
+        ve = list(v.iter_errors(report))
+        if ve:
+            warnings.append(f"fork-inspect report schema self-check failed: {ve[0].message}")
+    except Exception:
+        pass
+
+    fmt = str(getattr(args, "format", "") or "text").strip().lower()
+    out_path = str(getattr(args, "out", "") or "").strip()
+
+    rendered = ""
+    if fmt == "json":
+        rendered = json.dumps(report, indent=2, ensure_ascii=False)
+    else:
+        # human-friendly text
+        rendered_lines = []
+        rendered_lines.append(f"corridor_id: {corridor_id}")
+        rendered_lines.append(f"genesis_root: {genesis_root}")
+        if checkpoint_info:
+            rendered_lines.append(f"from_checkpoint: {checkpoint_info.get('path')}")
+            rendered_lines.append(f"  checkpoint_receipt_count: {checkpoint_info.get('receipt_count')}")
+            rendered_lines.append(f"  checkpoint_final_state_root: {checkpoint_info.get('final_state_root')}")
+
+        rendered_lines.append(f"receipts_total: {report['receipts']['total']}")
+        rendered_lines.append(f"receipts_valid: {report['receipts']['valid']}")
+        rendered_lines.append(f"receipts_invalid: {report['receipts']['invalid']}")
+        rendered_lines.append(f"fork_points: {total_forks} (resolved={resolved_forks}, unresolved={unresolved_forks})")
+
+        for fp in fork_points:
+            rendered_lines.append(f"- fork sequence={fp.get('sequence')} prev_root={fp.get('prev_root')}")
+            if fp.get('chosen_next_root'):
+                rendered_lines.append(f"    chosen_next_root: {fp.get('chosen_next_root')} (resolved={fp.get('resolved')})")
+            for cand in fp.get('candidates') or []:
+                rendered_lines.append(
+                    f"    candidate next_root={cand.get('next_root')} signers={cand.get('signer_count')} paths={len(cand.get('paths') or [])}"
+                )
+
+        if canonical_head:
+            rendered_lines.append(f"canonical_head_receipt_count: {canonical_head.get('receipt_count')}")
+            rendered_lines.append(f"canonical_head_final_state_root: {canonical_head.get('final_state_root')}")
+
+        if recommendations:
+            rendered_lines.append("RECOMMENDATIONS:")
+            for r in recommendations:
+                rendered_lines.append(f"  - {r}")
+
+        if warnings:
+            rendered_lines.append("WARNINGS:")
+            for w in warnings:
+                rendered_lines.append(f"  - {w}")
+
+        if errors:
+            rendered_lines.append("ERRORS:")
+            for e in errors:
+                rendered_lines.append(f"  - {e}")
+
+        rendered = "\n".join(rendered_lines)
+
+    if out_path:
+        op = pathlib.Path(out_path)
+        if not op.is_absolute():
+            op = REPO_ROOT / op
+        op.parent.mkdir(parents=True, exist_ok=True)
+        op.write_text(rendered + "\n", encoding="utf-8")
+        print(str(op))
+    else:
+        print(rendered)
+
+    # Exit code convention: 0 for report emission, 2 for fatal parse errors.
+    return 0
+
+
+
 
 def cmd_corridor_state_propose(args: argparse.Namespace) -> int:
     """Generate an unsigned receipt proposal (MSEZCorridorReceiptProposal).
@@ -4538,7 +5328,7 @@ def cmd_corridor_state_propose(args: argparse.Namespace) -> int:
     `computed_next_root`, which is the hash commitment that would become the receipt's
     `next_root` once the receipt is signed and published.
     """
-    module_dir = pathlib.Path(args.path)
+    module_dir = coerce_corridor_module_dir(pathlib.Path(args.path))
     corridor_id = _corridor_id_from_module(module_dir)
 
     # Digest sets default to corridor expectations unless explicitly overridden.
@@ -4651,7 +5441,7 @@ def cmd_corridor_state_propose(args: argparse.Namespace) -> int:
 
 def cmd_corridor_state_fork_resolve(args: argparse.Namespace) -> int:
     """Generate an unsigned fork-resolution VC selecting the canonical receipt for a fork point."""
-    module_dir = pathlib.Path(args.path)
+    module_dir = coerce_corridor_module_dir(pathlib.Path(args.path))
     corridor_id = _corridor_id_from_module(module_dir)
 
     seq = int(getattr(args, "sequence", 0))
@@ -4721,7 +5511,7 @@ def cmd_corridor_state_fork_resolve(args: argparse.Namespace) -> int:
 
 def cmd_corridor_state_anchor(args: argparse.Namespace) -> int:
     """Generate an unsigned corridor-anchor VC referencing a head commitment and anchoring metadata."""
-    module_dir = pathlib.Path(args.path)
+    module_dir = coerce_corridor_module_dir(pathlib.Path(args.path))
     corridor_id = _corridor_id_from_module(module_dir)
 
     issuer = str(getattr(args, "issuer", "") or "").strip()
@@ -4858,7 +5648,7 @@ def cmd_corridor_state_finality_status(args: argparse.Namespace) -> int:
 
     This is primarily an *output* helper for tooling; it does not sign anything.
     """
-    module_dir = pathlib.Path(args.path)
+    module_dir = coerce_corridor_module_dir(pathlib.Path(args.path))
     corridor_id = _corridor_id_from_module(module_dir)
 
     receipts_arg = str(getattr(args, "receipts", "") or "").strip()
@@ -7685,8 +8475,79 @@ def main() -> int:
         action="store_true",
         help="Fail verification if any digest commitment in receipts cannot be resolved via the artifact CAS (dist/artifacts/<type>/<digest>.* or configured store roots)",
     )
+    csv.add_argument(
+        "--transitive-require-artifacts",
+        action="store_true",
+        help=(
+            "Stronger artifact completeness: treat transition_type_registry_digest_sha256 as a commitment root and "
+            "require that all schema/ruleset/circuit digests referenced by the registry lock are present in CAS (and any nested ArtifactRefs embedded in referenced ruleset artifacts). "
+            "Implies --require-artifacts."
+        ),
+    )
     csv.add_argument("--json", action="store_true", help="Output machine-readable JSON")
     csv.set_defaults(func=cmd_corridor_state_verify)
+
+    cfi = cstate_sub.add_parser(
+        "fork-inspect",
+        help="Inspect receipts for forks/duplicates and resolution coverage (forensics)",
+    )
+    cfi.add_argument("path", help="Corridor module directory or corridor.yaml path")
+    cfi.add_argument(
+        "--receipts",
+        required=True,
+        help="Directory containing receipt JSON files",
+    )
+    cfi.add_argument(
+        "--fork-resolutions",
+        default="",
+        help="Optional fork-resolution artifact (VC) file/dir; if provided, report indicates which forks are resolved",
+    )
+    cfi.add_argument(
+        "--from-checkpoint",
+        default="",
+        help="Optional checkpoint to bootstrap analysis (starts from receipt_count/final_state_root)",
+    )
+    cfi.add_argument(
+        "--enforce-trust-anchors",
+        action="store_true",
+        help="When verifying proofs, require receipt signers to be in trust-anchors.yaml for corridor_receipt",
+    )
+    cfi.add_argument(
+        "--enforce-transition-types",
+        action="store_true",
+        help="Require transition_type_registry_digest_sha256 (if present) matches corridor pinned snapshot",
+    )
+    cfi.add_argument(
+        "--require-artifacts",
+        action="store_true",
+        help="Fail report generation if any committed digest cannot be resolved via dist/artifacts CAS",
+    )
+    cfi.add_argument(
+        "--transitive-require-artifacts",
+        action="store_true",
+        help=(
+            "Stronger artifact completeness: treat transition_type_registry_digest_sha256 as a commitment root and "
+            "require that all schema/ruleset/circuit digests referenced by the registry lock are present in CAS (and any nested ArtifactRefs embedded in referenced ruleset artifacts). "
+            "Implies --require-artifacts."
+        ),
+    )
+    cfi.add_argument(
+        "--no-verify-proofs",
+        action="store_true",
+        help="Skip cryptographic proof verification (signer sets will be empty)",
+    )
+    cfi.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format",
+    )
+    cfi.add_argument(
+        "--out",
+        default="",
+        help="Optional output path; default prints to stdout",
+    )
+    cfi.set_defaults(func=cmd_corridor_state_fork_inspect)
 
 
     # corridor state propose

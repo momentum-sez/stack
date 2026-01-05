@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/corridor.fork-inspect-report.schema.json",
+  "title": "MSEZ Corridor Fork Inspect Report",
+  "type": "object",
+  "required": [
+    "type",
+    "corridor_id",
+    "genesis_root",
+    "receipts",
+    "forks"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZCorridorForkInspectReport"
+    },
+    "corridor_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "genesis_root": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "from_checkpoint": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    },
+    "receipts": {
+      "type": "object",
+      "required": ["total", "valid", "invalid"],
+      "properties": {
+        "total": {"type": "integer", "minimum": 0},
+        "valid": {"type": "integer", "minimum": 0},
+        "invalid": {"type": "integer", "minimum": 0},
+        "invalid_details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "error"],
+            "properties": {
+              "path": {"type": "string"},
+              "error": {"type": "string"}
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "forks": {
+      "type": "object",
+      "required": ["total", "resolved", "unresolved", "points"],
+      "properties": {
+        "total": {"type": "integer", "minimum": 0},
+        "resolved": {"type": "integer", "minimum": 0},
+        "unresolved": {"type": "integer", "minimum": 0},
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["sequence", "prev_root", "candidates", "resolved"],
+            "properties": {
+              "sequence": {"type": "integer", "minimum": 0},
+              "prev_root": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+              "candidates": {
+                "type": "array",
+                "minItems": 2,
+                "items": {
+                  "type": "object",
+                  "required": ["next_root", "signer_count", "paths"],
+                  "properties": {
+                    "next_root": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+                    "signer_count": {"type": "integer", "minimum": 0},
+                    "signers": {
+                      "type": "array",
+                      "items": {"type": "string"}
+                    },
+                    "paths": {
+                      "type": "array",
+                      "items": {"type": "string"}
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "chosen_next_root": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+              "resolution_sources": {
+                "type": "array",
+                "items": {"type": "string"}
+              },
+              "resolved": {"type": "boolean"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "canonical_head": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "warnings": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "errors": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "additionalProperties": false
+}

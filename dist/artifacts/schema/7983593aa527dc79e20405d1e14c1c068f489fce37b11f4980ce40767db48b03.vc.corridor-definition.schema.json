@@ -1,0 +1,352 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/vc.corridor-definition.schema.json",
+  "title": "MSEZ Corridor Definition Credential",
+  "type": "object",
+  "required": [
+    "@context",
+    "type",
+    "issuer",
+    "issuanceDate",
+    "credentialSubject",
+    "proof"
+  ],
+  "properties": {
+    "@context": {
+      "description": "JSON-LD context(s).",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          },
+          "minItems": 1
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "description": "Credential types. MUST include 'VerifiableCredential'.",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "issuer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "issuanceDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expirationDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "credentialSubject": {
+      "type": "object",
+      "required": [
+        "corridor_id",
+        "artifacts",
+        "ruleset"
+      ],
+      "properties": {
+        "corridor_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ruleset": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifacts": {
+          "type": "object",
+          "required": [
+            "corridor_manifest",
+            "trust_anchors",
+            "key_rotation"
+          ],
+          "properties": {
+            "corridor_manifest": {
+              "description": "Reference to the corridor manifest (corridor.yaml). New form is ArtifactRef; legacy form is {path, sha256}.",
+              "oneOf": [
+                {
+                  "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "trust_anchors": {
+              "description": "Reference to the corridor trust anchors (trust-anchors.yaml). New form is ArtifactRef; legacy form is {path, sha256}.",
+              "oneOf": [
+                {
+                  "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "key_rotation": {
+              "description": "Reference to the corridor key rotation policy (key-rotation.yaml). New form is ArtifactRef; legacy form is {path, sha256}.",
+              "oneOf": [
+                {
+                  "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "version": {
+          "type": "string"
+        },
+        "maintainer": {
+          "type": "string"
+        },
+        "lawpack_compatibility": {
+          "type": "object",
+          "description": "Optional lawpack compatibility constraints used by corridor verification rules.",
+          "properties": {
+            "required_domains": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Domains each participant must pin (e.g., ['civil','financial'])."
+            },
+            "allowed": {
+              "type": "array",
+              "description": "Allow-list of compatible lawpack digests by jurisdiction and domain.",
+              "items": {
+                "type": "object",
+                "required": [
+                  "jurisdiction_id",
+                  "domain",
+                  "digests_sha256"
+                ],
+                "properties": {
+                  "jurisdiction_id": {
+                    "type": "string"
+                  },
+                  "domain": {
+                    "type": "string"
+                  },
+                  "digests_sha256": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "description": "A raw sha256 digest string (legacy) OR an ArtifactRef (recommended; artifact_type MUST be 'lawpack').",
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        {
+                          "allOf": [
+                            {
+                              "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                            },
+                            {
+                              "properties": {
+                                "artifact_type": {
+                                  "const": "lawpack"
+                                }
+                              },
+                              "required": [
+                                "artifact_type",
+                                "digest_sha256"
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "ruleset_digest_set": {
+          "type": "array",
+          "description": "Optional content-addressed digests of ruleset descriptor(s) governing corridor verification and state transitions.",
+          "items": {
+            "description": "A raw sha256 digest string (legacy) OR an ArtifactRef (recommended; artifact_type MUST be 'ruleset').",
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "allOf": [
+                  {
+                    "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                  },
+                  {
+                    "properties": {
+                      "artifact_type": {
+                        "const": "ruleset"
+                      }
+                    },
+                    "required": [
+                      "artifact_type",
+                      "digest_sha256"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "proof": {
+      "description": "One or more cryptographic proofs over the credential payload (excluding the proof field).",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "created",
+            "verificationMethod",
+            "proofPurpose",
+            "jws"
+          ],
+          "properties": {
+            "type": {
+              "const": "MsezEd25519Signature2025"
+            },
+            "created": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "verificationMethod": {
+              "type": "string",
+              "minLength": 1
+            },
+            "proofPurpose": {
+              "type": "string",
+              "minLength": 1
+            },
+            "jws": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "type",
+              "created",
+              "verificationMethod",
+              "proofPurpose",
+              "jws"
+            ],
+            "properties": {
+              "type": {
+                "const": "MsezEd25519Signature2025"
+              },
+              "created": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "verificationMethod": {
+                "type": "string",
+                "minLength": 1
+              },
+              "proofPurpose": {
+                "type": "string",
+                "minLength": 1
+              },
+              "jws": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

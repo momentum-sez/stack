@@ -32,7 +32,7 @@ For production corridors:
 Example:
 
 ```bash
-python3 tools/msez.py corridor state watcher-compare modules/corridors/<corridor> \
+python3 -m tools.msez corridor state watcher-compare modules/corridors/<corridor> \
   --vcs ./watcher-attestations \
   --quorum-threshold 3/5 \
   --require-quorum \

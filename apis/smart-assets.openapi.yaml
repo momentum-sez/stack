@@ -1,0 +1,130 @@
+openapi: 3.0.3
+info:
+  title: MSEZ Smart Assets API (Scaffold)
+  version: 0.4.23
+  description: |
+    Scaffold OpenAPI for Smart Asset operations.
+
+    This is intentionally a **skeleton** to enable early pilot interoperability.
+
+servers:
+  - url: https://example.zone.api
+
+paths:
+  /v1/assets/{asset_id}:
+    get:
+      summary: Get smart asset current view
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Current asset view
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SmartAssetView'
+  /v1/assets/{asset_id}/attestations:
+    post:
+      summary: Submit an asset attestation
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetAttestation'
+      responses:
+        '202':
+          description: Accepted
+  /v1/assets/{asset_id}/checkpoint:
+    post:
+      summary: Submit an asset state checkpoint
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetCheckpoint'
+      responses:
+        '202':
+          description: Accepted
+  /v1/assets/{asset_id}/migration/propose:
+    post:
+      summary: Propose a migration saga for an asset
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetMigrationProposal'
+      responses:
+        '202':
+          description: Accepted
+
+components:
+  schemas:
+    SmartAssetView:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          type: string
+        state_root_sha256:
+          type: string
+        last_checkpoint:
+          $ref: '#/components/schemas/AssetCheckpoint'
+      required: [asset_id, state_root_sha256]
+    AssetAttestation:
+      type: object
+      additionalProperties: true
+      properties:
+        type:
+          type: string
+          description: Attestation type identifier
+        payload:
+          type: object
+      required: [type, payload]
+    AssetCheckpoint:
+      type: object
+      additionalProperties: true
+      properties:
+        checkpoint_ref:
+          type: string
+          description: Reference to a committed checkpoint (e.g., corridor receipt digest)
+        state_root_sha256:
+          type: string
+      required: [state_root_sha256]
+    AssetMigrationProposal:
+      type: object
+      additionalProperties: true
+      properties:
+        from_zone_id:
+          type: string
+        to_zone_id:
+          type: string
+        corridor_id:
+          type: string
+        plan:
+          type: object
+      required: [from_zone_id, to_zone_id, corridor_id]

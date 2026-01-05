@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/lawpack.schema.json",
+  "title": "MSEZ Lawpack Metadata (lawpack.yaml)",
+  "type": "object",
+  "required": [
+    "lawpack_format_version",
+    "jurisdiction_id",
+    "domain",
+    "as_of_date",
+    "sources",
+    "license",
+    "normalization"
+  ],
+  "properties": {
+    "lawpack_format_version": {
+      "type": "string",
+      "enum": [
+        "1"
+      ],
+      "description": "Lawpack artifact format version."
+    },
+    "jurisdiction_id": {
+      "type": "string",
+      "description": "Registry identifier for the jurisdiction."
+    },
+    "domain": {
+      "type": "string",
+      "description": "Domain of law (e.g., civil, financial)."
+    },
+    "as_of_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Snapshot date for the corpus."
+    },
+    "sources": {
+      "type": "array",
+      "description": "Input sources used to assemble the corpus (URLs, gazette references, PDFs, etc.).",
+      "items": {
+        "type": "object",
+        "required": [
+          "source_id",
+          "uri"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": "string"
+          },
+          "retrieved_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "license": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "artifact_ref": {
+            "description": "Optional typed ArtifactRef to the captured raw source bytes (if stored in CAS). When present, artifact_type MUST be \"blob\".",
+            "allOf": [
+              {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              },
+              {
+                "properties": {
+                  "artifact_type": {
+                    "const": "blob"
+                  }
+                },
+                "required": [
+                  "artifact_type",
+                  "digest_sha256"
+                ]
+              }
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX identifier (or NOASSERTION)."
+    },
+    "normalization": {
+      "type": "object",
+      "required": [
+        "recipe_id",
+        "tool",
+        "tool_version"
+      ],
+      "properties": {
+        "recipe_id": {
+          "type": "string",
+          "description": "Normalization recipe identifier."
+        },
+        "tool": {
+          "type": "string",
+          "description": "Tool identifier (e.g., msez)."
+        },
+        "tool_version": {
+          "type": "string",
+          "description": "Tool version string."
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Optional structured record of inputs."
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

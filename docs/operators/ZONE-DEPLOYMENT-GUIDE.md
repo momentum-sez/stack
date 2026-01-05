@@ -2,7 +2,7 @@
 
 This guide describes the minimal operational steps to deploy a zone using the MSEZ stack.
 
-It is intentionally tool-centric and assumes you are using the reference CLI (`tools/msez.py`).
+It is intentionally tool-centric and assumes you are using the reference CLI (`python -m tools.msez`).
 
 ## 0) Pick a profile
 
@@ -11,7 +11,7 @@ Profiles live under `profiles/` and define a baseline module set.
 Example:
 
 ```bash
-python3 tools/msez.py profile validate profiles/minimal-mvp/profile.yaml
+python3 -m tools.msez profile validate profiles/minimal-mvp/profile.yaml
 ```
 
 ## 1) Instantiate a zone repo
@@ -36,7 +36,7 @@ jurisdiction_id: "US-UT"   # example
 For each jurisdiction/domain you want to support, produce a lawpack:
 
 ```bash
-python3 tools/msez.py lawpack ingest --jurisdiction US-UT --domain civil --as-of 2025-01-01 \
+python3 -m tools.msez lawpack ingest --jurisdiction US-UT --domain civil --as-of 2025-01-01 \
   --out dist/artifacts/lawpack/
 ```
 
@@ -45,7 +45,7 @@ Then pin the resulting digests into your lockfile.
 ## 3) Generate or update stack.lock
 
 ```bash
-python3 tools/msez.py lock generate zones/example.zone.alpha/zone.yaml \
+python3 -m tools.msez lock generate zones/example.zone.alpha/zone.yaml \
   --emit-artifactrefs \
   --out zones/example.zone.alpha/stack.lock
 ```
@@ -55,8 +55,8 @@ Treat `stack.lock` as an auditable manifest of everything your zone is committin
 ## 4) Validate the zone
 
 ```bash
-python3 tools/msez.py zone validate zones/example.zone.alpha/zone.yaml
-python3 tools/msez.py lock verify zones/example.zone.alpha/stack.lock --require-artifacts
+python3 -m tools.msez zone validate zones/example.zone.alpha/zone.yaml
+python3 -m tools.msez lock verify zones/example.zone.alpha/stack.lock --require-artifacts
 ```
 
 ## 5) Operate modules

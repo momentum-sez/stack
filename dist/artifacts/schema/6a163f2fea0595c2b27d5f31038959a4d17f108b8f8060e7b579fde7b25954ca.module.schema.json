@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/module.schema.json",
+  "title": "MSEZ Module Manifest",
+  "type": "object",
+  "required": [
+    "module_id",
+    "version",
+    "kind",
+    "license",
+    "description",
+    "variants",
+    "depends_on",
+    "provides",
+    "parameters"
+  ],
+  "properties": {
+    "module_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_.-]+$",
+      "description": "Globally unique identifier (recommended: reverse-DNS style, dot-separated)."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$",
+      "description": "Semantic version MAJOR.MINOR.PATCH (optionally with pre-release)."
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "legal",
+        "regulatory",
+        "licensing",
+        "financial",
+        "corridor",
+        "operational",
+        "governance",
+        "data",
+        "api"
+      ]
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX license identifier."
+    },
+    "description": {
+      "type": "string"
+    },
+    "variants": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9_.-]*$"
+      }
+    },
+    "depends_on": {
+      "type": "array",
+      "description": "Explicit dependency declarations. Prefer pinned versions in profiles; modules may declare constraints.",
+      "items": {
+        "oneOf": [
+          {
+            "type": "string",
+            "pattern": "^[a-z0-9_.-]+$",
+            "description": "Dependency module_id (legacy)."
+          },
+          {
+            "type": "object",
+            "required": [
+              "module_id"
+            ],
+            "properties": {
+              "module_id": {
+                "type": "string",
+                "pattern": "^[a-z0-9_.-]+$"
+              },
+              "constraint": {
+                "type": "string",
+                "description": "A semver constraint string (e.g., '>=0.2.0,<1.0.0')."
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "provides": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "interface",
+          "path",
+          "media_type"
+        ],
+        "properties": {
+          "interface": {
+            "type": "string",
+            "pattern": "^[a-z0-9_.-]+\\.v[0-9]+$",
+            "description": "Interface identifier. Convention: dot-separated + version suffix (e.g., msez.api.regulator-console.v1)."
+          },
+          "path": {
+            "type": "string",
+            "description": "Relative path to the provided artifact within the module directory."
+          },
+          "media_type": {
+            "type": "string",
+            "description": "IANA media type (e.g., application/yaml, application/json, text/markdown)."
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "description": "Typed configuration parameters with defaults and constraints.",
+      "additionalProperties": {
+        "$ref": "#/definitions/parameter"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "parameter": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "enum",
+            "object",
+            "duration",
+            "money",
+            "jurisdiction_ref"
+          ]
+        },
+        "default": {
+          "description": "Default parameter value.",
+          "type": [
+            "string",
+            "number",
+            "integer",
+            "boolean",
+            "object",
+            "array",
+            "null"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "constraints": {
+          "type": "object",
+          "description": "Optional validation constraints. Shape depends on parameter type.",
+          "additionalProperties": true
+        },
+        "values": {
+          "type": "array",
+          "description": "For enum parameters: allowed values.",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "integer",
+              "boolean"
+            ]
+          }
+        },
+        "schema": {
+          "type": "string",
+          "description": "For object parameters: reference to a JSON Schema (path or URL)."
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

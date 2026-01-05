@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/vc.artifact-availability.schema.json",
+  "title": "MSEZ Artifact Availability Attestation Verifiable Credential",
+  "description": "A Verifiable Credential by an operator/authority/watcher attesting that they can serve a defined artifact set (lawpacks, rulesets, VCs, checkpoints, proofs) required to verify corridor operation. This credential is intended to make artifact availability (a hidden liveness dependency) explicit and auditable.",
+  "type": "object",
+  "required": ["@context", "type", "issuer", "issuanceDate", "credentialSubject", "proof"],
+  "properties": {
+    "@context": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1
+    },
+    "id": {"type": "string"},
+    "type": {
+      "type": "array",
+      "items": {"type": "string"},
+      "contains": {"const": "MSEZArtifactAvailabilityCredential"}
+    },
+    "issuer": {
+      "oneOf": [
+        {"type": "string"},
+        {
+          "type": "object",
+          "required": ["id"],
+          "properties": {
+            "id": {"type": "string"},
+            "name": {"type": "string"}
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "issuanceDate": {"type": "string"},
+    "expirationDate": {"type": "string"},
+    "credentialSubject": {
+      "type": "object",
+      "required": ["artifacts", "as_of", "assertion"],
+      "properties": {
+        "corridor_id": {"type": "string"},
+        "zone_id": {"type": "string"},
+        "jurisdiction_id": {"type": "string"},
+        "as_of": {
+          "description": "The operational point-in-time this availability statement refers to.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "artifacts": {
+          "description": "The exact artifact commitments the issuer claims to be able to serve.",
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "artifact-ref.schema.json"}
+        },
+        "assertion": {
+          "type": "object",
+          "required": ["status", "statement"],
+          "properties": {
+            "status": {
+              "description": "Coarse availability label.",
+              "type": "string",
+              "enum": ["asserted_available", "asserted_partial", "asserted_unavailable"]
+            },
+            "statement": {"type": "string", "minLength": 1},
+            "service_endpoints": {
+              "description": "Optional list of resolvers/mirrors the issuer operates (URLs, IPFS gateways, S3 buckets, etc.).",
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "protocols": {
+              "description": "Optional protocol hints (non-normative).",
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "notes": {"type": "string"}
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "proof": {
+      "oneOf": [
+        {"type": "object"},
+        {
+          "type": "array",
+          "items": {"type": "object"},
+          "minItems": 1
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

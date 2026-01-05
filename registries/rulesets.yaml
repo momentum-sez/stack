@@ -1,11 +1,14 @@
 version: 1
 rulesets:
-  - ruleset_id: msez.corridor.verification.v1
-    path: rulesets/msez.corridor.verification.v1.json
-  - ruleset_id: msez.corridor.state-transition.v1
-    path: rulesets/msez.corridor.state-transition.v1.json
-  - ruleset_id: msez.corridor.state-transition.v2
-    path: rulesets/msez.corridor.state-transition.v2.json
-
-  - ruleset_id: msez.transition.example.transfer.v1
-    path: rulesets/msez.transition.example.transfer.v1.json
+- ruleset_id: msez.corridor.verification.v1
+  path: rulesets/msez.corridor.verification.v1.json
+- ruleset_id: msez.corridor.state-transition.v1
+  path: rulesets/msez.corridor.state-transition.v1.json
+- ruleset_id: msez.corridor.state-transition.v2
+  path: rulesets/msez.corridor.state-transition.v2.json
+- ruleset_id: msez.transition.example.transfer.v1
+  path: rulesets/msez.transition.example.transfer.v1.json
+- ruleset_id: msez.transition.settle.swift.pacs008.v1
+  path: rulesets/msez.transition.settle.swift.pacs008.v1.json
+- ruleset_id: msez.transition.settle.usdc.circle.transfer.v1
+  path: rulesets/msez.transition.settle.usdc.circle.transfer.v1.json

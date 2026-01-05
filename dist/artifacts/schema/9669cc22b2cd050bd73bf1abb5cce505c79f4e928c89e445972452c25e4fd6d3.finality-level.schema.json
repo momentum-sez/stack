@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/finality-level.schema.json",
+  "title": "MSEZ Finality Level",
+  "description": "Enumerated finality semantics for corridor state channels. Used by watchers, checkpoints, external anchors, and legal recognition layers to converge on interoperable state assurance language.",
+  "type": "string",
+  "enum": [
+    "proposed",
+    "receipt_signed",
+    "checkpoint_signed",
+    "watcher_quorum",
+    "l1_anchored",
+    "legally_recognized"
+  ],
+  "default": "receipt_signed"
+}

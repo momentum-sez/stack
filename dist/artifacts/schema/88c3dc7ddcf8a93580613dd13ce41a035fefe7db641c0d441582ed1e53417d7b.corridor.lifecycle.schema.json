@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/corridor.lifecycle.schema.json",
+  "title": "MSEZ Corridor Lifecycle",
+  "description": "A compact lifecycle record for a corridor instance. The lifecycle state machine is policy-defined (corridor.state-machine.schema.json) and transitions are recorded as signed VCs referenced by digest.",
+  "type": "object",
+  "required": [
+    "type",
+    "corridor_id",
+    "state",
+    "since"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZCorridorLifecycle"
+    },
+    "corridor_id": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string",
+      "minLength": 1
+    },
+    "since": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "state_machine_ref": {
+      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+      }
+    },
+    "notes": {
+      "type": "string"
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

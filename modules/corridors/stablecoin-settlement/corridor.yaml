@@ -28,3 +28,5 @@ trust_anchors_path: trust-anchors.yaml
 key_rotation_path: key-rotation.yaml
 definition_vc_path: corridor.vc.json
 verification_ruleset: msez.corridor.verification.v1
+state_channel:
+  transition_type_registry_lock_path: registries/transition-types.lock.json

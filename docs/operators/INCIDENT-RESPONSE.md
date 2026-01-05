@@ -14,7 +14,7 @@ The stack provides several primitives that are designed to make incident respons
 Run watcher compare:
 
 ```bash
-python3 tools/msez.py corridor state watcher-compare modules/corridors/<corridor> \
+python3 -m tools.msez corridor state watcher-compare modules/corridors/<corridor> \
   --vcs ./watcher-attestations \
   --quorum-threshold majority \
   --require-quorum \
@@ -40,12 +40,31 @@ If possible, obtain:
 
 Store them as content-addressed artifacts.
 
-## 4) Issue a fork alarm VC (when receipts exist)
+## 4) Receipt-level fork forensics (when receipts exist)
+
+If you can collect receipts (even from multiple operators / watchers), generate a fork report:
+
+```bash
+python3 -m tools.msez corridor state fork-inspect modules/corridors/<corridor>   --receipts path/to/receipts   --format json   --out fork-report.json
+```
+
+If you already have fork resolution artifacts (VCs or raw `MSEZCorridorForkResolution` JSON), include them to check coverage and compute the canonical head:
+
+```bash
+python3 -m tools.msez corridor state fork-inspect modules/corridors/<corridor>   --receipts path/to/receipts   --fork-resolutions path/to/fork-resolutions   --format text
+```
+
+Interpretation:
+
+- `forks.unresolved > 0`: halt and resolve before producing new receipts.
+- `forks.resolved == forks.total`: the report includes a `canonical_head` you can checkpoint against.
+
+## 5) Issue a fork alarm VC (when receipts exist)
 
 If you can identify two receipts with the same `(sequence, prev_root)` but different `next_root`, issue a fork alarm VC:
 
 ```bash
-python3 tools/msez.py corridor state fork-alarm \
+python3 -m tools.msez corridor state fork-alarm \
   --corridor modules/corridors/<corridor> \
   --receipt-a path/to/receiptA.json \
   --receipt-b path/to/receiptB.json \
@@ -53,7 +72,7 @@ python3 tools/msez.py corridor state fork-alarm \
   --out dist/artifacts/vc/
 ```
 
-## 5) Contain key compromise
+## 6) Contain key compromise
 
 If key compromise is suspected:
 
@@ -61,11 +80,11 @@ If key compromise is suspected:
 - update the authority registry chain as required
 - publish the updated artifacts and new digests
 
-## 6) Resume with a checkpoint
+## 7) Resume with a checkpoint
 
 Once the authoritative branch is determined (via operator consensus, arbitration, or external anchoring), resume operations by producing a checkpoint and requiring downstream consumers to sync from that checkpoint.
 
-## 7) Publish a post-mortem
+## 8) Publish a post-mortem
 
 Publish a short post-mortem including:
 

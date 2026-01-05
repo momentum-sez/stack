@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/watcher-compare-result.schema.json",
+  "title": "MSEZ Watcher Compare Result",
+  "description": "Machine-readable output shape for `msez corridor state watcher-compare`. A verifier can use this object to detect fork-like divergences and to evaluate watcher quorum policies without transporting corridor receipts.",
+  "type": "object",
+  "required": [
+    "type",
+    "corridor_id",
+    "analysis_timestamp",
+    "attestations",
+    "divergences",
+    "quorum"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZWatcherCompareResult"
+    },
+    "corridor_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "analysis_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "summary": {
+      "type": "object",
+      "description": "High-level stats useful for dashboards.",
+      "properties": {
+        "total_attestations": {"type": "integer", "minimum": 0},
+        "valid_attestations": {"type": "integer", "minimum": 0},
+        "fresh_attestations": {"type": "integer", "minimum": 0},
+        "distinct_watchers": {"type": "integer", "minimum": 0},
+        "max_receipt_count": {"type": "integer", "minimum": 0},
+        "min_receipt_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": true
+    },
+    "attestations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "watcher_did", "receipt_count", "final_state_root"],
+        "properties": {
+          "path": {"type": "string"},
+          "watcher_did": {"type": "string"},
+          "issuer": {"type": "string"},
+          "proof_ok": {"type": "boolean"},
+          "authorized": {"type": "boolean"},
+          "stale": {"type": "boolean"},
+          "staleness_seconds": {"type": "integer", "minimum": 0},
+          "observed_at": {"type": "string"},
+          "genesis_root": {"type": "string"},
+          "receipt_count": {"type": "integer", "minimum": 0},
+          "final_state_root": {"type": "string"},
+          "mmr_root": {"type": "string"},
+          "head_commitment_digest_sha256": {"type": "string"},
+          "checkpoint_digest_sha256": {"type": "string"},
+          "included_in_quorum": {"type": "boolean"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "divergences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "severity", "message"],
+        "properties": {
+          "type": {"type": "string"},
+          "severity": {"type": "string", "enum": ["info", "warn", "critical"]},
+          "message": {"type": "string"},
+          "details": {"type": "object"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "quorum": {
+      "type": "object",
+      "required": ["threshold", "required", "of", "reached"],
+      "properties": {
+        "threshold": {
+          "type": "string",
+          "description": "Human-readable threshold string, e.g., 'majority' or '3/5'."
+        },
+        "required": {"type": "integer", "minimum": 0},
+        "of": {"type": "integer", "minimum": 0},
+        "max_staleness_seconds": {"type": "integer", "minimum": 0},
+        "fresh_watchers": {"type": "integer", "minimum": 0},
+        "agreeing_watchers": {"type": "integer", "minimum": 0},
+        "reached": {"type": "boolean"},
+        "agreed_head": {
+          "type": "object",
+          "properties": {
+            "receipt_count": {"type": "integer"},
+            "final_state_root": {"type": "string"},
+            "mmr_root": {"type": "string"},
+            "head_commitment_digest_sha256": {"type": "string"}
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "outputs": {
+      "type": "object",
+      "description": "Optional additional artifacts emitted by the command (paths, digests).",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

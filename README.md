@@ -1,4 +1,4 @@
-# Momentum SEZ Stack (MSEZ) — v0.4.20
+# Momentum SEZ Stack (MSEZ) — v0.4.23
 
 
 This repository is a **reference specification + reference library** for building *programmable Special Economic Zones (SEZs)* as modular, forkable, and composable “jurisdiction nodes” in the Momentum/Mass network.
@@ -22,13 +22,13 @@ It is designed to function like an **open standard**: modular, versioned, testab
 
 ```bash
 # 1) validate a profile bundle (schema + semantic checks)
-python tools/msez.py validate profiles/digital-financial-center/profile.yaml
+python -m tools.msez validate profiles/digital-financial-center/profile.yaml
 
 # 2) validate a zone deployment (profile+corridors+overlays)
-python tools/msez.py validate --zone jurisdictions/_starter/zone.yaml
+python -m tools.msez validate --zone jurisdictions/_starter/zone.yaml
 
 # 3) build a reproducible zone bundle (applies overlays + renders templates)
-python tools/msez.py build --zone jurisdictions/_starter/zone.yaml --out dist/
+python -m tools.msez build --zone jurisdictions/_starter/zone.yaml --out dist/
 ```
 
 ## Repository conventions
@@ -57,46 +57,52 @@ Skeleton created: 2025-12-21.
 - Lifecycle state machine + evidence-gated transitions (HALT/RESUME) (v0.4.19)
 - Fork resolution + lifecycle unit tests (v0.4.19)
 - CLI signing hardening + regression tests for watcher-attest/fork-alarm/availability-attest (v0.4.20)
+- Receipt-level fork forensics (`corridor state fork-inspect`) (v0.4.21)
+- Transitive artifact completeness for transition type registries (`--transitive-require-artifacts`), including nested ArtifactRefs in referenced rulesets (v0.4.23)
+- Performance harness tests (pytest marker `perf`; run with `MSEZ_RUN_PERF=1`) (v0.4.21)
+- Transition type stubs for SWIFT pacs.008 and Circle USDC transfer + reference adapters (`tools/integrations/`) (v0.4.21)
+- Trust anchor enforcement fixes (`--enforce-trust-anchors` now functional) (v0.4.21)
 
 
 ## Tooling commands (v0.4+)
 
 ```bash
 # corridor cryptographic verification (VCs + agreements)
-python tools/msez.py corridor verify modules/corridors/swift
-python tools/msez.py corridor status modules/corridors/swift
-python tools/msez.py corridor availability-attest modules/corridors/swift --issuer did:example:operator --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/availability.vc.json
-python tools/msez.py corridor availability-verify modules/corridors/swift --vcs /tmp/availability.vc.json
+python -m tools.msez corridor verify modules/corridors/swift
+python -m tools.msez corridor status modules/corridors/swift
+python -m tools.msez corridor availability-attest modules/corridors/swift --issuer did:example:operator --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/availability.vc.json
+python -m tools.msez corridor availability-verify modules/corridors/swift --vcs /tmp/availability.vc.json
 
 # corridor state channels (verifiable receipts)
-python tools/msez.py corridor state genesis-root modules/corridors/swift
-python tools/msez.py corridor state receipt-init modules/corridors/swift   --sequence 0   --transition docs/examples/state/noop.transition.json   --sign --key docs/examples/keys/dev.ed25519.jwk   --out /tmp/receipt0.json
-python tools/msez.py corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json
-python tools/msez.py corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json --require-artifacts
-python tools/msez.py corridor state checkpoint modules/corridors/swift --receipts /tmp/receipt0.json --issuer did:example:zone --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/checkpoint.json
-python tools/msez.py corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json --checkpoint /tmp/checkpoint.json --enforce-checkpoint-policy
-python tools/msez.py corridor state watcher-attest modules/corridors/swift --checkpoint /tmp/checkpoint.json --issuer did:example:watcher --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/watcher.vc.json
-python tools/msez.py corridor state fork-alarm modules/corridors/swift --receipt-a /tmp/receipt0.json --receipt-b /tmp/receipt0_fork.json --issuer did:example:watcher --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/fork-alarm.vc.json
+python -m tools.msez corridor state genesis-root modules/corridors/swift
+python -m tools.msez corridor state receipt-init modules/corridors/swift   --sequence 0   --transition docs/examples/state/noop.transition.json   --sign --key docs/examples/keys/dev.ed25519.jwk   --out /tmp/receipt0.json
+python -m tools.msez corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json
+python -m tools.msez corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json --require-artifacts
+python -m tools.msez corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json --transitive-require-artifacts
+python -m tools.msez corridor state checkpoint modules/corridors/swift --receipts /tmp/receipt0.json --issuer did:example:zone --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/checkpoint.json
+python -m tools.msez corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json --checkpoint /tmp/checkpoint.json --enforce-checkpoint-policy
+python -m tools.msez corridor state watcher-attest modules/corridors/swift --checkpoint /tmp/checkpoint.json --issuer did:example:watcher --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/watcher.vc.json
+python -m tools.msez corridor state fork-alarm modules/corridors/swift --receipt-a /tmp/receipt0.json --receipt-b /tmp/receipt0_fork.json --issuer did:example:watcher --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/fork-alarm.vc.json
 
 # transition type registries + lock snapshots (v0.4.5+; CAS v0.4.7+)
-python tools/msez.py registry transition-types-lock registries/transition-types.yaml
-python tools/msez.py registry transition-types-store registries/transition-types.lock.json
-python tools/msez.py registry transition-types-resolve d8f22c0aa0114b30f961c208e48f08b17403655cdd0c25c9027b2373609fd207
+python -m tools.msez registry transition-types-lock registries/transition-types.yaml
+python -m tools.msez registry transition-types-store registries/transition-types.lock.json
+python -m tools.msez registry transition-types-resolve a27a1cd5ccc438f4c8962bf4c85345ce5688ba7c5d53aa82974640edcb6a280a
 
 # generic artifact CAS (dist/artifacts/<type>/<digest>.*) (v0.4.7+; schema/vc/checkpoint/proof-key types v0.4.8+; blob type v0.4.9+)
-python tools/msez.py artifact resolve transition-types d8f22c0aa0114b30f961c208e48f08b17403655cdd0c25c9027b2373609fd207
-python tools/msez.py artifact index-rulesets
-python tools/msez.py artifact index-lawpacks
-python tools/msez.py artifact index-schemas
-python tools/msez.py artifact index-vcs
+python -m tools.msez artifact resolve transition-types a27a1cd5ccc438f4c8962bf4c85345ce5688ba7c5d53aa82974640edcb6a280a
+python -m tools.msez artifact index-rulesets
+python -m tools.msez artifact index-lawpacks
+python -m tools.msez artifact index-schemas
+python -m tools.msez artifact index-vcs
 
 # sign and verify VCs (for co-signing / governance flows)
-python tools/msez.py vc keygen --out /tmp/my.ed25519.jwk
-python tools/msez.py vc sign docs/examples/vc/unsigned.corridor-definition.json   --key docs/examples/keys/dev.ed25519.jwk --out /tmp/signed.definition.json
-python tools/msez.py vc verify /tmp/signed.definition.json
+python -m tools.msez vc keygen --out /tmp/my.ed25519.jwk
+python -m tools.msez vc sign docs/examples/vc/unsigned.corridor-definition.json   --key docs/examples/keys/dev.ed25519.jwk --out /tmp/signed.definition.json
+python -m tools.msez vc verify /tmp/signed.definition.json
 
 # lawpacks (v0.4.1+): ingest a jurisdiction corpus into a content-addressed lawpack
-python tools/msez.py law ingest modules/legal/jurisdictions/us/ca/civil --as-of-date 2025-01-01 --fetch
+python -m tools.msez law ingest modules/legal/jurisdictions/us/ca/civil --as-of-date 2025-01-01 --fetch
 ```
 
 ## Development
@@ -106,20 +112,20 @@ pip install -r tools/requirements.txt
 pytest -q
 
 # fetch Akoma Ntoso schema bundle (needed for schema validation)
-python tools/msez.py fetch-akoma-schemas
+python -m tools.msez fetch-akoma-schemas
 
 # validate all modules
-python tools/msez.py validate --all-modules
+python -m tools.msez validate --all-modules
 
 # render an Akoma template to HTML/PDF
-python tools/msez.py render modules/legal/akn-templates/src/akn/act.template.xml --pdf
+python -m tools.msez render modules/legal/akn-templates/src/akn/act.template.xml --pdf
 
 # generate a deterministic lockfile for a zone deployment
-python tools/msez.py lock jurisdictions/_starter/zone.yaml --out jurisdictions/_starter/stack.lock
+python -m tools.msez lock jurisdictions/_starter/zone.yaml --out jurisdictions/_starter/stack.lock
 
 # build a reproducible bundle (applies overlays + renders templates)
-python tools/msez.py build --zone jurisdictions/_starter/zone.yaml --out dist/
+python -m tools.msez build --zone jurisdictions/_starter/zone.yaml --out dist/
 
 # publish rendered artifacts
-python tools/msez.py publish dist/bundle --out-dir dist/publish --pdf
+python -m tools.msez publish dist/bundle --out-dir dist/publish --pdf
 ```

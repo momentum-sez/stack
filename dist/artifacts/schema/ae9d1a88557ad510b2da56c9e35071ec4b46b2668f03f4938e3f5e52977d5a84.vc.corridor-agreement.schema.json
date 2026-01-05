@@ -1,0 +1,552 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/vc.corridor-agreement.schema.json",
+  "title": "MSEZ Corridor Agreement Credential",
+  "type": "object",
+  "required": [
+    "@context",
+    "type",
+    "issuer",
+    "issuanceDate",
+    "credentialSubject",
+    "proof"
+  ],
+  "properties": {
+    "@context": {
+      "description": "JSON-LD context(s).",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          },
+          "minItems": 1
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "description": "Credential types. MUST include 'VerifiableCredential'.",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "issuer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "issuanceDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expirationDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "credentialSubject": {
+      "type": "object",
+      "required": [
+        "corridor_id",
+        "definition_payload_sha256",
+        "participants",
+        "activation"
+      ],
+      "properties": {
+        "corridor_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "definition_vc_id": {
+          "type": "string"
+        },
+        "definition_payload_sha256": {
+          "description": "SHA256(JCS(definition_vc_without_proof)) commitment. Legacy form is a raw sha256 digest; preferred form is an ArtifactRef with artifact_type='vc'.",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                },
+                {
+                  "properties": {
+                    "artifact_type": {
+                      "const": "vc"
+                    }
+                  },
+                  "required": [
+                    "artifact_type",
+                    "digest_sha256"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "participants": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "role"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "role": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "jurisdiction": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "activation": {
+          "type": "object",
+          "required": [
+            "thresholds"
+          ],
+          "properties": {
+            "thresholds": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": [
+                  "role",
+                  "required"
+                ],
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "required": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "of": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "effectiveFrom": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "effectiveUntil": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "accept_commitments": {
+              "description": "List of commitment verb(s) that count as affirmative for activation. Default is ['agree'] when omitted.",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "state_channel": {
+          "description": "Optional state-channel policy bindings for corridor operation (v0.4.14+).",
+          "type": "object",
+          "properties": {
+            "receipt_signing": {
+              "description": "Receipt signing thresholds for corridor state transitions (fork resistance).",
+              "type": "object",
+              "properties": {
+                "thresholds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "role",
+                      "required",
+                      "of"
+                    ],
+                    "properties": {
+                      "role": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "required": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "of": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "description": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "effectiveFrom": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "description": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true
+            },
+            "checkpointing": {
+              "type": "object",
+              "description": "Optional checkpoint finality + sync policy for corridor state channels (v0.4.15+). Checkpoints provide scalable verification by allowing new verifiers to sync from a signed state+MMR commitment rather than replaying the full receipt history.",
+              "properties": {
+                "mode": {
+                  "description": "Whether checkpoints are optional or required for ongoing operation.",
+                  "type": "string",
+                  "enum": [
+                    "optional",
+                    "required"
+                  ],
+                  "default": "optional"
+                },
+                "finality": {
+                  "description": "How checkpoints are interpreted for downstream systems (non-normative).",
+                  "type": "string",
+                  "enum": [
+                    "soft",
+                    "hard"
+                  ],
+                  "default": "soft"
+                },
+                "max_receipts_between_checkpoints": {
+                  "description": "If set, a checkpoint SHOULD be produced at least this often (in receipts).",
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "max_seconds_between_checkpoints": {
+                  "description": "If set, a checkpoint SHOULD be produced at least this often (wall-clock seconds).",
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "thresholds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "role",
+                      "required",
+                      "of"
+                    ],
+                    "properties": {
+                      "role": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "required": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "of": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "description": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "additionalProperties": true
+            },
+            "watcher_quorum": {
+              "type": "object",
+              "description": "Optional watcher quorum policy for liveness monitoring and soft-finality (v0.4.17+). A watcher quorum is computed from signed watcher attestation VCs and can be used to raise an operational alarm when observers diverge (cheap fork detection without receipt transport).",
+              "properties": {
+                "mode": {
+                  "description": "Whether watcher quorum is an optional monitoring signal or a required operational gate.",
+                  "type": "string",
+                  "enum": [
+                    "optional",
+                    "required"
+                  ],
+                  "default": "optional"
+                },
+                "threshold": {
+                  "description": "Quorum threshold label. Examples: 'majority', '3/5'. If unset, implementations MAY default to majority-of-known-watchers.",
+                  "type": "string"
+                },
+                "required": {
+                  "description": "K in K-of-N. If set alongside 'of', overrides 'threshold'.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "of": {
+                  "description": "N in K-of-N. If 0 or unset, implementations MAY derive N from the configured watcher allow-list (authority registry) or from the set of observed watchers.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "max_staleness": {
+                  "description": "Maximum allowed age for a watcher attestation to be counted toward quorum (e.g., '1h', 'PT1H', '86400').",
+                  "type": "string"
+                },
+                "max_staleness_seconds": {
+                  "description": "Maximum allowed age for a watcher attestation in seconds (integer form).",
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        },
+        "terms": {
+          "description": "Optional agreement terms reference (URI/hash) or embedded terms object.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "additionalProperties": true
+            }
+          ]
+        },
+        "version": {
+          "type": "string"
+        },
+        "maintainer": {
+          "type": "string"
+        },
+        "party": {
+          "description": "Participant-specific party descriptor. If present, this VC is interpreted as that party's individual consent statement.",
+          "type": "object",
+          "required": [
+            "id",
+            "role"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "role": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": {
+              "type": "string"
+            },
+            "jurisdiction": {
+              "type": "string"
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        },
+        "commitment": {
+          "description": "Optional commitment verb (e.g., agree|suspend|withdraw).",
+          "type": "string",
+          "minLength": 1
+        },
+        "party_terms": {
+          "description": "Optional participant-specific terms reference (URI/hash) or embedded terms object. Use this for party-specific carveouts while keeping credentialSubject.terms global/shared.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "additionalProperties": true
+            }
+          ]
+        },
+        "pinned_lawpacks": {
+          "type": "array",
+          "description": "Participant-pinned lawpack digests (party-specific agreements) that the signer attests are active for their zone.",
+          "items": {
+            "type": "object",
+            "required": [
+              "jurisdiction_id",
+              "domain",
+              "lawpack_digest_sha256"
+            ],
+            "properties": {
+              "jurisdiction_id": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string"
+              },
+              "lawpack_digest_sha256": {
+                "description": "Pinned lawpack digest (hex) OR an ArtifactRef pointing to the pinned lawpack artifact (recommended).",
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                      },
+                      {
+                        "properties": {
+                          "artifact_type": {
+                            "const": "lawpack"
+                          }
+                        },
+                        "required": [
+                          "artifact_type",
+                          "digest_sha256"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "lawpack_lock_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "as_of_date": {
+                "type": "string",
+                "format": "date"
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "proof": {
+      "description": "One or more cryptographic proofs over the credential payload (excluding the proof field).",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "created",
+            "verificationMethod",
+            "proofPurpose",
+            "jws"
+          ],
+          "properties": {
+            "type": {
+              "const": "MsezEd25519Signature2025"
+            },
+            "created": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "verificationMethod": {
+              "type": "string",
+              "minLength": 1
+            },
+            "proofPurpose": {
+              "type": "string",
+              "minLength": 1
+            },
+            "jws": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "type",
+              "created",
+              "verificationMethod",
+              "proofPurpose",
+              "jws"
+            ],
+            "properties": {
+              "type": {
+                "const": "MsezEd25519Signature2025"
+              },
+              "created": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "verificationMethod": {
+                "type": "string",
+                "minLength": 1
+              },
+              "proofPurpose": {
+                "type": "string",
+                "minLength": 1
+              },
+              "jws": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/transition-types.registry.schema.json",
+  "title": "MSEZ Transition Type Registry",
+  "description": "Registry mapping transition kinds to optional schema/ruleset/ZK circuit digests. Used to keep corridor receipts generic while allowing ecosystems to converge on interoperable transition types.",
+  "type": "object",
+  "required": ["version", "transition_types"],
+  "properties": {
+    "version": {"type": "integer", "minimum": 1},
+    "transition_types": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["kind"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stable transition kind identifier (ecosystem-defined)."
+          },
+          "description": {"type": "string"},
+
+          "schema_digest_sha256": {
+            "description": "Optional payload schema commitment. Legacy form is a raw sha256 digest; preferred form is an ArtifactRef with artifact_type='schema'.",
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "allOf": [
+                  {
+                    "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                  },
+                  {
+                    "properties": {
+                      "artifact_type": {
+                        "const": "schema"
+                      }
+                    },
+                    "required": [
+                      "artifact_type",
+                      "digest_sha256"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "schema_path": {
+            "type": "string",
+            "description": "Optional repository-relative path to the schema artifact (for tooling convenience)."
+          },
+          "schema_id": {
+            "type": "string",
+            "description": "Optional schema identifier/URI."
+          },
+
+          "ruleset_digest_sha256": {
+            "description": "Optional ruleset commitment. Legacy form is a raw sha256 digest; preferred form is an ArtifactRef with artifact_type='ruleset'.",
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "allOf": [
+                  {
+                    "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                  },
+                  {
+                    "properties": {
+                      "artifact_type": {
+                        "const": "ruleset"
+                      }
+                    },
+                    "required": [
+                      "artifact_type",
+                      "digest_sha256"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "ruleset_id": {
+            "type": "string",
+            "description": "Optional ruleset_id (registered in registries/rulesets.yaml) whose descriptor digest equals ruleset_digest_sha256."
+          },
+          "ruleset_path": {
+            "type": "string",
+            "description": "Optional repository-relative path to the ruleset descriptor (for tooling convenience)."
+          },
+
+          "zk_circuit_digest_sha256": {
+            "description": "Optional ZK circuit commitment. Legacy form is a raw sha256 digest; preferred form is an ArtifactRef with artifact_type='circuit'.",
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "allOf": [
+                  {
+                    "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                  },
+                  {
+                    "properties": {
+                      "artifact_type": {
+                        "const": "circuit"
+                      }
+                    },
+                    "required": [
+                      "artifact_type",
+                      "digest_sha256"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "zk_circuit_uri": {
+            "type": "string",
+            "description": "Optional URI/location for the circuit artifact."
+          },
+
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "notes": {"type": "string"}
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://momentum-sez.org/schemas/trust-anchors.schema.json",
+  "title": "Corridor Trust Anchors",
+  "type": "object",
+  "required": [
+    "version",
+    "trust_anchors"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer"
+    },
+    "trust_anchors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "anchor_id",
+          "type",
+          "identifier",
+          "allowed_attestations"
+        ],
+        "properties": {
+          "anchor_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "did",
+              "x509",
+              "jwk",
+              "pgp",
+              "other"
+            ]
+          },
+          "identifier": {
+            "type": "string"
+          },
+          "allowed_attestations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    }
+  }
+}

@@ -16,17 +16,17 @@ Where:
 Use the CLI:
 
 ```bash
-python tools/msez.py artifact resolve <type> <digest>
-python tools/msez.py artifact store <type> <digest> <path>
+python -m tools.msez artifact resolve <type> <digest>
+python -m tools.msez artifact store <type> <digest> <path>
 ```
 
 Index helpers (optional):
 
 ```bash
-python tools/msez.py artifact index-rulesets
-python tools/msez.py artifact index-lawpacks
-python tools/msez.py artifact index-schemas
-python tools/msez.py artifact index-vcs
+python -m tools.msez artifact index-rulesets
+python -m tools.msez artifact index-lawpacks
+python -m tools.msez artifact index-schemas
+python -m tools.msez artifact index-vcs
 ```
 
 This CAS exists so that any digest commitment appearing in receipts / VCs has an **obvious resolution path** in a repository checkout.

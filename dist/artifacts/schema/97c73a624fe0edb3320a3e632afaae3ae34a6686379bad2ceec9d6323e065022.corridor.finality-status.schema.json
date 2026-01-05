@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/corridor.finality-status.schema.json",
+  "title": "MSEZ Corridor Finality Status",
+  "description": "Computed finality status for a corridor head. This is an output schema used by tooling and APIs; it is not a VC by default. Finality levels are defined in finality-level.schema.json.",
+  "type": "object",
+  "required": [
+    "type",
+    "corridor_id",
+    "as_of",
+    "finality_level",
+    "receipt_count",
+    "final_state_root",
+    "head_commitment_digest_sha256"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZCorridorFinalityStatus"
+    },
+    "corridor_id": {
+      "type": "string"
+    },
+    "as_of": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "receipt_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "final_state_root": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "mmr_root": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "head_commitment_digest_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "finality_level": {
+      "$ref": "https://schemas.momentum-sez.org/msez/finality-level.schema.json"
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "checkpoint": {
+          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+        },
+        "watcher_quorum": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "anchors": {
+          "type": "array",
+          "items": {
+            "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+          }
+        },
+        "disputes": {
+          "type": "array",
+          "items": {
+            "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

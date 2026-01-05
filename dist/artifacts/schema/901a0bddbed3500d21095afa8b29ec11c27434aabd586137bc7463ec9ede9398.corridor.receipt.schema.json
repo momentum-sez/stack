@@ -1,0 +1,342 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/corridor.receipt.schema.json",
+  "title": "MSEZ Corridor State Receipt",
+  "type": "object",
+  "required": [
+    "type",
+    "corridor_id",
+    "sequence",
+    "timestamp",
+    "prev_root",
+    "next_root",
+    "lawpack_digest_set",
+    "ruleset_digest_set",
+    "proof"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZCorridorStateReceipt",
+      "description": "Receipt kind identifier."
+    },
+    "corridor_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic sequence number within a corridor state channel."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp (UTC recommended)."
+    },
+    "prev_root": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "State root before this transition. For the first receipt this SHOULD equal the corridor genesis_root."
+    },
+    "next_root": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "State root after this transition. MUST equal SHA256(JCS(receipt_without_proof_and_next_root))."
+    },
+    "lawpack_digest_set": {
+      "type": "array",
+      "items": {
+        "description": "A raw sha256 digest string (legacy) OR an ArtifactRef (recommended; artifact_type MUST be 'lawpack').",
+        "oneOf": [
+          {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              },
+              {
+                "properties": {
+                  "artifact_type": {
+                    "const": "lawpack"
+                  }
+                },
+                "required": [
+                  "artifact_type",
+                  "digest_sha256"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "description": "Sorted set of lawpack digests (sha256) governing this corridor operation snapshot."
+    },
+    "ruleset_digest_set": {
+      "type": "array",
+      "items": {
+        "description": "A raw sha256 digest string (legacy) OR an ArtifactRef (recommended; artifact_type MUST be 'ruleset').",
+        "oneOf": [
+          {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              },
+              {
+                "properties": {
+                  "artifact_type": {
+                    "const": "ruleset"
+                  }
+                },
+                "required": [
+                  "artifact_type",
+                  "digest_sha256"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "description": "Sorted set of ruleset digests (sha256) governing this corridor transition."
+    },
+    "transition_type_registry_digest_sha256": {
+      "description": "Optional digest commitment to a Transition Type Registry snapshot (snapshot_digest_sha256 from transition-types.lock.json). When present, receipts MAY omit per-transition schema/ruleset/circuit digests and rely on the registry mapping for semantics. Legacy form is a raw sha256 digest; preferred form is an ArtifactRef with artifact_type='transition-types'.",
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+            },
+            {
+              "properties": {
+                "artifact_type": {
+                  "const": "transition-types"
+                }
+              },
+              "required": [
+                "artifact_type",
+                "digest_sha256"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "transition": {
+      "$ref": "https://schemas.momentum-sez.org/msez/transition-envelope.schema.json"
+    },
+    "zk": {
+      "type": "object",
+      "description": "Optional ZK proof scaffold. Proof verification is corridor-specific; receipts commit to proof and verifier digests.",
+      "properties": {
+        "proof_system": {
+          "type": "string"
+        },
+        "circuit_digest_sha256": {
+          "description": "Optional commitment to the circuit artifact. Legacy form is a raw sha256 digest; preferred form is an ArtifactRef with artifact_type='circuit'.",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                },
+                {
+                  "properties": {
+                    "artifact_type": {
+                      "const": "circuit"
+                    }
+                  },
+                  "required": [
+                    "artifact_type",
+                    "digest_sha256"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "verifier_key_digest_sha256": {
+          "description": "Optional commitment to the verifier/proving key artifact. Legacy form is a raw sha256 digest; preferred form is an ArtifactRef with artifact_type='proof-key'.",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                },
+                {
+                  "properties": {
+                    "artifact_type": {
+                      "const": "proof-key"
+                    }
+                  },
+                  "required": [
+                    "artifact_type",
+                    "digest_sha256"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "public_inputs": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "proof_sha256": {
+          "description": "Commitment to raw proof bytes. Legacy form is a raw sha256 digest; preferred form is an ArtifactRef with artifact_type='blob'. Resolves as: dist/artifacts/blob/<digest>.*",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                },
+                {
+                  "properties": {
+                    "artifact_type": {
+                      "const": "blob"
+                    }
+                  },
+                  "required": [
+                    "artifact_type",
+                    "digest_sha256"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "proof": {
+          "type": "string",
+          "description": "Optional proof bytes (base64 or other encoding, corridor-specific)."
+        },
+        "proof_uri": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "anchor": {
+      "type": "object",
+      "description": "Optional anchoring metadata for external chain commitments.",
+      "properties": {
+        "chain_id": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "tx_hash": {
+          "type": "string"
+        },
+        "block_number": {
+          "type": "integer"
+        },
+        "anchored_root": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "anchored_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": true
+    },
+    "proof": {
+      "description": "One or more cryptographic proofs over the receipt payload (excluding the proof field).",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "created",
+            "verificationMethod",
+            "proofPurpose",
+            "jws"
+          ],
+          "properties": {
+            "type": {
+              "const": "MsezEd25519Signature2025"
+            },
+            "created": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "verificationMethod": {
+              "type": "string",
+              "minLength": 1
+            },
+            "proofPurpose": {
+              "type": "string",
+              "minLength": 1
+            },
+            "jws": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "type",
+              "created",
+              "verificationMethod",
+              "proofPurpose",
+              "jws"
+            ],
+            "properties": {
+              "type": {
+                "const": "MsezEd25519Signature2025"
+              },
+              "created": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "verificationMethod": {
+                "type": "string",
+                "minLength": 1
+              },
+              "proofPurpose": {
+                "type": "string",
+                "minLength": 1
+              },
+              "jws": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

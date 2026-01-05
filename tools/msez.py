@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MSEZ Stack tool (reference implementation) — v0.4.24
+"""MSEZ Stack tool (reference implementation) — v0.4.25
 
 Capabilities:
 - validate modules/profiles/zones against schemas
@@ -52,7 +52,7 @@ if str(REPO_ROOT) not in sys.path:
 
 # Local (repo) imports (after sys.path fix)
 from tools import artifacts as artifact_cas
-STACK_SPEC_VERSION = "0.4.24"
+STACK_SPEC_VERSION = "0.4.25"
 
 # Templating: we intentionally support two simple placeholder syntaxes used in v0.4 (safe placeholder subset)
 # - {{ VAR_NAME }} (common in Akoma templates)
@@ -600,6 +600,452 @@ def _require_artifact_closure(
 
         for at2, d2 in _iter_embedded_artifactrefs(obj):
             stack.append((at2, d2, depth + 1, f"{src}->{at_norm}"))
+
+
+# -----------------------------------------------------------------------------
+# Artifact graph verification (closure reports)
+# -----------------------------------------------------------------------------
+
+def _structured_object_from_file(path: pathlib.Path) -> Any:
+    """Load a structured object from a JSON/YAML file.
+
+    Raises on parse failure.
+    """
+    p = pathlib.Path(path)
+    name = p.name.lower()
+    suf = p.suffix.lower()
+    if name.endswith(".json") or name.endswith(".jsonld") or name.endswith(".schema.json") or name.endswith(".lock.json") or suf == ".json":
+        return load_json(p)
+    if suf in (".yaml", ".yml"):
+        return load_yaml(p)
+    raise ValueError(f"not a JSON/YAML document: {p}")
+
+
+def _exclusive_c14n_xml_bytes(xml_bytes: bytes) -> bytes:
+    """Exclusive XML C14N (no comments), matching tools.lawpack canonicalization."""
+    import io
+
+    parser = etree.XMLParser(resolve_entities=False, no_network=True, remove_blank_text=False, huge_tree=True)
+    tree = etree.parse(io.BytesIO(xml_bytes), parser)
+    buf = io.BytesIO()
+    tree.write_c14n(buf, exclusive=True, with_comments=False)
+    return buf.getvalue()
+
+
+def _compute_lawpack_digest_from_zip(zip_path: pathlib.Path) -> str:
+    """Recompute a lawpack digest from an on-disk lawpack.zip.
+
+    Digest semantics are defined in tools.lawpack.compute_lawpack_digest and are
+    computed over canonicalized component bytes (JCS for JSON/YAML and Exclusive
+    C14N for Akoma Ntoso XML).
+
+    This enables strict verification that a lawpack artifact stored under
+    dist/artifacts/lawpack/<digest>.lawpack.zip actually corresponds to the digest.
+    """
+
+    import zipfile
+
+    from tools.lawpack import compute_lawpack_digest, jcs_canonicalize  # type: ignore
+
+    zp = pathlib.Path(zip_path)
+    if not zp.exists():
+        raise FileNotFoundError(zp)
+
+    canonical_files: Dict[str, bytes] = {}
+
+    with zipfile.ZipFile(zp, "r") as zf:
+        names = [n for n in zf.namelist() if not n.endswith("/")]
+        # Required components
+        if "lawpack.yaml" not in names:
+            raise ValueError("lawpack.zip missing lawpack.yaml")
+        if "index.json" not in names:
+            raise ValueError("lawpack.zip missing index.json")
+
+        lawpack_obj = yaml.safe_load(zf.read("lawpack.yaml").decode("utf-8"))
+        index_obj = json.loads(zf.read("index.json").decode("utf-8"))
+        canonical_files["lawpack.yaml"] = jcs_canonicalize(lawpack_obj)
+        canonical_files["index.json"] = jcs_canonicalize(index_obj)
+
+        akn_xml = [n for n in names if n.startswith("akn/") and n.lower().endswith(".xml")]
+        if not akn_xml:
+            raise ValueError("lawpack.zip missing akn/*.xml")
+        for n in sorted(akn_xml):
+            canonical_files[n] = _exclusive_c14n_xml_bytes(zf.read(n))
+
+    return compute_lawpack_digest(canonical_files)
+
+
+def _compute_artifact_digest_strict(artifact_type: str, path: pathlib.Path) -> Tuple[str, str]:
+    """Compute an artifact digest from on-disk content.
+
+    Returns (digest_sha256, method).
+
+    IMPORTANT: In the MSEZ stack, *digest semantics are artifact-specific*.
+
+    - JSON-based artifacts are typically hashed over a canonicalized representation
+      (JCS / RFC8785-like) rather than raw file bytes.
+    - Certain artifacts (VCs, checkpoints) hash over a signing-input / proof-stripped
+      payload.
+    - Lawpacks hash over canonicalized internal components.
+
+    This strict verifier recomputes digests according to these semantics, so that a
+    CAS file named <digest>.* cannot silently contain different content.
+    """
+
+    at = artifact_cas.normalize_artifact_type(artifact_type)
+    p = pathlib.Path(path)
+
+    if at == "lawpack":
+        return (_compute_lawpack_digest_from_zip(p), "lawpack.v1")
+
+    if at == "transition-types":
+        _lock_obj, _mapping, digest = load_transition_type_registry_lock(p)
+        return (digest, "transition-types.snapshot.v1")
+
+    if at == "schema":
+        return (_jcs_sha256_of_json_file(p), "jcs-json")
+
+    if at == "ruleset":
+        obj = load_json(p)
+        from tools.lawpack import jcs_canonicalize  # type: ignore
+
+        return (sha256_bytes(jcs_canonicalize(obj)), "jcs-json")
+
+    if at == "vc":
+        vcj = load_json(p)
+        from tools.vc import signing_input  # type: ignore
+
+        return (sha256_bytes(signing_input(vcj)), "vc.signing-input")
+
+    if at == "checkpoint":
+        cp = load_json(p)
+        if not isinstance(cp, dict):
+            raise ValueError("checkpoint must be a JSON object")
+        cp2 = dict(cp)
+        cp2.pop("proof", None)
+        from tools.lawpack import jcs_canonicalize  # type: ignore
+
+        return (sha256_bytes(jcs_canonicalize(cp2)), "checkpoint.payload")
+
+    # Default: raw bytes sha256
+    return (sha256_file(p), "bytes")
+
+
+def _iter_transition_types_lock_refs(lock_obj: Dict[str, Any]) -> List[Tuple[str, str, str]]:
+    """Extract (artifact_type, digest, label) refs from a transition-types.lock object."""
+
+    out: List[Tuple[str, str, str]] = []
+    snapshot = lock_obj.get("snapshot") if isinstance(lock_obj, dict) else None
+    types = (snapshot or {}).get("transition_types") if isinstance(snapshot, dict) else None
+    if not isinstance(types, list):
+        return out
+
+    for t in types:
+        if not isinstance(t, dict):
+            continue
+        kind = str(t.get("kind") or "").strip() or "(unknown-kind)"
+        for field, expected_type in [
+            ("schema_digest_sha256", "schema"),
+            ("ruleset_digest_sha256", "ruleset"),
+            ("zk_circuit_digest_sha256", "circuit"),
+        ]:
+            val = t.get(field)
+            if not val:
+                continue
+
+            atype = expected_type
+            dig = ""
+            if isinstance(val, str):
+                dig = _coerce_sha256(val) or ""
+            elif isinstance(val, dict):
+                atype = str(val.get("artifact_type") or expected_type).strip() or expected_type
+                dig = _coerce_sha256(val.get("digest_sha256") or "") or ""
+            if not dig:
+                continue
+            out.append((atype, dig, f"transition-types:{kind}:{field}"))
+
+    return out
+
+
+def build_artifact_graph_verify_report(
+    *,
+    root_artifact_type: str | None = None,
+    root_digest_sha256: str | None = None,
+    root_path: pathlib.Path | None = None,
+    strict: bool = False,
+    store_roots: Optional[List[pathlib.Path]] = None,
+    repo_root: pathlib.Path = REPO_ROOT,
+    max_nodes: int = 10000,
+    max_depth: int = 16,
+) -> Dict[str, Any]:
+    """Build an artifact graph closure report.
+
+    The report contains summary stats and lists of missing / digest-mismatched artifacts.
+
+    Roots:
+      - CAS root: (root_artifact_type, root_digest_sha256)
+      - Local file root: root_path (JSON/YAML), which is scanned for embedded ArtifactRefs
+
+    The traversal follows:
+      - embedded ArtifactRefs in JSON/YAML documents
+      - transition-types lock snapshots as commitment roots (schema/ruleset/circuit digests)
+
+    NOTE: This report is *best-effort*; it never raises for missing artifacts (they are recorded).
+    Parsing errors are recorded under report['errors'].
+    """
+
+    repo_root = pathlib.Path(repo_root).resolve()
+    roots = store_roots or artifact_cas.artifact_store_roots(repo_root)
+
+    report: Dict[str, Any] = {
+        "type": "MSEZArtifactGraphVerifyReport",
+        "generated_at": now_rfc3339(),
+        "root": {},
+        "options": {
+            "strict": bool(strict),
+            "max_nodes": int(max_nodes),
+            "max_depth": int(max_depth),
+            "store_roots": [str(p) for p in roots],
+        },
+        "stats": {
+            "nodes_total": 0,
+            "edges_total": 0,
+            "missing_total": 0,
+            "digest_mismatch_total": 0,
+            "max_depth_seen": 0,
+        },
+        "missing": [],
+        "digest_mismatches": [],
+        "nodes": [],
+        "errors": [],
+    }
+
+    # Stack entries are (artifact_type, digest, depth, source_label)
+    stack: List[Tuple[str, str, int, str]] = []
+
+    if root_path is not None:
+        rp = pathlib.Path(root_path)
+        if not rp.is_absolute():
+            rp = repo_root / rp
+        report["root"] = {"mode": "file", "path": str(rp)}
+        try:
+            obj = _structured_object_from_file(rp)
+            for at2, d2 in _iter_embedded_artifactrefs(obj):
+                stack.append((at2, d2, 1, f"file:{rp.name}"))
+                report["stats"]["edges_total"] += 1
+        except Exception as e:
+            report["errors"].append(f"failed to load root file {rp}: {e}")
+    else:
+        at = str(root_artifact_type or "").strip()
+        dg = str(root_digest_sha256 or "").strip().lower()
+        report["root"] = {"mode": "cas", "artifact_type": at, "digest_sha256": dg}
+        if at and dg:
+            stack.append((at, dg, 0, "root"))
+
+    seen: set[tuple[str, str]] = set()
+
+    while stack:
+        at_raw, dg_raw, depth, src = stack.pop()
+        if len(seen) >= max_nodes:
+            report["errors"].append(f"closure exceeded max_nodes={max_nodes} starting at {report['root']}")
+            break
+
+        at = str(at_raw or "").strip()
+        dg = str(dg_raw or "").strip().lower()
+        if not at or not dg:
+            continue
+
+        try:
+            at_norm = artifact_cas.normalize_artifact_type(at)
+            dg_norm = artifact_cas.normalize_digest(dg)
+        except Exception as e:
+            report["errors"].append(f"invalid artifact ref {src}: {at}:{dg}: {e}")
+            continue
+
+        key = (at_norm, dg_norm)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        node: Dict[str, Any] = {
+            "artifact_type": at_norm,
+            "digest_sha256": dg_norm,
+            "depth": depth,
+            "source": src,
+            "resolved": False,
+            "path": "",
+        }
+
+        report["stats"]["max_depth_seen"] = max(report["stats"]["max_depth_seen"], depth)
+
+        try:
+            resolved_path = artifact_cas.resolve_artifact_by_digest(at_norm, dg_norm, repo_root=repo_root, store_roots=roots)
+        except FileNotFoundError:
+            report["missing"].append({"artifact_type": at_norm, "digest_sha256": dg_norm, "source": src, "depth": depth})
+            report["stats"]["missing_total"] += 1
+            report["nodes"].append(node)
+            continue
+        except Exception as e:
+            report["errors"].append(f"resolve error {src}: {at_norm}:{dg_norm}: {e}")
+            report["nodes"].append(node)
+            continue
+
+        rp = pathlib.Path(resolved_path)
+        node["resolved"] = True
+        node["path"] = str(rp)
+
+        if strict:
+            try:
+                computed, method = _compute_artifact_digest_strict(at_norm, rp)
+                node["strict"] = {"computed_digest_sha256": computed, "method": method, "match": computed == dg_norm}
+                if computed != dg_norm:
+                    report["digest_mismatches"].append(
+                        {
+                            "artifact_type": at_norm,
+                            "digest_sha256": dg_norm,
+                            "computed_digest_sha256": computed,
+                            "method": method,
+                            "path": str(rp),
+                            "source": src,
+                            "depth": depth,
+                        }
+                    )
+                    report["stats"]["digest_mismatch_total"] += 1
+            except Exception as e:
+                node["strict"] = {"error": str(e), "match": False}
+                report["digest_mismatches"].append(
+                    {
+                        "artifact_type": at_norm,
+                        "digest_sha256": dg_norm,
+                        "computed_digest_sha256": "",
+                        "method": "error",
+                        "path": str(rp),
+                        "source": src,
+                        "depth": depth,
+                        "error": str(e),
+                    }
+                )
+                report["stats"]["digest_mismatch_total"] += 1
+
+        report["nodes"].append(node)
+
+        if depth >= max_depth:
+            continue
+
+        # Transition type registries are special commitment roots.
+        if at_norm == "transition-types":
+            try:
+                lock_obj = load_json(rp)
+                # schema-validate before extracting.
+                v = schema_validator(repo_root / "schemas" / "transition-types.lock.schema.json")
+                ve = list(v.iter_errors(lock_obj))
+                if ve:
+                    report["errors"].append(f"invalid transition-types.lock schema at {rp}: {ve[0].message}")
+                else:
+                    for at2, d2, lbl in _iter_transition_types_lock_refs(lock_obj):
+                        stack.append((at2, d2, depth + 1, f"{src}->{lbl}"))
+                        report["stats"]["edges_total"] += 1
+            except Exception as e:
+                report["errors"].append(f"failed to parse transition-types.lock {rp}: {e}")
+            continue
+
+        # Structured JSON/YAML: follow embedded ArtifactRefs.
+        try:
+            obj: Any = None
+            name = rp.name.lower()
+            suf = rp.suffix.lower()
+            if name.endswith(".json") or name.endswith(".jsonld") or name.endswith(".schema.json") or name.endswith(".lock.json") or suf == ".json":
+                obj = load_json(rp)
+            elif suf in (".yaml", ".yml"):
+                obj = load_yaml(rp)
+            if obj is None:
+                continue
+
+            for at2, d2 in _iter_embedded_artifactrefs(obj):
+                stack.append((at2, d2, depth + 1, f"{src}->{at_norm}"))
+                report["stats"]["edges_total"] += 1
+        except Exception:
+            continue
+
+    report["stats"]["nodes_total"] = len(report["nodes"])
+    return report
+
+
+def cmd_artifact_graph_verify(args: argparse.Namespace) -> int:
+    """CLI: msez artifact graph verify"""
+
+    # Accept either positional (type,digest) OR --path
+    root_path = str(getattr(args, "path", "") or "").strip()
+    root_type = str(getattr(args, "type", "") or "").strip()
+    root_digest = str(getattr(args, "digest", "") or "").strip().lower()
+
+    if bool(root_path) and (root_type or root_digest):
+        print("artifact graph verify: use either <type> <digest> OR --path (not both)", file=sys.stderr)
+        return 2
+
+    if not root_path and not (root_type and root_digest):
+        print("artifact graph verify: provide either <type> <digest> or --path <file>", file=sys.stderr)
+        return 2
+
+    store_roots: List[pathlib.Path] = []
+    for s in getattr(args, "store_root", []) or []:
+        p = pathlib.Path(str(s))
+        if not p.is_absolute():
+            p = REPO_ROOT / p
+        store_roots.append(p)
+
+    rep = build_artifact_graph_verify_report(
+        root_artifact_type=root_type or None,
+        root_digest_sha256=root_digest or None,
+        root_path=pathlib.Path(root_path) if root_path else None,
+        strict=bool(getattr(args, "strict", False)),
+        store_roots=store_roots or None,
+        repo_root=REPO_ROOT,
+        max_nodes=int(getattr(args, "max_nodes", 10000) or 10000),
+        max_depth=int(getattr(args, "max_depth", 16) or 16),
+    )
+
+    out_path = str(getattr(args, "out", "") or "").strip()
+    as_json = bool(getattr(args, "json", False)) or bool(out_path)
+
+    if out_path:
+        op = pathlib.Path(out_path)
+        if not op.is_absolute():
+            op = REPO_ROOT / op
+        op.parent.mkdir(parents=True, exist_ok=True)
+        op.write_text(json.dumps(rep, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        print("Wrote artifact graph report to", op)
+    else:
+        if as_json:
+            print(json.dumps(rep, indent=2, ensure_ascii=False))
+        else:
+            # Human summary
+            st = rep.get("stats") or {}
+            print("Artifact graph verify")
+            print("Root:", rep.get("root"))
+            print("Nodes:", st.get("nodes_total"), "Edges:", st.get("edges_total"), "Max depth:", st.get("max_depth_seen"))
+            print("Missing:", st.get("missing_total"), "Digest mismatches:", st.get("digest_mismatch_total"))
+            if rep.get("missing"):
+                print("\nMissing artifacts:")
+                for m in rep.get("missing") or []:
+                    print(f"  - {m.get('artifact_type')}:{m.get('digest_sha256')} (from {m.get('source')})")
+            if rep.get("digest_mismatches"):
+                print("\nDigest mismatches:")
+                for mm in rep.get("digest_mismatches") or []:
+                    print(
+                        f"  - {mm.get('artifact_type')}:{mm.get('digest_sha256')} computed={mm.get('computed_digest_sha256')} method={mm.get('method')} path={mm.get('path')}"
+                    )
+            if rep.get("errors"):
+                print("\nErrors:")
+                for e in rep.get("errors") or []:
+                    print("  -", e)
+
+    if int(rep.get("stats", {}).get("missing_total") or 0) > 0:
+        return 2
+    if int(rep.get("stats", {}).get("digest_mismatch_total") or 0) > 0:
+        return 2
+    return 0
+
 
 
 def load_authority_registry(
@@ -6667,7 +7113,7 @@ def cmd_corridor_state_watcher_attest(args: argparse.Namespace) -> int:
             artifact_cas.store_artifact_file(
                 artifact_type="checkpoint",
                 digest_sha256=cp_digest,
-                src_file=checkpoint_path,
+                src_path=checkpoint_path,
                 repo_root=REPO_ROOT,
             )
         except Exception as ex:
@@ -9052,6 +9498,22 @@ def main() -> int:
     aiv.add_argument("--overwrite", action="store_true", help="Overwrite existing files")
     aiv.add_argument("--json", action="store_true", help="Output machine-readable JSON")
     aiv.set_defaults(func=cmd_artifact_index_vcs)
+
+
+    ag = art_sub.add_parser("graph", help="Artifact graph utilities (closure verification, integrity checks)")
+    ag_sub = ag.add_subparsers(dest="artifact_graph_cmd", required=True)
+
+    agv = ag_sub.add_parser("verify", help="Verify an artifact closure graph (missing nodes, depth, counts)")
+    agv.add_argument("type", nargs="?", default="", help="Root artifact type (when verifying a CAS root)")
+    agv.add_argument("digest", nargs="?", default="", help="Root artifact digest sha256 (when verifying a CAS root)")
+    agv.add_argument("--path", default="", help="Local JSON/YAML file root to scan for embedded ArtifactRefs")
+    agv.add_argument("--store-root", dest="store_root", action="append", default=[], help="Additional store root to search (repeatable)")
+    agv.add_argument("--strict", action="store_true", help="Recompute digests from on-disk content and require matches")
+    agv.add_argument("--max-nodes", type=int, default=10000, help="Maximum nodes in closure traversal")
+    agv.add_argument("--max-depth", type=int, default=16, help="Maximum traversal depth")
+    agv.add_argument("--out", default="", help="Write report JSON to a file")
+    agv.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    agv.set_defaults(func=cmd_artifact_graph_verify)
 
     reg = sub.add_parser("registry")
     reg_sub = reg.add_subparsers(dest="registry_cmd", required=True)

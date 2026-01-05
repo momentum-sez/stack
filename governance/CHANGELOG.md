@@ -8,6 +8,19 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 - TBD
 
+## 0.4.25
+
+### Added
+- `msez artifact graph verify`: artifact-closure graph verifier that can take a CAS root `(artifact_type,digest)` **or** a local JSON/YAML document, and emits a closure report (missing nodes, depth, counts).
+- Optional `--strict` mode that recomputes artifact digests from on-disk content using the artifact’s canonical digest rules (e.g., JCS for JSON, VC signing-input, lawpack component canonicalization) to detect tampered CAS entries.
+
+### Fixed
+- `corridor state watcher-attest --store-artifacts` now correctly stores checkpoint artifacts into CAS (parameter mismatch fix).
+
+### Version
+- Stack spec version bumped to `0.4.25`.
+
+
 ## 0.4.24
 
 - Expand `--transitive-require-artifacts` into a generic ArtifactRef closure verifier across receipts/attachments/VCs/checkpoints; treat transition-types registry lock digests as commitment roots.

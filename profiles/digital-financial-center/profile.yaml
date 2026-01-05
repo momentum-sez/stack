@@ -1,5 +1,5 @@
 profile_id: org.momentum.msez.profile.digital-financial-center
-stack_spec_version: 0.4.24
+stack_spec_version: 0.4.25
 modules:
 - module_id: org.momentum.msez.legal.core
   version: 0.1.0

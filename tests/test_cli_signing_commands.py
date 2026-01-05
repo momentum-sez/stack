@@ -167,7 +167,7 @@ trust_anchors:
             "corridor_id": corridor_id,
             "ruleset": "msez.corridor.verification.v1",
             "artifacts": {},
-            "version": "0.4.24",
+            "version": "0.4.25",
         },
         "proof": [],
     }
@@ -201,7 +201,7 @@ trust_anchors:
             "pinned_lawpacks": [
                 {"jurisdiction_id": "fixture", "domain": "civil", "lawpack_digest_sha256": pinned_digest}
             ],
-            "version": "0.4.24",
+            "version": "0.4.25",
             "maintainer": "fixture",
         },
     }

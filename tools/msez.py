@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MSEZ Stack tool (reference implementation) — v0.4.23
+"""MSEZ Stack tool (reference implementation) — v0.4.24
 
 Capabilities:
 - validate modules/profiles/zones against schemas
@@ -52,7 +52,7 @@ if str(REPO_ROOT) not in sys.path:
 
 # Local (repo) imports (after sys.path fix)
 from tools import artifacts as artifact_cas
-STACK_SPEC_VERSION = "0.4.23"
+STACK_SPEC_VERSION = "0.4.24"
 
 # Templating: we intentionally support two simple placeholder syntaxes used in v0.4 (safe placeholder subset)
 # - {{ VAR_NAME }} (common in Akoma templates)
@@ -493,6 +493,113 @@ def _require_transition_types_lock_transitive(
                             errors.append(
                                 f"artifact resolver error for transitive ref in ruleset {resolved_path} (from transition-types.lock {lock_path} kind={kind}): {at2}:{d2}: {e}"
                             )
+
+
+
+def _require_artifact_closure(
+    artifact_cas: Any,
+    artifact_type: str,
+    digest_sha256: str,
+    *,
+    errors: List[str],
+    label: str,
+    repo_root: pathlib.Path = REPO_ROOT,
+    seen: Optional[Set[Tuple[str, str]]] = None,
+    max_nodes: int = 10000,
+    max_depth: int = 16,
+) -> None:
+    """Require that an artifact digest is resolvable, and recursively require nested ArtifactRefs.
+
+    This is the generic building block behind `--transitive-require-artifacts`.
+
+    Behavior:
+      - Always requires that the (artifact_type, digest) resolves via generic artifact CAS.
+      - For `transition-types` artifacts, the digest is treated as a *commitment root* for a
+        transition type registry snapshot. We therefore additionally require that all
+        schema/ruleset/circuit digests referenced inside the lock snapshot are present in CAS.
+      - For JSON/YAML artifacts, scans for embedded `ArtifactRef` objects and recursively
+        requires those artifacts as well.
+
+    Safety:
+      - Bounded by `max_nodes` and `max_depth` to avoid pathological graphs.
+      - Only typed `ArtifactRef` objects (artifact_type + digest_sha256) are followed.
+        Untyped/legacy digests are handled by the caller (typically as `blob`).
+    """
+
+    if not digest_sha256:
+        return
+
+    if seen is None:
+        seen = set()
+
+    # Stack of (artifact_type, digest, depth, source_label)
+    stack: List[Tuple[str, str, int, str]] = [(artifact_type, digest_sha256, 0, label)]
+
+    while stack:
+        at_raw, dg_raw, depth, src = stack.pop()
+        at = str(at_raw or "").strip()
+        dg = str(dg_raw or "").strip().lower()
+        if not at or not dg:
+            continue
+
+        try:
+            at_norm = artifact_cas.normalize_artifact_type(at)
+            dg_norm = artifact_cas.normalize_digest(dg)
+        except Exception as e:
+            errors.append(f"invalid artifact ref for {src}: {at}:{dg}: {e}")
+            continue
+
+        key = (at_norm, dg_norm)
+        if key in seen:
+            continue
+
+        if len(seen) >= max_nodes:
+            errors.append(f"artifact closure exceeded max_nodes={max_nodes} starting at {label}")
+            return
+
+        try:
+            resolved_path = artifact_cas.resolve_artifact_by_digest(
+                at_norm, dg_norm, repo_root=repo_root
+            )
+        except FileNotFoundError:
+            errors.append(f"missing required artifact {src}: {at_norm}:{dg_norm}")
+            continue
+        except Exception as e:
+            errors.append(f"artifact resolve error for {src}: {at_norm}:{dg_norm}: {e}")
+            continue
+
+        seen.add(key)
+
+        # Special: transition type registry snapshots are commitment roots.
+        if at_norm == "transition-types":
+            _require_transition_types_lock_transitive(
+                dg_norm,
+                errors=errors,
+                label=f"{src} (transition-types commitment root)",
+                repo_root=repo_root,
+            )
+            continue
+
+        if depth >= max_depth:
+            continue
+
+        # Structured artifacts: attempt to load JSON/YAML, then follow embedded ArtifactRefs.
+        obj: Any = None
+        try:
+            rp = pathlib.Path(resolved_path)
+            name = rp.name.lower()
+            if name.endswith(".json") or name.endswith(".jsonld") or name.endswith(".schema.json") or name.endswith(".lock.json") or rp.suffix.lower() == ".json":
+                obj = load_json(rp)
+            elif rp.suffix.lower() in (".yaml", ".yml"):
+                obj = load_yaml(rp)
+        except Exception:
+            obj = None
+
+        if obj is None:
+            continue
+
+        for at2, d2 in _iter_embedded_artifactrefs(obj):
+            stack.append((at2, d2, depth + 1, f"{src}->{at_norm}"))
 
 
 def load_authority_registry(
@@ -4370,17 +4477,49 @@ def _corridor_state_build_chain(
     # Artifact resolver (for --require-artifacts)
     import tools.artifacts as artifact_cas  # local import to keep startup fast
 
-    def _require_artifact(artifact_type: str, digest: str, label: str) -> None:
+    # Dedupe direct artifact checks across receipts (avoid noisy repeats).
+    required_direct: Set[Tuple[str, str]] = set()
+    # Global transitive closure cache across the entire verification run.
+    required_transitive: Set[Tuple[str, str]] = set()
+
+    def _require_artifact_direct(artifact_type: str, digest: str, label: str) -> None:
         if not digest:
             return
         try:
-            artifact_cas.resolve_artifact_by_digest(
-                artifact_type, digest, repo_root=REPO_ROOT
-            )
-        except FileNotFoundError:
-            errors.append(f"missing required artifact {label}: {artifact_type}:{digest}")
+            at_norm = artifact_cas.normalize_artifact_type(str(artifact_type))
+            dg_norm = artifact_cas.normalize_digest(str(digest))
         except Exception as e:
-            errors.append(f"artifact resolve error for {label}: {artifact_type}:{digest}: {e}")
+            errors.append(f"invalid artifact ref for {label}: {artifact_type}:{digest}: {e}")
+            return
+
+        key = (at_norm, dg_norm)
+        if key in required_direct:
+            return
+        required_direct.add(key)
+
+        try:
+            artifact_cas.resolve_artifact_by_digest(at_norm, dg_norm, repo_root=REPO_ROOT)
+        except FileNotFoundError:
+            errors.append(f"missing required artifact {label}: {at_norm}:{dg_norm}")
+        except Exception as e:
+            errors.append(f"artifact resolve error for {label}: {at_norm}:{dg_norm}: {e}")
+
+    def _require_artifact_any(artifact_type: str, digest: str, label: str) -> None:
+        if not digest:
+            return
+        if transitive_require_artifacts:
+            _require_artifact_closure(
+                artifact_cas,
+                artifact_type,
+                digest,
+                errors=errors,
+                label=label,
+                repo_root=REPO_ROOT,
+                seen=required_transitive,
+            )
+        else:
+            _require_artifact_direct(artifact_type, digest, label)
+
 
     # Load + validate receipts
     receipt_rows: List[Tuple[pathlib.Path, Dict[str, Any], Set[str]]] = []
@@ -4399,9 +4538,6 @@ def _corridor_state_build_chain(
         except Exception as e:
             errors.append(f"failed to load transition-type-registry.lock.json: {e}")
 
-    # Cache to avoid re-scanning the same registry lock multiple times when
-    # verifying many receipts.
-    transitive_checked_ttr_digests: set[str] = set()
 
     for rp in receipt_paths:
         try:
@@ -4457,79 +4593,109 @@ def _corridor_state_build_chain(
                     )
                     continue
 
-        # Require artifacts (best-effort coverage)
+        # Require artifacts (commitment completeness / availability)
         if require_artifacts:
-            # digest sets may contain raw digest strings OR ArtifactRefs.
+            # Digest sets may contain raw digest strings (legacy) OR ArtifactRefs (recommended).
             for entry in receipt.get("lawpack_digest_set") or []:
                 dd = _coerce_sha256(entry)
                 if not dd:
                     continue
-                at = "lawpack"
-                if isinstance(entry, dict) and entry.get("artifact_type"):
-                    at = str(entry.get("artifact_type") or at)
-                _require_artifact(at, dd, f"lawpack_digest_set[{dd}]")
+                if isinstance(entry, str):
+                    _require_artifact_any("lawpack", dd, f"lawpack_digest_set[{dd}]")
+                elif isinstance(entry, dict):
+                    at = str(entry.get("artifact_type") or "lawpack")
+                    _require_artifact_any(at, dd, f"lawpack_digest_set[{dd}]")
+
             for entry in receipt.get("ruleset_digest_set") or []:
                 dd = _coerce_sha256(entry)
                 if not dd:
                     continue
-                at = "ruleset"
-                if isinstance(entry, dict) and entry.get("artifact_type"):
-                    at = str(entry.get("artifact_type") or at)
-                _require_artifact(at, dd, f"ruleset_digest_set[{dd}]")
-            # Transition type registry snapshot: in transitive mode we treat the registry digest
-            # as a *commitment root* and ensure all referenced schema/ruleset/circuit digests are
-            # present in CAS.
+                if isinstance(entry, str):
+                    _require_artifact_any("ruleset", dd, f"ruleset_digest_set[{dd}]")
+                elif isinstance(entry, dict):
+                    at = str(entry.get("artifact_type") or "ruleset")
+                    _require_artifact_any(at, dd, f"ruleset_digest_set[{dd}]")
+
+            # Transition type registry snapshot commitment (optional but strongly recommended).
             ttr_entry = receipt.get("transition_type_registry_digest_sha256")
             ttr_dd = _coerce_sha256(ttr_entry)
-            if ttr_dd:
-                if isinstance(ttr_entry, dict) and ttr_entry.get("artifact_type"):
-                    at = str(ttr_entry.get("artifact_type") or "transition-types")
-                    if at and at != "transition-types":
-                        errors.append(
-                            f"transition_type_registry_digest_sha256 ArtifactRef has artifact_type={at} (expected transition-types): {rp}"
-                        )
-                if not transitive_require_artifacts:
-                    _require_artifact("transition-types", ttr_dd, "transition_type_registry_digest_sha256")
-
-            if transitive_require_artifacts:
-                effective = ttr_dd or (locked_ttr_digest or "") or (corridor_ttr_digest or "")
-                if effective and effective not in transitive_checked_ttr_digests:
-                    transitive_checked_ttr_digests.add(effective)
-                    _require_transition_types_lock_transitive(
-                        effective,
-                        errors=errors,
-                        label="transition_type_registry_digest_sha256 (transitive)",
-                        repo_root=REPO_ROOT,
+            if ttr_dd and isinstance(ttr_entry, dict) and ttr_entry.get("artifact_type"):
+                at = str(ttr_entry.get("artifact_type") or "transition-types")
+                if at and at != "transition-types":
+                    errors.append(
+                        f"transition_type_registry_digest_sha256 ArtifactRef has artifact_type={at} (expected transition-types): {rp}"
                     )
 
-            # transition envelope artifacts
+            if transitive_require_artifacts:
+                # In transitive mode, treat the registry digest as a commitment root. If the receipt
+                # omits it, fall back to the corridor module lock/pin when available.
+                effective = ttr_dd or (locked_ttr_digest or "") or (corridor_ttr_digest or "")
+                if effective:
+                    _require_artifact_any(
+                        "transition-types",
+                        effective,
+                        "transition_type_registry_digest_sha256 (transitive)",
+                    )
+            else:
+                if ttr_dd:
+                    _require_artifact_any(
+                        "transition-types", ttr_dd, "transition_type_registry_digest_sha256"
+                    )
+
+            # Transition envelope artifacts + attachments.
             env = receipt.get("transition") or {}
-            for field, atype in [
+            for field, default_type in [
                 ("schema_digest_sha256", "schema"),
                 ("ruleset_digest_sha256", "ruleset"),
                 ("zk_circuit_digest_sha256", "circuit"),
             ]:
                 val = env.get(field)
-                if isinstance(val, str):
-                    _require_artifact(atype, val, f"transition.{field}")
-                elif isinstance(val, dict) and val.get("digest_sha256"):
-                    _require_artifact(atype, str(val.get("digest_sha256")), f"transition.{field}.digest_sha256")
+                dd = _coerce_sha256(val)
+                if not dd:
+                    continue
+                at = default_type
+                if isinstance(val, dict) and val.get("artifact_type"):
+                    at = str(val.get("artifact_type") or default_type)
+                _require_artifact_any(at, dd, f"transition.{field}")
 
             for att in env.get("attachments") or []:
-                # Preferred: typed ArtifactRef {artifact_type, digest_sha256, uri?, ...}
+                # Legacy: raw digest string treated as a blob.
+                if isinstance(att, str):
+                    dd = att.strip().lower()
+                    if dd:
+                        _require_artifact_any("blob", dd, "transition.attachments[legacy]")
+                    continue
+
+                # Dict form: either legacy attachment dict (no artifact_type) or typed ArtifactRef.
                 if isinstance(att, dict):
                     dd = _coerce_sha256(att)
                     if not dd:
                         continue
                     at = str(att.get("artifact_type") or "blob")
-                    _require_artifact(at, dd, f"transition.attachments[{at}]")
+                    _require_artifact_any(at, dd, f"transition.attachments[{at}]")
                     continue
 
-                # Legacy form: raw digest string treated as a blob.
-                if isinstance(att, str):
-                    dd = att.strip().lower()
-                    if dd:
-                        _require_artifact("blob", dd, "transition.attachments[legacy]")
+            # Receipt-level ZK commitments (top-level `zk` scaffold).
+            zk_obj = receipt.get("zk") or {}
+            for field, default_type in [
+                ("circuit_digest_sha256", "circuit"),
+                ("verifier_key_digest_sha256", "proof-key"),
+                ("proof_sha256", "blob"),
+            ]:
+                val = zk_obj.get(field)
+                dd = _coerce_sha256(val)
+                if not dd:
+                    continue
+                at = default_type
+                if isinstance(val, dict) and val.get("artifact_type"):
+                    at = str(val.get("artifact_type") or default_type)
+                _require_artifact_any(at, dd, f"zk.{field}")
+
+            # Future-proof coverage: require *all* embedded typed ArtifactRefs found anywhere in
+            # the receipt JSON (including inside attachments, checkpoints, VCs, etc).
+            for at2, d2 in _iter_embedded_artifactrefs(receipt):
+                _require_artifact_any(at2, d2, f"embedded ArtifactRef {at2}:{d2}")
+
 
         # Signature verification (ProofResult-aware)
         from tools.vc import verify_credential
@@ -5016,19 +5182,49 @@ def cmd_corridor_state_fork_inspect(args: argparse.Namespace) -> int:
 
     import tools.artifacts as artifact_cas  # local import
 
-    # Cache to avoid re-reading registry locks for every receipt.
-    transitive_checked_ttr: set[str] = set()
+    # Dedupe direct artifact checks across receipts (avoid noisy repeats).
+    required_direct: Set[Tuple[str, str]] = set()
+    # Global transitive closure cache across the fork-inspect run.
+    required_transitive: Set[Tuple[str, str]] = set()
 
-    def _require_artifact(artifact_type: str, digest: str, label: str) -> None:
+    def _require_artifact_direct(artifact_type: str, digest: str, label: str) -> None:
         if not digest:
             return
         try:
-            artifact_cas.resolve_artifact_by_digest(artifact_type, digest, repo_root=REPO_ROOT)
+            at_norm = artifact_cas.normalize_artifact_type(str(artifact_type))
+            dg_norm = artifact_cas.normalize_digest(str(digest))
         except Exception as e:
-            if isinstance(e, FileNotFoundError):
-                errors.append(f"missing artifact for {label}: {artifact_type}:{digest}")
-            else:
-                errors.append(f"artifact resolver error for {label}: {artifact_type}:{digest}: {e}")
+            errors.append(f"invalid artifact ref for {label}: {artifact_type}:{digest}: {e}")
+            return
+
+        key = (at_norm, dg_norm)
+        if key in required_direct:
+            return
+        required_direct.add(key)
+
+        try:
+            artifact_cas.resolve_artifact_by_digest(at_norm, dg_norm, repo_root=REPO_ROOT)
+        except FileNotFoundError:
+            errors.append(f"missing artifact for {label}: {at_norm}:{dg_norm}")
+        except Exception as e:
+            errors.append(f"artifact resolver error for {label}: {at_norm}:{dg_norm}: {e}")
+
+    def _require_artifact_any(artifact_type: str, digest: str, label: str) -> None:
+        if not digest:
+            return
+        if transitive_require_artifacts:
+            _require_artifact_closure(
+                artifact_cas,
+                artifact_type,
+                digest,
+                errors=errors,
+                label=label,
+                repo_root=REPO_ROOT,
+                seen=required_transitive,
+            )
+        else:
+            _require_artifact_direct(artifact_type, digest, label)
+
 
     receipt_validator = schema_validator(REPO_ROOT / "schemas" / "corridor.receipt.schema.json")
 
@@ -5071,50 +5267,94 @@ def cmd_corridor_state_fork_inspect(args: argparse.Namespace) -> int:
 
         # Artifact completeness check
         if require_artifacts:
-            # typed digest-sets
+            # Digest sets may contain raw digest strings (legacy) OR ArtifactRefs (recommended).
             for entry in receipt.get("lawpack_digest_set") or []:
+                dd = _coerce_sha256(entry)
+                if not dd:
+                    continue
                 if isinstance(entry, str):
-                    _require_artifact("lawpack", entry, f"lawpack_digest_set[{entry}]")
-                elif isinstance(entry, dict) and entry.get("digest_sha256"):
-                    _require_artifact(str(entry.get("artifact_type") or "lawpack"), str(entry.get("digest_sha256")), "lawpack_digest_set")
+                    _require_artifact_any("lawpack", dd, f"lawpack_digest_set[{dd}]")
+                elif isinstance(entry, dict):
+                    at = str(entry.get("artifact_type") or "lawpack")
+                    _require_artifact_any(at, dd, f"lawpack_digest_set[{dd}]")
 
             for entry in receipt.get("ruleset_digest_set") or []:
+                dd = _coerce_sha256(entry)
+                if not dd:
+                    continue
                 if isinstance(entry, str):
-                    _require_artifact("ruleset", entry, f"ruleset_digest_set[{entry}]")
-                elif isinstance(entry, dict) and entry.get("digest_sha256"):
-                    _require_artifact(str(entry.get("artifact_type") or "ruleset"), str(entry.get("digest_sha256")), "ruleset_digest_set")
+                    _require_artifact_any("ruleset", dd, f"ruleset_digest_set[{dd}]")
+                elif isinstance(entry, dict):
+                    at = str(entry.get("artifact_type") or "ruleset")
+                    _require_artifact_any(at, dd, f"ruleset_digest_set[{dd}]")
 
-            # Transition type registry digest: in transitive mode we treat this as a commitment root.
+            # Transition type registry digest: in transitive mode treat as a commitment root.
             r_ttr = _coerce_sha256(receipt.get("transition_type_registry_digest_sha256"))
-            if r_ttr and not transitive_require_artifacts:
-                _require_artifact("transition-types", r_ttr, "transition_type_registry_digest_sha256")
-
             if transitive_require_artifacts:
                 effective = r_ttr or (corridor_ttr_digest or "")
-                if effective and effective not in transitive_checked_ttr:
-                    transitive_checked_ttr.add(effective)
-                    _require_transition_types_lock_transitive(
+                if effective:
+                    _require_artifact_any(
+                        "transition-types",
                         effective,
-                        errors=errors,
-                        label="transition_type_registry_digest_sha256 (transitive)",
-                        repo_root=REPO_ROOT,
+                        "transition_type_registry_digest_sha256 (transitive)",
+                    )
+            else:
+                if r_ttr:
+                    _require_artifact_any(
+                        "transition-types", r_ttr, "transition_type_registry_digest_sha256"
                     )
 
+            # Transition envelope artifacts + attachments.
             env = receipt.get("transition") or {}
-            for field, atype in [
+            for field, default_type in [
                 ("schema_digest_sha256", "schema"),
                 ("ruleset_digest_sha256", "ruleset"),
                 ("zk_circuit_digest_sha256", "circuit"),
             ]:
                 val = env.get(field)
-                if isinstance(val, str):
-                    _require_artifact(atype, val, f"transition.{field}")
-                elif isinstance(val, dict) and val.get("digest_sha256"):
-                    _require_artifact(str(val.get("artifact_type") or atype), str(val.get("digest_sha256")), f"transition.{field}")
+                dd = _coerce_sha256(val)
+                if not dd:
+                    continue
+                at = default_type
+                if isinstance(val, dict) and val.get("artifact_type"):
+                    at = str(val.get("artifact_type") or default_type)
+                _require_artifact_any(at, dd, f"transition.{field}")
 
             for att in env.get("attachments") or []:
-                if isinstance(att, dict) and att.get("digest_sha256"):
-                    _require_artifact(str(att.get("artifact_type") or "blob"), str(att.get("digest_sha256")), "transition.attachments")
+                if isinstance(att, str):
+                    dd = att.strip().lower()
+                    if dd:
+                        _require_artifact_any("blob", dd, "transition.attachments[legacy]")
+                    continue
+                if isinstance(att, dict):
+                    dd = _coerce_sha256(att)
+                    if not dd:
+                        continue
+                    at = str(att.get("artifact_type") or "blob")
+                    _require_artifact_any(at, dd, f"transition.attachments[{at}]")
+                    continue
+
+            # Receipt-level ZK commitments (top-level `zk` scaffold).
+            zk_obj = receipt.get("zk") or {}
+            for field, default_type in [
+                ("circuit_digest_sha256", "circuit"),
+                ("verifier_key_digest_sha256", "proof-key"),
+                ("proof_sha256", "blob"),
+            ]:
+                val = zk_obj.get(field)
+                dd = _coerce_sha256(val)
+                if not dd:
+                    continue
+                at = default_type
+                if isinstance(val, dict) and val.get("artifact_type"):
+                    at = str(val.get("artifact_type") or default_type)
+                _require_artifact_any(at, dd, f"zk.{field}")
+
+            # Future-proof coverage: require all embedded typed ArtifactRefs found anywhere in
+            # the receipt JSON.
+            for at2, d2 in _iter_embedded_artifactrefs(receipt):
+                _require_artifact_any(at2, d2, f"embedded ArtifactRef {at2}:{d2}")
+
 
         # Signature verification (optional)
         ok_dids: Set[str] = set()

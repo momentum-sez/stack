@@ -8,6 +8,12 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 - TBD
 
+## 0.4.24
+
+- Expand `--transitive-require-artifacts` into a generic ArtifactRef closure verifier across receipts/attachments/VCs/checkpoints; treat transition-types registry lock digests as commitment roots.
+- Extend `--require-artifacts` coverage to include receipt-level `zk.*` commitments (circuit / verifier key / proof blob).
+- Add unit tests for transitive closure through attached VC artifacts and for receipt.zk artifact commitments.
+
 ## 0.4.23
 
 ### Added

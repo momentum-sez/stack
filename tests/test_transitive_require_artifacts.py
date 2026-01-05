@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import os
 import pathlib
@@ -234,3 +236,122 @@ def test_transitive_require_artifacts_expands_ruleset_nested_artifactrefs(tmp_pa
 
     assert errors, "expected missing nested artifact errors"
     assert any(nested_circuit_digest in e for e in errors), errors
+
+
+def _build_single_receipt_with_extras(
+    module_dir: pathlib.Path,
+    *,
+    transition: dict | None = None,
+    zk: dict | None = None,
+) -> pathlib.Path:
+    """Write a single valid receipt with optional transition + top-level zk scaffolding."""
+    from tools import msez
+
+    corridor_id = msez.load_yaml(module_dir / "corridor.yaml")["corridor_id"]
+    genesis = msez.corridor_state_genesis_root(module_dir)
+
+    expected_lawpacks = sorted(msez.corridor_expected_lawpack_digest_set(module_dir))
+    expected_rulesets = sorted(msez.corridor_expected_ruleset_digest_set(module_dir))
+
+    receipt: dict = {
+        "type": "MSEZCorridorStateReceipt",
+        "corridor_id": corridor_id,
+        "sequence": 0,
+        "timestamp": "2026-01-05T00:00:01Z",
+        "prev_root": genesis,
+        "next_root": "0" * 64,
+        "lawpack_digest_set": expected_lawpacks,
+        "ruleset_digest_set": expected_rulesets,
+    }
+
+    if transition is not None:
+        receipt["transition"] = transition
+    if zk is not None:
+        receipt["zk"] = zk
+
+    receipt["next_root"] = msez.corridor_state_next_root(receipt)
+    _sign_receipt(receipt)
+
+    p = module_dir / "receipts" / "000000.json"
+    p.write_text(json.dumps(receipt, indent=2), encoding="utf-8")
+    return module_dir / "receipts"
+
+
+def test_transitive_require_artifacts_follows_attachment_vc_embedded_artifactrefs(tmp_path: pathlib.Path, tmp_artifact_store: pathlib.Path):
+    """Transitive mode should follow ArtifactRefs inside attached artifacts (e.g. VC payloads)."""
+    from tools import msez
+
+    # Create a VC artifact that itself contains a nested ArtifactRef to a schema digest.
+    vc_digest = "6" * 64
+    nested_schema_digest = "7" * 64
+
+    vc_obj = {
+        "type": "MSEZTestVC",
+        "credentialSubject": {
+            "evidence": {
+                "artifact_type": "schema",
+                "digest_sha256": nested_schema_digest,
+            }
+        },
+    }
+    _write_artifact(
+        tmp_artifact_store,
+        "vc",
+        vc_digest,
+        "vc.json",
+        json.dumps(vc_obj).encode("utf-8"),
+    )
+
+    transition = {
+        "type": "MSEZTransitionEnvelope",
+        "kind": "test.attached.vc",
+        "payload_sha256": "1" * 64,
+        "payload": {"hello": "world"},
+        "attachments": [
+            {
+                "artifact_type": "vc",
+                "digest_sha256": vc_digest,
+            }
+        ],
+    }
+
+    module_dir = _minimal_corridor_module(tmp_path)
+    receipts_path = _build_single_receipt_with_extras(module_dir, transition=transition)
+
+    # Non-transitive: should NOT fail just because the VC embeds an unresolved ArtifactRef.
+    _state, _warn, errors = msez._corridor_state_build_chain(
+        module_dir,
+        receipts_path,
+        require_artifacts=True,
+        transitive_require_artifacts=False,
+    )
+    assert errors == []
+
+    # Transitive: should fail because the nested schema digest is missing from CAS.
+    _state, _warn, errors = msez._corridor_state_build_chain(
+        module_dir,
+        receipts_path,
+        require_artifacts=True,
+        transitive_require_artifacts=True,
+    )
+    assert errors, "expected missing nested artifact errors"
+    assert any(nested_schema_digest in e for e in errors), errors
+
+
+def test_require_artifacts_requires_receipt_zk_proof_blob(tmp_path: pathlib.Path, tmp_artifact_store: pathlib.Path):
+    """Top-level receipt.zk commitments should be covered by --require-artifacts."""
+    from tools import msez
+
+    proof_digest = "8" * 64
+
+    module_dir = _minimal_corridor_module(tmp_path)
+    receipts_path = _build_single_receipt_with_extras(module_dir, zk={"proof_sha256": proof_digest})
+
+    _state, _warn, errors = msez._corridor_state_build_chain(
+        module_dir,
+        receipts_path,
+        require_artifacts=True,
+        transitive_require_artifacts=False,
+    )
+    assert errors, "expected missing blob error"
+    assert any(proof_digest in e for e in errors), errors

@@ -1,4 +1,4 @@
-# Momentum SEZ Stack (MSEZ) — v0.4.23
+# Momentum SEZ Stack (MSEZ) — v0.4.24
 
 
 This repository is a **reference specification + reference library** for building *programmable Special Economic Zones (SEZs)* as modular, forkable, and composable “jurisdiction nodes” in the Momentum/Mass network.
@@ -58,7 +58,7 @@ Skeleton created: 2025-12-21.
 - Fork resolution + lifecycle unit tests (v0.4.19)
 - CLI signing hardening + regression tests for watcher-attest/fork-alarm/availability-attest (v0.4.20)
 - Receipt-level fork forensics (`corridor state fork-inspect`) (v0.4.21)
-- Transitive artifact completeness for transition type registries (`--transitive-require-artifacts`), including nested ArtifactRefs in referenced rulesets (v0.4.23)
+- Transitive artifact completeness (`--transitive-require-artifacts`) now treats *commitment roots* (e.g., transition type registries) as closure seeds and follows nested `ArtifactRef`s inside referenced artifacts (rulesets, attached VCs, checkpoints, etc.), covering receipt-level `zk.*` commitments as well (v0.4.24).
 - Performance harness tests (pytest marker `perf`; run with `MSEZ_RUN_PERF=1`) (v0.4.21)
 - Transition type stubs for SWIFT pacs.008 and Circle USDC transfer + reference adapters (`tools/integrations/`) (v0.4.21)
 - Trust anchor enforcement fixes (`--enforce-trust-anchors` now functional) (v0.4.21)

@@ -8,6 +8,80 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 - TBD
 
+## 0.4.30
+
+### Added
+- **Smart Asset corridor anchoring (non-blockchain)**:
+  - `msez asset anchor-verify` validates that a Smart Asset checkpoint digest is present as a typed attachment on a corridor receipt, and that the receipt is included in a corridor checkpoint via an MMR inclusion proof.
+  - This provides a clean bridge between **asset-centric state** and **corridor state channels**, enabling redundant, cross-jurisdiction custody / audit trails.
+- **Smart Asset DAG checkpoints (multi-parent) hardened**:
+  - `msez asset checkpoint-build` now validates/normalizes parent digests (de-duped + sorted) to keep checkpoint graphs deterministic and schema-conformant.
+- **Artifact graph strict verification hardened for Smart Asset artifact types**:
+  - `msez artifact graph verify --strict` now recomputes digests for `smart-asset-genesis`, `smart-asset-checkpoint`, and `smart-asset-attestation` according to their artifact-specific semantics.
+
+### Changed
+- Smart Asset compliance evaluation accepts both the legacy `TransitionEnvelope` shape (`transition_kind`) and the stack-standard `MSEZTransitionEnvelope` shape (`kind`), and can unwrap corridor receipts (`MSEZCorridorStateReceipt`) by evaluating their embedded `transition`.
+- Smart Asset `asset_id` derivation is now stable when the genesis document includes an informational `asset_id` field: the derived field is excluded from the digest commitment (sha256(JCS(genesis-without-asset_id))).
+- Corridor state `corridor state verify-inclusion` correctly handles receipt sequence/index 0 (no falsy-default bug for `leaf_index` and `sequence`).
+
+### Version
+- Stack spec version bumped to `0.4.30`.
+
+## 0.4.29
+
+### Added
+- **Smart Asset reference layer (non-blockchain)**:
+  - Asset identity: `schemas/smart-asset.genesis.schema.json` (asset_id = `sha256(JCS(genesis))`).
+  - Jurisdictional registry VC: `schemas/vc.smart-asset-registry.schema.json` (binds asset -> harbors + lawpacks + compliance/enforcement profiles).
+  - Operational manifest: `schemas/smart-asset.manifest.schema.json` (node-local config; optional).
+- **New CLI surface**: `msez asset ...`
+  - `asset genesis-init`, `asset genesis-hash`
+  - `asset registry-init` (optionally signs VC)
+  - `asset checkpoint-build` (state_root = `sha256(JCS(state))`)
+  - `asset attestation-init` (optionally store in CAS)
+  - `asset compliance-eval` (declarative multi-jurisdiction compliance check)
+
+### Version
+- Stack spec version bumped to `0.4.29`.
+
+## 0.4.28
+
+### Added
+- Witness-bundle provenance VC + CLI:
+  - `msez artifact bundle attest <bundle.zip> ...` emits a Verifiable Credential (`MSEZArtifactWitnessBundleCredential`) committing to `SHA256(JCS(manifest.json))`.
+  - `msez artifact bundle verify <bundle.zip> --vc <vc.json>` verifies digest match and (optionally) VC signatures.
+- JSON Schema for witness-bundle attestation VCs:
+  - `schemas/vc.artifact-witness-bundle.schema.json`.
+
+### Documentation
+- `spec/97-artifacts.md` extended to document witness bundles and witness bundle attestations.
+
+### Version
+- Stack spec version bumped to `0.4.28`.
+
+## 0.4.27
+
+### Added
+- Witness-bundle verification mode for artifact closure graphs:
+  - `msez artifact graph verify --from-bundle <zip>` extracts a witness bundle, adds its `artifacts/` tree as an offline CAS root, and verifies closure integrity without manual extraction.
+  - If no explicit root is provided, the command infers the root from the bundle’s `manifest.json` (CAS root or file root).
+- Canonical JSON Schema for `manifest.json`:
+  - `schemas/artifact.graph-verify-report.schema.json` validates `MSEZArtifactGraphVerifyReport` manifests (best-effort validated in `--from-bundle` mode).
+
+### Version
+- Stack spec version bumped to `0.4.27`.
+
+## 0.4.26
+
+### Added
+- `msez artifact graph verify` enhancements:
+  - `--emit-edges`: include a machine-readable edge list (`edges[]`) so closure graphs can be analyzed programmatically.
+  - `--bundle <zip>`: emit a self-contained witness bundle containing `manifest.json` + resolved artifacts under `artifacts/<type>/` for offline verification and transfer between environments.
+  - `--bundle-max-bytes`: optional size cap to prevent accidental bundling of very large closures (0 = unlimited).
+
+### Version
+- Stack spec version bumped to `0.4.26`.
+
 ## 0.4.25
 
 ### Added

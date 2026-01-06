@@ -145,7 +145,7 @@ Repo targets:
 
 Unit tests:
 
-- Asset checkpoint binds to receipt inclusion proof
+- (done v0.4.30) Asset checkpoint binds to receipt inclusion proof (`tests/test_smart_asset_anchor_verify.py`, `msez asset anchor-verify`)
 - Migration saga happy-path + compensation-path
 
 ### W6: Mass Protocol integration

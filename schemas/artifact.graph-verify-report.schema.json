@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/schemas/artifact.graph-verify-report.schema.json",
+  "title": "MSEZ Artifact Graph Verify Report",
+  "type": "object",
+  "required": [
+    "type",
+    "generated_at",
+    "root",
+    "options",
+    "stats",
+    "nodes",
+    "missing",
+    "digest_mismatches",
+    "errors"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZArtifactGraphVerifyReport"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "root": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["cas", "file"]
+        },
+        "artifact_type": {
+          "type": "string"
+        },
+        "digest_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"mode": {"const": "cas"}}},
+          "then": {"required": ["artifact_type", "digest_sha256"]}
+        },
+        {
+          "if": {"properties": {"mode": {"const": "file"}}},
+          "then": {"required": ["path"]}
+        }
+      ],
+      "additionalProperties": true
+    },
+    "options": {
+      "type": "object",
+      "properties": {
+        "strict": {"type": "boolean"},
+        "max_nodes": {"type": "integer"},
+        "max_depth": {"type": "integer"},
+        "emit_edges": {"type": "boolean"},
+        "store_roots": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "stats": {
+      "type": "object",
+      "properties": {
+        "nodes_total": {"type": "integer"},
+        "edges_total": {"type": "integer"},
+        "missing_total": {"type": "integer"},
+        "digest_mismatch_total": {"type": "integer"},
+        "max_depth_seen": {"type": "integer"}
+      },
+      "additionalProperties": true
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_type", "digest_sha256", "depth", "source", "resolved"],
+        "properties": {
+          "id": {"type": "string"},
+          "artifact_type": {"type": "string"},
+          "digest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "depth": {"type": "integer"},
+          "source": {"type": "string"},
+          "resolved": {"type": "boolean"},
+          "path": {"type": "string"},
+          "strict": {"type": "object"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "missing": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_type", "digest_sha256"],
+        "properties": {
+          "artifact_type": {"type": "string"},
+          "digest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "source": {"type": "string"},
+          "depth": {"type": "integer"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "digest_mismatches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_type", "digest_sha256"],
+        "properties": {
+          "artifact_type": {"type": "string"},
+          "digest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "computed_digest_sha256": {"type": "string"},
+          "method": {"type": "string"},
+          "path": {"type": "string"},
+          "source": {"type": "string"},
+          "depth": {"type": "integer"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to"],
+        "properties": {
+          "from": {"type": "string"},
+          "to": {"type": "string"},
+          "label": {"type": "string"},
+          "depth": {"type": "integer"},
+          "source": {"type": "string"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "bundle": {
+      "type": "object",
+      "properties": {
+        "path": {"type": "string"},
+        "included_files": {"type": "integer"},
+        "included_bytes": {"type": "integer"},
+        "truncated": {"type": "boolean"},
+        "excluded": {"type": "array"}
+      },
+      "additionalProperties": true
+    },
+    "input_bundle": {
+      "type": "object",
+      "properties": {
+        "path": {"type": "string"},
+        "extracted_store_root": {"type": "string"},
+        "root_inferred_from_manifest": {"type": "boolean"}
+      },
+      "additionalProperties": true
+    },
+    "errors": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "additionalProperties": true
+}

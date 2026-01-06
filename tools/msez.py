@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MSEZ Stack tool (reference implementation) — v0.4.25
+"""MSEZ Stack tool (reference implementation) — v0.4.31
 
 Capabilities:
 - validate modules/profiles/zones against schemas
@@ -31,7 +31,7 @@ import subprocess
 import sys
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Set
 
 import yaml
 from jsonschema import Draft202012Validator
@@ -52,7 +52,8 @@ if str(REPO_ROOT) not in sys.path:
 
 # Local (repo) imports (after sys.path fix)
 from tools import artifacts as artifact_cas
-STACK_SPEC_VERSION = "0.4.25"
+from tools import smart_asset as smart_asset_tools
+STACK_SPEC_VERSION = "0.4.31"
 
 # Templating: we intentionally support two simple placeholder syntaxes used in v0.4 (safe placeholder subset)
 # - {{ VAR_NAME }} (common in Akoma templates)
@@ -727,6 +728,47 @@ def _compute_artifact_digest_strict(artifact_type: str, path: pathlib.Path) -> T
 
         return (sha256_bytes(jcs_canonicalize(cp2)), "checkpoint.payload")
 
+    # ------------------------------------------------------------------
+    # Smart Asset artifacts (non-blockchain reference layer)
+    #
+    # NOTE: these artifacts intentionally use *semantic* digest commitments:
+    # - smart-asset-genesis      => digest == asset_id == sha256(JCS(genesis_without_asset_id))
+    # - smart-asset-checkpoint   => digest == state_root_sha256 == sha256(JCS(state))
+    # - smart-asset-attestation  => digest == sha256(JCS(attestation))
+    #
+    # Strict mode recomputes according to these semantics.
+
+    if at == "smart-asset-genesis":
+        g = load_json(p)
+        if not isinstance(g, dict):
+            raise ValueError("smart-asset genesis must be a JSON object")
+        return (smart_asset_tools.asset_id_from_genesis(g), "smart-asset.genesis.asset_id")
+
+    if at == "smart-asset-checkpoint":
+        ck = load_json(p)
+        if not isinstance(ck, dict):
+            raise ValueError("smart-asset checkpoint must be a JSON object")
+        sr = str(ck.get("state_root_sha256") or "").strip().lower()
+        if not SHA256_HEX_RE.match(sr):
+            raise ValueError("smart-asset checkpoint missing valid state_root_sha256")
+        return (sr, "smart-asset.checkpoint.state_root")
+
+    if at == "smart-asset-attestation":
+        att = load_json(p)
+        if not isinstance(att, dict):
+            raise ValueError("smart-asset attestation must be a JSON object")
+        from tools.lawpack import jcs_canonicalize  # type: ignore
+
+        return (sha256_bytes(jcs_canonicalize(att)), "smart-asset.attestation.jcs-json")
+
+    if at == "smart-asset-receipt":
+        rcpt = load_json(p)
+        if not isinstance(rcpt, dict):
+            raise ValueError("smart-asset receipt must be a JSON object")
+        # Semantic digest == receipt.next_root (computed as sha256(JCS(receipt_without_proof_and_next_root))).
+        nr = asset_state_next_root(rcpt)
+        return (nr, "smart-asset.receipt.next_root")
+
     # Default: raw bytes sha256
     return (sha256_file(p), "bytes")
 
@@ -777,6 +819,7 @@ def build_artifact_graph_verify_report(
     repo_root: pathlib.Path = REPO_ROOT,
     max_nodes: int = 10000,
     max_depth: int = 16,
+    emit_edges: bool = False,
 ) -> Dict[str, Any]:
     """Build an artifact graph closure report.
 
@@ -805,6 +848,7 @@ def build_artifact_graph_verify_report(
             "strict": bool(strict),
             "max_nodes": int(max_nodes),
             "max_depth": int(max_depth),
+            "emit_edges": bool(emit_edges),
             "store_roots": [str(p) for p in roots],
         },
         "stats": {
@@ -820,6 +864,9 @@ def build_artifact_graph_verify_report(
         "errors": [],
     }
 
+    if bool(emit_edges):
+        report["edges"] = []
+
     # Stack entries are (artifact_type, digest, depth, source_label)
     stack: List[Tuple[str, str, int, str]] = []
 
@@ -828,11 +875,18 @@ def build_artifact_graph_verify_report(
         if not rp.is_absolute():
             rp = repo_root / rp
         report["root"] = {"mode": "file", "path": str(rp)}
+        root_id = f"file:{rp.name}"
         try:
             obj = _structured_object_from_file(rp)
             for at2, d2 in _iter_embedded_artifactrefs(obj):
                 stack.append((at2, d2, 1, f"file:{rp.name}"))
                 report["stats"]["edges_total"] += 1
+                if "edges" in report:
+                    try:
+                        to_id = f"{artifact_cas.normalize_artifact_type(at2)}:{artifact_cas.normalize_digest(d2)}"
+                    except Exception:
+                        to_id = f"{at2}:{d2}"
+                    report["edges"].append({"from": root_id, "to": to_id, "label": "embedded_artifactref", "depth": 1, "source": root_id})
         except Exception as e:
             report["errors"].append(f"failed to load root file {rp}: {e}")
     else:
@@ -867,7 +921,10 @@ def build_artifact_graph_verify_report(
             continue
         seen.add(key)
 
+        node_id = f"{at_norm}:{dg_norm}"
+
         node: Dict[str, Any] = {
+            "id": node_id,
             "artifact_type": at_norm,
             "digest_sha256": dg_norm,
             "depth": depth,
@@ -945,6 +1002,12 @@ def build_artifact_graph_verify_report(
                     for at2, d2, lbl in _iter_transition_types_lock_refs(lock_obj):
                         stack.append((at2, d2, depth + 1, f"{src}->{lbl}"))
                         report["stats"]["edges_total"] += 1
+                        if "edges" in report:
+                            try:
+                                to_id = f"{artifact_cas.normalize_artifact_type(at2)}:{artifact_cas.normalize_digest(d2)}"
+                            except Exception:
+                                to_id = f"{at2}:{d2}"
+                            report["edges"].append({"from": node_id, "to": to_id, "label": lbl, "depth": depth + 1, "source": src})
             except Exception as e:
                 report["errors"].append(f"failed to parse transition-types.lock {rp}: {e}")
             continue
@@ -964,6 +1027,12 @@ def build_artifact_graph_verify_report(
             for at2, d2 in _iter_embedded_artifactrefs(obj):
                 stack.append((at2, d2, depth + 1, f"{src}->{at_norm}"))
                 report["stats"]["edges_total"] += 1
+                if "edges" in report:
+                    try:
+                        to_id = f"{artifact_cas.normalize_artifact_type(at2)}:{artifact_cas.normalize_digest(d2)}"
+                    except Exception:
+                        to_id = f"{at2}:{d2}"
+                    report["edges"].append({"from": node_id, "to": to_id, "label": "embedded_artifactref", "depth": depth + 1, "source": src})
         except Exception:
             continue
 
@@ -971,20 +1040,142 @@ def build_artifact_graph_verify_report(
     return report
 
 
+
+
+def write_artifact_graph_witness_bundle(
+    bundle_path: pathlib.Path,
+    report: Dict[str, Any],
+    *,
+    repo_root: pathlib.Path = REPO_ROOT,
+    max_bytes: int = 0,
+) -> Dict[str, Any]:
+    """Write a self-contained witness bundle (.zip) for an artifact closure graph.
+
+    The bundle contains:
+      - manifest.json (the full graph verify report)
+      - root/* (when the report root is a local file)
+      - artifacts/<type>/<filename> for every resolved node
+
+    This is intended to let verifiers move a minimal, content-addressed closure
+    between environments without copying an entire repository checkout.
+
+    NOTE: The bundle is a *witness*, not an authority. Verifiers SHOULD still
+    run `msez artifact graph verify --strict` against the bundle's extracted CAS.
+    """
+
+    import zipfile
+    from zipfile import ZipInfo
+
+    bp = pathlib.Path(bundle_path)
+    if not bp.is_absolute():
+        bp = repo_root / bp
+    bp.parent.mkdir(parents=True, exist_ok=True)
+
+    fixed_time = (1980, 1, 1, 0, 0, 0)
+
+    included_files = 0
+    included_bytes = 0
+    excluded: List[Dict[str, Any]] = []
+
+    def writestr(zf: zipfile.ZipFile, arcname: str, data: bytes) -> None:
+        nonlocal included_files, included_bytes
+        if max_bytes and (included_bytes + len(data)) > max_bytes:
+            excluded.append({"path": arcname, "reason": "bundle_max_bytes", "bytes": len(data)})
+            return
+        zi = ZipInfo(arcname, date_time=fixed_time)
+        zi.compress_type = zipfile.ZIP_DEFLATED
+        zf.writestr(zi, data)
+        included_files += 1
+        included_bytes += len(data)
+
+    def writefile(zf: zipfile.ZipFile, arcname: str, src: pathlib.Path) -> None:
+        try:
+            size = int(src.stat().st_size)
+        except Exception:
+            size = 0
+        if max_bytes and (included_bytes + size) > max_bytes:
+            excluded.append({"path": arcname, "reason": "bundle_max_bytes", "bytes": size})
+            return
+        data = src.read_bytes()
+        writestr(zf, arcname, data)
+
+    with zipfile.ZipFile(bp, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+        # Manifest
+        writestr(zf, "manifest.json", (json.dumps(report, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
+
+        # Root file (when applicable)
+        root = report.get("root") or {}
+        if isinstance(root, dict) and root.get("mode") == "file":
+            rp = pathlib.Path(str(root.get("path") or ""))
+            if rp.exists() and rp.is_file():
+                writefile(zf, f"root/{rp.name}", rp)
+
+        # Resolved nodes
+        for n in report.get("nodes") or []:
+            if not isinstance(n, dict):
+                continue
+            if not n.get("resolved"):
+                continue
+            at = str(n.get("artifact_type") or "").strip()
+            p = str(n.get("path") or "").strip()
+            if not at or not p:
+                continue
+            rp = pathlib.Path(p)
+            if not rp.exists() or not rp.is_file():
+                continue
+            arc = f"artifacts/{at}/{rp.name}"
+            writefile(zf, arc, rp)
+
+        # Bundle README
+        readme = (
+            "MSEZ Artifact Graph Witness Bundle\n"
+            "\n"
+            "This bundle contains a manifest.json (closure report) and the resolved artifacts\n"
+            "under artifacts/<type>/. Extract into a directory and set MSEZ_ARTIFACT_STORE_DIRS\n"
+            "to point at the extracted artifacts root (or copy into dist/artifacts).\n"
+            "\n"
+            "Recommended verification:\n"
+            "  python -m tools.msez artifact graph verify --from-bundle witness.zip --strict --json\n"
+            "\n"
+            "(Alternatively, you may extract and verify against the extracted CAS root.)\n"
+            "  unzip -q witness.zip -d witness\n"
+            "  export MSEZ_ARTIFACT_STORE_DIRS=./witness/artifacts\n"
+            "  python -m tools.msez artifact graph verify --path witness/manifest.json --json\n"
+            "  python -m tools.msez artifact graph verify <type> <digest> --strict --json\n"
+        )
+        writestr(zf, "README.txt", readme.encode("utf-8"))
+
+    return {
+        "path": str(bp),
+        "included_files": included_files,
+        "included_bytes": included_bytes,
+        "excluded": excluded,
+        "truncated": bool(excluded),
+    }
+
 def cmd_artifact_graph_verify(args: argparse.Namespace) -> int:
     """CLI: msez artifact graph verify"""
 
-    # Accept either positional (type,digest) OR --path
+    import tempfile
+    import zipfile
+
+    # Accept either positional (type,digest) OR --path, with optional --from-bundle.
     root_path = str(getattr(args, "path", "") or "").strip()
     root_type = str(getattr(args, "type", "") or "").strip()
     root_digest = str(getattr(args, "digest", "") or "").strip().lower()
+    from_bundle = str(getattr(args, "from_bundle", "") or "").strip()
 
     if bool(root_path) and (root_type or root_digest):
         print("artifact graph verify: use either <type> <digest> OR --path (not both)", file=sys.stderr)
         return 2
 
-    if not root_path and not (root_type and root_digest):
-        print("artifact graph verify: provide either <type> <digest> or --path <file>", file=sys.stderr)
+    if (root_type and not root_digest) or (root_digest and not root_type):
+        print("artifact graph verify: provide both <type> and <digest> when verifying a CAS root", file=sys.stderr)
+        return 2
+
+    # If a bundle is provided, we may infer the root from its manifest.json (if no root is specified).
+    if not (root_path or (root_type and root_digest) or from_bundle):
+        print("artifact graph verify: provide either <type> <digest>, --path <file>, or --from-bundle <zip>", file=sys.stderr)
         return 2
 
     store_roots: List[pathlib.Path] = []
@@ -993,6 +1184,154 @@ def cmd_artifact_graph_verify(args: argparse.Namespace) -> int:
         if not p.is_absolute():
             p = REPO_ROOT / p
         store_roots.append(p)
+
+    bundle_manifest: Optional[Dict[str, Any]] = None
+    bundle_store_root: Optional[pathlib.Path] = None
+    bundle_root_path: Optional[pathlib.Path] = None
+
+    def _load_bundle_manifest(manifest_path: pathlib.Path) -> Optional[Dict[str, Any]]:
+        try:
+            obj = load_json(manifest_path)
+        except Exception as e:
+            print(f"artifact graph verify: failed to read bundle manifest.json: {e}", file=sys.stderr)
+            return None
+
+        # Validate against schema (best-effort; do not block on schema file absence).
+        try:
+            v = schema_validator(REPO_ROOT / "schemas" / "artifact.graph-verify-report.schema.json")
+            ve = list(v.iter_errors(obj))
+            if ve:
+                print(f"artifact graph verify: invalid bundle manifest schema: {ve[0].message}", file=sys.stderr)
+                return None
+        except Exception:
+            # If schema validator fails (e.g., schema missing), fall back to minimal checks.
+            pass
+
+        if not isinstance(obj, dict) or str(obj.get("type") or "") != "MSEZArtifactGraphVerifyReport":
+            print("artifact graph verify: bundle manifest.json missing type=MSEZArtifactGraphVerifyReport", file=sys.stderr)
+            return None
+        return obj
+
+    # If --from-bundle is set, extract into a temp dir and add its artifacts/ as a store root.
+    # If no explicit root was provided, infer root from manifest.json.
+    if from_bundle:
+        bp = pathlib.Path(from_bundle)
+        if not bp.is_absolute():
+            bp = REPO_ROOT / bp
+        if not bp.exists() or not bp.is_file():
+            print(f"artifact graph verify: bundle not found: {bp}", file=sys.stderr)
+            return 2
+
+        with tempfile.TemporaryDirectory(prefix="msez_bundle_") as td:
+            td_path = pathlib.Path(td)
+            try:
+                with zipfile.ZipFile(bp, "r") as zf:
+                    zf.extractall(td_path)
+            except Exception as e:
+                print(f"artifact graph verify: failed to extract bundle: {e}", file=sys.stderr)
+                return 2
+
+            manifest_path = td_path / "manifest.json"
+            if manifest_path.exists():
+                bundle_manifest = _load_bundle_manifest(manifest_path)
+            else:
+                print("artifact graph verify: bundle missing manifest.json", file=sys.stderr)
+                return 2
+
+            bundle_store_root = td_path / "artifacts"
+            if not bundle_store_root.exists() or not bundle_store_root.is_dir():
+                print("artifact graph verify: bundle missing artifacts/ directory", file=sys.stderr)
+                return 2
+
+            # Prefer bundle store root first.
+            eff_store_roots = [bundle_store_root] + store_roots
+
+            # Infer root from manifest when not specified.
+            eff_root_type = root_type
+            eff_root_digest = root_digest
+            eff_root_path = root_path
+
+            if not (eff_root_path or (eff_root_type and eff_root_digest)):
+                r = (bundle_manifest or {}).get("root") or {}
+                if isinstance(r, dict) and r.get("mode") == "cas":
+                    eff_root_type = str(r.get("artifact_type") or "").strip()
+                    eff_root_digest = str(r.get("digest_sha256") or "").strip().lower()
+                elif isinstance(r, dict) and r.get("mode") == "file":
+                    # Root file is stored as root/<basename>
+                    bn = pathlib.Path(str(r.get("path") or "")).name
+                    root_dir = td_path / "root"
+                    if bn and (root_dir / bn).exists():
+                        bundle_root_path = (root_dir / bn)
+                        eff_root_path = str(bundle_root_path)
+                    else:
+                        # fallback: first file under root/
+                        if root_dir.exists() and root_dir.is_dir():
+                            cand = next(iter([p for p in root_dir.iterdir() if p.is_file()]), None)
+                            if cand is not None:
+                                bundle_root_path = cand
+                                eff_root_path = str(cand)
+                else:
+                    print("artifact graph verify: bundle manifest root is missing/invalid", file=sys.stderr)
+                    return 2
+
+            rep = build_artifact_graph_verify_report(
+                root_artifact_type=eff_root_type or None,
+                root_digest_sha256=eff_root_digest or None,
+                root_path=pathlib.Path(eff_root_path) if eff_root_path else None,
+                strict=bool(getattr(args, "strict", False)),
+                store_roots=eff_store_roots or None,
+                repo_root=REPO_ROOT,
+                max_nodes=int(getattr(args, "max_nodes", 10000) or 10000),
+                max_depth=int(getattr(args, "max_depth", 16) or 16),
+                emit_edges=bool(getattr(args, "emit_edges", False)) or bool(getattr(args, "bundle", "")),
+            )
+
+            rep["input_bundle"] = {
+                "path": str(bp),
+                "extracted_store_root": str(bundle_store_root),
+                "root_inferred_from_manifest": not (root_path or (root_type and root_digest)),
+            }
+
+            # Bundle output support (optional).
+            bundle_out = str(getattr(args, "bundle", "") or "").strip()
+            if bundle_out:
+                outp = pathlib.Path(bundle_out)
+                if not outp.is_absolute():
+                    outp = REPO_ROOT / outp
+                max_bytes = int(getattr(args, "bundle_max_bytes", 0) or 0)
+                summary = write_artifact_graph_witness_bundle(outp, rep, repo_root=REPO_ROOT, max_bytes=max_bytes)
+                rep["bundle"] = summary
+
+            out_path = str(getattr(args, "out", "") or "").strip()
+            as_json = bool(getattr(args, "json", False)) or bool(out_path)
+
+            if out_path:
+                op = pathlib.Path(out_path)
+                if not op.is_absolute():
+                    op = REPO_ROOT / op
+                op.parent.mkdir(parents=True, exist_ok=True)
+                op.write_text(json.dumps(rep, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+                print("Wrote artifact graph report to", op)
+            else:
+                if as_json:
+                    print(json.dumps(rep, indent=2, ensure_ascii=False))
+                else:
+                    st = rep.get("stats") or {}
+                    print("Artifact graph verify")
+                    print("Root:", rep.get("root"))
+                    print("Nodes:", st.get("nodes_total"), "Edges:", st.get("edges_total"), "Max depth:", st.get("max_depth_seen"))
+                    print("Missing:", st.get("missing_total"), "Digest mismatches:", st.get("digest_mismatch_total"))
+
+            if int(rep.get("stats", {}).get("missing_total") or 0) > 0:
+                return 2
+            if int(rep.get("stats", {}).get("digest_mismatch_total") or 0) > 0:
+                return 2
+            return 0
+
+    # No bundle mode: standard behavior.
+
+    bundle_out = str(getattr(args, "bundle", "") or "").strip()
+    emit_edges = bool(getattr(args, "emit_edges", False)) or bool(bundle_out)
 
     rep = build_artifact_graph_verify_report(
         root_artifact_type=root_type or None,
@@ -1003,7 +1342,16 @@ def cmd_artifact_graph_verify(args: argparse.Namespace) -> int:
         repo_root=REPO_ROOT,
         max_nodes=int(getattr(args, "max_nodes", 10000) or 10000),
         max_depth=int(getattr(args, "max_depth", 16) or 16),
+        emit_edges=emit_edges,
     )
+
+    if bundle_out:
+        bp = pathlib.Path(bundle_out)
+        if not bp.is_absolute():
+            bp = REPO_ROOT / bp
+        max_bytes = int(getattr(args, "bundle_max_bytes", 0) or 0)
+        summary = write_artifact_graph_witness_bundle(bp, rep, repo_root=REPO_ROOT, max_bytes=max_bytes)
+        rep["bundle"] = summary
 
     out_path = str(getattr(args, "out", "") or "").strip()
     as_json = bool(getattr(args, "json", False)) or bool(out_path)
@@ -1043,6 +1391,253 @@ def cmd_artifact_graph_verify(args: argparse.Namespace) -> int:
     if int(rep.get("stats", {}).get("missing_total") or 0) > 0:
         return 2
     if int(rep.get("stats", {}).get("digest_mismatch_total") or 0) > 0:
+        return 2
+    return 0
+
+
+def _jcs_sha256_of_json_obj(obj: Any) -> str:
+    """Compute SHA256(JCS(obj)) for an in-memory JSON object."""
+    from tools.lawpack import jcs_canonicalize  # type: ignore
+
+    return sha256_bytes(jcs_canonicalize(obj))
+
+
+def _read_witness_bundle_manifest(bundle_path: pathlib.Path) -> Tuple[Dict[str, Any], bytes]:
+    """Read manifest.json from an artifact witness bundle (.zip)."""
+    import zipfile
+
+    bp = pathlib.Path(bundle_path)
+    if not bp.is_absolute():
+        bp = REPO_ROOT / bp
+    if not bp.exists() or not bp.is_file():
+        raise FileNotFoundError(f"bundle not found: {bp}")
+
+    with zipfile.ZipFile(bp, "r") as zf:
+        try:
+            raw = zf.read("manifest.json")
+        except KeyError as e:
+            raise FileNotFoundError("bundle missing manifest.json") from e
+
+    try:
+        obj = json.loads(raw.decode("utf-8"))
+    except Exception as e:
+        raise ValueError(f"invalid manifest.json (not JSON): {e}") from e
+
+    if not isinstance(obj, dict):
+        raise ValueError("invalid manifest.json (must be an object)")
+
+    return obj, raw
+
+
+def cmd_artifact_bundle_attest(args: argparse.Namespace) -> int:
+    """Create a provenance VC attesting to a witness bundle's manifest digest.
+
+    The attestation VC is a cheap integrity/provenance primitive:
+    - it binds an issuer DID to a specific closure report (manifest.json)
+    - it does *not* change any underlying receipt/VC digest commitments
+
+    Verifiers can later validate that a bundle's manifest matches the attested digest,
+    and optionally verify the VC signature(s).
+    """
+
+    from tools.vc import add_ed25519_proof, load_proof_keypair, now_rfc3339  # type: ignore
+
+    bp = pathlib.Path(args.bundle)
+    if not bp.is_absolute():
+        bp = REPO_ROOT / bp
+    if not bp.exists() or not bp.is_file():
+        print(f"bundle attest: bundle not found: {bp}", file=sys.stderr)
+        return 2
+
+    try:
+        manifest_obj, _raw = _read_witness_bundle_manifest(bp)
+    except Exception as e:
+        print(f"bundle attest: failed to read manifest.json: {e}", file=sys.stderr)
+        return 2
+
+    # Best-effort schema validation of manifest.
+    try:
+        v = schema_validator(REPO_ROOT / "schemas" / "artifact.graph-verify-report.schema.json")
+        ve = list(v.iter_errors(manifest_obj))
+        if ve:
+            print(f"bundle attest: invalid manifest schema: {ve[0].message}", file=sys.stderr)
+            return 2
+    except Exception:
+        pass
+
+    manifest_digest = _jcs_sha256_of_json_obj(manifest_obj)
+
+    now = now_rfc3339()
+    vc: Dict[str, Any] = {
+        "@context": [
+            "https://www.w3.org/2018/credentials/v1",
+            "https://schemas.momentum-sez.org/contexts/msez/v1",
+        ],
+        "id": getattr(args, "id", "") or f"urn:msez:vc:artifact-witness-bundle:{uuid.uuid4()}",
+        "type": ["VerifiableCredential", "MSEZArtifactWitnessBundleCredential"],
+        "issuer": getattr(args, "issuer", ""),
+        "issuanceDate": now,
+        "credentialSubject": {
+            "bundle": {"format": "msez-artifact-witness-bundle", "version": 1},
+            "manifest_digest_sha256": manifest_digest,
+            "manifest_path": "manifest.json",
+            "root": manifest_obj.get("root") or {},
+            "stats": manifest_obj.get("stats") or {},
+            "options": manifest_obj.get("options") or {},
+            "statement": getattr(args, "statement", "") or "",
+        },
+    }
+
+    if not str(vc.get("issuer") or "").strip():
+        print("bundle attest: --issuer is required", file=sys.stderr)
+        return 2
+
+    if bool(getattr(args, "sign", False)):
+        key_path = str(getattr(args, "key", "") or "").strip()
+        if not key_path:
+            print("bundle attest: --key is required with --sign", file=sys.stderr)
+            return 2
+        priv, vm = load_proof_keypair(pathlib.Path(key_path))
+        vm_override = str(getattr(args, "verification_method", "") or "").strip()
+        if vm_override:
+            vm = vm_override
+        purpose = str(getattr(args, "purpose", "assertionMethod") or "assertionMethod").strip() or "assertionMethod"
+        add_ed25519_proof(vc, priv, vm, proof_purpose=purpose)
+
+    out_raw = str(getattr(args, "out", "") or "").strip()
+    if out_raw:
+        out_path = pathlib.Path(out_raw)
+        if not out_path.is_absolute():
+            out_path = REPO_ROOT / out_path
+    else:
+        base = bp.name
+        if base.lower().endswith(".zip"):
+            base = base[:-4]
+        suffix = ".attestation.vc.json" if bool(getattr(args, "sign", False)) else ".attestation.vc.unsigned.json"
+        out_path = bp.parent / f"{base}{suffix}"
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(vc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(str(out_path))
+    return 0
+
+
+def cmd_artifact_bundle_verify(args: argparse.Namespace) -> int:
+    """Verify a witness bundle attestation VC against the bundle's manifest.json."""
+
+    from tools.vc import verify_credential, base_did  # type: ignore
+
+    bp = pathlib.Path(args.bundle)
+    if not bp.is_absolute():
+        bp = REPO_ROOT / bp
+    if not bp.exists() or not bp.is_file():
+        print(f"bundle verify: bundle not found: {bp}", file=sys.stderr)
+        return 2
+
+    vc_path = pathlib.Path(str(getattr(args, "vc", "") or "").strip())
+    if not vc_path.is_absolute():
+        vc_path = REPO_ROOT / vc_path
+    if not vc_path.exists() or not vc_path.is_file():
+        print(f"bundle verify: VC not found: {vc_path}", file=sys.stderr)
+        return 2
+
+    try:
+        vcj = load_json(vc_path)
+    except Exception as e:
+        print(f"bundle verify: failed to parse VC: {e}", file=sys.stderr)
+        return 2
+    if not isinstance(vcj, dict):
+        print("bundle verify: VC must be a JSON object", file=sys.stderr)
+        return 2
+
+    # Validate against schema (best-effort).
+    try:
+        v = schema_validator(REPO_ROOT / "schemas" / "vc.artifact-witness-bundle.schema.json")
+        ve = list(v.iter_errors(vcj))
+        if ve:
+            print(f"bundle verify: invalid VC schema: {ve[0].message}", file=sys.stderr)
+            return 2
+    except Exception:
+        pass
+
+    # Verify VC proofs if required.
+    require_proof = bool(getattr(args, "require_proof", True))
+    proof_ok = True
+    proof_results = []
+    if require_proof:
+        proof_results = verify_credential(vcj)
+        proof_ok = any(r.ok for r in proof_results)
+        if not proof_ok:
+            print("bundle verify: VC proof verification failed", file=sys.stderr)
+
+    # Manifest digest check.
+    try:
+        manifest_obj, _raw = _read_witness_bundle_manifest(bp)
+    except Exception as e:
+        print(f"bundle verify: failed to read manifest.json: {e}", file=sys.stderr)
+        return 2
+
+    manifest_digest = _jcs_sha256_of_json_obj(manifest_obj)
+    cs = vcj.get("credentialSubject") if isinstance(vcj.get("credentialSubject"), dict) else {}
+    expected = str((cs or {}).get("manifest_digest_sha256") or "").strip().lower()
+    match = bool(expected) and (expected == manifest_digest)
+
+    # Optional issuer/proof DID consistency check (warning only).
+    issuer = vcj.get("issuer")
+    issuer_id = ""
+    if isinstance(issuer, str):
+        issuer_id = issuer
+    elif isinstance(issuer, dict):
+        issuer_id = str(issuer.get("id") or "")
+    issuer_base = base_did(issuer_id)
+    proof_bases = []
+    try:
+        proofs = vcj.get("proof")
+        if isinstance(proofs, dict):
+            proofs = [proofs]
+        if isinstance(proofs, list):
+            for p in proofs:
+                if isinstance(p, dict):
+                    proof_bases.append(base_did(str(p.get("verificationMethod") or "")))
+    except Exception:
+        pass
+
+    issuer_matches_proof = True
+    if issuer_base and proof_bases:
+        issuer_matches_proof = any(pb == issuer_base for pb in proof_bases)
+
+    summary = {
+        "ok": bool(match and (proof_ok if require_proof else True)),
+        "bundle": str(bp),
+        "manifest": {
+            "computed_digest_sha256": manifest_digest,
+            "expected_digest_sha256": expected,
+            "match": bool(match),
+        },
+        "proof": {
+            "required": bool(require_proof),
+            "ok": bool(proof_ok if require_proof else True),
+            "issuer_base": issuer_base,
+            "verification_method_bases": proof_bases,
+            "issuer_matches_any_proof": bool(issuer_matches_proof),
+            "results": [r.__dict__ for r in proof_results] if proof_results else [],
+        },
+    }
+
+    if bool(getattr(args, "json", False)):
+        print(json.dumps(summary, indent=2, ensure_ascii=False))
+    else:
+        print("Artifact witness bundle attestation verify")
+        print("Bundle:", bp)
+        print("Manifest digest match:", summary["manifest"]["match"])
+        if require_proof:
+            print("VC proof ok:", summary["proof"]["ok"])
+        if issuer_base and proof_bases and not issuer_matches_proof:
+            print("WARNING: issuer DID does not match any proof verificationMethod base DID")
+
+    if not match:
+        return 2
+    if require_proof and not proof_ok:
         return 2
     return 0
 
@@ -4307,6 +4902,46 @@ def corridor_state_next_root(receipt: Dict[str, Any]) -> str:
     return sha256_bytes(jcs_canonicalize(tmp))
 
 
+# Smart Asset receipt chains (non-blockchain) ---------------------------------
+
+SMART_ASSET_STATE_GENESIS_TAG = "msez.smart-asset.state.genesis.v1"
+
+
+def asset_state_genesis_root(asset_id: str, *, purpose: str = "core") -> str:
+    """Compute the asset receipt-chain genesis root.
+
+    This root anchors the chain to a particular asset_id and (optional) purpose,
+    without requiring a blockchain.
+
+    Reference implementation:
+      genesis_root := SHA256(JCS({tag, asset_id, purpose}))
+    """
+    aid = _coerce_sha256(asset_id)
+    if not aid:
+        raise ValueError("asset_id must be 64 lowercase hex chars")
+
+    payload = {
+        "tag": SMART_ASSET_STATE_GENESIS_TAG,
+        "asset_id": aid,
+        "purpose": str(purpose or "core"),
+    }
+    from tools.lawpack import jcs_canonicalize  # type: ignore
+
+    return sha256_bytes(jcs_canonicalize(payload))
+
+
+def asset_state_next_root(receipt: Dict[str, Any]) -> str:
+    """Compute next_root for a smart-asset receipt (excludes proof + next_root)."""
+    if not isinstance(receipt, dict):
+        raise ValueError("receipt must be an object")
+    tmp = dict(receipt)
+    tmp.pop("proof", None)
+    tmp.pop("next_root", None)
+    from tools.lawpack import jcs_canonicalize  # type: ignore
+
+    return sha256_bytes(jcs_canonicalize(tmp))
+
+
 def cmd_corridor_state_genesis_root(args: argparse.Namespace) -> int:
     p = pathlib.Path(args.path)
     if not p.is_absolute():
@@ -6934,7 +7569,16 @@ def cmd_corridor_state_verify_inclusion(args: argparse.Namespace) -> int:
 
     # Optional: sequence binding
     try:
-        if int(proof.get("leaf_index") or -1) != int(receipt.get("sequence") or -2):
+        # IMPORTANT: leaf_index/sequence can be 0. Do not use `or` for defaults.
+        def _int_or(x: Any, default: int) -> int:
+            try:
+                return int(x) if x is not None else default
+            except Exception:
+                return default
+
+        leaf_index_i = _int_or(proof.get("leaf_index"), -1)
+        seq_i = _int_or(receipt.get("sequence"), -2)
+        if leaf_index_i != seq_i:
             print("FAIL: proof.leaf_index does not match receipt.sequence", file=sys.stderr)
             return 2
     except Exception:
@@ -7001,6 +7645,1119 @@ def cmd_corridor_state_verify_inclusion(args: argparse.Namespace) -> int:
         return 2
 
     print("OK")
+    return 0
+
+
+# --- Smart Asset receipt chains (non-blockchain) -----------------------------
+
+
+def _asset_state_build_chain(
+    receipts_path: pathlib.Path,
+    asset_id: str,
+    *,
+    purpose: str = "core",
+    genesis_root: Optional[str] = None,
+    enforce_trust_anchors: bool = False,
+    trust_anchors_path: Optional[pathlib.Path] = None,
+    enforce_transition_types: bool = False,
+    expected_transition_type_registry_digest: Optional[str] = None,
+    require_artifacts: bool = False,
+    transitive_require_artifacts: bool = False,
+) -> Tuple[Dict[str, Any], List[str], List[str]]:
+    """Verify + select a canonical (linear) asset receipt chain.
+
+    This is intentionally *linear* (no fork-resolution yet) to keep the asset-local
+    receipt channel small, easy to deploy, and compatible with very lightweight nodes.
+
+    Returns:
+      (result, warnings, errors)
+    where result contains:
+      asset_id, genesis_root, receipts, receipt_count, final_chain_root, mmr (best-effort)
+    """
+
+    warnings: List[str] = []
+    errors: List[str] = []
+
+    aid = _coerce_sha256(asset_id)
+    if not aid:
+        return {}, warnings, ["asset_id must be 64 lowercase hex chars"]
+
+    receipt_validator = schema_validator(REPO_ROOT / "schemas" / "smart-asset.receipt.schema.json")
+
+    expected_genesis_root = genesis_root or asset_state_genesis_root(aid, purpose=str(purpose or "core"))
+
+    # Trust anchors (optional enforcement)
+    allowed_receipt_signers: Set[str] = set()
+    if enforce_trust_anchors:
+        if not trust_anchors_path:
+            errors.append("--enforce-trust-anchors was set but no --trust-anchors path was provided")
+        else:
+            trust_anchors = load_trust_anchors(trust_anchors_path)
+            allowed_receipt_signers = set(
+                ta["did"]
+                for ta in trust_anchors
+                if "smart_asset_receipt" in (ta.get("allowed_attestations") or [])
+                or "*" in (ta.get("allowed_attestations") or [])
+            )
+            if not allowed_receipt_signers:
+                errors.append(
+                    "--enforce-trust-anchors was set but trust anchors contain no entries permitting smart_asset_receipt"
+                )
+
+    # Artifact resolver (for --require-artifacts)
+    import tools.artifacts as artifact_cas  # local import to keep startup fast
+
+    required_direct: Set[Tuple[str, str]] = set()
+    required_transitive: Set[Tuple[str, str]] = set()
+
+    def _require_artifact_direct(artifact_type: str, digest: str, label: str) -> None:
+        if not digest:
+            return
+        try:
+            at_norm = artifact_cas.normalize_artifact_type(str(artifact_type))
+            dg_norm = artifact_cas.normalize_digest(str(digest))
+        except Exception as e:
+            errors.append(f"invalid artifact ref for {label}: {artifact_type}:{digest}: {e}")
+            return
+
+        key = (at_norm, dg_norm)
+        if key in required_direct:
+            return
+        required_direct.add(key)
+
+        try:
+            artifact_cas.resolve_artifact_by_digest(at_norm, dg_norm, repo_root=REPO_ROOT)
+        except FileNotFoundError:
+            errors.append(f"missing required artifact {label}: {at_norm}:{dg_norm}")
+        except Exception as e:
+            errors.append(f"artifact resolve error for {label}: {at_norm}:{dg_norm}: {e}")
+
+    def _require_artifact_any(artifact_type: str, digest: str, label: str) -> None:
+        if not digest:
+            return
+        if transitive_require_artifacts:
+            _require_artifact_closure(
+                artifact_cas,
+                artifact_type,
+                digest,
+                errors=errors,
+                label=label,
+                repo_root=REPO_ROOT,
+                seen=required_transitive,
+            )
+        else:
+            _require_artifact_direct(artifact_type, digest, label)
+
+    # Load + validate receipts
+    receipt_rows: List[Tuple[pathlib.Path, Dict[str, Any], Set[str]]] = []
+    receipt_paths = _collect_receipt_paths(receipts_path)
+    if not receipt_paths:
+        errors.append(f"no receipts found under: {receipts_path}")
+        return {}, warnings, errors
+
+    for rp in receipt_paths:
+        try:
+            receipt = load_json(rp)
+        except Exception as e:
+            errors.append(f"failed to load receipt {rp}: {e}")
+            continue
+
+        ve = list(receipt_validator.iter_errors(receipt))
+        if ve:
+            errors.append(f"invalid receipt schema: {rp}: {ve[0].message}")
+            continue
+
+        if str(receipt.get("asset_id") or "").strip().lower() != aid:
+            errors.append(f"receipt asset_id mismatch: {rp}")
+            continue
+
+        computed_next = asset_state_next_root(receipt)
+        if str(receipt.get("next_root") or "").strip().lower() != computed_next:
+            errors.append(
+                f"next_root mismatch: {rp}: declared {receipt.get('next_root')} computed {computed_next}"
+            )
+            continue
+
+        # Optional transition-type-registry binding checks
+        if enforce_transition_types and expected_transition_type_registry_digest:
+            receipt_ttr_digest = _coerce_sha256(receipt.get("transition_type_registry_digest_sha256"))
+            if receipt_ttr_digest and receipt_ttr_digest != expected_transition_type_registry_digest:
+                errors.append(
+                    f"receipt transition_type_registry_digest_sha256 does not match expected: {rp}"
+                )
+                continue
+
+        # Require artifacts (commitment completeness / availability)
+        if require_artifacts:
+            for entry in receipt.get("lawpack_digest_set") or []:
+                dd = _coerce_sha256(entry)
+                if dd:
+                    _require_artifact_any("lawpack", dd, "lawpack_digest_set")
+            for entry in receipt.get("ruleset_digest_set") or []:
+                dd = _coerce_sha256(entry)
+                if dd:
+                    _require_artifact_any("ruleset", dd, "ruleset_digest_set")
+
+            env = receipt.get("transition") or {}
+            for field, default_type in [
+                ("payload_sha256", "blob"),
+                ("schema_digest_sha256", "schema"),
+                ("ruleset_digest_sha256", "ruleset"),
+                ("circuit_digest_sha256", "circuit"),
+                ("verifier_key_digest_sha256", "proof-key"),
+                ("proof_sha256", "blob"),
+            ]:
+                val = env.get(field)
+                dd = _coerce_sha256(val)
+                if not dd:
+                    continue
+                at = default_type
+                if isinstance(val, dict) and val.get("artifact_type"):
+                    at = str(val.get("artifact_type") or default_type)
+                _require_artifact_any(at, dd, f"transition.{field}")
+
+            for att in env.get("attachments") or []:
+                if isinstance(att, str):
+                    dd = att.strip().lower()
+                    if dd:
+                        _require_artifact_any("blob", dd, "transition.attachments[legacy]")
+                    continue
+                if isinstance(att, dict):
+                    dd = _coerce_sha256(att)
+                    if not dd:
+                        continue
+                    at = str(att.get("artifact_type") or "blob")
+                    _require_artifact_any(at, dd, f"transition.attachments[{at}]")
+                    continue
+
+            zk_obj = receipt.get("zk") or {}
+            for field, default_type in [
+                ("circuit_digest_sha256", "circuit"),
+                ("verifier_key_digest_sha256", "proof-key"),
+                ("proof_sha256", "blob"),
+            ]:
+                val = zk_obj.get(field)
+                dd = _coerce_sha256(val)
+                if not dd:
+                    continue
+                at = default_type
+                if isinstance(val, dict) and val.get("artifact_type"):
+                    at = str(val.get("artifact_type") or default_type)
+                _require_artifact_any(at, dd, f"zk.{field}")
+
+            for at2, d2 in _iter_embedded_artifactrefs(receipt):
+                _require_artifact_any(at2, d2, f"embedded ArtifactRef {at2}:{d2}")
+
+        # Signature verification
+        from tools.vc import verify_credential
+
+        vres = verify_credential(receipt)
+        ok_dids: Set[str] = _verified_base_dids(vres)
+        if not ok_dids:
+            errors.append(f"receipt signature verification failed (no valid proofs): {rp}")
+            continue
+
+        if enforce_trust_anchors and allowed_receipt_signers:
+            if not (ok_dids & allowed_receipt_signers):
+                errors.append(
+                    f"receipt signer not in trust anchors: {rp}: signers={sorted(ok_dids)}"
+                )
+                continue
+
+        receipt_rows.append((rp, receipt, ok_dids))
+
+    if errors:
+        return {}, warnings, errors
+
+    # Canonical linear chain selection
+    # Keyed by (sequence, prev_root).
+    by_key: Dict[Tuple[int, str], List[Tuple[pathlib.Path, Dict[str, Any], Set[str]]]] = {}
+    for rp, r, ok_dids in receipt_rows:
+        try:
+            seq = int(r.get("sequence"))
+        except Exception:
+            seq = -1
+        prev = str(r.get("prev_root") or "").strip().lower()
+        by_key.setdefault((seq, prev), []).append((rp, r, ok_dids))
+
+    selected: List[Dict[str, Any]] = []
+    used_paths: Set[pathlib.Path] = set()
+    cur_root = expected_genesis_root
+    seq = 0
+    while True:
+        candidates = by_key.get((seq, cur_root), [])
+        if not candidates:
+            break
+        if len(candidates) > 1:
+            errors.append(
+                f"fork detected at sequence={seq} prev_root={cur_root}: {len(candidates)} candidates (provide a fork resolution artifact; not yet implemented for assets)"
+            )
+            break
+        rp, r, _ok = candidates[0]
+        selected.append(r)
+        used_paths.add(rp)
+        cur_root = str(r.get("next_root") or "").strip().lower()
+        seq += 1
+
+    if errors:
+        return {}, warnings, errors
+
+    # Ensure there are no unattached receipts.
+    if len(used_paths) != len(receipt_rows):
+        unused = [str(rp) for (rp, _r, _ok) in receipt_rows if rp not in used_paths]
+        errors.append(
+            f"unattached receipts present ({len(unused)}): chain head sequence={len(selected)-1} final_chain_root={cur_root}. Example: {unused[0]}"
+        )
+        return {}, warnings, errors
+
+    final_chain_root = cur_root if selected else expected_genesis_root
+
+    # Best-effort MMR root for reporting.
+    mmr_obj: Optional[Dict[str, Any]] = None
+    if selected:
+        try:
+            from tools.mmr import mmr_root_from_next_roots  # type: ignore
+
+            next_roots = [str(r.get("next_root") or "").strip().lower() for r in selected]
+            mmr_info = mmr_root_from_next_roots(next_roots)
+            mmr_obj = {
+                "type": "MSEZReceiptMMR",
+                "algorithm": "sha256",
+                "size": mmr_info["size"],
+                "root": mmr_info["root"],
+                "peaks": mmr_info.get("peaks", []),
+            }
+        except Exception as e:
+            warnings.append(f"failed to compute MMR root: {e}")
+
+    result: Dict[str, Any] = {
+        "asset_id": aid,
+        "purpose": str(purpose or "core"),
+        "genesis_root": expected_genesis_root,
+        "receipts": selected,
+        "receipt_count": len(selected),
+        "final_chain_root": final_chain_root,
+    }
+    if mmr_obj:
+        result["mmr"] = mmr_obj
+
+    return result, warnings, errors
+
+
+def _asset_state_load_verified_receipts(
+    receipts_path: pathlib.Path,
+    asset_id: str,
+    *,
+    purpose: str = "core",
+    genesis_root: Optional[str] = None,
+    enforce_trust: bool = False,
+    trust_anchors_path: Optional[pathlib.Path] = None,
+    enforce_transition_types: bool = False,
+    expected_transition_type_registry_digest: Optional[str] = None,
+    require_artifacts: bool = False,
+    transitive_require_artifacts: bool = False,
+) -> Tuple[str, List[Dict[str, Any]], str]:
+    """Internal helper used by checkpoint/inclusion tools.
+
+    Returns:
+      (genesis_root, canonical_receipts, final_chain_root)
+    """
+    result, _warnings, errors = _asset_state_build_chain(
+        receipts_path,
+        asset_id,
+        purpose=purpose,
+        genesis_root=genesis_root,
+        enforce_trust_anchors=enforce_trust,
+        trust_anchors_path=trust_anchors_path,
+        enforce_transition_types=enforce_transition_types,
+        expected_transition_type_registry_digest=expected_transition_type_registry_digest,
+        require_artifacts=require_artifacts,
+        transitive_require_artifacts=transitive_require_artifacts,
+    )
+    if errors:
+        raise ValueError("; ".join(errors))
+    return (
+        str(result.get("genesis_root")),
+        list(result.get("receipts") or []),
+        str(result.get("final_chain_root")),
+    )
+
+
+def cmd_asset_state_genesis_root(args: argparse.Namespace) -> int:
+    asset_id = str(getattr(args, "asset_id", "") or "").strip().lower()
+    purpose = str(getattr(args, "purpose", "core") or "core")
+    try:
+        root = asset_state_genesis_root(asset_id, purpose=purpose)
+    except Exception as ex:
+        print(f"ERROR: {ex}", file=sys.stderr)
+        return 2
+
+    if getattr(args, "json", False):
+        out = {
+            "asset_id": asset_id,
+            "purpose": purpose,
+            "genesis_root": root,
+        }
+        print(json.dumps(out, indent=2))
+    else:
+        print(root)
+    return 0
+
+
+def cmd_asset_state_receipt_init(args: argparse.Namespace) -> int:
+    """Initialize a SmartAssetReceipt JSON.
+
+    Notes:
+      - next_root is deterministic and excludes `proof` + `next_root`.
+      - This command can run without a blockchain.
+    """
+    from tools.vc import now_rfc3339, add_ed25519_proof, load_ed25519_private_key_from_jwk  # type: ignore
+
+    asset_id = str(getattr(args, "asset_id", "") or "").strip().lower()
+    purpose = str(getattr(args, "purpose", "core") or "core")
+    aid = _coerce_sha256(asset_id)
+    if not aid:
+        print("--asset-id must be a 64-char sha256 hex", file=sys.stderr)
+        return 2
+
+    try:
+        seq = int(getattr(args, "sequence"))
+    except Exception:
+        print("--sequence must be an integer", file=sys.stderr)
+        return 2
+    if seq < 0:
+        print("--sequence must be >= 0", file=sys.stderr)
+        return 2
+
+    prev_root_arg = str(getattr(args, "prev_root", "genesis") or "genesis").strip().lower()
+    if prev_root_arg in {"genesis", "genesis_root"}:
+        prev_root = asset_state_genesis_root(aid, purpose=purpose)
+    else:
+        prev_root = _coerce_sha256(prev_root_arg)
+        if not prev_root:
+            print("--prev-root must be 'genesis' or a 64-char sha256 hex", file=sys.stderr)
+            return 2
+
+    ts = str(getattr(args, "timestamp", "") or "").strip() or now_rfc3339()
+
+    transition_path = str(getattr(args, "transition", "") or "").strip() or "docs/examples/state/noop.transition.json"
+    transition = _load_transition_envelope(transition_path)
+
+    # Optional transition type registry binding
+    ttr_digest = ""
+    ttr_map: Dict[str, Any] = {}
+    lock_arg = str(getattr(args, "transition_types_lock", "") or "").strip()
+    if lock_arg:
+        lp = pathlib.Path(lock_arg)
+        if not lp.is_absolute():
+            lp = REPO_ROOT / lp
+        try:
+            _lock_obj, ttr_map, ttr_digest = load_transition_type_registry_lock(lp)
+        except Exception as e:
+            print(f"failed to load transition-types lock: {lp}: {e}", file=sys.stderr)
+            return 2
+
+    if getattr(args, "fill_transition_digests", False) and ttr_map:
+        try:
+            fill_transition_envelope_from_registry(transition, ttr_map)
+        except Exception as e:
+            print(f"failed to fill transition digests from registry: {e}", file=sys.stderr)
+            return 2
+
+    lawpacks = _normalize_digest_set(getattr(args, "lawpack_digest", []) or [])
+    rulesets = _normalize_digest_set(getattr(args, "ruleset_digest", []) or [])
+
+    receipt: Dict[str, Any] = {
+        "type": "SmartAssetReceipt",
+        "asset_id": aid,
+        "sequence": seq,
+        "timestamp": ts,
+        "prev_root": prev_root,
+        "lawpack_digest_set": lawpacks,
+        "ruleset_digest_set": rulesets,
+        "transition": transition,
+        # If unsigned, we still include an empty proof array so the JSON validates
+        # against schemas (but chain verification will still fail due to no valid proofs).
+        "proof": [],
+    }
+    if ttr_digest:
+        receipt["transition_type_registry_digest_sha256"] = ttr_digest
+
+    receipt["next_root"] = asset_state_next_root(receipt)
+
+    if getattr(args, "sign", False):
+        key_path = str(getattr(args, "key", "") or "").strip()
+        if not key_path:
+            print("--key is required when --sign is set", file=sys.stderr)
+            return 2
+        kp = pathlib.Path(key_path)
+        if not kp.is_absolute():
+            kp = REPO_ROOT / kp
+        jwk = load_json(kp)
+        priv, did = load_ed25519_private_key_from_jwk(jwk)
+
+        vm = str(getattr(args, "verification_method", "") or "").strip()
+        if not vm:
+            vm = f"{did}#key-1"
+        add_ed25519_proof(receipt, priv, vm, proof_purpose=str(getattr(args, "proof_purpose", "assertionMethod")))
+
+    out = str(getattr(args, "out", "") or "").strip() or f"smart-asset.receipt.{seq}.json"
+    out_path = pathlib.Path(out)
+    if not out_path.is_absolute():
+        out_path = REPO_ROOT / out_path
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(receipt, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(str(out_path))
+    return 0
+
+
+def cmd_asset_state_verify(args: argparse.Namespace) -> int:
+    """Verify an asset receipt chain (linear, non-forking)."""
+    receipts_path = pathlib.Path(str(getattr(args, "receipts", "") or "").strip())
+    if not str(receipts_path):
+        print("--receipts is required", file=sys.stderr)
+        return 2
+    if not receipts_path.is_absolute():
+        receipts_path = REPO_ROOT / receipts_path
+
+    asset_id = str(getattr(args, "asset_id", "") or "").strip().lower()
+    purpose = str(getattr(args, "purpose", "core") or "core")
+    genesis_override = str(getattr(args, "genesis_root", "") or "").strip().lower() or None
+
+    enforce_trust = bool(getattr(args, "enforce_trust_anchors", False))
+    trust_anchors_arg = str(getattr(args, "trust_anchors", "") or "").strip()
+    trust_anchors_path: Optional[pathlib.Path] = None
+    if trust_anchors_arg:
+        tp = pathlib.Path(trust_anchors_arg)
+        if not tp.is_absolute():
+            tp = REPO_ROOT / tp
+        trust_anchors_path = tp
+
+    enforce_transition_types = bool(getattr(args, "enforce_transition_types", False))
+    expected_ttr_digest = str(getattr(args, "expected_transition_type_registry_digest", "") or "").strip().lower() or None
+
+    require_artifacts = bool(getattr(args, "require_artifacts", False))
+    transitive_require_artifacts = bool(getattr(args, "transitive_require_artifacts", False))
+    if transitive_require_artifacts:
+        require_artifacts = True
+
+    result, warnings, errors = _asset_state_build_chain(
+        receipts_path,
+        asset_id,
+        purpose=purpose,
+        genesis_root=genesis_override,
+        enforce_trust_anchors=enforce_trust,
+        trust_anchors_path=trust_anchors_path,
+        enforce_transition_types=enforce_transition_types,
+        expected_transition_type_registry_digest=expected_ttr_digest,
+        require_artifacts=require_artifacts,
+        transitive_require_artifacts=transitive_require_artifacts,
+    )
+
+    # Optional checkpoint verification
+    checkpoint_path = str(getattr(args, "checkpoint", "") or "").strip()
+    checkpoint_verified = None
+    if checkpoint_path and result and not errors:
+        cp = pathlib.Path(checkpoint_path)
+        if not cp.is_absolute():
+            cp = REPO_ROOT / cp
+        checkpoint_validator = schema_validator(REPO_ROOT / "schemas" / "smart-asset.receipt-chain.checkpoint.schema.json")
+        try:
+            ck = load_json(cp)
+        except Exception as e:
+            errors.append(f"failed to load checkpoint: {cp}: {e}")
+            ck = None
+        if ck is not None:
+            ve = list(checkpoint_validator.iter_errors(ck))
+            if ve:
+                errors.append(f"invalid checkpoint schema: {cp}: {ve[0].message}")
+            else:
+                from tools.vc import verify_credential
+                ck_v = verify_credential(ck)
+                ck_ok_dids = _verified_base_dids(ck_v)
+                checkpoint_verified = bool(ck_ok_dids)
+                if not checkpoint_verified:
+                    errors.append(f"checkpoint signature verification failed: {cp}")
+
+                # Content matching
+                if str(ck.get("asset_id")) != result.get("asset_id"):
+                    errors.append("checkpoint asset_id mismatch")
+                if str(ck.get("genesis_root")) != result.get("genesis_root"):
+                    errors.append("checkpoint genesis_root mismatch")
+                if int(ck.get("receipt_count") or 0) != int(result.get("receipt_count") or 0):
+                    errors.append("checkpoint receipt_count mismatch")
+                if str(ck.get("final_chain_root")) != result.get("final_chain_root"):
+                    errors.append("checkpoint final_chain_root mismatch")
+                mmr = ck.get("mmr") or {}
+                if str(mmr.get("root")) != str((result.get("mmr") or {}).get("root")):
+                    errors.append("checkpoint mmr.root mismatch")
+                if int(mmr.get("size") or 0) != int(result.get("receipt_count") or 0):
+                    errors.append("checkpoint mmr.size mismatch")
+
+    if getattr(args, "json", False):
+        out = dict(result or {})
+        if warnings:
+            out["warnings"] = warnings
+        if checkpoint_path:
+            out["checkpoint_verified"] = checkpoint_verified
+        if errors:
+            out["errors"] = errors
+        print(json.dumps(out, indent=2))
+    else:
+        if errors:
+            print("ASSET STATE VERIFY FAILED")
+            for e in errors:
+                print(f"  - {e}")
+            if warnings:
+                print("WARNINGS:")
+                for w in warnings:
+                    print(f"  - {w}")
+        else:
+            print("ASSET STATE VERIFY OK")
+            print(f"asset_id: {result.get('asset_id')}")
+            print(f"purpose: {result.get('purpose')}")
+            print(f"genesis_root: {result.get('genesis_root')}")
+            print(f"receipt_count: {result.get('receipt_count')}")
+            print(f"final_chain_root: {result.get('final_chain_root')}")
+            mmr = result.get("mmr") or {}
+            if mmr:
+                print(f"mmr_root: {mmr.get('root')}")
+            if checkpoint_path:
+                print(f"checkpoint_verified: {bool(checkpoint_verified)}")
+            if warnings:
+                print("WARNINGS:")
+                for w in warnings:
+                    print(f"  - {w}")
+
+    return 2 if errors else 0
+
+
+def cmd_asset_state_checkpoint(args: argparse.Namespace) -> int:
+    """Create a signed checkpoint committing to the asset receipt chain head and MMR root."""
+    from tools.vc import now_rfc3339, add_ed25519_proof, load_ed25519_private_key_from_jwk  # type: ignore
+    from tools.mmr import mmr_root_from_next_roots  # type: ignore
+
+    receipts_arg = str(getattr(args, "receipts", "") or "").strip()
+    if not receipts_arg:
+        print("--receipts is required", file=sys.stderr)
+        return 2
+    rpath = pathlib.Path(receipts_arg)
+    if not rpath.is_absolute():
+        rpath = REPO_ROOT / rpath
+    if not rpath.exists():
+        print(f"Receipts path not found: {rpath}", file=sys.stderr)
+        return 2
+
+    asset_id = str(getattr(args, "asset_id", "") or "").strip().lower()
+    purpose = str(getattr(args, "purpose", "core") or "core")
+    genesis_override = str(getattr(args, "genesis_root", "") or "").strip().lower() or None
+
+    enforce_trust = bool(getattr(args, "enforce_trust_anchors", False))
+    trust_anchors_arg = str(getattr(args, "trust_anchors", "") or "").strip()
+    trust_anchors_path: Optional[pathlib.Path] = None
+    if trust_anchors_arg:
+        tp = pathlib.Path(trust_anchors_arg)
+        if not tp.is_absolute():
+            tp = REPO_ROOT / tp
+        trust_anchors_path = tp
+
+    try:
+        genesis_root, receipts, final_root = _asset_state_load_verified_receipts(
+            rpath,
+            asset_id,
+            purpose=purpose,
+            genesis_root=genesis_override,
+            enforce_trust=enforce_trust,
+            trust_anchors_path=trust_anchors_path,
+        )
+    except Exception as ex:
+        print(f"STATE FAIL: {ex}", file=sys.stderr)
+        return 2
+
+    if not receipts:
+        print("cannot checkpoint an empty receipt chain", file=sys.stderr)
+        return 2
+
+    # Union digest sets across receipts (assets may traverse multiple lawpacks/rulesets)
+    lawpacks_u: Set[str] = set()
+    rulesets_u: Set[str] = set()
+    for r in receipts:
+        lawpacks_u.update(_normalize_digest_set(r.get("lawpack_digest_set") or []))
+        rulesets_u.update(_normalize_digest_set(r.get("ruleset_digest_set") or []))
+
+    next_roots = [str(r.get("next_root") or "").strip().lower() for r in receipts]
+    mmr_info = mmr_root_from_next_roots(next_roots)
+
+    checkpoint: Dict[str, Any] = {
+        "type": "SmartAssetReceiptChainCheckpoint",
+        "asset_id": str(asset_id),
+        "purpose": purpose,
+        "timestamp": now_rfc3339(),
+        "genesis_root": genesis_root,
+        "final_chain_root": final_root,
+        "receipt_count": len(receipts),
+        "lawpack_digest_set": sorted(lawpacks_u),
+        "ruleset_digest_set": sorted(rulesets_u),
+        "mmr": {
+            "type": "MSEZReceiptMMR",
+            "algorithm": "sha256",
+            "size": mmr_info["size"],
+            "root": mmr_info["root"],
+            "peaks": mmr_info.get("peaks", []),
+        },
+        "proof": [],
+    }
+
+    if getattr(args, "sign", False):
+        key_path = str(getattr(args, "key", "") or "").strip()
+        if not key_path:
+            print("--key is required when --sign is set", file=sys.stderr)
+            return 2
+        kp = pathlib.Path(key_path)
+        if not kp.is_absolute():
+            kp = REPO_ROOT / kp
+        jwk = load_json(kp)
+        priv, did = load_ed25519_private_key_from_jwk(jwk)
+
+        vm = str(getattr(args, "verification_method", "") or "").strip()
+        if not vm:
+            vm = f"{did}#key-1"
+        add_ed25519_proof(checkpoint, priv, vm, proof_purpose=str(getattr(args, "proof_purpose", "assertionMethod")))
+
+    out = str(getattr(args, "out", "") or "").strip() or "smart-asset.receipt-chain.checkpoint.json"
+    out_path = pathlib.Path(out)
+    if not out_path.is_absolute():
+        out_path = REPO_ROOT / out_path
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(checkpoint, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(str(out_path))
+    return 0
+
+
+def cmd_asset_state_inclusion_proof(args: argparse.Namespace) -> int:
+    """Generate an MMR inclusion proof for an asset receipt sequence (leaf index)."""
+    from tools.vc import now_rfc3339  # type: ignore
+    from tools.mmr import build_inclusion_proof  # type: ignore
+    from tools.lawpack import jcs_canonicalize  # type: ignore
+
+    receipts_arg = str(getattr(args, "receipts", "") or "").strip()
+    if not receipts_arg:
+        print("--receipts is required", file=sys.stderr)
+        return 2
+    rpath = pathlib.Path(receipts_arg)
+    if not rpath.is_absolute():
+        rpath = REPO_ROOT / rpath
+    if not rpath.exists():
+        print(f"Receipts path not found: {rpath}", file=sys.stderr)
+        return 2
+
+    asset_id = str(getattr(args, "asset_id", "") or "").strip().lower()
+    purpose = str(getattr(args, "purpose", "core") or "core")
+    genesis_override = str(getattr(args, "genesis_root", "") or "").strip().lower() or None
+
+    enforce_trust = bool(getattr(args, "enforce_trust_anchors", False))
+    trust_anchors_arg = str(getattr(args, "trust_anchors", "") or "").strip()
+    trust_anchors_path: Optional[pathlib.Path] = None
+    if trust_anchors_arg:
+        tp = pathlib.Path(trust_anchors_arg)
+        if not tp.is_absolute():
+            tp = REPO_ROOT / tp
+        trust_anchors_path = tp
+
+    try:
+        _genesis_root, receipts, _final_root = _asset_state_load_verified_receipts(
+            rpath,
+            asset_id,
+            purpose=purpose,
+            genesis_root=genesis_override,
+            enforce_trust=enforce_trust,
+            trust_anchors_path=trust_anchors_path,
+        )
+    except Exception as ex:
+        print(f"STATE FAIL: {ex}", file=sys.stderr)
+        return 2
+
+    seq_arg = getattr(args, "sequence", None)
+    if seq_arg is None:
+        print("--sequence is required", file=sys.stderr)
+        return 2
+    try:
+        seq = int(seq_arg)
+    except Exception:
+        print("--sequence must be an integer", file=sys.stderr)
+        return 2
+    if seq < 0 or seq >= len(receipts):
+        print(f"--sequence out of range (0..{len(receipts)-1})", file=sys.stderr)
+        return 2
+
+    next_roots = [str(r.get("next_root") or "").strip().lower() for r in receipts]
+    mmr_proof = build_inclusion_proof(next_roots, seq)
+
+    proof_obj: Dict[str, Any] = {
+        "type": "SmartAssetReceiptInclusionProof",
+        "asset_id": str(asset_id),
+        "generated_at": now_rfc3339(),
+        "mmr": {
+            "type": "MSEZReceiptMMR",
+            "algorithm": "sha256",
+            "size": mmr_proof["size"],
+            "root": mmr_proof["root"],
+        },
+        "leaf_index": mmr_proof["leaf_index"],
+        "receipt_next_root": mmr_proof["receipt_next_root"],
+        "leaf_hash": mmr_proof["leaf_hash"],
+        "peak_index": mmr_proof["peak_index"],
+        "peak_height": mmr_proof["peak_height"],
+        "path": mmr_proof.get("path", []),
+        "peaks": mmr_proof.get("peaks", []),
+    }
+    if mmr_proof.get("computed_peak_root"):
+        proof_obj["computed_peak_root"] = mmr_proof.get("computed_peak_root")
+
+    # Optional checkpoint binding (recommended)
+    checkpoint_arg = str(getattr(args, "checkpoint", "") or "").strip()
+    if checkpoint_arg:
+        cp = pathlib.Path(checkpoint_arg)
+        if not cp.is_absolute():
+            cp = REPO_ROOT / cp
+        try:
+            ck = load_json(cp)
+            tmp = dict(ck)
+            tmp.pop("proof", None)
+            checkpoint_digest = sha256_bytes(jcs_canonicalize(tmp))
+            proof_obj["checkpoint_digest_sha256"] = checkpoint_digest
+            proof_obj["checkpoint_ref"] = make_artifact_ref("checkpoint", checkpoint_digest, uri=str(cp))
+            # Helpful denormalized fields
+            if isinstance(ck, dict):
+                if ck.get("final_chain_root"):
+                    proof_obj["checkpoint_final_chain_root"] = ck.get("final_chain_root")
+                if ck.get("genesis_root"):
+                    proof_obj["checkpoint_genesis_root"] = ck.get("genesis_root")
+                if ck.get("receipt_count") is not None:
+                    proof_obj["checkpoint_receipt_count"] = ck.get("receipt_count")
+        except Exception as e:
+            print(f"warning: failed to bind checkpoint digest: {e}", file=sys.stderr)
+
+    out = str(getattr(args, "out", "") or "").strip() or f"smart-asset.receipt.{seq}.inclusion-proof.json"
+    out_path = pathlib.Path(out)
+    if not out_path.is_absolute():
+        out_path = REPO_ROOT / out_path
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(proof_obj, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(str(out_path))
+    return 0
+
+
+def cmd_asset_state_verify_inclusion(args: argparse.Namespace) -> int:
+    """Verify inclusion of an asset receipt within a signed receipt-chain checkpoint."""
+    from tools.vc import verify_credential  # type: ignore
+    from tools.mmr import verify_inclusion_proof  # type: ignore
+
+    asset_id = str(getattr(args, "asset_id", "") or "").strip().lower()
+    if not asset_id:
+        print("--asset-id is required", file=sys.stderr)
+        return 2
+
+    enforce_trust = bool(getattr(args, "enforce_trust_anchors", False))
+    trust_anchors_arg = str(getattr(args, "trust_anchors", "") or "").strip()
+    trust_anchors_path: Optional[pathlib.Path] = None
+    if trust_anchors_arg:
+        tp = pathlib.Path(trust_anchors_arg)
+        if not tp.is_absolute():
+            tp = REPO_ROOT / tp
+        trust_anchors_path = tp
+
+    allowed_receipt_signers: Set[str] = set()
+    allowed_checkpoint_signers: Set[str] = set()
+    if enforce_trust and trust_anchors_path:
+        try:
+            trust_anchors = load_trust_anchors(trust_anchors_path)
+            for ta in trust_anchors:
+                did = str(ta.get("did") or "")
+                if not did:
+                    continue
+                allowed = set(ta.get("allowed_attestations") or [])
+                if "smart_asset_receipt" in allowed or "*" in allowed:
+                    allowed_receipt_signers.add(did)
+                # checkpoint-specific is preferred; receipt is accepted as fallback.
+                if "smart_asset_receipt_checkpoint" in allowed or "smart_asset_receipt" in allowed or "*" in allowed:
+                    allowed_checkpoint_signers.add(did)
+        except Exception:
+            allowed_receipt_signers = set()
+            allowed_checkpoint_signers = set()
+
+    receipt_path = pathlib.Path(str(getattr(args, "receipt", "") or "").strip())
+    proof_path = pathlib.Path(str(getattr(args, "proof", "") or "").strip())
+    checkpoint_path = pathlib.Path(str(getattr(args, "checkpoint", "") or "").strip())
+
+    for name, pp in [("--receipt", receipt_path), ("--proof", proof_path), ("--checkpoint", checkpoint_path)]:
+        if not str(pp):
+            print(f"{name} is required", file=sys.stderr)
+            return 2
+        if not pp.is_absolute():
+            pp2 = REPO_ROOT / pp
+        else:
+            pp2 = pp
+        if not pp2.exists():
+            print(f"{name} not found: {pp2}", file=sys.stderr)
+            return 2
+
+    if not receipt_path.is_absolute():
+        receipt_path = REPO_ROOT / receipt_path
+    if not proof_path.is_absolute():
+        proof_path = REPO_ROOT / proof_path
+    if not checkpoint_path.is_absolute():
+        checkpoint_path = REPO_ROOT / checkpoint_path
+
+    receipt = load_json(receipt_path)
+    proof = load_json(proof_path)
+    checkpoint = load_json(checkpoint_path)
+
+    # Asset id binding
+    for obj_name, obj in [("receipt", receipt), ("checkpoint", checkpoint), ("proof", proof)]:
+        obj_aid = str((obj or {}).get("asset_id") or "").strip().lower()
+        if obj_aid and obj_aid != asset_id:
+            print(f"FAIL: {obj_name}.asset_id does not match --asset-id", file=sys.stderr)
+            return 2
+
+    # Verify receipt proof(s)
+    rres = verify_credential(receipt)
+    if not rres or any(not r.ok for r in rres):
+        print("FAIL: receipt signature invalid", file=sys.stderr)
+        return 2
+    if enforce_trust and allowed_receipt_signers:
+        ok_dids = {str(r.verification_method).split('#', 1)[0] for r in rres if r.ok and r.verification_method}
+        if not (ok_dids & allowed_receipt_signers):
+            print("FAIL: receipt not signed by an allowed trust anchor", file=sys.stderr)
+            return 2
+
+    # Verify checkpoint proof(s)
+    cres = verify_credential(checkpoint)
+    if not cres or any(not r.ok for r in cres):
+        print("FAIL: checkpoint signature invalid", file=sys.stderr)
+        return 2
+    if enforce_trust and allowed_checkpoint_signers:
+        ok_dids = {str(r.verification_method).split('#', 1)[0] for r in cres if r.ok and r.verification_method}
+        if not (ok_dids & allowed_checkpoint_signers):
+            print("FAIL: checkpoint not signed by an allowed trust anchor", file=sys.stderr)
+            return 2
+
+    computed = asset_state_next_root(receipt)
+    if computed != str(receipt.get("next_root") or "").strip().lower():
+        print("FAIL: receipt next_root mismatch", file=sys.stderr)
+        return 2
+
+    if str(proof.get("receipt_next_root") or "").strip().lower() != str(receipt.get("next_root") or "").strip().lower():
+        print("FAIL: proof receipt_next_root does not match receipt", file=sys.stderr)
+        return 2
+
+    # leaf_index/sequence binding
+    try:
+        def _int_or(x: Any, default: int) -> int:
+            try:
+                return int(x) if x is not None else default
+            except Exception:
+                return default
+
+        leaf_index_i = _int_or(proof.get("leaf_index"), -1)
+        seq_i = _int_or(receipt.get("sequence"), -2)
+        if leaf_index_i != seq_i:
+            print("FAIL: proof.leaf_index does not match receipt.sequence", file=sys.stderr)
+            return 2
+    except Exception:
+        pass
+
+    cp_mmr = (checkpoint or {}).get("mmr") or {}
+    pr_mmr = (proof or {}).get("mmr") or {}
+    if str(cp_mmr.get("root") or "").strip().lower() != str(pr_mmr.get("root") or "").strip().lower():
+        print("FAIL: proof mmr.root does not match checkpoint", file=sys.stderr)
+        return 2
+    if int(cp_mmr.get("size") or 0) != int(pr_mmr.get("size") or 0):
+        print("FAIL: proof mmr.size does not match checkpoint", file=sys.stderr)
+        return 2
+    try:
+        if int(checkpoint.get("receipt_count") or 0) and int(checkpoint.get("receipt_count") or 0) != int(cp_mmr.get("size") or 0):
+            print("FAIL: checkpoint receipt_count does not match checkpoint.mmr.size", file=sys.stderr)
+            return 2
+    except Exception:
+        pass
+
+    # checkpoint digest binding (optional)
+    expected_cp_digest = ""
+    if isinstance((proof or {}).get("checkpoint_ref"), dict):
+        expected_cp_digest = _coerce_sha256((proof or {}).get("checkpoint_ref"))
+    if not expected_cp_digest:
+        expected_cp_digest = str((proof or {}).get("checkpoint_digest_sha256") or "").strip().lower()
+    if expected_cp_digest:
+        try:
+            from tools.lawpack import jcs_canonicalize  # type: ignore
+
+            tmp = dict(checkpoint)
+            tmp.pop("proof", None)
+            computed_cp_digest = sha256_bytes(jcs_canonicalize(tmp))
+            if computed_cp_digest != expected_cp_digest:
+                print("FAIL: checkpoint digest does not match proof commitment", file=sys.stderr)
+                return 2
+        except Exception:
+            pass
+
+    try:
+        if (proof or {}).get("checkpoint_final_chain_root") and (checkpoint or {}).get("final_chain_root"):
+            if str((proof or {}).get("checkpoint_final_chain_root") or "").strip().lower() != str((checkpoint or {}).get("final_chain_root") or "").strip().lower():
+                print("FAIL: proof checkpoint_final_chain_root does not match checkpoint", file=sys.stderr)
+                return 2
+    except Exception:
+        pass
+
+    # Optional: for the genesis receipt, enforce prev_root matches checkpoint genesis_root.
+    try:
+        if int(receipt.get("sequence") or 0) == 0:
+            if str(receipt.get("prev_root") or "").strip().lower() != str(checkpoint.get("genesis_root") or "").strip().lower():
+                print("FAIL: genesis receipt prev_root does not match checkpoint genesis_root", file=sys.stderr)
+                return 2
+    except Exception:
+        pass
+
+    mmr_proof = {
+        "size": int(pr_mmr.get("size") or 0),
+        "root": str(pr_mmr.get("root") or "").strip().lower(),
+        "leaf_index": int(proof.get("leaf_index") or 0),
+        "receipt_next_root": str(proof.get("receipt_next_root") or "").strip().lower(),
+        "leaf_hash": str(proof.get("leaf_hash") or "").strip().lower(),
+        "peak_index": int(proof.get("peak_index") or 0),
+        "peak_height": int(proof.get("peak_height") or 0),
+        "path": proof.get("path"),
+        "peaks": proof.get("peaks"),
+    }
+
+    if not verify_inclusion_proof(mmr_proof):
+        print("FAIL: invalid inclusion proof", file=sys.stderr)
+        return 2
+
+    print("OK")
+    return 0
+
+
+def cmd_asset_anchor_verify(args: argparse.Namespace) -> int:
+    """Verify that a Smart Asset checkpoint is *anchored* in a corridor state channel.
+
+    This checks two independent conditions:
+      1) Corridor inclusion: the provided corridor receipt is included in the provided
+         signed corridor checkpoint via the provided MMR inclusion proof.
+      2) Asset binding: the corridor receipt's embedded transition includes a typed
+         attachment for the Smart Asset checkpoint digest (artifact_type=smart-asset-checkpoint,
+         digest_sha256=<state_root_sha256>).
+
+    Together this forms a verifiable bridge between asset state commitments and corridor
+    state channels, without requiring a blockchain.
+    """
+
+    # Resolve/normalize file paths early so error messages are predictable.
+    corridor_path = str(getattr(args, "path", "") or "").strip()
+    receipt_arg = str(getattr(args, "receipt", "") or "").strip()
+    proof_arg = str(getattr(args, "proof", "") or "").strip()
+    checkpoint_arg = str(getattr(args, "checkpoint", "") or "").strip()
+    asset_checkpoint_arg = str(getattr(args, "asset_checkpoint", "") or "").strip()
+    state_root_arg = str(getattr(args, "state_root", "") or "").strip().lower()
+
+    if not corridor_path:
+        print("--path is required", file=sys.stderr)
+        return 2
+    if not receipt_arg:
+        print("--receipt is required", file=sys.stderr)
+        return 2
+    if not proof_arg:
+        print("--proof is required", file=sys.stderr)
+        return 2
+    if not checkpoint_arg:
+        print("--checkpoint is required", file=sys.stderr)
+        return 2
+
+    # Determine expected state_root digest.
+    expected_state_root = ""
+    asset_id = ""
+    if state_root_arg:
+        expected_state_root = state_root_arg
+    elif asset_checkpoint_arg:
+        acp = pathlib.Path(asset_checkpoint_arg)
+        if not acp.is_absolute():
+            acp = REPO_ROOT / acp
+        if not acp.exists():
+            print(f"--asset-checkpoint not found: {acp}", file=sys.stderr)
+            return 2
+        try:
+            ck = load_json(acp)
+        except Exception as ex:
+            print(f"FAIL: unable to read asset checkpoint: {ex}", file=sys.stderr)
+            return 2
+        if not isinstance(ck, dict):
+            print("FAIL: asset checkpoint must be a JSON object", file=sys.stderr)
+            return 2
+        expected_state_root = str(ck.get("state_root_sha256") or "").strip().lower()
+        asset_id = str(ck.get("asset_id") or "").strip()
+        if not expected_state_root or not SHA256_HEX_RE.match(expected_state_root):
+            print("FAIL: asset checkpoint missing valid state_root_sha256", file=sys.stderr)
+            return 2
+    else:
+        print("Either --state-root or --asset-checkpoint is required", file=sys.stderr)
+        return 2
+
+    # (1) Verify corridor inclusion.
+    rc = cmd_corridor_state_verify_inclusion(
+        type(
+            "Args",
+            (),
+            {
+                "path": corridor_path,
+                "receipt": receipt_arg,
+                "proof": proof_arg,
+                "checkpoint": checkpoint_arg,
+                "enforce_trust_anchors": bool(getattr(args, "enforce_trust_anchors", False)),
+            },
+        )()
+    )
+    if rc != 0:
+        return rc
+
+    # (2) Verify the receipt commits to the asset checkpoint digest.
+    receipt_path = pathlib.Path(receipt_arg)
+    if not receipt_path.is_absolute():
+        receipt_path = REPO_ROOT / receipt_path
+    try:
+        receipt = load_json(receipt_path)
+    except Exception as ex:
+        print(f"FAIL: unable to read receipt: {ex}", file=sys.stderr)
+        return 2
+    if not isinstance(receipt, dict):
+        print("FAIL: receipt must be a JSON object", file=sys.stderr)
+        return 2
+
+    env = receipt.get("transition") if receipt.get("type") == "MSEZCorridorStateReceipt" else receipt
+    if not isinstance(env, dict):
+        env = {}
+
+    found = False
+    for att in (env.get("attachments") or []):
+        if not isinstance(att, dict):
+            continue
+        atype = str(att.get("artifact_type") or "").strip().lower()
+        dig = _coerce_sha256(att)
+        if atype == "smart-asset-checkpoint" and dig == expected_state_root:
+            found = True
+            break
+
+    if not found:
+        detail = f"smart-asset-checkpoint:{expected_state_root}"
+        if asset_id:
+            detail = f"asset_id={asset_id} {detail}"
+        print(f"FAIL: receipt does not include required typed attachment ({detail})", file=sys.stderr)
+        return 2
+
+    # Success.
+    if asset_id:
+        print(f"OK: asset checkpoint anchored (asset_id={asset_id} state_root={expected_state_root})")
+    else:
+        print(f"OK: asset checkpoint anchored (state_root={expected_state_root})")
     return 0
 
 
@@ -9413,6 +11170,198 @@ def main() -> int:
     cfa.set_defaults(func=cmd_corridor_state_fork_alarm)
 
 
+    # Smart Assets (non-blockchain) ---------------------------------------------
+    asset = sub.add_parser("asset", help="Smart Asset utilities (identity, registry, checkpoints, compliance)")
+    asset_sub = asset.add_subparsers(dest="asset_cmd", required=True)
+
+    # Genesis
+    ag = asset_sub.add_parser("genesis-init", help="Create a Smart Asset genesis JSON document")
+    ag.add_argument("--stack-spec-version", dest="stack_spec_version", default=STACK_SPEC_VERSION)
+    ag.add_argument("--asset-name", dest="asset_name", required=True)
+    ag.add_argument("--asset-class", dest="asset_class", required=True)
+    ag.add_argument("--description", default="")
+    ag.add_argument("--creator", default="")
+    ag.add_argument("--home-harbor-id", dest="home_harbor_id", default="")
+    ag.add_argument("--created-at", dest="created_at", default="", help="RFC3339 timestamp override")
+    ag.add_argument("--metadata", default="", help="Optional YAML metadata file")
+    ag.add_argument("--out", default="", help="Output path (default: stdout only)")
+    ag.add_argument("--store", action="store_true", help="Store genesis in artifact CAS (type smart-asset-genesis, digest = asset_id)")
+    ag.add_argument("--store-root", dest="store_root", default="", help="CAS store root (default: dist/artifacts)")
+    ag.add_argument("--overwrite", action="store_true", help="Overwrite existing artifact if present")
+    ag.set_defaults(func=smart_asset_tools.cmd_asset_genesis_init)
+
+    agh = asset_sub.add_parser(
+        "genesis-hash",
+        help="Compute asset_id = sha256(JCS(genesis_without_asset_id)) (derived asset_id field omitted)",
+    )
+    agh.add_argument("genesis", help="Genesis JSON file")
+    agh.set_defaults(func=smart_asset_tools.cmd_asset_genesis_hash)
+
+    # Registry VC
+    ar = asset_sub.add_parser("registry-init", help="Initialize a Smart Asset Registry VC (unsigned by default)")
+    ar.add_argument("--stack-spec-version", dest="stack_spec_version", default=STACK_SPEC_VERSION)
+    ar.add_argument("--genesis", required=True, help="Smart Asset genesis JSON file")
+    ar.add_argument("--bindings", required=True, help="Bindings YAML/JSON (list or {jurisdiction_bindings:[...]})")
+    ar.add_argument("--issuer", required=True, help="Issuer DID")
+    ar.add_argument("--issuance-date", dest="issuance_date", default="", help="RFC3339 issuanceDate override")
+    ar.add_argument("--id", default="", help="Optional VC id override")
+    ar.add_argument("--out", default="", help="Output path (default: smart-asset.registry.vc.json alongside genesis)")
+    ar.add_argument("--sign", action="store_true", help="Sign the VC (Ed25519 JWK)")
+    ar.add_argument("--key", default="", help="Private OKP/Ed25519 JWK JSON path (required if --sign)")
+    ar.add_argument("--verification-method", dest="verification_method", default="", help="verificationMethod override")
+    ar.add_argument("--purpose", default="assertionMethod", help="proofPurpose (default: assertionMethod)")
+    ar.set_defaults(func=smart_asset_tools.cmd_asset_registry_init)
+
+    # Checkpoints
+    ack = asset_sub.add_parser("checkpoint-build", help="Build a Smart Asset checkpoint from a JSON state object")
+    ack.add_argument("--asset-id", dest="asset_id", required=True)
+    ack.add_argument("--state", required=True, help="State JSON file (any JSON object/array)")
+    ack.add_argument("--as-of", default="", help="RFC3339 timestamp override")
+    ack.add_argument("--parent", action="append", default=[], help="Parent checkpoint digest(s) sha256 (repeatable)")
+    ack.add_argument("--notes", default="")
+    ack.add_argument("--out", default="", help="Output path")
+    ack.add_argument("--store", action="store_true", help="Store checkpoint in artifact CAS (type smart-asset-checkpoint, digest = state_root_sha256)")
+    ack.add_argument("--store-root", dest="store_root", default="", help="CAS store root (default: dist/artifacts)")
+    ack.add_argument("--overwrite", action="store_true")
+    ack.set_defaults(func=smart_asset_tools.cmd_asset_checkpoint_build)
+
+    # Attestations
+    aa = asset_sub.add_parser("attestation-init", help="Create a Smart Asset attestation JSON (optionally store in CAS)")
+    aa.add_argument("--asset-id", dest="asset_id", required=True)
+    aa.add_argument("--issuer", required=True)
+    aa.add_argument("--kind", required=True, help="Attestation kind (e.g., kyc.passed.v1)")
+    aa.add_argument("--issued-at", dest="issued_at", default="", help="RFC3339 timestamp override")
+    aa.add_argument("--claims", default="", help="Optional claims file (YAML/JSON)")
+    aa.add_argument("--out", default="", help="Output path")
+    aa.add_argument("--store", action="store_true", help="Store attestation in artifact CAS (type smart-asset-attestation)")
+    aa.add_argument("--store-root", dest="store_root", default="", help="CAS store root (default: dist/artifacts)")
+    aa.add_argument("--overwrite", action="store_true")
+    aa.set_defaults(func=smart_asset_tools.cmd_asset_attestation_init)
+
+    # Compliance evaluation
+    ace = asset_sub.add_parser("compliance-eval", help="Evaluate a transition envelope against the asset registry bindings")
+    ace.add_argument("--registry", required=True, help="Smart Asset Registry VC JSON")
+    ace.add_argument("--transition", required=True, help="Transition envelope JSON")
+    ace.add_argument("--store-root", dest="store_root", default="", help="CAS store root to resolve attestation artifacts (default: dist/artifacts)")
+    ace.add_argument(
+        "--extra-store-root",
+        dest="extra_store_root",
+        default="",
+        help="Comma-separated additional CAS roots",
+    )
+    ace.set_defaults(func=smart_asset_tools.cmd_asset_compliance_eval)
+
+    # Corridor anchoring
+    aav = asset_sub.add_parser(
+        "anchor-verify",
+        help="Verify that a Smart Asset checkpoint is anchored in a corridor checkpoint via an inclusion proof",
+    )
+    aav.add_argument("--path", required=True, help="Corridor module dir (or corridor.yaml path)")
+    aav.add_argument("--receipt", required=True, help="Corridor receipt JSON")
+    aav.add_argument("--proof", required=True, help="Corridor inclusion proof JSON")
+    aav.add_argument("--checkpoint", required=True, help="Signed corridor checkpoint JSON")
+    aav.add_argument(
+        "--asset-checkpoint",
+        dest="asset_checkpoint",
+        default="",
+        help="SmartAssetCheckpoint JSON (extract state_root_sha256)",
+    )
+    aav.add_argument(
+        "--state-root",
+        dest="state_root",
+        default="",
+        help="Explicit state_root_sha256 (alternative to --asset-checkpoint)",
+    )
+    aav.add_argument("--enforce-trust-anchors", action="store_true")
+    aav.set_defaults(func=cmd_asset_anchor_verify)
+
+    # Asset-local receipt chain (non-blockchain)
+    astate = asset_sub.add_parser(
+        "state",
+        help="Asset-local receipt chain tools (non-blockchain; receipts, MMR checkpoints, inclusion proofs)",
+    )
+    astate_sub = astate.add_subparsers(dest="asset_state_cmd", required=True)
+
+    asg = astate_sub.add_parser("genesis-root", help="Compute the genesis_root for an asset receipt chain")
+    asg.add_argument("--asset-id", dest="asset_id", required=True)
+    asg.add_argument("--purpose", default="core", help="Optional chain purpose namespace (default: core)")
+    asg.add_argument("--json", action="store_true")
+    asg.set_defaults(func=cmd_asset_state_genesis_root)
+
+    asi = astate_sub.add_parser("receipt-init", help="Create a SmartAssetReceipt (signed if --sign is used)")
+    asi.add_argument("--asset-id", dest="asset_id", required=True)
+    asi.add_argument("--purpose", default="core", help="Optional chain purpose namespace (default: core)")
+    asi.add_argument("--sequence", type=int, required=True)
+    asi.add_argument("--timestamp", default="", help="RFC3339 timestamp override")
+    asi.add_argument("--prev-root", default="genesis", help="Previous chain root (hex) or 'genesis'")
+    asi.add_argument("--transition", default="", help="Transition envelope JSON (default: noop)")
+    asi.add_argument("--transition-types-lock", dest="transition_types_lock", default="", help="Transition types lock JSON")
+    asi.add_argument("--fill-transition-digests", action="store_true", help="Fill transition digests from lock")
+    asi.add_argument("--lawpack-digest", action="append", default=[], help="Lawpack digest sha256 (repeatable)")
+    asi.add_argument("--ruleset-digest", action="append", default=[], help="Ruleset digest sha256 (repeatable)")
+    asi.add_argument("--out", default="", help="Output path")
+    asi.add_argument("--sign", action="store_true")
+    asi.add_argument("--key", default="", help="Ed25519 private JWK (required if --sign)")
+    asi.add_argument("--verification-method", dest="verification_method", default="")
+    asi.add_argument("--proof-purpose", dest="proof_purpose", default="assertionMethod")
+    asi.set_defaults(func=cmd_asset_state_receipt_init)
+
+    asv = astate_sub.add_parser("verify", help="Verify an asset receipt chain (linear)")
+    asv.add_argument("--asset-id", dest="asset_id", required=True)
+    asv.add_argument("--purpose", default="core")
+    asv.add_argument("--genesis-root", dest="genesis_root", default="", help="Override computed genesis_root")
+    asv.add_argument("--receipts", required=True, help="Receipt file or directory")
+    asv.add_argument("--checkpoint", default="", help="Optional signed receipt-chain checkpoint to verify")
+    asv.add_argument("--enforce-trust-anchors", action="store_true")
+    asv.add_argument("--trust-anchors", default="", help="Trust anchors YAML")
+    asv.add_argument("--enforce-transition-types", action="store_true")
+    asv.add_argument(
+        "--expected-transition-type-registry-digest",
+        dest="expected_transition_type_registry_digest",
+        default="",
+        help="Expected transition type registry digest sha256",
+    )
+    asv.add_argument("--require-artifacts", action="store_true")
+    asv.add_argument("--transitive-require-artifacts", action="store_true")
+    asv.add_argument("--json", action="store_true")
+    asv.set_defaults(func=cmd_asset_state_verify)
+
+    asc = astate_sub.add_parser("checkpoint", help="Create a signed receipt-chain checkpoint (MMR root)")
+    asc.add_argument("--asset-id", dest="asset_id", required=True)
+    asc.add_argument("--purpose", default="core")
+    asc.add_argument("--genesis-root", dest="genesis_root", default="", help="Override computed genesis_root")
+    asc.add_argument("--receipts", required=True, help="Receipt directory")
+    asc.add_argument("--enforce-trust-anchors", action="store_true")
+    asc.add_argument("--trust-anchors", default="", help="Trust anchors YAML")
+    asc.add_argument("--out", default="", help="Output path")
+    asc.add_argument("--sign", action="store_true")
+    asc.add_argument("--key", default="", help="Ed25519 private JWK (required if --sign)")
+    asc.add_argument("--verification-method", dest="verification_method", default="")
+    asc.add_argument("--proof-purpose", dest="proof_purpose", default="assertionMethod")
+    asc.set_defaults(func=cmd_asset_state_checkpoint)
+
+    asp = astate_sub.add_parser("inclusion-proof", help="Generate an inclusion proof for a receipt in the chain")
+    asp.add_argument("--asset-id", dest="asset_id", required=True)
+    asp.add_argument("--purpose", default="core")
+    asp.add_argument("--genesis-root", dest="genesis_root", default="", help="Override computed genesis_root")
+    asp.add_argument("--receipts", required=True, help="Receipt directory")
+    asp.add_argument("--sequence", required=True, help="Receipt sequence / leaf index")
+    asp.add_argument("--checkpoint", default="", help="Optional checkpoint to bind (digest commitment)")
+    asp.add_argument("--enforce-trust-anchors", action="store_true")
+    asp.add_argument("--trust-anchors", default="", help="Trust anchors YAML")
+    asp.add_argument("--out", default="", help="Output path")
+    asp.set_defaults(func=cmd_asset_state_inclusion_proof)
+
+    asvi = astate_sub.add_parser("verify-inclusion", help="Verify inclusion proof of a receipt in a checkpoint")
+    asvi.add_argument("--asset-id", dest="asset_id", required=True)
+    asvi.add_argument("--receipt", required=True, help="SmartAssetReceipt JSON")
+    asvi.add_argument("--proof", required=True, help="SmartAssetReceiptInclusionProof JSON")
+    asvi.add_argument("--checkpoint", required=True, help="Signed SmartAssetReceiptChainCheckpoint JSON")
+    asvi.add_argument("--enforce-trust-anchors", action="store_true")
+    asvi.add_argument("--trust-anchors", default="", help="Trust anchors YAML")
+    asvi.set_defaults(func=cmd_asset_state_verify_inclusion)
+
+
     c = sub.add_parser("check-coverage")
     c.add_argument("--profile", default="", help="Restrict check to modules in a profile.yaml")
     c.add_argument("--zone", default="", help="Restrict check to modules in the zone's profile")
@@ -9507,13 +11456,51 @@ def main() -> int:
     agv.add_argument("type", nargs="?", default="", help="Root artifact type (when verifying a CAS root)")
     agv.add_argument("digest", nargs="?", default="", help="Root artifact digest sha256 (when verifying a CAS root)")
     agv.add_argument("--path", default="", help="Local JSON/YAML file root to scan for embedded ArtifactRefs")
+    agv.add_argument("--from-bundle", dest="from_bundle", default="", help="Verify using artifacts from a witness bundle (.zip); if no root is provided, infer root from bundle manifest.json")
     agv.add_argument("--store-root", dest="store_root", action="append", default=[], help="Additional store root to search (repeatable)")
     agv.add_argument("--strict", action="store_true", help="Recompute digests from on-disk content and require matches")
+    agv.add_argument("--emit-edges", action="store_true", help="Include a machine-readable edge list in the report")
+    agv.add_argument("--bundle", default="", help="Write a witness bundle (.zip) containing the resolved closure artifacts + manifest")
+    agv.add_argument("--bundle-max-bytes", type=int, default=0, help="Optional maximum total bytes to include in the bundle (0 = unlimited)")
     agv.add_argument("--max-nodes", type=int, default=10000, help="Maximum nodes in closure traversal")
     agv.add_argument("--max-depth", type=int, default=16, help="Maximum traversal depth")
     agv.add_argument("--out", default="", help="Write report JSON to a file")
     agv.add_argument("--json", action="store_true", help="Output machine-readable JSON")
     agv.set_defaults(func=cmd_artifact_graph_verify)
+
+    ab = art_sub.add_parser("bundle", help="Witness bundle utilities (attest/verify provenance)")
+    ab_sub = ab.add_subparsers(dest="artifact_bundle_cmd", required=True)
+
+    abat = ab_sub.add_parser("attest", help="Create an attestation VC over a witness bundle manifest")
+    abat.add_argument("bundle", help="Path to witness bundle zip")
+    abat.add_argument("--issuer", required=True, help="Issuer DID for the attestation VC")
+    abat.add_argument("--id", default="", help="Optional VC id override")
+    abat.add_argument("--statement", default="", help="Optional human statement")
+    abat.add_argument("--out", default="", help="Output VC path (default: <bundle>.attestation.vc.unsigned.json or .vc.json when --sign)")
+    abat.add_argument("--sign", action="store_true", help="Sign the generated VC")
+    abat.add_argument("--key", default="", help="Proof key JSON path (required if --sign)")
+    abat.add_argument("--verification-method", dest="verification_method", default="", help="verificationMethod override")
+    abat.add_argument("--purpose", default="assertionMethod", help="proofPurpose (default: assertionMethod)")
+    abat.set_defaults(func=cmd_artifact_bundle_attest)
+
+    abv = ab_sub.add_parser("verify", help="Verify a witness bundle attestation VC against bundle manifest")
+    abv.add_argument("bundle", help="Path to witness bundle zip")
+    abv.add_argument("--vc", required=True, help="Attestation VC JSON path")
+    abv.add_argument(
+        "--require-proof",
+        dest="require_proof",
+        action="store_true",
+        help="Require at least one valid VC proof (default)",
+    )
+    abv.add_argument(
+        "--no-require-proof",
+        dest="require_proof",
+        action="store_false",
+        help="Allow unsigned VC (manifest digest match only)",
+    )
+    abv.set_defaults(require_proof=True)
+    abv.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    abv.set_defaults(func=cmd_artifact_bundle_verify)
 
     reg = sub.add_parser("registry")
     reg_sub = reg.add_subparsers(dest="registry_cmd", required=True)

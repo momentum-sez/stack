@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: MSEZ Smart Assets API (Scaffold)
-  version: 0.4.25
+  version: 0.4.30
   description: |
     Scaffold OpenAPI for Smart Asset operations.
 
@@ -11,6 +11,42 @@ servers:
   - url: https://example.zone.api
 
 paths:
+  /v1/assets/genesis:
+    post:
+      summary: Create a Smart Asset genesis document (helper)
+      description: |
+        Convenience endpoint: returns a canonical genesis document and its derived `asset_id`.
+
+        Implementations MAY also expose genesis generation purely as an offline CLI step.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SmartAssetGenesisRequest'
+      responses:
+        '200':
+          description: Genesis document (canonical) with computed asset_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SmartAssetGenesis'
+
+  /v1/assets/registry:
+    post:
+      summary: Submit a Smart Asset registry VC
+      description: |
+        Register or update an asset's jurisdictional bindings.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SmartAssetRegistryVC'
+      responses:
+        '202':
+          description: Accepted
+
   /v1/assets/{asset_id}:
     get:
       summary: Get smart asset current view
@@ -63,6 +99,7 @@ paths:
       responses:
         '202':
           description: Accepted
+
   /v1/assets/{asset_id}/migration/propose:
     post:
       summary: Propose a migration saga for an asset
@@ -82,8 +119,173 @@ paths:
         '202':
           description: Accepted
 
+  /v1/assets/{asset_id}/compliance/evaluate:
+    post:
+      summary: Evaluate a transition envelope against jurisdiction bindings
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComplianceEvalRequest'
+      responses:
+        '200':
+          description: Compliance matrix results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceEvalResponse'
+
+  /v1/assets/{asset_id}/anchors/corridor/verify:
+    post:
+      summary: Verify corridor anchoring evidence for an asset checkpoint
+      description: |
+        Validates that:
+        1) the provided corridor receipt is included in the provided corridor checkpoint (via the inclusion proof)
+        2) the receipt transition includes a typed attachment referencing the Smart Asset checkpoint digest
+
+        This endpoint mirrors the reference CLI command: `msez asset anchor-verify`.
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorridorAnchorVerifyRequest'
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorridorAnchorVerifyResponse'
+
 components:
   schemas:
+    SmartAssetGenesisRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_name:
+          type: string
+        asset_class:
+          type: string
+        description:
+          type: string
+        creator:
+          type: string
+        home_harbor_id:
+          type: string
+        metadata:
+          type: object
+      required: [asset_name, asset_class]
+
+    SmartAssetGenesis:
+      type: object
+      additionalProperties: true
+      properties:
+        asset_id:
+          type: string
+        stack_spec_version:
+          type: string
+        asset_name:
+          type: string
+        asset_class:
+          type: string
+        created_at:
+          type: string
+      required: [asset_id, stack_spec_version, asset_name, asset_class, created_at]
+
+    SmartAssetRegistryVC:
+      type: object
+      additionalProperties: true
+      description: |
+        Verifiable Credential matching `schemas/vc.smart-asset-registry.schema.json`.
+
+    ComplianceEvalRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        registry_vc:
+          $ref: '#/components/schemas/SmartAssetRegistryVC'
+        transition_envelope:
+          type: object
+          additionalProperties: true
+      required: [registry_vc, transition_envelope]
+
+    ComplianceEvalResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      required: [results]
+
+    CorridorAnchorVerifyRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        Evidence bundle for verifying that a Smart Asset checkpoint digest is anchored
+        into a corridor state checkpoint via an inclusion proof.
+
+        Payload objects are intentionally left open-ended to allow early pilots to pass
+        stack-native JSON (`MSEZCorridorStateReceipt`, `MSEZCorridorStateCheckpoint`,
+        `MSEZCorridorReceiptInclusionProof`).
+      properties:
+        corridor_id:
+          type: string
+        corridor_receipt:
+          type: object
+          additionalProperties: true
+        corridor_checkpoint:
+          type: object
+          additionalProperties: true
+        inclusion_proof:
+          type: object
+          additionalProperties: true
+        asset_checkpoint:
+          type: object
+          additionalProperties: true
+          description: Optional SmartAssetCheckpoint object; when present, implementations
+            MAY verify that its `state_root_sha256` matches the attachment digest.
+        state_root_sha256:
+          type: string
+          description: Optional explicit checkpoint digest; if provided, used instead of
+            deriving from asset_checkpoint.
+        enforce_trust_anchors:
+          type: boolean
+          default: false
+      required: [corridor_id, corridor_receipt, corridor_checkpoint, inclusion_proof]
+
+    CorridorAnchorVerifyResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        ok:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: string
+        notes:
+          type: array
+          items:
+            type: string
+      required: [ok]
     SmartAssetView:
       type: object
       additionalProperties: false

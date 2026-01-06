@@ -1,0 +1,285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/vc.smart-asset-registry.schema.json",
+  "title": "MSEZ Smart Asset Registry Credential",
+  "description": "A Verifiable Credential binding a Smart Asset (asset_id) to one or more jurisdictional bindings (harbors) with explicit compliance and enforcement profiles.",
+  "type": "object",
+  "required": [
+    "@context",
+    "type",
+    "issuer",
+    "issuanceDate",
+    "credentialSubject",
+    "proof"
+  ],
+  "properties": {
+    "@context": {
+      "description": "JSON-LD context(s).",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          },
+          "minItems": 1
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "description": "Credential types. MUST include 'VerifiableCredential'.",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "issuer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "issuanceDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expirationDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "credentialSubject": {
+      "type": "object",
+      "required": [
+        "asset_id",
+        "stack_spec_version",
+        "asset_genesis",
+        "jurisdiction_bindings"
+      ],
+      "properties": {
+        "asset_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "stack_spec_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "asset_genesis": {
+          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+        },
+        "asset_name": {
+          "type": "string"
+        },
+        "asset_class": {
+          "type": "string"
+        },
+        "jurisdiction_bindings": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/JurisdictionBinding"
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "proof": {
+      "description": "JCS Ed25519 proof(s)",
+      "oneOf": [
+        {
+          "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+          },
+          "minItems": 1
+        }
+      ]
+    }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "LawpackRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "jurisdiction_id",
+        "domain",
+        "lawpack_digest_sha256"
+      ],
+      "properties": {
+        "jurisdiction_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "domain": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lawpack_digest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "lawpack": {
+          "description": "Optional ArtifactRef pointing to the lawpack bundle.",
+          "oneOf": [
+            {
+              "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ComplianceProfile": {
+      "type": "object",
+      "description": "Declarative compliance profile used by the reference compliance evaluator. Production systems may substitute policy engines while preserving equivalent semantics.",
+      "properties": {
+        "allowed_transition_kinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "If present, only these transition_kind values are permitted under this binding. If omitted, all transition kinds are allowed.",
+          "minItems": 1
+        },
+        "required_attestations": {
+          "type": "object",
+          "description": "Map transition_kind -> array of required attestation kinds.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "default_required_attestations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Attestation kinds required for all transitions unless overridden by required_attestations[transition_kind]."
+        }
+      },
+      "additionalProperties": true
+    },
+    "EnforcementProfile": {
+      "type": "object",
+      "description": "Declarative enforcement profile for simulation / policy evaluation.",
+      "properties": {
+        "intensity": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "audit_frequency": {
+          "type": "string",
+          "enum": [
+            "continuous",
+            "daily",
+            "weekly",
+            "monthly",
+            "quarterly",
+            "annual",
+            "event-driven"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "JurisdictionBinding": {
+      "type": "object",
+      "additionalProperties": false,
+              "required": [
+                "harbor_id",
+                "binding_status",
+                "shard_role",
+                "lawpacks",
+                "compliance_profile"
+              ],
+      "properties": {
+        "harbor_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Zone / harbor identifier (jurisdiction node id)."
+        },
+        "binding_status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "suspended",
+            "exited"
+          ]
+        },
+        "shard_role": {
+          "type": "string",
+          "enum": [
+            "primary",
+            "active_replica",
+            "cold_backup",
+            "witness",
+            "archive"
+          ],
+          "description": "Redundancy role for this jurisdictional shard."
+        },
+        "lawpacks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/LawpackRef"
+          }
+        },
+        "compliance_profile": {
+          "$ref": "#/definitions/ComplianceProfile"
+        },
+        "enforcement_profile": {
+          "$ref": "#/definitions/EnforcementProfile"
+        },
+        "effective_from": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "effective_until": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

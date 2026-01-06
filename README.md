@@ -1,4 +1,4 @@
-# Momentum SEZ Stack (MSEZ) — v0.4.25
+# Momentum SEZ Stack (MSEZ) — v0.4.31
 
 
 This repository is a **reference specification + reference library** for building *programmable Special Economic Zones (SEZs)* as modular, forkable, and composable “jurisdiction nodes” in the Momentum/Mass network.
@@ -59,7 +59,10 @@ Skeleton created: 2025-12-21.
 - CLI signing hardening + regression tests for watcher-attest/fork-alarm/availability-attest (v0.4.20)
 - Receipt-level fork forensics (`corridor state fork-inspect`) (v0.4.21)
 - Transitive artifact completeness (`--transitive-require-artifacts`) now treats *commitment roots* (e.g., transition type registries) as closure seeds and follows nested `ArtifactRef`s inside referenced artifacts (rulesets, attached VCs, checkpoints, etc.), covering receipt-level `zk.*` commitments as well (v0.4.24).
-- Artifact graph closure verifier (`msez artifact graph verify`) that emits a closure report (missing nodes, depth, counts) and can optionally recompute/verify digests from on-disk content (`--strict`) to detect tampered CAS entries (v0.4.25).
+- Artifact graph closure verifier (`msez artifact graph verify`) now supports machine-readable edge lists (`--emit-edges`), self-contained witness bundles (`--bundle`), and direct verification using a witness bundle as an offline artifact store (`--from-bundle`) in addition to strict on-disk digest recomputation (`--strict`) to detect tampered CAS entries (v0.4.27).
+- Optional witness-bundle provenance attestations:
+  - `msez artifact bundle attest <bundle.zip> ...` emits a signed VC committing to `SHA256(JCS(manifest.json))`
+  - `msez artifact bundle verify <bundle.zip> --vc <attestation.vc.json>` checks digest match + signature validity (v0.4.28).
 - Performance harness tests (pytest marker `perf`; run with `MSEZ_RUN_PERF=1`) (v0.4.21)
 - Transition type stubs for SWIFT pacs.008 and Circle USDC transfer + reference adapters (`tools/integrations/`) (v0.4.21)
 - Trust anchor enforcement fixes (`--enforce-trust-anchors` now functional) (v0.4.21)
@@ -85,6 +88,15 @@ python -m tools.msez corridor state verify modules/corridors/swift --receipts /t
 python -m tools.msez corridor state watcher-attest modules/corridors/swift --checkpoint /tmp/checkpoint.json --issuer did:example:watcher --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/watcher.vc.json
 python -m tools.msez corridor state fork-alarm modules/corridors/swift --receipt-a /tmp/receipt0.json --receipt-b /tmp/receipt0_fork.json --issuer did:example:watcher --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/fork-alarm.vc.json
 
+# smart assets (non-blockchain, asset-local receipt chains)
+python -m tools.msez asset genesis-init --name "Example Asset" --creator did:example:issuer --out /tmp/asset.genesis.json
+python -m tools.msez asset state genesis-root --asset-id <asset_id>
+python -m tools.msez asset state receipt-init --asset-id <asset_id> --sequence 0 --prev-root genesis --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/asset.receipt0.json
+python -m tools.msez asset state verify --asset-id <asset_id> --receipts /tmp/asset.receipt0.json
+python -m tools.msez asset state checkpoint --asset-id <asset_id> --receipts /tmp/asset.receipt0.json --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/asset.checkpoint.json
+python -m tools.msez asset state inclusion-proof --asset-id <asset_id> --receipts /tmp/asset.receipt0.json --sequence 0 --checkpoint /tmp/asset.checkpoint.json --out /tmp/asset.proof0.json
+python -m tools.msez asset state verify-inclusion --asset-id <asset_id> --receipt /tmp/asset.receipt0.json --proof /tmp/asset.proof0.json --checkpoint /tmp/asset.checkpoint.json
+
 # transition type registries + lock snapshots (v0.4.5+; CAS v0.4.7+)
 python -m tools.msez registry transition-types-lock registries/transition-types.yaml
 python -m tools.msez registry transition-types-store registries/transition-types.lock.json
@@ -97,9 +109,21 @@ python -m tools.msez artifact index-lawpacks
 python -m tools.msez artifact index-schemas
 python -m tools.msez artifact index-vcs
 
-# artifact closure graph verification (missing nodes, depth, digest integrity) (v0.4.25+)
+# artifact closure graph verification (missing nodes, depth, digest integrity) (v0.4.26+)
 python -m tools.msez artifact graph verify transition-types a27a1cd5ccc438f4c8962bf4c85345ce5688ba7c5d53aa82974640edcb6a280a --strict --json
 python -m tools.msez artifact graph verify --path docs/examples/state/noop.transition.json --json
+
+# artifact closure graph edges + witness bundle (offline transfer) (v0.4.26+)
+python -m tools.msez artifact graph verify transition-types a27a1cd5ccc438f4c8962bf4c85345ce5688ba7c5d53aa82974640edcb6a280a --emit-edges --json
+python -m tools.msez artifact graph verify transition-types a27a1cd5ccc438f4c8962bf4c85345ce5688ba7c5d53aa82974640edcb6a280a --bundle /tmp/msez-witness.zip --strict --json
+python -m tools.msez artifact graph verify transition-types a27a1cd5ccc438f4c8962bf4c85345ce5688ba7c5d53aa82974640edcb6a280a --bundle /tmp/msez-witness-small.zip --bundle-max-bytes 5000000 --strict --json
+
+# verify directly from a witness bundle (no manual extraction) (v0.4.27+)
+python -m tools.msez artifact graph verify --from-bundle /tmp/msez-witness.zip --strict --json
+
+# attest (sign) a witness bundle manifest (provenance / chain-of-custody) (v0.4.28+)
+python -m tools.msez artifact bundle attest /tmp/msez-witness.zip --issuer did:example:watcher --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/msez-witness.attestation.vc.json
+python -m tools.msez artifact bundle verify /tmp/msez-witness.zip --vc /tmp/msez-witness.attestation.vc.json --json
 
 # sign and verify VCs (for co-signing / governance flows)
 python -m tools.msez vc keygen --out /tmp/my.ed25519.jwk

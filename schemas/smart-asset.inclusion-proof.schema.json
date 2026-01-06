@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://momentum.zone/schemas/smart-asset.inclusion-proof.schema.json",
+  "title": "Smart Asset Receipt Inclusion Proof",
+  "description": "Proof that a specific SmartAssetReceipt.next_root is included in an MMR accumulator committed by a SmartAssetReceiptChainCheckpoint.",
+  "type": "object",
+  "required": [
+    "type",
+    "asset_id",
+    "mmr",
+    "leaf_index",
+    "receipt_next_root",
+    "leaf_hash",
+    "peak_index",
+    "peak_height",
+    "path",
+    "peaks"
+  ],
+  "properties": {
+    "type": {
+      "const": "SmartAssetReceiptInclusionProof"
+    },
+    "asset_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "mmr": {
+      "type": "object",
+      "required": [
+        "type",
+        "algorithm",
+        "size",
+        "root"
+      ],
+      "properties": {
+        "type": {
+          "const": "MSEZReceiptMMR"
+        },
+        "algorithm": {
+          "const": "sha256"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "root": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": true
+    },
+    "leaf_index": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "0-indexed receipt position inside the accumulator. In the reference implementation this matches receipt.sequence."
+    },
+    "receipt_next_root": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "leaf_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "peak_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "peak_height": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "path": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "side",
+          "hash"
+        ],
+        "properties": {
+          "side": {
+            "type": "string",
+            "enum": [
+              "left",
+              "right"
+            ]
+          },
+          "hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "peaks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "height",
+          "hash"
+        ],
+        "properties": {
+          "height": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "computed_peak_root": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "checkpoint_digest_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "checkpoint_ref": {
+      "description": "Optional typed ArtifactRef to the signed checkpoint payload (excluding proof). When present, artifact_type MUST be \"checkpoint\".",
+      "allOf": [
+        {
+          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+        },
+        {
+          "properties": {
+            "artifact_type": {
+              "const": "checkpoint"
+            }
+          },
+          "required": [
+            "artifact_type",
+            "digest_sha256"
+          ]
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

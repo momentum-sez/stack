@@ -23,6 +23,10 @@ Stack v0.4.14 adds a reference-tool option to make ArtifactRef the *default subs
 python -m tools.msez lock --emit-artifactrefs <zone.yaml>
 ```
 
+Stack v0.4.26 adds a **witness bundle** packaging format for artifact closures (manifest + resolved CAS nodes) so verifiers can transfer a minimal, offline-ready closure between environments.
+
+Stack v0.4.28 adds an optional **witness bundle attestation VC** that signs the bundle's `manifest.json` digest (provenance / chain-of-custody) without changing underlying receipt/VC digest commitments.
+
 ArtifactRef schema id: `https://schemas.momentum-sez.org/msez/artifact-ref.schema.json`
 
 ## ArtifactRef
@@ -149,3 +153,38 @@ Corridor receipts and VCs commit to digests, for example:
 Without a shared resolution convention, these commitments remain difficult to verify outside a single repository layout.
 
 This CAS convention makes verification and portability straightforward and supports historical resolution of artifacts by digest.
+
+## Witness bundles
+
+For offline / air-gapped verification and transfer between environments, the reference implementation can emit a **witness bundle** that contains:
+
+- `manifest.json`: a full `MSEZArtifactGraphVerifyReport` (closure root, stats, node list, optional edges)
+- `artifacts/<type>/<digest>.*`: one file per resolved CAS node
+- `root/*`: when the closure root was a local JSON/YAML file, the root document is included for audit convenience
+
+Create a witness bundle:
+
+```bash
+python -m tools.msez artifact graph verify <type> <digest> --bundle /tmp/msez-witness.zip --strict --json
+```
+
+Verify using a witness bundle as an offline CAS root:
+
+```bash
+python -m tools.msez artifact graph verify --from-bundle /tmp/msez-witness.zip --strict --json
+```
+
+### Witness bundle attestation
+
+Bundles are *witnesses*, not authorities. To make "who assembled this closure" explicit, v0.4.28 adds a provenance VC that commits to the bundle's `manifest.json` via `SHA256(JCS(manifest.json))`:
+
+```bash
+python -m tools.msez artifact bundle attest /tmp/msez-witness.zip --issuer did:key:... --sign --key /path/to/ed25519.jwk
+python -m tools.msez artifact bundle verify /tmp/msez-witness.zip --vc /tmp/msez-witness.attestation.vc.json
+```
+
+This VC is optional but enables:
+
+- chain-of-custody for closures shared between organizations
+- cheap provenance / attribution for "complete closure" artifacts used in disputes
+- a clean substrate for future watcher economies (bonded watchers can attest to bundle completeness in addition to head state)

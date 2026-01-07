@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/smart-asset.manifest.schema.json",
+  "title": "Smart Asset Operational Manifest",
+  "description": "Operational manifest for running a Smart Asset node (non-blockchain). This file is not required for on-chain anchoring; it describes local storage, replication, and trust configuration.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "stack_spec_version",
+    "asset_id",
+    "node_id",
+    "role",
+    "data_dir",
+    "registry"
+  ],
+  "properties": {
+    "type": {
+      "const": "SmartAssetManifest"
+    },
+    "stack_spec_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "asset_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "node_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Operator node identifier (could be DID, hostname, or UUID)."
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "operator",
+        "witness",
+        "regulator",
+        "auditor",
+        "replica"
+      ]
+    },
+    "data_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Base data directory for the node (operational DB + cache + logs)."
+    },
+    "registry": {
+      "description": "ArtifactRef to the Smart Asset Registry VC (recommended) or to an equivalent registry snapshot.",
+      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+    },
+    "trusted_anchors": {
+      "description": "Optional trust anchor set (e.g., corridor trust anchors, registry trust anchors).",
+      "oneOf": [
+        {
+          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operational_db": {
+          "type": "string",
+          "description": "Operational database (e.g., sqlite file path relative to data_dir)."
+        },
+        "cas_root": {
+          "type": "string",
+          "description": "CAS root directory (e.g., dist/artifacts or a node-local CAS)."
+        }
+      }
+    },
+    "replication": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "none",
+            "quorum",
+            "raft",
+            "byzantine"
+          ],
+          "description": "Replication / consensus strategy. 'none' means single-node operation."
+        },
+        "peers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "node_id",
+              "endpoint"
+            ],
+            "properties": {
+              "node_id": {
+                "type": "string"
+              },
+              "endpoint": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

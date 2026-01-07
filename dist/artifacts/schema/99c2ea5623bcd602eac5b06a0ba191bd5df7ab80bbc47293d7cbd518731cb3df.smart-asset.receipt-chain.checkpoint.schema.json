@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://momentum.zone/schemas/smart-asset.receipt-chain.checkpoint.schema.json",
+  "title": "Smart Asset Receipt Chain Checkpoint",
+  "description": "Signed checkpoint for an asset-local receipt chain. The checkpoint commits to an MMR root over receipt next_root values (leaf = receipt.next_root), enabling compact inclusion proofs for audits and regulation without requiring a blockchain.",
+  "type": "object",
+  "required": [
+    "type",
+    "asset_id",
+    "timestamp",
+    "genesis_root",
+    "receipt_count",
+    "final_chain_root",
+    "mmr",
+    "proof"
+  ],
+  "properties": {
+    "type": {
+      "const": "SmartAssetReceiptChainCheckpoint"
+    },
+    "asset_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "genesis_root": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Asset receipt-chain genesis root. For reference implementations this is typically SHA256(JCS({tag,asset_id,purpose}))."
+    },
+    "purpose": {
+      "type": "string",
+      "description": "Optional chain purpose label (e.g., 'core', 'compliance', 'dispute')."
+    },
+    "receipt_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of receipts included in the checkpoint MMR. SHOULD equal mmr.size."
+    },
+    "final_chain_root": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "The chain head root after applying receipt_count receipts (typically the last receipt.next_root)."
+    },
+    "lawpack_digest_set": {
+      "type": "array",
+      "items": {
+        "description": "A raw sha256 digest string (legacy) OR an ArtifactRef (recommended; artifact_type MUST be 'lawpack').",
+        "oneOf": [
+          {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              },
+              {
+                "properties": {
+                  "artifact_type": {
+                    "const": "lawpack"
+                  }
+                },
+                "required": [
+                  "artifact_type",
+                  "digest_sha256"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "ruleset_digest_set": {
+      "type": "array",
+      "items": {
+        "description": "A raw sha256 digest string (legacy) OR an ArtifactRef (recommended; artifact_type MUST be 'ruleset').",
+        "oneOf": [
+          {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              },
+              {
+                "properties": {
+                  "artifact_type": {
+                    "const": "ruleset"
+                  }
+                },
+                "required": [
+                  "artifact_type",
+                  "digest_sha256"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "state_root_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Optional business/state commitment for the asset as of this checkpoint (e.g., SmartAssetCheckpoint.state_root_sha256)."
+    },
+    "state_checkpoint_ref": {
+      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+      "description": "Optional ArtifactRef pointing to the SmartAssetCheckpoint artifact whose digest matches state_root_sha256."
+    },
+    "registry_ref": {
+      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+      "description": "Optional ArtifactRef pointing to the active Smart Asset Registry VC used for authorization/compliance at this checkpoint."
+    },
+    "mmr": {
+      "type": "object",
+      "required": [
+        "type",
+        "algorithm",
+        "size",
+        "root"
+      ],
+      "properties": {
+        "type": {
+          "const": "MSEZReceiptMMR"
+        },
+        "algorithm": {
+          "const": "sha256"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "root": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "peaks": {
+          "type": "array",
+          "description": "Optional peak list to aid verifiers (root is computed by bagging peaks).",
+          "items": {
+            "type": "object",
+            "required": [
+              "height",
+              "hash"
+            ],
+            "properties": {
+              "height": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "hash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "anchor": {
+      "type": "object",
+      "description": "Optional anchoring metadata for external commitments.",
+      "additionalProperties": true
+    },
+    "proof": {
+      "description": "One or more cryptographic proofs over the checkpoint payload (excluding the proof field).",
+      "oneOf": [
+        {
+          "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

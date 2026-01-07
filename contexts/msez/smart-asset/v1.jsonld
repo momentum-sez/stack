@@ -1,0 +1,27 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "msez": "https://schemas.momentum-sez.org/vocab/msez#",
+
+    "asset_id": "msez:asset_id",
+    "purpose": "msez:purpose",
+    "sequence": "msez:sequence",
+    "prev_root": "msez:prev_root",
+    "next_root": "msez:next_root",
+    "chosen_next_root": "msez:chosen_next_root",
+    "genesis_root": "msez:genesis_root",
+    "final_chain_root": "msez:final_chain_root",
+
+    "resolved_at": {
+      "@id": "msez:resolved_at",
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+
+    "MSEZSmartAssetForkResolution": "msez:MSEZSmartAssetForkResolution",
+    "MSEZSmartAssetForkResolutionCredential": "msez:MSEZSmartAssetForkResolutionCredential",
+
+    "SmartAssetReceipt": "msez:SmartAssetReceipt",
+    "SmartAssetReceiptChainCheckpoint": "msez:SmartAssetReceiptChainCheckpoint",
+    "SmartAssetReceiptInclusionProof": "msez:SmartAssetReceiptInclusionProof"
+  }
+}

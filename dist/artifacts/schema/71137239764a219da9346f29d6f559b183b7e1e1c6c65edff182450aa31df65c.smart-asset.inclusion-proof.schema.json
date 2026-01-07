@@ -130,7 +130,7 @@
       "pattern": "^[a-f0-9]{64}$"
     },
     "checkpoint_ref": {
-      "description": "Optional typed ArtifactRef to the signed checkpoint payload (excluding proof). When present, artifact_type MUST be \"checkpoint\" or \"smart-asset-receipt-checkpoint\".",
+      "description": "Optional typed ArtifactRef to the signed checkpoint payload (excluding proof). When present, artifact_type MUST be \"checkpoint\".",
       "allOf": [
         {
           "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
@@ -138,10 +138,7 @@
         {
           "properties": {
             "artifact_type": {
-              "enum": [
-                "checkpoint",
-                "smart-asset-receipt-checkpoint"
-              ]
+              "const": "checkpoint"
             }
           },
           "required": [

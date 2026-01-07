@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/smart-asset.fork-resolution.schema.json",
+  "title": "MSEZ Smart Asset Fork Resolution",
+  "description": "A fork-resolution artifact selects the canonical receipt for a forked (sequence, prev_root) point in an asset-local receipt chain. The recommended packaging is as a signed VC (vc.smart-asset-fork-resolution.schema.json).",
+  "type": "object",
+  "required": [
+    "type",
+    "asset_id",
+    "purpose",
+    "sequence",
+    "prev_root",
+    "chosen_next_root",
+    "resolved_at"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZSmartAssetForkResolution"
+    },
+    "resolution_id": {
+      "type": "string"
+    },
+    "asset_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "prev_root": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "chosen_next_root": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "next_root"
+        ],
+        "properties": {
+          "next_root": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "receipt_ref": {
+            "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "authority_registry_ref": {
+      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+    },
+    "policy_ref": {
+      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

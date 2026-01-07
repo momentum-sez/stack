@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://momentum.zone/schemas/smart-asset.attestation.schema.json",
+  "title": "SmartAssetAttestation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "asset_id",
+    "issued_at",
+    "issuer",
+    "kind"
+  ],
+  "properties": {
+    "type": {
+      "const": "SmartAssetAttestation"
+    },
+    "asset_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "issuer": {
+      "type": "string",
+      "minLength": 3,
+      "description": "DID of the attestor (custodian, regulator, auditor, oracle, etc.)"
+    },
+    "kind": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Semantic type of attestation (e.g., custody.handover.v1, kyc.passed.v1)"
+    },
+    "claims": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Structured claims; semantics determined by kind and/or schema digest commitments"
+    },
+    "claims_digest_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Optional commit-only mode: digest of canonicalized claims"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ArtifactRef"
+      },
+      "default": []
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_type",
+        "digest_sha256"
+      ],
+      "properties": {
+        "artifact_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "uri": {
+          "type": "string"
+        },
+        "content_type": {
+          "type": "string"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

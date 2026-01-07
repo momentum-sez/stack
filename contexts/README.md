@@ -6,3 +6,6 @@ Deployments MAY mirror these contexts at their canonical URLs (recommended) for 
 
 - `contexts/msez/v1.jsonld`
 - `contexts/msez/corridor/v1.jsonld`
+ - `contexts/msez/authority/v1.jsonld`
+ - `contexts/msez/lawpack/v1.jsonld`
+ - `contexts/msez/smart-asset/v1.jsonld`

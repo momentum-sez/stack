@@ -85,17 +85,36 @@ msez asset attestation-init --asset-id <asset_id> --issuer did:key:... --kind ky
 msez asset compliance-eval --registry dist/tmp/bond.registry.vc.unsigned.json --transition transition-envelope.json
 
 # asset-local receipt chain (non-blockchain)
-msez asset state genesis-root --asset-id <asset_id>
-msez asset state receipt-init --asset-id <asset_id> --sequence 0 --prev-root genesis \
-  --sign --key jwk.json --out dist/tmp/bond.receipt.0.json
-msez asset state verify --asset-id <asset_id> --receipts dist/tmp/receipts/
-msez asset state checkpoint --asset-id <asset_id> --receipts dist/tmp/receipts/ \
-  --sign --key jwk.json --out dist/tmp/bond.receipt-chain.checkpoint.json
-msez asset state inclusion-proof --asset-id <asset_id> --receipts dist/tmp/receipts/ \
-  --sequence 0 --checkpoint dist/tmp/bond.receipt-chain.checkpoint.json --out dist/tmp/bond.receipt.0.proof.json
-msez asset state verify-inclusion --asset-id <asset_id> \
-  --receipt dist/tmp/bond.receipt.0.json --proof dist/tmp/bond.receipt.0.proof.json \
-  --checkpoint dist/tmp/bond.receipt-chain.checkpoint.json
+#
+# Optional (recommended): scaffold an operator module directory to keep receipts, checkpoints,
+# proofs, and trust anchors in a single portable folder.
+msez asset module init <asset_id>
+
+# You can now pass the module directory (or asset.yaml) as the first argument to state subcommands:
+msez asset state genesis-root modules/smart-assets/<asset_id>
+msez asset state receipt-init modules/smart-assets/<asset_id> --sequence 0 --prev-root genesis \
+  --sign --key jwk.json
+msez asset state verify modules/smart-assets/<asset_id>
+
+# If redundant writers cause forks (same sequence/prev_root with multiple next_roots),
+# verification will fail until you provide a fork-resolution artifact selecting the canonical branch.
+# Fork resolutions are expected to live asset-local at state/fork-resolutions/ (by convention).
+msez asset state fork-resolve modules/smart-assets/<asset_id> \
+  --sequence 1 --prev-root <prev_root> --chosen-next-root <next_root> \
+  --issuer did:key:... \
+  --out modules/smart-assets/<asset_id>/state/fork-resolutions/fork-resolution.seq1.json
+msez asset state verify modules/smart-assets/<asset_id> \
+  --fork-resolutions modules/smart-assets/<asset_id>/state/fork-resolutions
+
+msez asset state checkpoint modules/smart-assets/<asset_id> --sign --key jwk.json
+msez asset state inclusion-proof modules/smart-assets/<asset_id> --sequence 0 \
+  --checkpoint modules/smart-assets/<asset_id>/state/checkpoints/smart-asset.receipt-chain.checkpoint.json
+msez asset state verify-inclusion modules/smart-assets/<asset_id> \
+  --receipt modules/smart-assets/<asset_id>/state/receipts/smart-asset.receipt.0.json \
+  --proof modules/smart-assets/<asset_id>/state/proofs/smart-asset.receipt.0.inclusion-proof.json \
+  --checkpoint modules/smart-assets/<asset_id>/state/checkpoints/smart-asset.receipt-chain.checkpoint.json
+
+# (Legacy) You can still pass explicit --asset-id / --receipts paths if you prefer.
 ```
 
 ## Roadmap
@@ -109,6 +128,7 @@ msez asset state verify-inclusion --asset-id <asset_id> \
 ### P1
 
 * Asset-local receipt chain (MMR) for transitions + checkpoints — landed in v0.4.31
+* Smart Asset module directories + `msez asset module init` + module-aware state CLI — landed in v0.4.32
 * Corridor anchoring helpers (attach checkpoint -> receipt)
   - `msez asset anchor-verify` landed in v0.4.30: verifies that a Smart Asset checkpoint digest is present as a typed receipt attachment, and that the receipt is included in a corridor checkpoint via an MMR inclusion proof.
 * Replication policy + witness bundles for asset histories

@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/vc.artifact-witness-bundle.schema.json",
+  "title": "MSEZ Artifact Witness Bundle Attestation Verifiable Credential",
+  "description": "A Verifiable Credential attesting to the manifest digest of an MSEZ artifact witness bundle produced by `msez artifact graph verify --bundle`. This provides cryptographic provenance for who assembled a closure bundle used for verification, without changing the underlying digest commitments.",
+  "type": "object",
+  "required": ["@context", "type", "issuer", "issuanceDate", "credentialSubject"],
+  "properties": {
+    "@context": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1
+    },
+    "id": {"type": "string"},
+    "type": {
+      "type": "array",
+      "items": {"type": "string"},
+      "contains": {"const": "MSEZArtifactWitnessBundleCredential"}
+    },
+    "issuer": {
+      "oneOf": [
+        {"type": "string"},
+        {
+          "type": "object",
+          "required": ["id"],
+          "properties": {
+            "id": {"type": "string"},
+            "name": {"type": "string"}
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "issuanceDate": {"type": "string", "format": "date-time"},
+    "expirationDate": {"type": "string", "format": "date-time"},
+    "credentialSubject": {
+      "type": "object",
+      "required": ["manifest_digest_sha256", "manifest_path", "root", "stats"],
+      "properties": {
+        "bundle": {
+          "description": "Bundle format metadata (non-normative).",
+          "type": "object",
+          "properties": {
+            "format": {"type": "string"},
+            "version": {"type": ["integer", "string"]}
+          },
+          "additionalProperties": true
+        },
+        "manifest_digest_sha256": {
+          "description": "SHA256(JCS(manifest.json)) digest commitment.",
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "manifest_path": {
+          "description": "Path to the manifest within the bundle (default: manifest.json).",
+          "type": "string",
+          "minLength": 1
+        },
+        "root": {
+          "description": "The closure root (copied from manifest.root).",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "stats": {
+          "description": "Closure stats (copied from manifest.stats).",
+          "type": "object",
+          "required": ["nodes_total", "missing_total", "digest_mismatch_total"],
+          "properties": {
+            "nodes_total": {"type": "integer", "minimum": 0},
+            "edges_total": {"type": "integer", "minimum": 0},
+            "missing_total": {"type": "integer", "minimum": 0},
+            "digest_mismatch_total": {"type": "integer", "minimum": 0},
+            "max_depth_seen": {"type": "integer", "minimum": 0}
+          },
+          "additionalProperties": true
+        },
+        "options": {
+          "description": "Closure options (copied from manifest.options).",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "statement": {
+          "description": "Optional human statement by the issuer.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "proof": {
+      "oneOf": [
+        {"type": "object"},
+        {
+          "type": "array",
+          "items": {"type": "object"},
+          "minItems": 1
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

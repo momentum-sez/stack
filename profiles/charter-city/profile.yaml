@@ -1,5 +1,5 @@
 profile_id: org.momentum.msez.profile.charter-city
-stack_spec_version: 0.4.31
+stack_spec_version: 0.4.35
 modules:
 - module_id: org.momentum.msez.legal.akn-templates
   version: 0.1.0

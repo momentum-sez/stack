@@ -8,6 +8,76 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 - TBD
 
+
+## 0.4.35
+
+### Added
+- **Directory roots for artifact graph verification**: `msez artifact graph verify --path <dir>` now scans all structured files (JSON/YAML) under the directory for embedded `ArtifactRef`s and resolves the full closure.
+- **Directory roots in witness bundles**: when the closure root is a directory, witness bundles include the scanned structured root files under `root/<dirname>/...` (in addition to `manifest.json` and `artifacts/...`).
+- **Operator UX**: new `msez asset module witness-bundle` command emits a portable audit packet for an asset module directory (receipts/checkpoints/proofs + referenced artifacts).
+
+### Changed
+- `MSEZArtifactGraphVerifyReport.root.mode` now supports `dir` in addition to `cas` and `file`.
+
+### Version
+- Stack spec version bumped to `0.4.35` and starter profiles updated.
+
+
+## 0.4.34
+
+### Added
+- **Corridor anchoring for Smart Asset receipt-chain checkpoints**:
+  - New CLI: `msez corridor state receipt-init --attach-smart-asset-receipt-checkpoint <checkpoint.json>` (repeatable) appends a typed transition attachment (`artifact_type: smart-asset-receipt-checkpoint`) committing to the checkpoint payload digest (excluding proof).
+  - Convenience: `msez corridor state receipt-init --attach-smart-asset-checkpoint <asset_checkpoint.json>` (repeatable) appends the existing `smart-asset-checkpoint` typed attachment for state-root anchoring.
+- **Anchor verification upgrades**:
+  - `msez asset anchor-verify` now supports `--asset-receipt-checkpoint` (SmartAssetReceiptChainCheckpoint) and verifies that its typed attachment is present on the corridor receipt.
+  - Optional “portable audit packet” path: if `--asset-receipt` + `--asset-inclusion-proof` are provided, `msez asset anchor-verify` also verifies receipt inclusion against the anchored checkpoint.
+- New schema: `schemas/smart-asset.receipt-checkpoint.attachment.schema.json` documents the typed attachment shape.
+
+### Changed
+- Smart Asset receipt inclusion proofs now emit `checkpoint_ref.artifact_type: smart-asset-receipt-checkpoint` (schema accepts both legacy `checkpoint` and the typed variant).
+- Artifact strict digest verification now treats `smart-asset-receipt-checkpoint` with the same semantic digest rule as `checkpoint` (sha256(JCS(checkpoint_without_proof))).
+
+### Version
+- Stack spec version bumped to `0.4.34` and starter profiles updated.
+
+## 0.4.33
+
+### Added
+- **Smart Asset fork resolution** (receipt-chain concurrency):
+  - New schema: `schemas/smart-asset.fork-resolution.schema.json` (+ VC wrapper schema).
+  - New CLI: `msez asset state fork-resolve` (alias `fork-resolution-init`) emits an unsigned VC selecting the canonical `next_root` for a forked `(sequence, prev_root)` point.
+  - `msez asset state verify`, `checkpoint`, and `inclusion-proof` now accept `--fork-resolutions` (file/dir) and apply corridor-style canonical selection semantics.
+
+### Changed
+- Smart Asset receipt-chain verification is now **fork-aware**:
+  - duplicate receipts (same `next_root`) are merged;
+  - forks require explicit fork resolution;
+  - non-canonical/unreachable receipts are reported as warnings (not fatal).
+
+### Version
+- Stack spec version bumped to `0.4.33`.
+
+## 0.4.32
+
+### Added
+- **Smart Asset module directory** scaffolding (`modules/smart-assets/<asset_id>/...`) with `asset.yaml`.
+- New operator UX: `msez asset module init <asset_id>` (template-based scaffolding).
+
+### Changed
+- Stack spec version bumped to `0.4.32`.
+
+## 0.4.31
+
+### Added
+- **Smart Asset receipt-chain primitives (non-blockchain)**:
+  - Schemas for receipts, MMR checkpoints, and inclusion proofs.
+  - CLI: `msez asset state {genesis-root,receipt-init,verify,checkpoint,inclusion-proof,verify-inclusion}`.
+- Artifact graph strict mode now treats `smart-asset-receipt` digests semantically (`receipt.next_root`).
+
+### Version
+- Stack spec version bumped to `0.4.31`.
+
 ## 0.4.30
 
 ### Added

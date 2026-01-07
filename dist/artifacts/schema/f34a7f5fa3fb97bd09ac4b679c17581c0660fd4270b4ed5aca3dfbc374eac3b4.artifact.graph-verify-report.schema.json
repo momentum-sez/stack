@@ -27,7 +27,7 @@
       "properties": {
         "mode": {
           "type": "string",
-          "enum": ["cas", "file", "dir"]
+          "enum": ["cas", "file"]
         },
         "artifact_type": {
           "type": "string"
@@ -47,10 +47,6 @@
         },
         {
           "if": {"properties": {"mode": {"const": "file"}}},
-          "then": {"required": ["path"]}
-        },
-        {
-          "if": {"properties": {"mode": {"const": "dir"}}},
           "then": {"required": ["path"]}
         }
       ],

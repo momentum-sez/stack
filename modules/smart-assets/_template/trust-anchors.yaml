@@ -1,0 +1,10 @@
+version: 1
+trust_anchors:
+  # Replace identifier with the DID(s) allowed to sign receipts and/or checkpoints.
+  # For did:key keys, the fragment usually names the verification method (e.g., #key-1).
+  - anchor_id: "asset-operator-1"
+    type: did
+    identifier: "did:key:REPLACE_ME#key-1"
+    allowed_attestations:
+      - smart_asset_receipt
+      - smart_asset_receipt_checkpoint

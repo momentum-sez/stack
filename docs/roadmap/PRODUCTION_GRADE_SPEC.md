@@ -113,9 +113,14 @@ Deliverables
 
 Deliverables
 
-- `smart-asset.fork-resolution.schema.json`
-- CLI: `msez asset state fork-resolution-init`, `msez asset state verify --fork-resolutions ...`
+- `smart-asset.fork-resolution.schema.json` (+ VC wrapper schema)
+- CLI: `msez asset state fork-resolve` (alias: `fork-resolution-init`)
+  - `msez asset state verify --fork-resolutions ...`
+  - `msez asset state checkpoint --fork-resolutions ...`
+  - `msez asset state inclusion-proof --fork-resolutions ...`
 - Deterministic chain selection algorithm (match corridor semantics where possible)
+- Asset module template includes `state/fork-resolutions/`
+- Tests: forked asset receipt chain resolved via fork-resolution VC
 
 ### v0.4.34 — Asset receipt-chain checkpoint anchoring
 
@@ -133,8 +138,11 @@ Deliverables
 
 Deliverables
 
-- `msez artifact witness-bundle --root smart-asset-receipt-checkpoint` workflows
-- “Asset history bundle attestation” profile (who can attest bundles, quorum rules)
+- Witness bundle workflows (portable audit packets):
+  - `msez asset module witness-bundle modules/smart-assets/<asset_id> --out <bundle.zip>`
+  - Generic closure bundling: `msez artifact graph verify --path <dir> --bundle <bundle.zip>`
+- “Asset history bundle attestation” profile template (who can attest bundles, quorum rules):
+  - `profiles/asset-history-bundle-attestation/profile.yaml`
 
 ### v0.4.36 — Multi-jurisdiction compliance receipts
 

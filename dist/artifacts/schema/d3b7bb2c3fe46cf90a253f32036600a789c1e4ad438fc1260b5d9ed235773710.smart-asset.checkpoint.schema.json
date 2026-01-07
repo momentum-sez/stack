@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://momentum.zone/schemas/smart-asset.checkpoint.schema.json",
+  "title": "SmartAssetCheckpoint",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "asset_id",
+    "as_of",
+    "state_root_sha256"
+  ],
+  "properties": {
+    "type": {
+      "const": "SmartAssetCheckpoint"
+    },
+    "asset_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "as_of": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "state_root_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "parents": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "default": []
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ArtifactRef"
+      },
+      "default": []
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_type",
+        "digest_sha256"
+      ],
+      "properties": {
+        "artifact_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "uri": {
+          "type": "string"
+        },
+        "content_type": {
+          "type": "string"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

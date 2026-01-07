@@ -161,11 +161,22 @@ For offline / air-gapped verification and transfer between environments, the ref
 - `manifest.json`: a full `MSEZArtifactGraphVerifyReport` (closure root, stats, node list, optional edges)
 - `artifacts/<type>/<digest>.*`: one file per resolved CAS node
 - `root/*`: when the closure root was a local JSON/YAML file, the root document is included for audit convenience
+- `root/<dirname>/*`: when the closure root was a local directory, structured files (JSON/YAML) under that directory are included for audit convenience
 
 Create a witness bundle:
 
 ```bash
+# CAS root
 python -m tools.msez artifact graph verify <type> <digest> --bundle /tmp/msez-witness.zip --strict --json
+
+# Local file root (JSON/YAML)
+python -m tools.msez artifact graph verify --path ./some/root.yaml --bundle /tmp/msez-witness.zip --strict --json
+
+# Local directory root (scan structured files for embedded ArtifactRefs)
+python -m tools.msez artifact graph verify --path ./modules/smart-assets/<asset_id> --bundle /tmp/asset-module.witness.zip --strict --json
+
+# Operator UX wrapper (Smart Asset portable audit packet)
+python -m tools.msez asset module witness-bundle ./modules/smart-assets/<asset_id> --out /tmp/asset-module.witness.zip --json
 ```
 
 Verify using a witness bundle as an offline CAS root:

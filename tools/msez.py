@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MSEZ Stack tool (reference implementation) — v0.4.31
+"""MSEZ Stack tool (reference implementation) — v0.4.35
 
 Capabilities:
 - validate modules/profiles/zones against schemas
@@ -53,7 +53,7 @@ if str(REPO_ROOT) not in sys.path:
 # Local (repo) imports (after sys.path fix)
 from tools import artifacts as artifact_cas
 from tools import smart_asset as smart_asset_tools
-STACK_SPEC_VERSION = "0.4.31"
+STACK_SPEC_VERSION = "0.4.35"
 
 # Templating: we intentionally support two simple placeholder syntaxes used in v0.4 (safe placeholder subset)
 # - {{ VAR_NAME }} (common in Akoma templates)
@@ -72,6 +72,19 @@ def sha256_bytes(b: bytes) -> str:
 
 def sha256_file(path: pathlib.Path) -> str:
     return sha256_bytes(path.read_bytes())
+
+
+
+def checkpoint_payload_digest_sha256(obj: Dict[str, Any]) -> str:
+    """Compute sha256(JCS(checkpoint_payload_without_proof)).
+
+    This is used for both corridor checkpoints and SmartAssetReceiptChainCheckpoint objects.
+    """
+    from tools.lawpack import jcs_canonicalize  # type: ignore
+
+    tmp = dict(obj or {})
+    tmp.pop("proof", None)
+    return sha256_bytes(jcs_canonicalize(tmp))
 
 
 
@@ -100,6 +113,33 @@ def coerce_corridor_module_dir(path: pathlib.Path) -> pathlib.Path:
             continue
 
     raise FileNotFoundError(f'Corridor module not found or missing corridor.yaml: {path}')
+
+
+def coerce_asset_module_dir(path: pathlib.Path) -> pathlib.Path:
+    """Coerce a Smart Asset module directory from either a module dir or an asset.yaml path.
+
+    Many Smart Asset CLI commands can accept either:
+      - an asset module directory (containing asset.yaml), or
+      - a path directly to an asset.yaml file.
+
+    This helper also tries a REPO_ROOT-relative resolution when given a relative path
+    that does not exist from the current working directory.
+    """
+    cand = pathlib.Path(str(path))
+    candidates = [cand]
+    if not cand.is_absolute():
+        candidates.append(REPO_ROOT / cand)
+
+    for pth in candidates:
+        try:
+            if pth.is_file() and pth.name == 'asset.yaml':
+                return pth.parent
+            if pth.is_dir() and (pth / 'asset.yaml').exists():
+                return pth
+        except Exception:
+            continue
+
+    raise FileNotFoundError(f'Smart Asset module not found or missing asset.yaml: {path}')
 
 
 def load_trust_anchors(path: pathlib.Path) -> List[Dict[str, Any]]:
@@ -246,6 +286,109 @@ def _coerce_sha256(value: Any) -> str:
     if isinstance(value, str):
         return value.strip().lower()
     return ""
+
+
+def load_asset_module_config(module_dir: pathlib.Path) -> Dict[str, Any]:
+    """Load `asset.yaml` from a Smart Asset module directory."""
+    p = pathlib.Path(module_dir)
+    if not p.is_absolute() and not p.exists():
+        p = REPO_ROOT / p
+    asset_path = p if p.is_dir() else p.parent
+    cfg_path = asset_path / "asset.yaml"
+    if not cfg_path.exists():
+        raise FileNotFoundError(f"Missing asset.yaml in {asset_path}")
+    cfg = load_yaml(cfg_path)
+    if not isinstance(cfg, dict):
+        raise ValueError(f"asset.yaml must be a mapping: {cfg_path}")
+    return cfg
+
+
+def asset_module_defaults(module_dir: pathlib.Path) -> Dict[str, Any]:
+    """Return normalized defaults derived from an asset module directory.
+
+    The asset module format is intentionally lightweight and operator-friendly.
+    We treat it as a *convenience layer* over the existing `msez asset state ...` CLI.
+
+    Returns keys:
+      - module_dir: Path
+      - asset_id: str (sha256 hex)
+      - default_purpose: str
+      - purposes: List[str]
+      - trust_anchors_path: Optional[Path]
+      - transition_type_registry_lock_path: Optional[Path]
+      - expected_transition_type_registry_digest_sha256: Optional[str]
+      - receipts_dir/checkpoints_dir/proofs_dir: Path
+    """
+    mdir = coerce_asset_module_dir(module_dir)
+    cfg = load_asset_module_config(mdir)
+
+    aid = _coerce_sha256(cfg.get("asset_id"))
+    if not re.fullmatch(r"[a-f0-9]{64}", aid or ""):
+        raise ValueError(f"asset.yaml has invalid asset_id (expected sha256 hex): {mdir / 'asset.yaml'}")
+
+    purposes_raw = cfg.get("purposes") or cfg.get("purpose") or []
+    purposes: List[str] = []
+    if isinstance(purposes_raw, str):
+        purposes = [purposes_raw]
+    elif isinstance(purposes_raw, list):
+        purposes = [str(x).strip() for x in purposes_raw if str(x).strip()]
+    if not purposes:
+        purposes = ["core"]
+    default_purpose = str(purposes[0] or "core")
+
+    def _resolve_rel(rel: str) -> pathlib.Path:
+        rp = pathlib.Path(str(rel))
+        if rp.is_absolute():
+            return rp
+        # prefer module-local
+        cand = mdir / rp
+        if cand.exists():
+            return cand
+        # fallback to repo-root relative
+        return REPO_ROOT / rp
+
+    trust_rel = str(cfg.get("trust_anchors_path") or "trust-anchors.yaml").strip()
+    trust_path: Optional[pathlib.Path] = _resolve_rel(trust_rel) if trust_rel else None
+    if trust_path is not None and not trust_path.exists():
+        trust_path = None
+
+    lock_rel = str(cfg.get("transition_type_registry_lock_path") or "").strip()
+    lock_path: Optional[pathlib.Path] = _resolve_rel(lock_rel) if lock_rel else None
+    if lock_path is not None and not lock_path.exists():
+        lock_path = None
+
+    exp_digest = _coerce_sha256(cfg.get("expected_transition_type_registry_digest_sha256"))
+    if exp_digest and not re.fullmatch(r"[a-f0-9]{64}", exp_digest):
+        exp_digest = ""
+
+    state_cfg = cfg.get("state") if isinstance(cfg.get("state"), dict) else {}
+    receipts_rel = str(state_cfg.get("receipts_dir") or "state/receipts")
+    checkpoints_rel = str(state_cfg.get("checkpoints_dir") or "state/checkpoints")
+    proofs_rel = str(state_cfg.get("proofs_dir") or "state/proofs")
+    fork_resolutions_rel = str(state_cfg.get("fork_resolutions_dir") or "state/fork-resolutions")
+
+    out: Dict[str, Any] = {
+        "module_dir": mdir,
+        "asset_id": aid,
+        "purposes": purposes,
+        "default_purpose": default_purpose,
+        "trust_anchors_path": trust_path,
+        "transition_type_registry_lock_path": lock_path,
+        "expected_transition_type_registry_digest_sha256": exp_digest or None,
+        "receipts_dir": _resolve_rel(receipts_rel),
+        "checkpoints_dir": _resolve_rel(checkpoints_rel),
+        "proofs_dir": _resolve_rel(proofs_rel),
+        "fork_resolutions_dir": _resolve_rel(fork_resolutions_rel),
+    }
+
+    # Ensure directories exist (best-effort; do not create if module is read-only).
+    for k in ("receipts_dir", "checkpoints_dir", "proofs_dir", "fork_resolutions_dir"):
+        try:
+            pathlib.Path(out[k]).mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+
+    return out
 
 
 def _verified_base_dids(verify_results: Any) -> Set[str]:
@@ -718,7 +861,7 @@ def _compute_artifact_digest_strict(artifact_type: str, path: pathlib.Path) -> T
 
         return (sha256_bytes(signing_input(vcj)), "vc.signing-input")
 
-    if at == "checkpoint":
+    if at in {"checkpoint", "smart-asset-receipt-checkpoint"}:
         cp = load_json(p)
         if not isinstance(cp, dict):
             raise ValueError("checkpoint must be a JSON object")
@@ -827,7 +970,8 @@ def build_artifact_graph_verify_report(
 
     Roots:
       - CAS root: (root_artifact_type, root_digest_sha256)
-      - Local file root: root_path (JSON/YAML), which is scanned for embedded ArtifactRefs
+      - Local file root: root_path (JSON/YAML), scanned for embedded ArtifactRefs
+      - Local directory root: root_path (directory), all structured files scanned for embedded ArtifactRefs
 
     The traversal follows:
       - embedded ArtifactRefs in JSON/YAML documents
@@ -874,21 +1018,109 @@ def build_artifact_graph_verify_report(
         rp = pathlib.Path(root_path)
         if not rp.is_absolute():
             rp = repo_root / rp
-        report["root"] = {"mode": "file", "path": str(rp)}
-        root_id = f"file:{rp.name}"
-        try:
-            obj = _structured_object_from_file(rp)
-            for at2, d2 in _iter_embedded_artifactrefs(obj):
-                stack.append((at2, d2, 1, f"file:{rp.name}"))
-                report["stats"]["edges_total"] += 1
-                if "edges" in report:
+
+        if rp.exists() and rp.is_dir():
+            report["root"] = {"mode": "dir", "path": str(rp)}
+            root_id = f"dir:{rp.name}"
+
+            # Scan structured (JSON/YAML) files under the directory for embedded ArtifactRefs.
+            # This enables using an operator module directory as a closure root.
+            max_root_files = max(1, int(max_nodes))
+            scanned = 0
+            parse_errors = 0
+            structured: List[pathlib.Path] = []
+
+            try:
+                for pth in rp.rglob("*"):
+                    if not pth.is_file():
+                        continue
                     try:
-                        to_id = f"{artifact_cas.normalize_artifact_type(at2)}:{artifact_cas.normalize_digest(d2)}"
+                        rel = pth.relative_to(rp)
                     except Exception:
-                        to_id = f"{at2}:{d2}"
-                    report["edges"].append({"from": root_id, "to": to_id, "label": "embedded_artifactref", "depth": 1, "source": root_id})
-        except Exception as e:
-            report["errors"].append(f"failed to load root file {rp}: {e}")
+                        continue
+
+                    parts_lower = [str(x).lower() for x in rel.parts]
+                    if any(x in {".git", "__pycache__", ".mypy_cache"} for x in parts_lower):
+                        continue
+
+                    # Avoid scanning CAS roots (often huge) when a module directory is used as the root.
+                    if len(parts_lower) >= 2 and parts_lower[0] == "dist" and parts_lower[1] == "artifacts":
+                        continue
+
+                    name = pth.name.lower()
+                    suf = pth.suffix.lower()
+                    if (
+                        name.endswith(".json")
+                        or name.endswith(".jsonld")
+                        or name.endswith(".schema.json")
+                        or name.endswith(".lock.json")
+                        or suf in (".json", ".yaml", ".yml")
+                    ):
+                        structured.append(pth)
+            except Exception as e:
+                report["errors"].append(f"failed to scan root dir {rp}: {e}")
+
+            structured = sorted(structured, key=lambda pp: str(pp.relative_to(rp)).lower())
+            truncated = False
+            if len(structured) > max_root_files:
+                truncated = True
+                structured = structured[:max_root_files]
+                report["errors"].append(
+                    f"root dir structured-file scan truncated to max_root_files={max_root_files} (use a narrower root or increase --max-nodes)"
+                )
+
+            for pth in structured:
+                scanned += 1
+                rel = ""
+                try:
+                    rel = str(pth.relative_to(rp))
+                    obj = _structured_object_from_file(pth)
+                except Exception as e:
+                    parse_errors += 1
+                    if parse_errors <= 20:
+                        report["errors"].append(f"failed to load root dir file {pth}: {e}")
+                    continue
+
+                for at2, d2 in _iter_embedded_artifactrefs(obj):
+                    stack.append((at2, d2, 1, f"dir:{rp.name}:{rel}"))
+                    report["stats"]["edges_total"] += 1
+                    if "edges" in report:
+                        try:
+                            to_id = f"{artifact_cas.normalize_artifact_type(at2)}:{artifact_cas.normalize_digest(d2)}"
+                        except Exception:
+                            to_id = f"{at2}:{d2}"
+                        report["edges"].append(
+                            {
+                                "from": root_id,
+                                "to": to_id,
+                                "label": "embedded_artifactref",
+                                "depth": 1,
+                                "source": f"dirfile:{rel}",
+                            }
+                        )
+
+            report["root"]["files_scanned"] = scanned
+            report["root"]["parse_errors"] = parse_errors
+            report["root"]["files_truncated"] = bool(truncated)
+
+        else:
+            report["root"] = {"mode": "file", "path": str(rp)}
+            root_id = f"file:{rp.name}"
+            try:
+                obj = _structured_object_from_file(rp)
+                for at2, d2 in _iter_embedded_artifactrefs(obj):
+                    stack.append((at2, d2, 1, f"file:{rp.name}"))
+                    report["stats"]["edges_total"] += 1
+                    if "edges" in report:
+                        try:
+                            to_id = f"{artifact_cas.normalize_artifact_type(at2)}:{artifact_cas.normalize_digest(d2)}"
+                        except Exception:
+                            to_id = f"{at2}:{d2}"
+                        report["edges"].append(
+                            {"from": root_id, "to": to_id, "label": "embedded_artifactref", "depth": 1, "source": root_id}
+                        )
+            except Exception as e:
+                report["errors"].append(f"failed to load root file {rp}: {e}")
     else:
         at = str(root_artifact_type or "").strip()
         dg = str(root_digest_sha256 or "").strip().lower()
@@ -1053,7 +1285,7 @@ def write_artifact_graph_witness_bundle(
 
     The bundle contains:
       - manifest.json (the full graph verify report)
-      - root/* (when the report root is a local file)
+      - root/* (when the report root is a local file or directory)
       - artifacts/<type>/<filename> for every resolved node
 
     This is intended to let verifiers move a minimal, content-addressed closure
@@ -1103,12 +1335,54 @@ def write_artifact_graph_witness_bundle(
         # Manifest
         writestr(zf, "manifest.json", (json.dumps(report, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
 
-        # Root file (when applicable)
+        # Root documents (when applicable)
         root = report.get("root") or {}
-        if isinstance(root, dict) and root.get("mode") == "file":
-            rp = pathlib.Path(str(root.get("path") or ""))
-            if rp.exists() and rp.is_file():
-                writefile(zf, f"root/{rp.name}", rp)
+        if isinstance(root, dict):
+            mode = str(root.get("mode") or "").strip().lower()
+            if mode == "file":
+                rp = pathlib.Path(str(root.get("path") or ""))
+                if rp.exists() and rp.is_file():
+                    writefile(zf, f"root/{rp.name}", rp)
+            elif mode == "dir":
+                rp = pathlib.Path(str(root.get("path") or ""))
+                if rp.exists() and rp.is_dir():
+                    base = rp.name or "rootdir"
+                    structured: List[pathlib.Path] = []
+                    try:
+                        for pth in rp.rglob("*"):
+                            if not pth.is_file():
+                                continue
+                            try:
+                                rel = pth.relative_to(rp)
+                            except Exception:
+                                continue
+                            parts_lower = [str(x).lower() for x in rel.parts]
+                            if any(x in {".git", "__pycache__", ".mypy_cache"} for x in parts_lower):
+                                continue
+                            if len(parts_lower) >= 2 and parts_lower[0] == "dist" and parts_lower[1] == "artifacts":
+                                continue
+                            name = pth.name.lower()
+                            suf = pth.suffix.lower()
+                            if (
+                                name.endswith(".json")
+                                or name.endswith(".jsonld")
+                                or name.endswith(".schema.json")
+                                or name.endswith(".lock.json")
+                                or suf in (".json", ".yaml", ".yml")
+                            ):
+                                structured.append(pth)
+                    except Exception:
+                        structured = []
+
+                    structured = sorted(structured, key=lambda pp: str(pp.relative_to(rp)).lower())
+                    max_root_files = 20000
+                    if len(structured) > max_root_files:
+                        excluded.append({"path": f"root/{base}", "reason": "root_dir_max_files", "files": len(structured) - max_root_files})
+                        structured = structured[:max_root_files]
+
+                    for pth in structured:
+                        rel = str(pth.relative_to(rp)).replace(os.sep, "/")
+                        writefile(zf, f"root/{base}/{rel}", pth)
 
         # Resolved nodes
         for n in report.get("nodes") or []:
@@ -1127,22 +1401,25 @@ def write_artifact_graph_witness_bundle(
             writefile(zf, arc, rp)
 
         # Bundle README
-        readme = (
-            "MSEZ Artifact Graph Witness Bundle\n"
-            "\n"
-            "This bundle contains a manifest.json (closure report) and the resolved artifacts\n"
-            "under artifacts/<type>/. Extract into a directory and set MSEZ_ARTIFACT_STORE_DIRS\n"
-            "to point at the extracted artifacts root (or copy into dist/artifacts).\n"
-            "\n"
-            "Recommended verification:\n"
-            "  python -m tools.msez artifact graph verify --from-bundle witness.zip --strict --json\n"
-            "\n"
-            "(Alternatively, you may extract and verify against the extracted CAS root.)\n"
-            "  unzip -q witness.zip -d witness\n"
-            "  export MSEZ_ARTIFACT_STORE_DIRS=./witness/artifacts\n"
-            "  python -m tools.msez artifact graph verify --path witness/manifest.json --json\n"
-            "  python -m tools.msez artifact graph verify <type> <digest> --strict --json\n"
-        )
+        readme = """MSEZ Artifact Graph Witness Bundle
+
+This bundle contains:
+  - manifest.json: a MSEZArtifactGraphVerifyReport (closure report)
+  - artifacts/<type>/<digest>.*: resolved CAS nodes
+  - root/*: local root document(s) used to build the closure (optional)
+
+Quick verification (offline):
+  python -m tools.msez artifact graph verify --from-bundle witness.zip --strict --json
+
+Manual verification (after extraction):
+  unzip -q witness.zip -d witness
+  export MSEZ_ARTIFACT_STORE_DIRS=./witness/artifacts
+  # verify a specific CAS root
+  python -m tools.msez artifact graph verify <type> <digest> --strict --json
+
+If the closure root was a local file or directory, you may also re-run:
+  python -m tools.msez artifact graph verify --path ./witness/root/<root> --strict --json
+"""
         writestr(zf, "README.txt", readme.encode("utf-8"))
 
     return {
@@ -1260,13 +1537,27 @@ def cmd_artifact_graph_verify(args: argparse.Namespace) -> int:
                     # Root file is stored as root/<basename>
                     bn = pathlib.Path(str(r.get("path") or "")).name
                     root_dir = td_path / "root"
-                    if bn and (root_dir / bn).exists():
+                    if bn and (root_dir / bn).exists() and (root_dir / bn).is_file():
                         bundle_root_path = (root_dir / bn)
                         eff_root_path = str(bundle_root_path)
                     else:
                         # fallback: first file under root/
                         if root_dir.exists() and root_dir.is_dir():
                             cand = next(iter([p for p in root_dir.iterdir() if p.is_file()]), None)
+                            if cand is not None:
+                                bundle_root_path = cand
+                                eff_root_path = str(cand)
+                elif isinstance(r, dict) and r.get("mode") == "dir":
+                    # Root directory is stored as root/<basename>/...
+                    bn = pathlib.Path(str(r.get("path") or "")).name
+                    root_dir = td_path / "root"
+                    if bn and (root_dir / bn).exists() and (root_dir / bn).is_dir():
+                        bundle_root_path = (root_dir / bn)
+                        eff_root_path = str(bundle_root_path)
+                    else:
+                        # fallback: first directory under root/
+                        if root_dir.exists() and root_dir.is_dir():
+                            cand = next(iter([p for p in root_dir.iterdir() if p.is_dir()]), None)
                             if cand is not None:
                                 bundle_root_path = cand
                                 eff_root_path = str(cand)
@@ -5135,6 +5426,111 @@ def cmd_corridor_state_receipt_init(args: argparse.Namespace) -> int:
         print(f"ERROR: transition type registry: {ex}", file=sys.stderr)
         return 2
 
+
+
+    # Optional typed anchoring: attach Smart Asset artifacts to the transition envelope.
+    #
+    # This supports “corridor as external anchor” patterns where a corridor receipt commits
+    # to:
+    #   - a Smart Asset state checkpoint digest (artifact_type=smart-asset-checkpoint), and/or
+    #   - a Smart Asset *receipt-chain* checkpoint payload digest (artifact_type=smart-asset-receipt-checkpoint).
+    #
+    # These attachments are pure metadata from the corridor perspective, but become powerful
+    # when combined with inclusion proofs and asset-local receipt-chain proofs.
+    try:
+        attach_state_cps = getattr(args, "attach_smart_asset_checkpoint", None) or []
+        attach_receipt_cps = getattr(args, "attach_smart_asset_receipt_checkpoint", None) or []
+        if attach_state_cps or attach_receipt_cps:
+            atts = transition.get("attachments")
+            if not isinstance(atts, list):
+                atts = []
+                transition["attachments"] = atts
+
+            existing = set()
+            for a in atts:
+                if not isinstance(a, dict):
+                    continue
+                atype0 = str(a.get("artifact_type") or "").strip().lower()
+                dig0 = _coerce_sha256(a) or ""
+                if atype0 and dig0:
+                    existing.add((atype0, dig0))
+
+            # (A) SmartAssetCheckpoint => semantic digest == state_root_sha256
+            for cp_arg in attach_state_cps:
+                if not cp_arg:
+                    continue
+                cp_path = pathlib.Path(str(cp_arg))
+                if not cp_path.is_absolute():
+                    cp_path = REPO_ROOT / cp_path
+                if not cp_path.exists():
+                    raise FileNotFoundError(f"smart-asset checkpoint not found: {cp_path}")
+                ck = load_json(cp_path)
+                if not isinstance(ck, dict):
+                    raise ValueError(f"SmartAssetCheckpoint must be a JSON object: {cp_path}")
+                sr = str(ck.get("state_root_sha256") or "").strip().lower()
+                if not SHA256_HEX_RE.match(sr):
+                    raise ValueError(f"SmartAssetCheckpoint missing valid state_root_sha256: {cp_path}")
+                key = ("smart-asset-checkpoint", sr)
+                if key in existing:
+                    continue
+                item: Dict[str, Any] = {
+                    "artifact_type": "smart-asset-checkpoint",
+                    "digest_sha256": sr,
+                    "uri": str(cp_path),
+                    "media_type": "application/json",
+                }
+                aid = str(ck.get("asset_id") or "").strip().lower()
+                if aid:
+                    item["asset_id"] = aid
+                atts.append(item)
+                existing.add(key)
+
+            # (B) SmartAssetReceiptChainCheckpoint => payload digest (excluding proof)
+            for cp_arg in attach_receipt_cps:
+                if not cp_arg:
+                    continue
+                cp_path = pathlib.Path(str(cp_arg))
+                if not cp_path.is_absolute():
+                    cp_path = REPO_ROOT / cp_path
+                if not cp_path.exists():
+                    raise FileNotFoundError(f"smart-asset receipt checkpoint not found: {cp_path}")
+                ck = load_json(cp_path)
+                if not isinstance(ck, dict):
+                    raise ValueError(f"SmartAssetReceiptChainCheckpoint must be a JSON object: {cp_path}")
+                if str(ck.get("type") or "").strip() != "SmartAssetReceiptChainCheckpoint":
+                    raise ValueError(f"expected type SmartAssetReceiptChainCheckpoint: {cp_path}")
+                dig = checkpoint_payload_digest_sha256(ck)
+                key = ("smart-asset-receipt-checkpoint", dig)
+                if key in existing:
+                    continue
+                item2: Dict[str, Any] = {
+                    "artifact_type": "smart-asset-receipt-checkpoint",
+                    "digest_sha256": dig,
+                    "uri": str(cp_path),
+                    "media_type": "application/json",
+                }
+                aid2 = str(ck.get("asset_id") or "").strip().lower()
+                if aid2:
+                    item2["asset_id"] = aid2
+                try:
+                    rcnt = int(ck.get("receipt_count") or 0)
+                    if rcnt:
+                        item2["receipt_count"] = rcnt
+                except Exception:
+                    pass
+                try:
+                    mmr = ck.get("mmr") if isinstance(ck.get("mmr"), dict) else {}
+                    mmr_root = str((mmr or {}).get("root") or "").strip().lower()
+                    if mmr_root and SHA256_HEX_RE.match(mmr_root):
+                        item2["mmr_root"] = mmr_root
+                except Exception:
+                    pass
+                atts.append(item2)
+                existing.add(key)
+    except Exception as ex:
+        print(f"ERROR: unable to attach smart-asset checkpoint(s): {ex}", file=sys.stderr)
+        return 2
+
     receipt: Dict[str, Any] = {
         "type": "MSEZCorridorStateReceipt",
         "corridor_id": corridor_id,
@@ -7249,6 +7645,32 @@ def cmd_corridor_state_checkpoint(args: argparse.Namespace) -> int:
         if not fp.is_absolute():
             fp = REPO_ROOT / fp
         fork_resolutions_path = fp
+    elif module_defaults and module_defaults.get("fork_resolutions_dir"):
+        try:
+            fork_resolutions_path = pathlib.Path(module_defaults.get("fork_resolutions_dir"))
+        except Exception:
+            fork_resolutions_path = None
+
+    fork_resolutions_arg = str(getattr(args, "fork_resolutions", "") or "").strip()
+    fork_resolutions_path: Optional[pathlib.Path] = None
+    if fork_resolutions_arg:
+        fp = pathlib.Path(fork_resolutions_arg)
+        if not fp.is_absolute():
+            fp = REPO_ROOT / fp
+        fork_resolutions_path = fp
+    elif module_defaults and module_defaults.get("fork_resolutions_dir"):
+        try:
+            fork_resolutions_path = pathlib.Path(module_defaults.get("fork_resolutions_dir"))
+        except Exception:
+            fork_resolutions_path = None
+
+    fork_resolutions_arg = str(getattr(args, "fork_resolutions", "") or "").strip()
+    fork_resolutions_path: Optional[pathlib.Path] = None
+    if fork_resolutions_arg:
+        fp = pathlib.Path(fork_resolutions_arg)
+        if not fp.is_absolute():
+            fp = REPO_ROOT / fp
+        fork_resolutions_path = fp
 
     try:
         genesis_root, receipts, final_root = _corridor_state_load_verified_receipts(
@@ -7651,6 +8073,88 @@ def cmd_corridor_state_verify_inclusion(args: argparse.Namespace) -> int:
 # --- Smart Asset receipt chains (non-blockchain) -----------------------------
 
 
+def _load_asset_fork_resolution_map(
+    fork_resolutions_path: Optional[pathlib.Path],
+    *,
+    expected_asset_id: Optional[str] = None,
+    expected_purpose: Optional[str] = None,
+) -> Tuple[Dict[Tuple[int, str], str], List[str]]:
+    """Load smart-asset fork-resolution artifacts into a lookup map.
+
+    The fork-resolution format mirrors corridor fork resolution:
+    - the artifact MAY be a raw subject (type=MSEZSmartAssetForkResolution)
+    - OR a VC wrapper with `credentialSubject` set to that subject.
+
+    Returns:
+      (resolution_map, errors)
+    where:
+      resolution_map[(sequence, prev_root)] = chosen_next_root
+    """
+    res_map: Dict[Tuple[int, str], str] = {}
+    errors: List[str] = []
+
+    if not fork_resolutions_path:
+        return res_map, errors
+
+    p = pathlib.Path(fork_resolutions_path)
+    paths: List[pathlib.Path] = []
+    if p.is_dir():
+        paths = sorted([x for x in p.glob("*.json") if x.is_file()])
+    else:
+        paths = [p]
+
+    for fp in paths:
+        try:
+            obj = load_json(fp)
+        except Exception as e:
+            errors.append(f"fork-resolution load failed: {fp}: {e}")
+            continue
+
+        subj: Optional[Dict[str, Any]] = None
+        if isinstance(obj, dict) and obj.get("type") == "MSEZSmartAssetForkResolution":
+            subj = obj
+        elif isinstance(obj, dict) and isinstance(obj.get("credentialSubject"), dict):
+            subj = obj.get("credentialSubject")  # type: ignore
+        else:
+            errors.append(f"fork-resolution unsupported shape (expected raw or VC): {fp}")
+            continue
+
+        aid = str(subj.get("asset_id") or "").strip().lower()
+        if expected_asset_id and aid and aid != expected_asset_id:
+            errors.append(
+                f"fork-resolution asset_id mismatch: {fp}: expected {expected_asset_id}, got {aid}"
+            )
+
+        purpose = str(subj.get("purpose") or "").strip()
+        if expected_purpose and purpose and purpose != expected_purpose:
+            errors.append(
+                f"fork-resolution purpose mismatch: {fp}: expected {expected_purpose}, got {purpose}"
+            )
+
+        try:
+            seq = int(subj.get("sequence"))
+        except Exception:
+            errors.append(f"fork-resolution missing/invalid sequence: {fp}")
+            continue
+
+        prev_root = str(subj.get("prev_root") or "").strip().lower()
+        chosen_next_root = str(subj.get("chosen_next_root") or "").strip().lower()
+        if not prev_root or not chosen_next_root:
+            errors.append(f"fork-resolution missing prev_root/chosen_next_root: {fp}")
+            continue
+
+        key = (seq, prev_root)
+        if key in res_map and res_map[key] != chosen_next_root:
+            errors.append(
+                f"fork-resolution duplicate conflict for (seq={seq}, prev_root={prev_root}): {fp} chooses {chosen_next_root}, previously {res_map[key]}"
+            )
+            continue
+
+        res_map[key] = chosen_next_root
+
+    return res_map, errors
+
+
 def _asset_state_build_chain(
     receipts_path: pathlib.Path,
     asset_id: str,
@@ -7663,11 +8167,14 @@ def _asset_state_build_chain(
     expected_transition_type_registry_digest: Optional[str] = None,
     require_artifacts: bool = False,
     transitive_require_artifacts: bool = False,
+    fork_resolutions_path: Optional[pathlib.Path] = None,
 ) -> Tuple[Dict[str, Any], List[str], List[str]]:
-    """Verify + select a canonical (linear) asset receipt chain.
+    """Verify + select a canonical asset receipt chain (fork-aware).
 
-    This is intentionally *linear* (no fork-resolution yet) to keep the asset-local
-    receipt channel small, easy to deploy, and compatible with very lightweight nodes.
+    We prefer corridor-style semantics:
+      - duplicate receipts (same seq/prev/next) are merged
+      - forks at (seq, prev_root) are resolved deterministically via fork-resolution artifacts
+      - non-canonical/unreachable receipts are warnings (not hard errors)
 
     Returns:
       (result, warnings, errors)
@@ -7684,7 +8191,9 @@ def _asset_state_build_chain(
 
     receipt_validator = schema_validator(REPO_ROOT / "schemas" / "smart-asset.receipt.schema.json")
 
-    expected_genesis_root = genesis_root or asset_state_genesis_root(aid, purpose=str(purpose or "core"))
+    expected_genesis_root = str(
+        genesis_root or asset_state_genesis_root(aid, purpose=str(purpose or "core"))
+    ).strip().lower()
 
     # Trust anchors (optional enforcement)
     allowed_receipt_signers: Set[str] = set()
@@ -7703,6 +8212,14 @@ def _asset_state_build_chain(
                 errors.append(
                     "--enforce-trust-anchors was set but trust anchors contain no entries permitting smart_asset_receipt"
                 )
+
+    # Fork resolution map (optional)
+    fork_map, fork_errs = _load_asset_fork_resolution_map(
+        fork_resolutions_path,
+        expected_asset_id=aid,
+        expected_purpose=str(purpose or "core"),
+    )
+    errors.extend(fork_errs)
 
     # Artifact resolver (for --require-artifacts)
     import tools.artifacts as artifact_cas  # local import to keep startup fast
@@ -7869,48 +8386,60 @@ def _asset_state_build_chain(
     if errors:
         return {}, warnings, errors
 
-    # Canonical linear chain selection
-    # Keyed by (sequence, prev_root).
-    by_key: Dict[Tuple[int, str], List[Tuple[pathlib.Path, Dict[str, Any], Set[str]]]] = {}
-    for rp, r, ok_dids in receipt_rows:
-        try:
-            seq = int(r.get("sequence"))
-        except Exception:
-            seq = -1
-        prev = str(r.get("prev_root") or "").strip().lower()
-        by_key.setdefault((seq, prev), []).append((rp, r, ok_dids))
+    # Merge duplicates and build candidates keyed by (sequence, prev_root).
+    grouped = _group_receipt_candidates(receipt_rows)
+    candidates_by_seq_prev: Dict[Tuple[int, str], List[Dict[str, Any]]] = {}
+    for (seq, prev_root, _next_root), cand in grouped.items():
+        candidates_by_seq_prev.setdefault((int(seq), str(prev_root)), []).append(cand)
 
-    selected: List[Dict[str, Any]] = []
-    used_paths: Set[pathlib.Path] = set()
-    cur_root = expected_genesis_root
-    seq = 0
-    while True:
-        candidates = by_key.get((seq, cur_root), [])
-        if not candidates:
-            break
-        if len(candidates) > 1:
-            errors.append(
-                f"fork detected at sequence={seq} prev_root={cur_root}: {len(candidates)} candidates (provide a fork resolution artifact; not yet implemented for assets)"
-            )
-            break
-        rp, r, _ok = candidates[0]
-        selected.append(r)
-        used_paths.add(rp)
-        cur_root = str(r.get("next_root") or "").strip().lower()
-        seq += 1
-
+    selected, chain_warnings, chain_errors = _select_canonical_chain(
+        candidates_by_seq_prev,
+        start_seq=0,
+        start_prev_root=expected_genesis_root,
+        fork_resolution_map=fork_map if fork_map else None,
+    )
+    warnings.extend(chain_warnings)
+    errors.extend(chain_errors)
     if errors:
         return {}, warnings, errors
 
-    # Ensure there are no unattached receipts.
-    if len(used_paths) != len(receipt_rows):
-        unused = [str(rp) for (rp, _r, _ok) in receipt_rows if rp not in used_paths]
-        errors.append(
-            f"unattached receipts present ({len(unused)}): chain head sequence={len(selected)-1} final_chain_root={cur_root}. Example: {unused[0]}"
-        )
+    if not selected:
+        has_seq0 = any(k[0] == 0 for k in candidates_by_seq_prev.keys())
+        if has_seq0:
+            errors.append(
+                f"no canonical chain starts at (sequence=0, prev_root=genesis_root={expected_genesis_root}); receipts may target a different genesis_root (purpose mismatch?)"
+            )
+        else:
+            errors.append("receipt set does not include an initial receipt (sequence=0); cannot verify from genesis")
         return {}, warnings, errors
 
-    final_chain_root = cur_root if selected else expected_genesis_root
+    # Non-canonical receipts (fork branches / unreachable segments).
+    try:
+        used_triplets = {
+            (
+                int(r.get("sequence") or 0),
+                str(r.get("prev_root") or ""),
+                str(r.get("next_root") or ""),
+            )
+            for r in selected
+        }
+        all_triplets = set(grouped.keys())
+        extra = sorted(list(all_triplets - used_triplets))
+        if extra:
+            warnings.append(
+                f"non-canonical receipts present (fork branches / unreachable segments): {len(extra)}; first few: {extra[:5]}"
+            )
+    except Exception:
+        pass
+
+    head_seq = len(selected)
+    unreachable = sorted({k for k in candidates_by_seq_prev.keys() if int(k[0]) > head_seq})
+    if unreachable:
+        warnings.append(
+            f"unreachable receipts exist beyond the selected head (head_seq={head_seq}); first few keys: {unreachable[:5]}"
+        )
+
+    final_chain_root = str(selected[-1].get("next_root") or "").strip().lower()
 
     # Best-effort MMR root for reporting.
     mmr_obj: Optional[Dict[str, Any]] = None
@@ -7956,6 +8485,7 @@ def _asset_state_load_verified_receipts(
     expected_transition_type_registry_digest: Optional[str] = None,
     require_artifacts: bool = False,
     transitive_require_artifacts: bool = False,
+    fork_resolutions_path: Optional[pathlib.Path] = None,
 ) -> Tuple[str, List[Dict[str, Any]], str]:
     """Internal helper used by checkpoint/inclusion tools.
 
@@ -7973,6 +8503,7 @@ def _asset_state_load_verified_receipts(
         expected_transition_type_registry_digest=expected_transition_type_registry_digest,
         require_artifacts=require_artifacts,
         transitive_require_artifacts=transitive_require_artifacts,
+        fork_resolutions_path=fork_resolutions_path,
     )
     if errors:
         raise ValueError("; ".join(errors))
@@ -7983,9 +8514,230 @@ def _asset_state_load_verified_receipts(
     )
 
 
+def cmd_asset_module_init(args: argparse.Namespace) -> int:
+    """Scaffold a Smart Asset module directory from the repo template.
+
+    By default this creates:
+      modules/smart-assets/<asset_id>/...
+
+    The template is intended to be copy-safe and portable.
+    """
+    asset_id_raw = str(getattr(args, "asset_id", "") or "").strip().lower()
+    aid = _coerce_sha256(asset_id_raw)
+    if not re.fullmatch(r"[a-f0-9]{64}", aid or ""):
+        print("asset_id must be a 64-char sha256 hex", file=sys.stderr)
+        return 2
+
+    out_dir_arg = str(getattr(args, "out_dir", "") or "").strip() or "modules/smart-assets"
+    out_dir = pathlib.Path(out_dir_arg)
+    if not out_dir.is_absolute():
+        out_dir = REPO_ROOT / out_dir
+
+    template_arg = str(getattr(args, "template", "") or "").strip() or "modules/smart-assets/_template"
+    template_dir = pathlib.Path(template_arg)
+    if not template_dir.is_absolute():
+        template_dir = REPO_ROOT / template_dir
+    if not template_dir.exists() or not template_dir.is_dir():
+        print(f"template dir not found: {template_dir}", file=sys.stderr)
+        return 2
+
+    dest = out_dir / aid
+    force = bool(getattr(args, "force", False))
+    if dest.exists():
+        if not force:
+            print(f"destination already exists: {dest} (use --force to overwrite)", file=sys.stderr)
+            return 2
+        try:
+            shutil.rmtree(dest)
+        except Exception as e:
+            print(f"failed to remove existing destination: {dest}: {e}", file=sys.stderr)
+            return 2
+
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(template_dir, dest)
+    except Exception as e:
+        print(f"failed to copy template: {e}", file=sys.stderr)
+        return 2
+
+    # purposes (repeatable)
+    purposes_in = getattr(args, "purpose", []) or []
+    purposes = [str(p).strip() for p in purposes_in if str(p).strip()]
+    if not purposes:
+        purposes = ["core"]
+    purposes_block = "\n".join([f"  - {p}" for p in purposes])
+
+    tlock = str(getattr(args, "transition_types_lock", "") or "").strip()
+    exp = str(getattr(args, "expected_transition_type_registry_digest", "") or "").strip().lower()
+    if exp and not re.fullmatch(r"[a-f0-9]{64}", exp):
+        print("--expected-transition-type-registry-digest must be a sha256 hex", file=sys.stderr)
+        return 2
+
+    ctx = build_template_context(
+        {
+            "asset_id": aid,
+            "created_at": now_rfc3339(),
+            "stack_spec_version": STACK_SPEC_VERSION,
+            "purposes_block": purposes_block,
+            "transition_types_lock_path": tlock,
+            "expected_transition_type_registry_digest_sha256": exp,
+        }
+    )
+
+    try:
+        touched = render_templates_in_dir(dest, ctx, strict=False)
+    except Exception as e:
+        print(f"warning: template rendering failed: {e}", file=sys.stderr)
+        touched = []
+
+    # best-effort: ensure core dirs exist
+    for rel in ["state/receipts", "state/checkpoints", "state/proofs", "dist/artifacts"]:
+        try:
+            (dest / rel).mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+
+    if bool(getattr(args, "json", False)):
+        print(
+            json.dumps(
+                {
+                    "asset_id": aid,
+                    "module_dir": str(dest),
+                    "template_dir": str(template_dir),
+                    "touched": touched,
+                },
+                indent=2,
+            )
+        )
+    else:
+        print(str(dest))
+    return 0
+
+
+def cmd_asset_module_witness_bundle(args: argparse.Namespace) -> int:
+    """Create a portable witness bundle (.zip) for an asset module directory.
+
+    The bundle includes:
+      - root/<asset_module>/... (structured module files like receipts/checkpoints/proofs)
+      - artifacts/<type>/... (resolved CAS artifacts referenced by the module state)
+      - manifest.json (an MSEZArtifactGraphVerifyReport closure report)
+
+    This is the primary "portable audit packet" primitive for Smart Asset operations.
+    """
+
+    module_arg = str(getattr(args, "path", "") or "").strip()
+    if not module_arg:
+        print("asset module witness-bundle: provide <path>", file=sys.stderr)
+        return 2
+
+    module_dir = pathlib.Path(module_arg)
+    if not module_dir.is_absolute():
+        module_dir = REPO_ROOT / module_dir
+
+    if module_dir.exists() and module_dir.is_file():
+        # Accept pointing directly at asset.yaml
+        module_dir = module_dir.parent
+
+    if not module_dir.exists() or not module_dir.is_dir():
+        print(f"asset module witness-bundle: module dir not found: {module_dir}", file=sys.stderr)
+        return 2
+
+    # Minimal heuristic: must contain asset.yaml
+    if not (module_dir / "asset.yaml").exists():
+        print(f"asset module witness-bundle: asset.yaml not found under: {module_dir}", file=sys.stderr)
+        return 2
+
+    # Store roots: prefer module-local dist/artifacts, then any user-specified roots, then default repo roots as fallbacks.
+    store_roots: List[pathlib.Path] = []
+
+    module_store = module_dir / "dist" / "artifacts"
+    if module_store.exists() and module_store.is_dir():
+        store_roots.append(module_store)
+
+    for s in getattr(args, "store_root", []) or []:
+        pth = pathlib.Path(str(s))
+        if not pth.is_absolute():
+            pth = REPO_ROOT / pth
+        store_roots.append(pth)
+
+    # Always include standard repo store roots last (so they are used as fallbacks).
+    for sr in artifact_cas.artifact_store_roots(REPO_ROOT):
+        if sr not in store_roots:
+            store_roots.append(sr)
+
+    out_arg = str(getattr(args, "out", "") or "").strip()
+    if out_arg:
+        outp = pathlib.Path(out_arg)
+        if not outp.is_absolute():
+            outp = REPO_ROOT / outp
+    else:
+        outp = module_dir / "witness" / "asset.witness-bundle.zip"
+
+    outp.parent.mkdir(parents=True, exist_ok=True)
+
+    strict = bool(getattr(args, "strict", True))
+    max_nodes = int(getattr(args, "max_nodes", 10000) or 10000)
+    max_depth = int(getattr(args, "max_depth", 16) or 16)
+    emit_edges = bool(getattr(args, "emit_edges", True))
+
+    rep = build_artifact_graph_verify_report(
+        root_path=module_dir,
+        strict=strict,
+        store_roots=store_roots or None,
+        repo_root=REPO_ROOT,
+        max_nodes=max_nodes,
+        max_depth=max_depth,
+        emit_edges=emit_edges,
+    )
+
+    max_bytes = int(getattr(args, "bundle_max_bytes", 0) or 0)
+    summary = write_artifact_graph_witness_bundle(outp, rep, repo_root=REPO_ROOT, max_bytes=max_bytes)
+    rep["bundle"] = summary
+
+    report_out = str(getattr(args, "report_out", "") or "").strip()
+    if report_out:
+        op = pathlib.Path(report_out)
+        if not op.is_absolute():
+            op = REPO_ROOT / op
+        op.parent.mkdir(parents=True, exist_ok=True)
+        op.write_text(json.dumps(rep, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    if bool(getattr(args, "json", False)):
+        print(json.dumps(rep, indent=2, ensure_ascii=False))
+    else:
+        print(str(outp))
+
+    if int(rep.get("stats", {}).get("missing_total") or 0) > 0:
+        return 2
+    if int(rep.get("stats", {}).get("digest_mismatch_total") or 0) > 0:
+        return 2
+    return 0
+
+
 def cmd_asset_state_genesis_root(args: argparse.Namespace) -> int:
+    # Optional asset module directory support
+    module_arg = str(getattr(args, "path", "") or "").strip()
+    module_defaults: Optional[Dict[str, Any]] = None
+    if module_arg:
+        try:
+            module_defaults = asset_module_defaults(pathlib.Path(module_arg))
+        except Exception as e:
+            print(f"failed to load asset module: {module_arg}: {e}", file=sys.stderr)
+            return 2
+
     asset_id = str(getattr(args, "asset_id", "") or "").strip().lower()
-    purpose = str(getattr(args, "purpose", "core") or "core")
+    if not asset_id and module_defaults:
+        asset_id = str(module_defaults.get("asset_id") or "").strip().lower()
+
+    purpose = str(getattr(args, "purpose", "") or "").strip() or ""
+    if not purpose and module_defaults:
+        purpose = str(module_defaults.get("default_purpose") or "core")
+    if not purpose:
+        purpose = "core"
+
+    if not asset_id:
+        print("--asset-id or <path> is required", file=sys.stderr)
+        return 2
     try:
         root = asset_state_genesis_root(asset_id, purpose=purpose)
     except Exception as ex:
@@ -8013,11 +8765,29 @@ def cmd_asset_state_receipt_init(args: argparse.Namespace) -> int:
     """
     from tools.vc import now_rfc3339, add_ed25519_proof, load_ed25519_private_key_from_jwk  # type: ignore
 
+    # Optional asset module directory support
+    module_arg = str(getattr(args, "path", "") or "").strip()
+    module_defaults: Optional[Dict[str, Any]] = None
+    if module_arg:
+        try:
+            module_defaults = asset_module_defaults(pathlib.Path(module_arg))
+        except Exception as e:
+            print(f"failed to load asset module: {module_arg}: {e}", file=sys.stderr)
+            return 2
+
     asset_id = str(getattr(args, "asset_id", "") or "").strip().lower()
-    purpose = str(getattr(args, "purpose", "core") or "core")
+    if not asset_id and module_defaults:
+        asset_id = str(module_defaults.get("asset_id") or "").strip().lower()
+
+    purpose = str(getattr(args, "purpose", "") or "").strip() or ""
+    if not purpose and module_defaults:
+        purpose = str(module_defaults.get("default_purpose") or "core")
+    if not purpose:
+        purpose = "core"
+
     aid = _coerce_sha256(asset_id)
-    if not aid:
-        print("--asset-id must be a 64-char sha256 hex", file=sys.stderr)
+    if not re.fullmatch(r"[a-f0-9]{64}", aid or ""):
+        print("--asset-id (or module asset.yaml.asset_id) must be a 64-char sha256 hex", file=sys.stderr)
         return 2
 
     try:
@@ -8047,6 +8817,8 @@ def cmd_asset_state_receipt_init(args: argparse.Namespace) -> int:
     ttr_digest = ""
     ttr_map: Dict[str, Any] = {}
     lock_arg = str(getattr(args, "transition_types_lock", "") or "").strip()
+    if not lock_arg and module_defaults and module_defaults.get("transition_type_registry_lock_path"):
+        lock_arg = str(module_defaults.get("transition_type_registry_lock_path"))
     if lock_arg:
         lp = pathlib.Path(lock_arg)
         if not lp.is_absolute():
@@ -8101,7 +8873,17 @@ def cmd_asset_state_receipt_init(args: argparse.Namespace) -> int:
             vm = f"{did}#key-1"
         add_ed25519_proof(receipt, priv, vm, proof_purpose=str(getattr(args, "proof_purpose", "assertionMethod")))
 
-    out = str(getattr(args, "out", "") or "").strip() or f"smart-asset.receipt.{seq}.json"
+    out = str(getattr(args, "out", "") or "").strip()
+    if not out:
+        if module_defaults:
+            try:
+                rdir = pathlib.Path(module_defaults.get("receipts_dir"))
+                rdir.mkdir(parents=True, exist_ok=True)
+                out = str(rdir / f"smart-asset.receipt.{seq}.json")
+            except Exception:
+                out = f"smart-asset.receipt.{seq}.json"
+        else:
+            out = f"smart-asset.receipt.{seq}.json"
     out_path = pathlib.Path(out)
     if not out_path.is_absolute():
         out_path = REPO_ROOT / out_path
@@ -8112,16 +8894,60 @@ def cmd_asset_state_receipt_init(args: argparse.Namespace) -> int:
 
 
 def cmd_asset_state_verify(args: argparse.Namespace) -> int:
-    """Verify an asset receipt chain (linear, non-forking)."""
-    receipts_path = pathlib.Path(str(getattr(args, "receipts", "") or "").strip())
-    if not str(receipts_path):
-        print("--receipts is required", file=sys.stderr)
+    """Verify an asset receipt chain (fork-aware).
+
+    By default, forks are treated as an error. Provide `--fork-resolutions` to
+    deterministically select a canonical branch (mirrors corridor semantics).
+    """
+    # Optional asset module directory support
+    module_arg = str(getattr(args, "path", "") or "").strip()
+    module_defaults: Optional[Dict[str, Any]] = None
+    if module_arg:
+        try:
+            module_defaults = asset_module_defaults(pathlib.Path(module_arg))
+        except Exception as e:
+            print(f"failed to load asset module: {module_arg}: {e}", file=sys.stderr)
+            return 2
+
+    asset_id = str(getattr(args, "asset_id", "") or "").strip().lower()
+    if not asset_id and module_defaults:
+        asset_id = str(module_defaults.get("asset_id") or "").strip().lower()
+
+    purpose = str(getattr(args, "purpose", "") or "").strip() or ""
+    if not purpose and module_defaults:
+        purpose = str(module_defaults.get("default_purpose") or "core")
+    if not purpose:
+        purpose = "core"
+
+    if not asset_id:
+        print("--asset-id or <path> is required", file=sys.stderr)
         return 2
+
+    receipts_arg = str(getattr(args, "receipts", "") or "").strip()
+    if receipts_arg:
+        receipts_path = pathlib.Path(receipts_arg)
+    elif module_defaults:
+        receipts_path = pathlib.Path(module_defaults.get("receipts_dir"))
+    else:
+        print("--receipts or <path> is required", file=sys.stderr)
+        return 2
+
     if not receipts_path.is_absolute():
         receipts_path = REPO_ROOT / receipts_path
 
-    asset_id = str(getattr(args, "asset_id", "") or "").strip().lower()
-    purpose = str(getattr(args, "purpose", "core") or "core")
+    fork_resolutions_arg = str(getattr(args, "fork_resolutions", "") or "").strip()
+    fork_resolutions_path: Optional[pathlib.Path] = None
+    if fork_resolutions_arg:
+        fp = pathlib.Path(fork_resolutions_arg)
+        if not fp.is_absolute():
+            fp = REPO_ROOT / fp
+        fork_resolutions_path = fp
+    elif module_defaults and module_defaults.get("fork_resolutions_dir"):
+        try:
+            fork_resolutions_path = pathlib.Path(module_defaults.get("fork_resolutions_dir"))
+        except Exception:
+            fork_resolutions_path = None
+
     genesis_override = str(getattr(args, "genesis_root", "") or "").strip().lower() or None
 
     enforce_trust = bool(getattr(args, "enforce_trust_anchors", False))
@@ -8132,9 +8958,26 @@ def cmd_asset_state_verify(args: argparse.Namespace) -> int:
         if not tp.is_absolute():
             tp = REPO_ROOT / tp
         trust_anchors_path = tp
+    elif module_defaults and module_defaults.get("trust_anchors_path"):
+        trust_anchors_path = pathlib.Path(module_defaults.get("trust_anchors_path"))
 
     enforce_transition_types = bool(getattr(args, "enforce_transition_types", False))
-    expected_ttr_digest = str(getattr(args, "expected_transition_type_registry_digest", "") or "").strip().lower() or None
+    expected_ttr_digest = (
+        str(getattr(args, "expected_transition_type_registry_digest", "") or "").strip().lower()
+        or None
+    )
+    if enforce_transition_types and not expected_ttr_digest and module_defaults:
+        expected_ttr_digest = module_defaults.get("expected_transition_type_registry_digest_sha256") or None
+
+    # If an expected digest isn't explicitly provided, try deriving it from a pinned lock path.
+    if enforce_transition_types and not expected_ttr_digest and module_defaults:
+        lock_path = module_defaults.get("transition_type_registry_lock_path")
+        if lock_path:
+            try:
+                _lock_obj, _map, dg = load_transition_type_registry_lock(pathlib.Path(lock_path))
+                expected_ttr_digest = dg or None
+            except Exception:
+                pass
 
     require_artifacts = bool(getattr(args, "require_artifacts", False))
     transitive_require_artifacts = bool(getattr(args, "transitive_require_artifacts", False))
@@ -8152,6 +8995,7 @@ def cmd_asset_state_verify(args: argparse.Namespace) -> int:
         expected_transition_type_registry_digest=expected_ttr_digest,
         require_artifacts=require_artifacts,
         transitive_require_artifacts=transitive_require_artifacts,
+        fork_resolutions_path=fork_resolutions_path,
     )
 
     # Optional checkpoint verification
@@ -8232,24 +9076,165 @@ def cmd_asset_state_verify(args: argparse.Namespace) -> int:
     return 2 if errors else 0
 
 
+def cmd_asset_state_fork_resolve(args: argparse.Namespace) -> int:
+    """Generate an unsigned fork-resolution VC selecting the canonical receipt for a fork point.
+
+    This mirrors `msez corridor state fork-resolve`, but is asset-local and (optionally)
+    binds to a specific asset `purpose` namespace.
+    """
+    # Optional asset module directory support
+    module_arg = str(getattr(args, "path", "") or "").strip()
+    module_defaults: Optional[Dict[str, Any]] = None
+    if module_arg:
+        try:
+            module_defaults = asset_module_defaults(pathlib.Path(module_arg))
+        except Exception as e:
+            print(f"failed to load asset module: {module_arg}: {e}", file=sys.stderr)
+            return 2
+
+    asset_id = str(getattr(args, "asset_id", "") or "").strip().lower()
+    if not asset_id and module_defaults:
+        asset_id = str(module_defaults.get("asset_id") or "").strip().lower()
+
+    purpose = str(getattr(args, "purpose", "") or "").strip() or ""
+    if not purpose and module_defaults:
+        purpose = str(module_defaults.get("default_purpose") or "core")
+    if not purpose:
+        purpose = "core"
+
+    seq = int(getattr(args, "sequence", 0))
+    prev_root_in = str(getattr(args, "prev_root", "") or "").strip().lower()
+    chosen_next_root = str(getattr(args, "chosen_next_root", "") or "").strip().lower()
+    issuer = str(getattr(args, "issuer", "") or "").strip()
+
+    if not asset_id or not prev_root_in or not chosen_next_root or not issuer:
+        print("--asset-id (or <path>), --prev-root, --chosen-next-root, and --issuer are required", file=sys.stderr)
+        return 2
+
+    aid = _coerce_sha256(asset_id)
+    if not aid:
+        print("--asset-id must be a 64-char sha256 hex", file=sys.stderr)
+        return 2
+
+    prev_root = prev_root_in
+    if prev_root == "genesis":
+        prev_root = asset_state_genesis_root(aid, purpose=str(purpose or "core"))
+
+    if not _coerce_sha256(prev_root) or not _coerce_sha256(chosen_next_root):
+        print("--prev-root and --chosen-next-root must be 64-char sha256 hex (or prev-root=genesis)", file=sys.stderr)
+        return 2
+
+    from tools.vc import now_rfc3339
+    import uuid
+
+    resolved_at = str(getattr(args, "resolved_at", "") or "").strip() or now_rfc3339()
+
+    candidates: List[Dict[str, Any]] = []
+    for c in (getattr(args, "candidate_next_root", []) or []):
+        croot = str(c or "").strip().lower()
+        croot = _coerce_sha256(croot) or ""
+        if croot:
+            candidates.append({"next_root": croot})
+    if candidates and chosen_next_root not in {c.get("next_root") for c in candidates}:
+        candidates.append({"next_root": chosen_next_root})
+
+    subject: Dict[str, Any] = {
+        "type": "MSEZSmartAssetForkResolution",
+        "asset_id": aid,
+        "purpose": str(purpose or "core"),
+        "sequence": seq,
+        "prev_root": prev_root,
+        "chosen_next_root": chosen_next_root,
+        "resolved_at": resolved_at,
+    }
+    if candidates:
+        subject["candidates"] = candidates
+
+    # Validate the subject shape.
+    v = schema_validator(REPO_ROOT / "schemas" / "smart-asset.fork-resolution.schema.json")
+    ve = list(v.iter_errors(subject))
+    if ve:
+        print(f"Invalid fork-resolution subject schema: {ve[0].message}", file=sys.stderr)
+        return 2
+
+    vc_id = str(getattr(args, "id", "") or "").strip() or f"urn:uuid:{uuid.uuid4()}"
+    vc_obj: Dict[str, Any] = {
+        "@context": [
+            "https://www.w3.org/2018/credentials/v1",
+            "https://schemas.momentum-sez.org/contexts/msez/v1",
+            "https://schemas.momentum-sez.org/contexts/msez/smart-asset/v1",
+        ],
+        "id": vc_id,
+        "type": ["VerifiableCredential", "MSEZSmartAssetForkResolutionCredential"],
+        "issuer": issuer,
+        "issuanceDate": now_rfc3339(),
+        "credentialSubject": subject,
+    }
+
+    out_path = str(getattr(args, "out", "") or "").strip()
+    if out_path:
+        op = pathlib.Path(out_path)
+        if not op.is_absolute():
+            op = REPO_ROOT / op
+        op.parent.mkdir(parents=True, exist_ok=True)
+        op.write_text(json.dumps(vc_obj, indent=2) + "\n")
+        print(str(op))
+    else:
+        print(json.dumps(vc_obj, indent=2))
+    return 0
+
+
 def cmd_asset_state_checkpoint(args: argparse.Namespace) -> int:
     """Create a signed checkpoint committing to the asset receipt chain head and MMR root."""
     from tools.vc import now_rfc3339, add_ed25519_proof, load_ed25519_private_key_from_jwk  # type: ignore
     from tools.mmr import mmr_root_from_next_roots  # type: ignore
 
+    # Optional asset module directory support
+    module_arg = str(getattr(args, "path", "") or "").strip()
+    module_defaults: Optional[Dict[str, Any]] = None
+    if module_arg:
+        try:
+            module_defaults = asset_module_defaults(pathlib.Path(module_arg))
+        except Exception as e:
+            print(f"failed to load asset module: {module_arg}: {e}", file=sys.stderr)
+            return 2
+
+    asset_id = str(getattr(args, "asset_id", "") or "").strip().lower()
+    if not asset_id and module_defaults:
+        asset_id = str(module_defaults.get("asset_id") or "").strip().lower()
+
+    purpose = str(getattr(args, "purpose", "") or "").strip() or ""
+    if not purpose and module_defaults:
+        purpose = str(module_defaults.get("default_purpose") or "core")
+    if not purpose:
+        purpose = "core"
+
     receipts_arg = str(getattr(args, "receipts", "") or "").strip()
-    if not receipts_arg:
-        print("--receipts is required", file=sys.stderr)
+    if receipts_arg:
+        rpath = pathlib.Path(receipts_arg)
+    elif module_defaults:
+        rpath = pathlib.Path(module_defaults.get("receipts_dir"))
+    else:
+        print("--receipts or <path> is required", file=sys.stderr)
         return 2
-    rpath = pathlib.Path(receipts_arg)
     if not rpath.is_absolute():
         rpath = REPO_ROOT / rpath
     if not rpath.exists():
         print(f"Receipts path not found: {rpath}", file=sys.stderr)
         return 2
 
-    asset_id = str(getattr(args, "asset_id", "") or "").strip().lower()
-    purpose = str(getattr(args, "purpose", "core") or "core")
+    fork_resolutions_arg = str(getattr(args, "fork_resolutions", "") or "").strip()
+    fork_resolutions_path: Optional[pathlib.Path] = None
+    if fork_resolutions_arg:
+        fp = pathlib.Path(fork_resolutions_arg)
+        if not fp.is_absolute():
+            fp = REPO_ROOT / fp
+        fork_resolutions_path = fp
+    elif module_defaults and module_defaults.get("fork_resolutions_dir"):
+        try:
+            fork_resolutions_path = pathlib.Path(module_defaults.get("fork_resolutions_dir"))
+        except Exception:
+            fork_resolutions_path = None
     genesis_override = str(getattr(args, "genesis_root", "") or "").strip().lower() or None
 
     enforce_trust = bool(getattr(args, "enforce_trust_anchors", False))
@@ -8260,6 +9245,8 @@ def cmd_asset_state_checkpoint(args: argparse.Namespace) -> int:
         if not tp.is_absolute():
             tp = REPO_ROOT / tp
         trust_anchors_path = tp
+    elif module_defaults and module_defaults.get("trust_anchors_path"):
+        trust_anchors_path = pathlib.Path(module_defaults.get("trust_anchors_path"))
 
     try:
         genesis_root, receipts, final_root = _asset_state_load_verified_receipts(
@@ -8269,6 +9256,7 @@ def cmd_asset_state_checkpoint(args: argparse.Namespace) -> int:
             genesis_root=genesis_override,
             enforce_trust=enforce_trust,
             trust_anchors_path=trust_anchors_path,
+            fork_resolutions_path=fork_resolutions_path,
         )
     except Exception as ex:
         print(f"STATE FAIL: {ex}", file=sys.stderr)
@@ -8324,7 +9312,17 @@ def cmd_asset_state_checkpoint(args: argparse.Namespace) -> int:
             vm = f"{did}#key-1"
         add_ed25519_proof(checkpoint, priv, vm, proof_purpose=str(getattr(args, "proof_purpose", "assertionMethod")))
 
-    out = str(getattr(args, "out", "") or "").strip() or "smart-asset.receipt-chain.checkpoint.json"
+    out = str(getattr(args, "out", "") or "").strip()
+    if not out:
+        if module_defaults:
+            try:
+                cdir = pathlib.Path(module_defaults.get("checkpoints_dir"))
+                cdir.mkdir(parents=True, exist_ok=True)
+                out = str(cdir / "smart-asset.receipt-chain.checkpoint.json")
+            except Exception:
+                out = "smart-asset.receipt-chain.checkpoint.json"
+        else:
+            out = "smart-asset.receipt-chain.checkpoint.json"
     out_path = pathlib.Path(out)
     if not out_path.is_absolute():
         out_path = REPO_ROOT / out_path
@@ -8340,19 +9338,56 @@ def cmd_asset_state_inclusion_proof(args: argparse.Namespace) -> int:
     from tools.mmr import build_inclusion_proof  # type: ignore
     from tools.lawpack import jcs_canonicalize  # type: ignore
 
+    # Optional asset module directory support
+    module_arg = str(getattr(args, "path", "") or "").strip()
+    module_defaults: Optional[Dict[str, Any]] = None
+    if module_arg:
+        try:
+            module_defaults = asset_module_defaults(pathlib.Path(module_arg))
+        except Exception as e:
+            print(f"failed to load asset module: {module_arg}: {e}", file=sys.stderr)
+            return 2
+
     receipts_arg = str(getattr(args, "receipts", "") or "").strip()
-    if not receipts_arg:
-        print("--receipts is required", file=sys.stderr)
+    if receipts_arg:
+        rpath = pathlib.Path(receipts_arg)
+    elif module_defaults:
+        rpath = pathlib.Path(module_defaults.get("receipts_dir"))
+    else:
+        print("--receipts or <path> is required", file=sys.stderr)
         return 2
-    rpath = pathlib.Path(receipts_arg)
     if not rpath.is_absolute():
         rpath = REPO_ROOT / rpath
     if not rpath.exists():
         print(f"Receipts path not found: {rpath}", file=sys.stderr)
         return 2
 
+    fork_resolutions_arg = str(getattr(args, "fork_resolutions", "") or "").strip()
+    fork_resolutions_path: Optional[pathlib.Path] = None
+    if fork_resolutions_arg:
+        fp = pathlib.Path(fork_resolutions_arg)
+        if not fp.is_absolute():
+            fp = REPO_ROOT / fp
+        fork_resolutions_path = fp
+    elif module_defaults and module_defaults.get("fork_resolutions_dir"):
+        try:
+            fork_resolutions_path = pathlib.Path(module_defaults.get("fork_resolutions_dir"))
+        except Exception:
+            fork_resolutions_path = None
+
     asset_id = str(getattr(args, "asset_id", "") or "").strip().lower()
-    purpose = str(getattr(args, "purpose", "core") or "core")
+    if not asset_id and module_defaults:
+        asset_id = str(module_defaults.get("asset_id") or "").strip().lower()
+
+    purpose = str(getattr(args, "purpose", "") or "").strip() or ""
+    if not purpose and module_defaults:
+        purpose = str(module_defaults.get("default_purpose") or "core")
+    if not purpose:
+        purpose = "core"
+
+    if not asset_id:
+        print("--asset-id or <path> is required", file=sys.stderr)
+        return 2
     genesis_override = str(getattr(args, "genesis_root", "") or "").strip().lower() or None
 
     enforce_trust = bool(getattr(args, "enforce_trust_anchors", False))
@@ -8363,6 +9398,8 @@ def cmd_asset_state_inclusion_proof(args: argparse.Namespace) -> int:
         if not tp.is_absolute():
             tp = REPO_ROOT / tp
         trust_anchors_path = tp
+    elif module_defaults and module_defaults.get("trust_anchors_path"):
+        trust_anchors_path = pathlib.Path(module_defaults.get("trust_anchors_path"))
 
     try:
         _genesis_root, receipts, _final_root = _asset_state_load_verified_receipts(
@@ -8372,6 +9409,7 @@ def cmd_asset_state_inclusion_proof(args: argparse.Namespace) -> int:
             genesis_root=genesis_override,
             enforce_trust=enforce_trust,
             trust_anchors_path=trust_anchors_path,
+            fork_resolutions_path=fork_resolutions_path,
         )
     except Exception as ex:
         print(f"STATE FAIL: {ex}", file=sys.stderr)
@@ -8426,7 +9464,7 @@ def cmd_asset_state_inclusion_proof(args: argparse.Namespace) -> int:
             tmp.pop("proof", None)
             checkpoint_digest = sha256_bytes(jcs_canonicalize(tmp))
             proof_obj["checkpoint_digest_sha256"] = checkpoint_digest
-            proof_obj["checkpoint_ref"] = make_artifact_ref("checkpoint", checkpoint_digest, uri=str(cp))
+            proof_obj["checkpoint_ref"] = make_artifact_ref("smart-asset-receipt-checkpoint", checkpoint_digest, uri=str(cp))
             # Helpful denormalized fields
             if isinstance(ck, dict):
                 if ck.get("final_chain_root"):
@@ -8438,7 +9476,17 @@ def cmd_asset_state_inclusion_proof(args: argparse.Namespace) -> int:
         except Exception as e:
             print(f"warning: failed to bind checkpoint digest: {e}", file=sys.stderr)
 
-    out = str(getattr(args, "out", "") or "").strip() or f"smart-asset.receipt.{seq}.inclusion-proof.json"
+    out = str(getattr(args, "out", "") or "").strip()
+    if not out:
+        if module_defaults:
+            try:
+                pdir = pathlib.Path(module_defaults.get("proofs_dir"))
+                pdir.mkdir(parents=True, exist_ok=True)
+                out = str(pdir / f"smart-asset.receipt.{seq}.inclusion-proof.json")
+            except Exception:
+                out = f"smart-asset.receipt.{seq}.inclusion-proof.json"
+        else:
+            out = f"smart-asset.receipt.{seq}.inclusion-proof.json"
     out_path = pathlib.Path(out)
     if not out_path.is_absolute():
         out_path = REPO_ROOT / out_path
@@ -8453,9 +9501,21 @@ def cmd_asset_state_verify_inclusion(args: argparse.Namespace) -> int:
     from tools.vc import verify_credential  # type: ignore
     from tools.mmr import verify_inclusion_proof  # type: ignore
 
+    # Optional asset module directory support
+    module_arg = str(getattr(args, "path", "") or "").strip()
+    module_defaults: Optional[Dict[str, Any]] = None
+    if module_arg:
+        try:
+            module_defaults = asset_module_defaults(pathlib.Path(module_arg))
+        except Exception as e:
+            print(f"failed to load asset module: {module_arg}: {e}", file=sys.stderr)
+            return 2
+
     asset_id = str(getattr(args, "asset_id", "") or "").strip().lower()
+    if not asset_id and module_defaults:
+        asset_id = str(module_defaults.get("asset_id") or "").strip().lower()
     if not asset_id:
-        print("--asset-id is required", file=sys.stderr)
+        print("--asset-id or <path> is required", file=sys.stderr)
         return 2
 
     enforce_trust = bool(getattr(args, "enforce_trust_anchors", False))
@@ -8466,6 +9526,8 @@ def cmd_asset_state_verify_inclusion(args: argparse.Namespace) -> int:
         if not tp.is_absolute():
             tp = REPO_ROOT / tp
         trust_anchors_path = tp
+    elif module_defaults and module_defaults.get("trust_anchors_path"):
+        trust_anchors_path = pathlib.Path(module_defaults.get("trust_anchors_path"))
 
     allowed_receipt_signers: Set[str] = set()
     allowed_checkpoint_signers: Set[str] = set()
@@ -8639,16 +9701,31 @@ def cmd_asset_state_verify_inclusion(args: argparse.Namespace) -> int:
 
 
 def cmd_asset_anchor_verify(args: argparse.Namespace) -> int:
-    """Verify that a Smart Asset checkpoint is *anchored* in a corridor state channel.
+    """Verify that Smart Asset commitments are anchored in a corridor state channel.
 
     This checks two independent conditions:
       1) Corridor inclusion: the provided corridor receipt is included in the provided
          signed corridor checkpoint via the provided MMR inclusion proof.
-      2) Asset binding: the corridor receipt's embedded transition includes a typed
-         attachment for the Smart Asset checkpoint digest (artifact_type=smart-asset-checkpoint,
-         digest_sha256=<state_root_sha256>).
+      2) Asset binding(s): the corridor receipt's embedded transition includes typed
+         attachment(s) committing to one or more asset digests.
 
-    Together this forms a verifiable bridge between asset state commitments and corridor
+    Supported bindings
+
+    - Smart asset *state checkpoint* digest:
+      - attachment: artifact_type=smart-asset-checkpoint
+      - digest: the asset state_root_sha256 (sha256(JCS(state)))
+
+    - Smart asset *receipt-chain checkpoint* digest:
+      - attachment: artifact_type=smart-asset-receipt-checkpoint (preferred)
+      - digest: sha256(JCS(checkpoint_payload_without_proof))
+
+    Optional receipt inclusion
+
+    If --asset-receipt and --asset-inclusion-proof are provided alongside
+    --asset-receipt-checkpoint, this command also verifies that the asset receipt is
+    included in the signed receipt-chain checkpoint (MMR inclusion proof).
+
+    Together, this forms a verifiable bridge between asset-local commitments and corridor
     state channels, without requiring a blockchain.
     """
 
@@ -8657,8 +9734,14 @@ def cmd_asset_anchor_verify(args: argparse.Namespace) -> int:
     receipt_arg = str(getattr(args, "receipt", "") or "").strip()
     proof_arg = str(getattr(args, "proof", "") or "").strip()
     checkpoint_arg = str(getattr(args, "checkpoint", "") or "").strip()
+
     asset_checkpoint_arg = str(getattr(args, "asset_checkpoint", "") or "").strip()
     state_root_arg = str(getattr(args, "state_root", "") or "").strip().lower()
+
+    asset_receipt_checkpoint_arg = str(getattr(args, "asset_receipt_checkpoint", "") or "").strip()
+    asset_receipt_arg = str(getattr(args, "asset_receipt", "") or "").strip()
+    asset_inclusion_proof_arg = str(getattr(args, "asset_inclusion_proof", "") or "").strip()
+    asset_trust_anchors_arg = str(getattr(args, "asset_trust_anchors", "") or "").strip()
 
     if not corridor_path:
         print("--path is required", file=sys.stderr)
@@ -8673,9 +9756,9 @@ def cmd_asset_anchor_verify(args: argparse.Namespace) -> int:
         print("--checkpoint is required", file=sys.stderr)
         return 2
 
-    # Determine expected state_root digest.
+    # Determine expected state_root digest (optional).
     expected_state_root = ""
-    asset_id = ""
+    asset_id_state = ""
     if state_root_arg:
         expected_state_root = state_root_arg
     elif asset_checkpoint_arg:
@@ -8694,12 +9777,40 @@ def cmd_asset_anchor_verify(args: argparse.Namespace) -> int:
             print("FAIL: asset checkpoint must be a JSON object", file=sys.stderr)
             return 2
         expected_state_root = str(ck.get("state_root_sha256") or "").strip().lower()
-        asset_id = str(ck.get("asset_id") or "").strip()
+        asset_id_state = str(ck.get("asset_id") or "").strip().lower()
         if not expected_state_root or not SHA256_HEX_RE.match(expected_state_root):
             print("FAIL: asset checkpoint missing valid state_root_sha256", file=sys.stderr)
             return 2
-    else:
-        print("Either --state-root or --asset-checkpoint is required", file=sys.stderr)
+
+    # Determine expected receipt-chain checkpoint digest (optional).
+    expected_receipt_checkpoint_digest = ""
+    asset_id_receipt = ""
+    if asset_receipt_checkpoint_arg:
+        rcp = pathlib.Path(asset_receipt_checkpoint_arg)
+        if not rcp.is_absolute():
+            rcp = REPO_ROOT / rcp
+        if not rcp.exists():
+            print(f"--asset-receipt-checkpoint not found: {rcp}", file=sys.stderr)
+            return 2
+        try:
+            rck = load_json(rcp)
+        except Exception as ex:
+            print(f"FAIL: unable to read asset receipt checkpoint: {ex}", file=sys.stderr)
+            return 2
+        if not isinstance(rck, dict):
+            print("FAIL: asset receipt checkpoint must be a JSON object", file=sys.stderr)
+            return 2
+        if str(rck.get("type") or "").strip() != "SmartAssetReceiptChainCheckpoint":
+            print("FAIL: --asset-receipt-checkpoint must have type=SmartAssetReceiptChainCheckpoint", file=sys.stderr)
+            return 2
+        expected_receipt_checkpoint_digest = checkpoint_payload_digest_sha256(rck)
+        asset_id_receipt = str(rck.get("asset_id") or "").strip().lower()
+
+    if not expected_state_root and not expected_receipt_checkpoint_digest:
+        print(
+            "At least one commitment is required: (--state-root/--asset-checkpoint) and/or --asset-receipt-checkpoint",
+            file=sys.stderr,
+        )
         return 2
 
     # (1) Verify corridor inclusion.
@@ -8719,7 +9830,7 @@ def cmd_asset_anchor_verify(args: argparse.Namespace) -> int:
     if rc != 0:
         return rc
 
-    # (2) Verify the receipt commits to the asset checkpoint digest.
+    # (2) Verify the receipt commits to the requested asset digest(s).
     receipt_path = pathlib.Path(receipt_arg)
     if not receipt_path.is_absolute():
         receipt_path = REPO_ROOT / receipt_path
@@ -8736,28 +9847,110 @@ def cmd_asset_anchor_verify(args: argparse.Namespace) -> int:
     if not isinstance(env, dict):
         env = {}
 
-    found = False
-    for att in (env.get("attachments") or []):
-        if not isinstance(att, dict):
-            continue
-        atype = str(att.get("artifact_type") or "").strip().lower()
-        dig = _coerce_sha256(att)
-        if atype == "smart-asset-checkpoint" and dig == expected_state_root:
-            found = True
-            break
+    atts = env.get("attachments") or []
+    if not isinstance(atts, list):
+        atts = []
 
-    if not found:
-        detail = f"smart-asset-checkpoint:{expected_state_root}"
-        if asset_id:
-            detail = f"asset_id={asset_id} {detail}"
-        print(f"FAIL: receipt does not include required typed attachment ({detail})", file=sys.stderr)
-        return 2
+    # State checkpoint binding
+    if expected_state_root:
+        found = False
+        for att in atts:
+            if not isinstance(att, dict):
+                continue
+            atype = str(att.get("artifact_type") or "").strip().lower()
+            dig = _coerce_sha256(att)
+            if atype == "smart-asset-checkpoint" and dig == expected_state_root:
+                found = True
+                break
+        if not found:
+            detail = f"smart-asset-checkpoint:{expected_state_root}"
+            if asset_id_state:
+                detail = f"asset_id={asset_id_state} {detail}"
+            print(f"FAIL: receipt does not include required typed attachment ({detail})", file=sys.stderr)
+            return 2
 
-    # Success.
-    if asset_id:
-        print(f"OK: asset checkpoint anchored (asset_id={asset_id} state_root={expected_state_root})")
+    # Receipt-chain checkpoint binding
+    if expected_receipt_checkpoint_digest:
+        found = False
+        found_legacy = False
+        for att in atts:
+            if not isinstance(att, dict):
+                continue
+            atype = str(att.get("artifact_type") or "").strip().lower()
+            dig = _coerce_sha256(att)
+            if dig != expected_receipt_checkpoint_digest:
+                continue
+            if atype == "smart-asset-receipt-checkpoint":
+                found = True
+                break
+            if atype == "checkpoint":
+                # Backward-compatible acceptance for pre-typed anchoring.
+                found_legacy = True
+        if not (found or found_legacy):
+            detail = f"smart-asset-receipt-checkpoint:{expected_receipt_checkpoint_digest}"
+            if asset_id_receipt:
+                detail = f"asset_id={asset_id_receipt} {detail}"
+            print(f"FAIL: receipt does not include required typed attachment ({detail})", file=sys.stderr)
+            return 2
+
+    # (3) Optional: verify that a specific asset receipt is included in the anchored receipt checkpoint.
+    if asset_receipt_arg or asset_inclusion_proof_arg:
+        if not (asset_receipt_arg and asset_inclusion_proof_arg and asset_receipt_checkpoint_arg):
+            print(
+                "To verify receipt inclusion, provide --asset-receipt, --asset-inclusion-proof, and --asset-receipt-checkpoint",
+                file=sys.stderr,
+            )
+            return 2
+
+        # Determine asset_id for inclusion verification.
+        asset_id_for_inclusion = asset_id_receipt
+        if not asset_id_for_inclusion:
+            # Fall back to receipt.asset_id if present.
+            rp = pathlib.Path(asset_receipt_arg)
+            if not rp.is_absolute():
+                rp = REPO_ROOT / rp
+            try:
+                rj = load_json(rp)
+                if isinstance(rj, dict):
+                    asset_id_for_inclusion = str(rj.get("asset_id") or "").strip().lower()
+            except Exception:
+                asset_id_for_inclusion = ""
+
+        if not asset_id_for_inclusion:
+            print("FAIL: unable to determine asset_id for inclusion verification", file=sys.stderr)
+            return 2
+
+        rc2 = cmd_asset_state_verify_inclusion(
+            type(
+                "Args",
+                (),
+                {
+                    "path": "",
+                    "asset_id": asset_id_for_inclusion,
+                    "receipt": asset_receipt_arg,
+                    "proof": asset_inclusion_proof_arg,
+                    "checkpoint": asset_receipt_checkpoint_arg,
+                    "enforce_trust_anchors": bool(getattr(args, "enforce_trust_anchors", False)),
+                    "trust_anchors": asset_trust_anchors_arg,
+                },
+            )()
+        )
+        if rc2 != 0:
+            return rc2
+
+    # Success summary.
+    aid = asset_id_receipt or asset_id_state
+    parts = []
+    if expected_state_root:
+        parts.append(f"state_root={expected_state_root}")
+    if expected_receipt_checkpoint_digest:
+        parts.append(f"receipt_checkpoint_digest={expected_receipt_checkpoint_digest}")
+
+    if aid:
+        print(f"OK: asset anchored (asset_id={aid} {' '.join(parts)})")
     else:
-        print(f"OK: asset checkpoint anchored (state_root={expected_state_root})")
+        print(f"OK: asset anchored ({' '.join(parts)})")
+
     return 0
 
 
@@ -10865,6 +12058,20 @@ def main() -> int:
     cri.add_argument("--timestamp", default="", help="RFC3339 timestamp override")
     cri.add_argument("--transition", default="", help="Path to a JSON transition object (default: noop)")
     cri.add_argument(
+        "--attach-smart-asset-checkpoint",
+        dest="attach_smart_asset_checkpoint",
+        action="append",
+        default=[],
+        help="Attach a SmartAssetCheckpoint (asset state_root digest) as a typed transition attachment (repeatable)",
+    )
+    cri.add_argument(
+        "--attach-smart-asset-receipt-checkpoint",
+        dest="attach_smart_asset_receipt_checkpoint",
+        action="append",
+        default=[],
+        help="Attach a SmartAssetReceiptChainCheckpoint (payload digest excluding proof) as a typed transition attachment (repeatable)",
+    )
+    cri.add_argument(
         "--fill-transition-digests",
         action="store_true",
         help="Populate transition envelope digest references from the configured transition type registry (default: omit and rely on the registry snapshot digest commitment)",
@@ -11251,10 +12458,113 @@ def main() -> int:
     )
     ace.set_defaults(func=smart_asset_tools.cmd_asset_compliance_eval)
 
+    # Asset module scaffolding (operator UX)
+    amod = asset_sub.add_parser(
+        "module",
+        help="Initialize and manage Smart Asset module directories (asset.yaml + state dirs)",
+    )
+    amod_sub = amod.add_subparsers(dest="asset_module_cmd", required=True)
+
+    amin = amod_sub.add_parser("init", help="Scaffold a Smart Asset module directory from template")
+    amin.add_argument("asset_id", help="Asset id (sha256 hex; 64 characters)")
+    amin.add_argument(
+        "--out-dir",
+        dest="out_dir",
+        default="modules/smart-assets",
+        help="Base output directory (default: modules/smart-assets)",
+    )
+    amin.add_argument(
+        "--template",
+        default="modules/smart-assets/_template",
+        help="Template directory (default: modules/smart-assets/_template)",
+    )
+    amin.add_argument(
+        "--purpose",
+        action="append",
+        default=[],
+        help="Receipt chain purpose namespace (repeatable; default: core)",
+    )
+    amin.add_argument(
+        "--transition-types-lock",
+        dest="transition_types_lock",
+        default="",
+        help="Optional transition-types lockfile path to pin in asset.yaml",
+    )
+    amin.add_argument(
+        "--expected-transition-type-registry-digest",
+        dest="expected_transition_type_registry_digest",
+        default="",
+        help="Optional expected transition type registry digest sha256 to pin in asset.yaml",
+    )
+    amin.add_argument("--force", action="store_true", help="Overwrite destination if it already exists")
+    amin.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    amin.set_defaults(func=cmd_asset_module_init)
+
+    awb = amod_sub.add_parser(
+        "witness-bundle",
+        help="Export a portable witness bundle (zip) for an asset module (receipts/checkpoints/proofs + referenced artifacts)",
+    )
+    awb.add_argument("path", help="Asset module directory (or asset.yaml path)")
+    awb.add_argument(
+        "--out",
+        default="",
+        help="Output zip path (default: <module>/witness/asset.witness-bundle.zip)",
+    )
+    awb.add_argument(
+        "--report-out",
+        dest="report_out",
+        default="",
+        help="Optional: write the full manifest/report JSON to this path",
+    )
+    awb.add_argument(
+        "--bundle-max-bytes",
+        dest="bundle_max_bytes",
+        type=int,
+        default=0,
+        help="Max bytes to include in the witness bundle (0 = unlimited)",
+    )
+    awb.add_argument(
+        "--no-strict",
+        dest="strict",
+        action="store_false",
+        help="Disable strict digest recomputation (default: strict)",
+    )
+    awb.set_defaults(strict=True)
+    awb.add_argument(
+        "--max-nodes",
+        dest="max_nodes",
+        type=int,
+        default=10000,
+        help="Max nodes in the artifact closure graph (default: 10000)",
+    )
+    awb.add_argument(
+        "--max-depth",
+        dest="max_depth",
+        type=int,
+        default=16,
+        help="Max depth to traverse when resolving ArtifactRefs (default: 16)",
+    )
+    awb.add_argument(
+        "--no-edges",
+        dest="emit_edges",
+        action="store_false",
+        help="Omit edges from manifest.json (smaller report)",
+    )
+    awb.set_defaults(emit_edges=True)
+    awb.add_argument(
+        "--store-root",
+        dest="store_root",
+        action="append",
+        default=[],
+        help="Additional CAS store root (repeatable)",
+    )
+    awb.add_argument("--json", action="store_true", help="Print full manifest/report JSON to stdout")
+    awb.set_defaults(func=cmd_asset_module_witness_bundle)
+
     # Corridor anchoring
     aav = asset_sub.add_parser(
         "anchor-verify",
-        help="Verify that a Smart Asset checkpoint is anchored in a corridor checkpoint via an inclusion proof",
+        help="Verify that a Smart Asset commitment (state checkpoint and/or receipt-chain checkpoint) is anchored in a corridor checkpoint via an inclusion proof",
     )
     aav.add_argument("--path", required=True, help="Corridor module dir (or corridor.yaml path)")
     aav.add_argument("--receipt", required=True, help="Corridor receipt JSON")
@@ -11272,6 +12582,30 @@ def main() -> int:
         default="",
         help="Explicit state_root_sha256 (alternative to --asset-checkpoint)",
     )
+    aav.add_argument(
+        "--asset-receipt-checkpoint",
+        dest="asset_receipt_checkpoint",
+        default="",
+        help="SmartAssetReceiptChainCheckpoint JSON (extract payload digest for anchoring)",
+    )
+    aav.add_argument(
+        "--asset-receipt",
+        dest="asset_receipt",
+        default="",
+        help="Optional SmartAssetReceipt JSON to verify inclusion (requires --asset-inclusion-proof + --asset-receipt-checkpoint)",
+    )
+    aav.add_argument(
+        "--asset-inclusion-proof",
+        dest="asset_inclusion_proof",
+        default="",
+        help="Optional SmartAssetReceiptInclusionProof JSON to verify inclusion (requires --asset-receipt + --asset-receipt-checkpoint)",
+    )
+    aav.add_argument(
+        "--asset-trust-anchors",
+        dest="asset_trust_anchors",
+        default="",
+        help="Optional trust anchors YAML for asset receipt/checkpoint verification (used when --enforce-trust-anchors is set)",
+    )
     aav.add_argument("--enforce-trust-anchors", action="store_true")
     aav.set_defaults(func=cmd_asset_anchor_verify)
 
@@ -11283,14 +12617,16 @@ def main() -> int:
     astate_sub = astate.add_subparsers(dest="asset_state_cmd", required=True)
 
     asg = astate_sub.add_parser("genesis-root", help="Compute the genesis_root for an asset receipt chain")
-    asg.add_argument("--asset-id", dest="asset_id", required=True)
-    asg.add_argument("--purpose", default="core", help="Optional chain purpose namespace (default: core)")
+    asg.add_argument("path", nargs="?", default="", help="Optional asset module directory or asset.yaml path")
+    asg.add_argument("--asset-id", dest="asset_id", default="", help="Asset id (sha256 hex; optional if <path> is used)")
+    asg.add_argument("--purpose", default="", help="Optional chain purpose namespace (default: module default or core)")
     asg.add_argument("--json", action="store_true")
     asg.set_defaults(func=cmd_asset_state_genesis_root)
 
     asi = astate_sub.add_parser("receipt-init", help="Create a SmartAssetReceipt (signed if --sign is used)")
-    asi.add_argument("--asset-id", dest="asset_id", required=True)
-    asi.add_argument("--purpose", default="core", help="Optional chain purpose namespace (default: core)")
+    asi.add_argument("path", nargs="?", default="", help="Optional asset module directory or asset.yaml path")
+    asi.add_argument("--asset-id", dest="asset_id", default="", help="Asset id (sha256 hex; optional if <path> is used)")
+    asi.add_argument("--purpose", default="", help="Optional chain purpose namespace (default: module default or core)")
     asi.add_argument("--sequence", type=int, required=True)
     asi.add_argument("--timestamp", default="", help="RFC3339 timestamp override")
     asi.add_argument("--prev-root", default="genesis", help="Previous chain root (hex) or 'genesis'")
@@ -11306,11 +12642,18 @@ def main() -> int:
     asi.add_argument("--proof-purpose", dest="proof_purpose", default="assertionMethod")
     asi.set_defaults(func=cmd_asset_state_receipt_init)
 
-    asv = astate_sub.add_parser("verify", help="Verify an asset receipt chain (linear)")
-    asv.add_argument("--asset-id", dest="asset_id", required=True)
-    asv.add_argument("--purpose", default="core")
+    asv = astate_sub.add_parser("verify", help="Verify an asset receipt chain (fork-aware)")
+    asv.add_argument("path", nargs="?", default="", help="Optional asset module directory or asset.yaml path")
+    asv.add_argument("--asset-id", dest="asset_id", default="", help="Asset id (sha256 hex; optional if <path> is used)")
+    asv.add_argument("--purpose", default="", help="Optional chain purpose namespace (default: module default or core)")
     asv.add_argument("--genesis-root", dest="genesis_root", default="", help="Override computed genesis_root")
-    asv.add_argument("--receipts", required=True, help="Receipt file or directory")
+    asv.add_argument("--receipts", default="", help="Receipt file or directory (default: module state.receipts_dir)")
+    asv.add_argument(
+        "--fork-resolutions",
+        dest="fork_resolutions",
+        default="",
+        help="Optional fork-resolution artifacts (file or dir) selecting canonical receipts at fork points",
+    )
     asv.add_argument("--checkpoint", default="", help="Optional signed receipt-chain checkpoint to verify")
     asv.add_argument("--enforce-trust-anchors", action="store_true")
     asv.add_argument("--trust-anchors", default="", help="Trust anchors YAML")
@@ -11326,11 +12669,37 @@ def main() -> int:
     asv.add_argument("--json", action="store_true")
     asv.set_defaults(func=cmd_asset_state_verify)
 
+    afr = astate_sub.add_parser(
+        "fork-resolve",
+        aliases=["fork-resolution-init"],
+        help="Generate an unsigned fork-resolution VC selecting the canonical receipt at a fork point",
+    )
+    afr.add_argument("path", nargs="?", default="", help="Optional asset module directory or asset.yaml path")
+    afr.add_argument("--asset-id", dest="asset_id", default="", help="Asset id (sha256 hex; optional if <path> is used)")
+    afr.add_argument("--purpose", default="", help="Optional chain purpose namespace (default: module default or core)")
+    afr.add_argument("--sequence", type=int, required=True, help="Fork sequence to resolve")
+    afr.add_argument("--prev-root", required=True, help="Fork prev_root value (or 'genesis')")
+    afr.add_argument("--chosen-next-root", required=True, help="Chosen next_root value for the canonical receipt")
+    afr.add_argument("--candidate-next-root", action="append", default=[], help="Optional candidate next_root values (repeatable)")
+    afr.add_argument("--issuer", required=True, help="DID issuer for the fork-resolution VC (to be signed later)")
+    afr.add_argument("--resolved-at", default="", help="Resolution timestamp (default: now)")
+    afr.add_argument("--id", default="", help="VC id (default: urn:uuid:...)"
+    )
+    afr.add_argument("--out", default="", help="Write VC JSON to a file (default: stdout)")
+    afr.set_defaults(func=cmd_asset_state_fork_resolve)
+
     asc = astate_sub.add_parser("checkpoint", help="Create a signed receipt-chain checkpoint (MMR root)")
-    asc.add_argument("--asset-id", dest="asset_id", required=True)
-    asc.add_argument("--purpose", default="core")
+    asc.add_argument("path", nargs="?", default="", help="Optional asset module directory or asset.yaml path")
+    asc.add_argument("--asset-id", dest="asset_id", default="", help="Asset id (sha256 hex; optional if <path> is used)")
+    asc.add_argument("--purpose", default="", help="Optional chain purpose namespace (default: module default or core)")
     asc.add_argument("--genesis-root", dest="genesis_root", default="", help="Override computed genesis_root")
-    asc.add_argument("--receipts", required=True, help="Receipt directory")
+    asc.add_argument("--receipts", default="", help="Receipt directory (default: module state.receipts_dir)")
+    asc.add_argument(
+        "--fork-resolutions",
+        dest="fork_resolutions",
+        default="",
+        help="Optional fork-resolution artifacts (file or dir) selecting canonical receipts at fork points",
+    )
     asc.add_argument("--enforce-trust-anchors", action="store_true")
     asc.add_argument("--trust-anchors", default="", help="Trust anchors YAML")
     asc.add_argument("--out", default="", help="Output path")
@@ -11341,10 +12710,17 @@ def main() -> int:
     asc.set_defaults(func=cmd_asset_state_checkpoint)
 
     asp = astate_sub.add_parser("inclusion-proof", help="Generate an inclusion proof for a receipt in the chain")
-    asp.add_argument("--asset-id", dest="asset_id", required=True)
-    asp.add_argument("--purpose", default="core")
+    asp.add_argument("path", nargs="?", default="", help="Optional asset module directory or asset.yaml path")
+    asp.add_argument("--asset-id", dest="asset_id", default="", help="Asset id (sha256 hex; optional if <path> is used)")
+    asp.add_argument("--purpose", default="", help="Optional chain purpose namespace (default: module default or core)")
     asp.add_argument("--genesis-root", dest="genesis_root", default="", help="Override computed genesis_root")
-    asp.add_argument("--receipts", required=True, help="Receipt directory")
+    asp.add_argument("--receipts", default="", help="Receipt directory (default: module state.receipts_dir)")
+    asp.add_argument(
+        "--fork-resolutions",
+        dest="fork_resolutions",
+        default="",
+        help="Optional fork-resolution artifacts (file or dir) selecting canonical receipts at fork points",
+    )
     asp.add_argument("--sequence", required=True, help="Receipt sequence / leaf index")
     asp.add_argument("--checkpoint", default="", help="Optional checkpoint to bind (digest commitment)")
     asp.add_argument("--enforce-trust-anchors", action="store_true")
@@ -11353,7 +12729,8 @@ def main() -> int:
     asp.set_defaults(func=cmd_asset_state_inclusion_proof)
 
     asvi = astate_sub.add_parser("verify-inclusion", help="Verify inclusion proof of a receipt in a checkpoint")
-    asvi.add_argument("--asset-id", dest="asset_id", required=True)
+    asvi.add_argument("path", nargs="?", default="", help="Optional asset module directory or asset.yaml path")
+    asvi.add_argument("--asset-id", dest="asset_id", default="", help="Asset id (sha256 hex; optional if <path> is used)")
     asvi.add_argument("--receipt", required=True, help="SmartAssetReceipt JSON")
     asvi.add_argument("--proof", required=True, help="SmartAssetReceiptInclusionProof JSON")
     asvi.add_argument("--checkpoint", required=True, help="Signed SmartAssetReceiptChainCheckpoint JSON")

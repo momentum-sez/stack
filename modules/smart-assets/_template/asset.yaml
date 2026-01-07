@@ -1,0 +1,52 @@
+# Smart Asset module manifest (operational, non-blockchain)
+#
+# This directory is designed to be *portable*:
+#   - receipts/ checkpoints/ proofs/ are content-addressable artifacts
+#   - an operator can replicate this folder across jurisdictions or storage backends
+#   - corridor anchoring can treat "asset log head" as an external typed attachment
+#
+# Note: Smart Assets are NOT necessarily tokenized. This stack supports smart assets
+# without requiring a blockchain.
+
+version: 1
+stack_spec_version: "{{ STACK_SPEC_VERSION }}"
+created_at: "{{ CREATED_AT }}"
+
+# Asset immutable identifier (sha256 of JCS(genesis_without_asset_id))
+asset_id: "{{ ASSET_ID }}"
+
+# One asset can maintain multiple receipt chains (namespaces) for different operational purposes.
+# The CLI defaults to the first purpose.
+purposes:
+{{ PURPOSES_BLOCK }}
+
+# Optional: a Smart Asset Registry VC (or equivalent registry snapshot) that defines
+# jurisdiction bindings and compliance profiles for this asset.
+registry_vc_path: ""
+
+# Trust anchors that authorize signing:
+#   - smart_asset_receipt
+#   - smart_asset_receipt_checkpoint
+trust_anchors_path: "trust-anchors.yaml"
+key_rotation_path: "key-rotation.yaml"
+
+# Optional: constrain which Transition Type Registry lock digest is expected for receipts.
+# If set, use `msez asset state verify --enforce-transition-types`.
+transition_type_registry_lock_path: "{{ TRANSITION_TYPES_LOCK_PATH }}"
+expected_transition_type_registry_digest_sha256: "{{ EXPECTED_TRANSITION_TYPE_REGISTRY_DIGEST_SHA256 }}"
+
+# Deterministic local layout (relative paths)
+state:
+  receipts_dir: "state/receipts"
+  fork_resolutions_dir: "state/fork-resolutions"
+  checkpoints_dir: "state/checkpoints"
+  proofs_dir: "state/proofs"
+
+# Replication targets are hints for operators (not enforced by the stack).
+# Think of these as "where should this module be mirrored / backed up".
+replication:
+  targets:
+    - kind: cas
+      uri: "dist/artifacts"
+      mode: pull
+      notes: "Local CAS root for resolved artifacts referenced by receipts/checkpoints"

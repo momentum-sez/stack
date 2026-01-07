@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://momentum.zone/schemas/smart-asset.receipt.schema.json",
+  "title": "Smart Asset Receipt",
+  "description": "Append-only signed receipt for an asset-local state channel (non-blockchain). The receipt commits to the applicable lawpack/ruleset digest sets, an optional transition envelope, and a deterministic next_root = SHA256(JCS(receipt_without_proof_and_next_root)).",
+  "type": "object",
+  "required": [
+    "type",
+    "asset_id",
+    "sequence",
+    "timestamp",
+    "prev_root",
+    "next_root",
+    "lawpack_digest_set",
+    "ruleset_digest_set",
+    "proof"
+  ],
+  "properties": {
+    "type": {
+      "const": "SmartAssetReceipt"
+    },
+    "asset_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Asset identifier (sha256 hex), typically derived from SmartAssetGenesis.asset_id."
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic sequence number within an asset receipt chain."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp (UTC recommended)."
+    },
+    "prev_root": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Receipt-chain root before this receipt. For sequence=0 this SHOULD equal the asset chain genesis_root."
+    },
+    "next_root": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Receipt-chain root after this receipt. MUST equal SHA256(JCS(receipt_without_proof_and_next_root))."
+    },
+    "lawpack_digest_set": {
+      "type": "array",
+      "items": {
+        "description": "A raw sha256 digest string (legacy) OR an ArtifactRef (recommended; artifact_type MUST be 'lawpack').",
+        "oneOf": [
+          {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              },
+              {
+                "properties": {
+                  "artifact_type": {
+                    "const": "lawpack"
+                  }
+                },
+                "required": [
+                  "artifact_type",
+                  "digest_sha256"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "description": "Sorted set of lawpack digests (sha256) governing this asset operation snapshot."
+    },
+    "ruleset_digest_set": {
+      "type": "array",
+      "items": {
+        "description": "A raw sha256 digest string (legacy) OR an ArtifactRef (recommended; artifact_type MUST be 'ruleset').",
+        "oneOf": [
+          {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              },
+              {
+                "properties": {
+                  "artifact_type": {
+                    "const": "ruleset"
+                  }
+                },
+                "required": [
+                  "artifact_type",
+                  "digest_sha256"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "description": "Sorted set of ruleset digests (sha256) governing this asset receipt chain."
+    },
+    "transition_type_registry_digest_sha256": {
+      "description": "Optional digest commitment to a Transition Type Registry snapshot (snapshot_digest_sha256 from transition-types.lock.json). When present, receipts MAY omit per-transition schema/ruleset/circuit digests and rely on the registry mapping for semantics. Legacy form is a raw sha256 digest; preferred form is an ArtifactRef with artifact_type='transition-types'.",
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+            },
+            {
+              "properties": {
+                "artifact_type": {
+                  "const": "transition-types"
+                }
+              },
+              "required": [
+                "artifact_type",
+                "digest_sha256"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "transition": {
+      "$ref": "https://schemas.momentum-sez.org/msez/transition-envelope.schema.json"
+    },
+    "zk": {
+      "type": "object",
+      "description": "Optional ZK proof scaffold. Proof verification is asset-specific; receipts commit to proof and verifier digests.",
+      "properties": {
+        "proof_system": {
+          "type": "string"
+        },
+        "circuit_digest_sha256": {
+          "description": "Optional commitment to the circuit artifact. Legacy form is a raw sha256 digest; preferred form is an ArtifactRef with artifact_type='circuit'.",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                },
+                {
+                  "properties": {
+                    "artifact_type": {
+                      "const": "circuit"
+                    }
+                  },
+                  "required": [
+                    "artifact_type",
+                    "digest_sha256"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "verifier_key_digest_sha256": {
+          "description": "Optional commitment to a verifier key artifact. Legacy form is a raw sha256 digest; preferred form is an ArtifactRef with artifact_type='proof-key'.",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                },
+                {
+                  "properties": {
+                    "artifact_type": {
+                      "const": "proof-key"
+                    }
+                  },
+                  "required": [
+                    "artifact_type",
+                    "digest_sha256"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "proof_sha256": {
+          "description": "Optional commitment to a proof blob. Legacy form is a raw sha256 digest; preferred form is an ArtifactRef with artifact_type='blob'.",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                },
+                {
+                  "properties": {
+                    "artifact_type": {
+                      "const": "blob"
+                    }
+                  },
+                  "required": [
+                    "artifact_type",
+                    "digest_sha256"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "proof": {
+      "description": "DataIntegrityProof (JCS + Ed25519) or array of proofs.",
+      "oneOf": [
+        {
+          "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

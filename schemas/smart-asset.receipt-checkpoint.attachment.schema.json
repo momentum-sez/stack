@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/smart-asset.receipt-checkpoint.attachment.schema.json",
+  "title": "Smart Asset Receipt-Chain Checkpoint Attachment",
+  "description": "Typed ArtifactRef used in transition envelopes to commit to a SmartAssetReceiptChainCheckpoint payload digest (excluding proof). This lets corridor receipts act as external anchors for an asset-local receipt-chain head without requiring a blockchain.",
+  "allOf": [
+    {
+      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "artifact_type": {
+          "const": "smart-asset-receipt-checkpoint"
+        },
+        "asset_id": {
+          "type": "string",
+          "description": "Optional asset id for operator convenience."
+        },
+        "receipt_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional receipt_count for operator convenience."
+        },
+        "mmr_root": {
+          "type": "string",
+          "description": "Optional MMR root for operator convenience."
+        },
+        "uri": {
+          "type": "string",
+          "description": "Optional URI/path to the referenced checkpoint file."
+        },
+        "media_type": {
+          "type": "string",
+          "description": "Optional media type (e.g., application/json)."
+        }
+      },
+      "required": [
+        "artifact_type",
+        "digest_sha256"
+      ],
+      "additionalProperties": true
+    }
+  ]
+}

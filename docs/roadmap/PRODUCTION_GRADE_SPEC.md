@@ -146,51 +146,100 @@ Deliverables
 
 ### v0.4.36 — Multi-jurisdiction compliance receipts
 
-**Why**: make sharded compliance explicit and verifiable.
+**Goal:** turn “receipt chains + registry VCs” into a *jurisdiction-sharded, fault-tolerant compliance fabric* — where a transition can be evaluated, evidenced, and later audited across multiple harbors (jurisdictions), without requiring a blockchain.
 
-Deliverables
+**Deliverables (implemented):**
 
-- Receipt field conventions for jurisdiction scopes (e.g., `jurisdiction_scope`, `harbor_ids`)
-- Optional rule evaluation evidence attachment (outputs, hashes, zk commitments)
-- Policy for “quorum of harbors” per transition class (ruleset-driven)
+- **Receipt field conventions for jurisdiction scopes** in `SmartAssetReceipt`:
+  - `jurisdiction_scope`: `all_active | subset | quorum`
+  - `harbor_ids`: list of harbor/jurisdiction IDs relevant to this receipt’s compliance scope
+  - `harbor_quorum`: optional quorum threshold when `jurisdiction_scope=quorum`
+  - Implemented in `schemas/smart-asset.receipt.schema.json` and supported by `msez asset state receipt-init`.
 
----
+- **Quorum policy in the Smart Asset Registry VC** (`vc.smart-asset-registry.schema.json`):
+  - `credentialSubject.quorum_policy.default` and `credentialSubject.quorum_policy.by_transition_kind[kind]`
+  - Evaluated by `msez asset compliance-eval` (counts **active** bindings only by default; quorum policy further restricts eligible sets).
+  - `msez asset registry-init` supports `--quorum-policy <yaml|json>` to embed policy at issuance time.
 
-## Production hardening checklist
+- **Rule evaluation evidence as a portable, attachable artifact**:
+  - New schemas: `schemas/rule-eval-evidence.schema.json` and `schemas/rule-eval-evidence.attachment.schema.json`
+  - New CLI: `msez asset rule-eval-evidence-init` to create (optionally sign) `MSEZRuleEvaluationEvidence`.
+  - CAS artifact type: `rule-eval-evidence` with **semantic digest** `sha256(JCS(evidence_without_proof))`.
+  - Evidence artifacts can be referenced from any transition envelope via `attachments` (and will be carried in witness bundles).
 
-### Cryptography + canonicalization
-
-- Canonical JSON (JCS) everywhere a digest is defined.
-- Strict semantic digests for domain objects (genesis/checkpoint/attestation/receipts).
-- Multi-proof support and key rotation patterns.
-
-### Storage + transport
-
-- Deterministic artifact layout in store roots.
-- Witness bundle format stability (manifest schema + hash commitments).
-- Optional streaming transport (HTTP range requests, S3 signed URLs) for large bundles.
-
-### API + operator UX
-
-- "One command" workflows for operators:
-  - init asset module
-  - append receipt
-  - checkpoint
-  - generate proof
-  - build witness bundle
-- Clear error taxonomy (schema error vs signature error vs missing artifact vs fork).
-
-### Testing + verification
-
-- Property tests: chain invariants, fork selection, proof verification.
-- Cross-implementation vectors: fixtures that a second implementation can verify.
-- Fuzzing: malformed receipts, adversarial bundles, invalid proofs.
+**Why it matters:**
+- You can now run “compliance as replicated consensus” across harbors:
+  - an asset log head can advance with a defined quorum,
+  - each harbor can emit portable evaluation evidence,
+  - witness bundles can carry the full audit packet (receipts + checkpoints + evidence + referenced artifacts).
 
 ---
 
-## Design rules
+### v0.4.37 — Trade corridor instruments kit (baseline)
 
-1. **No hidden state**: anything needed to verify must be present as artifacts or proofs.
-2. **Explicit versioning**: schema ids and lock digests are always pinned.
-3. **Graceful partial knowledge**: verifiers can say “unknown” rather than “false” when artifacts are missing.
-4. **Do the simplest thing that composes**: start with linear chains and optional fork credentials; later add richer coordination.
+**Goal:** make the stack immediately useful for end-to-end trade rails by shipping a first-class “trade corridor vocabulary” (schemas + transition kinds + examples), aligned with common documents and operational steps.
+
+**Deliverables:**
+
+- **Trade document schemas (non-token, non-blockchain)** as signed/hashed artifacts:
+  - Commercial Invoice, Purchase Order, Packing List
+  - Bill of Lading / Air Waybill (B/L-AWB)
+  - Certificate of Origin
+  - Insurance Certificate
+  - Customs Entry / Release Notice
+  - Warehouse Receipt (tokenized or not)
+
+- **Trade transitions (typed envelopes + rulesets)**:
+  - `trade.order.place.v1`, `trade.order.accept.v1`
+  - `trade.shipment.dispatch.v1`, `trade.shipment.arrive.v1`
+  - `trade.customs.clear.v1`
+  - `trade.settlement.initiate.v1`, `trade.settlement.confirm.v1`
+
+- **Corridor module templates** for common flow archetypes:
+  - Export (seller) corridor, Import (buyer) corridor
+  - L/C-like instrument corridor (documentary conditions + release)
+  - Open-account corridor (invoice + milestone + settlement)
+
+---
+
+### v0.4.38 — Capital corridor primitives (settlement + netting surface)
+
+**Goal:** express high-volume capital flows (FX, stablecoin settlement, bank rails) as corridor transitions with auditable evidence and policy hooks.
+
+**Deliverables:**
+
+- **Settlement instruction + confirmation schemas** (ISO-20022-inspired but simplified)
+- **Netting session artifacts** (batch definitions + netting proofs + reconciliation outputs)
+- **Corridor state-machine patterns** for:
+  - prefunded vs. postfunded settlement
+  - DvP/PvP gating (atomicity via evidence/quorum rather than blockchain)
+- **Inter-corridor anchoring**: allow settlement corridors to “anchor” trade corridor checkpoints.
+
+---
+
+### v0.4.39 — Arbitration corridors and dispute casefiles
+
+**Goal:** make disputes first-class and portable: a “casefile” witness bundle that can be replayed by arbitrators across jurisdictions.
+
+**Deliverables:**
+
+- **Casefile schema** (claims, timeline, attachments, requested remedies)
+- **Arbitration corridor template** (intake → evidence → hearing → award)
+- **Award artifact** signed by arbitrator DID(s), referenced as attachments by trade/capital corridors.
+
+---
+
+### v0.4.40 — Production operator ergonomics and hardening
+
+**Goal:** make operators successful by default (init flows, linting, CI, reproducibility, and safety rails).
+
+**Deliverables:**
+
+- `msez lint` / `msez doctor` for:
+  - schema validation
+  - CAS completeness
+  - fork-resolution hygiene
+  - quorum policy correctness
+- Deterministic bundle builds (hash-stable zip manifests)
+- Expanded examples + walkthroughs.
+

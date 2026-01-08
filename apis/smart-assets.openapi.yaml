@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: MSEZ Smart Assets API (Scaffold)
-  version: 0.4.35
+  version: 0.4.36
   description: |
     Scaffold OpenAPI for Smart Asset operations.
 

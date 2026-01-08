@@ -97,6 +97,131 @@
             "$ref": "#/definitions/JurisdictionBinding"
           }
         },
+        "quorum_policy": {
+          "type": "object",
+          "description": "Optional global quorum policy for evaluating multi-jurisdiction compliance. Policies may vary per transition kind.",
+          "properties": {
+            "default": {
+              "type": "object",
+              "description": "Quorum rule for multi-jurisdiction compliance gating. Evaluators may treat a transition as allowed when a quorum of eligible harbors allows it.",
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "all_active",
+                    "quorum",
+                    "any_active"
+                  ],
+                  "description": "How to interpret this quorum rule. all_active: all eligible active bindings must allow. any_active: at least one eligible active binding must allow. quorum: at least min_harbors eligible bindings must allow."
+                },
+                "min_harbors": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Minimum number of eligible harbors required when mode='quorum'."
+                },
+                "eligible_shard_roles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "primary",
+                      "active_replica",
+                      "passive_replica",
+                      "replica"
+                    ]
+                  },
+                  "description": "Optional restriction to shard roles that count towards the quorum. If omitted, all active bindings are eligible."
+                },
+                "harbor_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": "Optional explicit allowlist of harbor_ids eligible for quorum counting (intersection with active bindings)."
+                },
+                "required_harbor_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": "Optional list of harbor_ids that MUST allow (in addition to quorum counting)."
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "meta": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              },
+              "additionalProperties": true
+            },
+            "by_transition_kind": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "description": "Quorum rule for multi-jurisdiction compliance gating. Evaluators may treat a transition as allowed when a quorum of eligible harbors allows it.",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "all_active",
+                      "quorum",
+                      "any_active"
+                    ],
+                    "description": "How to interpret this quorum rule. all_active: all eligible active bindings must allow. any_active: at least one eligible active binding must allow. quorum: at least min_harbors eligible bindings must allow."
+                  },
+                  "min_harbors": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Minimum number of eligible harbors required when mode='quorum'."
+                  },
+                  "eligible_shard_roles": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "primary",
+                        "active_replica",
+                        "passive_replica",
+                        "replica"
+                      ]
+                    },
+                    "description": "Optional restriction to shard roles that count towards the quorum. If omitted, all active bindings are eligible."
+                  },
+                  "harbor_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "description": "Optional explicit allowlist of harbor_ids eligible for quorum counting (intersection with active bindings)."
+                  },
+                  "required_harbor_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "description": "Optional list of harbor_ids that MUST allow (in addition to quorum counting)."
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "meta": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                },
+                "additionalProperties": true
+              },
+              "description": "Map of transition_kind => quorum rule overrides."
+            }
+          },
+          "additionalProperties": true
+        },
         "notes": {
           "type": "string"
         }
@@ -223,13 +348,13 @@
     "JurisdictionBinding": {
       "type": "object",
       "additionalProperties": false,
-              "required": [
-                "harbor_id",
-                "binding_status",
-                "shard_role",
-                "lawpacks",
-                "compliance_profile"
-              ],
+      "required": [
+        "harbor_id",
+        "binding_status",
+        "shard_role",
+        "lawpacks",
+        "compliance_profile"
+      ],
       "properties": {
         "harbor_id": {
           "type": "string",

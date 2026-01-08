@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MSEZ Stack tool (reference implementation) — v0.4.35
+"""MSEZ Stack tool (reference implementation) — v0.4.36
 
 Capabilities:
 - validate modules/profiles/zones against schemas
@@ -53,7 +53,7 @@ if str(REPO_ROOT) not in sys.path:
 # Local (repo) imports (after sys.path fix)
 from tools import artifacts as artifact_cas
 from tools import smart_asset as smart_asset_tools
-STACK_SPEC_VERSION = "0.4.35"
+STACK_SPEC_VERSION = "0.4.36"
 
 # Templating: we intentionally support two simple placeholder syntaxes used in v0.4 (safe placeholder subset)
 # - {{ VAR_NAME }} (common in Akoma templates)
@@ -911,6 +911,16 @@ def _compute_artifact_digest_strict(artifact_type: str, path: pathlib.Path) -> T
         # Semantic digest == receipt.next_root (computed as sha256(JCS(receipt_without_proof_and_next_root))).
         nr = asset_state_next_root(rcpt)
         return (nr, "smart-asset.receipt.next_root")
+
+
+    if at == "rule-eval-evidence":
+        ev = load_json(p)
+        if not isinstance(ev, dict):
+            raise ValueError("rule-eval-evidence must be a JSON object")
+        # Semantic digest == sha256(signing_input(evidence)) (proof excluded), mirroring VC multi-signer semantics.
+        from tools.vc import signing_input  # type: ignore
+
+        return (sha256_bytes(signing_input(ev)), "rule-eval-evidence.signing-input")
 
     # Default: raw bytes sha256
     return (sha256_file(p), "bytes")
@@ -7104,6 +7114,7 @@ def cmd_corridor_state_propose(args: argparse.Namespace) -> int:
         "ruleset_digest_set": ruleset_digest_set,
         "transition": transition,
     }
+
     if ttr_digest:
         receipt_template["transition_type_registry_digest_sha256"] = ttr_digest
 
@@ -8852,6 +8863,28 @@ def cmd_asset_state_receipt_init(args: argparse.Namespace) -> int:
         # against schemas (but chain verification will still fail due to no valid proofs).
         "proof": [],
     }
+    # Optional multi-jurisdiction scope hints (committed into next_root)
+    jscope = str(getattr(args, "jurisdiction_scope", "") or "").strip()
+    if jscope:
+        if jscope not in ("all_active", "subset", "quorum"):
+            print("--jurisdiction-scope must be one of: all_active|subset|quorum", file=sys.stderr)
+            return 2
+        receipt["jurisdiction_scope"] = jscope
+
+    harbor_ids = getattr(args, "harbor_ids", None) or []
+    hnorm = []
+    for hid in harbor_ids:
+        s = str(hid or "").strip()
+        if s:
+            hnorm.append(s)
+    if hnorm:
+        receipt["harbor_ids"] = sorted(set(hnorm))
+
+    hq = int(getattr(args, "harbor_quorum", 0) or 0)
+    if hq > 0:
+        receipt["harbor_quorum"] = hq
+
+
     if ttr_digest:
         receipt["transition_type_registry_digest_sha256"] = ttr_digest
 
@@ -12409,6 +12442,12 @@ def main() -> int:
     ar.add_argument("--stack-spec-version", dest="stack_spec_version", default=STACK_SPEC_VERSION)
     ar.add_argument("--genesis", required=True, help="Smart Asset genesis JSON file")
     ar.add_argument("--bindings", required=True, help="Bindings YAML/JSON (list or {jurisdiction_bindings:[...]})")
+    ar.add_argument(
+        "--quorum-policy",
+        dest="quorum_policy",
+        default="",
+        help="Optional quorum policy YAML/JSON to embed under credentialSubject.quorum_policy",
+    )
     ar.add_argument("--issuer", required=True, help="Issuer DID")
     ar.add_argument("--issuance-date", dest="issuance_date", default="", help="RFC3339 issuanceDate override")
     ar.add_argument("--id", default="", help="Optional VC id override")
@@ -12456,7 +12495,32 @@ def main() -> int:
         default="",
         help="Comma-separated additional CAS roots",
     )
+    ace.add_argument("--json", action="store_true", help="Output JSON report (includes quorum decision if present)")
     ace.set_defaults(func=smart_asset_tools.cmd_asset_compliance_eval)
+
+    # Rule evaluation evidence (portable compliance output artifacts)
+    arev = asset_sub.add_parser(
+        "rule-eval-evidence-init",
+        help="Create a rule-evaluation evidence artifact (optionally sign + store in CAS)",
+    )
+    arev.add_argument("--stack-spec-version", dest="stack_spec_version", default=STACK_SPEC_VERSION)
+    arev.add_argument("--transition", required=True, help="Transition envelope JSON (or corridor receipt JSON)")
+    arev.add_argument("--harbor-id", dest="harbor_id", required=True, help="Harbor/jurisdiction id issuing the evaluation")
+    arev.add_argument("--jurisdiction-id", dest="jurisdiction_id", default="", help="Optional jurisdiction_id")
+    arev.add_argument("--result", choices=["pass", "fail", "unknown"], required=True)
+    arev.add_argument("--evaluated-at", dest="evaluated_at", default="", help="RFC3339 evaluated_at override (default: now)")
+    arev.add_argument("--notes", default="")
+    arev.add_argument("--violations", default="", help="Optional YAML/JSON file describing rule violations")
+    arev.add_argument("--out", default="", help="Output path (default: stdout only)")
+    arev.add_argument("--sign", action="store_true", help="Sign the evidence (Ed25519 JWK)")
+    arev.add_argument("--key", default="", help="Proof key JSON path (required if --sign)")
+    arev.add_argument("--verification-method", dest="verification_method", default="", help="verificationMethod override")
+    arev.add_argument("--purpose", default="assertionMethod", help="proofPurpose (default: assertionMethod)")
+    arev.add_argument("--store", action="store_true", help="Store evidence in artifact CAS (type rule-eval-evidence)")
+    arev.add_argument("--store-root", dest="store_root", default="", help="CAS store root (default: dist/artifacts)")
+    arev.add_argument("--overwrite", action="store_true")
+    arev.set_defaults(func=smart_asset_tools.cmd_asset_rule_eval_evidence_init)
+
 
     # Asset module scaffolding (operator UX)
     amod = asset_sub.add_parser(
@@ -12635,6 +12699,14 @@ def main() -> int:
     asi.add_argument("--fill-transition-digests", action="store_true", help="Fill transition digests from lock")
     asi.add_argument("--lawpack-digest", action="append", default=[], help="Lawpack digest sha256 (repeatable)")
     asi.add_argument("--ruleset-digest", action="append", default=[], help="Ruleset digest sha256 (repeatable)")
+    asi.add_argument(
+        "--jurisdiction-scope",
+        dest="jurisdiction_scope",
+        default="",
+        help="Optional jurisdiction_scope for multi-harbor compliance: all_active|subset|quorum",
+    )
+    asi.add_argument("--harbor-id", dest="harbor_ids", action="append", default=[], help="Harbor id(s) for jurisdiction scope (repeatable)")
+    asi.add_argument("--harbor-quorum", dest="harbor_quorum", type=int, default=0, help="Optional quorum threshold when jurisdiction_scope=quorum")
     asi.add_argument("--out", default="", help="Output path")
     asi.add_argument("--sign", action="store_true")
     asi.add_argument("--key", default="", help="Ed25519 private JWK (required if --sign)")

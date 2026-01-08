@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.momentum-sez.org/msez/rule-eval-evidence.schema.json",
+  "title": "MSEZ Rule Evaluation Evidence",
+  "description": "Portable rule evaluation output for a transition, suitable for attachment into receipts and witness bundles. Semantic digest is sha256(JCS(evidence_without_proof)).",
+  "type": "object",
+  "required": [
+    "type",
+    "stack_spec_version",
+    "evaluated_at",
+    "harbor_id",
+    "transition_kind",
+    "result"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZRuleEvaluationEvidence"
+    },
+    "stack_spec_version": {
+      "type": "string"
+    },
+    "evaluated_at": {
+      "type": "string",
+      "description": "RFC3339 timestamp"
+    },
+    "harbor_id": {
+      "type": "string"
+    },
+    "jurisdiction_id": {
+      "type": "string"
+    },
+    "transition_kind": {
+      "type": "string"
+    },
+    "payload_sha256": {
+      "type": "string",
+      "description": "sha256 digest of the transition payload (committed or computed)"
+    },
+    "schema_digest_sha256": {
+      "type": "string"
+    },
+    "ruleset_digest_sha256": {
+      "type": "string"
+    },
+    "zk_circuit_digest_sha256": {
+      "type": "string"
+    },
+    "result": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "unknown"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    },
+    "violations": {
+      "description": "Optional, schema-free violation/evidence payload (array/object).",
+      "oneOf": [
+        {
+          "type": "array"
+        },
+        {
+          "type": "object"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+      }
+    },
+    "proof": {
+      "description": "Optional DataIntegrityProof (JCS + Ed25519) for the evidence object.",
+      "oneOf": [
+        {
+          "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

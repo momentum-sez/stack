@@ -44,6 +44,30 @@
       "pattern": "^[a-f0-9]{64}$",
       "description": "Receipt-chain root after this receipt. MUST equal SHA256(JCS(receipt_without_proof_and_next_root))."
     },
+    "jurisdiction_scope": {
+      "description": "Optional declaration of the jurisdictional scope this receipt claims to satisfy. Intended for multi-harbor / sharded compliance.",
+      "type": "string",
+      "enum": [
+        "all_active",
+        "subset",
+        "quorum"
+      ]
+    },
+    "harbor_ids": {
+      "description": "Optional list of harbor/jurisdiction identifiers relevant to this receipt's compliance scope. Interpreted according to jurisdiction_scope.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "harbor_quorum": {
+      "description": "Optional quorum threshold when jurisdiction_scope='quorum'. Verifiers MAY cross-check this against policy (registry VC / ruleset).",
+      "type": "integer",
+      "minimum": 1
+    },
     "lawpack_digest_set": {
       "type": "array",
       "items": {

@@ -70,6 +70,7 @@ Recommended type set (non-exhaustive):
 - `schema` — JSON Schemas referenced by digest.
 - `vc` — Verifiable Credentials referenced by payload digest (VC without `proof`).
 - `checkpoint` — corridor checkpoints referenced by payload digest (checkpoint without `proof`).
+- `rule-eval-evidence` — portable rule evaluation outputs (optionally signed), referenced by semantic digest (evidence without `proof`).
 - `circuit` — ZK circuits / programs referenced by digest.
 - `proof-key` — proof system keys (e.g., verifying keys) referenced by digest.
 - `blob` — raw byte blobs (attachments, proof bytes, documents) referenced by digest.

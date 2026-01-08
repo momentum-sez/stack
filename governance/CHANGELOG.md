@@ -9,6 +9,19 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 - TBD
 
 
+## 0.4.36
+
+### Added
+- SmartAssetReceipt multi-jurisdiction scope hints: `jurisdiction_scope`, `harbor_ids`, `harbor_quorum` (schema + `msez asset state receipt-init` flags).
+- Smart Asset registry VC quorum policy (`credentialSubject.quorum_policy`) + `msez asset registry-init --quorum-policy`.
+- Portable rule evaluation evidence artifacts: `rule-eval-evidence` schemas + `msez asset rule-eval-evidence-init` (optionally sign + store).
+
+### Changed
+- `msez asset compliance-eval` now evaluates **active** bindings by default (and applies quorum policy when present).
+- Artifact graph strict mode gains semantic digest support for `rule-eval-evidence` (sha256 of JCS signing input).
+
+
+
 ## 0.4.35
 
 ### Added

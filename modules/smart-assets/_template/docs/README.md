@@ -44,3 +44,38 @@ python3 -m tools.msez asset module witness-bundle modules/smart-assets/<asset_id
 # offline / air-gapped verification
 python3 -m tools.msez artifact graph verify --from-bundle /tmp/asset-module.witness.zip --strict --json
 ```
+
+
+## Multi-jurisdiction scope hints (optional)
+
+When issuing receipts in a multi-harbor / sharded compliance configuration, you can embed *scope hints* into the receipt
+(these fields are committed into `next_root` and therefore are audit-stable):
+
+```bash
+msez asset state receipt-init \
+  --asset-id EXAMPLE_ASSET \
+  --sequence 2 \
+  --transition transition.json \
+  --jurisdiction-scope quorum \
+  --harbor-id ae-adgm \
+  --harbor-id us-de \
+  --harbor-quorum 2 \
+  --prev-receipt receipt-1.json \
+  --sign --key ./keys/asset-operator.jwk.json --verification-method did:key:...
+```
+
+## Rule evaluation evidence (optional)
+
+Harbors (or other evaluators) can emit portable evidence artifacts that are attachable to any transition envelope:
+
+```bash
+msez asset rule-eval-evidence-init \
+  --transition transition.json \
+  --harbor-id ae-adgm \
+  --result pass \
+  --sign --key ./keys/harbor.jwk.json --verification-method did:key:... \
+  --store
+```
+
+The resulting artifact (type `rule-eval-evidence`) can be referenced from a transition envelope via `attachments`, and will be
+pulled into witness bundles automatically.

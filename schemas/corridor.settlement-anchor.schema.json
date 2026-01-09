@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/corridor.settlement-anchor.schema.json",
+  "title": "MSEZ Cross-Corridor Settlement Anchor",
+  "description": "Binds an obligation corridor checkpoint/receipt to a settlement corridor checkpoint/receipt, with optional externally-verifiable proof references. This is a core building block for cross-corridor settlement, netting, and corridor-to-corridor finality bridges.\n\nSemantic digest is sha256(signing_input(anchor)) (i.e., sha256(JCS(anchor_without_proof))).",
+  "type": "object",
+  "required": [
+    "type",
+    "stack_spec_version",
+    "created_at",
+    "obligation",
+    "settlement"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZCrossCorridorSettlementAnchor"
+    },
+    "stack_spec_version": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp"
+    },
+    "settlement_id": {
+      "type": "string",
+      "description": "Optional operator correlation id (urn:uuid:..., urn:msez:settlement:..., etc.)."
+    },
+    "relationship": {
+      "type": "string",
+      "description": "Optional relationship label (e.g., settles, nets, cancels, escrow-releases)."
+    },
+    "obligation": {
+      "type": "object",
+      "required": [
+        "corridor_id",
+        "checkpoint_ref"
+      ],
+      "properties": {
+        "corridor_id": {
+          "type": "string"
+        },
+        "checkpoint_ref": {
+          "$ref": "https://schemas.momentum-sez.org/msez/corridor.checkpoint.attachment.schema.json"
+        },
+        "receipt_next_root": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Optional receipt next_root digest for the obligation event."
+        },
+        "receipt_sequence": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional receipt sequence hint."
+        },
+        "head_commitment_digest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Optional corridor head commitment digest (non-normative; can be recomputed from receipts)."
+        },
+        "finality_status_ref": {
+          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+          "description": "Optional ArtifactRef to a finality-status object for this corridor head."
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "settlement": {
+      "type": "object",
+      "required": [
+        "corridor_id",
+        "checkpoint_ref"
+      ],
+      "properties": {
+        "corridor_id": {
+          "type": "string"
+        },
+        "checkpoint_ref": {
+          "$ref": "https://schemas.momentum-sez.org/msez/corridor.checkpoint.attachment.schema.json"
+        },
+        "receipt_next_root": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Optional receipt next_root digest for the settlement confirmation event."
+        },
+        "receipt_sequence": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional receipt sequence hint."
+        },
+        "head_commitment_digest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Optional corridor head commitment digest (non-normative; can be recomputed from receipts)."
+        },
+        "finality_status_ref": {
+          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+          "description": "Optional ArtifactRef to a finality-status object for this corridor head."
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "proof_bindings": {
+      "type": "array",
+      "items": {
+        "$ref": "https://schemas.momentum-sez.org/msez/proof-binding.attachment.schema.json"
+      },
+      "description": "Optional list of portable proof-binding artifacts that cryptographically bind external proofs to the corridor commitments in this anchor."
+    },
+    "proofs": {
+      "type": "array",
+      "items": {
+        "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+      },
+      "description": "Optional raw proof artifact refs (blobs, VCs, PDFs, etc.) for convenience. Prefer proof_bindings when possible."
+    },
+    "notes": {
+      "type": "string"
+    },
+    "meta": {
+      "type": "object",
+      "description": "Optional freeform metadata."
+    },
+    "proof": {
+      "description": "Optional DataIntegrityProof (JCS + Ed25519) for the anchor object.",
+      "oneOf": [
+        {
+          "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

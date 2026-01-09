@@ -9,6 +9,24 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 - TBD
 
 
+## 0.4.38
+
+### Added
+- **Cross-corridor settlement anchoring** primitives:
+  - New schemas: `corridor.checkpoint.attachment`, `corridor.settlement-anchor`, and `proof-binding` (+ attachment wrappers).
+  - New CLI: `msez proof-binding init|verify` (portable, replay-resistant proof linking to commitment digests).
+  - New CLI: `msez corridor settlement-anchor-init|settlement-anchor-verify` (bind obligation corridor checkpoint to settlement corridor checkpoint, with optional proof bindings).
+- Corridor receipt UX: `msez corridor state receipt-init` gains typed attachment flags for corridor checkpoints, proof bindings, and settlement anchors.
+
+### Changed
+- Artifact graph strict mode gains semantic digest support for:
+  - `proof-binding` (sha256(signing_input(binding)))
+  - `settlement-anchor` (sha256(signing_input(anchor)))
+
+### Version
+- Stack spec version bumped to `0.4.38` and starter profiles updated.
+
+
 ## 0.4.36
 
 ### Added

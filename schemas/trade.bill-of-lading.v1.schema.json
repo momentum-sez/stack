@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/trade.bill-of-lading.v1.schema.json",
+  "title": "Bill of Lading (v1)",
+  "description": "A minimal, deterministic Bill of Lading (BOL) schema. BOLs may represent title and are frequently used as documentary evidence in Letters of Credit.",
+  "type": "object",
+  "required": ["bol_id", "issue_date", "carrier", "shipper", "consignee", "port_of_loading", "port_of_discharge", "goods"],
+  "properties": {
+    "bol_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable BOL identifier."
+    },
+    "bol_number": {
+      "type": "string",
+      "description": "Human-facing BOL number."
+    },
+    "issue_date": {
+      "type": "string",
+      "format": "date",
+      "description": "BOL issue date (YYYY-MM-DD)."
+    },
+    "consignment_type": {
+      "type": "string",
+      "enum": ["straight", "to-order", "bearer"],
+      "description": "Title/consignment semantics."
+    },
+    "carrier": {
+      "$ref": "https://schemas.momentum-sez.org/msez/trade.party.v1.schema.json"
+    },
+    "shipper": {
+      "$ref": "https://schemas.momentum-sez.org/msez/trade.party.v1.schema.json"
+    },
+    "consignee": {
+      "$ref": "https://schemas.momentum-sez.org/msez/trade.party.v1.schema.json"
+    },
+    "notify_party": {
+      "$ref": "https://schemas.momentum-sez.org/msez/trade.party.v1.schema.json"
+    },
+    "vessel_name": {
+      "type": "string"
+    },
+    "voyage_number": {
+      "type": "string"
+    },
+    "port_of_loading": {
+      "type": "string",
+      "minLength": 1
+    },
+    "port_of_discharge": {
+      "type": "string",
+      "minLength": 1
+    },
+    "place_of_receipt": {
+      "type": "string"
+    },
+    "place_of_delivery": {
+      "type": "string"
+    },
+    "freight_terms": {
+      "type": "string",
+      "description": "Optional freight terms (prepaid, collect, etc.)."
+    },
+    "goods": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["description", "packages"],
+        "properties": {
+          "description": {"type": "string", "minLength": 1},
+          "hs_code": {"type": "string"},
+          "marks": {"type": "string"},
+          "packages": {"type": "string", "minLength": 1},
+          "gross_weight": {"type": "string"},
+          "net_weight": {"type": "string"},
+          "volume": {"type": "string"},
+          "meta": {"type": "object", "additionalProperties": true}
+        },
+        "additionalProperties": false
+      }
+    },
+    "originals_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of original BOLs issued."
+    },
+    "endorsements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from_party_id", "to_party_id", "endorsed_at"],
+        "properties": {
+          "from_party_id": {"type": "string", "minLength": 1},
+          "to_party_id": {"type": "string", "minLength": 1},
+          "endorsed_at": {"type": "string", "format": "date-time"},
+          "notes": {"type": "string"}
+        },
+        "additionalProperties": false
+      },
+      "description": "Optional endorsement history; canonical provenance SHOULD be carried by corridor receipt chains."
+    },
+    "attachment_refs": {
+      "type": "array",
+      "items": {"$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"},
+      "description": "Optional attachment artifact references (PDF BOL, carrier signed copy, etc.)."
+    },
+    "meta": {
+      "type": "object",
+      "description": "Non-normative extension metadata.",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

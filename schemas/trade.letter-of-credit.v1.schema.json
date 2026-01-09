@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/trade.letter-of-credit.v1.schema.json",
+  "title": "Letter of Credit (v1)",
+  "description": "A minimal, deterministic Letter of Credit (LC) schema. Intended as an interoperability boundary for UCP600/ISP98 style documentary credit workflows.",
+  "type": "object",
+  "required": ["lc_id", "issue_date", "applicant", "beneficiary", "issuing_bank", "amount", "expiry_date"],
+  "properties": {
+    "lc_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable LC identifier."
+    },
+    "lc_number": {
+      "type": "string",
+      "description": "Human-facing LC number."
+    },
+    "issue_date": {
+      "type": "string",
+      "format": "date",
+      "description": "LC issue date (YYYY-MM-DD)."
+    },
+    "expiry_date": {
+      "type": "string",
+      "format": "date",
+      "description": "LC expiry date (YYYY-MM-DD)."
+    },
+    "rules": {
+      "type": "string",
+      "description": "Optional rules reference (e.g., UCP600, ISP98)."
+    },
+    "applicant": {
+      "$ref": "https://schemas.momentum-sez.org/msez/trade.party.v1.schema.json"
+    },
+    "beneficiary": {
+      "$ref": "https://schemas.momentum-sez.org/msez/trade.party.v1.schema.json"
+    },
+    "issuing_bank": {
+      "$ref": "https://schemas.momentum-sez.org/msez/trade.party.v1.schema.json"
+    },
+    "advising_bank": {
+      "$ref": "https://schemas.momentum-sez.org/msez/trade.party.v1.schema.json"
+    },
+    "confirming_bank": {
+      "$ref": "https://schemas.momentum-sez.org/msez/trade.party.v1.schema.json"
+    },
+    "amount": {
+      "$ref": "https://schemas.momentum-sez.org/msez/trade.amount.v1.schema.json"
+    },
+    "latest_shipment_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Optional latest shipment date."
+    },
+    "presentation_period_days": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optional presentation period in days."
+    },
+    "incoterms": {
+      "type": "string",
+      "description": "Optional Incoterms code and place."
+    },
+    "documents_required": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["doc_type"],
+        "properties": {
+          "doc_type": {
+            "type": "string",
+            "description": "Document type identifier (e.g., invoice, bill_of_lading, insurance_certificate)."
+          },
+          "required": {
+            "type": "boolean",
+            "default": true
+          },
+          "min_copies": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Document checklist for presentation."
+    },
+    "governing_law": {
+      "type": "string",
+      "description": "Optional governing law / lawpack identifier (deployment-specific)."
+    },
+    "jurisdiction_tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Optional routing/compliance tags."
+    },
+    "attachment_refs": {
+      "type": "array",
+      "items": {"$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"},
+      "description": "Optional attachment artifact references (PDF LC, amendments, SWIFT MT700/MT707, etc.)."
+    },
+    "meta": {
+      "type": "object",
+      "description": "Non-normative extension metadata.",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

@@ -599,6 +599,107 @@ receipt payload (and therefore part of `next_root`).
 
 Receipts MAY include `anchor` metadata representing an external commitment (e.g., a tx hash on an L2).
 Anchoring is intentionally optional and MUST NOT change the receipt/root model.
+
+
+### Cross-corridor settlement anchoring (v0.4.38)
+
+Corridors are intended to be *composable primitives*: a trade corridor can be coupled to a settlement corridor, an arbitration corridor, a collateral corridor, etc.
+
+This stack therefore supports **cross-corridor anchoring** so that a receipt in one corridor can commit to *verifiable state* from another corridor.
+
+The reference pattern is **cross-corridor settlement anchoring**:
+
+- an **obligation corridor** (e.g., trade) produces an obligation receipt and checkpoint,
+- a **settlement corridor** (e.g., stablecoin or bank rail) produces a settlement receipt and checkpoint,
+- and the two are bound together by a content-addressed settlement anchor and optional proof bindings.
+
+This works without a blockchain. Any external evidence (SWIFT messages, bank confirmations, chain receipts, audit reports, ZK proofs, etc.) is treated as an **artifact** committed by hash.
+
+
+#### Typed attachments for inter-corridor state
+
+Receipts MAY include typed transition attachments referencing other corridor checkpoints:
+
+- `schemas/corridor.checkpoint.attachment.schema.json` (`artifact_type=checkpoint`)
+
+Reference CLI:
+
+```bash
+msez corridor state receipt-init <corridor-module> \
+  --transition <transition.json> \
+  --attach-corridor-checkpoint <other-corridor-checkpoint.json>
+```
+
+This creates a *hash-level* coupling: the receipt commits to the other corridor's checkpoint payload digest (excluding proof), making cross-corridor references stable and replay-resistant.
+
+
+#### Proof bindings
+
+Because proof artifacts can be portable (and therefore replayable if not context-bound), the stack defines a lightweight **proof-binding** object:
+
+- `schemas/proof-binding.schema.json`
+
+A proof-binding commits to:
+
+- a `proof_ref` (an ArtifactRef to the external proof), and
+- one or more `commitments` (e.g., corridor checkpoint digests, receipt roots, settlement-anchor digests).
+
+Reference CLI:
+
+```bash
+msez proof-binding init \
+  --binding-purpose settlement.confirmation \
+  --proof ./evidence/mt103.pdf \
+  --proof-artifact-type blob \
+  --commitment corridor.checkpoint:<trade_ck_digest>,corridor_id=trade \
+  --commitment corridor.checkpoint:<settle_ck_digest>,corridor_id=settlement \
+  --store
+```
+
+
+#### Settlement anchors
+
+To bind an obligation corridor state to a settlement corridor state, the stack defines a structured settlement-anchor object:
+
+- `schemas/corridor.settlement-anchor.schema.json`
+
+A settlement-anchor records:
+
+- obligation corridor checkpoint (and optional receipt root/sequence),
+- settlement corridor checkpoint (and optional receipt root/sequence),
+- optional `proof_bindings` and raw `proofs` as ArtifactRefs.
+
+Reference CLI:
+
+```bash
+msez corridor settlement-anchor-init \
+  --obligation-checkpoint ./trade/checkpoint.signed.json \
+  --settlement-checkpoint ./settlement/checkpoint.signed.json \
+  --proof-binding ./proof-binding.<digest>.json \
+  --store
+```
+
+The resulting settlement-anchor artifact digest can then be attached to receipts on either corridor:
+
+```bash
+msez corridor state receipt-init <corridor-module> \
+  --transition <transition.json> \
+  --attach-settlement-anchor ./settlement-anchor.<digest>.json
+```
+
+Verifiers MAY treat this as a cross-corridor *atomicity* signal:
+
+- if an obligation receipt claims settlement by attaching a settlement-anchor, then the referenced settlement corridor checkpoint SHOULD be validated and SHOULD include the corresponding settlement receipt.
+
+
+#### ZK binding guidance (optional)
+
+When using ZK proofs, implementations SHOULD include one of the following as a public input (or committed field) in the circuit:
+
+- `settlement_anchor_digest_sha256` (digest of the settlement-anchor), and/or
+- `proof_binding_digest_sha256` (digest of a proof-binding),
+
+so that the ZK proof cannot be replayed against different corridor states.
 ## Verification ruleset
 
 The reference ruleset identifier is:

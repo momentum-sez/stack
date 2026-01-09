@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/transition.payload.trade.bol.release.v1.schema.json",
+  "title": "BOL Release transition payload (v1)",
+  "description": "Releases goods / surrenders the BOL (delivery order).",
+  "type": "object",
+  "oneOf": [
+    {"required": ["bol_id"]},
+    {"required": ["bol_ref"]}
+  ],
+  "required": ["released_at", "released_to_party_id"],
+  "properties": {
+    "bol_id": {"type": "string", "minLength": 1},
+    "bol_ref": {"$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"},
+    "released_at": {"type": "string", "format": "date-time"},
+    "released_to_party_id": {"type": "string", "minLength": 1},
+    "release_location": {"type": "string"},
+    "notes": {"type": "string"}
+  },
+  "additionalProperties": false
+}

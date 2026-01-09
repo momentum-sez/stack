@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/corridor.checkpoint.attachment.schema.json",
+  "title": "MSEZ Corridor Checkpoint Attachment",
+  "description": "Typed ArtifactRef wrapper for corridor state checkpoints (artifact_type=checkpoint). Useful for cross-corridor anchoring (e.g., settlement corridors anchoring trade corridor heads).",
+  "allOf": [
+    {
+      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "artifact_type": {
+          "const": "checkpoint"
+        },
+        "corridor_id": {
+          "type": "string",
+          "description": "Optional corridor_id hint for this checkpoint (non-normative)."
+        },
+        "receipt_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Optional receipt_count hint (non-normative)."
+        },
+        "final_state_root": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Optional final_state_root hint (non-normative)."
+        },
+        "mmr_root": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Optional receipt MMR root hint (non-normative)."
+        },
+        "anchor_role": {
+          "type": "string",
+          "description": "Optional role label (e.g., obligation|settlement|netting|dispute)."
+        }
+      },
+      "required": [
+        "artifact_type",
+        "digest_sha256"
+      ],
+      "additionalProperties": true
+    }
+  ]
+}

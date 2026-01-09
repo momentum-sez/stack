@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/corridor.settlement-plan.schema.json",
+  "title": "MSEZ Multi-Corridor Settlement Plan",
+  "description": "A corridor-of-corridors primitive: a deterministic, auditable settlement plan that references (anchors) the heads of one or more obligation corridors, computes net positions, and specifies settlement legs (potentially across multiple settlement corridors).",
+  "type": "object",
+  "required": [
+    "type",
+    "stack_spec_version",
+    "plan_id",
+    "created_at",
+    "obligations",
+    "netting",
+    "settlement_legs"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZCorridorSettlementPlan"
+    },
+    "stack_spec_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "plan_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A globally unique plan identifier (recommended: urn:uuid:...)."
+    },
+    "issuer": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The issuer DID (or issuer identifier) for this settlement plan."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional expiry timestamp for time-bounded plans."
+    },
+    "description": {
+      "type": "string"
+    },
+    "netting_method": {
+      "type": "string",
+      "description": "Human-readable algorithm identifier (e.g., single-currency-greedy)."
+    },
+    "inputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "https://schemas.momentum-sez.org/msez/corridor.checkpoint.attachment.schema.json"
+      },
+      "description": "Anchors the plan to one or more corridor checkpoint heads (obligation corridors and/or settlement corridors)."
+    },
+    "obligations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/obligation"
+      }
+    },
+    "netting": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/net_position"
+      },
+      "description": "Computed net positions by party and currency. Negative values indicate a net payer (debtor)."
+    },
+    "settlement_legs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/settlement_leg"
+      },
+      "description": "The concrete settlement actions required to satisfy the netted obligations."
+    },
+    "executed_settlement_anchors": {
+      "type": "array",
+      "items": {
+        "$ref": "https://schemas.momentum-sez.org/msez/corridor.settlement-anchor.attachment.schema.json"
+      },
+      "description": "Optional: cross-corridor settlement anchors proving execution."
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+      },
+      "description": "Optional evidence artifacts (e.g., computation transcript, regulatory approvals, bank advice messages)."
+    },
+    "meta": {
+      "$ref": "https://schemas.momentum-sez.org/msez/meta.schema.json"
+    },
+    "proof": {
+      "type": "array",
+      "items": {
+        "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+      },
+      "description": "Optional multi-signature / multiparty authorization over the plan. Digest semantics exclude proof."
+    }
+  },
+  "$defs": {
+    "obligation": {
+      "type": "object",
+      "required": [
+        "debtor_party_id",
+        "creditor_party_id",
+        "amount"
+      ],
+      "properties": {
+        "obligation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "debtor_party_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "creditor_party_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "amount": {
+          "$ref": "https://schemas.momentum-sez.org/msez/trade.amount.v1.schema.json"
+        },
+        "due_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "source": {
+          "type": "object",
+          "description": "Optional reference to the corridor/checkpoint where the obligation is recorded.",
+          "properties": {
+            "corridor_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "checkpoint": {
+              "$ref": "https://schemas.momentum-sez.org/msez/corridor.checkpoint.attachment.schema.json"
+            },
+            "receipt_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "instrument_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+          },
+          "description": "Optional trade instrument references (invoice/BOL/LC docs, etc.)."
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "net_position": {
+      "type": "object",
+      "required": [
+        "party_id",
+        "amount"
+      ],
+      "properties": {
+        "party_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "amount": {
+          "$ref": "https://schemas.momentum-sez.org/msez/trade.amount.v1.schema.json",
+          "description": "Net amount (positive = net receiver, negative = net payer)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "settlement_leg": {
+      "type": "object",
+      "required": [
+        "from_party_id",
+        "to_party_id",
+        "amount"
+      ],
+      "properties": {
+        "leg_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "from_party_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "to_party_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "amount": {
+          "$ref": "https://schemas.momentum-sez.org/msez/trade.amount.v1.schema.json"
+        },
+        "settlement_corridor_id": {
+          "type": "string",
+          "description": "Optional corridor_id for the rail used to execute this leg (e.g. swift.iso20022-cross-border, stablecoin-settlement.usdc.circle)."
+        },
+        "instruction_ref": {
+          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+          "description": "Optional settlement instruction artifact (e.g., pacs.008 message, on-chain tx envelope)."
+        },
+        "expected_evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

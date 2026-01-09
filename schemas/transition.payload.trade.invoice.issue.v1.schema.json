@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/transition.payload.trade.invoice.issue.v1.schema.json",
+  "title": "Trade Invoice Issue transition payload (v1)",
+  "description": "Issues a trade invoice. The invoice MAY be embedded (invoice) or referenced as an artifact (invoice_ref).",
+  "type": "object",
+  "oneOf": [
+    {"required": ["invoice"]},
+    {"required": ["invoice_ref"]}
+  ],
+  "properties": {
+    "invoice": {
+      "$ref": "https://schemas.momentum-sez.org/msez/trade.invoice.v1.schema.json"
+    },
+    "invoice_ref": {
+      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+    },
+    "issued_by_party_id": {
+      "type": "string",
+      "description": "Optional party identifier asserting issuance (typically the seller)."
+    },
+    "notes": {"type": "string"}
+  },
+  "additionalProperties": false
+}

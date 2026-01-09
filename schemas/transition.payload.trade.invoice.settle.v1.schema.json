@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/transition.payload.trade.invoice.settle.v1.schema.json",
+  "title": "Trade Invoice Settle transition payload (v1)",
+  "description": "Records settlement/payment against an invoice. Deployments SHOULD attach a proof-binding and/or cross-corridor settlement-anchor artifact.",
+  "type": "object",
+  "oneOf": [
+    {"required": ["invoice_id"]},
+    {"required": ["invoice_ref"]}
+  ],
+  "required": ["settled_at", "amount"],
+  "properties": {
+    "invoice_id": {"type": "string", "minLength": 1},
+    "invoice_ref": {"$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"},
+    "amount": {"$ref": "https://schemas.momentum-sez.org/msez/trade.amount.v1.schema.json"},
+    "settled_at": {"type": "string", "format": "date-time"},
+    "settlement_corridor_id": {"type": "string"},
+    "settlement_reference": {
+      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+      "description": "Optional reference to a proof-binding / settlement-anchor / external rail receipt artifact. Prefer attaching typed artifacts to the corridor receipt transition attachments."
+    },
+    "notes": {"type": "string"}
+  },
+  "additionalProperties": false
+}

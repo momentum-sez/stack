@@ -36,3 +36,97 @@ transition_types:
   ruleset_digest_sha256: 00731932e9ba546adbafab373b4fbf5c72e0e386c4ad010ddff289ba8a976b2a
   notes: Integration boundary object; network calls are out-of-scope for core MSEZ
     and belong in deployer-specific adapters.
+
+# --- Trade instruments (invoice / bill of lading / letter of credit)
+- kind: trade.invoice.issue.v1
+  description: Trade invoice issuance.
+  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.invoice.issue.v1.schema.json
+  schema_path: schemas/transition.payload.trade.invoice.issue.v1.schema.json
+  schema_digest_sha256: 1b68bf3dd1f73d97dc8bf3432bda91e34a7b2baa44f7c65f35a9f730c93f75f7
+  ruleset_id: msez.transition.trade.invoice.issue.v1
+  ruleset_path: rulesets/msez.transition.trade.invoice.issue.v1.json
+  ruleset_digest_sha256: 3c4609e4475fdd24db8d6c76639683a6e3f15d4dbb8d64d0de40edbf1c007e03
+  notes: Canonical invoice may be embedded or referenced as an artifact.
+- kind: trade.invoice.accept.v1
+  description: Trade invoice acceptance or dispute.
+  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.invoice.accept.v1.schema.json
+  schema_path: schemas/transition.payload.trade.invoice.accept.v1.schema.json
+  schema_digest_sha256: fea08f9dcc173f34aca38e62b4f8ed93281535c7db8d6e0925b39649e0040a53
+  ruleset_id: msez.transition.trade.invoice.accept.v1
+  ruleset_path: rulesets/msez.transition.trade.invoice.accept.v1.json
+  ruleset_digest_sha256: 788b4cc92add1bb8a84a8dd6a5ba8189d693ea1a658bb99f1d0f158cfc1b8d85
+  notes: Use to record commercial acceptance (or dispute) before financing and/or settlement.
+- kind: trade.invoice.settle.v1
+  description: Trade invoice settlement/payment.
+  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.invoice.settle.v1.schema.json
+  schema_path: schemas/transition.payload.trade.invoice.settle.v1.schema.json
+  schema_digest_sha256: c915f90f6ab63d81b88a09f022c8267f699f03768f75564d29a41b2ab9b15400
+  ruleset_id: msez.transition.trade.invoice.settle.v1
+  ruleset_path: rulesets/msez.transition.trade.invoice.settle.v1.json
+  ruleset_digest_sha256: 187aa4d7cddb43f7010cdab1a56c7445316c876b1e2fb82928c9097fc99a438b
+  notes: Deployments SHOULD attach proof-binding and/or settlement-anchor artifacts.
+
+- kind: trade.bol.issue.v1
+  description: Bill of Lading issuance.
+  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.bol.issue.v1.schema.json
+  schema_path: schemas/transition.payload.trade.bol.issue.v1.schema.json
+  schema_digest_sha256: 889d655d0e49ed25b42a2138e85125cd6400dc363c6e90a3972638b69a6c4c0f
+  ruleset_id: msez.transition.trade.bol.issue.v1
+  ruleset_path: rulesets/msez.transition.trade.bol.issue.v1.json
+  ruleset_digest_sha256: 9161bfdf0742dd17dcbf256cabba2977f21c8f92c78e14b03dc15d2f1b6d72e8
+  notes: Canonical BOL may be embedded or referenced as an artifact.
+- kind: trade.bol.endorse.v1
+  description: Bill of Lading endorsement/transfer.
+  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.bol.endorse.v1.schema.json
+  schema_path: schemas/transition.payload.trade.bol.endorse.v1.schema.json
+  schema_digest_sha256: c1cffc9821d4f0dd8c12b5d0fe7b3621c8f198f0cb62dd2a93f674f47a902be0
+  ruleset_id: msez.transition.trade.bol.endorse.v1
+  ruleset_path: rulesets/msez.transition.trade.bol.endorse.v1.json
+  ruleset_digest_sha256: 98a6eb9461f917ca0d38c8f99b59eefaf9fbd5457d4ed419ec4c04e5c6a0f90e
+  notes: Represents title transfer where applicable.
+- kind: trade.bol.release.v1
+  description: Bill of Lading release/surrender.
+  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.bol.release.v1.schema.json
+  schema_path: schemas/transition.payload.trade.bol.release.v1.schema.json
+  schema_digest_sha256: 48be0e87cebf4a84a9a25f6df45cea57b619d0f00f1a8e02b4a56f452ada1f47
+  ruleset_id: msez.transition.trade.bol.release.v1
+  ruleset_path: rulesets/msez.transition.trade.bol.release.v1.json
+  ruleset_digest_sha256: b2650a88d9f043f75c5a0cf64c89a928de4a0ca44d55c7f8681c4ad0fd7ad4a1
+  notes: Records delivery order/release.
+
+- kind: trade.lc.issue.v1
+  description: Letter of Credit issuance.
+  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.issue.v1.schema.json
+  schema_path: schemas/transition.payload.trade.lc.issue.v1.schema.json
+  schema_digest_sha256: 3d4e77de30f4fe58a6bf1a2bcd405469de25d57d03782e470c295861fc5f1957
+  ruleset_id: msez.transition.trade.lc.issue.v1
+  ruleset_path: rulesets/msez.transition.trade.lc.issue.v1.json
+  ruleset_digest_sha256: 5c1f625c30256bba3c6f692a1db783a26222fbd4e1b6e40693bbdf1956ddcbea
+  notes: Canonical LC may be embedded or referenced as an artifact.
+- kind: trade.lc.amend.v1
+  description: Letter of Credit amendment.
+  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.amend.v1.schema.json
+  schema_path: schemas/transition.payload.trade.lc.amend.v1.schema.json
+  schema_digest_sha256: d17202227e4d54351e8e08dc06442a0fb96558cf4ea53651912de61f99932269
+  ruleset_id: msez.transition.trade.lc.amend.v1
+  ruleset_path: rulesets/msez.transition.trade.lc.amend.v1.json
+  ruleset_digest_sha256: b555d1d60e2b39f51d5482a94b56c3a6b70d50cf8aac7c54d511bb082d7e329d
+  notes: For canonical rail messages (e.g. MT707), carry the raw message as a blob artifact.
+- kind: trade.lc.present.v1
+  description: Letter of Credit document presentation.
+  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.present.v1.schema.json
+  schema_path: schemas/transition.payload.trade.lc.present.v1.schema.json
+  schema_digest_sha256: 889f90709bcf8927740a256ed8114b35d79f5a7c049e71d89d92d9d9fd6ed75a
+  ruleset_id: msez.transition.trade.lc.present.v1
+  ruleset_path: rulesets/msez.transition.trade.lc.present.v1.json
+  ruleset_digest_sha256: a0b727328a4ca220d7a21f9942e83497d2b9c10ca532fc71a954b02ba1b003f9
+  notes: Presented documents SHOULD be referenced as artifacts (PDF/XML) for size/privacy.
+- kind: trade.lc.honor.v1
+  description: Letter of Credit honor/reject decision.
+  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.honor.v1.schema.json
+  schema_path: schemas/transition.payload.trade.lc.honor.v1.schema.json
+  schema_digest_sha256: 942e6eea3eb802f0f9f04241aba464ea81ec020f358242c163d20837580f4b84
+  ruleset_id: msez.transition.trade.lc.honor.v1
+  ruleset_path: rulesets/msez.transition.trade.lc.honor.v1.json
+  ruleset_digest_sha256: b6b8c89cfcd52297a954d6e5ca4cfd367861b3f69a494168074fb2d200d6c9fa
+  notes: Deployments SHOULD anchor evidence using proof-binding and/or settlement-anchor artifacts.

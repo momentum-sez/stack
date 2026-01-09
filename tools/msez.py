@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MSEZ Stack tool (reference implementation) — v0.4.36
+"""MSEZ Stack tool (reference implementation) — v0.4.39
 
 Capabilities:
 - validate modules/profiles/zones against schemas
@@ -53,7 +53,7 @@ if str(REPO_ROOT) not in sys.path:
 # Local (repo) imports (after sys.path fix)
 from tools import artifacts as artifact_cas
 from tools import smart_asset as smart_asset_tools
-STACK_SPEC_VERSION = "0.4.36"
+STACK_SPEC_VERSION = "0.4.39"
 
 # Templating: we intentionally support two simple placeholder syntaxes used in v0.4 (safe placeholder subset)
 # - {{ VAR_NAME }} (common in Akoma templates)
@@ -921,6 +921,41 @@ def _compute_artifact_digest_strict(artifact_type: str, path: pathlib.Path) -> T
         from tools.vc import signing_input  # type: ignore
 
         return (sha256_bytes(signing_input(ev)), "rule-eval-evidence.signing-input")
+
+
+    # ------------------------------------------------------------------
+    # Cross-corridor settlement artifacts
+    #
+    # - proof-binding      => digest == sha256(signing_input(binding)) (proof excluded)
+    # - settlement-anchor  => digest == sha256(signing_input(anchor)) (proof excluded)
+    #
+    # These objects are intended to be referenced from corridor receipts as typed
+    # transition attachments, enabling cross-corridor settlement anchoring and
+    # portable audit packets.
+
+    if at == "proof-binding":
+        pb = load_json(p)
+        if not isinstance(pb, dict):
+            raise ValueError("proof-binding must be a JSON object")
+        from tools.vc import signing_input  # type: ignore
+
+        return (sha256_bytes(signing_input(pb)), "proof-binding.signing-input")
+
+    if at == "settlement-anchor":
+        anc = load_json(p)
+        if not isinstance(anc, dict):
+            raise ValueError("settlement-anchor must be a JSON object")
+        from tools.vc import signing_input  # type: ignore
+
+        return (sha256_bytes(signing_input(anc)), "settlement-anchor.signing-input")
+
+    if at == "settlement-plan":
+        plan = load_json(p)
+        if not isinstance(plan, dict):
+            raise ValueError("settlement-plan must be a JSON object")
+        from tools.vc import signing_input  # type: ignore
+
+        return (sha256_bytes(signing_input(plan)), "settlement-plan.signing-input")
 
     # Default: raw bytes sha256
     return (sha256_file(p), "bytes")
@@ -5438,19 +5473,26 @@ def cmd_corridor_state_receipt_init(args: argparse.Namespace) -> int:
 
 
 
-    # Optional typed anchoring: attach Smart Asset artifacts to the transition envelope.
+    # Optional typed anchoring: attach cross-domain artifacts to the transition envelope.
     #
-    # This supports “corridor as external anchor” patterns where a corridor receipt commits
-    # to:
-    #   - a Smart Asset state checkpoint digest (artifact_type=smart-asset-checkpoint), and/or
-    #   - a Smart Asset *receipt-chain* checkpoint payload digest (artifact_type=smart-asset-receipt-checkpoint).
+    # This supports "corridor as external anchor" and "cross-corridor settlement" patterns
+    # where a corridor receipt commits to one or more of:
+    #   - SmartAssetCheckpoint (artifact_type=smart-asset-checkpoint)
+    #   - SmartAssetReceiptChainCheckpoint (artifact_type=smart-asset-receipt-checkpoint)
+    #   - Corridor checkpoints from *other* corridors (artifact_type=checkpoint)
+    #   - Proof bindings (artifact_type=proof-binding)
+    #   - Cross-corridor settlement anchors (artifact_type=settlement-anchor)
     #
-    # These attachments are pure metadata from the corridor perspective, but become powerful
-    # when combined with inclusion proofs and asset-local receipt-chain proofs.
+    # These attachments are metadata from the corridor's perspective, but become powerful
+    # once paired with inclusion proofs, witness bundles, and operator-defined verification rules.
     try:
         attach_state_cps = getattr(args, "attach_smart_asset_checkpoint", None) or []
         attach_receipt_cps = getattr(args, "attach_smart_asset_receipt_checkpoint", None) or []
-        if attach_state_cps or attach_receipt_cps:
+        attach_corridor_cps = getattr(args, "attach_corridor_checkpoint", None) or []
+        attach_proof_bindings = getattr(args, "attach_proof_binding", None) or []
+        attach_settlement_anchors = getattr(args, "attach_settlement_anchor", None) or []
+
+        if attach_state_cps or attach_receipt_cps or attach_corridor_cps or attach_proof_bindings or attach_settlement_anchors:
             atts = transition.get("attachments")
             if not isinstance(atts, list):
                 atts = []
@@ -5537,8 +5579,121 @@ def cmd_corridor_state_receipt_init(args: argparse.Namespace) -> int:
                     pass
                 atts.append(item2)
                 existing.add(key)
+
+            # (C) Corridor checkpoint (typically from another corridor) => payload digest (excluding proof)
+            for cp_arg in attach_corridor_cps:
+                if not cp_arg:
+                    continue
+                cp_path = pathlib.Path(str(cp_arg))
+                if not cp_path.is_absolute():
+                    cp_path = REPO_ROOT / cp_path
+                if not cp_path.exists():
+                    raise FileNotFoundError(f"corridor checkpoint not found: {cp_path}")
+                ck = load_json(cp_path)
+                if not isinstance(ck, dict):
+                    raise ValueError(f"Corridor checkpoint must be a JSON object: {cp_path}")
+                if str(ck.get("type") or "").strip() != "MSEZCorridorStateCheckpoint":
+                    # Allow operator reuse of the same helper for checkpoint-like objects, but keep guardrails.
+                    raise ValueError(f"expected type MSEZCorridorStateCheckpoint: {cp_path}")
+                dig = checkpoint_payload_digest_sha256(ck)
+                key = ("checkpoint", dig)
+                if key in existing:
+                    continue
+                item3: Dict[str, Any] = {
+                    "artifact_type": "checkpoint",
+                    "digest_sha256": dig,
+                    "uri": str(cp_path),
+                    "media_type": "application/json",
+                }
+                cid_hint = str(ck.get("corridor_id") or "").strip()
+                if cid_hint:
+                    item3["corridor_id"] = cid_hint
+                try:
+                    rcnt = int(ck.get("receipt_count") or 0)
+                    if rcnt:
+                        item3["receipt_count"] = rcnt
+                except Exception:
+                    pass
+                try:
+                    fsr = str(ck.get("final_state_root") or "").strip().lower()
+                    if fsr and SHA256_HEX_RE.match(fsr):
+                        item3["final_state_root"] = fsr
+                except Exception:
+                    pass
+                try:
+                    mmr = ck.get("mmr") if isinstance(ck.get("mmr"), dict) else {}
+                    mmr_root = str((mmr or {}).get("root") or "").strip().lower()
+                    if mmr_root and SHA256_HEX_RE.match(mmr_root):
+                        item3["mmr_root"] = mmr_root
+                except Exception:
+                    pass
+                atts.append(item3)
+                existing.add(key)
+
+            # (D) ProofBinding => semantic digest == sha256(signing_input(binding))
+            for pb_arg in attach_proof_bindings:
+                if not pb_arg:
+                    continue
+                pb_path = pathlib.Path(str(pb_arg))
+                if not pb_path.is_absolute():
+                    pb_path = REPO_ROOT / pb_path
+                if not pb_path.exists():
+                    raise FileNotFoundError(f"proof-binding not found: {pb_path}")
+                pb = load_json(pb_path)
+                if not isinstance(pb, dict):
+                    raise ValueError(f"proof-binding must be a JSON object: {pb_path}")
+                from tools.vc import signing_input  # type: ignore
+
+                dig = sha256_bytes(signing_input(pb))
+                key = ("proof-binding", dig)
+                if key in existing:
+                    continue
+                item4: Dict[str, Any] = {
+                    "artifact_type": "proof-binding",
+                    "digest_sha256": dig,
+                    "uri": str(pb_path),
+                    "media_type": "application/json",
+                }
+                pur = str(pb.get("purpose") or "").strip()
+                if pur:
+                    item4["purpose"] = pur
+                atts.append(item4)
+                existing.add(key)
+
+            # (E) SettlementAnchor => semantic digest == sha256(signing_input(anchor))
+            for sa_arg in attach_settlement_anchors:
+                if not sa_arg:
+                    continue
+                sa_path = pathlib.Path(str(sa_arg))
+                if not sa_path.is_absolute():
+                    sa_path = REPO_ROOT / sa_path
+                if not sa_path.exists():
+                    raise FileNotFoundError(f"settlement-anchor not found: {sa_path}")
+                sa = load_json(sa_path)
+                if not isinstance(sa, dict):
+                    raise ValueError(f"settlement-anchor must be a JSON object: {sa_path}")
+                from tools.vc import signing_input  # type: ignore
+
+                dig = sha256_bytes(signing_input(sa))
+                key = ("settlement-anchor", dig)
+                if key in existing:
+                    continue
+                item5: Dict[str, Any] = {
+                    "artifact_type": "settlement-anchor",
+                    "digest_sha256": dig,
+                    "uri": str(sa_path),
+                    "media_type": "application/json",
+                }
+                sid = str(sa.get("settlement_id") or "").strip()
+                if sid:
+                    item5["settlement_id"] = sid
+                rel = str(sa.get("relationship") or "").strip()
+                if rel:
+                    item5["relationship"] = rel
+                atts.append(item5)
+                existing.add(key)
     except Exception as ex:
-        print(f"ERROR: unable to attach smart-asset checkpoint(s): {ex}", file=sys.stderr)
+        print(f"ERROR: unable to attach transition artifacts: {ex}", file=sys.stderr)
         return 2
 
     receipt: Dict[str, Any] = {
@@ -11595,6 +11750,947 @@ def cmd_corridor_availability_verify(args: argparse.Namespace) -> int:
     print("AVAIL OK")
     return 0
 
+
+# --- Proof-binding + cross-corridor settlement anchoring (v0.4.38) ------------
+
+def _parse_commitment_spec(spec: str) -> Dict[str, Any]:
+    """Parse a compact commitment spec into an object.
+
+    Format:
+      <kind>:<digest>[,k=v,k=v,...]
+
+    Example:
+      corridor.checkpoint:<digest>,corridor_id=trade,receipt_count=42
+    """
+    s = str(spec or "").strip()
+    if not s or ":" not in s:
+        raise ValueError("commitment spec must be '<kind>:<digest>[,k=v...]'")
+    head, tail = s.split(":", 1)
+    kind = head.strip()
+    rest = tail.strip()
+    if not kind:
+        raise ValueError("commitment spec missing kind")
+
+    # Split digest from optional kv list.
+    parts = [p.strip() for p in rest.split(",") if p.strip()]
+    if not parts:
+        raise ValueError("commitment spec missing digest")
+    dig = parts[0].strip().lower()
+    if not SHA256_HEX_RE.match(dig):
+        raise ValueError("commitment digest must be 64 lowercase hex")
+
+    obj: Dict[str, Any] = {"kind": kind, "digest_sha256": dig}
+    for kv in parts[1:]:
+        if "=" not in kv:
+            raise ValueError(f"commitment kv must be k=v (got '{kv}')")
+        k, v = kv.split("=", 1)
+        k = k.strip()
+        v = v.strip()
+        if not k:
+            continue
+        # small coercions
+        if v.isdigit():
+            obj[k] = int(v)
+        else:
+            obj[k] = v
+    return obj
+
+
+def cmd_proof_binding_init(args: argparse.Namespace) -> int:
+    """Create a ProofBinding artifact.
+
+    Proof bindings are a lightweight primitive for linking external proofs
+    (bank messages, PDF confirmations, chain receipts, etc.) to commitment digests
+    (corridor checkpoints, receipts, settlement anchors, smart-asset checkpoints, ...).
+
+    Digest semantics: sha256(signing_input(binding)) (i.e., proof excluded).
+    """
+
+    binding_purpose = str(getattr(args, "binding_purpose", "") or "").strip()
+    if not binding_purpose:
+        print("--binding-purpose is required", file=sys.stderr)
+        return 2
+
+    proof_path_raw = str(getattr(args, "proof", "") or "").strip()
+    if not proof_path_raw:
+        print("--proof is required", file=sys.stderr)
+        return 2
+    proof_path = pathlib.Path(proof_path_raw)
+    if not proof_path.is_absolute():
+        proof_path = REPO_ROOT / proof_path
+    if not proof_path.exists():
+        print(f"proof file not found: {proof_path}", file=sys.stderr)
+        return 2
+
+    proof_artifact_type = str(getattr(args, "proof_artifact_type", "blob") or "blob").strip() or "blob"
+    try:
+        dg_proof, _method = _compute_artifact_digest_strict(proof_artifact_type, proof_path)
+    except Exception as ex:
+        print(f"ERROR: unable to compute proof digest: {ex}", file=sys.stderr)
+        return 2
+
+    # Build commitments
+    commitments_in = getattr(args, "commitment", None) or []
+    commitments: List[Dict[str, Any]] = []
+    try:
+        for c in commitments_in:
+            commitments.append(_parse_commitment_spec(str(c)))
+    except Exception as ex:
+        print(f"ERROR: invalid --commitment: {ex}", file=sys.stderr)
+        return 2
+
+    if not commitments:
+        print("At least one --commitment is required", file=sys.stderr)
+        return 2
+
+    issued_at = str(getattr(args, "issued_at", "") or "").strip() or now_rfc3339()
+    issuer = str(getattr(args, "issuer", "") or "").strip()
+
+    binding: Dict[str, Any] = {
+        "type": "MSEZProofBinding",
+        "stack_spec_version": STACK_SPEC_VERSION,
+        "issued_at": issued_at,
+        "purpose": binding_purpose,
+        "proof_ref": {
+            "artifact_type": artifact_cas.normalize_artifact_type(proof_artifact_type),
+            "digest_sha256": dg_proof,
+            "uri": str(proof_path),
+        },
+        "commitments": commitments,
+    }
+    if issuer:
+        binding["issuer"] = issuer
+
+    notes = str(getattr(args, "notes", "") or "").strip()
+    if notes:
+        binding["notes"] = notes
+
+    # Compute semantic digest (proof excluded)
+    from tools.vc import signing_input  # type: ignore
+
+    dg_binding = sha256_bytes(signing_input(binding))
+
+    # Optional signing
+    if getattr(args, "sign", False):
+        key_path = str(getattr(args, "key", "") or "").strip()
+        if not key_path:
+            print("--key is required when --sign is set", file=sys.stderr)
+            return 2
+        kp = pathlib.Path(key_path)
+        if not kp.is_absolute():
+            kp = REPO_ROOT / kp
+        jwk = load_json(kp)
+        priv, did = load_ed25519_private_key_from_jwk(jwk)
+
+        vm = str(getattr(args, "verification_method", "") or "").strip()
+        if not vm:
+            vm = f"{did}#key-1"
+        add_ed25519_proof(binding, priv, vm, proof_purpose=str(getattr(args, "purpose", "assertionMethod")))
+
+    # Output path
+    out = str(getattr(args, "out", "") or "").strip()
+    if out:
+        out_path = pathlib.Path(out)
+        if not out_path.is_absolute():
+            out_path = REPO_ROOT / out_path
+    else:
+        out_path = REPO_ROOT / f"proof-binding.{dg_binding}.json"
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(binding, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    # Optional storage in CAS
+    if getattr(args, "store", False):
+        try:
+            artifact_cas.store_artifact_file(
+                "proof-binding",
+                dg_binding,
+                out_path,
+                repo_root=REPO_ROOT,
+                store_root=pathlib.Path(str(getattr(args, "store_root", "") or "").strip()) if str(getattr(args, "store_root", "") or "").strip() else None,
+                overwrite=bool(getattr(args, "overwrite", False)),
+            )
+        except Exception as ex:
+            print(f"ERROR: unable to store proof-binding in CAS: {ex}", file=sys.stderr)
+            return 2
+
+    # Optionally store the referenced proof artifact for verifier convenience.
+    if getattr(args, "store_proof", False):
+        try:
+            artifact_cas.store_artifact_file(
+                proof_artifact_type,
+                dg_proof,
+                proof_path,
+                repo_root=REPO_ROOT,
+                store_root=pathlib.Path(str(getattr(args, "store_root", "") or "").strip()) if str(getattr(args, "store_root", "") or "").strip() else None,
+                overwrite=bool(getattr(args, "overwrite", False)),
+            )
+        except Exception as ex:
+            print(f"ERROR: unable to store proof artifact in CAS: {ex}", file=sys.stderr)
+            return 2
+
+    if getattr(args, "json", False):
+        print(json.dumps({"path": out_path.as_posix(), "digest_sha256": dg_binding, "proof_digest_sha256": dg_proof}, indent=2))
+    else:
+        print(out_path.as_posix())
+        print(dg_binding)
+    return 0
+
+
+def cmd_proof_binding_verify(args: argparse.Namespace) -> int:
+    path_raw = str(getattr(args, "path", "") or "").strip()
+    if not path_raw:
+        print("path is required", file=sys.stderr)
+        return 2
+    p = pathlib.Path(path_raw)
+    if not p.is_absolute():
+        p = REPO_ROOT / p
+    if not p.exists():
+        print(f"proof-binding not found: {p}", file=sys.stderr)
+        return 2
+
+    obj = load_json(p)
+    if not isinstance(obj, dict):
+        print("proof-binding must be a JSON object", file=sys.stderr)
+        return 2
+
+    # Schema validate
+    try:
+        v = schema_validator(REPO_ROOT / "schemas" / "proof-binding.schema.json")
+        errs = validate_with_schema(obj, v)
+        if errs:
+            if getattr(args, "json", False):
+                print(json.dumps({"ok": False, "errors": errs}, indent=2))
+            else:
+                print("SCHEMA ERRORS:", file=sys.stderr)
+                for e in errs[:25]:
+                    print(f"  - {e}", file=sys.stderr)
+            return 2
+    except Exception as ex:
+        print(f"ERROR: schema validation failed: {ex}", file=sys.stderr)
+        return 2
+
+    from tools.vc import signing_input, verify_credential  # type: ignore
+
+    dg = sha256_bytes(signing_input(obj))
+    proof_results = []
+    if getattr(args, "verify_proofs", False):
+        proof_results = [r.__dict__ for r in verify_credential(obj)]
+
+    out = {"ok": True, "path": p.as_posix(), "digest_sha256": dg, "proof_results": proof_results}
+    if getattr(args, "json", False):
+        print(json.dumps(out, indent=2))
+    else:
+        print(dg)
+        if proof_results:
+            for r in proof_results:
+                status = "OK" if r.get("ok") else "FAIL"
+                print(f"{status}: {r.get('verification_method')}: {r.get('error','')}")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Corridor-of-corridors: multi-party settlement plans + netting
+# ---------------------------------------------------------------------------
+
+
+def _canon_decimal_str(d):
+    """Render a Decimal deterministically (no exponent, no trailing zeros)."""
+
+    # Imported lazily so the rest of the CLI stays lightweight.
+    from decimal import Decimal
+
+    if not isinstance(d, Decimal):
+        d = Decimal(str(d))
+
+    if d.is_zero():
+        return "0"
+    return format(d.normalize(), "f")
+
+
+def _compute_netting_and_legs(obligations):
+    """Compute per-currency netting positions and a deterministic greedy set of settlement legs."""
+
+    from decimal import Decimal, getcontext
+
+    getcontext().prec = 80
+
+    # currency -> party -> net Decimal
+    net = {}
+    for o in obligations:
+        debtor = str(o.get("debtor_party_id", ""))
+        creditor = str(o.get("creditor_party_id", ""))
+        amt = o.get("amount") or {}
+        cur = str(amt.get("currency", ""))
+        val = Decimal(str(amt.get("value", "0")))
+
+        net.setdefault(cur, {})
+        net[cur][debtor] = net[cur].get(debtor, Decimal(0)) - val
+        net[cur][creditor] = net[cur].get(creditor, Decimal(0)) + val
+
+    # Build netting output (deterministic ordering)
+    netting_out = []
+    for cur in sorted(net.keys()):
+        positions = []
+        for party_id in sorted(net[cur].keys()):
+            v = net[cur][party_id]
+            if v.is_zero():
+                continue
+            positions.append(
+                {
+                    "party_id": party_id,
+                    "net_amount": {"currency": cur, "value": _canon_decimal_str(v)},
+                }
+            )
+        netting_out.append({"currency": cur, "positions": positions})
+
+    # Build legs (greedy, largest-first, deterministic)
+    legs_out = []
+    for cur in sorted(net.keys()):
+        debtors = []
+        creditors = []
+        for party_id, v in net[cur].items():
+            if v < 0:
+                debtors.append((party_id, -v))
+            elif v > 0:
+                creditors.append((party_id, v))
+
+        # Sort by amount desc, then party_id asc for determinism
+        debtors.sort(key=lambda t: (-t[1], t[0]))
+        creditors.sort(key=lambda t: (-t[1], t[0]))
+
+        i = 0
+        j = 0
+        leg_seq = 0
+        while i < len(debtors) and j < len(creditors):
+            d_party, d_amt = debtors[i]
+            c_party, c_amt = creditors[j]
+            x = d_amt if d_amt <= c_amt else c_amt
+
+            legs_out.append(
+                {
+                    "leg_id": f"{cur}:{leg_seq}",
+                    "from_party_id": d_party,
+                    "to_party_id": c_party,
+                    "amount": {"currency": cur, "value": _canon_decimal_str(x)},
+                }
+            )
+            leg_seq += 1
+
+            d_amt -= x
+            c_amt -= x
+            if d_amt.is_zero():
+                i += 1
+            else:
+                debtors[i] = (d_party, d_amt)
+            if c_amt.is_zero():
+                j += 1
+            else:
+                creditors[j] = (c_party, c_amt)
+
+    # Deterministic secondary ordering (currency/ids)
+    legs_out.sort(key=lambda leg: (leg["amount"]["currency"], leg["from_party_id"], leg["to_party_id"], leg["leg_id"]))
+    return netting_out, legs_out
+
+
+def cmd_corridor_settlement_plan_init(args: argparse.Namespace) -> int:
+    """Create a corridor.settlement-plan artifact (netting + multi-party settlement legs)."""
+
+    in_raw = str(getattr(args, "input", "") or "").strip()
+    if not in_raw:
+        print("--input is required", file=sys.stderr)
+        return 2
+
+    in_path = pathlib.Path(in_raw)
+    if not in_path.is_absolute():
+        in_path = REPO_ROOT / in_path
+    if not in_path.exists():
+        print(f"input not found: {in_path}", file=sys.stderr)
+        return 2
+
+    if in_path.suffix.lower() in {".yaml", ".yml"}:
+        req = load_yaml(in_path)
+    else:
+        req = load_json(in_path)
+    if not isinstance(req, dict):
+        print("input must be a JSON/YAML object", file=sys.stderr)
+        return 2
+
+    import uuid
+
+    plan_id = str(req.get("plan_id") or f"urn:uuid:{uuid.uuid4()}")
+    issuer = str(getattr(args, "issuer", "") or req.get("issuer") or "").strip()
+    created_at = str(req.get("created_at") or now_rfc3339())
+    description = str(req.get("description") or "").strip()
+
+    # Build inputs (corridor checkpoints) if present
+    inputs_out = []
+    for item in (req.get("inputs") or []):
+        if isinstance(item, str):
+            item = {"checkpoint_path": item}
+        if not isinstance(item, dict):
+            continue
+
+        ck_path_raw = str(item.get("checkpoint_path") or "").strip()
+        if ck_path_raw:
+            ck_path = pathlib.Path(ck_path_raw)
+            if not ck_path.is_absolute():
+                ck_path = REPO_ROOT / ck_path
+            if not ck_path.exists():
+                print(f"checkpoint not found: {ck_path}", file=sys.stderr)
+                return 2
+            ck = load_json(ck_path)
+            if not isinstance(ck, dict):
+                print(f"checkpoint must be JSON object: {ck_path}", file=sys.stderr)
+                return 2
+            dg = checkpoint_payload_digest_sha256(ck)
+            att = {
+                "artifact_type": "checkpoint",
+                "digest_sha256": dg,
+            }
+            # Best-effort metadata copying
+            for k in [
+                "corridor_id",
+                "receipt_count",
+                "final_state_root",
+                "mmr_root",
+                "anchor_role",
+                "anchor_party_id",
+                "checkpoint_at",
+            ]:
+                if k in ck:
+                    att[k] = ck[k]
+            # Preserve any explicit role overrides from the request
+            if "anchor_role" in item:
+                att["anchor_role"] = item["anchor_role"]
+            if "anchor_party_id" in item:
+                att["anchor_party_id"] = item["anchor_party_id"]
+            inputs_out.append(att)
+        else:
+            # Assume already a checkpoint attachment
+            inputs_out.append(item)
+
+    # Obligations
+    obligations_in = req.get("obligations")
+    if not isinstance(obligations_in, list) or not obligations_in:
+        print("input.obligations must be a non-empty list", file=sys.stderr)
+        return 2
+
+    obligations_out = []
+    for o in obligations_in:
+        if not isinstance(o, dict):
+            print("each obligation must be an object", file=sys.stderr)
+            return 2
+
+        debtor = str(o.get("debtor_party_id") or "").strip()
+        creditor = str(o.get("creditor_party_id") or "").strip()
+        amount = o.get("amount")
+        if not debtor or not creditor or not isinstance(amount, dict):
+            print("each obligation requires debtor_party_id, creditor_party_id, and amount", file=sys.stderr)
+            return 2
+        cur = str(amount.get("currency") or "").strip()
+        val = str(amount.get("value") or "").strip()
+        if not cur or not val:
+            print("obligation.amount requires currency and value", file=sys.stderr)
+            return 2
+
+        # Canonicalize value string
+        from decimal import Decimal
+
+        canon_val = _canon_decimal_str(Decimal(val))
+        oo = dict(o)
+        oo["debtor_party_id"] = debtor
+        oo["creditor_party_id"] = creditor
+        oo["amount"] = {"currency": cur, "value": canon_val}
+
+        # Inline checkpoint path expansion in obligation.source
+        src = oo.get("source")
+        if isinstance(src, dict) and "checkpoint_path" in src:
+            ck_path_raw = str(src.get("checkpoint_path") or "").strip()
+            ck_path = pathlib.Path(ck_path_raw)
+            if not ck_path.is_absolute():
+                ck_path = REPO_ROOT / ck_path
+            if not ck_path.exists():
+                print(f"source checkpoint not found: {ck_path}", file=sys.stderr)
+                return 2
+            ck = load_json(ck_path)
+            if not isinstance(ck, dict):
+                print(f"source checkpoint must be JSON object: {ck_path}", file=sys.stderr)
+                return 2
+            dg = checkpoint_payload_digest_sha256(ck)
+            src2 = dict(src)
+            src2.pop("checkpoint_path", None)
+            src2["checkpoint"] = {
+                "artifact_type": "checkpoint",
+                "digest_sha256": dg,
+            }
+            oo["source"] = src2
+
+        obligations_out.append(oo)
+
+    netting, legs = _compute_netting_and_legs(obligations_out)
+
+    plan = {
+        "type": "MSEZCorridorSettlementPlan",
+        "stack_spec_version": STACK_SPEC_VERSION,
+        "plan_id": plan_id,
+        "created_at": created_at,
+        "obligations": obligations_out,
+        "netting_method": "per-currency.greedy.largest-first",
+        "netting": netting,
+        "settlement_legs": legs,
+    }
+    if issuer:
+        plan["issuer"] = issuer
+    if description:
+        plan["description"] = description
+    if inputs_out:
+        plan["inputs"] = inputs_out
+    if isinstance(req.get("execution"), dict):
+        plan["execution"] = req["execution"]
+    if isinstance(req.get("meta"), dict):
+        plan["meta"] = req["meta"]
+
+    # Optional signing (DataIntegrityProof / JCS-Ed25519)
+    if getattr(args, "sign", False):
+        key_path_raw = str(getattr(args, "key", "") or "").strip()
+        if not key_path_raw:
+            print("--key is required when --sign is set", file=sys.stderr)
+            return 2
+        key_path = pathlib.Path(key_path_raw)
+        if not key_path.is_absolute():
+            key_path = REPO_ROOT / key_path
+        if not key_path.exists():
+            print(f"key not found: {key_path}", file=sys.stderr)
+            return 2
+        key_jwk = json.loads(key_path.read_text(encoding="utf-8"))
+        from tools.vc import add_ed25519_proof, b64url_decode, did_key_from_ed25519_public_key  # type: ignore
+
+        did = did_key_from_ed25519_public_key(b64url_decode(key_jwk["x"]))
+        vm = str(getattr(args, "verification_method", "") or "").strip() or f"{did}#key-1"
+        purpose = str(getattr(args, "purpose", "") or "").strip() or "assertionMethod"
+        add_ed25519_proof(plan, key_jwk=key_jwk, verification_method=vm, purpose=purpose)
+
+    # Schema validate
+    try:
+        v = schema_validator(REPO_ROOT / "schemas" / "corridor.settlement-plan.schema.json")
+        errs = validate_with_schema(plan, v)
+        if errs:
+            print("SCHEMA ERRORS:", file=sys.stderr)
+            for e in errs[:25]:
+                print(f"  - {e}", file=sys.stderr)
+            return 2
+    except Exception as ex:
+        print(f"ERROR: schema validation failed: {ex}", file=sys.stderr)
+        return 2
+
+    from tools.vc import signing_input  # type: ignore
+
+    dg = sha256_bytes(signing_input(plan)).hex()
+
+    # Write output
+    out_raw = str(getattr(args, "out", "") or "").strip()
+    if not out_raw:
+        out_path = REPO_ROOT / f"settlement-plan.{dg}.json"
+    else:
+        out_path = pathlib.Path(out_raw)
+        if not out_path.is_absolute():
+            out_path = REPO_ROOT / out_path
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    if getattr(args, "store", False):
+        from tools.artifacts import store_artifact_file  # type: ignore
+
+        store_artifact_file(
+            artifact_type="settlement-plan",
+            digest_sha256=dg,
+            source_path=out_path,
+            store_root=REPO_ROOT / "dist" / "artifacts",
+            ext_hint=".settlement-plan.json",
+        )
+
+    if getattr(args, "json", False):
+        print(json.dumps({"ok": True, "digest_sha256": dg, "out": out_path.as_posix()}, indent=2))
+    else:
+        print(out_path)
+    return 0
+
+
+def cmd_corridor_settlement_plan_verify(args: argparse.Namespace) -> int:
+    path_raw = str(getattr(args, "path", "") or "").strip()
+    if not path_raw:
+        print("path is required", file=sys.stderr)
+        return 2
+    p = pathlib.Path(path_raw)
+    if not p.is_absolute():
+        p = REPO_ROOT / p
+    if not p.exists():
+        print(f"settlement-plan not found: {p}", file=sys.stderr)
+        return 2
+
+    obj = load_json(p)
+    if not isinstance(obj, dict):
+        print("settlement-plan must be a JSON object", file=sys.stderr)
+        return 2
+
+    # Schema validate
+    try:
+        v = schema_validator(REPO_ROOT / "schemas" / "corridor.settlement-plan.schema.json")
+        errs = validate_with_schema(obj, v)
+        if errs:
+            if getattr(args, "json", False):
+                print(json.dumps({"ok": False, "errors": errs}, indent=2))
+            else:
+                print("SCHEMA ERRORS:", file=sys.stderr)
+                for e in errs[:25]:
+                    print(f"  - {e}", file=sys.stderr)
+            return 2
+    except Exception as ex:
+        print(f"ERROR: schema validation failed: {ex}", file=sys.stderr)
+        return 2
+
+    from tools.vc import signing_input, verify_credential  # type: ignore
+
+    dg = sha256_bytes(signing_input(obj)).hex()
+    proof_results = []
+    if getattr(args, "verify_proofs", False):
+        proof_results = [r.__dict__ for r in verify_credential(obj)]
+
+    out = {"ok": True, "path": p.as_posix(), "digest_sha256": dg, "proof_results": proof_results}
+    if getattr(args, "json", False):
+        print(json.dumps(out, indent=2))
+    else:
+        print(dg)
+        if proof_results:
+            for r in proof_results:
+                status = "OK" if r.get("ok") else "FAIL"
+                print(f"{status}: {r.get('verification_method')}: {r.get('error','')}")
+    return 0
+
+
+def cmd_corridor_settlement_anchor_init(args: argparse.Namespace) -> int:
+    """Create a cross-corridor settlement-anchor artifact and optionally store it."""
+
+    # Required checkpoints
+    ob_ck_raw = str(getattr(args, "obligation_checkpoint", "") or "").strip()
+    se_ck_raw = str(getattr(args, "settlement_checkpoint", "") or "").strip()
+    if not ob_ck_raw or not se_ck_raw:
+        print("--obligation-checkpoint and --settlement-checkpoint are required", file=sys.stderr)
+        return 2
+
+    ob_ck_path = pathlib.Path(ob_ck_raw)
+    if not ob_ck_path.is_absolute():
+        ob_ck_path = REPO_ROOT / ob_ck_path
+    se_ck_path = pathlib.Path(se_ck_raw)
+    if not se_ck_path.is_absolute():
+        se_ck_path = REPO_ROOT / se_ck_path
+    if not ob_ck_path.exists():
+        print(f"obligation checkpoint not found: {ob_ck_path}", file=sys.stderr)
+        return 2
+    if not se_ck_path.exists():
+        print(f"settlement checkpoint not found: {se_ck_path}", file=sys.stderr)
+        return 2
+
+    ob_ck = load_json(ob_ck_path)
+    se_ck = load_json(se_ck_path)
+    if not isinstance(ob_ck, dict) or not isinstance(se_ck, dict):
+        print("checkpoint files must be JSON objects", file=sys.stderr)
+        return 2
+    if str(ob_ck.get("type") or "") != "MSEZCorridorStateCheckpoint":
+        print(f"expected MSEZCorridorStateCheckpoint: {ob_ck_path}", file=sys.stderr)
+        return 2
+    if str(se_ck.get("type") or "") != "MSEZCorridorStateCheckpoint":
+        print(f"expected MSEZCorridorStateCheckpoint: {se_ck_path}", file=sys.stderr)
+        return 2
+
+    ob_cid = str(getattr(args, "obligation_corridor_id", "") or "").strip() or str(ob_ck.get("corridor_id") or "").strip()
+    se_cid = str(getattr(args, "settlement_corridor_id", "") or "").strip() or str(se_ck.get("corridor_id") or "").strip()
+    if not ob_cid or not se_cid:
+        print("unable to determine corridor_id for both checkpoints (use --obligation-corridor-id / --settlement-corridor-id)", file=sys.stderr)
+        return 2
+
+    ob_ck_dg = checkpoint_payload_digest_sha256(ob_ck)
+    se_ck_dg = checkpoint_payload_digest_sha256(se_ck)
+
+    # Optional receipts
+    def _load_receipt_info(path_raw: str) -> Tuple[str, Optional[int]]:
+        if not path_raw:
+            return ("", None)
+        pp = pathlib.Path(path_raw)
+        if not pp.is_absolute():
+            pp = REPO_ROOT / pp
+        if not pp.exists():
+            raise FileNotFoundError(pp)
+        rj = load_json(pp)
+        if not isinstance(rj, dict):
+            raise ValueError("receipt must be JSON object")
+        nr = str(rj.get("next_root") or "").strip().lower()
+        if not SHA256_HEX_RE.match(nr):
+            # fallback: compute it
+            nr = corridor_state_next_root(rj)
+        seqv = rj.get("sequence")
+        seqn: Optional[int] = None
+        if isinstance(seqv, int):
+            seqn = seqv
+        elif isinstance(seqv, str) and seqv.isdigit():
+            seqn = int(seqv)
+        return (nr, seqn)
+
+    ob_rcpt_path_raw = str(getattr(args, "obligation_receipt", "") or "").strip()
+    se_rcpt_path_raw = str(getattr(args, "settlement_receipt", "") or "").strip()
+    try:
+        ob_next_root, ob_seq = _load_receipt_info(ob_rcpt_path_raw)
+    except Exception:
+        ob_next_root, ob_seq = ("", None)
+    try:
+        se_next_root, se_seq = _load_receipt_info(se_rcpt_path_raw)
+    except Exception:
+        se_next_root, se_seq = ("", None)
+
+    created_at = str(getattr(args, "created_at", "") or "").strip() or now_rfc3339()
+    settlement_id = str(getattr(args, "settlement_id", "") or "").strip()
+    if not settlement_id:
+        settlement_id = f"urn:uuid:{uuid.uuid4()}"
+    relationship = str(getattr(args, "relationship", "") or "").strip()
+
+    anchor: Dict[str, Any] = {
+        "type": "MSEZCrossCorridorSettlementAnchor",
+        "stack_spec_version": STACK_SPEC_VERSION,
+        "created_at": created_at,
+        "settlement_id": settlement_id,
+        "obligation": {
+            "corridor_id": ob_cid,
+            "checkpoint_ref": {
+                "artifact_type": "checkpoint",
+                "digest_sha256": ob_ck_dg,
+                "uri": str(ob_ck_path),
+                "media_type": "application/json",
+                "corridor_id": ob_cid,
+            },
+        },
+        "settlement": {
+            "corridor_id": se_cid,
+            "checkpoint_ref": {
+                "artifact_type": "checkpoint",
+                "digest_sha256": se_ck_dg,
+                "uri": str(se_ck_path),
+                "media_type": "application/json",
+                "corridor_id": se_cid,
+            },
+        },
+    }
+    if relationship:
+        anchor["relationship"] = relationship
+
+    if ob_next_root:
+        anchor["obligation"]["receipt_next_root"] = ob_next_root
+    if ob_seq is not None:
+        anchor["obligation"]["receipt_sequence"] = ob_seq
+    if se_next_root:
+        anchor["settlement"]["receipt_next_root"] = se_next_root
+    if se_seq is not None:
+        anchor["settlement"]["receipt_sequence"] = se_seq
+
+    # Optional proof-bindings (already content-addressed)
+    pb_paths = getattr(args, "proof_binding", None) or []
+    if pb_paths:
+        from tools.vc import signing_input  # type: ignore
+
+        pbs: List[Dict[str, Any]] = []
+        for pb_raw in pb_paths:
+            if not pb_raw:
+                continue
+            pb_path = pathlib.Path(str(pb_raw))
+            if not pb_path.is_absolute():
+                pb_path = REPO_ROOT / pb_path
+            if not pb_path.exists():
+                raise FileNotFoundError(pb_path)
+            pb = load_json(pb_path)
+            if not isinstance(pb, dict):
+                raise ValueError(f"proof-binding must be JSON object: {pb_path}")
+            dg_pb = sha256_bytes(signing_input(pb))
+            item: Dict[str, Any] = {
+                "artifact_type": "proof-binding",
+                "digest_sha256": dg_pb,
+                "uri": str(pb_path),
+                "media_type": "application/json",
+            }
+            pur = str(pb.get("purpose") or "").strip()
+            if pur:
+                item["purpose"] = pur
+            pbs.append(item)
+        if pbs:
+            anchor["proof_bindings"] = pbs
+
+    # Optional raw proofs (blob digests)
+    proof_paths = getattr(args, "proof", None) or []
+    if proof_paths:
+        prfs: List[Dict[str, Any]] = []
+        for pr in proof_paths:
+            if not pr:
+                continue
+            pr_path = pathlib.Path(str(pr))
+            if not pr_path.is_absolute():
+                pr_path = REPO_ROOT / pr_path
+            if not pr_path.exists():
+                raise FileNotFoundError(pr_path)
+            dg_pr = sha256_file(pr_path)
+            prfs.append({"artifact_type": "blob", "digest_sha256": dg_pr, "uri": str(pr_path)})
+        if prfs:
+            anchor["proofs"] = prfs
+
+    notes = str(getattr(args, "notes", "") or "").strip()
+    if notes:
+        anchor["notes"] = notes
+
+    # Compute digest (proof excluded)
+    from tools.vc import signing_input  # type: ignore
+
+    dg_anchor = sha256_bytes(signing_input(anchor))
+
+    # Optional signing
+    if getattr(args, "sign", False):
+        key_path = str(getattr(args, "key", "") or "").strip()
+        if not key_path:
+            print("--key is required when --sign is set", file=sys.stderr)
+            return 2
+        kp = pathlib.Path(key_path)
+        if not kp.is_absolute():
+            kp = REPO_ROOT / kp
+        jwk = load_json(kp)
+        priv, did = load_ed25519_private_key_from_jwk(jwk)
+
+        vm = str(getattr(args, "verification_method", "") or "").strip()
+        if not vm:
+            vm = f"{did}#key-1"
+        add_ed25519_proof(anchor, priv, vm, proof_purpose=str(getattr(args, "purpose", "assertionMethod")))
+
+    out = str(getattr(args, "out", "") or "").strip()
+    if out:
+        out_path = pathlib.Path(out)
+        if not out_path.is_absolute():
+            out_path = REPO_ROOT / out_path
+    else:
+        out_path = REPO_ROOT / f"settlement-anchor.{dg_anchor}.json"
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(anchor, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    if getattr(args, "store", False):
+        try:
+            artifact_cas.store_artifact_file(
+                "settlement-anchor",
+                dg_anchor,
+                out_path,
+                repo_root=REPO_ROOT,
+                store_root=pathlib.Path(str(getattr(args, "store_root", "") or "").strip()) if str(getattr(args, "store_root", "") or "").strip() else None,
+                overwrite=bool(getattr(args, "overwrite", False)),
+            )
+        except Exception as ex:
+            print(f"ERROR: unable to store settlement-anchor in CAS: {ex}", file=sys.stderr)
+            return 2
+
+    if getattr(args, "json", False):
+        print(json.dumps({"path": out_path.as_posix(), "digest_sha256": dg_anchor, "obligation_checkpoint": ob_ck_dg, "settlement_checkpoint": se_ck_dg}, indent=2))
+    else:
+        print(out_path.as_posix())
+        print(dg_anchor)
+    return 0
+
+
+def cmd_corridor_settlement_anchor_verify(args: argparse.Namespace) -> int:
+    path_raw = str(getattr(args, "path", "") or "").strip()
+    if not path_raw:
+        print("path is required", file=sys.stderr)
+        return 2
+    p = pathlib.Path(path_raw)
+    if not p.is_absolute():
+        p = REPO_ROOT / p
+    if not p.exists():
+        print(f"settlement-anchor not found: {p}", file=sys.stderr)
+        return 2
+
+    obj = load_json(p)
+    if not isinstance(obj, dict):
+        print("settlement-anchor must be a JSON object", file=sys.stderr)
+        return 2
+
+    # Schema validate
+    try:
+        v = schema_validator(REPO_ROOT / "schemas" / "corridor.settlement-anchor.schema.json")
+        errs = validate_with_schema(obj, v)
+        if errs:
+            if getattr(args, "json", False):
+                print(json.dumps({"ok": False, "errors": errs}, indent=2))
+            else:
+                print("SCHEMA ERRORS:", file=sys.stderr)
+                for e in errs[:25]:
+                    print(f"  - {e}", file=sys.stderr)
+            return 2
+    except Exception as ex:
+        print(f"ERROR: schema validation failed: {ex}", file=sys.stderr)
+        return 2
+
+    from tools.vc import signing_input, verify_credential  # type: ignore
+
+    dg = sha256_bytes(signing_input(obj))
+    proof_results = []
+    if getattr(args, "verify_proofs", False):
+        proof_results = [r.__dict__ for r in verify_credential(obj)]
+
+    # Optional ref resolution (best-effort)
+    ref_checks: List[Dict[str, Any]] = []
+    if getattr(args, "resolve_refs", False):
+        # Check that embedded URIs (if present) match their claimed digests.
+        def _check_ref(ref: Dict[str, Any]) -> None:
+            if not isinstance(ref, dict):
+                return
+            at = str(ref.get("artifact_type") or "").strip()
+            dg_ref = str(ref.get("digest_sha256") or "").strip().lower()
+            uri = str(ref.get("uri") or "").strip()
+            if not (at and dg_ref and uri):
+                return
+            rp = pathlib.Path(uri)
+            if not rp.is_absolute():
+                rp = REPO_ROOT / rp
+            if not rp.exists():
+                ref_checks.append({"artifact_type": at, "digest_sha256": dg_ref, "uri": uri, "ok": False, "error": "uri not found"})
+                return
+            try:
+                dg2, method = _compute_artifact_digest_strict(at, rp)
+                ok = (dg2 == dg_ref)
+                ref_checks.append({"artifact_type": at, "digest_sha256": dg_ref, "uri": uri, "ok": ok, "method": method, "computed": dg2})
+            except Exception as ex:
+                ref_checks.append({"artifact_type": at, "digest_sha256": dg_ref, "uri": uri, "ok": False, "error": str(ex)})
+
+        for side in ["obligation", "settlement"]:
+            s = obj.get(side)
+            if isinstance(s, dict):
+                ckref = s.get("checkpoint_ref")
+                if isinstance(ckref, dict):
+                    _check_ref(ckref)
+
+        for arr_field in ["proof_bindings", "proofs"]:
+            arr = obj.get(arr_field)
+            if isinstance(arr, list):
+                for it in arr:
+                    if isinstance(it, dict):
+                        _check_ref(it)
+
+    out = {"ok": True, "path": p.as_posix(), "digest_sha256": dg, "ref_checks": ref_checks, "proof_results": proof_results}
+    if getattr(args, "json", False):
+        print(json.dumps(out, indent=2))
+    else:
+        print(dg)
+        if ref_checks:
+            bad = [c for c in ref_checks if not c.get("ok")]
+            if bad:
+                print(f"REF CHECKS: {len(bad)} failed", file=sys.stderr)
+            else:
+                print("REF CHECKS: ok")
+    return 0
+
 # --- Generic artifact CAS (v0.4.7+) ------------------------------------------
 
 ARTIFACT_TYPES_KNOWN = [
@@ -11605,6 +12701,8 @@ ARTIFACT_TYPES_KNOWN = [
     "schema",
     "vc",
     "checkpoint",
+    "proof-binding",
+    "settlement-anchor",
     "proof-key",
     "blob",
 ]
@@ -11977,6 +13075,51 @@ def main() -> int:
     vck.add_argument("--kid", default="key-1", help="JWK key id (kid)")
     vck.set_defaults(func=cmd_vc_keygen)
 
+    # Proof bindings (v0.4.38): bind external proofs to one or more commitments
+    # (corridor checkpoints/receipts, settlement anchors, smart-asset checkpoints, ...).
+    pb = sub.add_parser("proof-binding")
+    pb_sub = pb.add_subparsers(dest="proof_binding_cmd", required=True)
+
+    pbi = pb_sub.add_parser("init", help="Create a proof-binding artifact and optionally store it in the artifact CAS")
+    pbi.add_argument(
+        "--binding-purpose",
+        dest="binding_purpose",
+        required=True,
+        help="High-level purpose label (e.g., settlement.confirmation, trade.release, audit.attestation)",
+    )
+    pbi.add_argument("--proof", required=True, help="Path to proof artifact file (pdf/json/msg/etc.)")
+    pbi.add_argument(
+        "--proof-artifact-type",
+        default="blob",
+        help="Artifact type for proof_ref digest computation (default: blob). For semantic types (vc/checkpoint/...) strict digest rules apply.",
+    )
+    pbi.add_argument(
+        "--commitment",
+        action="append",
+        default=[],
+        help="Commitment spec '<kind>:<digest>[,k=v...]' (repeatable)",
+    )
+    pbi.add_argument("--issuer", default="", help="Optional issuer identifier/DID")
+    pbi.add_argument("--issued-at", default="", help="RFC3339 issued_at override (default: now)")
+    pbi.add_argument("--notes", default="", help="Optional notes")
+    pbi.add_argument("--out", default="", help="Output path (default: proof-binding.<digest>.json)")
+    pbi.add_argument("--sign", action="store_true", help="Sign the proof-binding object (Ed25519 did:key)")
+    pbi.add_argument("--key", default="", help="Private OKP/Ed25519 JWK for signing (required with --sign)")
+    pbi.add_argument("--verification-method", default="", help="verificationMethod override (default: did:key derived from JWK + '#key-1')")
+    pbi.add_argument("--purpose", default="assertionMethod", help="proofPurpose (default: assertionMethod)")
+    pbi.add_argument("--store", action="store_true", help="Store the proof-binding artifact in the generic CAS (dist/artifacts)")
+    pbi.add_argument("--store-proof", action="store_true", help="Also store the referenced proof artifact in the generic CAS")
+    pbi.add_argument("--store-root", default="", help="Override artifact store root (default: dist/artifacts)")
+    pbi.add_argument("--overwrite", action="store_true", help="Overwrite existing CAS entries")
+    pbi.add_argument("--json", action="store_true", help="Emit machine-readable JSON output")
+    pbi.set_defaults(func=cmd_proof_binding_init)
+
+    pbv = pb_sub.add_parser("verify", help="Verify a proof-binding artifact (schema + digest) and optionally verify proofs")
+    pbv.add_argument("path", help="Path to proof-binding JSON")
+    pbv.add_argument("--verify-proofs", action="store_true", help="Verify Ed25519 proofs (did:key)")
+    pbv.add_argument("--json", action="store_true", help="Emit machine-readable JSON output")
+    pbv.set_defaults(func=cmd_proof_binding_verify)
+
     cor = sub.add_parser("corridor")
     cor_sub = cor.add_subparsers(dest="corridor_cmd", required=True)
 
@@ -12073,6 +13216,132 @@ def main() -> int:
     cavv.set_defaults(require_all_lawpacks=True)
     cavv.set_defaults(func=cmd_corridor_availability_verify)
 
+    # Corridor-of-corridors settlement plans (v0.4.39)
+    csp = cor_sub.add_parser(
+        "settlement-plan-init",
+        help="Create a multi-party corridor settlement-plan artifact (netting + legs)",
+    )
+    csp.add_argument(
+        "--input",
+        required=True,
+        help="Path to a settlement plan request JSON/YAML (contains obligations, optional inputs)",
+    )
+    csp.add_argument(
+        "--issuer",
+        default="",
+        help="Optional issuer DID/identifier for the plan (stored in plan.issuer)",
+    )
+    csp.add_argument(
+        "--created-at",
+        default="",
+        help="Override plan.created_at (RFC3339). Defaults to now.",
+    )
+    csp.add_argument(
+        "--out",
+        default="",
+        help="Write output plan JSON to this path (default: settlement-plan.<digest>.json in repo root)",
+    )
+    csp.add_argument(
+        "--sign",
+        action="store_true",
+        help="Sign the plan with JCS-Ed25519 proof",
+    )
+    csp.add_argument(
+        "--key",
+        default="",
+        help="Path to an Ed25519 JWK file for signing (required if --sign)",
+    )
+    csp.add_argument(
+        "--verification-method",
+        default="",
+        help="Verification method DID URL (defaults to <did>#key-1 for did:key)",
+    )
+    csp.add_argument(
+        "--purpose",
+        default="assertionMethod",
+        help="Proof purpose (default: assertionMethod)",
+    )
+    csp.add_argument(
+        "--store",
+        action="store_true",
+        help="Store the plan into the local content-addressed store (dist/artifacts/settlement-plan)",
+    )
+    csp.add_argument(
+        "--store-root",
+        default=str(REPO_ROOT / "dist" / "artifacts"),
+        help="Artifact store root (default: dist/artifacts)",
+    )
+    csp.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite if the destination file already exists",
+    )
+    csp.add_argument(
+        "--json",
+        action="store_true",
+        help="Output JSON result to stdout (includes digest)",
+    )
+    csp.set_defaults(func=cmd_corridor_settlement_plan_init)
+
+    cspv = cor_sub.add_parser(
+        "settlement-plan-verify",
+        help="Validate a settlement plan against schema; optionally verify proofs; print digest",
+    )
+    cspv.add_argument("plan", help="Path to the settlement plan JSON")
+    cspv.add_argument(
+        "--verify-proofs",
+        action="store_true",
+        help="Verify DataIntegrityProof(s) on the plan, if present",
+    )
+    cspv.add_argument(
+        "--json",
+        action="store_true",
+        help="Output JSON result",
+    )
+    cspv.set_defaults(func=cmd_corridor_settlement_plan_verify)
+
+    # Cross-corridor settlement anchoring (v0.4.38)
+    csa = cor_sub.add_parser("settlement-anchor-init", help="Create a cross-corridor settlement-anchor artifact")
+    csa.add_argument(
+        "--obligation-checkpoint",
+        dest="obligation_checkpoint",
+        required=True,
+        help="Path to the obligation corridor signed checkpoint JSON (MSEZCorridorStateCheckpoint)",
+    )
+    csa.add_argument(
+        "--settlement-checkpoint",
+        dest="settlement_checkpoint",
+        required=True,
+        help="Path to the settlement corridor signed checkpoint JSON (MSEZCorridorStateCheckpoint)",
+    )
+    csa.add_argument("--obligation-corridor-id", dest="obligation_corridor_id", default="", help="Override obligation corridor_id (default: checkpoint.corridor_id)")
+    csa.add_argument("--settlement-corridor-id", dest="settlement_corridor_id", default="", help="Override settlement corridor_id (default: checkpoint.corridor_id)")
+    csa.add_argument("--obligation-receipt", dest="obligation_receipt", default="", help="Optional obligation corridor receipt JSON to capture receipt_next_root/sequence")
+    csa.add_argument("--settlement-receipt", dest="settlement_receipt", default="", help="Optional settlement corridor receipt JSON to capture receipt_next_root/sequence")
+    csa.add_argument("--settlement-id", dest="settlement_id", default="", help="Optional settlement correlation id (default: urn:uuid:<uuid>)")
+    csa.add_argument("--relationship", default="", help="Optional relationship label (e.g., settles, netting_for, collateral_for)")
+    csa.add_argument("--created-at", dest="created_at", default="", help="RFC3339 created_at override (default: now)")
+    csa.add_argument("--proof-binding", dest="proof_binding", action="append", default=[], help="Optional proof-binding JSON (repeatable; referenced as ArtifactRef)")
+    csa.add_argument("--proof", dest="proof", action="append", default=[], help="Optional raw proof files (repeatable; referenced as blob ArtifactRef)")
+    csa.add_argument("--notes", default="", help="Optional notes")
+    csa.add_argument("--out", default="", help="Output path (default: settlement-anchor.<digest>.json)")
+    csa.add_argument("--sign", action="store_true", help="Sign the settlement-anchor object (Ed25519 did:key)")
+    csa.add_argument("--key", default="", help="Private OKP/Ed25519 JWK for signing (required with --sign)")
+    csa.add_argument("--verification-method", default="", help="verificationMethod override (default: did:key derived from JWK + '#key-1')")
+    csa.add_argument("--purpose", default="assertionMethod", help="proofPurpose (default: assertionMethod)")
+    csa.add_argument("--store", action="store_true", help="Store the settlement-anchor artifact in the generic CAS (dist/artifacts)")
+    csa.add_argument("--store-root", default="", help="Override artifact store root (default: dist/artifacts)")
+    csa.add_argument("--overwrite", action="store_true", help="Overwrite existing CAS entries")
+    csa.add_argument("--json", action="store_true", help="Emit machine-readable JSON output")
+    csa.set_defaults(func=cmd_corridor_settlement_anchor_init)
+
+    csav = cor_sub.add_parser("settlement-anchor-verify", help="Verify a settlement-anchor artifact (schema + digest + optional ref checks)")
+    csav.add_argument("path", help="Path to settlement-anchor JSON")
+    csav.add_argument("--resolve-refs", action="store_true", help="Best-effort check that embedded ArtifactRef uris match their claimed digests")
+    csav.add_argument("--verify-proofs", action="store_true", help="Verify Ed25519 proofs (did:key)")
+    csav.add_argument("--json", action="store_true", help="Emit machine-readable JSON output")
+    csav.set_defaults(func=cmd_corridor_settlement_anchor_verify)
+
 
 
     # Corridor state channels (verifiable receipts)
@@ -12103,6 +13372,34 @@ def main() -> int:
         action="append",
         default=[],
         help="Attach a SmartAssetReceiptChainCheckpoint (payload digest excluding proof) as a typed transition attachment (repeatable)",
+    )
+    cri.add_argument(
+        "--attach-corridor-checkpoint",
+        dest="attach_corridor_checkpoint",
+        action="append",
+        default=[],
+        help="Attach a corridor state checkpoint (payload digest excluding proof) as a typed transition attachment (repeatable; useful for cross-corridor anchoring)",
+    )
+    cri.add_argument(
+        "--attach-proof-binding",
+        dest="attach_proof_binding",
+        action="append",
+        default=[],
+        help="Attach a proof-binding artifact (sha256(signing_input(binding))) as a typed transition attachment (repeatable)",
+    )
+    cri.add_argument(
+        "--attach-settlement-anchor",
+        dest="attach_settlement_anchor",
+        action="append",
+        default=[],
+        help="Attach a cross-corridor settlement-anchor artifact (sha256(signing_input(anchor))) as a typed transition attachment (repeatable)",
+    )
+    cri.add_argument(
+        "--attach-settlement-plan",
+        dest="attach_settlement_plan",
+        action="append",
+        default=[],
+        help="Attach a corridor settlement-plan artifact (sha256(signing_input(plan))) as a typed transition attachment (repeatable)",
     )
     cri.add_argument(
         "--fill-transition-digests",

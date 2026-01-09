@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MSEZ Corridor State API (Scaffold)
-  version: 0.4.36
+  version: 0.4.39
   description: |
     Scaffold OpenAPI specification for corridor state-channel operations.
     These endpoints mirror the CLI subcommands under `msez corridor state ...`.

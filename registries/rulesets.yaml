@@ -12,3 +12,25 @@ rulesets:
   path: rulesets/msez.transition.settle.swift.pacs008.v1.json
 - ruleset_id: msez.transition.settle.usdc.circle.transfer.v1
   path: rulesets/msez.transition.settle.usdc.circle.transfer.v1.json
+
+# --- Trade instruments (invoice / bill of lading / letter of credit)
+- ruleset_id: msez.transition.trade.invoice.issue.v1
+  path: rulesets/msez.transition.trade.invoice.issue.v1.json
+- ruleset_id: msez.transition.trade.invoice.accept.v1
+  path: rulesets/msez.transition.trade.invoice.accept.v1.json
+- ruleset_id: msez.transition.trade.invoice.settle.v1
+  path: rulesets/msez.transition.trade.invoice.settle.v1.json
+- ruleset_id: msez.transition.trade.bol.issue.v1
+  path: rulesets/msez.transition.trade.bol.issue.v1.json
+- ruleset_id: msez.transition.trade.bol.endorse.v1
+  path: rulesets/msez.transition.trade.bol.endorse.v1.json
+- ruleset_id: msez.transition.trade.bol.release.v1
+  path: rulesets/msez.transition.trade.bol.release.v1.json
+- ruleset_id: msez.transition.trade.lc.issue.v1
+  path: rulesets/msez.transition.trade.lc.issue.v1.json
+- ruleset_id: msez.transition.trade.lc.amend.v1
+  path: rulesets/msez.transition.trade.lc.amend.v1.json
+- ruleset_id: msez.transition.trade.lc.present.v1
+  path: rulesets/msez.transition.trade.lc.present.v1.json
+- ruleset_id: msez.transition.trade.lc.honor.v1
+  path: rulesets/msez.transition.trade.lc.honor.v1.json

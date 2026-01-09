@@ -1,0 +1,14 @@
+{
+  "ruleset_id": "msez.transition.trade.invoice.issue.v1",
+  "title": "Trade invoice issuance",
+  "version": 1,
+  "description": "Issues a trade invoice (open-account / trade-finance). The canonical invoice may be embedded in the transition payload or referenced as an external artifact.",
+  "transition_kind": "trade.invoice.issue.v1",
+  "payload_schema": "https://schemas.momentum-sez.org/msez/transition.payload.trade.invoice.issue.v1.schema.json",
+  "validation": {
+    "profile": "basic",
+    "notes": [
+      "Implementations SHOULD ensure issuer authorization (seller) and preserve a verifiable link to the invoice canonical artifact (PDF, signed copy, etc.)."
+    ]
+  }
+}

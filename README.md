@@ -1,4 +1,4 @@
-# Momentum SEZ Stack (MSEZ) — v0.4.36
+# Momentum SEZ Stack (MSEZ) — v0.4.39
 
 
 This repository is a **reference specification + reference library** for building *programmable Special Economic Zones (SEZs)* as modular, forkable, and composable “jurisdiction nodes” in the Momentum/Mass network.

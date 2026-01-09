@@ -1,0 +1,14 @@
+{
+  "ruleset_id": "msez.transition.trade.invoice.settle.v1",
+  "title": "Trade invoice settlement",
+  "version": 1,
+  "description": "Records payment/settlement for an invoice. Evidence SHOULD be anchored using proof-binding and/or cross-corridor settlement anchoring.",
+  "transition_kind": "trade.invoice.settle.v1",
+  "payload_schema": "https://schemas.momentum-sez.org/msez/transition.payload.trade.invoice.settle.v1.schema.json",
+  "validation": {
+    "profile": "basic",
+    "notes": [
+      "Implementations SHOULD bind settlement evidence: attach a proof-binding referencing the rail receipt, and attach a settlement-anchor linking the obligation checkpoint to the settlement checkpoint."
+    ]
+  }
+}

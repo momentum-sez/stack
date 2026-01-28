@@ -1,0 +1,311 @@
+{
+  "$schema": "https://msez.momentum.xyz/schemas/agentic.scenario.schema.json",
+  "scenario_id": "scenario:sanctions-halt:2025-001",
+  "title": "Automatic Asset Halt on Sanctions Match",
+  "description": "End-to-end example of agentic execution: sanctions monitor detects match, policy evaluates, action schedules and executes asset halt",
+  "created_at": "2025-01-15T10:30:00Z",
+  
+  "initial_state": {
+    "asset": {
+      "asset_id": "asset:trade-finance:TF-2025-001",
+      "genesis_document": {
+        "asset_type": "trade_finance_instrument",
+        "issuer_did": "did:key:z6MkExporterPub123456789",
+        "created_at": "2025-01-10T00:00:00Z",
+        "parameters": {
+          "instrument_type": "letter_of_credit",
+          "principal_amount": 500000,
+          "currency": "USD",
+          "beneficiary": "entity:importer-corp",
+          "applicant": "entity:exporter-corp"
+        }
+      },
+      "operational_manifest": {
+        "status": "active",
+        "corridors": ["corridor:uae-kz:001"],
+        "regpack_ref": "regpack:dfc-zone:2025-01",
+        "agentic_policies": [
+          "sanctions_freeze",
+          "license_suspend",
+          "checkpoint_auto_receipt"
+        ]
+      },
+      "receipt_chain": {
+        "length": 5,
+        "last_receipt": {
+          "sequence": 4,
+          "transition_type": "payment_instruction",
+          "timestamp": "2025-01-14T16:00:00Z"
+        }
+      }
+    },
+    "environment": {
+      "sanctions_snapshot": "ofac-sdn-2025-01-14",
+      "last_check_time": "2025-01-14T12:00:00Z",
+      "monitored_entities": [
+        "entity:exporter-corp",
+        "entity:importer-corp",
+        "entity:beneficiary-bank"
+      ]
+    }
+  },
+  
+  "trigger_event": {
+    "trigger_id": "trig:sanctions:2025-001-001",
+    "trigger_type": "sanctions_list_update",
+    "timestamp": "2025-01-15T10:30:00Z",
+    "source_monitor_id": "monitor:sanctions:dfc-001",
+    "data": {
+      "snapshot_id": "ofac-sdn-2025-01-15",
+      "previous_snapshot_id": "ofac-sdn-2025-01-14",
+      "changes_detected": true,
+      "new_entries": 3,
+      "modified_entries": 1,
+      "removed_entries": 0,
+      "affected_entity_match": {
+        "entity_id": "entity:importer-corp",
+        "match_type": "exact_name",
+        "match_score": 1.0,
+        "matched_entry": {
+          "entry_id": "ofac:sdn:99999",
+          "primary_name": "IMPORTER CORP INTERNATIONAL",
+          "source_lists": ["OFAC-SDN"],
+          "programs": ["RUSSIA-EO14024"],
+          "listing_date": "2025-01-15"
+        }
+      }
+    },
+    "impact_level": "critical",
+    "affected_assets": ["asset:trade-finance:TF-2025-001"]
+  },
+  
+  "policy_evaluation": {
+    "evaluation_id": "eval:2025-001-001",
+    "evaluated_at": "2025-01-15T10:30:01Z",
+    "trigger_id": "trig:sanctions:2025-001-001",
+    "asset_id": "asset:trade-finance:TF-2025-001",
+    "policies_evaluated": [
+      {
+        "policy_id": "sanctions_freeze",
+        "trigger_type_match": true,
+        "condition": {
+          "type": "equals",
+          "field": "affected_entity_match.match_score",
+          "value_threshold": 0.8,
+          "actual_value": 1.0
+        },
+        "condition_result": true,
+        "matched": true,
+        "action": "halt",
+        "authorization_requirement": "automatic"
+      },
+      {
+        "policy_id": "sanctions_notify",
+        "trigger_type_match": true,
+        "condition": {
+          "type": "threshold",
+          "field": "new_entries",
+          "threshold": 1,
+          "actual_value": 3
+        },
+        "condition_result": true,
+        "matched": true,
+        "action": "update_manifest",
+        "authorization_requirement": "automatic"
+      },
+      {
+        "policy_id": "checkpoint_auto_receipt",
+        "trigger_type_match": false,
+        "matched": false
+      }
+    ],
+    "matching_policies": ["sanctions_freeze", "sanctions_notify"],
+    "determinism_hash": "sha256:7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b"
+  },
+  
+  "scheduled_actions": [
+    {
+      "action_id": "action:2025-001-001",
+      "asset_id": "asset:trade-finance:TF-2025-001",
+      "action_type": "halt",
+      "trigger_id": "trig:sanctions:2025-001-001",
+      "policy_id": "sanctions_freeze",
+      "scheduled_at": "2025-01-15T10:30:01Z",
+      "execute_at": "2025-01-15T10:30:01Z",
+      "status": "pending",
+      "authorization_status": "not_required",
+      "max_retries": 3,
+      "retry_count": 0
+    },
+    {
+      "action_id": "action:2025-001-002",
+      "asset_id": "asset:trade-finance:TF-2025-001",
+      "action_type": "update_manifest",
+      "trigger_id": "trig:sanctions:2025-001-001",
+      "policy_id": "sanctions_notify",
+      "scheduled_at": "2025-01-15T10:30:01Z",
+      "execute_at": "2025-01-15T10:30:01Z",
+      "status": "pending",
+      "authorization_status": "not_required",
+      "max_retries": 3,
+      "retry_count": 0,
+      "action_parameters": {
+        "manifest_updates": {
+          "sanctions_alert": {
+            "detected_at": "2025-01-15T10:30:00Z",
+            "affected_party": "entity:importer-corp",
+            "match_entry_id": "ofac:sdn:99999"
+          }
+        }
+      }
+    }
+  ],
+  
+  "execution_results": [
+    {
+      "action_id": "action:2025-001-001",
+      "executed_at": "2025-01-15T10:30:02Z",
+      "status": "completed",
+      "result": {
+        "transition_type": "halt",
+        "receipt_sequence": 5,
+        "receipt_digest": "sha256:1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
+        "new_asset_status": "halted",
+        "halt_reason": "sanctions_match",
+        "halt_details": {
+          "matched_entity": "entity:importer-corp",
+          "sanctions_entry": "ofac:sdn:99999",
+          "match_score": 1.0
+        }
+      }
+    },
+    {
+      "action_id": "action:2025-001-002",
+      "executed_at": "2025-01-15T10:30:03Z",
+      "status": "completed",
+      "result": {
+        "transition_type": "update_manifest",
+        "receipt_sequence": 6,
+        "receipt_digest": "sha256:2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c",
+        "manifest_version": 2,
+        "updates_applied": ["sanctions_alert"]
+      }
+    }
+  ],
+  
+  "final_state": {
+    "asset": {
+      "asset_id": "asset:trade-finance:TF-2025-001",
+      "operational_manifest": {
+        "status": "halted",
+        "halt_info": {
+          "halted_at": "2025-01-15T10:30:02Z",
+          "halt_reason": "sanctions_match",
+          "halt_trigger_id": "trig:sanctions:2025-001-001",
+          "resumption_requires": "zone_authority_clearance"
+        },
+        "sanctions_alert": {
+          "detected_at": "2025-01-15T10:30:00Z",
+          "affected_party": "entity:importer-corp",
+          "match_entry_id": "ofac:sdn:99999"
+        },
+        "corridors": ["corridor:uae-kz:001"],
+        "regpack_ref": "regpack:dfc-zone:2025-01",
+        "agentic_policies": [
+          "sanctions_freeze",
+          "license_suspend",
+          "checkpoint_auto_receipt"
+        ]
+      },
+      "receipt_chain": {
+        "length": 7,
+        "last_receipt": {
+          "sequence": 6,
+          "transition_type": "update_manifest",
+          "timestamp": "2025-01-15T10:30:03Z"
+        }
+      }
+    }
+  },
+  
+  "audit_trail": [
+    {
+      "entry_id": "audit:2025-001-001",
+      "entry_type": "trigger_received",
+      "timestamp": "2025-01-15T10:30:00Z",
+      "asset_id": "asset:trade-finance:TF-2025-001",
+      "trigger_data": {
+        "trigger_id": "trig:sanctions:2025-001-001",
+        "trigger_type": "sanctions_list_update"
+      }
+    },
+    {
+      "entry_id": "audit:2025-001-002",
+      "entry_type": "policy_evaluated",
+      "timestamp": "2025-01-15T10:30:01Z",
+      "asset_id": "asset:trade-finance:TF-2025-001",
+      "evaluation_result": {
+        "evaluation_id": "eval:2025-001-001",
+        "matching_policies": ["sanctions_freeze", "sanctions_notify"]
+      }
+    },
+    {
+      "entry_id": "audit:2025-001-003",
+      "entry_type": "action_scheduled",
+      "timestamp": "2025-01-15T10:30:01Z",
+      "asset_id": "asset:trade-finance:TF-2025-001",
+      "action_data": {
+        "action_id": "action:2025-001-001",
+        "action_type": "halt"
+      }
+    },
+    {
+      "entry_id": "audit:2025-001-004",
+      "entry_type": "action_scheduled",
+      "timestamp": "2025-01-15T10:30:01Z",
+      "asset_id": "asset:trade-finance:TF-2025-001",
+      "action_data": {
+        "action_id": "action:2025-001-002",
+        "action_type": "update_manifest"
+      }
+    },
+    {
+      "entry_id": "audit:2025-001-005",
+      "entry_type": "action_executed",
+      "timestamp": "2025-01-15T10:30:02Z",
+      "asset_id": "asset:trade-finance:TF-2025-001",
+      "action_data": {
+        "action_id": "action:2025-001-001",
+        "status": "completed",
+        "receipt_sequence": 5
+      }
+    },
+    {
+      "entry_id": "audit:2025-001-006",
+      "entry_type": "action_executed",
+      "timestamp": "2025-01-15T10:30:03Z",
+      "asset_id": "asset:trade-finance:TF-2025-001",
+      "action_data": {
+        "action_id": "action:2025-001-002",
+        "status": "completed",
+        "receipt_sequence": 6
+      }
+    }
+  ],
+  
+  "verification": {
+    "theorem_17_1_determinism": {
+      "verified": true,
+      "method": "Identical trigger and environment state produces identical scheduled actions",
+      "determinism_hash": "sha256:7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b"
+    },
+    "receipt_chain_integrity": {
+      "verified": true,
+      "method": "Each receipt.prev_root matches previous receipt.next_root"
+    },
+    "audit_trail_completeness": {
+      "verified": true,
+      "method": "All trigger, evaluation, scheduling, and execution events recorded"
+    }
+  }
+}

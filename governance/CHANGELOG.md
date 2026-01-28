@@ -9,6 +9,42 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 - TBD
 
 
+## 0.4.42
+
+### Added
+- **Agentic Execution Framework (Chapter 17)**: Complete autonomous asset behavior infrastructure:
+  - Environment monitors: SanctionsListMonitor, LicenseStatusMonitor, CorridorStateMonitor, GuidanceUpdateMonitor, CheckpointDueMonitor
+  - Policy evaluation engine with deterministic evaluation per Theorem 17.1
+  - Action scheduling with retry semantics and authorization requirements
+  - Audit trail generation for compliance and debugging
+  - New module: `tools/agentic.py` (1,590 lines)
+- **Extended Standard Policy Library**: 16 policies covering:
+  - Sanctions freeze and notification
+  - License suspension and renewal reminders
+  - Corridor failover on fork detection
+  - Automatic checkpointing (receipt and time thresholds)
+  - Key rotation enforcement
+  - Dispute and ruling handling
+  - Settlement anchor notification
+  - Watcher quorum checkpointing
+  - Compliance deadline warnings
+- **New Schemas** (6 schemas):
+  - `agentic.environment-monitor.schema.json`
+  - `agentic.trigger.schema.json`
+  - `agentic.policy.schema.json`
+  - `agentic.policy-evaluation.schema.json`
+  - `agentic.action-schedule.schema.json`
+  - `agentic.audit-trail.schema.json`
+- **Specification Document**: `spec/17-agentic.md` — Complete MASS Protocol Chapter 17 specification
+- **Test Coverage**: 95 new tests for agentic framework (total: 359 tests)
+
+### Changed
+- Schema count increased to 110
+
+### Version
+- Stack spec version bumped to `0.4.42` and all profiles updated.
+
+
 ## 0.4.41
 
 ### Added

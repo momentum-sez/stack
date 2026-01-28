@@ -35,7 +35,7 @@ from typing import Any, Dict, List, Optional, Tuple
 # Constants
 # ─────────────────────────────────────────────────────────────────────────────
 
-STACK_SPEC_VERSION = "0.4.41"
+STACK_SPEC_VERSION = "0.4.42"
 
 NAMESPACE_ARBITRATION = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430ca")
 

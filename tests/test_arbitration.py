@@ -273,7 +273,7 @@ def test_arbitration_dispute_request_to_dict(arbitration_manager, sample_parties
     d = dispute.to_dict()
     
     assert d["type"] == "MSEZDisputeRequest"
-    assert d["stack_spec_version"] == "0.4.41"
+    assert d["stack_spec_version"] == "0.4.42"
     assert d["claimant"]["party_id"] == claimant.party_id
     assert len(d["claims"]) == 2
 
@@ -431,7 +431,7 @@ def test_arbitration_enforcement_receipt_to_dict(arbitration_manager, sample_rul
     d = receipt.to_dict()
     
     assert d["type"] == "MSEZArbitrationEnforcementReceipt"
-    assert d["stack_spec_version"] == "0.4.41"
+    assert d["stack_spec_version"] == "0.4.42"
     assert len(d["ruling_vc_digest"]) == 64
 
 

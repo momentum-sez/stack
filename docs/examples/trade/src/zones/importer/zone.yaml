@@ -7,7 +7,7 @@ jurisdiction_id: us-ca
 zone_name: Trade Playbook Importer Zone (Example: California)
 profile:
   profile_id: org.momentum.msez.profile.trade-playbook
-  version: 0.4.41
+  version: 0.4.42
 
 # Jurisdiction stack = built-in "lawpack overlays" (federal → state)
 jurisdiction_stack:

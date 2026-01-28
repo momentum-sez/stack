@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://msez.momentum.xyz/schemas/agentic.trigger.schema.json",
+  "title": "MSEZAgenticTrigger",
+  "description": "An agentic trigger event per MASS Protocol v0.2 Definition 17.1",
+  "type": "object",
+  "required": ["trigger_type", "data", "timestamp"],
+  "properties": {
+    "trigger_id": {
+      "type": "string",
+      "description": "Unique identifier for this trigger event"
+    },
+    "trigger_type": {
+      "type": "string",
+      "enum": [
+        "sanctions_list_update",
+        "license_status_change",
+        "guidance_update",
+        "compliance_deadline",
+        "dispute_filed",
+        "ruling_received",
+        "appeal_period_expired",
+        "enforcement_due",
+        "corridor_state_change",
+        "settlement_anchor_available",
+        "watcher_quorum_reached",
+        "checkpoint_due",
+        "key_rotation_due",
+        "governance_vote_resolved",
+        "tax_year_end",
+        "withholding_due"
+      ],
+      "description": "Type of trigger event per Definition 17.1"
+    },
+    "data": {
+      "type": "object",
+      "description": "Trigger-specific payload data",
+      "additionalProperties": true
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the trigger was emitted"
+    },
+    "source_monitor_id": {
+      "type": "string",
+      "description": "ID of the monitor that emitted this trigger"
+    },
+    "impact_level": {
+      "type": "string",
+      "enum": ["none", "low", "medium", "high", "critical"],
+      "description": "Assessed impact level of this trigger"
+    },
+    "affected_assets": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Asset IDs affected by this trigger"
+    }
+  },
+  "additionalProperties": false
+}

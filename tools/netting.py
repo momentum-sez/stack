@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Multi-Corridor Netting Engine (v0.4.41).
+"""Multi-Corridor Netting Engine (v0.4.42).
 
 This module implements the corridor-of-corridors netting primitive:
 - Multi-corridor obligation aggregation

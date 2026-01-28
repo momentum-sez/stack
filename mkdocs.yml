@@ -19,7 +19,7 @@ nav:
   - Roadmap:
       - Production-grade evolution spec: docs/roadmap/PRODUCTION_GRADE_SPEC.md
       - Pre-0.5 master roadmap: docs/roadmap/ROADMAP_PRE_0.5.md
-      - v0.4.42 roadmap: docs/roadmap/ROADMAP_V042_AGENTIC_FRAMEWORK.md
+      - v0.4.42 roadmap: docs/roadmap/ROADMAP_V043_WEBHOOK_MONITORS.md
   - Spec:
       - Mission: spec/01-mission.md
       - Invariants: spec/02-invariants.md

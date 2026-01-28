@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://msez.momentum.xyz/schemas/agentic.environment-monitor.schema.json",
+  "title": "MSEZAgenticEnvironmentMonitor",
+  "description": "Configuration and state for an agentic environment monitor per MASS Protocol v0.2 Definition 17.4",
+  "type": "object",
+  "required": ["monitor_id", "monitor_type", "mode", "status"],
+  "properties": {
+    "monitor_id": {
+      "type": "string",
+      "description": "Unique identifier for this monitor instance"
+    },
+    "monitor_type": {
+      "type": "string",
+      "enum": ["sanctions_list", "license_status", "corridor_state", "guidance_update", "checkpoint_due", "key_rotation"],
+      "description": "Type of environment being monitored"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["polling", "webhook", "hybrid"],
+      "description": "Operating mode for the monitor"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["stopped", "starting", "running", "stopping", "error", "paused"],
+      "description": "Current operational status"
+    },
+    "poll_interval_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 60,
+      "description": "Interval between polling attempts in seconds"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the monitor is enabled"
+    },
+    "config": {
+      "type": "object",
+      "description": "Monitor-type-specific configuration",
+      "additionalProperties": true
+    },
+    "max_retries": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 3,
+      "description": "Maximum retry attempts on failure"
+    },
+    "retry_delay_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 5,
+      "description": "Delay between retry attempts"
+    },
+    "error_threshold": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 5,
+      "description": "Consecutive errors before transitioning to error state"
+    },
+    "last_poll_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of last successful poll"
+    },
+    "consecutive_errors": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Current count of consecutive errors"
+    },
+    "watched_entities": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Entities being watched (for sanctions/license monitors)"
+    },
+    "tracked_corridors": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Corridor IDs being tracked (for corridor monitor)"
+    }
+  },
+  "additionalProperties": false
+}

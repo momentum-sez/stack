@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://msez.momentum.xyz/schemas/agentic.policy-evaluation.schema.json",
+  "title": "MSEZAgenticPolicyEvaluation",
+  "description": "Result of evaluating a trigger against a policy per Theorem 17.1 (Agentic Determinism)",
+  "type": "object",
+  "required": ["policy_id", "trigger_id", "matched", "evaluated_at"],
+  "properties": {
+    "evaluation_id": {
+      "type": "string",
+      "description": "Unique identifier for this evaluation"
+    },
+    "policy_id": {
+      "type": "string",
+      "description": "ID of the policy evaluated"
+    },
+    "trigger_id": {
+      "type": "string",
+      "description": "ID of the trigger evaluated"
+    },
+    "matched": {
+      "type": "boolean",
+      "description": "Whether the policy condition was satisfied"
+    },
+    "action": {
+      "type": "string",
+      "description": "Action to be taken if matched"
+    },
+    "authorization_requirement": {
+      "type": "string",
+      "description": "Required authorization for action"
+    },
+    "condition_details": {
+      "type": "object",
+      "description": "Details of condition evaluation",
+      "properties": {
+        "condition": {
+          "type": "object",
+          "description": "The condition that was evaluated"
+        },
+        "trigger_type_match": {
+          "type": "boolean",
+          "description": "Whether trigger type matched policy"
+        },
+        "policy_enabled": {
+          "type": "boolean",
+          "description": "Whether policy was enabled"
+        },
+        "condition_result": {
+          "type": "boolean",
+          "description": "Result of condition predicate evaluation"
+        }
+      }
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When evaluation occurred"
+    },
+    "evaluation_duration_ms": {
+      "type": "number",
+      "description": "Evaluation duration in milliseconds"
+    },
+    "determinism_hash": {
+      "type": "string",
+      "description": "Hash of inputs for determinism verification per Theorem 17.1"
+    }
+  },
+  "additionalProperties": false
+}

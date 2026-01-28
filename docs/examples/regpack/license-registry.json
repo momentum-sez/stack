@@ -1,0 +1,305 @@
+{
+  "$schema": "https://msez.momentum.xyz/schemas/regpack.license-registry.schema.json",
+  "registry_id": "lic-reg:dfc-zone:2025-01",
+  "zone_id": "zone:digital-financial-center",
+  "effective_date": "2025-01-01T00:00:00Z",
+  "licenses": [
+    {
+      "license_id": "lic:banking:001",
+      "license_type": "full-banking",
+      "holder": {
+        "entity_id": "entity:alpha-bank",
+        "legal_name": "Alpha Digital Bank Ltd",
+        "registration_number": "DFC-2024-0001",
+        "did": "did:key:z6MkAlphaBankPub123456789"
+      },
+      "issued_date": "2024-06-15T00:00:00Z",
+      "valid_from": "2024-07-01T00:00:00Z",
+      "valid_until": "2027-06-30T23:59:59Z",
+      "status": "active",
+      "conditions": [
+        {
+          "condition_id": "cond:001",
+          "description": "Maintain minimum capital of USD 10,000,000",
+          "compliance_metric": "capital_adequacy",
+          "threshold": 10000000,
+          "currency": "USD"
+        },
+        {
+          "condition_id": "cond:002",
+          "description": "Submit quarterly prudential reports",
+          "compliance_metric": "reporting_frequency",
+          "threshold": 4,
+          "unit": "reports_per_year"
+        }
+      ],
+      "permitted_activities": [
+        "accepting_deposits",
+        "lending",
+        "payment_services",
+        "foreign_exchange",
+        "smart_asset_issuance",
+        "corridor_participation"
+      ],
+      "restrictions": [
+        {
+          "restriction_id": "rest:001",
+          "description": "Retail deposits limited to Zone residents",
+          "scope": "geographic"
+        }
+      ],
+      "audit_history": [
+        {
+          "audit_date": "2024-12-01T00:00:00Z",
+          "auditor": "did:key:z6MkAuditorPub987654321",
+          "result": "compliant",
+          "findings": []
+        }
+      ]
+    },
+    {
+      "license_id": "lic:psp:002",
+      "license_type": "payment-services",
+      "holder": {
+        "entity_id": "entity:paycorp",
+        "legal_name": "PayCorp International FZE",
+        "registration_number": "DFC-2024-0015",
+        "did": "did:key:z6MkPayCorpPub234567890"
+      },
+      "issued_date": "2024-08-01T00:00:00Z",
+      "valid_from": "2024-08-15T00:00:00Z",
+      "valid_until": "2026-08-14T23:59:59Z",
+      "status": "active",
+      "conditions": [
+        {
+          "condition_id": "cond:psp:001",
+          "description": "Maintain safeguarded client funds",
+          "compliance_metric": "client_funds_segregation",
+          "threshold": 100,
+          "unit": "percent"
+        },
+        {
+          "condition_id": "cond:psp:002",
+          "description": "Transaction monitoring for AML",
+          "compliance_metric": "aml_monitoring_coverage",
+          "threshold": 100,
+          "unit": "percent"
+        }
+      ],
+      "permitted_activities": [
+        "payment_initiation",
+        "payment_execution",
+        "account_information_services",
+        "merchant_acquiring",
+        "stablecoin_settlement"
+      ],
+      "restrictions": [],
+      "audit_history": []
+    },
+    {
+      "license_id": "lic:custody:003",
+      "license_type": "digital-asset-custody",
+      "holder": {
+        "entity_id": "entity:safekeep",
+        "legal_name": "SafeKeep Digital Custody Services Ltd",
+        "registration_number": "DFC-2024-0022",
+        "did": "did:key:z6MkSafeKeepPub345678901"
+      },
+      "issued_date": "2024-09-01T00:00:00Z",
+      "valid_from": "2024-09-15T00:00:00Z",
+      "valid_until": "2026-09-14T23:59:59Z",
+      "status": "active",
+      "conditions": [
+        {
+          "condition_id": "cond:cust:001",
+          "description": "Maintain proof of reserves",
+          "compliance_metric": "proof_of_reserves",
+          "threshold": 100,
+          "unit": "percent"
+        },
+        {
+          "condition_id": "cond:cust:002",
+          "description": "Cold storage minimum",
+          "compliance_metric": "cold_storage_ratio",
+          "threshold": 95,
+          "unit": "percent"
+        },
+        {
+          "condition_id": "cond:cust:003",
+          "description": "Insurance coverage",
+          "compliance_metric": "insurance_coverage",
+          "threshold": 50000000,
+          "currency": "USD"
+        }
+      ],
+      "permitted_activities": [
+        "digital_asset_custody",
+        "smart_asset_custody",
+        "key_management",
+        "staking_services"
+      ],
+      "restrictions": [
+        {
+          "restriction_id": "rest:cust:001",
+          "description": "No proprietary trading with custodied assets",
+          "scope": "activity"
+        }
+      ],
+      "audit_history": [
+        {
+          "audit_date": "2024-11-15T00:00:00Z",
+          "auditor": "did:key:z6MkAuditorPub987654321",
+          "result": "compliant",
+          "findings": []
+        }
+      ]
+    },
+    {
+      "license_id": "lic:exchange:004",
+      "license_type": "digital-asset-exchange",
+      "holder": {
+        "entity_id": "entity:tradeex",
+        "legal_name": "TradeEx Digital Markets Ltd",
+        "registration_number": "DFC-2024-0031",
+        "did": "did:key:z6MkTradeExPub456789012"
+      },
+      "issued_date": "2024-10-01T00:00:00Z",
+      "valid_from": "2024-10-15T00:00:00Z",
+      "valid_until": "2026-10-14T23:59:59Z",
+      "status": "suspended",
+      "suspension_reason": "Pending completion of enhanced KYC audit",
+      "suspension_date": "2025-01-10T00:00:00Z",
+      "conditions": [
+        {
+          "condition_id": "cond:exch:001",
+          "description": "Real-time trade surveillance",
+          "compliance_metric": "surveillance_coverage",
+          "threshold": 100,
+          "unit": "percent"
+        },
+        {
+          "condition_id": "cond:exch:002",
+          "description": "Market manipulation monitoring",
+          "compliance_metric": "manipulation_detection",
+          "threshold": 1,
+          "unit": "active"
+        }
+      ],
+      "permitted_activities": [
+        "spot_trading",
+        "otc_trading",
+        "smart_asset_trading",
+        "market_making"
+      ],
+      "restrictions": [
+        {
+          "restriction_id": "rest:exch:001",
+          "description": "No derivatives until separate license obtained",
+          "scope": "activity"
+        }
+      ],
+      "audit_history": [
+        {
+          "audit_date": "2025-01-08T00:00:00Z",
+          "auditor": "did:key:z6MkAuditorPub987654321",
+          "result": "non_compliant",
+          "findings": [
+            {
+              "finding_id": "find:001",
+              "severity": "high",
+              "description": "Incomplete beneficial ownership records for 3 corporate accounts",
+              "remediation_deadline": "2025-02-08T00:00:00Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "license_id": "lic:banking:005",
+      "license_type": "full-banking",
+      "holder": {
+        "entity_id": "entity:omega-bank",
+        "legal_name": "Omega Financial Services Ltd",
+        "registration_number": "DFC-2023-0042",
+        "did": "did:key:z6MkOmegaBankPub567890123"
+      },
+      "issued_date": "2023-03-01T00:00:00Z",
+      "valid_from": "2023-04-01T00:00:00Z",
+      "valid_until": "2025-03-31T23:59:59Z",
+      "status": "expiring_soon",
+      "days_until_expiry": 61,
+      "renewal_application_status": "submitted",
+      "conditions": [
+        {
+          "condition_id": "cond:005:001",
+          "description": "Maintain minimum capital of USD 15,000,000",
+          "compliance_metric": "capital_adequacy",
+          "threshold": 15000000,
+          "currency": "USD"
+        }
+      ],
+      "permitted_activities": [
+        "accepting_deposits",
+        "lending",
+        "payment_services",
+        "foreign_exchange",
+        "smart_asset_issuance",
+        "corridor_participation",
+        "trade_finance"
+      ],
+      "restrictions": [],
+      "audit_history": [
+        {
+          "audit_date": "2024-06-01T00:00:00Z",
+          "auditor": "did:key:z6MkAuditorPub987654321",
+          "result": "compliant",
+          "findings": []
+        },
+        {
+          "audit_date": "2024-12-15T00:00:00Z",
+          "auditor": "did:key:z6MkAuditorPub987654321",
+          "result": "compliant",
+          "findings": []
+        }
+      ]
+    }
+  ],
+  "license_types": {
+    "full-banking": {
+      "description": "Full banking license permitting deposit-taking and lending",
+      "minimum_capital_usd": 10000000,
+      "renewal_period_years": 3,
+      "regulatory_reference": "Banking Regulation 2024, Part III"
+    },
+    "payment-services": {
+      "description": "Payment services provider license",
+      "minimum_capital_usd": 500000,
+      "renewal_period_years": 2,
+      "regulatory_reference": "Payment Services Regulation 2024"
+    },
+    "digital-asset-custody": {
+      "description": "License to provide custody services for digital and smart assets",
+      "minimum_capital_usd": 5000000,
+      "renewal_period_years": 2,
+      "regulatory_reference": "Digital Asset Regulation 2024, Chapter 4"
+    },
+    "digital-asset-exchange": {
+      "description": "License to operate a digital asset exchange",
+      "minimum_capital_usd": 2000000,
+      "renewal_period_years": 2,
+      "regulatory_reference": "Digital Asset Regulation 2024, Chapter 5"
+    }
+  },
+  "statistics": {
+    "total_licenses": 5,
+    "active_licenses": 3,
+    "suspended_licenses": 1,
+    "expiring_within_90_days": 1,
+    "by_type": {
+      "full-banking": 2,
+      "payment-services": 1,
+      "digital-asset-custody": 1,
+      "digital-asset-exchange": 1
+    }
+  }
+}

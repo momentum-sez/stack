@@ -1,0 +1,292 @@
+{
+  "$schema": "https://msez.momentum.xyz/schemas/regpack.sanctions-snapshot.schema.json",
+  "snapshot_id": "ofac-sdn-2025-01-15",
+  "source": "OFAC-SDN",
+  "publication_date": "2025-01-15T00:00:00Z",
+  "effective_date": "2025-01-15T00:00:00Z",
+  "entry_count": 12,
+  "digest_sha256": "a7f3b2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1",
+  "entries": [
+    {
+      "entry_id": "ofac:sdn:12345",
+      "entry_type": "entity",
+      "source_lists": ["OFAC-SDN", "EU-CONSOLIDATED"],
+      "primary_name": "ACME TRADING COMPANY LIMITED",
+      "aliases": [
+        {"alias_type": "AKA", "name": "ACME TRADING"},
+        {"alias_type": "FKA", "name": "ACME IMPORT EXPORT CO"}
+      ],
+      "identifiers": [
+        {"id_type": "REGISTRATION_NUMBER", "value": "HK-12345678"},
+        {"id_type": "TAX_ID", "value": "98-7654321"}
+      ],
+      "addresses": [
+        {
+          "address_type": "PRIMARY",
+          "street": "123 Harbor Road",
+          "city": "Hong Kong",
+          "country": "HK",
+          "postal_code": "999077"
+        }
+      ],
+      "nationalities": ["HK", "CN"],
+      "programs": ["SDGT", "IRGC"],
+      "listing_date": "2023-06-15",
+      "remarks": "Designated for providing material support to designated entities."
+    },
+    {
+      "entry_id": "ofac:sdn:12346",
+      "entry_type": "individual",
+      "source_lists": ["OFAC-SDN"],
+      "primary_name": "IVAN PETROV",
+      "aliases": [
+        {"alias_type": "AKA", "name": "IVAN PETROVICH PETROV"},
+        {"alias_type": "AKA", "name": "VANYA PETROV"}
+      ],
+      "identifiers": [
+        {"id_type": "PASSPORT", "value": "RU-123456789"}
+      ],
+      "addresses": [
+        {
+          "address_type": "PRIMARY",
+          "city": "Moscow",
+          "country": "RU"
+        }
+      ],
+      "nationalities": ["RU"],
+      "date_of_birth": "1975-03-22",
+      "programs": ["RUSSIA-EO14024"],
+      "listing_date": "2024-02-24",
+      "remarks": "Designated pursuant to E.O. 14024 for operating in the financial services sector of the Russian Federation economy."
+    },
+    {
+      "entry_id": "ofac:sdn:12347",
+      "entry_type": "vessel",
+      "source_lists": ["OFAC-SDN"],
+      "primary_name": "M/V DARK SHADOW",
+      "aliases": [
+        {"alias_type": "FKA", "name": "M/V SUNRISE GLORY"}
+      ],
+      "identifiers": [
+        {"id_type": "IMO", "value": "9123456"},
+        {"id_type": "MMSI", "value": "123456789"},
+        {"id_type": "CALL_SIGN", "value": "ABCD1"}
+      ],
+      "nationalities": ["PA"],
+      "programs": ["IRAN", "DPRK"],
+      "listing_date": "2024-08-01",
+      "remarks": "Vessel involved in illicit ship-to-ship transfers."
+    },
+    {
+      "entry_id": "ofac:sdn:12348",
+      "entry_type": "entity",
+      "source_lists": ["OFAC-SDN", "UN-CONSOLIDATED"],
+      "primary_name": "GLOBAL ENERGY SOLUTIONS FZE",
+      "aliases": [
+        {"alias_type": "AKA", "name": "GES FZE"},
+        {"alias_type": "AKA", "name": "GLOBAL ENERGY FZE"}
+      ],
+      "identifiers": [
+        {"id_type": "REGISTRATION_NUMBER", "value": "RAK-FZ-98765"}
+      ],
+      "addresses": [
+        {
+          "address_type": "PRIMARY",
+          "street": "RAK Free Trade Zone",
+          "city": "Ras Al Khaimah",
+          "country": "AE"
+        }
+      ],
+      "nationalities": ["AE"],
+      "programs": ["IRAN-TRA"],
+      "listing_date": "2024-05-10",
+      "remarks": "Front company for sanctions evasion activities."
+    },
+    {
+      "entry_id": "eu:consolidated:54321",
+      "entry_type": "entity",
+      "source_lists": ["EU-CONSOLIDATED"],
+      "primary_name": "EUROTECH DEFENSE SYSTEMS GMBH",
+      "aliases": [],
+      "identifiers": [
+        {"id_type": "REGISTRATION_NUMBER", "value": "DE-HRB-123456"}
+      ],
+      "addresses": [
+        {
+          "address_type": "PRIMARY",
+          "street": "Industriestrasse 42",
+          "city": "Munich",
+          "country": "DE",
+          "postal_code": "80331"
+        }
+      ],
+      "nationalities": ["DE"],
+      "programs": ["EU-RUSSIA"],
+      "listing_date": "2024-03-15",
+      "remarks": "Listed for providing dual-use goods to designated entities."
+    },
+    {
+      "entry_id": "un:consolidated:99001",
+      "entry_type": "individual",
+      "source_lists": ["UN-CONSOLIDATED", "OFAC-SDN"],
+      "primary_name": "KIM JONG-SIK",
+      "aliases": [
+        {"alias_type": "AKA", "name": "KIM CHONG-SIK"}
+      ],
+      "identifiers": [
+        {"id_type": "PASSPORT", "value": "DPRK-PO472816379"}
+      ],
+      "addresses": [
+        {
+          "address_type": "PRIMARY",
+          "city": "Pyongyang",
+          "country": "KP"
+        }
+      ],
+      "nationalities": ["KP"],
+      "date_of_birth": "1967-01-01",
+      "programs": ["DPRK3", "UNSCR-1718"],
+      "listing_date": "2017-09-11",
+      "remarks": "Senior official involved in ballistic missile program."
+    },
+    {
+      "entry_id": "ofac:sdn:12349",
+      "entry_type": "entity",
+      "source_lists": ["OFAC-SDN"],
+      "primary_name": "CRYPTO EXCHANGE ALPHA LLC",
+      "aliases": [
+        {"alias_type": "AKA", "name": "CEA"},
+        {"alias_type": "AKA", "name": "ALPHA EXCHANGE"}
+      ],
+      "identifiers": [
+        {"id_type": "DIGITAL_CURRENCY_ADDRESS", "value": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"},
+        {"id_type": "DIGITAL_CURRENCY_ADDRESS", "value": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"}
+      ],
+      "addresses": [
+        {
+          "address_type": "PRIMARY",
+          "city": "Tortola",
+          "country": "VG"
+        }
+      ],
+      "nationalities": ["VG"],
+      "programs": ["CYBER2"],
+      "listing_date": "2024-11-01",
+      "remarks": "Virtual currency exchange facilitating ransomware payments."
+    },
+    {
+      "entry_id": "ofac:sdn:12350",
+      "entry_type": "aircraft",
+      "source_lists": ["OFAC-SDN"],
+      "primary_name": "BOEING 747-400F",
+      "aliases": [],
+      "identifiers": [
+        {"id_type": "TAIL_NUMBER", "value": "EP-FAA"},
+        {"id_type": "MSN", "value": "25734"}
+      ],
+      "nationalities": ["IR"],
+      "programs": ["IRAN"],
+      "listing_date": "2023-12-01",
+      "remarks": "Aircraft operated by designated Iranian airline."
+    },
+    {
+      "entry_id": "ofac:sdn:12351",
+      "entry_type": "entity",
+      "source_lists": ["OFAC-SDN"],
+      "primary_name": "PETROCHEMICAL HOLDINGS SA",
+      "aliases": [
+        {"alias_type": "AKA", "name": "PETROCHEM SA"}
+      ],
+      "identifiers": [
+        {"id_type": "REGISTRATION_NUMBER", "value": "VE-RIF-J-12345678-9"}
+      ],
+      "addresses": [
+        {
+          "address_type": "PRIMARY",
+          "street": "Avenida Libertador",
+          "city": "Caracas",
+          "country": "VE"
+        }
+      ],
+      "nationalities": ["VE"],
+      "programs": ["VENEZUELA-EO13850"],
+      "listing_date": "2024-07-20",
+      "remarks": "State-owned entity in the oil sector of Venezuela."
+    },
+    {
+      "entry_id": "ofac:sdn:12352",
+      "entry_type": "individual",
+      "source_lists": ["OFAC-SDN"],
+      "primary_name": "AHMAD AL-RASHID",
+      "aliases": [
+        {"alias_type": "AKA", "name": "ABU AHMAD"},
+        {"alias_type": "AKA", "name": "AHMAD RASHID AL-SHAMI"}
+      ],
+      "identifiers": [
+        {"id_type": "PASSPORT", "value": "SY-N012345678"}
+      ],
+      "addresses": [
+        {
+          "address_type": "PRIMARY",
+          "city": "Damascus",
+          "country": "SY"
+        }
+      ],
+      "nationalities": ["SY"],
+      "date_of_birth": "1968-07-15",
+      "programs": ["SYRIA"],
+      "listing_date": "2020-06-17",
+      "remarks": "Senior official in Syrian government responsible for human rights abuses."
+    },
+    {
+      "entry_id": "ofac:sdn:12353",
+      "entry_type": "entity",
+      "source_lists": ["OFAC-SDN"],
+      "primary_name": "MYANMAR GEMS ENTERPRISE",
+      "aliases": [
+        {"alias_type": "AKA", "name": "MGE"},
+        {"alias_type": "AKA", "name": "MYANMA GEMS ENTERPRISE"}
+      ],
+      "identifiers": [
+        {"id_type": "REGISTRATION_NUMBER", "value": "MM-SOE-001"}
+      ],
+      "addresses": [
+        {
+          "address_type": "PRIMARY",
+          "city": "Naypyidaw",
+          "country": "MM"
+        }
+      ],
+      "nationalities": ["MM"],
+      "programs": ["BURMA-EO14014"],
+      "listing_date": "2024-04-05",
+      "remarks": "State-owned enterprise generating revenue for Myanmar military."
+    },
+    {
+      "entry_id": "ofac:sdn:12354",
+      "entry_type": "entity",
+      "source_lists": ["OFAC-SDN", "EU-CONSOLIDATED"],
+      "primary_name": "BELTECH ELECTRONICS OOO",
+      "aliases": [
+        {"alias_type": "AKA", "name": "BELTECH OOO"},
+        {"alias_type": "FKA", "name": "BELARUS TECHNOLOGY LLC"}
+      ],
+      "identifiers": [
+        {"id_type": "REGISTRATION_NUMBER", "value": "BY-190543210"}
+      ],
+      "addresses": [
+        {
+          "address_type": "PRIMARY",
+          "street": "Prospekt Nezavisimosti 95",
+          "city": "Minsk",
+          "country": "BY",
+          "postal_code": "220043"
+        }
+      ],
+      "nationalities": ["BY"],
+      "programs": ["BELARUS-EO14038", "EU-BELARUS"],
+      "listing_date": "2024-09-15",
+      "remarks": "Entity providing electronics components for military applications."
+    }
+  ]
+}

@@ -1,0 +1,431 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MSEZ Stack - LawPack Example
+  
+  This is a model Enabling Act for a Digital Financial Center Zone
+  in Akoma Ntoso (AKN) XML format, the OASIS standard for legal documents.
+  
+  This example demonstrates:
+  - AKN document structure
+  - Zone establishment provisions
+  - Regulatory framework references
+  - Cross-references to MSEZ modules
+  
+  NOTE: This is a MODEL TEXT for technical demonstration only.
+  Production use requires professional legal drafting.
+-->
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act name="enabling-act">
+    <meta>
+      <identification source="#momentum">
+        <FRBRWork>
+          <FRBRthis value="/akn/xx/act/2025/msez-enabling-act"/>
+          <FRBRuri value="/akn/xx/act/2025/msez-enabling-act"/>
+          <FRBRdate date="2025-01-01" name="enactment"/>
+          <FRBRauthor href="#legislature"/>
+          <FRBRcountry value="XX"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/xx/act/2025/msez-enabling-act/eng@2025-01-01"/>
+          <FRBRuri value="/akn/xx/act/2025/msez-enabling-act/eng@2025-01-01"/>
+          <FRBRdate date="2025-01-01" name="publication"/>
+          <FRBRauthor href="#legislature"/>
+          <FRBRlanguage language="eng"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/xx/act/2025/msez-enabling-act/eng@2025-01-01/main.xml"/>
+          <FRBRuri value="/akn/xx/act/2025/msez-enabling-act/eng@2025-01-01/main.xml"/>
+          <FRBRdate date="2025-01-01" name="generation"/>
+          <FRBRauthor href="#momentum"/>
+        </FRBRManifestation>
+      </identification>
+      <references source="#momentum">
+        <TLCOrganization eId="momentum" href="/ontology/organization/momentum" showAs="Momentum Protocol"/>
+        <TLCOrganization eId="legislature" href="/ontology/organization/legislature" showAs="National Legislature"/>
+        <TLCOrganization eId="zone-authority" href="/ontology/organization/zone-authority" showAs="Zone Authority"/>
+        <TLCConcept eId="smart-asset" href="/ontology/concept/smart-asset" showAs="Smart Asset"/>
+        <TLCConcept eId="corridor" href="/ontology/concept/corridor" showAs="Settlement Corridor"/>
+      </references>
+    </meta>
+    
+    <preface>
+      <longTitle>
+        <p>AN ACT</p>
+        <p>To establish the <organization refersTo="#zone-authority">Digital Financial Center Zone</organization>, 
+        to provide for the governance and regulation of digital financial services within the Zone,
+        to establish a framework for programmable compliance and smart asset operations,
+        and for connected purposes.</p>
+      </longTitle>
+      <p class="enactingFormula">BE IT ENACTED by the Parliament as follows:</p>
+    </preface>
+    
+    <body>
+      <!-- PART I: PRELIMINARY -->
+      <part eId="part_1">
+        <num>PART I</num>
+        <heading>PRELIMINARY</heading>
+        
+        <section eId="sec_1">
+          <num>1.</num>
+          <heading>Short title and commencement</heading>
+          <subsection eId="sec_1__subsec_1">
+            <num>(1)</num>
+            <content>
+              <p>This Act may be cited as the Digital Financial Center Zone Act 2025.</p>
+            </content>
+          </subsection>
+          <subsection eId="sec_1__subsec_2">
+            <num>(2)</num>
+            <content>
+              <p>This Act shall come into force on such date as the Minister may, 
+              by order published in the Gazette, appoint.</p>
+            </content>
+          </subsection>
+        </section>
+        
+        <section eId="sec_2">
+          <num>2.</num>
+          <heading>Interpretation</heading>
+          <intro>
+            <p>In this Act, unless the context otherwise requires—</p>
+          </intro>
+          <paragraph eId="sec_2__para_a">
+            <num>(a)</num>
+            <content>
+              <p><def refersTo="#smart-asset">"Smart Asset"</def> means a digital representation 
+              of rights, obligations, or value that—
+                <list>
+                  <item><num>(i)</num><p>is identified by a cryptographic hash of its genesis document;</p></item>
+                  <item><num>(ii)</num><p>maintains an append-only receipt chain recording all state transitions;</p></item>
+                  <item><num>(iii)</num><p>operates according to a deterministic state machine; and</p></item>
+                  <item><num>(iv)</num><p>conforms to the MASS Protocol specification;</p></item>
+                </list>
+              </p>
+            </content>
+          </paragraph>
+          <paragraph eId="sec_2__para_b">
+            <num>(b)</num>
+            <content>
+              <p><def refersTo="#corridor">"Settlement Corridor"</def> means a bilateral or 
+              multilateral arrangement between Zone participants for the transfer, 
+              settlement, or netting of obligations represented as Smart Assets;</p>
+            </content>
+          </paragraph>
+          <paragraph eId="sec_2__para_c">
+            <num>(c)</num>
+            <content>
+              <p>"Zone Authority" means the Digital Financial Center Zone Authority 
+              established under section 5;</p>
+            </content>
+          </paragraph>
+          <paragraph eId="sec_2__para_d">
+            <num>(d)</num>
+            <content>
+              <p>"Registered Entity" means a legal entity registered under Part III 
+              to conduct business within the Zone;</p>
+            </content>
+          </paragraph>
+          <paragraph eId="sec_2__para_e">
+            <num>(e)</num>
+            <content>
+              <p>"RegPack" means a regulatory compliance package as defined in 
+              the MSEZ Stack specification, containing sanctions lists, license 
+              registries, and compliance calendars;</p>
+            </content>
+          </paragraph>
+          <paragraph eId="sec_2__para_f">
+            <num>(f)</num>
+            <content>
+              <p>"LawPack" means a legal text package in Akoma Ntoso format 
+              containing the applicable laws, regulations, and model contracts 
+              for Zone operations;</p>
+            </content>
+          </paragraph>
+        </section>
+      </part>
+      
+      <!-- PART II: ESTABLISHMENT OF THE ZONE -->
+      <part eId="part_2">
+        <num>PART II</num>
+        <heading>ESTABLISHMENT OF THE ZONE</heading>
+        
+        <section eId="sec_3">
+          <num>3.</num>
+          <heading>Establishment of the Zone</heading>
+          <subsection eId="sec_3__subsec_1">
+            <num>(1)</num>
+            <content>
+              <p>There is hereby established a special economic zone to be known as 
+              the Digital Financial Center Zone (hereinafter "the Zone").</p>
+            </content>
+          </subsection>
+          <subsection eId="sec_3__subsec_2">
+            <num>(2)</num>
+            <content>
+              <p>The Zone shall have its own legal and regulatory framework as 
+              provided in this Act and regulations made thereunder.</p>
+            </content>
+          </subsection>
+        </section>
+        
+        <section eId="sec_4">
+          <num>4.</num>
+          <heading>Geographic scope</heading>
+          <content>
+            <p>The Zone shall comprise—
+              <list>
+                <item><num>(a)</num><p>the physical premises designated by the Minister by order;</p></item>
+                <item><num>(b)</num><p>digital infrastructure operated by or on behalf of the Zone Authority; and</p></item>
+                <item><num>(c)</num><p>Smart Assets registered under Part IV, regardless of their physical location.</p></item>
+              </list>
+            </p>
+          </content>
+        </section>
+        
+        <section eId="sec_5">
+          <num>5.</num>
+          <heading>Zone Authority</heading>
+          <subsection eId="sec_5__subsec_1">
+            <num>(1)</num>
+            <content>
+              <p>There is hereby established a body corporate to be known as the 
+              Digital Financial Center Zone Authority.</p>
+            </content>
+          </subsection>
+          <subsection eId="sec_5__subsec_2">
+            <num>(2)</num>
+            <content>
+              <p>The Zone Authority shall have perpetual succession and a common seal 
+              and may sue and be sued in its corporate name.</p>
+            </content>
+          </subsection>
+          <subsection eId="sec_5__subsec_3">
+            <num>(3)</num>
+            <content>
+              <p>The Zone Authority shall have power to—
+                <list>
+                  <item><num>(a)</num><p>register entities to operate within the Zone;</p></item>
+                  <item><num>(b)</num><p>issue, suspend, and revoke licenses;</p></item>
+                  <item><num>(c)</num><p>approve Settlement Corridors;</p></item>
+                  <item><num>(d)</num><p>maintain the Zone's RegPack and LawPack;</p></item>
+                  <item><num>(e)</num><p>enforce compliance with this Act and regulations; and</p></item>
+                  <item><num>(f)</num><p>do all things necessary for the proper administration of the Zone.</p></item>
+                </list>
+              </p>
+            </content>
+          </subsection>
+        </section>
+      </part>
+      
+      <!-- PART III: REGISTERED ENTITIES -->
+      <part eId="part_3">
+        <num>PART III</num>
+        <heading>REGISTERED ENTITIES</heading>
+        
+        <section eId="sec_6">
+          <num>6.</num>
+          <heading>Registration requirement</heading>
+          <content>
+            <p>No person shall conduct regulated activities within the Zone unless 
+            registered as a Registered Entity under this Part.</p>
+          </content>
+        </section>
+        
+        <section eId="sec_7">
+          <num>7.</num>
+          <heading>Application for registration</heading>
+          <content>
+            <p>An application for registration shall be made to the Zone Authority 
+            in such form and manner as may be prescribed, and shall include—
+              <list>
+                <item><num>(a)</num><p>the applicant's constitutional documents;</p></item>
+                <item><num>(b)</num><p>evidence of beneficial ownership;</p></item>
+                <item><num>(c)</num><p>a description of proposed activities;</p></item>
+                <item><num>(d)</num><p>evidence of adequate capitalization;</p></item>
+                <item><num>(e)</num><p>a compliance program satisfying RegPack requirements; and</p></item>
+                <item><num>(f)</num><p>such other information as the Zone Authority may require.</p></item>
+              </list>
+            </p>
+          </content>
+        </section>
+      </part>
+      
+      <!-- PART IV: SMART ASSETS -->
+      <part eId="part_4">
+        <num>PART IV</num>
+        <heading>SMART ASSETS</heading>
+        
+        <section eId="sec_10">
+          <num>10.</num>
+          <heading>Recognition of Smart Assets</heading>
+          <subsection eId="sec_10__subsec_1">
+            <num>(1)</num>
+            <content>
+              <p>A Smart Asset registered under this Part shall be recognized as 
+              valid and enforceable within the Zone.</p>
+            </content>
+          </subsection>
+          <subsection eId="sec_10__subsec_2">
+            <num>(2)</num>
+            <content>
+              <p>The receipt chain of a Smart Asset shall constitute prima facie 
+              evidence of the transactions and state transitions recorded therein.</p>
+            </content>
+          </subsection>
+        </section>
+        
+        <section eId="sec_11">
+          <num>11.</num>
+          <heading>Smart Asset requirements</heading>
+          <content>
+            <p>A Smart Asset shall not be registered unless—
+              <list>
+                <item><num>(a)</num><p>it conforms to the MASS Protocol specification;</p></item>
+                <item><num>(b)</num><p>its genesis document identifies a valid issuer;</p></item>
+                <item><num>(c)</num><p>it is bound to one or more approved Settlement Corridors;</p></item>
+                <item><num>(d)</num><p>its operational manifest references an approved RegPack; and</p></item>
+                <item><num>(e)</num><p>the issuer has completed sanctions screening.</p></item>
+              </list>
+            </p>
+          </content>
+        </section>
+        
+        <section eId="sec_12">
+          <num>12.</num>
+          <heading>Agentic execution</heading>
+          <subsection eId="sec_12__subsec_1">
+            <num>(1)</num>
+            <content>
+              <p>A Smart Asset may be configured to respond autonomously to 
+              environmental triggers in accordance with its operational manifest.</p>
+            </content>
+          </subsection>
+          <subsection eId="sec_12__subsec_2">
+            <num>(2)</num>
+            <content>
+              <p>Agentic execution shall be deterministic, auditable, and 
+              subject to the policies defined in the Smart Asset's manifest.</p>
+            </content>
+          </subsection>
+          <subsection eId="sec_12__subsec_3">
+            <num>(3)</num>
+            <content>
+              <p>Standard agentic policies shall include—
+                <list>
+                  <item><num>(a)</num><p>automatic halt on sanctions match;</p></item>
+                  <item><num>(b)</num><p>automatic halt on license suspension;</p></item>
+                  <item><num>(c)</num><p>automatic checkpointing at defined thresholds; and</p></item>
+                  <item><num>(d)</num><p>automatic enforcement of arbitration rulings.</p></item>
+                </list>
+              </p>
+            </content>
+          </subsection>
+        </section>
+      </part>
+      
+      <!-- PART V: DISPUTE RESOLUTION -->
+      <part eId="part_5">
+        <num>PART V</num>
+        <heading>DISPUTE RESOLUTION</heading>
+        
+        <section eId="sec_15">
+          <num>15.</num>
+          <heading>Arbitration</heading>
+          <subsection eId="sec_15__subsec_1">
+            <num>(1)</num>
+            <content>
+              <p>Disputes arising from Zone activities shall be resolved by 
+              arbitration in accordance with the rules of an approved 
+              arbitration institution.</p>
+            </content>
+          </subsection>
+          <subsection eId="sec_15__subsec_2">
+            <num>(2)</num>
+            <content>
+              <p>The following arbitration institutions are approved—
+                <list>
+                  <item><num>(a)</num><p>DIFC-LCIA Arbitration Centre;</p></item>
+                  <item><num>(b)</num><p>Singapore International Arbitration Centre (SIAC);</p></item>
+                  <item><num>(c)</num><p>AIFC International Arbitration Centre; and</p></item>
+                  <item><num>(d)</num><p>such other institutions as the Zone Authority may approve.</p></item>
+                </list>
+              </p>
+            </content>
+          </subsection>
+        </section>
+        
+        <section eId="sec_16">
+          <num>16.</num>
+          <heading>Enforcement of awards</heading>
+          <content>
+            <p>An arbitration award against a Smart Asset may be enforced 
+            automatically through the agentic execution framework where 
+            the award is cryptographically signed and the Smart Asset's 
+            manifest includes the ruling_auto_enforce policy.</p>
+          </content>
+        </section>
+      </part>
+      
+      <!-- PART VI: COMPLIANCE -->
+      <part eId="part_6">
+        <num>PART VI</num>
+        <heading>COMPLIANCE</heading>
+        
+        <section eId="sec_20">
+          <num>20.</num>
+          <heading>Sanctions compliance</heading>
+          <content>
+            <p>All Registered Entities and Smart Assets shall comply with—
+              <list>
+                <item><num>(a)</num><p>sanctions lists maintained in the Zone's RegPack;</p></item>
+                <item><num>(b)</num><p>OFAC Specially Designated Nationals List;</p></item>
+                <item><num>(c)</num><p>EU Consolidated Sanctions List;</p></item>
+                <item><num>(d)</num><p>UN Security Council Consolidated List; and</p></item>
+                <item><num>(e)</num><p>such other sanctions regimes as may be prescribed.</p></item>
+              </list>
+            </p>
+          </content>
+        </section>
+        
+        <section eId="sec_21">
+          <num>21.</num>
+          <heading>Automatic sanctions screening</heading>
+          <content>
+            <p>Smart Assets configured with agentic policies shall automatically 
+            halt operations upon detection of a sanctions match, pending 
+            resolution by the Zone Authority.</p>
+          </content>
+        </section>
+      </part>
+      
+      <!-- PART VII: GENERAL -->
+      <part eId="part_7">
+        <num>PART VII</num>
+        <heading>GENERAL PROVISIONS</heading>
+        
+        <section eId="sec_25">
+          <num>25.</num>
+          <heading>Regulations</heading>
+          <content>
+            <p>The Minister may, on the recommendation of the Zone Authority, 
+            make regulations for the better carrying out of the provisions 
+            and purposes of this Act.</p>
+          </content>
+        </section>
+        
+        <section eId="sec_26">
+          <num>26.</num>
+          <heading>Savings and transitional</heading>
+          <content>
+            <p>The Minister may, by order, make such savings and transitional 
+            provisions as may be necessary for bringing this Act into operation.</p>
+          </content>
+        </section>
+      </part>
+    </body>
+    
+    <conclusions>
+      <p>Passed by Parliament on the [DATE] day of [MONTH], 2025.</p>
+    </conclusions>
+  </act>
+</akomaNtoso>

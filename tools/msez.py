@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MSEZ Stack tool (reference implementation) — v0.4.41
+"""MSEZ Stack tool (reference implementation) — v0.4.42
 
 Capabilities:
 - validate modules/profiles/zones against schemas
@@ -53,7 +53,7 @@ if str(REPO_ROOT) not in sys.path:
 # Local (repo) imports (after sys.path fix)
 from tools import artifacts as artifact_cas
 from tools import smart_asset as smart_asset_tools
-STACK_SPEC_VERSION = "0.4.41"
+STACK_SPEC_VERSION = "0.4.42"
 
 # Templating: we intentionally support two simple placeholder syntaxes used in v0.4 (safe placeholder subset)
 # - {{ VAR_NAME }} (common in Akoma templates)
@@ -3941,7 +3941,7 @@ def cmd_asset_module_init(args: argparse.Namespace) -> int:
         template_asset_yaml = template_dir / "asset.yaml"
         template_asset_yaml.write_text("""# Smart Asset Module Template
 asset_id: org.momentum.msez.asset._template
-stack_spec_version: "0.4.41"
+stack_spec_version: "0.4.42"
 asset_name: Template Asset
 asset_type: generic
 

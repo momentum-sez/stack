@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://msez.momentum.xyz/schemas/agentic.policy.schema.json",
+  "title": "MSEZAgenticPolicy",
+  "description": "An agentic policy mapping triggers to actions per MASS Protocol v0.2 Definition 17.2",
+  "type": "object",
+  "required": ["policy_id", "trigger_type", "action"],
+  "properties": {
+    "policy_id": {
+      "type": "string",
+      "description": "Unique identifier for this policy"
+    },
+    "trigger_type": {
+      "type": "string",
+      "description": "Trigger type this policy responds to"
+    },
+    "condition": {
+      "type": "object",
+      "description": "Condition predicate that must be satisfied",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["threshold", "equals", "contains", "not_equals", "greater_than", "less_than", "in_list", "regex"],
+          "description": "Type of condition check"
+        },
+        "field": {
+          "type": "string",
+          "description": "Field in trigger data to evaluate"
+        },
+        "value": {
+          "description": "Expected value for equals/not_equals"
+        },
+        "threshold": {
+          "type": "number",
+          "description": "Threshold value for numeric comparisons"
+        },
+        "item": {
+          "description": "Item to check for in contains"
+        },
+        "list": {
+          "type": "array",
+          "description": "List for in_list check"
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Regex pattern for regex check"
+        }
+      }
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "halt",
+        "resume",
+        "update_manifest",
+        "transfer",
+        "arbitration_enforce",
+        "governance_vote",
+        "mint",
+        "burn"
+      ],
+      "description": "Action to take when policy matches"
+    },
+    "authorization_requirement": {
+      "type": "string",
+      "enum": ["automatic", "quorum", "unanimous", "governance"],
+      "default": "automatic",
+      "description": "Required authorization level for action execution"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this policy is active"
+    },
+    "priority": {
+      "type": "integer",
+      "default": 0,
+      "description": "Policy priority for ordering (higher = earlier evaluation)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of policy purpose"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

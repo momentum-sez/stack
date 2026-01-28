@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://msez.momentum.xyz/schemas/agentic.action-schedule.schema.json",
+  "title": "MSEZAgenticScheduledAction",
+  "description": "A scheduled action resulting from policy evaluation",
+  "type": "object",
+  "required": ["action_id", "asset_id", "action_type", "trigger_id", "policy_id", "scheduled_at", "execute_at", "status"],
+  "properties": {
+    "action_id": {
+      "type": "string",
+      "description": "Unique identifier for this scheduled action"
+    },
+    "asset_id": {
+      "type": "string",
+      "description": "Asset this action applies to"
+    },
+    "action_type": {
+      "type": "string",
+      "description": "Type of action to execute"
+    },
+    "trigger_id": {
+      "type": "string",
+      "description": "Trigger that caused this action"
+    },
+    "policy_id": {
+      "type": "string",
+      "description": "Policy that matched"
+    },
+    "scheduled_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When action was scheduled"
+    },
+    "execute_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When action should execute"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "executing", "completed", "failed", "cancelled", "retry_pending"],
+      "description": "Current status of the action"
+    },
+    "retry_count": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Number of retry attempts"
+    },
+    "max_retries": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 3,
+      "description": "Maximum retry attempts"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Error message if failed"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When action completed"
+    },
+    "result": {
+      "type": "object",
+      "description": "Result data from execution",
+      "additionalProperties": true
+    },
+    "authorization_status": {
+      "type": "string",
+      "enum": ["not_required", "pending", "approved", "rejected"],
+      "description": "Status of authorization if required"
+    },
+    "authorizations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "authorizer": {"type": "string"},
+          "authorized_at": {"type": "string", "format": "date-time"},
+          "signature": {"type": "string"}
+        }
+      },
+      "description": "Authorization signatures received"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://msez.momentum.xyz/schemas/agentic.audit-trail.schema.json",
+  "title": "MSEZAgenticAuditTrailEntry",
+  "description": "Entry in the agentic execution audit trail for compliance and debugging",
+  "type": "object",
+  "required": ["entry_id", "entry_type", "timestamp"],
+  "properties": {
+    "entry_id": {
+      "type": "string",
+      "description": "Unique identifier for this audit entry"
+    },
+    "entry_type": {
+      "type": "string",
+      "enum": [
+        "trigger_received",
+        "policy_evaluated",
+        "action_scheduled",
+        "action_executed",
+        "action_failed",
+        "action_cancelled",
+        "authorization_requested",
+        "authorization_received",
+        "monitor_started",
+        "monitor_stopped",
+        "monitor_error",
+        "policy_registered",
+        "policy_unregistered"
+      ],
+      "description": "Type of audit entry"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this entry was recorded"
+    },
+    "asset_id": {
+      "type": "string",
+      "description": "Asset ID if applicable"
+    },
+    "trigger_data": {
+      "type": "object",
+      "description": "Trigger data if entry relates to a trigger"
+    },
+    "evaluation_result": {
+      "type": "object",
+      "description": "Policy evaluation result if applicable"
+    },
+    "action_data": {
+      "type": "object",
+      "description": "Action data if entry relates to an action"
+    },
+    "monitor_data": {
+      "type": "object",
+      "description": "Monitor data if entry relates to a monitor"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata",
+      "additionalProperties": true
+    },
+    "actor": {
+      "type": "string",
+      "description": "DID or identifier of actor causing this entry"
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "ID linking related audit entries"
+    }
+  },
+  "additionalProperties": false
+}

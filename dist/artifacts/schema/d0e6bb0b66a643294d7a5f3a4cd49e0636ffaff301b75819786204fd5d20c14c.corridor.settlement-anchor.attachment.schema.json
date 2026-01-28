@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/corridor.settlement-anchor.attachment.schema.json",
+  "title": "MSEZ Settlement Anchor Attachment",
+  "description": "Typed ArtifactRef wrapper for cross-corridor settlement anchors (artifact_type=settlement-anchor).",
+  "allOf": [
+    {"$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"},
+    {
+      "type": "object",
+      "properties": {
+        "artifact_type": {"const": "settlement-anchor"},
+        "settlement_id": {"type": "string", "description": "Optional correlation id hint."},
+        "relationship": {"type": "string", "description": "Optional relationship hint."}
+      },
+      "required": ["artifact_type", "digest_sha256"],
+      "additionalProperties": true
+    }
+  ]
+}

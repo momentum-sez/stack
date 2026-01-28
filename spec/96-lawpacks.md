@@ -148,6 +148,12 @@ v0.4.1 defines canonicalization for lawpack digests as:
   - Floats are forbidden; represent quantities as strings or integers.
 - XML: **Exclusive XML C14N**, no comments.
 
+- **Artifact bytes (recommended)**: For reproducible `lawpack.zip` bytes (and to make `index.json`
+  `document_sha256` directly match the stored XML), implementations SHOULD write:
+  - `lawpack.yaml` as **JCS canonical JSON bytes** (JSON is a YAML subset),
+  - `index.json` as **JCS canonical JSON bytes**,
+  - `akn/**/*.xml` as **XML C14N bytes**.
+
 #### Digest computation
 
 v0.4.1 defines the digest as:
@@ -266,3 +272,32 @@ Each authority **signs** its pinned lawpack digests as part of its agreement VC 
 Verification rules (`msez.corridor.verification.v1`) enforce:
 - domain coverage (when `required_domains` is present),
 - digest allowlists (when provided in definition VC).
+
+## Tooling
+
+### Ingestion
+
+Reference CLI:
+
+```bash
+msez law ingest modules/legal/jurisdictions/<jid>/<domain> \
+  --as-of-date YYYY-MM-DD \
+  --out-dir dist/lawpacks
+```
+
+Optional flags:
+- `--include-raw`: includes `src/raw/...` in the emitted `lawpack.zip` (license permitting)
+- `--fetch`: best-effort downloads declared source URIs into `src/raw` (not recommended in CI)
+
+### Strict and CI check mode
+
+`msez law ingest` supports deterministic “check mode” for CI:
+
+```bash
+msez law ingest <module_dir> --as-of-date YYYY-MM-DD --check
+```
+
+Semantics:
+- `--check` implies `--strict --skip-existing`.
+- `--strict` enforces JSON-compatible manifest typing (e.g., rejects YAML implicit dates/timestamps).
+- `--skip-existing` reuses an existing `lawpack.lock.json` and artifact *only if* they verify cleanly; in strict mode it fails rather than regenerating.

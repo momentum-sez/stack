@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/regpack.metadata.schema.json",
+  "title": "MSEZ RegPack Metadata",
+  "description": "Metadata for a Regulatory Pack (RegPack) capturing dynamic regulatory state for a jurisdiction/domain.",
+  "type": "object",
+  "required": [
+    "type",
+    "stack_spec_version",
+    "regpack_version",
+    "regpack_id",
+    "jurisdiction_id",
+    "domain",
+    "as_of_date",
+    "snapshot_type"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZRegPackMetadata"
+    },
+    "stack_spec_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "regpack_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "RegPack schema version (e.g., '1.0')"
+    },
+    "regpack_id": {
+      "type": "string",
+      "pattern": "^regpack:[a-z0-9-]+:[a-z0-9-]+:[a-z0-9-]+$",
+      "description": "Unique regpack identifier (e.g., 'regpack:uae-adgm:financial:2026q1')"
+    },
+    "jurisdiction_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Jurisdiction identifier (e.g., 'uae-adgm', 'kaz-aifc')"
+    },
+    "domain": {
+      "type": "string",
+      "enum": ["financial", "civil", "criminal", "tax", "trade", "customs", "immigration", "labor", "environmental", "data_protection"],
+      "description": "Regulatory domain covered by this regpack"
+    },
+    "as_of_date": {
+      "type": "string",
+      "format": "date",
+      "description": "The effective date of this regulatory snapshot (YYYY-MM-DD)"
+    },
+    "snapshot_type": {
+      "type": "string",
+      "enum": ["daily", "weekly", "monthly", "quarterly", "annual", "ad_hoc"],
+      "description": "Frequency of regpack updates"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source"
+      },
+      "description": "Data sources used to compile this regpack"
+    },
+    "includes": {
+      "type": "object",
+      "properties": {
+        "regulators": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "sanctions_lists": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "license_types": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "report_types": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "guidance_documents": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "description": "Summary of what this regpack includes"
+    },
+    "previous_regpack_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256 digest of the previous regpack for delta computation"
+    },
+    "digest_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Canonical digest of this regpack"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional expiry timestamp after which regpack should be refreshed"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "source": {
+      "type": "object",
+      "required": ["type", "fetched_at"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["regulator_api", "sanctions_feed", "manual_entry", "gazette", "official_publication"]
+        },
+        "regulator": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string",
+          "format": "uri"
+        },
+        "fetched_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "record_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "digest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

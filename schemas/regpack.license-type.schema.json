@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/regpack.license-type.schema.json",
+  "title": "MSEZ License Type",
+  "description": "A type of license that can be granted by a regulator.",
+  "type": "object",
+  "required": ["license_type_id", "name", "regulator_id"],
+  "properties": {
+    "license_type_id": {
+      "type": "string",
+      "description": "Unique identifier for this license type."
+    },
+    "name": {
+      "type": "string",
+      "description": "Name of the license type."
+    },
+    "regulator_id": {
+      "type": "string",
+      "description": "Regulator that issues this license."
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of activities permitted."
+    },
+    "requirements": {
+      "type": "object",
+      "properties": {
+        "minimum_capital": {
+          "type": "object",
+          "properties": {
+            "amount": { "type": "number", "minimum": 0 },
+            "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+          }
+        },
+        "key_persons": {
+          "type": "object",
+          "properties": {
+            "minimum_count": { "type": "integer" },
+            "qualifications": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "insurance": {
+          "type": "object",
+          "properties": {
+            "required": { "type": "boolean" },
+            "minimum_coverage": {
+              "type": "object",
+              "properties": {
+                "amount": { "type": "number" },
+                "currency": { "type": "string" }
+              }
+            }
+          }
+        },
+        "auditor": {
+          "type": "object",
+          "properties": {
+            "required": { "type": "boolean" },
+            "approved_list_ref": {
+              "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+            }
+          }
+        }
+      }
+    },
+    "application": {
+      "type": "object",
+      "properties": {
+        "fee": {
+          "type": "object",
+          "properties": {
+            "amount": { "type": "number" },
+            "currency": { "type": "string" }
+          }
+        },
+        "processing_time_days": { "type": "integer" },
+        "documents_required": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "submission_endpoint": { "type": "string", "format": "uri" }
+      }
+    },
+    "ongoing_obligations": {
+      "type": "object",
+      "properties": {
+        "annual_fee": {
+          "type": "object",
+          "properties": {
+            "amount": { "type": "number" },
+            "currency": { "type": "string" }
+          }
+        },
+        "reporting_requirements": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "capital_monitoring": { "type": "boolean" }
+      }
+    },
+    "validity_period_years": {
+      "type": "integer",
+      "description": "License validity in years."
+    },
+    "renewal_lead_time_days": {
+      "type": "integer",
+      "description": "Days before expiry to begin renewal."
+    }
+  },
+  "additionalProperties": true
+}

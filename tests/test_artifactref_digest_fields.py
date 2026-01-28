@@ -39,7 +39,8 @@ def test_digest_fields_accept_artifactref_objects(tmp_path: Path):
     # Typed artifacts already present in the reference CAS store.
     schema_digest = "28249476f011e934f7615a506a37f1e4bf9ba634b4e335194460d6a6296b9efa"
     vc_digest = "bc671170cc5263feb53fe332d2c0f59f49a7ef6a6f86499fde41b2bb7b02cde5"
-    ttr_digest = "d8f22c0aa0114b30f961c208e48f08b17403655cdd0c25c9027b2373609fd207"
+    # Transition-types lock snapshot digest (strict/JCS) for current registry.
+    ttr_digest = "dff695d6b9b72f3a45827c858f54133721e5f477be5b12cf9e5b0adc9eda979a"
 
     receipt = {
         "type": "MSEZCorridorStateReceipt",

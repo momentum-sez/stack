@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/arbitration.dispute-request.schema.json",
+  "title": "MSEZ Arbitration Dispute Request",
+  "description": "A formal request to initiate arbitration proceedings for a dispute arising from corridor operations.",
+  "type": "object",
+  "required": [
+    "type",
+    "stack_spec_version",
+    "dispute_id",
+    "institution_id",
+    "corridor_id",
+    "claimant",
+    "respondent",
+    "claims",
+    "created_at"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZDisputeRequest"
+    },
+    "stack_spec_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dispute_id": {
+      "type": "string",
+      "pattern": "^dispute:[a-f0-9-]+$",
+      "description": "Unique dispute identifier"
+    },
+    "institution_id": {
+      "type": "string",
+      "description": "Arbitration institution to handle the dispute"
+    },
+    "corridor_id": {
+      "type": "string",
+      "description": "The corridor from which the dispute arose"
+    },
+    "arbitration_corridor_id": {
+      "type": "string",
+      "description": "The arbitration corridor handling this dispute (if different from trade corridor)"
+    },
+    "claimant": {
+      "$ref": "#/$defs/party"
+    },
+    "respondent": {
+      "$ref": "#/$defs/party"
+    },
+    "dispute_type": {
+      "type": "string",
+      "enum": [
+        "breach_of_contract",
+        "non_conforming_goods",
+        "payment_default",
+        "delivery_failure",
+        "warranty_claim",
+        "documentation_dispute"
+      ]
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/claim"
+      },
+      "minItems": 1
+    },
+    "relief_sought": {
+      "type": "object",
+      "properties": {
+        "monetary_damages": {
+          "$ref": "#/$defs/money"
+        },
+        "specific_performance": {
+          "type": "string"
+        },
+        "declaratory_relief": {
+          "type": "string"
+        },
+        "interest": {
+          "type": "object",
+          "properties": {
+            "rate": { "type": "number" },
+            "basis": { "type": "string", "enum": ["annual_simple", "annual_compound"] }
+          }
+        },
+        "costs": {
+          "type": "boolean",
+          "description": "Seeking costs/legal fees"
+        }
+      }
+    },
+    "evidence_bundle_ref": {
+      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+      "description": "Reference to the evidence bundle (witness bundle)"
+    },
+    "corridor_receipts_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+      },
+      "description": "References to corridor receipts relevant to the dispute"
+    },
+    "governing_law": {
+      "type": "string",
+      "description": "Governing law for the dispute (jurisdiction_id)"
+    },
+    "seat_of_arbitration": {
+      "type": "string",
+      "description": "Seat/place of arbitration"
+    },
+    "language": {
+      "type": "string",
+      "default": "en",
+      "description": "Language of arbitration proceedings"
+    },
+    "procedural_preferences": {
+      "type": "object",
+      "properties": {
+        "expedited": { "type": "boolean" },
+        "emergency_relief": { "type": "boolean" },
+        "document_only": { "type": "boolean" },
+        "number_of_arbitrators": { "type": "integer", "enum": [1, 3] }
+      }
+    },
+    "escrow": {
+      "type": "object",
+      "properties": {
+        "filing_fee_amount": { "$ref": "#/$defs/money" },
+        "escrow_corridor_id": { "type": "string" },
+        "escrow_receipt_ref": {
+          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+        }
+      },
+      "description": "Escrow details for filing fee"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "proof": {
+      "description": "Claimant's signature on the dispute request",
+      "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "party": {
+      "type": "object",
+      "required": ["party_id"],
+      "properties": {
+        "party_id": {
+          "type": "string",
+          "pattern": "^did:",
+          "description": "DID of the party"
+        },
+        "legal_name": {
+          "type": "string"
+        },
+        "jurisdiction_id": {
+          "type": "string"
+        },
+        "contact": {
+          "type": "object",
+          "properties": {
+            "email": { "type": "string", "format": "email" },
+            "address": { "type": "string" }
+          }
+        },
+        "legal_representative": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "firm": { "type": "string" },
+            "email": { "type": "string", "format": "email" }
+          }
+        }
+      }
+    },
+    "claim": {
+      "type": "object",
+      "required": ["claim_id", "claim_type", "description"],
+      "properties": {
+        "claim_id": {
+          "type": "string"
+        },
+        "claim_type": {
+          "type": "string",
+          "enum": [
+            "principal_amount",
+            "damages",
+            "lost_profits",
+            "consequential_damages",
+            "specific_performance",
+            "declaratory"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "amount": {
+          "$ref": "#/$defs/money"
+        },
+        "supporting_receipts": {
+          "type": "array",
+          "items": {
+            "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+          }
+        },
+        "supporting_evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+          }
+        }
+      }
+    },
+    "money": {
+      "type": "object",
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+      }
+    }
+  }
+}

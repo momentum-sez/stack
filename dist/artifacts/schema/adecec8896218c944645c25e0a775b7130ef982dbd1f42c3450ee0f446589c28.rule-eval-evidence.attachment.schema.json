@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.momentum-sez.org/msez/rule-eval-evidence.attachment.schema.json",
+  "title": "Rule Evaluation Evidence Attachment",
+  "description": "ArtifactRef typed attachment for rule-eval-evidence artifacts.",
+  "type": "object",
+  "required": [
+    "artifact_type",
+    "digest_sha256"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "rule-eval-evidence"
+    },
+    "digest_sha256": {
+      "type": "string"
+    },
+    "harbor_id": {
+      "type": "string"
+    },
+    "result": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "unknown"
+      ]
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

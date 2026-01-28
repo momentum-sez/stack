@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/proof-binding.schema.json",
+  "title": "MSEZ Proof Binding",
+  "description": "Binds an external proof artifact (blob/VC/etc.) to one or more commitment digests in a replay-resistant way. Semantic digest is sha256(signing_input(binding)) (i.e., sha256(JCS(binding_without_proof))).",
+  "type": "object",
+  "required": [
+    "type",
+    "stack_spec_version",
+    "issued_at",
+    "purpose",
+    "proof_ref",
+    "commitments"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZProofBinding"
+    },
+    "stack_spec_version": {
+      "type": "string"
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp"
+    },
+    "issuer": {
+      "type": "string",
+      "description": "Optional DID or identifier of the party binding the proof."
+    },
+    "purpose": {
+      "type": "string",
+      "description": "Short binding purpose string (e.g., settlement.confirmation.v1, netting.proof.v1)."
+    },
+    "proof_ref": {
+      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+    },
+    "commitments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "digest_sha256"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "Commitment kind label (e.g., corridor.checkpoint, corridor.receipt, settlement-anchor, smart-asset-receipt-checkpoint)."
+          },
+          "digest_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "corridor_id": {
+            "type": "string"
+          },
+          "asset_id": {
+            "type": "string"
+          },
+          "purpose_id": {
+            "type": "string",
+            "description": "Optional purpose discriminator (e.g., asset purpose, corridor role)."
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "notes": {
+      "type": "string"
+    },
+    "meta": {
+      "type": "object",
+      "description": "Optional freeform metadata."
+    },
+    "proof": {
+      "description": "Optional DataIntegrityProof (JCS + Ed25519) for the binding object.",
+      "oneOf": [
+        {
+          "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": true
+}

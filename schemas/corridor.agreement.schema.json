@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/corridor.agreement.schema.json",
+  "title": "MSEZ Corridor Agreement",
+  "description": "A bilateral or multilateral corridor agreement establishing the governance, settlement rails, and operational parameters for a trade or capital corridor between zones.",
+  "type": "object",
+  "required": [
+    "type",
+    "stack_spec_version",
+    "corridor_id",
+    "corridor_name",
+    "corridor_type",
+    "created_at",
+    "parties"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZCorridorAgreement"
+    },
+    "stack_spec_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "corridor_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Globally unique corridor identifier."
+    },
+    "corridor_name": {
+      "type": "string",
+      "description": "Human-readable corridor name."
+    },
+    "corridor_type": {
+      "type": "string",
+      "enum": ["obligation", "settlement", "arbitration", "capital", "trade", "mixed"],
+      "description": "Primary corridor type classification."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp when the agreement was created."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional expiry timestamp for time-bounded agreements."
+    },
+    "parties": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "$ref": "#/$defs/party"
+      },
+      "description": "Parties to the corridor agreement."
+    },
+    "governance": {
+      "$ref": "#/$defs/governance",
+      "description": "Governance parameters for the corridor."
+    },
+    "settlement_corridors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of settlement corridor IDs available for this agreement."
+    },
+    "lawpack_requirements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/lawpack_requirement"
+      },
+      "description": "Lawpack compliance requirements for corridor operations."
+    },
+    "trust_anchors": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Trust anchors authorized for this corridor."
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Optional evidence attachments (signatures, attestations)."
+    },
+    "meta": {
+      "type": "object",
+      "description": "Optional freeform metadata."
+    },
+    "proof": {
+      "description": "Optional DataIntegrityProof for the agreement.",
+      "oneOf": [
+        {
+          "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "party": {
+      "type": "object",
+      "required": ["role"],
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "Party's role in the corridor (e.g., exporter, importer, issuing_bank, advising_bank)."
+        },
+        "party_id": {
+          "type": "string",
+          "description": "DID or identifier of the party."
+        },
+        "zone_ref": {
+          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+          "description": "Reference to the party's zone lock."
+        },
+        "jurisdiction_id": {
+          "type": "string",
+          "description": "Party's jurisdiction identifier."
+        }
+      },
+      "additionalProperties": true
+    },
+    "governance": {
+      "type": "object",
+      "properties": {
+        "dispute_resolution": {
+          "type": "string",
+          "enum": ["arbitration", "litigation", "mediation", "escalation"],
+          "description": "Primary dispute resolution mechanism."
+        },
+        "governing_law": {
+          "type": "string",
+          "description": "Jurisdiction ID for governing law."
+        },
+        "arbitration_venue": {
+          "type": "string",
+          "description": "Arbitration venue if applicable."
+        },
+        "amendment_quorum": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of parties required to amend the agreement."
+        }
+      },
+      "additionalProperties": true
+    },
+    "lawpack_requirement": {
+      "type": "object",
+      "required": ["jurisdiction_id", "domains"],
+      "properties": {
+        "jurisdiction_id": {
+          "type": "string"
+        },
+        "domains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "minimum_version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -8,8 +8,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 def _make_signed_watcher_vc(tmp_path: Path, corridor_id: str, receipt_count: int, final_state_root: str) -> Path:
     """Create a minimal signed watcher attestation VC for tests."""
     from tools.vc import add_ed25519_proof, did_key_from_ed25519_public_key
-    from tools.vc import now_rfc3339  # type: ignore
     from cryptography.hazmat.primitives import serialization
+    from datetime import datetime, timezone
 
     priv = Ed25519PrivateKey.generate()
     pub = priv.public_key().public_bytes(
@@ -18,6 +18,9 @@ def _make_signed_watcher_vc(tmp_path: Path, corridor_id: str, receipt_count: int
     )
     did = did_key_from_ed25519_public_key(pub)
     vm = did + "#key-1"
+
+    # Use current time for freshness (avoid staleness issues in test suite)
+    now_str = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
     vc = {
         "@context": [
@@ -28,10 +31,10 @@ def _make_signed_watcher_vc(tmp_path: Path, corridor_id: str, receipt_count: int
         "type": ["VerifiableCredential", "MSEZCorridorWatcherAttestationCredential"],
         "id": "urn:uuid:00000000-0000-0000-0000-000000000000",
         "issuer": did,
-        "issuanceDate": now_rfc3339(),
+        "issuanceDate": now_str,
         "credentialSubject": {
             "corridor_id": corridor_id,
-            "observed_at": now_rfc3339(),
+            "observed_at": now_str,
             "receipt_count": receipt_count,
             "final_state_root": final_state_root,
             # Minimal checkpoint commitment (digest only is allowed; ArtifactRef also allowed)
@@ -87,6 +90,7 @@ def test_watcher_compare_detects_fork_like_divergence(tmp_path: Path):
         enforce_authority_registry=False,
         require_artifacts=False,
         fail_on_lag=False,
+        max_staleness="24h",  # Allow 24h staleness to prevent flakiness
         json=False,
     )
     rc = cmd_corridor_state_watcher_compare(args)

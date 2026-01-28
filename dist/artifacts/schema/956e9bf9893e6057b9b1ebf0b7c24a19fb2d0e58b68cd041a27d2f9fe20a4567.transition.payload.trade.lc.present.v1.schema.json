@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.present.v1.schema.json",
+  "title": "LC Present Documents transition payload (v1)",
+  "description": "Presents a set of documents under a Letter of Credit.",
+  "type": "object",
+  "oneOf": [
+    {"required": ["lc_id"]},
+    {"required": ["lc_ref"]}
+  ],
+  "required": ["presented_at", "presented_by_party_id", "document_refs"],
+  "properties": {
+    "lc_id": {"type": "string", "minLength": 1},
+    "lc_ref": {"$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"},
+    "presented_at": {"type": "string", "format": "date-time"},
+    "presented_by_party_id": {"type": "string", "minLength": 1},
+    "document_refs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"},
+      "description": "Artifact references to presented documents (invoice, BOL, insurance certificate, inspection cert, etc.)."
+    },
+    "notes": {"type": "string"}
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,14 @@
+{
+  "ruleset_id": "msez.transition.trade.lc.present.v1",
+  "title": "Letter of Credit document presentation",
+  "version": 1,
+  "description": "Records presentation of a documentary package under an LC.",
+  "transition_kind": "trade.lc.present.v1",
+  "payload_schema": "https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.present.v1.schema.json",
+  "validation": {
+    "profile": "basic",
+    "notes": [
+      "Implementations SHOULD ensure the documentary package is closed under artifacts and, where possible, bind the package via a witness bundle for portable audits."
+    ]
+  }
+}

@@ -6,3 +6,5 @@
   latest: 0.4.3
 - profile_id: org.momentum.msez.profile.charter-city
   latest: 0.4.3
+- profile_id: org.momentum.msez.profile.trade-playbook
+  latest: 0.4.39

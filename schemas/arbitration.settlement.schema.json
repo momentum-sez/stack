@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sez-stack.org/schemas/arbitration.settlement.schema.json",
+  "title": "ArbitrationSettlement",
+  "description": "Settlement agreement for dispute resolution",
+  "type": "object",
+  "required": [
+    "settlement_id",
+    "dispute_id",
+    "parties",
+    "terms",
+    "effective_date"
+  ],
+  "properties": {
+    "settlement_id": {
+      "type": "string",
+      "description": "Unique identifier for this settlement",
+      "pattern": "^settlement:[a-f0-9-]+$"
+    },
+    "dispute_id": {
+      "type": "string",
+      "description": "Reference to the dispute being settled",
+      "pattern": "^disp-[0-9]{4}-[0-9]+$"
+    },
+    "parties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["did", "role"],
+        "properties": {
+          "did": { "type": "string", "pattern": "^did:" },
+          "role": { 
+            "type": "string",
+            "enum": ["claimant", "respondent", "third_party"]
+          },
+          "signature": {
+            "type": "object",
+            "description": "Party's signature on the settlement"
+          }
+        }
+      },
+      "minItems": 2,
+      "description": "All parties to the settlement"
+    },
+    "terms": {
+      "$ref": "#/$defs/SettlementTerms",
+      "description": "Terms of the settlement agreement"
+    },
+    "effective_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the settlement becomes effective"
+    },
+    "execution_deadline": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Deadline for executing settlement terms"
+    },
+    "institution_acknowledgment": {
+      "type": "object",
+      "description": "Acknowledgment from arbitration institution",
+      "properties": {
+        "institution_id": { "type": "string" },
+        "acknowledged_at": { "type": "string", "format": "date-time" },
+        "case_status": { 
+          "type": "string",
+          "enum": ["withdrawn", "settled", "dismissed"]
+        }
+      }
+    },
+    "smart_asset_transitions": {
+      "type": "array",
+      "items": { "$ref": "artifact-ref.schema.json" },
+      "description": "Smart Asset transition receipts executing settlement"
+    },
+    "confidentiality_level": {
+      "type": "string",
+      "enum": ["public", "parties_only", "redacted_public"],
+      "default": "parties_only"
+    }
+  },
+  "$defs": {
+    "SettlementTerms": {
+      "type": "object",
+      "properties": {
+        "monetary_terms": {
+          "type": "object",
+          "description": "Financial compensation terms",
+          "properties": {
+            "payments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": { "type": "string", "pattern": "^did:" },
+                  "to": { "type": "string", "pattern": "^did:" },
+                  "amount": {
+                    "type": "object",
+                    "properties": {
+                      "amount": { "type": "number" },
+                      "currency": { "type": "string" }
+                    }
+                  },
+                  "due_date": { "type": "string", "format": "date-time" },
+                  "payment_method": { "type": "string" }
+                }
+              }
+            },
+            "cost_allocation": {
+              "type": "object",
+              "description": "How arbitration costs are allocated",
+              "properties": {
+                "arbitration_fees": { "type": "object" },
+                "legal_fees": { "type": "object" }
+              }
+            }
+          }
+        },
+        "asset_transfer_terms": {
+          "type": "object",
+          "description": "Asset transfer obligations",
+          "properties": {
+            "transfers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "asset_id": { "type": "string" },
+                  "from": { "type": "string" },
+                  "to": { "type": "string" },
+                  "quantity": { "type": "number" },
+                  "deadline": { "type": "string", "format": "date-time" }
+                }
+              }
+            }
+          }
+        },
+        "mutual_release": {
+          "type": "boolean",
+          "description": "Whether parties mutually release all claims",
+          "default": true
+        },
+        "non_admission": {
+          "type": "boolean",
+          "description": "Settlement does not constitute admission of liability",
+          "default": true
+        },
+        "specific_performance": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "obligor": { "type": "string" },
+              "action": { "type": "string" },
+              "deadline": { "type": "string", "format": "date-time" }
+            }
+          },
+          "description": "Non-monetary obligations"
+        },
+        "confidentiality_clause": {
+          "type": "object",
+          "description": "Confidentiality obligations",
+          "properties": {
+            "scope": { "type": "string" },
+            "duration_years": { "type": "integer" },
+            "exceptions": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    }
+  }
+}

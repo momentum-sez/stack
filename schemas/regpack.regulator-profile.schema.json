@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/regpack.regulator-profile.schema.json",
+  "title": "MSEZ Regulator Profile",
+  "description": "Profile of a regulatory authority within a RegPack.",
+  "type": "object",
+  "required": ["regulator_id", "name", "jurisdiction_id"],
+  "properties": {
+    "regulator_id": {
+      "type": "string",
+      "description": "Unique identifier for this regulator."
+    },
+    "name": {
+      "type": "string",
+      "description": "Full name of the regulator."
+    },
+    "jurisdiction_id": {
+      "type": "string",
+      "description": "Jurisdiction this regulator operates in."
+    },
+    "parent_authority": {
+      "type": "string",
+      "description": "Parent regulatory authority, if any."
+    },
+    "asset_classes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Asset classes regulated."
+    },
+    "activities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Financial activities regulated."
+    },
+    "entity_types": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Entity types subject to regulation."
+    },
+    "contact": {
+      "type": "object",
+      "properties": {
+        "general_enquiries": { "type": "string" },
+        "licensing": { "type": "string" },
+        "reporting_portal": { "type": "string", "format": "uri" },
+        "api_base_url": { "type": "string", "format": "uri" }
+      }
+    },
+    "api_capabilities": {
+      "type": "object",
+      "properties": {
+        "license_verification": { "type": "boolean" },
+        "report_submission": { "type": "boolean" },
+        "guidance_query": { "type": "boolean" },
+        "sanctions_check": { "type": "boolean" }
+      }
+    },
+    "timezone": {
+      "type": "string",
+      "description": "Timezone for deadline calculations."
+    },
+    "business_days": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+      },
+      "description": "Business days in this jurisdiction."
+    }
+  },
+  "additionalProperties": true
+}

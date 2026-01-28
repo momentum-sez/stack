@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/arbitration.claim.schema.json",
+  "title": "MSEZ Arbitration Claim",
+  "description": "A claim in an arbitration dispute with legal basis and relief sought.",
+  "type": "object",
+  "required": ["claim_id", "claim_type", "description"],
+  "properties": {
+    "claim_id": {
+      "type": "string",
+      "description": "Unique identifier for this claim within the dispute."
+    },
+    "claim_type": {
+      "type": "string",
+      "enum": [
+        "breach_of_contract",
+        "non_conforming_goods",
+        "payment_default",
+        "delivery_failure",
+        "quality_defect",
+        "documentation_deficiency",
+        "misrepresentation",
+        "force_majeure_dispute",
+        "intellectual_property",
+        "warranty_breach",
+        "other"
+      ],
+      "description": "Category of the claim."
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the claim."
+    },
+    "amount": {
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+      },
+      "required": ["amount", "currency"],
+      "description": "Amount claimed."
+    },
+    "legal_basis": {
+      "type": "object",
+      "properties": {
+        "lawpack_ref": {
+          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+        },
+        "fragment_eIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Akoma Ntoso eIds of relevant legal provisions."
+        },
+        "contract_clause_refs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "References to contract clauses."
+        }
+      }
+    },
+    "supporting_receipts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "receipt_digest": { "type": "string" },
+          "receipt_seq": { "type": "integer" },
+          "relevance": { "type": "string" }
+        }
+      },
+      "description": "Corridor receipts supporting this claim."
+    },
+    "supporting_evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+      },
+      "description": "Evidence artifacts supporting this claim."
+    }
+  },
+  "additionalProperties": true
+}

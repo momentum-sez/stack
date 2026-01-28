@@ -20,6 +20,7 @@ import hashlib
 import io
 import json
 import mimetypes
+import os
 import pathlib
 import re
 import tempfile
@@ -33,6 +34,70 @@ from lxml import etree
 
 
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _ensure_json_compatible(obj: Any, *, path: str = "$", context: str = "manifest") -> None:
+    """Enforce that a parsed YAML/JSON object is JSON-compatible.
+
+    Why this exists:
+      - YAML has implicit typing (timestamps/dates), which can differ across parsers.
+      - The stack's reproducibility story depends on manifests being portable across
+        implementations/languages.
+
+    Strict mode uses this to reject:
+      - floats (non-deterministic canonicalization edge-cases)
+      - datetime/date objects (YAML implicit timestamps)
+      - non-string mapping keys
+      - exotic YAML tags (sets, binaries, etc.)
+
+    When this raises, the fix is usually to *quote* values that YAML may treat as
+    dates/timestamps (e.g., "2025-01-01") and to avoid floats.
+    """
+    if obj is None:
+        return
+    if isinstance(obj, (str, bool, int)):
+        return
+    if isinstance(obj, float):
+        raise ValueError(f"{context}: {path}: floats are not allowed; use strings or integers")
+    if isinstance(obj, (datetime, date)):
+        # This typically comes from unquoted YAML scalars like 2025-01-01.
+        raise ValueError(
+            f"{context}: {path}: YAML timestamp/date detected ({type(obj).__name__}); quote it to force a string"
+        )
+    if isinstance(obj, list):
+        for i, x in enumerate(obj):
+            _ensure_json_compatible(x, path=f"{path}[{i}]", context=context)
+        return
+    if isinstance(obj, tuple):
+        raise ValueError(f"{context}: {path}: tuples are not allowed; use YAML sequences (lists)")
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if not isinstance(k, str):
+                raise ValueError(
+                    f"{context}: {path}: non-string key {k!r} ({type(k).__name__}); keys must be strings"
+                )
+            key_path = f"{path}.{k}" if path else k
+            _ensure_json_compatible(v, path=key_path, context=context)
+        return
+    raise ValueError(f"{context}: {path}: unsupported type {type(obj).__name__}; use JSON-compatible YAML")
+
+
+def _load_yaml_manifest(path: pathlib.Path, *, strict: bool, context: str) -> Dict[str, Any]:
+    """Load a YAML manifest and, in strict mode, enforce JSON-compatible typing."""
+    try:
+        obj = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except Exception as ex:
+        raise ValueError(f"Unable to parse {context} YAML at {path}: {ex}") from ex
+
+    if obj is None:
+        obj = {}
+    if not isinstance(obj, dict):
+        raise ValueError(f"{context}: expected a mapping/object at top-level in {path}")
+
+    if strict:
+        _ensure_json_compatible(obj, path="$", context=context)
+
+    return obj
 
 
 def sha256_bytes(b: bytes) -> str:
@@ -96,6 +161,46 @@ def canonicalize_xml(path: pathlib.Path) -> bytes:
     buf = io.BytesIO()
     tree.write_c14n(buf, exclusive=True, with_comments=False)
     return buf.getvalue()
+
+
+def canonicalize_xml_bytes(xml_bytes: bytes) -> bytes:
+    """Canonicalize XML bytes via Exclusive XML C14N (no comments)."""
+    parser = etree.XMLParser(resolve_entities=False, no_network=True, remove_blank_text=False, huge_tree=True)
+    root = etree.fromstring(xml_bytes, parser)
+    tree = etree.ElementTree(root)
+    buf = io.BytesIO()
+    tree.write_c14n(buf, exclusive=True, with_comments=False)
+    return buf.getvalue()
+
+
+def _compute_lawpack_digest_from_zip(zip_path: pathlib.Path) -> str:
+    """Recompute a lawpack digest from an on-disk lawpack.zip.
+
+    This is used for strict verification / CI to ensure the emitted artifact bytes
+    actually correspond to the digest computed from the module's inputs.
+    """
+    canonical_files: Dict[str, bytes] = {}
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        names = set(zf.namelist())
+
+        if "lawpack.yaml" not in names:
+            raise ValueError("lawpack.zip missing lawpack.yaml")
+        if "index.json" not in names:
+            raise ValueError("lawpack.zip missing index.json")
+
+        lawpack_obj = yaml.safe_load(zf.read("lawpack.yaml").decode("utf-8"))
+        canonical_files["lawpack.yaml"] = jcs_canonicalize(lawpack_obj)
+
+        index_obj = json.loads(zf.read("index.json").decode("utf-8"))
+        canonical_files["index.json"] = jcs_canonicalize(index_obj)
+
+        akn_names = sorted([n for n in names if n.startswith("akn/") and n.endswith(".xml")])
+        if not akn_names:
+            raise ValueError("lawpack.zip missing akn/*.xml")
+        for n in akn_names:
+            canonical_files[n] = canonicalize_xml_bytes(zf.read(n))
+
+    return compute_lawpack_digest(canonical_files)
 
 
 def find_akn_xml_files(akn_dir: pathlib.Path) -> List[pathlib.Path]:
@@ -225,6 +330,8 @@ def ingest_lawpack(
     fetch: bool = False,
     include_raw: bool = False,
     tool_version: str = "",
+    strict: bool = False,
+    skip_existing: bool = False,
 ) -> Dict[str, Any]:
     """Ingest a jurisdiction corpus module into a content-addressed lawpack.zip.
 
@@ -243,19 +350,39 @@ def ingest_lawpack(
     repo_root = repo_root.resolve()
     out_dir = out_dir.resolve()
 
+    # CI / reproducibility guardrails.
+    if strict and fetch:
+        raise ValueError("strict mode cannot be combined with fetch=True (non-deterministic retrieved_at); run fetch separately or disable strict")
+
+    as_of_date = str(as_of_date or "").strip()
+    if not as_of_date:
+        raise ValueError("as_of_date is required (YYYY-MM-DD)")
+    if strict:
+        try:
+            datetime.strptime(as_of_date, "%Y-%m-%d")
+        except Exception as ex:
+            raise ValueError(f"as_of_date must be YYYY-MM-DD (got {as_of_date!r})") from ex
+
     module_manifest_path = module_dir / "module.yaml"
     sources_path = module_dir / "sources.yaml"
     akn_dir = module_dir / "src" / "akn"
 
     if not module_manifest_path.exists():
         raise FileNotFoundError(f"Missing module.yaml in {module_dir}")
-    module_manifest = yaml.safe_load(module_manifest_path.read_text(encoding="utf-8")) or {}
+    module_manifest = _load_yaml_manifest(module_manifest_path, strict=strict, context="module.yaml")
 
     sources_manifest: Dict[str, Any] = {}
     if sources_path.exists():
-        sources_manifest = yaml.safe_load(sources_path.read_text(encoding="utf-8")) or {}
+        sources_manifest = _load_yaml_manifest(sources_path, strict=strict, context="sources.yaml")
 
     jurisdiction_id, domain = _infer_jurisdiction_and_domain(module_dir, sources_manifest)
+
+    # Deterministic manifest digests (for provenance + CI verification).
+    # NOTE: This is computed from the *parsed* YAML structure (JSON-compatible),
+    # then canonicalized via JCS (RFC 8785). Comments/formatting do not affect it.
+    sources_manifest_sha256 = sha256_bytes(jcs_canonicalize(sources_manifest)) if sources_path.exists() else ""
+    sources_sha256 = sources_manifest_sha256 if sources_path.exists() else sha256_bytes(b"{}")
+    module_manifest_sha256 = sha256_bytes(jcs_canonicalize(module_manifest))
 
     # Gather and (optionally) fetch raw sources
     sources: List[Dict[str, Any]] = []
@@ -291,14 +418,33 @@ def ingest_lawpack(
         raise FileNotFoundError(f"No Akoma Ntoso XML found under {akn_dir}. Expected src/akn/**/*.xml")
 
     index_obj: Dict[str, Any] = {
-            "index_version": "1",
-            "jurisdiction_id": jurisdiction_id,
-            "domain": domain,
-            "documents": {},
-        }
+        "index_version": "1",
+        "jurisdiction_id": jurisdiction_id,
+        "domain": domain,
+        "documents": {},
+    }
 
     akn_sha_by_rel: Dict[str, str] = {}
     canonical_files: Dict[str, bytes] = {}
+
+    # Strict CI check mode: if a lock already exists and skip_existing is enabled,
+    # prefer the tool_version recorded in the existing lock when computing digests.
+    #
+    # Rationale: the digest definition includes `lawpack.yaml`, and `lawpack.yaml` includes
+    # the normalization.tool_version string. Without this override, `--check` would start
+    # failing every time the CLI tool_version string advances, even if the underlying
+    # lawpack content has not changed.
+    lock_path = module_dir / "lawpack.lock.json"
+    locked_tool_version: str = ""
+    if strict and skip_existing and lock_path.exists():
+        try:
+            existing_lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            if isinstance(existing_lock, dict):
+                norm = (existing_lock.get("provenance") or {}).get("normalization") or {}
+                locked_tool_version = str(norm.get("tool_version") or "").strip()
+        except Exception:
+            locked_tool_version = ""
+    effective_tool_version = locked_tool_version or (tool_version or "")
 
     # lawpack.yaml content (as an object; written later)
     lawpack_obj: Dict[str, Any] = {
@@ -311,12 +457,12 @@ def ingest_lawpack(
         "normalization": {
             "recipe_id": str((sources_manifest.get("normalization") or {}).get("recipe_id") or "msez.law.normalization.v1"),
             "tool": "msez",
-            "tool_version": tool_version or "unknown",
+            "tool_version": effective_tool_version or "unknown",
             "inputs": [
                 {
                     "module_id": str(module_manifest.get("module_id") or ""),
                     "module_version": str(module_manifest.get("version") or ""),
-                    "sources_manifest_sha256": sha256_bytes(canonicalize_yaml(sources_path)) if sources_path.exists() else "",
+                    "sources_manifest_sha256": sources_manifest_sha256,
                 }
             ],
             "notes": str((sources_manifest.get("normalization") or {}).get("notes") or ""),
@@ -337,25 +483,151 @@ def ingest_lawpack(
 
     lawpack_digest = compute_lawpack_digest(canonical_files)
 
-    # Prepare output paths
+    # Prepare output paths (no I/O yet; strict+skip_existing should be side-effect free).
     out_pack_dir = out_dir / jurisdiction_id / domain
-    out_pack_dir.mkdir(parents=True, exist_ok=True)
     artifact_path = out_pack_dir / f"{lawpack_digest}.lawpack.zip"
+    artifact_rel = normalize_relpath_for_lock(artifact_path, repo_root)
+    lock_path = module_dir / "lawpack.lock.json"
 
-    # Build zip in a temp dir to ensure consistent structure
+    expected_lawpack_yaml_sha256 = sha256_bytes(canonical_files["lawpack.yaml"])
+    expected_index_json_sha256 = sha256_bytes(canonical_files["index.json"])
+
+    # Fast/strict path: validate and reuse existing outputs.
+    if skip_existing:
+        if not lock_path.exists():
+            if strict:
+                raise FileNotFoundError(
+                    f"strict+skip_existing requested but {lock_path} does not exist; run without --skip-existing to generate it"
+                )
+        else:
+            try:
+                existing_lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            except Exception as ex:
+                if strict:
+                    raise ValueError(f"Unable to parse existing lock at {lock_path}: {ex}") from ex
+                existing_lock = {}
+
+            if isinstance(existing_lock, dict) and existing_lock:
+                # 1) Digest + artifact binding.
+                digest_ok = str(existing_lock.get("lawpack_digest_sha256") or "").strip().lower() == lawpack_digest
+                artifact_rel_ok = str(existing_lock.get("artifact_path") or "").strip() == artifact_rel
+
+                # 2) Resolve on-disk artifact path from lock (do not assume out_dir).
+                existing_art_rel = str(existing_lock.get("artifact_path") or "").strip()
+                existing_art_path = pathlib.Path(existing_art_rel) if existing_art_rel else pathlib.Path()
+                if existing_art_rel and not existing_art_path.is_absolute():
+                    existing_art_path = repo_root / existing_art_path
+                artifact_exists = bool(existing_art_rel) and existing_art_path.exists()
+
+                # 3) Artifact sha256 and strict digest recomputation.
+                sha_ok = False
+                zip_digest_ok = False
+                raw_ok = True
+                if digest_ok and artifact_rel_ok and artifact_exists:
+                    actual_artifact_sha = sha256_bytes(existing_art_path.read_bytes())
+                    expected_artifact_sha = str(existing_lock.get("artifact_sha256") or "").strip().lower()
+                    sha_ok = (expected_artifact_sha == actual_artifact_sha) if expected_artifact_sha else True
+
+                    try:
+                        zip_digest_ok = _compute_lawpack_digest_from_zip(existing_art_path) == lawpack_digest
+                    except Exception as ex:
+                        zip_digest_ok = False
+                        if strict:
+                            raise ValueError(
+                                f"Strict digest recomputation failed for {existing_art_path}: {ex}"
+                            ) from ex
+
+                    # Raw inclusion expectation (portable audit packets often include raw).
+                    try:
+                        with zipfile.ZipFile(existing_art_path, "r") as zf:
+                            names = set(zf.namelist())
+                            has_raw = any(n.startswith("raw/") for n in names)
+                            if include_raw:
+                                raw_dir = module_dir / "src" / "raw"
+                                if raw_dir.exists():
+                                    for rf in sorted(raw_dir.rglob("*")):
+                                        if rf.is_file():
+                                            rel = rf.relative_to(raw_dir).as_posix()
+                                            zname = f"raw/{rel}"
+                                            if zname not in names:
+                                                raw_ok = False
+                                                break
+                                            if zf.read(zname) != rf.read_bytes():
+                                                raw_ok = False
+                                                break
+                            else:
+                                if has_raw:
+                                    raw_ok = False
+                    except Exception as ex:
+                        raw_ok = False
+                        if strict:
+                            raise ValueError(f"Unable to inspect raw/ in {existing_art_path}: {ex}") from ex
+
+                # 4) Component digests: lock must match recomputed canonical values.
+                comp_ok = True
+                comps = existing_lock.get("components")
+                if not isinstance(comps, dict):
+                    comp_ok = False
+                else:
+                    if str(comps.get("lawpack_yaml_sha256") or "").strip().lower() != expected_lawpack_yaml_sha256:
+                        comp_ok = False
+                    if str(comps.get("index_json_sha256") or "").strip().lower() != expected_index_json_sha256:
+                        comp_ok = False
+                    # sources_sha256 is required by schema; tolerate empty only for legacy locks.
+                    sources_lock = str(comps.get("sources_sha256") or "").strip().lower()
+                    if sources_lock and sources_lock != sources_sha256:
+                        comp_ok = False
+                    akn_lock = comps.get("akn_sha256")
+                    if not isinstance(akn_lock, dict):
+                        comp_ok = False
+                    else:
+                        for k, v in akn_sha_by_rel.items():
+                            if str(akn_lock.get(k) or "").strip().lower() != v:
+                                comp_ok = False
+                                break
+                    # Optional: module manifest digest (newer locks only).
+                    mm_lock = str(comps.get("module_manifest_sha256") or "").strip().lower()
+                    if mm_lock and mm_lock != module_manifest_sha256:
+                        comp_ok = False
+
+                if digest_ok and artifact_rel_ok and artifact_exists and sha_ok and zip_digest_ok and raw_ok and comp_ok:
+                    return existing_lock
+
+                if strict:
+                    raise ValueError(
+                        "strict+skip_existing verification failed; "
+                        f"digest_ok={digest_ok}, artifact_rel_ok={artifact_rel_ok}, artifact_exists={artifact_exists}, "
+                        f"sha_ok={sha_ok}, zip_digest_ok={zip_digest_ok}, raw_ok={raw_ok}, components_ok={comp_ok}"
+                    )
+
+    # Ensure output directory exists only when we are about to write.
+    out_pack_dir.mkdir(parents=True, exist_ok=True)
+
+    # Build zip in a temp dir to ensure consistent structure.
     with tempfile.TemporaryDirectory() as td:
         tdir = pathlib.Path(td)
 
-        (tdir / "lawpack.yaml").write_text(yaml.safe_dump(lawpack_obj, sort_keys=False), encoding="utf-8")
-        (tdir / "index.json").write_text(json.dumps(index_obj, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        # Emit canonical metadata files as deterministic JSON (JSON is a YAML subset).
+        #
+        # Rationale: YAML emitters may produce slightly different byte sequences across
+        # platforms / library versions, which breaks strict reproducibility of the
+        # lawpack.zip bytes (even when the logical content is identical). By writing
+        # RFC 8785 (JCS) canonical JSON bytes, we guarantee deterministic artifacts.
+        (tdir / "lawpack.yaml").write_bytes(canonical_files["lawpack.yaml"])
+        (tdir / "index.json").write_bytes(canonical_files["index.json"])
         (tdir / "digest.sha256").write_text(lawpack_digest + "\n", encoding="utf-8")
 
-        akn_out = tdir / "akn"
+        # Emit canonicalized Akoma Ntoso bytes.
+        #
+        # The index hashes and offsets are computed over the canonical XML C14N bytes,
+        # so the artifact must store the same representation to make the index directly
+        # usable by verifiers and operators.
         for xf in xml_files:
-            rel = xf.relative_to(akn_dir)
-            dest = akn_out / rel
+            rel = xf.relative_to(akn_dir).as_posix()
+            pack_path = f"akn/{rel}"
+            dest = tdir / pack_path
             dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_bytes(xf.read_bytes())
+            dest.write_bytes(canonical_files[pack_path])
 
         if include_raw:
             raw_dir = module_dir / "src" / "raw"
@@ -367,36 +639,48 @@ def ingest_lawpack(
                         dest.parent.mkdir(parents=True, exist_ok=True)
                         dest.write_bytes(rf.read_bytes())
 
-        with zipfile.ZipFile(artifact_path, "w") as zf:
-            # Deterministic zip emission:
-            # - stable file order
-            # - fixed timestamps
-            # - fixed permissions
-            fixed_dt = (1980, 1, 1, 0, 0, 0)
-            for fp in sorted(tdir.rglob("*")):
-                if fp.is_dir():
-                    continue
-                arc = fp.relative_to(tdir).as_posix()
-                zi = zipfile.ZipInfo(arc, date_time=fixed_dt)
-                zi.compress_type = zipfile.ZIP_DEFLATED
-                zi.create_system = 0
-                zi.external_attr = (0o644 << 16)
-                zf.writestr(zi, fp.read_bytes())
+        # Deterministic zip emission:
+        # - stable file order
+        # - fixed timestamps
+        # - fixed permissions
+        fixed_dt = (1980, 1, 1, 0, 0, 0)
+
+        fd, tmp_name = tempfile.mkstemp(prefix=f"{lawpack_digest}.", suffix=".lawpack.zip.tmp", dir=str(out_pack_dir))
+        os.close(fd)
+        tmp_artifact_path = pathlib.Path(tmp_name)
+        tmp_path_live = tmp_artifact_path
+        try:
+            with zipfile.ZipFile(tmp_artifact_path, "w") as zf:
+                for fp in sorted(tdir.rglob("*")):
+                    if fp.is_dir():
+                        continue
+                    arc = fp.relative_to(tdir).as_posix()
+                    zi = zipfile.ZipInfo(arc, date_time=fixed_dt)
+                    zi.compress_type = zipfile.ZIP_DEFLATED
+                    zi.create_system = 0
+                    zi.external_attr = (0o644 << 16)
+                    zf.writestr(zi, fp.read_bytes())
+            tmp_artifact_path.replace(artifact_path)
+            tmp_path_live = None
+        finally:
+            if tmp_path_live is not None and tmp_path_live.exists():
+                tmp_path_live.unlink()
 
     artifact_sha256 = sha256_bytes(artifact_path.read_bytes())
-    artifact_rel = normalize_relpath_for_lock(artifact_path, repo_root)
 
     lock_obj: Dict[str, Any] = {
-        "lawpack_digest_sha256": lawpack_digest,        "jurisdiction_id": jurisdiction_id,
+        "lawpack_digest_sha256": lawpack_digest,
+        "jurisdiction_id": jurisdiction_id,
         "domain": domain,
         "as_of_date": as_of_date,
         "artifact_path": artifact_rel,
         "artifact_sha256": artifact_sha256,
         "components": {
-            "lawpack_yaml_sha256": sha256_bytes(canonical_files["lawpack.yaml"]),
-            "index_json_sha256": sha256_bytes(canonical_files["index.json"]),
+            "lawpack_yaml_sha256": expected_lawpack_yaml_sha256,
+            "index_json_sha256": expected_index_json_sha256,
             "akn_sha256": akn_sha_by_rel,
-            "sources_sha256": sha256_bytes(canonicalize_yaml(sources_path)) if sources_path.exists() else sha256_bytes(b"{}"),
+            "sources_sha256": sources_sha256,
+            "module_manifest_sha256": module_manifest_sha256,
         },
         "provenance": {
             "module_manifest_path": "module.yaml",
@@ -406,5 +690,9 @@ def ingest_lawpack(
         },
     }
 
-    (module_dir / "lawpack.lock.json").write_text(json.dumps(lock_obj, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    # Atomic write to avoid partially-written locks in interrupted runs.
+    tmp_lock_path = lock_path.with_name(lock_path.name + ".tmp")
+    tmp_lock_path.write_text(json.dumps(lock_obj, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    tmp_lock_path.replace(lock_path)
+
     return lock_obj

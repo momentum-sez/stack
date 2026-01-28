@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/vc.regpack-attestation.schema.json",
+  "title": "MSEZ RegPack Attestation VC",
+  "description": "A Verifiable Credential attesting to the validity and freshness of a RegPack.",
+  "type": "object",
+  "required": ["@context", "type", "issuer", "issuanceDate", "credentialSubject"],
+  "properties": {
+    "@context": {
+      "type": "array",
+      "items": { "type": "string" },
+      "contains": { "const": "https://www.w3.org/2018/credentials/v1" }
+    },
+    "type": {
+      "type": "array",
+      "items": { "type": "string" },
+      "contains": { "const": "MSEZRegPackAttestationCredential" }
+    },
+    "id": {
+      "type": "string",
+      "format": "uri"
+    },
+    "issuer": {
+      "type": "string",
+      "description": "DID of the attestor."
+    },
+    "issuanceDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expirationDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "credentialSubject": {
+      "type": "object",
+      "required": ["regpack_ref", "jurisdiction_id", "domain", "as_of_date"],
+      "properties": {
+        "regpack_ref": {
+          "type": "object",
+          "required": ["artifact_type", "digest_sha256"],
+          "properties": {
+            "artifact_type": { "const": "regpack" },
+            "digest_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          }
+        },
+        "jurisdiction_id": {
+          "type": "string"
+        },
+        "domain": {
+          "type": "string",
+          "enum": ["financial", "customs", "sanctions", "tax", "trade", "licensing", "mixed"]
+        },
+        "as_of_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "attestation_type": {
+          "type": "string",
+          "enum": ["source_verification", "content_review", "regulatory_approval", "automated_fetch"]
+        },
+        "verification_method": {
+          "type": "string",
+          "enum": ["api_fetch", "manual_review", "automated_comparison", "regulatory_api"]
+        },
+        "sources_verified": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_type": { "type": "string" },
+              "verified": { "type": "boolean" },
+              "verification_timestamp": { "type": "string", "format": "date-time" }
+            }
+          }
+        },
+        "freshness_guarantee": {
+          "type": "object",
+          "properties": {
+            "valid_until": { "type": "string", "format": "date-time" },
+            "refresh_interval_hours": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "proof": {
+      "description": "DataIntegrityProof for the credential."
+    }
+  },
+  "additionalProperties": true
+}

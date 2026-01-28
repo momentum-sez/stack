@@ -1,0 +1,29 @@
+profile_id: org.momentum.msez.profile.trade-playbook
+stack_spec_version: 0.4.41
+modules:
+- module_id: org.momentum.msez.legal.core
+  version: 0.1.0
+  variant: commonlaw-minimal
+- module_id: org.momentum.msez.reg.aml-cft
+  version: 0.1.0
+  variant: risk-based
+  params:
+    # Slightly stricter defaults than a generic financial-center, because
+    # trade corridors have more document + counterparty complexity.
+    kyc_tier_required: 2
+    max_amount_without_enhanced_due_diligence: 5000
+- module_id: org.momentum.msez.fin.payments-adapter
+  version: 0.1.0
+  variant: iso20022-mapping
+- module_id: org.momentum.msez.corridor.swift
+  version: 0.1.0
+  variant: iso20022-cross-border
+- module_id: org.momentum.msez.corridor.stablecoin
+  version: 0.1.0
+  variant: regulated-stablecoin
+  params:
+    settlement_currency: USD
+    max_single_transfer: 1000000
+corridors:
+- org.momentum.msez.corridor.swift.iso20022-cross-border
+- org.momentum.msez.corridor.stablecoin.regulated-stablecoin

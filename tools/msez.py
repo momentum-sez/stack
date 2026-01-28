@@ -30,7 +30,7 @@ import shutil
 import subprocess
 import sys
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple, Set
 
 import yaml
@@ -53,7 +53,7 @@ if str(REPO_ROOT) not in sys.path:
 # Local (repo) imports (after sys.path fix)
 from tools import artifacts as artifact_cas
 from tools import smart_asset as smart_asset_tools
-STACK_SPEC_VERSION = "0.4.39"
+STACK_SPEC_VERSION = "0.4.41"
 
 # Templating: we intentionally support two simple placeholder syntaxes used in v0.4 (safe placeholder subset)
 # - {{ VAR_NAME }} (common in Akoma templates)
@@ -66,6 +66,33 @@ def load_yaml(path: pathlib.Path) -> Any:
 
 def load_json(path: pathlib.Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def canonical_json_bytes(obj: Any) -> bytes:
+    """Return deterministic canonical JSON bytes (JCS-like; RFC8785 subset).
+
+    This uses the stack's JCS helper (used for lawpack/registry snapshots) to
+    ensure *byte-for-byte* reproducibility for operator artifacts.
+
+    NOTE: Floats are rejected; use strings/ints for amounts.
+    """
+    from tools.lawpack import jcs_canonicalize  # type: ignore
+
+    return jcs_canonicalize(obj)
+
+
+def _canonical_file_bytes_match(raw: bytes, canonical: bytes) -> bool:
+    """Return True if raw bytes are the canonical bytes (allowing one trailing LF)."""
+    if raw == canonical:
+        return True
+    if raw == canonical + b"\n":
+        return True
+    return False
+
+
+def write_canonical_json_file(path: pathlib.Path, obj: Any) -> None:
+    """Write canonical JSON bytes to a file (with a trailing LF)."""
+    path.write_bytes(canonical_json_bytes(obj) + b"\n")
 
 def sha256_bytes(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()
@@ -911,6 +938,25 @@ def _compute_artifact_digest_strict(artifact_type: str, path: pathlib.Path) -> T
         # Semantic digest == receipt.next_root (computed as sha256(JCS(receipt_without_proof_and_next_root))).
         nr = asset_state_next_root(rcpt)
         return (nr, "smart-asset.receipt.next_root")
+
+
+    # ------------------------------------------------------------------
+    # Corridor receipt artifacts
+    #
+    # - corridor-receipt => digest == receipt.next_root (computed as sha256(JCS(receipt_without_proof_and_next_root)))
+    #
+    # This mirrors the corridor.receipt.schema.json invariant and allows the
+    # receipt-chain head to be referenced as a stable commitment root.
+
+    if at == "corridor-receipt":
+        rcpt = load_json(p)
+        if not isinstance(rcpt, dict):
+            raise ValueError("corridor receipt must be a JSON object")
+        got = str(rcpt.get("next_root") or "").strip().lower()
+        expected = corridor_state_next_root(rcpt)
+        if got != expected:
+            raise ValueError(f"corridor receipt next_root mismatch: expected {expected}, got {got}")
+        return (got, "corridor-receipt.next_root")
 
 
     if at == "rule-eval-evidence":
@@ -2950,6 +2996,16 @@ def digest_dir(path: pathlib.Path) -> str:
 
 def cmd_lock(args: argparse.Namespace) -> int:
     emit_artifactrefs = bool(getattr(args, "emit_artifactrefs", False))
+    strict = bool(getattr(args, "strict", False))
+    skip_existing = bool(getattr(args, "skip_existing", False))
+    check = bool(getattr(args, "check", False))
+    out_format = str(getattr(args, "format", "canonical-json") or "canonical-json")
+
+    # CI mode: validate on-disk bytes and invariants without writing.
+    if check:
+        strict = True
+        skip_existing = True
+        out_format = "canonical-json"
 
     zone_path = pathlib.Path(args.zone)
     if not zone_path.is_absolute():
@@ -2980,9 +3036,39 @@ def cmd_lock(args: argparse.Namespace) -> int:
         print("ERROR: profile not found for profile_id", profile_id)
         return 2
 
+    # Resolve output path early (used by check/skip_existing to reuse generated_at).
+    out_path = pathlib.Path(args.out) if args.out else zone_path.parent / (zone.get("lockfile_path") or "stack.lock")
+    if not out_path.is_absolute():
+        out_path = REPO_ROOT / out_path
+
+    # generated_at: keep stable in --check mode by reusing the on-disk value.
+    generated_at = str(getattr(args, "generated_at", "") or "").strip()
+    # Default: preserve on-disk generated_at to avoid noisy diffs (unless overridden).
+    if not generated_at and out_path.exists():
+        try:
+            existing = load_yaml(out_path)
+            if isinstance(existing, dict) and existing.get("generated_at"):
+                generated_at = str(existing.get("generated_at"))
+        except Exception:
+            generated_at = ""
+
+    # Strict determinism: require a pinned generated_at unless we were able to reuse one.
+    if strict and not generated_at:
+        sde = os.environ.get("SOURCE_DATE_EPOCH")
+        if sde:
+            try:
+                epoch = int(sde)
+                generated_at = datetime.fromtimestamp(epoch, tz=timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+            except Exception:
+                generated_at = ""
+        if not generated_at:
+            print("ERROR: --strict requires a deterministic generated_at (use --generated-at or SOURCE_DATE_EPOCH)")
+            return 2
+
+
     lock = {
         "stack_spec_version": STACK_SPEC_VERSION,
-        "generated_at": datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+        "generated_at": generated_at or (datetime.now(timezone.utc).replace(microsecond=0).isoformat() + "Z"),
         "zone_id": zone["zone_id"],
         "profile": {"profile_id": profile_id, "version": profile_version},
         "modules": [],
@@ -3260,11 +3346,72 @@ def cmd_lock(args: argparse.Namespace) -> int:
         lock["corridors"].append(entry)
 
 
-    out_path = pathlib.Path(args.out) if args.out else zone_path.parent / (zone.get("lockfile_path") or "stack.lock")
-    if not out_path.is_absolute():
-        out_path = REPO_ROOT / out_path
+
+    # Strict mode: fail if any resolution left explicit MISSING sentinels.
+    if strict:
+        missing: List[str] = []
+
+        def _scan(obj: Any, pfx: str = "") -> None:
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    _scan(v, f"{pfx}.{k}" if pfx else str(k))
+            elif isinstance(obj, list):
+                for i, v in enumerate(obj):
+                    _scan(v, f"{pfx}[{i}]")
+            else:
+                if obj == "MISSING":
+                    missing.append(pfx or "<root>")
+
+        _scan(lock)
+        if missing:
+            print("ERROR: lock contains unresolved artifacts (MISSING):")
+            for m in missing[:50]:
+                print("  -", m)
+            if len(missing) > 50:
+                print(f"  ... ({len(missing)-50} more)")
+            return 2
+
+        if out_format != "canonical-json":
+            print("ERROR: --strict requires --format canonical-json")
+            return 2
+
+    # --check: validate on-disk bytes are canonical AND match derived content.
+    if check:
+        if not out_path.exists():
+            print("ERROR: lock --check expected an existing lock file at", out_path)
+            return 2
+        raw = out_path.read_bytes()
+        canon = canonical_json_bytes(lock)
+        if not _canonical_file_bytes_match(raw, canon):
+            print("ERROR: lock --check failed: non-canonical bytes and/or content mismatch:")
+            print("  ", out_path)
+            print("Hint: regenerate with: python -m tools.msez lock <zone.yaml> --format canonical-json --generated-at <RFC3339>")
+            return 2
+        print("LOCK CHECK OK:", out_path)
+        return 0
+
+    # Skip existing if the canonical bytes are already correct.
+    if skip_existing and out_path.exists() and out_format == "canonical-json":
+        try:
+            raw = out_path.read_bytes()
+            canon = canonical_json_bytes(lock)
+            if _canonical_file_bytes_match(raw, canon):
+                print("LOCK OK: unchanged", out_path)
+                return 0
+        except Exception:
+            pass
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(yaml.safe_dump(lock, sort_keys=False), encoding="utf-8")
+    if out_format == "canonical-json":
+        write_canonical_json_file(out_path, lock)
+    elif out_format == "pretty-json":
+        out_path.write_text(json.dumps(lock, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
+    elif out_format == "yaml":
+        out_path.write_text(yaml.safe_dump(lock, sort_keys=False), encoding="utf-8")
+    else:
+        print("ERROR: unknown --format", out_format)
+        return 2
+
     print("LOCK OK: wrote", out_path)
     return 0
 
@@ -3465,6 +3612,13 @@ def cmd_law_ingest(args: argparse.Namespace) -> int:
         print("ERROR: --as-of-date is required (YYYY-MM-DD)", file=sys.stderr)
         return 2
 
+    strict = bool(getattr(args, "strict", False))
+    skip_existing = bool(getattr(args, "skip_existing", False))
+    if bool(getattr(args, "check", False)):
+        # CI-friendly: validate existing lock+artifact without mutating the repo.
+        strict = True
+        skip_existing = True
+
     try:
         lock_obj = ingest_lawpack(
             module_dir=module_dir,
@@ -3474,37 +3628,88 @@ def cmd_law_ingest(args: argparse.Namespace) -> int:
             fetch=bool(getattr(args, "fetch", False)),
             include_raw=bool(getattr(args, "include_raw", False)),
             tool_version=STACK_SPEC_VERSION,
+            strict=strict,
+            skip_existing=skip_existing,
         )
     except Exception as ex:
         print(f"ERROR: law ingest failed: {ex}", file=sys.stderr)
         return 2
 
     # v0.4.7+: store a canonical CAS copy: dist/artifacts/lawpack/<digest>.lawpack.zip
+    #
+    # In --check mode we must be side-effect-free: we validate that the CAS copy exists
+    # and matches the on-disk artifact bytes, but we do NOT write anything.
     cas_artifact_path: str = ""
-    try:
-        digest = str(lock_obj.get("lawpack_digest_sha256") or "").strip().lower()
-        apath = str(lock_obj.get("artifact_path") or "").strip()
-        if digest and apath:
+    is_check = bool(getattr(args, "check", False))
+
+    if not is_check:
+        try:
+            digest = str(lock_obj.get("lawpack_digest_sha256") or "").strip().lower()
+            apath = str(lock_obj.get("artifact_path") or "").strip()
+            if digest and apath:
+                src = pathlib.Path(apath)
+                if not src.is_absolute():
+                    src = REPO_ROOT / src
+                if src.exists():
+                    cas_path = artifact_cas.store_artifact_file(
+                        "lawpack",
+                        digest,
+                        src,
+                        repo_root=REPO_ROOT,
+                        store_root=None,
+                        dest_name=None,
+                        overwrite=False,
+                    )
+                    try:
+                        cas_artifact_path = str(cas_path.relative_to(REPO_ROOT))
+                    except Exception:
+                        cas_artifact_path = str(cas_path)
+        except Exception as ex:
+            print(f"WARN: unable to store lawpack artifact in dist/artifacts: {ex}", file=sys.stderr)
+            cas_artifact_path = ""
+    else:
+        # Strict CI check: require CAS presence and byte-for-byte identity with the
+        # emitted out-dir artifact.
+        try:
+            digest = str(lock_obj.get("lawpack_digest_sha256") or "").strip().lower()
+            if not digest:
+                raise ValueError("missing lawpack_digest_sha256 in lock")
+
+            apath = str(lock_obj.get("artifact_path") or "").strip()
+            if not apath:
+                raise ValueError("missing artifact_path in lock")
+
             src = pathlib.Path(apath)
             if not src.is_absolute():
                 src = REPO_ROOT / src
-            if src.exists():
-                cas_path = artifact_cas.store_artifact_file(
-                    "lawpack",
-                    digest,
-                    src,
-                    repo_root=REPO_ROOT,
-                    store_root=None,
-                    dest_name=None,
-                    overwrite=False,
+            if not src.exists():
+                raise FileNotFoundError(f"lawpack artifact_path missing: {src}")
+
+            cas_path = artifact_cas.resolve_artifact_by_digest("lawpack", digest, repo_root=REPO_ROOT)
+
+            # Enforce identical bytes between the human-friendly out-dir copy and the CAS copy.
+            src_sha = hashlib.sha256(src.read_bytes()).hexdigest()
+            cas_sha = hashlib.sha256(cas_path.read_bytes()).hexdigest()
+            if src_sha != cas_sha:
+                raise ValueError(
+                    f"CAS artifact bytes differ from out-dir artifact (src_sha256={src_sha}, cas_sha256={cas_sha})."
                 )
-                try:
-                    cas_artifact_path = str(cas_path.relative_to(REPO_ROOT))
-                except Exception:
-                    cas_artifact_path = str(cas_path)
-    except Exception as ex:
-        print(f"WARN: unable to store lawpack artifact in dist/artifacts: {ex}", file=sys.stderr)
-        cas_artifact_path = ""
+
+            # Also ensure the CAS artifact still computes to the pinned digest.
+            recomputed = _compute_lawpack_digest_from_zip(cas_path)
+            if recomputed != digest:
+                raise ValueError(
+                    f"CAS artifact digest mismatch (expected {digest}, got {recomputed})."
+                )
+
+            try:
+                cas_artifact_path = str(cas_path.relative_to(REPO_ROOT))
+            except Exception:
+                cas_artifact_path = str(cas_path)
+        except Exception as ex:
+            print(f"ERROR: law ingest --check failed: {ex}", file=sys.stderr)
+            return 2
+
 
     if args.json:
         out = dict(lock_obj)
@@ -3574,6 +3779,370 @@ def cmd_law_attest_init(args: argparse.Namespace) -> int:
     out_path.write_text(json.dumps(vc, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(str(out_path.relative_to(REPO_ROOT)))
     return 0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Trade Playbook CLI Commands (Part 2e)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def cmd_playbook_trade_generate(args: argparse.Namespace) -> int:
+    """Generate trade playbook artifacts deterministically."""
+    import subprocess
+    
+    script = REPO_ROOT / "tools" / "dev" / "generate_trade_playbook.py"
+    docs_root = getattr(args, "docs_root", "") or str(REPO_ROOT / "docs/examples/trade")
+    
+    cmd_args = ["python", str(script), "--mode", "generate", "--docs-root", docs_root]
+    
+    result = subprocess.run(cmd_args, cwd=REPO_ROOT)
+    return result.returncode
+
+
+def cmd_playbook_trade_check(args: argparse.Namespace) -> int:
+    """Check trade playbook artifacts for byte-level determinism."""
+    import subprocess
+    
+    script = REPO_ROOT / "tools" / "dev" / "generate_trade_playbook.py"
+    docs_root = getattr(args, "docs_root", "") or str(REPO_ROOT / "docs/examples/trade")
+    
+    cmd_args = ["python", str(script), "--mode", "check", "--docs-root", docs_root]
+    
+    result = subprocess.run(cmd_args, cwd=REPO_ROOT)
+    return result.returncode
+
+
+def cmd_profile_init(args: argparse.Namespace) -> int:
+    """Initialize a new project from a profile template."""
+    import shutil
+    
+    profile_id = args.profile
+    out_dir = pathlib.Path(args.out_dir)
+    
+    # Find the profile
+    profile_dir = None
+    profiles_root = REPO_ROOT / "profiles"
+    for candidate in profiles_root.iterdir():
+        if candidate.is_dir():
+            profile_yaml = candidate / "profile.yaml"
+            if profile_yaml.exists():
+                try:
+                    data = load_yaml(profile_yaml)
+                    if data.get("profile_id") == profile_id or candidate.name == profile_id:
+                        profile_dir = candidate
+                        break
+                except Exception:
+                    continue
+    
+    if profile_dir is None:
+        # Check by directory name
+        candidate = profiles_root / profile_id
+        if candidate.is_dir() and (candidate / "profile.yaml").exists():
+            profile_dir = candidate
+    
+    if profile_dir is None:
+        print(f"Profile not found: {profile_id}", file=sys.stderr)
+        print(f"Available profiles:", file=sys.stderr)
+        for p in profiles_root.iterdir():
+            if p.is_dir() and (p / "profile.yaml").exists():
+                print(f"  - {p.name}", file=sys.stderr)
+        return 1
+    
+    # Create output directory
+    if out_dir.exists():
+        if not args.force:
+            print(f"Output directory already exists: {out_dir}", file=sys.stderr)
+            print("Use --force to overwrite", file=sys.stderr)
+            return 1
+        shutil.rmtree(out_dir)
+    
+    out_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Copy profile.yaml
+    shutil.copy2(profile_dir / "profile.yaml", out_dir / "profile.yaml")
+    
+    # Special handling for trade-playbook profile
+    if "trade-playbook" in profile_id or profile_dir.name == "trade-playbook":
+        # Create zone directories
+        (out_dir / "src" / "zones" / "exporter").mkdir(parents=True, exist_ok=True)
+        (out_dir / "src" / "zones" / "importer").mkdir(parents=True, exist_ok=True)
+        (out_dir / "dist" / "artifacts").mkdir(parents=True, exist_ok=True)
+        
+        # Copy example zone yamls if they exist in the repo
+        example_exporter = REPO_ROOT / "docs/examples/trade/src/zones/exporter/zone.yaml"
+        example_importer = REPO_ROOT / "docs/examples/trade/src/zones/importer/zone.yaml"
+        
+        if example_exporter.exists():
+            shutil.copy2(example_exporter, out_dir / "src" / "zones" / "exporter" / "zone.yaml")
+        if example_importer.exists():
+            shutil.copy2(example_importer, out_dir / "src" / "zones" / "importer" / "zone.yaml")
+        
+        print(f"Initialized trade playbook project at: {out_dir}")
+        print(f"  Run: msez playbook trade --generate --docs-root {out_dir}")
+    else:
+        # Generic profile init
+        print(f"Initialized project from profile '{profile_dir.name}' at: {out_dir}")
+    
+    return 0
+
+
+def cmd_corridor_module_init(args: argparse.Namespace) -> int:
+    """Initialize a new corridor module from template."""
+    import shutil
+    
+    corridor_id = args.corridor_id
+    out_dir = pathlib.Path(args.out_dir) if args.out_dir else (REPO_ROOT / "modules" / "corridors" / corridor_id.replace(".", "-"))
+    
+    template_dir = REPO_ROOT / "modules" / "corridors" / "_template"
+    
+    if not template_dir.exists():
+        print(f"Template directory not found: {template_dir}", file=sys.stderr)
+        return 1
+    
+    if out_dir.exists():
+        if not args.force:
+            print(f"Output directory already exists: {out_dir}", file=sys.stderr)
+            print("Use --force to overwrite", file=sys.stderr)
+            return 1
+        shutil.rmtree(out_dir)
+    
+    # Copy template
+    shutil.copytree(template_dir, out_dir)
+    
+    # Update corridor.yaml with the new corridor_id
+    corridor_yaml_path = out_dir / "corridor.yaml"
+    if corridor_yaml_path.exists():
+        content = corridor_yaml_path.read_text(encoding="utf-8")
+        content = content.replace("org.momentum.msez.corridor._template", corridor_id)
+        content = content.replace("_template Corridor", f"{corridor_id.split('.')[-1].title()} Corridor")
+        corridor_yaml_path.write_text(content, encoding="utf-8")
+    
+    # Create state directory
+    (out_dir / "state" / "receipts").mkdir(parents=True, exist_ok=True)
+    
+    print(f"Initialized corridor module at: {out_dir}")
+    print(f"  Corridor ID: {corridor_id}")
+    print(f"  Edit: {corridor_yaml_path}")
+    return 0
+
+
+def cmd_asset_module_init(args: argparse.Namespace) -> int:
+    """Initialize a new smart asset module from template."""
+    import shutil
+    
+    asset_id = args.asset_id
+    out_dir = pathlib.Path(args.out_dir) if args.out_dir else (REPO_ROOT / "modules" / "smart-assets" / asset_id.replace(".", "-"))
+    
+    template_dir = REPO_ROOT / "modules" / "smart-assets" / "_template"
+    
+    if not template_dir.exists():
+        # Create minimal template if it doesn't exist
+        template_dir.mkdir(parents=True, exist_ok=True)
+        template_asset_yaml = template_dir / "asset.yaml"
+        template_asset_yaml.write_text("""# Smart Asset Module Template
+asset_id: org.momentum.msez.asset._template
+stack_spec_version: "0.4.40"
+asset_name: Template Asset
+asset_type: generic
+
+# Purposes define different chain namespaces for the asset
+purposes:
+  - purpose_id: core
+    description: Core asset state transitions
+
+# Jurisdiction sharding configuration
+sharding:
+  enabled: true
+  replication_targets:
+    - jurisdiction_id: ae-dubai-difc
+      compliance_overlay:
+        lawpack_domains:
+          - civil
+          - financial
+    - jurisdiction_id: us-ca
+      compliance_overlay:
+        lawpack_domains:
+          - civil
+          - financial
+
+# Trust anchors for receipt chain verification
+trust_anchors: []
+
+# Expected transition registry lock digest
+expected_transition_registry_digest: ""
+
+# State configuration
+state:
+  receipts_dir: state/receipts
+  checkpoints_dir: state/checkpoints
+  fork_resolutions_dir: state/fork-resolutions
+""", encoding="utf-8")
+    
+    if out_dir.exists():
+        if not args.force:
+            print(f"Output directory already exists: {out_dir}", file=sys.stderr)
+            print("Use --force to overwrite", file=sys.stderr)
+            return 1
+        shutil.rmtree(out_dir)
+    
+    # Copy template
+    shutil.copytree(template_dir, out_dir)
+    
+    # Update asset.yaml with the new asset_id
+    asset_yaml_path = out_dir / "asset.yaml"
+    if asset_yaml_path.exists():
+        content = asset_yaml_path.read_text(encoding="utf-8")
+        content = content.replace("org.momentum.msez.asset._template", asset_id)
+        content = content.replace("Template Asset", f"{asset_id.split('.')[-1].replace('-', ' ').title()}")
+        asset_yaml_path.write_text(content, encoding="utf-8")
+    
+    # Create state directories
+    (out_dir / "state" / "receipts").mkdir(parents=True, exist_ok=True)
+    (out_dir / "state" / "checkpoints").mkdir(parents=True, exist_ok=True)
+    (out_dir / "state" / "fork-resolutions").mkdir(parents=True, exist_ok=True)
+    
+    print(f"Initialized smart asset module at: {out_dir}")
+    print(f"  Asset ID: {asset_id}")
+    print(f"  Edit: {asset_yaml_path}")
+    return 0
+
+
+def cmd_lint(args: argparse.Namespace) -> int:
+    """Run comprehensive lint/doctor checks on the repository."""
+    import subprocess
+    
+    errors = []
+    warnings = []
+    
+    print("Running MSEZ lint/doctor checks...")
+    print("=" * 50)
+    
+    # 1. Schema validation
+    print("\n[1/6] Schema validation...")
+    try:
+        result = subprocess.run(
+            ["python", "-m", "tools.msez", "validate", "--all-modules"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            errors.append(f"Module schema validation failed:\n{result.stderr}")
+        else:
+            print("  ✓ All modules valid")
+    except Exception as e:
+        errors.append(f"Module validation error: {e}")
+    
+    # 2. Profile validation
+    print("\n[2/6] Profile validation...")
+    try:
+        result = subprocess.run(
+            ["python", "-m", "tools.msez", "validate", "--all-profiles"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            errors.append(f"Profile validation failed:\n{result.stderr}")
+        else:
+            print("  ✓ All profiles valid")
+    except Exception as e:
+        errors.append(f"Profile validation error: {e}")
+    
+    # 3. Zone validation
+    print("\n[3/6] Zone validation...")
+    try:
+        result = subprocess.run(
+            ["python", "-m", "tools.msez", "validate", "--all-zones"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            errors.append(f"Zone validation failed:\n{result.stderr}")
+        else:
+            print("  ✓ All zones valid")
+    except Exception as e:
+        errors.append(f"Zone validation error: {e}")
+    
+    # 4. CAS artifact checks
+    print("\n[4/6] CAS artifact integrity...")
+    cas_roots = [
+        REPO_ROOT / "dist" / "artifacts",
+        REPO_ROOT / "docs" / "examples" / "trade" / "dist" / "artifacts",
+    ]
+    for cas_root in cas_roots:
+        if cas_root.exists():
+            json_files = list(cas_root.rglob("*.json"))
+            for jf in json_files:
+                try:
+                    content = jf.read_text(encoding="utf-8")
+                    obj = json.loads(content)
+                    canonical = canonical_json_bytes(obj)
+                    raw = jf.read_bytes()
+                    if raw != canonical and raw != canonical + b"\n":
+                        warnings.append(f"Non-canonical JSON: {jf.relative_to(REPO_ROOT)}")
+                except Exception as e:
+                    errors.append(f"CAS parse error {jf}: {e}")
+    print(f"  ✓ CAS artifacts checked ({sum(len(list(r.rglob('*.json'))) for r in cas_roots if r.exists())} files)")
+    
+    # 5. Trade playbook determinism check
+    print("\n[5/6] Trade playbook determinism...")
+    try:
+        import os
+        env = os.environ.copy()
+        env["SOURCE_DATE_EPOCH"] = "1735689600"
+        result = subprocess.run(
+            ["python", "tools/dev/generate_trade_playbook.py", "--mode", "check"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        if result.returncode != 0:
+            errors.append(f"Trade playbook determinism check failed:\n{result.stderr}")
+        else:
+            print("  ✓ Trade playbook is deterministic")
+    except Exception as e:
+        warnings.append(f"Trade playbook check skipped: {e}")
+    
+    # 6. Registry/lock consistency
+    print("\n[6/6] Registry/lock consistency...")
+    lock_files = list(REPO_ROOT.rglob("stack.lock"))
+    for lf in lock_files:
+        try:
+            lock_data = load_yaml(lf)
+            # Basic consistency checks
+            if not lock_data.get("zone_id"):
+                warnings.append(f"Lock missing zone_id: {lf.relative_to(REPO_ROOT)}")
+        except Exception as e:
+            errors.append(f"Lock parse error {lf}: {e}")
+    print(f"  ✓ {len(lock_files)} lock files checked")
+    
+    # Summary
+    print("\n" + "=" * 50)
+    print("LINT SUMMARY")
+    print("=" * 50)
+    
+    if errors:
+        print(f"\n❌ ERRORS ({len(errors)}):")
+        for e in errors:
+            print(f"  - {e}")
+    
+    if warnings:
+        print(f"\n⚠️  WARNINGS ({len(warnings)}):")
+        for w in warnings:
+            print(f"  - {w}")
+    
+    if not errors and not warnings:
+        print("\n✅ All checks passed!")
+        return 0
+    elif not errors:
+        print(f"\n✅ Passed with {len(warnings)} warnings")
+        return 0
+    else:
+        print(f"\n❌ Failed with {len(errors)} errors")
+        return 1
 
 
 def cmd_diff(args: argparse.Namespace) -> int:
@@ -4582,35 +5151,64 @@ def _build_transition_type_registry_mapping(base_dir: pathlib.Path, reg_obj: Dic
             raise ValueError(f"duplicate transition kind in registry ({label}): {kind}")
 
         # Copy and best-effort fill missing digests from referenced artifacts.
+        #
+        # HARD INVARIANT: if a digest field is present, it MUST match what we would
+        # compute from the referenced artifact (canonical bytes).
         e = dict(ent)
 
         # Schema digest: compute from schema_path when digest omitted.
-        if not _coerce_sha256(e.get("schema_digest_sha256")):
-            sp = str(e.get("schema_path") or "").strip()
-            if sp:
-                try:
-                    s_path = _resolve_path_repo_or_module(base_dir, sp)
-                    if s_path.exists():
-                        e["schema_digest_sha256"] = _jcs_sha256_of_json_file(s_path)
-                except Exception:
-                    pass
+        sp = str(e.get("schema_path") or "").strip()
+        if sp:
+            try:
+                s_path = _resolve_path_repo_or_module(base_dir, sp)
+            except Exception:
+                s_path = None
+        else:
+            s_path = None
+
+        existing_schema_digest_raw = e.get("schema_digest_sha256")
+        existing_schema_digest = _coerce_sha256(existing_schema_digest_raw)
+        if existing_schema_digest_raw not in (None, "") and not existing_schema_digest:
+            raise ValueError(f"invalid schema_digest_sha256 in registry ({label}): kind={kind}")
+
+        if s_path is not None and s_path.exists():
+            computed = _jcs_sha256_of_json_file(s_path)
+            if existing_schema_digest:
+                if computed != existing_schema_digest:
+                    raise ValueError(
+                        f"schema_digest_sha256 mismatch in registry ({label}): kind={kind} path={sp}"
+                    )
+            else:
+                e["schema_digest_sha256"] = computed
 
         # Ruleset digest: prefer ruleset_id lookup; fall back to ruleset_path.
-        if not _coerce_sha256(e.get("ruleset_digest_sha256")):
-            rid = str(e.get("ruleset_id") or "").strip()
-            if rid:
-                try:
-                    e["ruleset_digest_sha256"] = ruleset_descriptor_digest_sha256(rid)
-                except Exception:
-                    pass
-            rp = str(e.get("ruleset_path") or "").strip()
-            if rp and not _coerce_sha256(e.get("ruleset_digest_sha256")):
-                try:
-                    r_path = _resolve_path_repo_or_module(base_dir, rp)
-                    if r_path.exists():
-                        e["ruleset_digest_sha256"] = _jcs_sha256_of_json_file(r_path)
-                except Exception:
-                    pass
+        rid = str(e.get("ruleset_id") or "").strip()
+        rp = str(e.get("ruleset_path") or "").strip()
+
+        existing_ruleset_digest_raw = e.get("ruleset_digest_sha256")
+        existing_ruleset_digest = _coerce_sha256(existing_ruleset_digest_raw)
+        if existing_ruleset_digest_raw not in (None, "") and not existing_ruleset_digest:
+            raise ValueError(f"invalid ruleset_digest_sha256 in registry ({label}): kind={kind}")
+
+        computed_ruleset: Optional[str] = None
+        if rid:
+            computed_ruleset = ruleset_descriptor_digest_sha256(rid)
+        elif rp:
+            try:
+                r_path = _resolve_path_repo_or_module(base_dir, rp)
+                if r_path.exists():
+                    computed_ruleset = _jcs_sha256_of_json_file(r_path)
+            except Exception:
+                computed_ruleset = None
+
+        if computed_ruleset:
+            if existing_ruleset_digest:
+                if computed_ruleset != existing_ruleset_digest:
+                    raise ValueError(
+                        f"ruleset_digest_sha256 mismatch in registry ({label}): kind={kind} ruleset={rid or rp}"
+                    )
+            else:
+                e["ruleset_digest_sha256"] = computed_ruleset
 
         # ZK circuit digest is not auto-computed unless a local path is provided (future-proof).
 
@@ -4740,6 +5338,7 @@ def build_transition_type_registry_lock(
     reg_path: pathlib.Path,
     reg_obj: Dict[str, Any],
     reg_map: Dict[str, Dict[str, Any]],
+    generated_at: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Build a transition type registry lock object.
 
@@ -4760,9 +5359,22 @@ def build_transition_type_registry_lock(
     except Exception:
         rel = str(reg_path)
 
+    # Deterministic builds: if SOURCE_DATE_EPOCH is set, prefer that.
+    # This mirrors lock/check semantics used elsewhere (e.g. zone locks).
+    if not generated_at:
+        try:
+            sde = os.environ.get("SOURCE_DATE_EPOCH")
+            if sde:
+                epoch = int(sde)
+                generated_at = datetime.fromtimestamp(epoch).replace(microsecond=0).isoformat() + "Z"
+        except Exception:
+            generated_at = None
+    if not generated_at:
+        generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat() + "Z"
+
     lock_obj: Dict[str, Any] = {
         "transition_types_lock_version": 1,
-        "generated_at": datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+        "generated_at": generated_at,
         "source": {
             "registry_path": rel,
             "registry_sha256": sha256_bytes(canonicalize_yaml(reg_path)),
@@ -5463,10 +6075,14 @@ def cmd_corridor_state_receipt_init(args: argparse.Namespace) -> int:
             kind = str(transition.get("kind") or "").strip()
             if kind and kind in ttr_map and fill_transition_digests:
                 transition = fill_transition_envelope_from_registry(transition, ttr_map[kind])
-                # If the transition references a ruleset digest, ensure it is included in the receipt-level ruleset_digest_set.
-                trd = _coerce_sha256(transition.get("ruleset_digest_sha256"))
-                if trd:
-                    ruleset_digest_set = _normalize_digest_set(list(ruleset_digest_set) + [trd])
+                # IMPORTANT: Do NOT automatically merge transition-level rulesets into the
+                # receipt-level `ruleset_digest_set`.
+                #
+                # The receipt-level digest sets are intended to be *corridor substrate* commitments
+                # (what the genesis root binds to): corridor verification + state-transition rulesets,
+                # plus the corridor agreement lawpacks. Transition-type rulesets are already pinned
+                # by the `transition_type_registry_digest_sha256` commitment and/or the envelope's
+                # own digest fields.
     except Exception as ex:
         print(f"ERROR: transition type registry: {ex}", file=sys.stderr)
         return 2
@@ -5745,8 +6361,15 @@ def cmd_corridor_state_receipt_init(args: argparse.Namespace) -> int:
         if not out_path.is_absolute():
             out_path = REPO_ROOT / out_path
 
+    out_format = str(getattr(args, "format", "canonical-json") or "canonical-json")
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(receipt, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    if out_format == "canonical-json":
+        write_canonical_json_file(out_path, receipt)
+    elif out_format == "pretty-json":
+        out_path.write_text(json.dumps(receipt, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
+    else:
+        print("ERROR: unknown --format", out_format)
+        return 2
     print(str(out_path))
     return 0
 
@@ -6039,6 +6662,7 @@ def _corridor_state_build_chain(
     enforce_receipt_threshold: bool = False,
     enforce_checkpoint_policy: bool = False,
     enforce_transition_types: bool = False,
+    check_canonical_bytes: bool = False,
     require_artifacts: bool = False,
     transitive_require_artifacts: bool = False,
     fork_resolutions_path: Optional[pathlib.Path] = None,
@@ -6070,7 +6694,8 @@ def _corridor_state_build_chain(
         errors.append(f"failed to load expected ruleset_digest_set: {e}")
     try:
         expected_lawpack_set = corridor_expected_lawpack_digest_set(module_dir)
-    except Exception:
+    except Exception as e:
+        errors.append(f"failed to load expected lawpack_digest_set: {e}")
         expected_lawpack_set = []
 
     # Transition type registry snapshot (optional but strongly recommended).
@@ -6182,8 +6807,17 @@ def _corridor_state_build_chain(
 
 
     for rp in receipt_paths:
+        raw_bytes: Optional[bytes] = None
         try:
-            receipt = load_json(rp)
+            if check_canonical_bytes:
+                raw_bytes = rp.read_bytes()
+                receipt = json.loads(raw_bytes.decode("utf-8"))
+                canon = canonical_json_bytes(receipt)
+                if not _canonical_file_bytes_match(raw_bytes, canon):
+                    errors.append(f"non-canonical receipt bytes (expected canonical JSON): {rp}")
+                    continue
+            else:
+                receipt = load_json(rp)
         except Exception as e:
             errors.append(f"failed to load receipt {rp}: {e}")
             continue
@@ -6202,22 +6836,29 @@ def _corridor_state_build_chain(
             )
             continue
 
-        # Expected digest sets (ArtifactRef-aware)
-        if expected_ruleset_set:
-            declared_rulesets_raw = receipt.get("ruleset_digest_set") or []
-            declared_rulesets = _normalize_digest_set(declared_rulesets_raw)
-            missing = [x for x in expected_ruleset_set if x not in declared_rulesets]
-            if missing:
-                errors.append(f"ruleset_digest_set missing expected entries {missing}: {rp}")
-                continue
-        if expected_lawpack_set:
-            declared_lawpacks_raw = receipt.get("lawpack_digest_set") or []
-            declared_lawpacks = _normalize_digest_set(declared_lawpacks_raw)
-            if set(declared_lawpacks) != set(expected_lawpack_set):
-                errors.append(
-                    f"lawpack_digest_set mismatch: {rp}: expected {expected_lawpack_set} got {declared_lawpacks}"
-                )
-                continue
+        # Expected digest sets (ArtifactRef-aware).
+        #
+        # IMPORTANT: These digest sets are *corridor substrate* commitments and must
+        # match what the corridor genesis root binds to:
+        #   - corridor verification ruleset
+        #   - corridor state-transition ruleset
+        #   - corridor agreement lawpacks
+        #
+        # Transition-type rulesets are pinned via the `transition_type_registry_digest_sha256`
+        # commitment and/or the transition envelope's own digest fields.
+        declared_rulesets = _normalize_digest_set(receipt.get("ruleset_digest_set") or [])
+        if set(declared_rulesets) != set(expected_ruleset_set):
+            errors.append(
+                f"ruleset_digest_set mismatch: {rp}: expected {expected_ruleset_set} got {declared_rulesets}"
+            )
+            continue
+
+        declared_lawpacks = _normalize_digest_set(receipt.get("lawpack_digest_set") or [])
+        if set(declared_lawpacks) != set(expected_lawpack_set):
+            errors.append(
+                f"lawpack_digest_set mismatch: {rp}: expected {expected_lawpack_set} got {declared_lawpacks}"
+            )
+            continue
 
         # Transition-type-registry binding checks (optional enforcement)
         if enforce_transition_types:
@@ -6369,7 +7010,15 @@ def _corridor_state_build_chain(
 
     if from_checkpoint_path:
         try:
-            ck = load_json(from_checkpoint_path)
+            if check_canonical_bytes:
+                raw_ck = from_checkpoint_path.read_bytes()
+                ck = json.loads(raw_ck.decode("utf-8"))
+                canon_ck = canonical_json_bytes(ck)
+                if not _canonical_file_bytes_match(raw_ck, canon_ck):
+                    errors.append(f"non-canonical from-checkpoint bytes (expected canonical JSON): {from_checkpoint_path}")
+                    return {}, warnings, errors
+            else:
+                ck = load_json(from_checkpoint_path)
         except Exception as e:
             errors.append(f"failed to load from-checkpoint: {from_checkpoint_path}: {e}")
             return {}, warnings, errors
@@ -6567,14 +7216,20 @@ def cmd_corridor_state_verify(args: argparse.Namespace) -> int:
     """
     module_dir = coerce_corridor_module_dir(pathlib.Path(args.path))
     receipts_path = pathlib.Path(args.receipts)
+    if not receipts_path.is_absolute():
+        receipts_path = REPO_ROOT / receipts_path
 
     fork_resolutions_path = getattr(args, "fork_resolutions", None)
     if fork_resolutions_path:
         fork_resolutions_path = pathlib.Path(fork_resolutions_path)
+        if not fork_resolutions_path.is_absolute():
+            fork_resolutions_path = REPO_ROOT / fork_resolutions_path
 
     from_checkpoint_path = getattr(args, "from_checkpoint", None)
     if from_checkpoint_path:
         from_checkpoint_path = pathlib.Path(from_checkpoint_path)
+        if not from_checkpoint_path.is_absolute():
+            from_checkpoint_path = REPO_ROOT / from_checkpoint_path
 
     enforce_trust = bool(getattr(args, "enforce_trust_anchors", False))
     enforce_transition_types = bool(getattr(args, "enforce_transition_types", False))
@@ -6584,12 +7239,14 @@ def cmd_corridor_state_verify(args: argparse.Namespace) -> int:
         require_artifacts = True
     enforce_receipt_threshold = bool(getattr(args, "enforce_receipt_threshold", False))
     enforce_checkpoint_policy = bool(getattr(args, "enforce_checkpoint_policy", False))
+    check_canonical_bytes = bool(getattr(args, "check_canonical_bytes", False))
 
     result, warnings, errors = _corridor_state_build_chain(
         module_dir,
         receipts_path,
         enforce_trust_anchors=enforce_trust,
         enforce_transition_types=enforce_transition_types,
+        check_canonical_bytes=check_canonical_bytes,
         require_artifacts=require_artifacts,
         transitive_require_artifacts=transitive_require_artifacts,
         enforce_receipt_threshold=enforce_receipt_threshold,
@@ -6613,9 +7270,19 @@ def cmd_corridor_state_verify(args: argparse.Namespace) -> int:
     checkpoint_verified = None
     if checkpoint_path and result and not errors:
         ck_path = pathlib.Path(checkpoint_path)
+        if not ck_path.is_absolute():
+            ck_path = REPO_ROOT / ck_path
         checkpoint_validator = schema_validator(REPO_ROOT / "schemas" / "corridor.checkpoint.schema.json")
         try:
-            ck = load_json(ck_path)
+            if check_canonical_bytes:
+                raw_ck = ck_path.read_bytes()
+                ck = json.loads(raw_ck.decode("utf-8"))
+                canon_ck = canonical_json_bytes(ck)
+                if not _canonical_file_bytes_match(raw_ck, canon_ck):
+                    errors.append(f"non-canonical checkpoint bytes (expected canonical JSON): {ck_path}")
+                    ck = None
+            else:
+                ck = load_json(ck_path)
         except Exception as e:
             errors.append(f"failed to load checkpoint: {ck_path}: {e}")
             ck = None
@@ -7236,7 +7903,7 @@ def cmd_corridor_state_propose(args: argparse.Namespace) -> int:
     # Timestamp default: now()
     ts = str(getattr(args, "timestamp", "") or "").strip()
     if not ts:
-        ts = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+        ts = datetime.now(timezone.utc).replace(microsecond=0).isoformat() + "Z"
 
     seq = int(getattr(args, "sequence", 0))
 
@@ -7811,32 +8478,6 @@ def cmd_corridor_state_checkpoint(args: argparse.Namespace) -> int:
         if not fp.is_absolute():
             fp = REPO_ROOT / fp
         fork_resolutions_path = fp
-    elif module_defaults and module_defaults.get("fork_resolutions_dir"):
-        try:
-            fork_resolutions_path = pathlib.Path(module_defaults.get("fork_resolutions_dir"))
-        except Exception:
-            fork_resolutions_path = None
-
-    fork_resolutions_arg = str(getattr(args, "fork_resolutions", "") or "").strip()
-    fork_resolutions_path: Optional[pathlib.Path] = None
-    if fork_resolutions_arg:
-        fp = pathlib.Path(fork_resolutions_arg)
-        if not fp.is_absolute():
-            fp = REPO_ROOT / fp
-        fork_resolutions_path = fp
-    elif module_defaults and module_defaults.get("fork_resolutions_dir"):
-        try:
-            fork_resolutions_path = pathlib.Path(module_defaults.get("fork_resolutions_dir"))
-        except Exception:
-            fork_resolutions_path = None
-
-    fork_resolutions_arg = str(getattr(args, "fork_resolutions", "") or "").strip()
-    fork_resolutions_path: Optional[pathlib.Path] = None
-    if fork_resolutions_arg:
-        fp = pathlib.Path(fork_resolutions_arg)
-        if not fp.is_absolute():
-            fp = REPO_ROOT / fp
-        fork_resolutions_path = fp
 
     try:
         genesis_root, receipts, final_root = _corridor_state_load_verified_receipts(
@@ -7898,12 +8539,195 @@ def cmd_corridor_state_checkpoint(args: argparse.Namespace) -> int:
     out_path = pathlib.Path(out)
     if not out_path.is_absolute():
         out_path = REPO_ROOT / out_path
+    out_format = str(getattr(args, "format", "canonical-json") or "canonical-json")
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(checkpoint, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    if out_format == "canonical-json":
+        write_canonical_json_file(out_path, checkpoint)
+    elif out_format == "pretty-json":
+        out_path.write_text(json.dumps(checkpoint, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
+    else:
+        print("ERROR: unknown --format", out_format)
+        return 2
     print(str(out_path))
     return 0
 
 
+
+
+def cmd_corridor_state_checkpoint_audit(args: argparse.Namespace) -> int:
+    """Audit a corridor checkpoint file.
+
+    This is a **format & integrity audit** (schema + proof + canonical bytes)
+    designed to be used as a CI gate.
+
+    Output contract:
+      - Always emits a machine-readable JSON report to **stdout**.
+      - If the audit fails, also emits a concise human summary to **stderr**.
+
+    This dual-channel pattern avoids log noise in downstream tooling while
+    still providing immediate operator feedback.
+    """
+
+    corridor_dir = coerce_corridor_module_dir(pathlib.Path(args.path))
+    cp_path = pathlib.Path(str(args.checkpoint))
+    if not cp_path.is_absolute() and not cp_path.exists():
+        alt = REPO_ROOT / cp_path
+        if alt.exists():
+            cp_path = alt
+
+    report: Dict[str, Any] = {
+        "type": "MSEZCorridorCheckpointAuditReport",
+        "ok": True,
+        "checkpoint_path": str(cp_path),
+        "corridor_module_dir": str(corridor_dir),
+        "checks": {},
+        "errors": [],
+        "warnings": [],
+    }
+
+    def _fail(msg: str) -> None:
+        report["ok"] = False
+        report["errors"].append(msg)
+
+    def _warn(msg: str) -> None:
+        report["warnings"].append(msg)
+
+    raw: bytes = b""
+    ck_obj: Optional[Dict[str, Any]] = None
+
+    try:
+        raw = cp_path.read_bytes()
+    except Exception as e:
+        _fail(f"failed to read checkpoint: {cp_path}: {e}")
+    else:
+        try:
+            parsed = json.loads(raw.decode("utf-8"))
+            if not isinstance(parsed, dict):
+                _fail(f"checkpoint JSON must be an object at top-level: {cp_path}")
+            else:
+                ck_obj = parsed
+        except Exception as e:
+            _fail(f"failed to parse checkpoint JSON: {cp_path}: {e}")
+
+    # Canonical bytes check (JCS)
+    if ck_obj is not None:
+        try:
+            canon = canonical_json_bytes(ck_obj)
+            ok = _canonical_file_bytes_match(raw, canon)
+            report["checks"]["canonical_bytes"] = {
+                "ok": ok,
+                # Helpful debug values (NOT used for trust decisions):
+                "found_sha256": sha256_bytes(raw.rstrip(b"\n")),
+                "expected_sha256": sha256_bytes(canon),
+            }
+            if not ok:
+                _fail(f"non-canonical checkpoint bytes (expected canonical JSON): {cp_path}")
+        except Exception as e:
+            _fail(
+                f"failed to canonicalize checkpoint JSON (floats not allowed?): {cp_path}: {e}"
+            )
+
+    # Schema check
+    if ck_obj is not None:
+        try:
+            v = schema_validator("corridor.checkpoint.schema.json")
+            ve = sorted(v.iter_errors(ck_obj), key=lambda e: str(list(e.path)))
+            if ve:
+                report["checks"]["schema"] = {
+                    "ok": False,
+                    "errors": [
+                        {
+                            "message": e.message,
+                            "path": list(e.path),
+                            "schema_path": list(e.schema_path),
+                        }
+                        for e in ve
+                    ],
+                }
+                for e in ve:
+                    p = "/" + "/".join([str(x) for x in list(e.path)]) if list(e.path) else "/"
+                    _fail(f"schema: {e.message} at {p}")
+            else:
+                report["checks"]["schema"] = {"ok": True, "errors": []}
+        except Exception as e:
+            _fail(f"failed to validate checkpoint schema: {cp_path}: {e}")
+
+    # Digest (strict semantics)
+    if ck_obj is not None:
+        try:
+            d = checkpoint_payload_digest_sha256(ck_obj)
+            report["checks"]["digest"] = {
+                "method": "sha256(JCS(checkpoint_without_proof))",
+                "computed_sha256": d,
+            }
+        except Exception as e:
+            _fail(f"failed to compute checkpoint payload digest: {cp_path}: {e}")
+
+    # Proof verification (did:key)
+    if ck_obj is not None and not bool(getattr(args, "no_verify_proofs", False)):
+        try:
+            from tools.vc import verify_credential  # type: ignore
+
+            vres = verify_credential(ck_obj)
+            ok_dids = sorted(_verified_base_dids(vres))
+
+            any_proof = False
+            all_ok = True
+            for r in vres:
+                any_proof = True
+                if isinstance(r, dict):
+                    ok = bool(r.get("ok"))
+                else:
+                    ok = bool(getattr(r, "ok", False))
+                if not ok:
+                    all_ok = False
+
+            report["checks"]["proofs"] = {
+                "ok": bool(any_proof and all_ok),
+                "verified_signers": ok_dids,
+                "results": vres,
+            }
+
+            if not any_proof:
+                _fail(
+                    f"checkpoint has no proofs (proof is required for production): {cp_path}"
+                )
+            elif not all_ok:
+                _fail(f"checkpoint proof verification failed: {cp_path}")
+        except Exception as e:
+            _fail(f"failed to verify checkpoint proofs: {cp_path}: {e}")
+    elif ck_obj is not None and bool(getattr(args, "no_verify_proofs", False)):
+        _warn(
+            "proof verification skipped (--no-verify-proofs); this is not recommended for CI gates"
+        )
+        report["checks"]["proofs"] = {"ok": None, "skipped": True}
+
+    # Minimal metadata for UI/debugging
+    if ck_obj is not None:
+        report["checkpoint"] = {
+            "corridor_id": ck_obj.get("corridor_id"),
+            "timestamp": ck_obj.get("timestamp"),
+            "genesis_root": ck_obj.get("genesis_root"),
+            "final_state_root": ck_obj.get("final_state_root"),
+            "receipt_count": ck_obj.get("receipt_count"),
+        }
+
+    # Emit machine JSON to stdout (always)
+    sys.stdout.buffer.write(canonical_json_bytes(report) + b"\n")
+    sys.stdout.flush()
+
+    # On failure, emit a concise human summary to stderr.
+    if not report.get("ok"):
+        errs = report.get("errors") or []
+        sys.stderr.write(f"CHECKPOINT AUDIT FAILED: {cp_path}\n")
+        for e in errs[:25]:
+            sys.stderr.write(f"  - {e}\n")
+        if len(errs) > 25:
+            sys.stderr.write(f"  ... ({len(errs) - 25} more)\n")
+        sys.stderr.flush()
+        return 2
+
+    return 0
 def cmd_corridor_state_inclusion_proof(args: argparse.Namespace) -> int:
     """Generate an MMR inclusion proof for a receipt sequence (leaf index)."""
     from tools.vc import now_rfc3339  # type: ignore
@@ -12008,93 +12832,306 @@ def _canon_decimal_str(d):
     return format(d.normalize(), "f")
 
 
-def _compute_netting_and_legs(obligations):
-    """Compute per-currency netting positions and a deterministic greedy set of settlement legs."""
+def _compute_netting_and_legs(
+    obligations: List[Dict[str, Any]],
+    *,
+    settlement_corridors: Optional[List[Dict[str, Any]]] = None,
+    constraints: Optional[Dict[str, Any]] = None,
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Compute multi-currency netting positions and *constrained* settlement legs.
+
+    This is the "hard-route" implementation: we intentionally privilege determinism,
+    reproducibility, and auditability over "best-effort" heuristics.
+
+    Features:
+      - Multi-currency netting (per-currency positions)
+      - Multi-corridor settlement selection (per-leg rail choice)
+      - Constraints: blocked pairs, party corridor allow/deny lists, corridor caps
+      - Deterministic tie-breaking at every decision point
+
+    Notes:
+      - FX / cross-currency conversion is intentionally NOT implemented here.
+        (Future: add explicit FX corridors and a constrained multi-commodity solver.)
+    """
 
     from decimal import Decimal, getcontext
 
     getcontext().prec = 80
+    constraints = constraints or {}
+    settlement_corridors = settlement_corridors or []
 
+    # --- Normalize settlement corridor descriptors ---------------------------------
+    # corridor_id -> descriptor
+    corridor_desc: Dict[str, Dict[str, Any]] = {}
+    corridors_by_currency: Dict[str, List[Dict[str, Any]]] = {}
+
+    def _corridor_currency_set(desc: Dict[str, Any]) -> Set[str]:
+        curset: Set[str] = set()
+        if isinstance(desc.get("currency"), str) and str(desc.get("currency") or "").strip():
+            curset.add(str(desc.get("currency") or "").strip())
+        if isinstance(desc.get("currencies"), list):
+            for c in desc.get("currencies") or []:
+                if isinstance(c, str) and c.strip():
+                    curset.add(c.strip())
+        return curset
+
+    for sc in settlement_corridors:
+        if not isinstance(sc, dict):
+            continue
+        cid = str(sc.get("corridor_id") or "").strip()
+        if not cid:
+            continue
+        desc = dict(sc)
+        desc["corridor_id"] = cid
+        # Default priority is intentionally *high* so explicit preferences win.
+        try:
+            desc["priority"] = int(desc.get("priority") if desc.get("priority") is not None else 1000)
+        except Exception:
+            desc["priority"] = 1000
+
+        corridor_desc[cid] = desc
+        curset = _corridor_currency_set(desc)
+        # If currency set is empty, treat as "wildcard" (not preferred, but usable).
+        if not curset:
+            curset = set(["*"])
+        for cur in curset:
+            corridors_by_currency.setdefault(cur, []).append(desc)
+
+    for cur, lst in corridors_by_currency.items():
+        lst.sort(key=lambda d: (int(d.get("priority", 1000)), str(d.get("corridor_id") or "")))
+
+    # --- Constraints ---------------------------------------------------------------
+    blocked_pairs: Set[Tuple[str, str, str]] = set()
+    for bp in (constraints.get("blocked_pairs") or []):
+        if not isinstance(bp, dict):
+            continue
+        frm = str(bp.get("from_party_id") or bp.get("from") or "").strip()
+        to = str(bp.get("to_party_id") or bp.get("to") or "").strip()
+        cur = str(bp.get("currency") or "*").strip() or "*"
+        if frm and to:
+            blocked_pairs.add((frm, to, cur))
+
+    party_allow: Dict[str, Set[str]] = {}
+    party_deny: Dict[str, Set[str]] = {}
+    if isinstance(constraints.get("party_corridor_allowlist"), dict):
+        for pid, lst in (constraints.get("party_corridor_allowlist") or {}).items():
+            if not isinstance(pid, str):
+                continue
+            if not isinstance(lst, list):
+                continue
+            party_allow[pid] = set(str(x).strip() for x in lst if str(x).strip())
+    if isinstance(constraints.get("party_corridor_denylist"), dict):
+        for pid, lst in (constraints.get("party_corridor_denylist") or {}).items():
+            if not isinstance(pid, str):
+                continue
+            if not isinstance(lst, list):
+                continue
+            party_deny[pid] = set(str(x).strip() for x in lst if str(x).strip())
+
+    # Corridor caps: {corridor_id: {"max_total_value": {currency,value}, "max_legs": int}}
+    corridor_caps: Dict[str, Dict[str, Any]] = {}
+    if isinstance(constraints.get("corridor_caps"), dict):
+        for cid, caps in (constraints.get("corridor_caps") or {}).items():
+            if not isinstance(cid, str) or not cid.strip() or not isinstance(caps, dict):
+                continue
+            corridor_caps[cid.strip()] = dict(caps)
+
+    # Track usage (for caps)
+    corridor_used_value: Dict[str, Dict[str, Decimal]] = {}
+    corridor_used_legs: Dict[str, int] = {}
+
+    def _is_pair_blocked(frm: str, to: str, cur: str) -> bool:
+        return (frm, to, cur) in blocked_pairs or (frm, to, "*") in blocked_pairs
+
+    def _corridor_allowed_for_party(cid: str, party_id: str) -> bool:
+        if party_id in party_allow and party_allow[party_id] and cid not in party_allow[party_id]:
+            return False
+        if party_id in party_deny and cid in party_deny[party_id]:
+            return False
+        return True
+
+    def _corridor_remaining_capacity(cid: str, cur: str) -> Optional[Decimal]:
+        caps = corridor_caps.get(cid) or {}
+        # max_legs
+        try:
+            ml = caps.get("max_legs")
+            if ml is not None and corridor_used_legs.get(cid, 0) >= int(ml):
+                return Decimal(0)
+        except Exception:
+            pass
+        mtv = caps.get("max_total_value")
+        if isinstance(mtv, dict):
+            if str(mtv.get("currency") or "").strip() and str(mtv.get("currency") or "").strip() != cur:
+                return None
+            try:
+                maxv = Decimal(str(mtv.get("value") or "0"))
+            except Exception:
+                return None
+            used = corridor_used_value.get(cid, {}).get(cur, Decimal(0))
+            rem = maxv - used
+            if rem < 0:
+                rem = Decimal(0)
+            return rem
+        return None
+
+    def _choose_corridor(cur: str, frm: str, to: str) -> Optional[str]:
+        # Candidate list for cur, then wildcard.
+        candidates = list(corridors_by_currency.get(cur, [])) + list(corridors_by_currency.get("*", []))
+        # Ensure deterministic ordering.
+        candidates.sort(key=lambda d: (int(d.get("priority", 1000)), str(d.get("corridor_id") or "")))
+        for d in candidates:
+            cid = str(d.get("corridor_id") or "").strip()
+            if not cid:
+                continue
+            if not _corridor_allowed_for_party(cid, frm):
+                continue
+            if not _corridor_allowed_for_party(cid, to):
+                continue
+            cap = _corridor_remaining_capacity(cid, cur)
+            if cap is not None and cap <= 0:
+                continue
+            return cid
+        return None
+
+    # --- Net positions -------------------------------------------------------------
     # currency -> party -> net Decimal
-    net = {}
+    net: Dict[str, Dict[str, Decimal]] = {}
     for o in obligations:
-        debtor = str(o.get("debtor_party_id", ""))
-        creditor = str(o.get("creditor_party_id", ""))
-        amt = o.get("amount") or {}
-        cur = str(amt.get("currency", ""))
-        val = Decimal(str(amt.get("value", "0")))
-
+        if not isinstance(o, dict):
+            continue
+        debtor = str(o.get("debtor_party_id", "") or "").strip()
+        creditor = str(o.get("creditor_party_id", "") or "").strip()
+        amt = o.get("amount") if isinstance(o.get("amount"), dict) else {}
+        cur = str((amt or {}).get("currency", "") or "").strip()
+        if not debtor or not creditor or not cur:
+            continue
+        try:
+            val = Decimal(str((amt or {}).get("value", "0")))
+        except Exception:
+            val = Decimal(0)
         net.setdefault(cur, {})
         net[cur][debtor] = net[cur].get(debtor, Decimal(0)) - val
         net[cur][creditor] = net[cur].get(creditor, Decimal(0)) + val
 
-    # Build netting output (deterministic ordering)
-    netting_out = []
+    # Build netting output: a *flat* list (one entry per party per currency),
+    # matching corridor.settlement-plan.schema.json.
+    netting_out: List[Dict[str, Any]] = []
     for cur in sorted(net.keys()):
-        positions = []
         for party_id in sorted(net[cur].keys()):
             v = net[cur][party_id]
             if v.is_zero():
                 continue
-            positions.append(
+            netting_out.append(
                 {
                     "party_id": party_id,
-                    "net_amount": {"currency": cur, "value": _canon_decimal_str(v)},
+                    "amount": {"currency": cur, "value": _canon_decimal_str(v)},
                 }
             )
-        netting_out.append({"currency": cur, "positions": positions})
+    netting_out.sort(key=lambda x: (str((x.get("amount") or {}).get("currency") or ""), str(x.get("party_id") or "")))
 
-    # Build legs (greedy, largest-first, deterministic)
-    legs_out = []
+    # --- Settlement legs -----------------------------------------------------------
+    legs_out: List[Dict[str, Any]] = []
+    leg_seq_by_currency: Dict[str, int] = {}
+
     for cur in sorted(net.keys()):
-        debtors = []
-        creditors = []
+        debtors: Dict[str, Decimal] = {}
+        creditors: Dict[str, Decimal] = {}
         for party_id, v in net[cur].items():
             if v < 0:
-                debtors.append((party_id, -v))
+                debtors[party_id] = -v
             elif v > 0:
-                creditors.append((party_id, v))
+                creditors[party_id] = v
 
-        # Sort by amount desc, then party_id asc for determinism
-        debtors.sort(key=lambda t: (-t[1], t[0]))
-        creditors.sort(key=lambda t: (-t[1], t[0]))
+        while True:
+            debtors_sorted = sorted(debtors.items(), key=lambda t: (-t[1], t[0]))
+            creditors_sorted = sorted(creditors.items(), key=lambda t: (-t[1], t[0]))
+            if not debtors_sorted or not creditors_sorted:
+                break
 
-        i = 0
-        j = 0
-        leg_seq = 0
-        while i < len(debtors) and j < len(creditors):
-            d_party, d_amt = debtors[i]
-            c_party, c_amt = creditors[j]
-            x = d_amt if d_amt <= c_amt else c_amt
+            chosen: Optional[Tuple[str, str, str, Decimal]] = None
 
-            legs_out.append(
-                {
-                    "leg_id": f"{cur}:{leg_seq}",
-                    "from_party_id": d_party,
-                    "to_party_id": c_party,
-                    "amount": {"currency": cur, "value": _canon_decimal_str(x)},
-                }
-            )
-            leg_seq += 1
+            for d_party, d_amt in debtors_sorted:
+                for c_party, c_amt in creditors_sorted:
+                    if _is_pair_blocked(d_party, c_party, cur):
+                        continue
+                    cid = _choose_corridor(cur, d_party, c_party)
+                    if settlement_corridors and not cid:
+                        # If corridors are provided, inability to choose is a hard error.
+                        continue
+                    x = d_amt if d_amt <= c_amt else c_amt
+                    if x <= 0:
+                        continue
 
-            d_amt -= x
-            c_amt -= x
-            if d_amt.is_zero():
-                i += 1
-            else:
-                debtors[i] = (d_party, d_amt)
-            if c_amt.is_zero():
-                j += 1
-            else:
-                creditors[j] = (c_party, c_amt)
+                    # Enforce corridor capacity caps (if any)
+                    if cid:
+                        rem = _corridor_remaining_capacity(cid, cur)
+                        if rem is not None and rem < x:
+                            x = rem
+                    if x <= 0:
+                        continue
 
-    # Deterministic secondary ordering (currency/ids)
-    legs_out.sort(key=lambda leg: (leg["amount"]["currency"], leg["from_party_id"], leg["to_party_id"], leg["leg_id"]))
+                    chosen = (d_party, c_party, cid or "", x)
+                    break
+                if chosen:
+                    break
+
+            if not chosen:
+                # No feasible pairing.
+                # Provide a helpful, deterministic diagnostic snapshot.
+                d_left = [(p, _canon_decimal_str(a)) for p, a in debtors_sorted]
+                c_left = [(p, _canon_decimal_str(a)) for p, a in creditors_sorted]
+                raise ValueError(
+                    "unable to produce a feasible settlement leg set under constraints "
+                    f"for currency={cur}; debtors={d_left}; creditors={c_left}"
+                )
+
+            d_party, c_party, cid, x = chosen
+
+            seq = leg_seq_by_currency.get(cur, 0)
+            leg_seq_by_currency[cur] = seq + 1
+            leg_id = f"{cur}:{seq:06d}"
+            leg: Dict[str, Any] = {
+                "leg_id": leg_id,
+                "from_party_id": d_party,
+                "to_party_id": c_party,
+                "amount": {"currency": cur, "value": _canon_decimal_str(x)},
+            }
+            if cid:
+                leg["settlement_corridor_id"] = cid
+
+            legs_out.append(leg)
+
+            # Update remaining
+            debtors[d_party] = debtors.get(d_party, Decimal(0)) - x
+            if debtors[d_party] <= 0 or debtors[d_party].is_zero():
+                debtors.pop(d_party, None)
+            creditors[c_party] = creditors.get(c_party, Decimal(0)) - x
+            if creditors[c_party] <= 0 or creditors[c_party].is_zero():
+                creditors.pop(c_party, None)
+
+            if cid:
+                corridor_used_legs[cid] = corridor_used_legs.get(cid, 0) + 1
+                corridor_used_value.setdefault(cid, {})
+                corridor_used_value[cid][cur] = corridor_used_value[cid].get(cur, Decimal(0)) + x
+
+    # Deterministic ordering (for stable digests).
+    legs_out.sort(
+        key=lambda leg: (
+            str((leg.get("amount") or {}).get("currency") or ""),
+            str(leg.get("from_party_id") or ""),
+            str(leg.get("to_party_id") or ""),
+            str(leg.get("settlement_corridor_id") or ""),
+            str((leg.get("amount") or {}).get("value") or ""),
+            str(leg.get("leg_id") or ""),
+        )
+    )
     return netting_out, legs_out
 
 
 def cmd_corridor_settlement_plan_init(args: argparse.Namespace) -> int:
     """Create a corridor.settlement-plan artifact (netting + multi-party settlement legs)."""
+
+    from tools.vc import now_rfc3339, signing_input, add_ed25519_proof, load_ed25519_private_key_from_jwk  # type: ignore
 
     in_raw = str(getattr(args, "input", "") or "").strip()
     if not in_raw:
@@ -12119,8 +13156,8 @@ def cmd_corridor_settlement_plan_init(args: argparse.Namespace) -> int:
     import uuid
 
     plan_id = str(req.get("plan_id") or f"urn:uuid:{uuid.uuid4()}")
-    issuer = str(getattr(args, "issuer", "") or req.get("issuer") or "").strip()
-    created_at = str(req.get("created_at") or now_rfc3339())
+    issuer = str(getattr(args, "issuer", "") or "").strip() or str(req.get("issuer") or "").strip()
+    created_at = str(getattr(args, "created_at", "") or "").strip() or str(req.get("created_at") or "").strip() or now_rfc3339()
     description = str(req.get("description") or "").strip()
 
     # Build inputs (corridor checkpoints) if present
@@ -12228,7 +13265,33 @@ def cmd_corridor_settlement_plan_init(args: argparse.Namespace) -> int:
 
         obligations_out.append(oo)
 
-    netting, legs = _compute_netting_and_legs(obligations_out)
+    # Optional: settlement corridor candidates (multi-corridor)
+    settlement_corridors_out: List[Dict[str, Any]] = []
+    if isinstance(req.get("settlement_corridors"), list):
+        for sc in req.get("settlement_corridors") or []:
+            if not isinstance(sc, dict):
+                continue
+            cid = str(sc.get("corridor_id") or "").strip()
+            if not cid:
+                continue
+            sc2 = dict(sc)
+            sc2["corridor_id"] = cid
+            # Normalize currency fields (string / list)
+            if isinstance(sc2.get("currency"), str):
+                sc2["currency"] = sc2["currency"].strip()
+            if isinstance(sc2.get("currencies"), list):
+                sc2["currencies"] = [str(x).strip() for x in (sc2.get("currencies") or []) if str(x).strip()]
+            settlement_corridors_out.append(sc2)
+
+    constraints_out: Dict[str, Any] = {}
+    if isinstance(req.get("constraints"), dict):
+        constraints_out = dict(req.get("constraints") or {})
+
+    netting, legs = _compute_netting_and_legs(
+        obligations_out,
+        settlement_corridors=settlement_corridors_out or None,
+        constraints=constraints_out or None,
+    )
 
     plan = {
         "type": "MSEZCorridorSettlementPlan",
@@ -12236,7 +13299,7 @@ def cmd_corridor_settlement_plan_init(args: argparse.Namespace) -> int:
         "plan_id": plan_id,
         "created_at": created_at,
         "obligations": obligations_out,
-        "netting_method": "per-currency.greedy.largest-first",
+        "netting_method": "per-currency.greedy.largest-first.constrained.corridor-aware.deterministic",
         "netting": netting,
         "settlement_legs": legs,
     }
@@ -12246,8 +13309,10 @@ def cmd_corridor_settlement_plan_init(args: argparse.Namespace) -> int:
         plan["description"] = description
     if inputs_out:
         plan["inputs"] = inputs_out
-    if isinstance(req.get("execution"), dict):
-        plan["execution"] = req["execution"]
+    if settlement_corridors_out:
+        plan["settlement_corridors"] = settlement_corridors_out
+    if constraints_out:
+        plan["constraints"] = constraints_out
     if isinstance(req.get("meta"), dict):
         plan["meta"] = req["meta"]
 
@@ -12264,12 +13329,11 @@ def cmd_corridor_settlement_plan_init(args: argparse.Namespace) -> int:
             print(f"key not found: {key_path}", file=sys.stderr)
             return 2
         key_jwk = json.loads(key_path.read_text(encoding="utf-8"))
-        from tools.vc import add_ed25519_proof, b64url_decode, did_key_from_ed25519_public_key  # type: ignore
+        priv, did = load_ed25519_private_key_from_jwk(key_jwk)
 
-        did = did_key_from_ed25519_public_key(b64url_decode(key_jwk["x"]))
         vm = str(getattr(args, "verification_method", "") or "").strip() or f"{did}#key-1"
         purpose = str(getattr(args, "purpose", "") or "").strip() or "assertionMethod"
-        add_ed25519_proof(plan, key_jwk=key_jwk, verification_method=vm, purpose=purpose)
+        add_ed25519_proof(plan, priv, verification_method=vm, proof_purpose=purpose, created=created_at)
 
     # Schema validate
     try:
@@ -12284,9 +13348,7 @@ def cmd_corridor_settlement_plan_init(args: argparse.Namespace) -> int:
         print(f"ERROR: schema validation failed: {ex}", file=sys.stderr)
         return 2
 
-    from tools.vc import signing_input  # type: ignore
-
-    dg = sha256_bytes(signing_input(plan)).hex()
+    dg = sha256_bytes(signing_input(plan))
 
     # Write output
     out_raw = str(getattr(args, "out", "") or "").strip()
@@ -12297,17 +13359,19 @@ def cmd_corridor_settlement_plan_init(args: argparse.Namespace) -> int:
         if not out_path.is_absolute():
             out_path = REPO_ROOT / out_path
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
+    write_canonical_json_file(out_path, plan)
     if getattr(args, "store", False):
-        from tools.artifacts import store_artifact_file  # type: ignore
-
-        store_artifact_file(
-            artifact_type="settlement-plan",
-            digest_sha256=dg,
-            source_path=out_path,
-            store_root=REPO_ROOT / "dist" / "artifacts",
-            ext_hint=".settlement-plan.json",
+        store_root = pathlib.Path(str(getattr(args, "store_root", "") or (REPO_ROOT / "dist" / "artifacts")))
+        if not store_root.is_absolute():
+            store_root = REPO_ROOT / store_root
+        artifact_cas.store_artifact_file(
+            "settlement-plan",
+            dg,
+            out_path,
+            repo_root=REPO_ROOT,
+            store_root=store_root,
+            dest_name=f"{dg}.settlement-plan.json",
+            overwrite=bool(getattr(args, "overwrite", False)),
         )
 
     if getattr(args, "json", False):
@@ -12318,7 +13382,9 @@ def cmd_corridor_settlement_plan_init(args: argparse.Namespace) -> int:
 
 
 def cmd_corridor_settlement_plan_verify(args: argparse.Namespace) -> int:
-    path_raw = str(getattr(args, "path", "") or "").strip()
+    # NOTE: arg name is `plan` (positional). We keep a fallback to `path` to avoid
+    # breaking older invocations.
+    path_raw = str(getattr(args, "plan", "") or getattr(args, "path", "") or "").strip()
     if not path_raw:
         print("path is required", file=sys.stderr)
         return 2
@@ -12352,7 +13418,7 @@ def cmd_corridor_settlement_plan_verify(args: argparse.Namespace) -> int:
 
     from tools.vc import signing_input, verify_credential  # type: ignore
 
-    dg = sha256_bytes(signing_input(obj)).hex()
+    dg = sha256_bytes(signing_input(obj))
     proof_results = []
     if getattr(args, "verify_proofs", False):
         proof_results = [r.__dict__ for r in verify_credential(obj)]
@@ -13041,6 +14107,41 @@ def main() -> int:
     l.add_argument("zone")
     l.add_argument("--out", default="")
     l.add_argument(
+        "--format",
+        choices=["canonical-json", "pretty-json", "yaml"],
+        default="canonical-json",
+        help=(
+            "Output format for the lockfile. 'canonical-json' is deterministic and CI-friendly. "
+            "NOTE: --check always enforces canonical-json."
+        ),
+    )
+    l.add_argument(
+        "--generated-at",
+        dest="generated_at",
+        default="",
+        help=(
+            "Override generated_at (RFC3339, e.g. 2026-01-10T00:00:00Z). "
+            "In --strict mode, a deterministic generated_at is required unless an existing lock is reused "
+            "or SOURCE_DATE_EPOCH is set."
+        ),
+    )
+    l.add_argument(
+        "--strict",
+        action="store_true",
+        help="Strict mode: enforce deterministic bytes and fail on unresolved MISSING references",
+    )
+    l.add_argument(
+        "--skip-existing",
+        dest="skip_existing",
+        action="store_true",
+        help="Reuse an existing lockfile if it already matches the derived canonical content",
+    )
+    l.add_argument(
+        "--check",
+        action="store_true",
+        help="CI mode: verify existing lockfile bytes/content without writing (implies --strict --skip-existing)",
+    )
+    l.add_argument(
         "--emit-artifactrefs",
         action="store_true",
         help=(
@@ -13126,6 +14227,12 @@ def main() -> int:
     corv = cor_sub.add_parser("verify")
     corv.add_argument("path", help="Corridor module directory or corridor.yaml path")
     corv.set_defaults(func=cmd_corridor_verify)
+
+    cori = cor_sub.add_parser("init", help="Initialize a new corridor module from template")
+    cori.add_argument("corridor_id", help="Corridor ID (e.g., org.momentum.msez.corridor.trade.my-corridor)")
+    cori.add_argument("--out-dir", dest="out_dir", default="", help="Output directory (default: modules/corridors/<corridor_id>)")
+    cori.add_argument("--force", action="store_true", help="Overwrite existing directory")
+    cori.set_defaults(func=cmd_corridor_module_init)
 
     cdef = cor_sub.add_parser("vc-init-definition")
     cdef.add_argument("path", help="Corridor module directory or corridor.yaml path")
@@ -13408,6 +14515,12 @@ def main() -> int:
     )
     cri.add_argument("--lawpack-digest", dest="lawpack_digest", action="append", default=[], help="Lawpack digest sha256 to include (repeatable; default: derive from agreement-set)")
     cri.add_argument("--ruleset-digest", dest="ruleset_digest", action="append", default=[], help="Ruleset digest sha256 to include (repeatable; default: derive from corridor rulesets)")
+    cri.add_argument(
+        "--format",
+        choices=["canonical-json", "pretty-json"],
+        default="canonical-json",
+        help="Output format (default: canonical-json for deterministic bytes)",
+    )
     cri.add_argument("--out", default="", help="Output path (default: corridor-receipt.<seq>.json)")
     cri.add_argument("--sign", action="store_true", help="Sign the receipt")
     cri.add_argument("--key", default="", help="Private OKP/Ed25519 JWK for signing (required with --sign)")
@@ -13463,6 +14576,12 @@ def main() -> int:
             "require that all schema/ruleset/circuit digests referenced by the registry lock are present in CAS (and any nested ArtifactRefs embedded in referenced ruleset artifacts). "
             "Implies --require-artifacts."
         ),
+    )
+    csv.add_argument(
+        "--check-canonical-bytes",
+        dest="check_canonical_bytes",
+        action="store_true",
+        help="Require receipts/checkpoints to be stored as byte-for-byte canonical JSON (JCS)",
     )
     csv.add_argument("--json", action="store_true", help="Output machine-readable JSON")
     csv.set_defaults(func=cmd_corridor_state_verify)
@@ -13597,12 +14716,24 @@ def main() -> int:
     ccp.add_argument("--receipts", required=True, help="Receipt file or directory containing receipt JSON files")
     ccp.add_argument("--fork-resolutions", default="", help="Optional fork-resolution artifacts (file or dir) to select canonical receipts at fork points")
     ccp.add_argument("--enforce-trust-anchors", action="store_true", help="Require at least one valid proof from a trust anchor authorized for corridor_receipt")
+    ccp.add_argument(
+        "--format",
+        choices=["canonical-json", "pretty-json"],
+        default="canonical-json",
+        help="Output format (default: canonical-json for deterministic bytes)",
+    )
     ccp.add_argument("--out", default="", help="Output path (default: corridor.checkpoint.json)")
     ccp.add_argument("--sign", action="store_true", help="Sign the checkpoint")
     ccp.add_argument("--key", default="", help="Private OKP/Ed25519 JWK for signing (required with --sign)")
     ccp.add_argument("--verification-method", default="", help="verificationMethod override (default: did:key derived from JWK + '#key-1')")
     ccp.add_argument("--purpose", default="assertionMethod", help="proofPurpose (default: assertionMethod)")
     ccp.set_defaults(func=cmd_corridor_state_checkpoint)
+
+    cca = cstate_sub.add_parser("checkpoint-audit", help="Audit a corridor checkpoint (canonical bytes + schema + proof validity); emits JSON on stdout")
+    cca.add_argument("path", help="Corridor module directory or corridor.yaml path")
+    cca.add_argument("--checkpoint", required=True, help="Checkpoint JSON file to audit")
+    cca.add_argument("--no-verify-proofs", action="store_true", help="Skip proof verification (NOT recommended; for debugging only)")
+    cca.set_defaults(func=cmd_corridor_state_checkpoint_audit)
 
     cpr = cstate_sub.add_parser("proof", help="Generate an MMR inclusion proof for a receipt sequence")
     cpr.add_argument("path", help="Corridor module directory or corridor.yaml path")
@@ -14134,6 +15265,9 @@ def main() -> int:
     li.add_argument("--out-dir", dest="out_dir", default="dist/lawpacks", help="Output directory for lawpack artifacts")
     li.add_argument("--fetch", action="store_true", help="Fetch declared sources into src/raw (best-effort)")
     li.add_argument("--include-raw", dest="include_raw", action="store_true", help="Include src/raw files inside the lawpack.zip (license permitting)")
+    li.add_argument("--strict", action="store_true", help="Strict mode: enforce deterministic manifests and fail on mismatches")
+    li.add_argument("--skip-existing", dest="skip_existing", action="store_true", help="Reuse an existing lock+artifact if they verify cleanly")
+    li.add_argument("--check", action="store_true", help="CI mode: verify existing lock+artifact (implies --strict --skip-existing)")
     li.add_argument("--json", action="store_true", help="Output machine-readable JSON")
     li.set_defaults(func=cmd_law_ingest)
 
@@ -14271,6 +15405,54 @@ def main() -> int:
     rtr.add_argument("--show", action="store_true", help="Print the lock JSON instead of the path")
     rtr.add_argument("--json", action="store_true", help="Output machine-readable JSON")
     rtr.set_defaults(func=cmd_registry_transition_types_resolve)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Playbook Commands (Part 2e)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    pb = sub.add_parser("playbook", help="Trade playbook generation and verification")
+    pb_sub = pb.add_subparsers(dest="playbook_cmd", required=True)
+
+    pbt = pb_sub.add_parser("trade", help="Trade corridor playbook (generate/check)")
+    pbt_sub = pbt.add_subparsers(dest="playbook_trade_cmd", required=True)
+
+    pbtg = pbt_sub.add_parser("generate", help="Generate trade playbook artifacts deterministically")
+    pbtg.add_argument("--docs-root", dest="docs_root", default="", help="Trade playbook root directory (default: docs/examples/trade)")
+    pbtg.set_defaults(func=cmd_playbook_trade_generate)
+
+    pbtc = pbt_sub.add_parser("check", help="Check trade playbook artifacts for byte-level determinism")
+    pbtc.add_argument("--docs-root", dest="docs_root", default="", help="Trade playbook root directory (default: docs/examples/trade)")
+    pbtc.set_defaults(func=cmd_playbook_trade_check)
+
+    # Profile init command
+    pi = sub.add_parser("profile", help="Profile management")
+    pi_sub = pi.add_subparsers(dest="profile_cmd", required=True)
+
+    pii = pi_sub.add_parser("init", help="Initialize a new project from a profile template")
+    pii.add_argument("profile", help="Profile ID or directory name (e.g., trade-playbook)")
+    pii.add_argument("out_dir", help="Output directory for the new project")
+    pii.add_argument("--force", action="store_true", help="Overwrite existing output directory")
+    pii.set_defaults(func=cmd_profile_init)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Asset Module Init Command (new subparser)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    ami = sub.add_parser("smart-asset", help="Smart asset module management")
+    ami_sub = ami.add_subparsers(dest="smart_asset_cmd", required=True)
+
+    amii = ami_sub.add_parser("init", help="Initialize a new smart asset module from template")
+    amii.add_argument("asset_id", help="Asset ID (e.g., org.momentum.msez.asset.trade.my-asset)")
+    amii.add_argument("--out-dir", dest="out_dir", default="", help="Output directory (default: modules/smart-assets/<asset_id>)")
+    amii.add_argument("--force", action="store_true", help="Overwrite existing directory")
+    amii.set_defaults(func=cmd_asset_module_init)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Lint/Doctor Command
+    # ─────────────────────────────────────────────────────────────────────────
+
+    lint = sub.add_parser("lint", aliases=["doctor"], help="Run comprehensive lint/doctor checks")
+    lint.set_defaults(func=cmd_lint)
 
     d = sub.add_parser("diff")
     d.add_argument("a", help="First stack.lock path")

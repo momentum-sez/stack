@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/arbitration.order.schema.json",
+  "title": "MSEZ Arbitration Order",
+  "description": "An order issued as part of an arbitration ruling.",
+  "type": "object",
+  "required": ["order_id", "order_type", "party_id"],
+  "properties": {
+    "order_id": {
+      "type": "string",
+      "description": "Unique identifier for this order."
+    },
+    "order_type": {
+      "type": "string",
+      "enum": [
+        "monetary_damages",
+        "specific_performance",
+        "declaratory_relief",
+        "injunctive_relief",
+        "costs",
+        "interest",
+        "escrow_release",
+        "asset_transfer",
+        "contract_termination"
+      ],
+      "description": "Type of order."
+    },
+    "party_id": {
+      "type": "string",
+      "description": "DID of the party subject to this order."
+    },
+    "amount": {
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+      },
+      "description": "Monetary amount for damages/costs orders."
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date by which the order must be complied with."
+    },
+    "interest": {
+      "type": "object",
+      "properties": {
+        "rate": { "type": "number" },
+        "basis": { "type": "string", "enum": ["simple", "compound"] },
+        "from_date": { "type": "string", "format": "date" },
+        "to_date": { "type": "string", "format": "date" }
+      },
+      "description": "Interest calculation for monetary awards."
+    },
+    "enforcement": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["smart_asset", "manual", "escrow_release", "court"]
+        },
+        "asset_id": {
+          "type": "string",
+          "description": "Smart asset to be transitioned."
+        },
+        "transition_type": {
+          "type": "string",
+          "description": "TransitionKind to invoke."
+        }
+      },
+      "description": "Enforcement mechanism for this order."
+    },
+    "conditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "condition_type": { "type": "string" },
+          "parameters": { "type": "object" }
+        }
+      },
+      "description": "Conditions for order execution."
+    }
+  },
+  "additionalProperties": true
+}

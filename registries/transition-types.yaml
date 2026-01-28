@@ -36,97 +36,120 @@ transition_types:
   ruleset_digest_sha256: 00731932e9ba546adbafab373b4fbf5c72e0e386c4ad010ddff289ba8a976b2a
   notes: Integration boundary object; network calls are out-of-scope for core MSEZ
     and belong in deployer-specific adapters.
-
-# --- Trade instruments (invoice / bill of lading / letter of credit)
 - kind: trade.invoice.issue.v1
   description: Trade invoice issuance.
   schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.invoice.issue.v1.schema.json
   schema_path: schemas/transition.payload.trade.invoice.issue.v1.schema.json
-  schema_digest_sha256: 1b68bf3dd1f73d97dc8bf3432bda91e34a7b2baa44f7c65f35a9f730c93f75f7
+  schema_digest_sha256: c5f810f71ce7c00013ab98ba7486b7a8233256464a814781f7d490a8ddecc559
   ruleset_id: msez.transition.trade.invoice.issue.v1
   ruleset_path: rulesets/msez.transition.trade.invoice.issue.v1.json
-  ruleset_digest_sha256: 3c4609e4475fdd24db8d6c76639683a6e3f15d4dbb8d64d0de40edbf1c007e03
+  ruleset_digest_sha256: 2ccc6312992474a4d398cfbd962ec684bec772d1d0a1d8180df4fd8e75c5fc3f
   notes: Canonical invoice may be embedded or referenced as an artifact.
 - kind: trade.invoice.accept.v1
   description: Trade invoice acceptance or dispute.
   schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.invoice.accept.v1.schema.json
   schema_path: schemas/transition.payload.trade.invoice.accept.v1.schema.json
-  schema_digest_sha256: fea08f9dcc173f34aca38e62b4f8ed93281535c7db8d6e0925b39649e0040a53
+  schema_digest_sha256: fab2d30a51010ee88391852a94c4062a138a792733df71b94510485c118f36d8
   ruleset_id: msez.transition.trade.invoice.accept.v1
   ruleset_path: rulesets/msez.transition.trade.invoice.accept.v1.json
-  ruleset_digest_sha256: 788b4cc92add1bb8a84a8dd6a5ba8189d693ea1a658bb99f1d0f158cfc1b8d85
-  notes: Use to record commercial acceptance (or dispute) before financing and/or settlement.
+  ruleset_digest_sha256: 86eb3ae6bd1b5b93f6e4376715c547d8efa18317fbcf3790611a1457ab7a16c2
+  notes: Use to record commercial acceptance (or dispute) before financing and/or
+    settlement.
 - kind: trade.invoice.settle.v1
   description: Trade invoice settlement/payment.
   schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.invoice.settle.v1.schema.json
   schema_path: schemas/transition.payload.trade.invoice.settle.v1.schema.json
-  schema_digest_sha256: c915f90f6ab63d81b88a09f022c8267f699f03768f75564d29a41b2ab9b15400
+  schema_digest_sha256: 8094a5515c286f9456a3e36fce6254a26ab82d6d685f2cf12cb73ef0083a7ac6
   ruleset_id: msez.transition.trade.invoice.settle.v1
   ruleset_path: rulesets/msez.transition.trade.invoice.settle.v1.json
-  ruleset_digest_sha256: 187aa4d7cddb43f7010cdab1a56c7445316c876b1e2fb82928c9097fc99a438b
+  ruleset_digest_sha256: 9cea0961f4a5f432bf2f586c6eb62a31546ec1f1e7fe2ec774e061b2c492f09f
   notes: Deployments SHOULD attach proof-binding and/or settlement-anchor artifacts.
-
 - kind: trade.bol.issue.v1
   description: Bill of Lading issuance.
   schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.bol.issue.v1.schema.json
   schema_path: schemas/transition.payload.trade.bol.issue.v1.schema.json
-  schema_digest_sha256: 889d655d0e49ed25b42a2138e85125cd6400dc363c6e90a3972638b69a6c4c0f
+  schema_digest_sha256: 674d15c800a0c9b02c71e8b0a461f1498cf96cd43622ed0c78aaadcc5f4fbd4d
   ruleset_id: msez.transition.trade.bol.issue.v1
   ruleset_path: rulesets/msez.transition.trade.bol.issue.v1.json
-  ruleset_digest_sha256: 9161bfdf0742dd17dcbf256cabba2977f21c8f92c78e14b03dc15d2f1b6d72e8
+  ruleset_digest_sha256: 9a4bb73d0e1daa86352cae4c3a2127e9f64f3fdb5b11dd47d71fa7a056b85020
   notes: Canonical BOL may be embedded or referenced as an artifact.
 - kind: trade.bol.endorse.v1
   description: Bill of Lading endorsement/transfer.
   schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.bol.endorse.v1.schema.json
   schema_path: schemas/transition.payload.trade.bol.endorse.v1.schema.json
-  schema_digest_sha256: c1cffc9821d4f0dd8c12b5d0fe7b3621c8f198f0cb62dd2a93f674f47a902be0
+  schema_digest_sha256: a8464d3239bf65dce6304156d830b334e7e843d6b23f00b307904c099e474077
   ruleset_id: msez.transition.trade.bol.endorse.v1
   ruleset_path: rulesets/msez.transition.trade.bol.endorse.v1.json
-  ruleset_digest_sha256: 98a6eb9461f917ca0d38c8f99b59eefaf9fbd5457d4ed419ec4c04e5c6a0f90e
+  ruleset_digest_sha256: ab84993111aa11bd5577280f76d1117f321eba267467c57e92b4568e8d5b5331
   notes: Represents title transfer where applicable.
 - kind: trade.bol.release.v1
   description: Bill of Lading release/surrender.
   schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.bol.release.v1.schema.json
   schema_path: schemas/transition.payload.trade.bol.release.v1.schema.json
-  schema_digest_sha256: 48be0e87cebf4a84a9a25f6df45cea57b619d0f00f1a8e02b4a56f452ada1f47
+  schema_digest_sha256: 5a62249154545b98c2b0b12b1ccb406b95727164f3329cb7a5c6a312c3b0ee72
   ruleset_id: msez.transition.trade.bol.release.v1
   ruleset_path: rulesets/msez.transition.trade.bol.release.v1.json
-  ruleset_digest_sha256: b2650a88d9f043f75c5a0cf64c89a928de4a0ca44d55c7f8681c4ad0fd7ad4a1
+  ruleset_digest_sha256: 0ec9f653624a01d7f3d6fd91dcaad2e0e7cb33cdaad9e6e290d71f7ad82092bb
   notes: Records delivery order/release.
-
 - kind: trade.lc.issue.v1
   description: Letter of Credit issuance.
   schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.issue.v1.schema.json
   schema_path: schemas/transition.payload.trade.lc.issue.v1.schema.json
-  schema_digest_sha256: 3d4e77de30f4fe58a6bf1a2bcd405469de25d57d03782e470c295861fc5f1957
+  schema_digest_sha256: dfe7b2b73ac440e86ff20e60107f4d4789384c315c37af7906f4c7eeec228ae6
   ruleset_id: msez.transition.trade.lc.issue.v1
   ruleset_path: rulesets/msez.transition.trade.lc.issue.v1.json
-  ruleset_digest_sha256: 5c1f625c30256bba3c6f692a1db783a26222fbd4e1b6e40693bbdf1956ddcbea
+  ruleset_digest_sha256: 3cb328d6a31a6b03422aad880ef7c828b44b07c50145e34a8220c85c4ac0feb9
   notes: Canonical LC may be embedded or referenced as an artifact.
 - kind: trade.lc.amend.v1
   description: Letter of Credit amendment.
   schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.amend.v1.schema.json
   schema_path: schemas/transition.payload.trade.lc.amend.v1.schema.json
-  schema_digest_sha256: d17202227e4d54351e8e08dc06442a0fb96558cf4ea53651912de61f99932269
+  schema_digest_sha256: c4d51dbeda76f947b5dcbe232ca4d2f31d8390662c8040e940bf1a680c33862f
   ruleset_id: msez.transition.trade.lc.amend.v1
   ruleset_path: rulesets/msez.transition.trade.lc.amend.v1.json
-  ruleset_digest_sha256: b555d1d60e2b39f51d5482a94b56c3a6b70d50cf8aac7c54d511bb082d7e329d
-  notes: For canonical rail messages (e.g. MT707), carry the raw message as a blob artifact.
+  ruleset_digest_sha256: ca98dbb11455a8c5cab6dd529bdc1a453aab0f24bd05ef69b30c53a002f46f70
+  notes: For canonical rail messages (e.g. MT707), carry the raw message as a blob
+    artifact.
 - kind: trade.lc.present.v1
   description: Letter of Credit document presentation.
   schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.present.v1.schema.json
   schema_path: schemas/transition.payload.trade.lc.present.v1.schema.json
-  schema_digest_sha256: 889f90709bcf8927740a256ed8114b35d79f5a7c049e71d89d92d9d9fd6ed75a
+  schema_digest_sha256: 956e9bf9893e6057b9b1ebf0b7c24a19fb2d0e58b68cd041a27d2f9fe20a4567
   ruleset_id: msez.transition.trade.lc.present.v1
   ruleset_path: rulesets/msez.transition.trade.lc.present.v1.json
-  ruleset_digest_sha256: a0b727328a4ca220d7a21f9942e83497d2b9c10ca532fc71a954b02ba1b003f9
+  ruleset_digest_sha256: c1fd5abe177737be439d6f621844e2bd447735b87362406bcb0cd2beacc71feb
   notes: Presented documents SHOULD be referenced as artifacts (PDF/XML) for size/privacy.
 - kind: trade.lc.honor.v1
   description: Letter of Credit honor/reject decision.
   schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.honor.v1.schema.json
   schema_path: schemas/transition.payload.trade.lc.honor.v1.schema.json
-  schema_digest_sha256: 942e6eea3eb802f0f9f04241aba464ea81ec020f358242c163d20837580f4b84
+  schema_digest_sha256: 518f0717abc34aad8fd020d97332f729d06760228c6d13cb9a53988a5387bf36
   ruleset_id: msez.transition.trade.lc.honor.v1
   ruleset_path: rulesets/msez.transition.trade.lc.honor.v1.json
-  ruleset_digest_sha256: b6b8c89cfcd52297a954d6e5ca4cfd367861b3f69a494168074fb2d200d6c9fa
-  notes: Deployments SHOULD anchor evidence using proof-binding and/or settlement-anchor artifacts.
+  ruleset_digest_sha256: 6aef63d0819abe9c8adfeb51033262d5fe635889f72b459ec701d839fc525da5
+  notes: Deployments SHOULD anchor evidence using proof-binding and/or settlement-anchor
+    artifacts.
+# ──────────────────────────────────────────────────────────────────────────────
+# ARBITRATION TRANSITION TYPES (v0.4.41)
+# ──────────────────────────────────────────────────────────────────────────────
+- kind: arbitration.dispute.file.v1
+  description: File a dispute with an arbitration institution.
+  notes: Creates dispute request, locks escrow for filing fee, references evidence bundle.
+- kind: arbitration.dispute.respond.v1
+  description: Respond to a filed dispute.
+  notes: Respondent acknowledgment with initial response and counterclaims.
+- kind: arbitration.evidence.submit.v1
+  description: Submit evidence to pending arbitration.
+  notes: Evidence bundle from CAS with witness statements and expert reports.
+- kind: arbitration.ruling.receive.v1
+  description: Receive arbitration ruling/award.
+  notes: Ruling VC issued by institution, triggers enforcement window.
+- kind: arbitration.ruling.enforce.v1
+  description: Enforce arbitration ruling via smart asset transition.
+  notes: Executes orders in ruling, releases escrow, updates asset state.
+- kind: arbitration.appeal.file.v1
+  description: File appeal against arbitration ruling.
+  notes: Must be filed within appeal deadline, suspends enforcement.
+- kind: arbitration.settlement.agree.v1
+  description: Parties agree to settlement before/during arbitration.
+  notes: Settlement agreement terminates dispute, releases escrow per terms.

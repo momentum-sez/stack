@@ -1,16 +1,39 @@
+# Starter Zone Manifest Template
+#
+# This is a schema-valid zone manifest (schemas/zone.schema.json) that can be
+# locked deterministically via:
+#
+#   ./msez zone lock --zone jurisdictions/_starter/zone.yaml --check
+#
+# The lock (stack.lock) is the immutable substrate for agreements, receipts,
+# checkpoints, and portable witness bundles.
 zone_id: org.momentum.msez.zone.example
 jurisdiction_id: ex
 zone_name: Example Zone
 profile:
   profile_id: org.momentum.msez.profile.digital-financial-center
-  version: 0.4.8
+  version: 0.4.39
+
+# Jurisdiction stack = built-in "lawpack overlays" (top → bottom priority).
+# You can express real-world layering here (country → state → free zone).
+jurisdiction_stack:
+  - ex
+
+# Lawpack domains to include when generating the zone lock.
+lawpack_domains:
+  - civil
+  - financial
+
 overlays: []
 params_overrides: {}
+
 corridors:
-- org.momentum.msez.corridor.swift.iso20022-cross-border
+  - org.momentum.msez.corridor.swift.iso20022-cross-border
+
 trust_anchors: []
 key_rotation_policy:
   default:
     rotation_days: 90
     grace_days: 14
+
 lockfile_path: stack.lock

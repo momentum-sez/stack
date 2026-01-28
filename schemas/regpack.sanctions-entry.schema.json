@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/regpack.sanctions-entry.schema.json",
+  "title": "MSEZ Sanctions Entry",
+  "description": "A single entry in a consolidated sanctions list.",
+  "type": "object",
+  "required": [
+    "entry_id",
+    "entry_type",
+    "source_lists"
+  ],
+  "properties": {
+    "entry_id": {
+      "type": "string",
+      "description": "Unique identifier for this sanctions entry"
+    },
+    "entry_type": {
+      "type": "string",
+      "enum": ["individual", "entity", "vessel", "aircraft"],
+      "description": "Type of sanctioned party"
+    },
+    "source_lists": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["ofac_sdn", "ofac_sectoral", "eu_consolidated", "un_consolidated", "uk_consolidated"]
+      },
+      "minItems": 1,
+      "description": "Source lists containing this entry"
+    },
+    "primary_name": {
+      "type": "string",
+      "description": "Primary name of the sanctioned party"
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "alias": { "type": "string" },
+          "alias_type": {
+            "type": "string",
+            "enum": ["aka", "fka", "dba", "maiden_name", "spelling_variant"]
+          }
+        }
+      }
+    },
+    "identifiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["passport", "national_id", "tax_id", "registration_number", "imo_number", "mmsi", "call_sign", "tail_number"]
+          },
+          "value": { "type": "string" },
+          "country": { "type": "string" }
+        }
+      }
+    },
+    "addresses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "address_line": { "type": "string" },
+          "city": { "type": "string" },
+          "country": { "type": "string" },
+          "postal_code": { "type": "string" }
+        }
+      }
+    },
+    "nationalities": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "date_of_birth": {
+      "type": "string",
+      "format": "date"
+    },
+    "place_of_birth": {
+      "type": "string"
+    },
+    "programs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Sanctions programs (e.g., 'SDGT', 'IRAN', 'DPRK')"
+    },
+    "listing_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "remarks": {
+      "type": "string"
+    },
+    "vessel_details": {
+      "type": "object",
+      "properties": {
+        "vessel_type": { "type": "string" },
+        "flag": { "type": "string" },
+        "tonnage": { "type": "number" },
+        "imo_number": { "type": "string" },
+        "mmsi": { "type": "string" }
+      },
+      "description": "Additional details for vessel entries"
+    },
+    "aircraft_details": {
+      "type": "object",
+      "properties": {
+        "aircraft_type": { "type": "string" },
+        "tail_number": { "type": "string" },
+        "serial_number": { "type": "string" },
+        "manufacturer": { "type": "string" }
+      },
+      "description": "Additional details for aircraft entries"
+    }
+  },
+  "additionalProperties": true
+}

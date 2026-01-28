@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/regpack.compliance-deadline.schema.json",
+  "title": "MSEZ Compliance Deadline",
+  "description": "A reporting or compliance deadline in the compliance calendar.",
+  "type": "object",
+  "required": ["deadline_id", "deadline_type", "due_date"],
+  "properties": {
+    "deadline_id": {
+      "type": "string",
+      "description": "Unique identifier for this deadline."
+    },
+    "deadline_type": {
+      "type": "string",
+      "enum": [
+        "regulatory_report",
+        "financial_statement",
+        "audit_report",
+        "license_renewal",
+        "capital_return",
+        "aml_report",
+        "examination",
+        "fee_payment",
+        "other"
+      ],
+      "description": "Type of deadline."
+    },
+    "report_type_id": {
+      "type": "string",
+      "description": "Reference to reporting requirement, if applicable."
+    },
+    "regulator_id": {
+      "type": "string",
+      "description": "Regulator requiring this compliance."
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date",
+      "description": "End of the reporting period."
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date by which compliance must be achieved."
+    },
+    "applicable_to": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "License types this deadline applies to."
+    },
+    "late_penalty": {
+      "type": "object",
+      "properties": {
+        "grace_period_days": {
+          "type": "integer",
+          "description": "Days of grace before penalties apply."
+        },
+        "daily_penalty": {
+          "type": "object",
+          "properties": {
+            "amount": { "type": "number" },
+            "currency": { "type": "string" },
+            "max_days": { "type": "integer" }
+          }
+        },
+        "fixed_penalty": {
+          "type": "object",
+          "properties": {
+            "amount": { "type": "number" },
+            "currency": { "type": "string" }
+          }
+        },
+        "license_suspension": { "type": "boolean" }
+      }
+    },
+    "submission": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["api", "portal", "email", "physical"]
+        },
+        "endpoint": { "type": "string", "format": "uri" },
+        "format": { "type": "string" },
+        "schema_ref": {
+          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+        }
+      }
+    },
+    "reminder_days": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "description": "Days before due date to send reminders."
+    }
+  },
+  "additionalProperties": true
+}

@@ -33,5 +33,10 @@ Operator guides:
 
 Roadmaps:
 
+- `roadmap/PRODUCTION_GRADE_SPEC.md`
 - `roadmap/ROADMAP_PRE_0.5.md`
+
+Release gates:
+
+- `roadmap/PREREQS_TO_SHIP_V0.40.md`
 

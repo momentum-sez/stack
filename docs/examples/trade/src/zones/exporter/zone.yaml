@@ -1,0 +1,55 @@
+# Trade Playbook Zone Manifest (Exporter)
+#
+# This file is intentionally a *full* zone manifest (zone.schema.json)
+# so it can be locked deterministically (stack.lock) and used as a stable
+# substrate for corridor agreements, receipts, checkpoints, and audit...
+zone_id: org.momentum.msez.zone.trade-playbook.exporter
+jurisdiction_id: ae-dubai-difc
+zone_name: Trade Playbook Exporter Zone (Example: DIFC)
+profile:
+  profile_id: org.momentum.msez.profile.trade-playbook
+  version: 0.4.39
+
+# Jurisdiction stack = built-in "lawpack overlays" (federal → emirate → zone)
+jurisdiction_stack:
+  - ae
+  - ae-dubai
+  - ae-dubai-difc
+
+# Default domains; can be expanded as additional lawpack domains mature.
+lawpack_domains:
+  - civil
+  - financial
+
+overlays: []
+params_overrides: {}
+
+# Corridors supported by this zone; the playbook will bind obligations to
+# settlement corridors via anchors + proof-bindings.
+corridors:
+  - org.momentum.msez.corridor.swift.iso20022-cross-border
+  - org.momentum.msez.corridor.stablecoin.regulated-stablecoin
+
+trust_anchors: []
+key_rotation_policy:
+  default:
+    rotation_days: 90
+    grace_days: 14
+
+# Where msez zone lock writes the zone lock.
+lockfile_path: stack.lock
+
+# Playbook-only: illustrate how a logical smart asset may be jurisdiction-sharded
+# while remaining part of a global receipt chain.
+smart_assets:
+  shards:
+    - asset_id: org.momentum.msez.asset.trade.example.invoice-001
+      shard_id: ae-dubai-difc
+      compliance_overlay:
+        jurisdiction_stack:
+          - ae
+          - ae-dubai
+          - ae-dubai-difc
+        lawpack_domains:
+          - civil
+          - financial

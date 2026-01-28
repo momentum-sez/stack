@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sez-stack.org/schemas/arbitration.escrow.schema.json",
+  "title": "ArbitrationEscrow",
+  "description": "Escrow configuration and status for arbitration proceedings",
+  "type": "object",
+  "required": ["escrow_id", "dispute_id", "escrow_type", "amount", "status"],
+  "properties": {
+    "escrow_id": {
+      "type": "string",
+      "description": "Unique identifier for this escrow",
+      "pattern": "^escrow:[a-f0-9-]+$"
+    },
+    "dispute_id": {
+      "type": "string",
+      "description": "Associated dispute identifier",
+      "pattern": "^disp-[0-9]{4}-[0-9]+$"
+    },
+    "escrow_type": {
+      "type": "string",
+      "enum": ["filing_fee", "security_deposit", "award_escrow", "appeal_bond"],
+      "description": "Purpose of the escrow"
+    },
+    "amount": {
+      "type": "object",
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+      }
+    },
+    "depositor": {
+      "type": "string",
+      "description": "DID of the party who deposited funds",
+      "pattern": "^did:"
+    },
+    "beneficiary": {
+      "type": "string",
+      "description": "DID of the designated beneficiary",
+      "pattern": "^did:"
+    },
+    "custody_address": {
+      "type": "string",
+      "description": "On-chain custody address for the escrowed funds"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "funded", "partially_released", "fully_released", "forfeited"],
+      "description": "Current status of the escrow"
+    },
+    "release_conditions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ReleaseCondition" },
+      "description": "Conditions under which escrow may be released"
+    },
+    "transactions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/EscrowTransaction" },
+      "description": "History of escrow transactions"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "ReleaseCondition": {
+      "type": "object",
+      "required": ["condition_type"],
+      "properties": {
+        "condition_type": {
+          "type": "string",
+          "enum": [
+            "RulingEnforced",
+            "AppealPeriodExpired",
+            "SettlementAgreed",
+            "DisputeWithdrawn",
+            "InstitutionOrder"
+          ]
+        },
+        "reference": {
+          "$ref": "artifact-ref.schema.json",
+          "description": "Reference to the artifact triggering this condition"
+        },
+        "satisfied": {
+          "type": "boolean",
+          "default": false
+        },
+        "satisfied_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "EscrowTransaction": {
+      "type": "object",
+      "required": ["transaction_type", "amount", "timestamp"],
+      "properties": {
+        "transaction_type": {
+          "type": "string",
+          "enum": ["deposit", "partial_release", "full_release", "forfeit", "refund"]
+        },
+        "amount": {
+          "type": "object",
+          "properties": {
+            "amount": { "type": "number" },
+            "currency": { "type": "string" }
+          }
+        },
+        "recipient": {
+          "type": "string",
+          "description": "DID of recipient (for releases)"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Explanation for the transaction"
+        },
+        "ruling_ref": {
+          "$ref": "artifact-ref.schema.json",
+          "description": "Reference to authorizing ruling (if applicable)"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "transaction_proof": {
+          "type": "string",
+          "description": "On-chain transaction hash"
+        }
+      }
+    }
+  }
+}

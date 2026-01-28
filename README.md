@@ -31,6 +31,97 @@ python -m tools.msez validate --zone jurisdictions/_starter/zone.yaml
 python -m tools.msez build --zone jurisdictions/_starter/zone.yaml --out dist/
 ```
 
+## Operator playbooks
+
+This repository is intended to be usable as an **operator manual**, not only as a collection of schemas.
+
+### Trade Corridor Playbook Overview
+
+The trade playbook is the first end-to-end example that composes:
+
+- **Jurisdiction‑sharded zones** (export / import) with **lawpack overlays**
+- A **trade/obligation corridor** (trade instrument transitions)
+- A **settlement corridor** (e.g., SWIFT pacs.008)
+- **Proof bindings** that reference real-world evidence (sanctions checks, carrier events, payment rails)
+- A deterministic **generator** + strict **check gate** for CI (no byte drift)
+
+**Playbook home:** `docs/examples/trade/` (start with `docs/examples/trade/README.md`).
+
+#### Dashboard
+
+| Operator goal | Command | Output / invariant |
+|---|---|---|
+| Generate the playbook deterministically (writes canonical JSON) | `python tools/dev/generate_trade_playbook.py --mode generate` | `docs/examples/trade/dist/…` regenerated using canonical bytes |
+| CI gate: verify playbook is already canonical (no writes) | `python tools/dev/generate_trade_playbook.py --mode check` | **FAILS** on any drift (missing files, non-canonical bytes, changed JSON) |
+| Verify the artifact graph closure (when ArtifactRefs are present) | `python -m tools.msez artifact graph verify --path docs/examples/trade/dist/manifest.playbook.root.json --strict --json` | Ensures every referenced artifact exists and every digest matches |
+| Export a portable witness bundle (offline audit packet) | `python -m tools.msez artifact graph verify --path docs/examples/trade/dist/manifest.playbook.root.json --bundle /tmp/trade.witness.zip --strict --json` | One zip containing receipts/checkpoints/proofs + manifest |
+
+#### Non‑negotiable invariants
+
+| Invariant | What it prevents | Enforced by |
+|---|---|---|
+| **did:key Ed25519 proofs are valid** | Spoofed signers / unverifiable receipts | `tools.vc.verify_credential` (strict proof validation + signature verification) |
+| **Canonical bytes (JCS) everywhere** | Silent drift between generators / languages | `tools.lawpack.jcs_canonicalize` + `--check-canonical-bytes` gates |
+| **Byte‑for‑byte determinism in CI** | “Digest matches but bytes changed” class of bugs | `generate_trade_playbook.py --mode check` (no writes) |
+
+```text
+(signing input)  object without proof
+      |
+      v
+JCS canonical bytes  ---> SHA-256 digest(s) / next_root
+      |
+      v
+Ed25519 signature --> proof.jws (base64url; 64‑byte signature)
+```
+
+#### Operator flow
+
+```mermaid
+flowchart LR
+  %% Operator-owned intent (human-authored)
+  subgraph SRC[docs/examples/trade/src]
+    ZEX[Exporter zone intent\n(zone.yaml + overlays)]
+    ZIM[Importer zone intent\n(zone.yaml + overlays)]
+  end
+
+  %% Deterministic build outputs
+  subgraph DIST[docs/examples/trade/dist]
+    ROOT[manifest.playbook.root.json\n(root of artifact graph)]
+    CAS[artifacts/\n(content-addressed store)]
+  end
+
+  %% Corridors and anchoring (conceptual wiring)
+  subgraph OBL[Obligation corridor\n(invoice/BOL/LC transitions)]
+    OR[receipts → checkpoint head]
+  end
+  subgraph SET[Settlement corridor\nSWIFT pacs.008 settlement]
+    SR[receipts → checkpoint head]
+  end
+
+  %% Evidence bindings
+  E1[Sanctions screening evidence]
+  E2[Carrier events evidence]
+  E3[Payment rail evidence]
+
+  %% Relationships
+  ZEX --> ROOT
+  ZIM --> ROOT
+  ROOT --> CAS
+
+  ZEX --> OBL
+  ZIM --> OBL
+  OBL -->|settlement anchor\n(obligation→settlement)| SET
+  E1 -->|proof-binding| OBL
+  E2 -->|proof-binding| OBL
+  E3 -->|proof-binding| SET
+  SET --> CAS
+  OBL --> CAS
+```
+
+> Today, the generator/check gate ships a minimal root and the jurisdiction‑sharded zone intents.
+> The next iterations extend the same deterministic/canonical pattern to corridors, receipts, checkpoints,
+> settlement plans, anchors, and proof bindings.
+
 ## Repository conventions
 
 - **Normative keywords**: “MUST/SHOULD/MAY” are interpreted per RFC 2119 + RFC 8174 (see `spec/00-terminology.md`).
@@ -41,6 +132,7 @@ python -m tools.msez build --zone jurisdictions/_starter/zone.yaml --out dist/
 
 Skeleton created: 2025-12-21.
 
+**Next version gate (v0.4.40):** `docs/roadmap/PREREQS_TO_SHIP_V0.40.md`
 
 ## Added in expanded skeleton
 
@@ -84,6 +176,7 @@ python -m tools.msez corridor state verify modules/corridors/swift --receipts /t
 python -m tools.msez corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json --require-artifacts
 python -m tools.msez corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json --transitive-require-artifacts
 python -m tools.msez corridor state checkpoint modules/corridors/swift --receipts /tmp/receipt0.json --issuer did:example:zone --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/checkpoint.json
+python -m tools.msez corridor state checkpoint-audit modules/corridors/swift --checkpoint /tmp/checkpoint.json
 python -m tools.msez corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json --checkpoint /tmp/checkpoint.json --enforce-checkpoint-policy
 python -m tools.msez corridor state watcher-attest modules/corridors/swift --checkpoint /tmp/checkpoint.json --issuer did:example:watcher --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/watcher.vc.json
 python -m tools.msez corridor state fork-alarm modules/corridors/swift --receipt-a /tmp/receipt0.json --receipt-b /tmp/receipt0_fork.json --issuer did:example:watcher --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/fork-alarm.vc.json

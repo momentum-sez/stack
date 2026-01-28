@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.honor.v1.schema.json",
+  "title": "LC Honor/Reject transition payload (v1)",
+  "description": "Records the honoring or rejection decision under a Letter of Credit. Deployments SHOULD attach proof-bindings and settlement-anchors for payment evidence.",
+  "type": "object",
+  "oneOf": [
+    {"required": ["lc_id"]},
+    {"required": ["lc_ref"]}
+  ],
+  "required": ["decision", "decision_at"],
+  "properties": {
+    "lc_id": {"type": "string", "minLength": 1},
+    "lc_ref": {"$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"},
+    "decision": {"type": "string", "enum": ["honor", "reject"]},
+    "decision_at": {"type": "string", "format": "date-time"},
+    "decided_by_party_id": {"type": "string"},
+    "honor_amount": {"$ref": "https://schemas.momentum-sez.org/msez/trade.amount.v1.schema.json"},
+    "reason": {"type": "string", "description": "If rejected, an optional reason."},
+    "settlement_reference": {
+      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+      "description": "Optional reference to a proof-binding / settlement-anchor / external rail receipt artifact. Prefer attaching typed artifacts to the corridor receipt transition attachments."
+    },
+    "notes": {"type": "string"}
+  },
+  "additionalProperties": false
+}

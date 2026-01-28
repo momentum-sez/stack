@@ -16,6 +16,10 @@ nav:
           - Overview: docs/corridors/overview.md
           - Playbooks: docs/corridors/playbooks.md
       - Attestations: docs/attestations/catalog.md
+  - Roadmap:
+      - Production-grade evolution spec: docs/roadmap/PRODUCTION_GRADE_SPEC.md
+      - Pre-0.5 master roadmap: docs/roadmap/ROADMAP_PRE_0.5.md
+      - v0.4.40 release gate: docs/roadmap/PREREQS_TO_SHIP_V0.40.md
   - Spec:
       - Mission: spec/01-mission.md
       - Invariants: spec/02-invariants.md

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/trade.party.v1.schema.json",
+  "title": "Trade Party (v1)",
+  "description": "A minimal, deterministic representation of a trade party used across invoice/BOL/LC instruments. party_id is intentionally flexible (DID, LEI, registry number, internal identifier).",
+  "type": "object",
+  "required": ["party_id"],
+  "properties": {
+    "party_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable identifier for the party. Examples: did:key:..., lei:..., reg:..., internal:..."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lei": {
+      "type": "string",
+      "pattern": "^[A-Z0-9]{18}[0-9]{2}$",
+      "description": "Optional Legal Entity Identifier (LEI)."
+    },
+    "did": {
+      "type": "string",
+      "pattern": "^did:[a-z0-9]+:.*$",
+      "description": "Optional Decentralized Identifier (DID)."
+    },
+    "account_id": {
+      "type": "string",
+      "description": "Optional account identifier (bank account, wallet, rail-specific account, etc.)."
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Optional agent identifier (bank BIC, PSP ID, corridor node ID, etc.)."
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "line1": {"type": "string"},
+        "line2": {"type": "string"},
+        "city": {"type": "string"},
+        "region": {"type": "string"},
+        "postal_code": {"type": "string"},
+        "country": {"type": "string", "pattern": "^[A-Z]{2}$"}
+      },
+      "additionalProperties": false
+    },
+    "meta": {
+      "type": "object",
+      "description": "Optional extension metadata; implementers SHOULD treat this as non-normative.",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

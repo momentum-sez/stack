@@ -1,0 +1,54 @@
+# Corridor Module Template
+# Copy this directory and customize for your corridor.
+
+corridor_id: org.momentum.msez.corridor._template
+title: Template Corridor
+description: A template corridor module for scaffolding new corridors.
+
+# Participants (DIDs of parties authorized for this corridor)
+participants: []
+
+# Settlement configuration
+settlement:
+  type: fiat-correspondent
+  currency: USD
+  max_single_transfer: 1000000
+
+# Recognition/passporting configuration
+recognition:
+  passporting:
+    - msez.licensing.application.v1
+
+# Required attestations for corridor operations
+attestations:
+  required:
+    - kyb_verified
+    - bo_verified
+    - sanctions_screened
+    - aml_program_attested
+
+# Dispute resolution
+dispute_resolution:
+  method: arbitration
+  escalation:
+    - operator-to-operator
+    - supervisor-to-supervisor
+    - formal-arbitration
+
+# Trust anchors configuration
+trust_anchors_path: trust-anchors.yaml
+
+# Key rotation configuration
+key_rotation_path: key-rotation.yaml
+
+# Corridor definition VC path
+definition_vc_path: corridor.vc.json
+
+# Verification ruleset
+verification_ruleset: msez.corridor.verification.v1
+
+# State channel configuration
+state_channel:
+  transition_type_registry_lock_path: registries/transition-types.lock.json
+  genesis_root: ""  # Will be computed on first receipt
+  receipts_dir: state/receipts

@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sez-stack.org/schemas/arbitration.evidence-package.schema.json",
+  "title": "ArbitrationEvidencePackage",
+  "description": "Evidence package for arbitration proceedings (Definition 26.5)",
+  "type": "object",
+  "required": [
+    "evidence_package_id",
+    "dispute_id",
+    "submitting_party",
+    "submission_timestamp",
+    "evidence_items",
+    "witness_bundle_ref"
+  ],
+  "properties": {
+    "evidence_package_id": {
+      "type": "string",
+      "description": "Unique identifier for this evidence package",
+      "pattern": "^evidence-pkg:[a-f0-9-]+$"
+    },
+    "dispute_id": {
+      "type": "string",
+      "description": "Reference to the dispute this evidence relates to",
+      "pattern": "^disp-[0-9]{4}-[0-9]+$"
+    },
+    "submitting_party": {
+      "type": "string",
+      "description": "DID of the party submitting this evidence",
+      "pattern": "^did:"
+    },
+    "submission_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this evidence package was submitted"
+    },
+    "evidence_items": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/EvidenceItem" },
+      "minItems": 1,
+      "description": "Individual evidence items in this package"
+    },
+    "witness_bundle_ref": {
+      "$ref": "artifact-ref.schema.json",
+      "description": "Complete witness bundle containing all artifacts"
+    },
+    "submission_signature": {
+      "type": "object",
+      "description": "Cryptographic signature from submitting party",
+      "properties": {
+        "type": { "type": "string" },
+        "created": { "type": "string", "format": "date-time" },
+        "verificationMethod": { "type": "string" },
+        "proofValue": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "EvidenceItem": {
+      "type": "object",
+      "required": ["evidence_id", "evidence_type", "description", "artifact_ref"],
+      "properties": {
+        "evidence_id": {
+          "type": "string",
+          "description": "Unique identifier for this evidence item",
+          "pattern": "^evidence:[a-f0-9-]+$"
+        },
+        "evidence_type": {
+          "type": "string",
+          "enum": [
+            "SmartAssetReceipt",
+            "CorridorReceipt",
+            "ComplianceEvidence",
+            "ExpertReport",
+            "WitnessStatement",
+            "ContractDocument",
+            "CommunicationRecord",
+            "PaymentRecord",
+            "ShippingDocument",
+            "InspectionReport"
+          ],
+          "description": "Type classification of the evidence"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the evidence"
+        },
+        "artifact_ref": {
+          "$ref": "artifact-ref.schema.json",
+          "description": "Reference to the evidence artifact in CAS"
+        },
+        "relevance": {
+          "type": "string",
+          "description": "Explanation of how this evidence supports the claim"
+        },
+        "authenticity_attestation": {
+          "$ref": "#/$defs/AuthenticityAttestation",
+          "description": "Attestation proving authenticity of the evidence"
+        }
+      }
+    },
+    "AuthenticityAttestation": {
+      "type": "object",
+      "required": ["attestation_type"],
+      "properties": {
+        "attestation_type": {
+          "type": "string",
+          "enum": [
+            "CorridorCheckpointInclusion",
+            "SmartAssetCheckpointInclusion",
+            "NotarizedDocument",
+            "ExpertCertification",
+            "ChainOfCustody"
+          ],
+          "description": "Type of authenticity proof"
+        },
+        "proof_ref": {
+          "$ref": "artifact-ref.schema.json",
+          "description": "Reference to the proof artifact"
+        }
+      }
+    }
+  }
+}

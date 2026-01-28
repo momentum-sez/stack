@@ -243,3 +243,5 @@ Deliverables
 - Deterministic bundle builds (hash-stable zip manifests)
 - Expanded examples + walkthroughs.
 
+**Release gate:** `docs/roadmap/PREREQS_TO_SHIP_V0.40.md` is authoritative. Do **not** bump the version number until the checklist is complete and CI passes in strict/check modes.
+

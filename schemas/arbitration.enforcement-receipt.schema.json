@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/arbitration.enforcement-receipt.schema.json",
+  "title": "MSEZ Arbitration Enforcement Receipt",
+  "description": "A receipt documenting the enforcement of an arbitration ruling.",
+  "type": "object",
+  "required": [
+    "type",
+    "stack_spec_version",
+    "enforcement_id",
+    "ruling_id",
+    "corridor_id",
+    "orders_enforced",
+    "enforcement_method",
+    "success"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZEnforcementReceipt"
+    },
+    "stack_spec_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "enforcement_id": {
+      "type": "string",
+      "description": "Unique identifier for this enforcement action."
+    },
+    "ruling_id": {
+      "type": "string",
+      "description": "ID of the ruling being enforced."
+    },
+    "corridor_id": {
+      "type": "string",
+      "description": "Corridor in which enforcement occurred."
+    },
+    "orders_enforced": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Order IDs that were enforced."
+    },
+    "enforcement_method": {
+      "type": "string",
+      "enum": ["smart_asset", "escrow_release", "manual", "court"],
+      "description": "Method used for enforcement."
+    },
+    "enforcement_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When enforcement occurred."
+    },
+    "success": {
+      "type": "boolean",
+      "description": "Whether enforcement was successful."
+    },
+    "smart_asset_transitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "asset_id": { "type": "string" },
+          "transition_type": { "type": "string" },
+          "receipt_digest": { "type": "string" }
+        }
+      },
+      "description": "Smart asset transitions executed."
+    },
+    "escrow_releases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "escrow_id": { "type": "string" },
+          "amount": {
+            "type": "object",
+            "properties": {
+              "amount": { "type": "number" },
+              "currency": { "type": "string" }
+            }
+          },
+          "recipient": { "type": "string" }
+        }
+      },
+      "description": "Escrow releases executed."
+    },
+    "failure_reason": {
+      "type": "string",
+      "description": "Reason for enforcement failure, if applicable."
+    },
+    "anchored_in_receipt": {
+      "type": "string",
+      "description": "Digest of corridor receipt anchoring this enforcement."
+    },
+    "proof": {
+      "description": "Optional DataIntegrityProof."
+    }
+  },
+  "additionalProperties": true
+}

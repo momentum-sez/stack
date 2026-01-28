@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sez-stack.org/schemas/circuit.pi-ruling.schema.json",
+  "title": "πruling Circuit Specification",
+  "description": "ZK circuit specification for arbitration ruling verification (Definition 26.9)",
+  "type": "object",
+  "properties": {
+    "circuit_id": {
+      "const": "pi_ruling_v1",
+      "description": "Circuit identifier"
+    },
+    "version": {
+      "const": "1.0.0"
+    },
+    "constraint_count": {
+      "const": 35000,
+      "description": "Approximate R1CS constraint count"
+    },
+    "public_inputs": {
+      "type": "object",
+      "description": "Public inputs to the circuit",
+      "properties": {
+        "ruling_vc_digest": {
+          "type": "string",
+          "description": "SHA256 digest of the ruling VC"
+        },
+        "asset_id": {
+          "type": "string",
+          "description": "Smart Asset being affected by the ruling"
+        },
+        "order_digest": {
+          "type": "string",
+          "description": "Specific order being enforced"
+        },
+        "enforcement_timestamp": {
+          "type": "integer",
+          "description": "Unix timestamp when enforcement is attempted"
+        },
+        "authority_registry_root": {
+          "type": "string",
+          "description": "Merkle root of authority registry"
+        }
+      },
+      "required": [
+        "ruling_vc_digest",
+        "asset_id",
+        "order_digest",
+        "enforcement_timestamp",
+        "authority_registry_root"
+      ]
+    },
+    "private_inputs": {
+      "type": "object",
+      "description": "Private (witness) inputs to the circuit",
+      "properties": {
+        "ruling_vc": {
+          "type": "object",
+          "description": "Full ruling credential"
+        },
+        "institution_credential": {
+          "type": "object",
+          "description": "Institution authority credential"
+        },
+        "institution_merkle_path": {
+          "type": "array",
+          "description": "Merkle path proving institution in authority registry"
+        },
+        "appeal_status": {
+          "type": "object",
+          "description": "Appeal period status or waiver proof"
+        }
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "description": "Constraint specifications",
+      "items": {
+        "type": "object",
+        "properties": {
+          "constraint_id": { "type": "string" },
+          "description": { "type": "string" },
+          "constraint_count": { "type": "integer" }
+        }
+      },
+      "default": [
+        {
+          "constraint_id": "C1",
+          "description": "VC signature verification against institution key",
+          "constraint_count": 8000
+        },
+        {
+          "constraint_id": "C2",
+          "description": "Institution key authorized by authority registry (Merkle membership)",
+          "constraint_count": 9600
+        },
+        {
+          "constraint_id": "C3",
+          "description": "Asset ID matches ruling subject",
+          "constraint_count": 500
+        },
+        {
+          "constraint_id": "C4",
+          "description": "Order exists in ruling and matches digest",
+          "constraint_count": 3000
+        },
+        {
+          "constraint_id": "C5",
+          "description": "Appeal period expired OR waiver present",
+          "constraint_count": 6000
+        },
+        {
+          "constraint_id": "C6",
+          "description": "Enforcement timestamp within valid window",
+          "constraint_count": 1000
+        },
+        {
+          "constraint_id": "C7",
+          "description": "Ruling VC digest commitment",
+          "constraint_count": 2000
+        },
+        {
+          "constraint_id": "C8",
+          "description": "Order digest commitment",
+          "constraint_count": 2000
+        },
+        {
+          "constraint_id": "C9",
+          "description": "JCS canonicalization verification",
+          "constraint_count": 2900
+        }
+      ]
+    },
+    "performance": {
+      "type": "object",
+      "description": "Expected performance characteristics",
+      "properties": {
+        "prove_time_cpu_ms": {
+          "const": 350,
+          "description": "Single-threaded CPU prove time"
+        },
+        "prove_time_gpu_ms": {
+          "const": 35,
+          "description": "GPU-accelerated prove time"
+        },
+        "verify_time_ms": {
+          "const": 2,
+          "description": "Verification time"
+        },
+        "proof_size_bytes": {
+          "const": 288,
+          "description": "Wrapped Groth16 proof size"
+        }
+      }
+    },
+    "security_level": {
+      "const": 128,
+      "description": "Security level in bits"
+    }
+  }
+}

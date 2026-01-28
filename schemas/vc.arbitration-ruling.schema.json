@@ -1,0 +1,296 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/vc.arbitration-ruling.schema.json",
+  "title": "MSEZ Arbitration Ruling Verifiable Credential",
+  "description": "A machine-readable, enforceable arbitration ruling/award issued as a Verifiable Credential.",
+  "type": "object",
+  "required": [
+    "@context",
+    "type",
+    "issuer",
+    "issuanceDate",
+    "credentialSubject"
+  ],
+  "properties": {
+    "@context": {
+      "type": "array",
+      "items": { "type": "string" },
+      "contains": { "const": "https://www.w3.org/2018/credentials/v1" }
+    },
+    "type": {
+      "type": "array",
+      "contains": { "const": "VerifiableCredential" },
+      "items": {
+        "type": "string",
+        "enum": ["VerifiableCredential", "MSEZArbitrationRulingCredential"]
+      }
+    },
+    "id": {
+      "type": "string",
+      "format": "uri"
+    },
+    "issuer": {
+      "type": "string",
+      "pattern": "^did:",
+      "description": "DID of the arbitration institution"
+    },
+    "issuanceDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expirationDate": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "credentialSubject": {
+      "type": "object",
+      "required": [
+        "dispute_id",
+        "institution_id",
+        "case_reference",
+        "parties",
+        "ruling"
+      ],
+      "properties": {
+        "dispute_id": {
+          "type": "string",
+          "description": "MSEZ dispute identifier"
+        },
+        "institution_id": {
+          "type": "string",
+          "description": "Arbitration institution identifier"
+        },
+        "case_reference": {
+          "type": "string",
+          "description": "Institution's internal case reference"
+        },
+        "corridor_id": {
+          "type": "string",
+          "description": "Original corridor from which dispute arose"
+        },
+        "tribunal": {
+          "type": "object",
+          "properties": {
+            "presiding_arbitrator": {
+              "$ref": "#/$defs/arbitrator"
+            },
+            "co_arbitrators": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/arbitrator" }
+            },
+            "appointment_method": {
+              "type": "string",
+              "enum": ["party_appointed", "institution_appointed", "agreed"]
+            }
+          }
+        },
+        "parties": {
+          "type": "object",
+          "required": ["claimant", "respondent"],
+          "properties": {
+            "claimant": { "$ref": "#/$defs/party" },
+            "respondent": { "$ref": "#/$defs/party" }
+          }
+        },
+        "ruling": {
+          "$ref": "#/$defs/ruling"
+        },
+        "enforcement": {
+          "$ref": "#/$defs/enforcement"
+        },
+        "appeal": {
+          "type": "object",
+          "properties": {
+            "appeal_available": { "type": "boolean" },
+            "appeal_deadline": { "type": "string", "format": "date-time" },
+            "appeal_grounds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["serious_irregularity", "substantive_jurisdiction", "public_policy"]
+              }
+            }
+          }
+        },
+        "full_award_ref": {
+          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+          "description": "Reference to the full PDF award document"
+        }
+      }
+    },
+    "proof": {
+      "description": "Institution's signature on the ruling",
+      "oneOf": [
+        { "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json" },
+        {
+          "type": "array",
+          "items": { "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json" }
+        }
+      ]
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "arbitrator": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "did": { "type": "string", "pattern": "^did:" },
+        "appointed_by": {
+          "type": "string",
+          "enum": ["claimant", "respondent", "institution", "co_arbitrators"]
+        }
+      }
+    },
+    "party": {
+      "type": "object",
+      "required": ["party_id"],
+      "properties": {
+        "party_id": { "type": "string", "pattern": "^did:" },
+        "legal_name": { "type": "string" }
+      }
+    },
+    "ruling": {
+      "type": "object",
+      "required": ["ruling_type", "disposition"],
+      "properties": {
+        "ruling_type": {
+          "type": "string",
+          "enum": ["final_award", "partial_award", "interim_award", "emergency_order", "consent_award"]
+        },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "in_favor_of_claimant",
+            "in_favor_of_respondent",
+            "partially_in_favor_of_claimant",
+            "partially_in_favor_of_respondent",
+            "dismissed",
+            "settled"
+          ]
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "claim_id": { "type": "string" },
+              "finding": {
+                "type": "string",
+                "enum": ["sustained", "denied", "partially_sustained", "moot"]
+              },
+              "reasoning_ref": {
+                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              }
+            }
+          }
+        },
+        "orders": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/order" }
+        },
+        "interest": {
+          "type": "object",
+          "properties": {
+            "rate": { "type": "number" },
+            "basis": { "type": "string", "enum": ["annual_simple", "annual_compound"] },
+            "from_date": { "type": "string", "format": "date" },
+            "to_date": { "type": "string" }
+          }
+        },
+        "costs_allocation": {
+          "type": "object",
+          "properties": {
+            "arbitration_costs": { "$ref": "#/$defs/cost_allocation" },
+            "legal_costs": { "$ref": "#/$defs/cost_allocation" }
+          }
+        }
+      }
+    },
+    "order": {
+      "type": "object",
+      "required": ["order_id", "order_type"],
+      "properties": {
+        "order_id": { "type": "string" },
+        "order_type": {
+          "type": "string",
+          "enum": [
+            "monetary_damages",
+            "specific_performance",
+            "declaratory",
+            "injunction",
+            "costs",
+            "interest"
+          ]
+        },
+        "obligor": {
+          "type": "string",
+          "pattern": "^did:",
+          "description": "Party required to comply with order"
+        },
+        "obligee": {
+          "type": "string",
+          "pattern": "^did:",
+          "description": "Party to whom order is owed"
+        },
+        "amount": { "$ref": "#/$defs/money" },
+        "due_date": { "type": "string", "format": "date" },
+        "enforcement_method": {
+          "type": "string",
+          "enum": ["smart_asset_state_transition", "escrow_release", "manual", "court_enforcement"]
+        },
+        "smart_asset_refs": {
+          "type": "array",
+          "items": { "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json" },
+          "description": "Smart assets affected by this order"
+        }
+      }
+    },
+    "enforcement": {
+      "type": "object",
+      "properties": {
+        "enforceable_jurisdictions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "new_york_convention": {
+          "type": "boolean",
+          "description": "Award enforceable under New York Convention"
+        },
+        "smart_asset_enforcement": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "asset_id": { "type": "string" },
+            "enforcement_transition_type": { "type": "string" },
+            "escrow_release_conditions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "condition": { "type": "string" },
+                  "value": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "cost_allocation": {
+      "type": "object",
+      "properties": {
+        "claimant_share": { "type": "number", "minimum": 0, "maximum": 1 },
+        "respondent_share": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "money": {
+      "type": "object",
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+# Trade Playbook Zone Manifest (Importer)
+#
+# This is a full zone manifest (zone.schema.json) so it can be locked
+# deterministically and used as a stable audit substrate.
+zone_id: org.momentum.msez.zone.trade-playbook.importer
+jurisdiction_id: us-ca
+zone_name: Trade Playbook Importer Zone (Example: California)
+profile:
+  profile_id: org.momentum.msez.profile.trade-playbook
+  version: 0.4.39
+
+# Jurisdiction stack = built-in "lawpack overlays" (federal → state)
+jurisdiction_stack:
+  - us
+  - us-ca
+
+lawpack_domains:
+  - civil
+  - financial
+
+overlays: []
+params_overrides: {}
+
+corridors:
+  - org.momentum.msez.corridor.swift.iso20022-cross-border
+  - org.momentum.msez.corridor.stablecoin.regulated-stablecoin
+
+trust_anchors: []
+key_rotation_policy:
+  default:
+    rotation_days: 90
+    grace_days: 14
+
+lockfile_path: stack.lock
+
+smart_assets:
+  shards:
+    - asset_id: org.momentum.msez.asset.trade.example.invoice-001
+      shard_id: us-ca
+      compliance_overlay:
+        jurisdiction_stack:
+          - us
+          - us-ca
+        lawpack_domains:
+          - civil
+          - financial

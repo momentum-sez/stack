@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-sez.org/msez/arbitration.institution.schema.json",
+  "title": "MSEZ Arbitration Institution",
+  "description": "Registry entry for an arbitration institution recognized by the SEZ Stack.",
+  "type": "object",
+  "required": [
+    "type",
+    "stack_spec_version",
+    "institution_id",
+    "name",
+    "jurisdiction_id"
+  ],
+  "properties": {
+    "type": {
+      "const": "MSEZArbitrationInstitution"
+    },
+    "stack_spec_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "institution_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique institution identifier (e.g., 'difc-lcia', 'siac', 'icc')"
+    },
+    "name": {
+      "type": "string",
+      "description": "Full legal name of the institution"
+    },
+    "jurisdiction_id": {
+      "type": "string",
+      "description": "Primary jurisdiction (e.g., 'uae-difc', 'sg', 'fr-paris')"
+    },
+    "rules_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to the institution's arbitration rules"
+    },
+    "rules_version": {
+      "type": "string",
+      "description": "Version of rules currently in force"
+    },
+    "api_base_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Base URL for institution's API (if available)"
+    },
+    "api_capabilities": {
+      "type": "object",
+      "properties": {
+        "case_filing": { "type": "boolean" },
+        "evidence_submission": { "type": "boolean" },
+        "status_query": { "type": "boolean" },
+        "ruling_retrieval": { "type": "boolean" },
+        "fee_payment": { "type": "boolean" }
+      }
+    },
+    "supported_dispute_types": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "breach_of_contract",
+          "non_conforming_goods",
+          "payment_default",
+          "delivery_failure",
+          "warranty_claim",
+          "ip_infringement",
+          "investment_dispute",
+          "construction_dispute",
+          "maritime_dispute",
+          "employment_dispute"
+        ]
+      }
+    },
+    "procedural_options": {
+      "type": "object",
+      "properties": {
+        "emergency_arbitrator": {
+          "type": "boolean",
+          "description": "Emergency arbitrator available"
+        },
+        "expedited_procedure": {
+          "type": "boolean",
+          "description": "Expedited procedure available"
+        },
+        "document_only": {
+          "type": "boolean",
+          "description": "Documents-only arbitration available"
+        },
+        "online_hearings": {
+          "type": "boolean",
+          "description": "Virtual/online hearings supported"
+        },
+        "med_arb": {
+          "type": "boolean",
+          "description": "Med-arb hybrid procedure available"
+        }
+      }
+    },
+    "fee_schedule": {
+      "type": "object",
+      "properties": {
+        "filing_fee": {
+          "$ref": "#/$defs/money"
+        },
+        "registration_fee": {
+          "$ref": "#/$defs/money"
+        },
+        "administrative_fee_basis": {
+          "type": "string",
+          "enum": ["flat", "ad_valorem", "tiered"]
+        },
+        "arbitrator_fee_basis": {
+          "type": "string",
+          "enum": ["hourly", "daily", "ad_valorem", "fixed"]
+        },
+        "hourly_rate_range": {
+          "type": "object",
+          "properties": {
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "currency": { "type": "string" }
+          }
+        }
+      }
+    },
+    "enforcement_jurisdictions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Jurisdictions where awards are enforceable (e.g., via New York Convention)"
+    },
+    "contact": {
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" }
+      }
+    },
+    "did": {
+      "type": "string",
+      "pattern": "^did:",
+      "description": "DID for the institution (for VC verification)"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "money": {
+      "type": "object",
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+      }
+    }
+  }
+}

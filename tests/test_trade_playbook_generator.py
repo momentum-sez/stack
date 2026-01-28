@@ -126,7 +126,7 @@ def test_trade_playbook_zone_locks_are_deterministic(tmp_path: Path):
     exporter_lock = json.loads(exporter_lock_path.read_text(encoding="utf-8"))
 
     assert exporter_lock["type"] == "MSEZZoneLock"
-    assert exporter_lock["stack_spec_version"] == "0.4.40"
+    assert exporter_lock["stack_spec_version"] == "0.4.41"
     assert exporter_lock["zone_id"] == "org.momentum.msez.zone.trade-playbook.exporter"
     assert exporter_lock["locked_at"] == "2025-01-01T00:00:00Z"
     assert exporter_lock["jurisdiction_stack"] == ["ae", "ae-dubai", "ae-dubai-difc"]

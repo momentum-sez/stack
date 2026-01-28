@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MSEZ Stack tool (reference implementation) — v0.4.39
+"""MSEZ Stack tool (reference implementation) — v0.4.41
 
 Capabilities:
 - validate modules/profiles/zones against schemas
@@ -3941,7 +3941,7 @@ def cmd_asset_module_init(args: argparse.Namespace) -> int:
         template_asset_yaml = template_dir / "asset.yaml"
         template_asset_yaml.write_text("""# Smart Asset Module Template
 asset_id: org.momentum.msez.asset._template
-stack_spec_version: "0.4.40"
+stack_spec_version: "0.4.41"
 asset_name: Template Asset
 asset_type: generic
 

@@ -48,7 +48,7 @@ from tools.msez import canonical_json_bytes, write_canonical_json_file, sha256_b
 # Constants & Determinism
 # ─────────────────────────────────────────────────────────────────────────────
 
-STACK_SPEC_VERSION = "0.4.40"
+STACK_SPEC_VERSION = "0.4.41"
 
 # Fixed epoch for deterministic timestamps (2025-01-01T00:00:00Z)
 # Matches the test and CI configuration: SOURCE_DATE_EPOCH=1735689600

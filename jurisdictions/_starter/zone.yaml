@@ -12,7 +12,7 @@ jurisdiction_id: ex
 zone_name: Example Zone
 profile:
   profile_id: org.momentum.msez.profile.digital-financial-center
-  version: 0.4.39
+  version: 0.4.41
 
 # Jurisdiction stack = built-in "lawpack overlays" (top → bottom priority).
 # You can express real-world layering here (country → state → free zone).

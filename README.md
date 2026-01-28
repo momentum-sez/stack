@@ -1,22 +1,54 @@
-# Momentum SEZ Stack (MSEZ) — v0.4.39
+# Momentum SEZ Stack (MSEZ) — v0.4.41
 
-
-This repository is a **reference specification + reference library** for building *programmable Special Economic Zones (SEZs)* as modular, forkable, and composable “jurisdiction nodes” in the Momentum/Mass network.
+This repository is a **reference specification + reference library** for building *programmable Special Economic Zones (SEZs)* as modular, forkable, and composable "jurisdiction nodes" in the Momentum/MASS network.
 
 It is designed to function like an **open standard**: modular, versioned, testable, and implementable by multiple vendors.
 
 > **Not legal advice.** This repository contains model texts, technical specs, and interoperability schemas. Deployments require local legal review, political authorization, and licensed financial/regulatory operators.
 
-## What’s inside
+## What's inside
 
 - **`spec/`** — the normative MSEZ Stack specification (how modules work, how profiles compose, conformance rules)
 - **`modules/`** — reference modules (legal/regulatory/financial/corridor/etc.) with machine-readable sources
-- **`profiles/`** — curated “base templates/styles” (bundles of modules + parameters)
-- **`schemas/`** — JSON Schemas for manifests, attestations, corridors
+- **`profiles/`** — curated "base templates/styles" (bundles of modules + parameters)
+- **`schemas/`** — JSON Schemas for manifests, attestations, corridors, arbitration, regpacks (104 schemas)
 - **`rulesets/`** — content-addressed ruleset descriptors (pins verifier logic)
-- **`apis/`** — OpenAPI specs for Mass integration + regulator console APIs
+- **`apis/`** — OpenAPI specs for MASS integration + regulator console APIs
 - **`tools/`** — build/validate/publish tools (reference implementations)
 - **`registries/`** — registries of module IDs, jurisdiction IDs, corridor IDs
+
+## Installation
+
+### Requirements
+
+- Python 3.10+ (tested on 3.12)
+- pip package manager
+
+### Quick Install
+
+```bash
+# Clone the repository
+git clone https://github.com/momentum-sez/stack.git
+cd stack
+
+# Install dependencies
+pip install -r tools/requirements.txt
+
+# Verify installation
+pytest -q
+
+# Fetch Akoma Ntoso schema bundle (needed for legal document validation)
+python -m tools.msez fetch-akoma-schemas
+```
+
+### Dependencies
+
+Core dependencies (see `tools/requirements.txt` for full list):
+- `jsonschema` — JSON Schema validation
+- `pyyaml` — YAML parsing
+- `cryptography` — Ed25519 signatures and key management
+- `pynacl` — NaCl cryptographic operations
+- `pytest` — test framework
 
 ## Quick start
 
@@ -31,201 +63,61 @@ python -m tools.msez validate --zone jurisdictions/_starter/zone.yaml
 python -m tools.msez build --zone jurisdictions/_starter/zone.yaml --out dist/
 ```
 
-## Operator playbooks
+## Key Features (v0.4.41)
 
-This repository is intended to be usable as an **operator manual**, not only as a collection of schemas.
+### Arbitration System (Chapter 26)
 
-### Trade Corridor Playbook Overview
+Complete programmatic dispute resolution infrastructure with support for DIFC-LCIA, SIAC, AIFC-IAC, and ICC institutions. Features include dispute filing protocol, evidence packages, ruling VCs with automatic enforcement, and πruling ZK circuit verification (~35K constraints).
 
-The trade playbook is the first end-to-end example that composes:
+### RegPack Integration (Chapter 20)
 
-- **Jurisdiction‑sharded zones** (export / import) with **lawpack overlays**
-- A **trade/obligation corridor** (trade instrument transitions)
-- A **settlement corridor** (e.g., SWIFT pacs.008)
-- **Proof bindings** that reference real-world evidence (sanctions checks, carrier events, payment rails)
-- A deterministic **generator** + strict **check gate** for CI (no byte drift)
+Dynamic regulatory state management including sanctions list integration (OFAC/EU/UN), license registry, compliance calendar, and regulator profile management.
 
-**Playbook home:** `docs/examples/trade/` (start with `docs/examples/trade/README.md`).
+### Smart Asset Receipt Chains
 
-#### Dashboard
+Non-blockchain state progression with cryptographic integrity guarantees per MASS Protocol v0.2. Supports offline operation (Theorem 16.1), identity immutability (Theorem 29.1), and receipt chain non-repudiation (Theorem 29.2).
 
-| Operator goal | Command | Output / invariant |
-|---|---|---|
-| Generate the playbook deterministically (writes canonical JSON) | `python tools/dev/generate_trade_playbook.py --mode generate` | `docs/examples/trade/dist/…` regenerated using canonical bytes |
-| CI gate: verify playbook is already canonical (no writes) | `python tools/dev/generate_trade_playbook.py --mode check` | **FAILS** on any drift (missing files, non-canonical bytes, changed JSON) |
-| Verify the artifact graph closure (when ArtifactRefs are present) | `python -m tools.msez artifact graph verify --path docs/examples/trade/dist/manifest.playbook.root.json --strict --json` | Ensures every referenced artifact exists and every digest matches |
-| Export a portable witness bundle (offline audit packet) | `python -m tools.msez artifact graph verify --path docs/examples/trade/dist/manifest.playbook.root.json --bundle /tmp/trade.witness.zip --strict --json` | One zip containing receipts/checkpoints/proofs + manifest |
+### Agentic Execution Primitives (Chapter 17)
 
-#### Non‑negotiable invariants
+15 trigger types across regulatory, arbitration, corridor, and asset lifecycle domains. Policy framework with standard policies library for autonomous asset behavior.
 
-| Invariant | What it prevents | Enforced by |
-|---|---|---|
-| **did:key Ed25519 proofs are valid** | Spoofed signers / unverifiable receipts | `tools.vc.verify_credential` (strict proof validation + signature verification) |
-| **Canonical bytes (JCS) everywhere** | Silent drift between generators / languages | `tools.lawpack.jcs_canonicalize` + `--check-canonical-bytes` gates |
-| **Byte‑for‑byte determinism in CI** | “Digest matches but bytes changed” class of bugs | `generate_trade_playbook.py --mode check` (no writes) |
+## Version History
 
-```text
-(signing input)  object without proof
-      |
-      v
-JCS canonical bytes  ---> SHA-256 digest(s) / next_root
-      |
-      v
-Ed25519 signature --> proof.jws (base64url; 64‑byte signature)
-```
+### v0.4.41 — Arbitration System + RegPack Integration (Current)
 
-#### Operator flow
+- **Arbitration System (Chapter 26)**: Institution registry, dispute filing protocol, ruling VCs with automatic enforcement, 9 arbitration transition kinds, πruling ZK circuit
+- **RegPack Integration (Chapter 20)**: Dynamic regulatory state snapshots, sanctions list integration, license registry, compliance calendar
+- **Agentic Execution Primitives (Chapter 17)**: 15 trigger types, policy framework, standard policies library
+- **MASS Protocol Compliance**: Protocol 14.1/16.1/18.1, Theorems 16.1/29.1/29.2 verification functions
+- **Test coverage**: 264 tests passing
 
-```mermaid
-flowchart LR
-  %% Operator-owned intent (human-authored)
-  subgraph SRC[docs/examples/trade/src]
-    ZEX[Exporter zone intent\n(zone.yaml + overlays)]
-    ZIM[Importer zone intent\n(zone.yaml + overlays)]
-  end
+### v0.4.40 — Production Operator Ergonomics
 
-  %% Deterministic build outputs
-  subgraph DIST[docs/examples/trade/dist]
-    ROOT[manifest.playbook.root.json\n(root of artifact graph)]
-    CAS[artifacts/\n(content-addressed store)]
-  end
+- Trade instrument kit (Invoice, Bill of Lading, Letter of Credit)
+- Corridor-of-corridors settlement plans with deterministic netting
+- Strict verification semantics and bughunt gates
 
-  %% Corridors and anchoring (conceptual wiring)
-  subgraph OBL[Obligation corridor\n(invoice/BOL/LC transitions)]
-    OR[receipts → checkpoint head]
-  end
-  subgraph SET[Settlement corridor\nSWIFT pacs.008 settlement]
-    SR[receipts → checkpoint head]
-  end
+### v0.4.39 — Cross-corridor Settlement Anchoring
 
-  %% Evidence bindings
-  E1[Sanctions screening evidence]
-  E2[Carrier events evidence]
-  E3[Payment rail evidence]
+- Settlement anchor schema + typed attachments
+- Proof binding primitives
+- Trade instrument lifecycle transitions
 
-  %% Relationships
-  ZEX --> ROOT
-  ZIM --> ROOT
-  ROOT --> CAS
-
-  ZEX --> OBL
-  ZIM --> OBL
-  OBL -->|settlement anchor\n(obligation→settlement)| SET
-  E1 -->|proof-binding| OBL
-  E2 -->|proof-binding| OBL
-  E3 -->|proof-binding| SET
-  SET --> CAS
-  OBL --> CAS
-```
-
-> Today, the generator/check gate ships a minimal root and the jurisdiction‑sharded zone intents.
-> The next iterations extend the same deterministic/canonical pattern to corridors, receipts, checkpoints,
-> settlement plans, anchors, and proof bindings.
+See `governance/CHANGELOG.md` for complete version history.
 
 ## Repository conventions
 
-- **Normative keywords**: “MUST/SHOULD/MAY” are interpreted per RFC 2119 + RFC 8174 (see `spec/00-terminology.md`).
-- **Versioning**: semver for modules and profiles; “stack spec” has its own version.
+- **Normative keywords**: "MUST/SHOULD/MAY" are interpreted per RFC 2119 + RFC 8174 (see `spec/00-terminology.md`).
+- **Versioning**: semver for modules and profiles; "stack spec" has its own version.
 - **Content licensing**: see `LICENSES/` and per-module `module.yaml`.
 
 ## Status
 
-Skeleton created: 2025-12-21.
+**Current version:** v0.4.41 (January 2026)
 
-**Next version gate (v0.4.40):** `docs/roadmap/PREREQS_TO_SHIP_V0.40.md`
+**Next version gate (v0.4.42):** `docs/roadmap/ROADMAP_V042_AGENTIC_FRAMEWORK.md`
 
-## Added in expanded skeleton
-
-- Akoma Ntoso Act/Regulation/Bylaw templates (`modules/legal/akn-templates/`)
-- Licensing scaffolding pack (`modules/licensing/*`)
-- Corridor manifests + playbooks for SWIFT, stablecoin settlement, open banking (`modules/corridors/*`)
-- Operational modules: regulator console and data classification (`modules/operational/*`)
-- Documentation guides (`docs/`) and CI workflow (`.github/workflows/ci.yml`)
-- Foundational upgrade / fortification plan (`docs/fortification/foundational-upgrade-v0.4.14.md`) (v0.4.14)
-- High-leverage integrity upgrades (`docs/fortification/high-leverage-v0.4.15.md`) (v0.4.15)
-- Watcher attestation aggregation (`watcher-compare`) for instant fork alarms (v0.4.16)
-- Watcher quorum policy + compact head commitments (v0.4.17)
-- Fork-aware receipt verification + transition envelopes + fork resolutions + anchors/finality scaffolds (v0.4.18)
-- Lifecycle state machine + evidence-gated transitions (HALT/RESUME) (v0.4.19)
-- Fork resolution + lifecycle unit tests (v0.4.19)
-- CLI signing hardening + regression tests for watcher-attest/fork-alarm/availability-attest (v0.4.20)
-- Receipt-level fork forensics (`corridor state fork-inspect`) (v0.4.21)
-- Transitive artifact completeness (`--transitive-require-artifacts`) now treats *commitment roots* (e.g., transition type registries) as closure seeds and follows nested `ArtifactRef`s inside referenced artifacts (rulesets, attached VCs, checkpoints, etc.), covering receipt-level `zk.*` commitments as well (v0.4.24).
-- Artifact graph closure verifier (`msez artifact graph verify`) now supports machine-readable edge lists (`--emit-edges`), self-contained witness bundles (`--bundle`), and direct verification using a witness bundle as an offline artifact store (`--from-bundle`) in addition to strict on-disk digest recomputation (`--strict`) to detect tampered CAS entries (v0.4.27).
-- Optional witness-bundle provenance attestations:
-  - `msez artifact bundle attest <bundle.zip> ...` emits a signed VC committing to `SHA256(JCS(manifest.json))`
-  - `msez artifact bundle verify <bundle.zip> --vc <attestation.vc.json>` checks digest match + signature validity (v0.4.28).
-- Performance harness tests (pytest marker `perf`; run with `MSEZ_RUN_PERF=1`) (v0.4.21)
-- Transition type stubs for SWIFT pacs.008 and Circle USDC transfer + reference adapters (`tools/integrations/`) (v0.4.21)
-- Trust anchor enforcement fixes (`--enforce-trust-anchors` now functional) (v0.4.21)
-
-
-## Tooling commands (v0.4+)
-
-```bash
-# corridor cryptographic verification (VCs + agreements)
-python -m tools.msez corridor verify modules/corridors/swift
-python -m tools.msez corridor status modules/corridors/swift
-python -m tools.msez corridor availability-attest modules/corridors/swift --issuer did:example:operator --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/availability.vc.json
-python -m tools.msez corridor availability-verify modules/corridors/swift --vcs /tmp/availability.vc.json
-
-# corridor state channels (verifiable receipts)
-python -m tools.msez corridor state genesis-root modules/corridors/swift
-python -m tools.msez corridor state receipt-init modules/corridors/swift   --sequence 0   --transition docs/examples/state/noop.transition.json   --sign --key docs/examples/keys/dev.ed25519.jwk   --out /tmp/receipt0.json
-python -m tools.msez corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json
-python -m tools.msez corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json --require-artifacts
-python -m tools.msez corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json --transitive-require-artifacts
-python -m tools.msez corridor state checkpoint modules/corridors/swift --receipts /tmp/receipt0.json --issuer did:example:zone --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/checkpoint.json
-python -m tools.msez corridor state checkpoint-audit modules/corridors/swift --checkpoint /tmp/checkpoint.json
-python -m tools.msez corridor state verify modules/corridors/swift --receipts /tmp/receipt0.json --checkpoint /tmp/checkpoint.json --enforce-checkpoint-policy
-python -m tools.msez corridor state watcher-attest modules/corridors/swift --checkpoint /tmp/checkpoint.json --issuer did:example:watcher --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/watcher.vc.json
-python -m tools.msez corridor state fork-alarm modules/corridors/swift --receipt-a /tmp/receipt0.json --receipt-b /tmp/receipt0_fork.json --issuer did:example:watcher --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/fork-alarm.vc.json
-
-# smart assets (non-blockchain, asset-local receipt chains)
-python -m tools.msez asset genesis-init --name "Example Asset" --creator did:example:issuer --out /tmp/asset.genesis.json
-python -m tools.msez asset state genesis-root --asset-id <asset_id>
-python -m tools.msez asset state receipt-init --asset-id <asset_id> --sequence 0 --prev-root genesis --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/asset.receipt0.json
-python -m tools.msez asset state verify --asset-id <asset_id> --receipts /tmp/asset.receipt0.json
-python -m tools.msez asset state checkpoint --asset-id <asset_id> --receipts /tmp/asset.receipt0.json --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/asset.checkpoint.json
-python -m tools.msez asset state inclusion-proof --asset-id <asset_id> --receipts /tmp/asset.receipt0.json --sequence 0 --checkpoint /tmp/asset.checkpoint.json --out /tmp/asset.proof0.json
-python -m tools.msez asset state verify-inclusion --asset-id <asset_id> --receipt /tmp/asset.receipt0.json --proof /tmp/asset.proof0.json --checkpoint /tmp/asset.checkpoint.json
-
-# transition type registries + lock snapshots (v0.4.5+; CAS v0.4.7+)
-python -m tools.msez registry transition-types-lock registries/transition-types.yaml
-python -m tools.msez registry transition-types-store registries/transition-types.lock.json
-python -m tools.msez registry transition-types-resolve a27a1cd5ccc438f4c8962bf4c85345ce5688ba7c5d53aa82974640edcb6a280a
-
-# generic artifact CAS (dist/artifacts/<type>/<digest>.*) (v0.4.7+; schema/vc/checkpoint/proof-key types v0.4.8+; blob type v0.4.9+)
-python -m tools.msez artifact resolve transition-types a27a1cd5ccc438f4c8962bf4c85345ce5688ba7c5d53aa82974640edcb6a280a
-python -m tools.msez artifact index-rulesets
-python -m tools.msez artifact index-lawpacks
-python -m tools.msez artifact index-schemas
-python -m tools.msez artifact index-vcs
-
-# artifact closure graph verification (missing nodes, depth, digest integrity) (v0.4.26+)
-python -m tools.msez artifact graph verify transition-types a27a1cd5ccc438f4c8962bf4c85345ce5688ba7c5d53aa82974640edcb6a280a --strict --json
-python -m tools.msez artifact graph verify --path docs/examples/state/noop.transition.json --json
-
-# artifact closure graph edges + witness bundle (offline transfer) (v0.4.26+)
-python -m tools.msez artifact graph verify transition-types a27a1cd5ccc438f4c8962bf4c85345ce5688ba7c5d53aa82974640edcb6a280a --emit-edges --json
-python -m tools.msez artifact graph verify transition-types a27a1cd5ccc438f4c8962bf4c85345ce5688ba7c5d53aa82974640edcb6a280a --bundle /tmp/msez-witness.zip --strict --json
-python -m tools.msez artifact graph verify transition-types a27a1cd5ccc438f4c8962bf4c85345ce5688ba7c5d53aa82974640edcb6a280a --bundle /tmp/msez-witness-small.zip --bundle-max-bytes 5000000 --strict --json
-
-# verify directly from a witness bundle (no manual extraction) (v0.4.27+)
-python -m tools.msez artifact graph verify --from-bundle /tmp/msez-witness.zip --strict --json
-
-# attest (sign) a witness bundle manifest (provenance / chain-of-custody) (v0.4.28+)
-python -m tools.msez artifact bundle attest /tmp/msez-witness.zip --issuer did:example:watcher --sign --key docs/examples/keys/dev.ed25519.jwk --out /tmp/msez-witness.attestation.vc.json
-python -m tools.msez artifact bundle verify /tmp/msez-witness.zip --vc /tmp/msez-witness.attestation.vc.json --json
-
-# sign and verify VCs (for co-signing / governance flows)
-python -m tools.msez vc keygen --out /tmp/my.ed25519.jwk
-python -m tools.msez vc sign docs/examples/vc/unsigned.corridor-definition.json   --key docs/examples/keys/dev.ed25519.jwk --out /tmp/signed.definition.json
-python -m tools.msez vc verify /tmp/signed.definition.json
-
-# lawpacks (v0.4.1+): ingest a jurisdiction corpus into a content-addressed lawpack
-python -m tools.msez law ingest modules/legal/jurisdictions/us/ca/civil --as-of-date 2025-01-01 --fetch
-```
+v0.4.42 will complete the Agentic Execution Framework with environment monitors, policy evaluation, and CLI commands.
 
 ## Development
 
@@ -238,16 +130,12 @@ python -m tools.msez fetch-akoma-schemas
 
 # validate all modules
 python -m tools.msez validate --all-modules
-
-# render an Akoma template to HTML/PDF
-python -m tools.msez render modules/legal/akn-templates/src/akn/act.template.xml --pdf
-
-# generate a deterministic lockfile for a zone deployment
-python -m tools.msez lock jurisdictions/_starter/zone.yaml --out jurisdictions/_starter/stack.lock
-
-# build a reproducible bundle (applies overlays + renders templates)
-python -m tools.msez build --zone jurisdictions/_starter/zone.yaml --out dist/
-
-# publish rendered artifacts
-python -m tools.msez publish dist/bundle --out-dir dist/publish --pdf
 ```
+
+## Contributing
+
+See `CONTRIBUTING.md` for guidelines on submitting issues and pull requests.
+
+## License
+
+This project is licensed under the terms specified in `LICENSES/`. Individual modules may have additional licensing terms specified in their `module.yaml` files.

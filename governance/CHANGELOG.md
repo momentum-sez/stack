@@ -9,6 +9,78 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 - TBD
 
 
+## 0.4.41
+
+### Added
+- **Arbitration System (Chapter 26)**: Complete programmatic dispute resolution infrastructure:
+  - Institution registry with DIFC-LCIA, SIAC, AIFC-IAC, ICC profiles
+  - Dispute filing protocol with evidence packages per Definition 26.4/26.5
+  - Arbitration ruling VCs with automatic enforcement per Definition 26.6
+  - 9 arbitration transition kinds including EscrowRelease/EscrowForfeit per Definition 26.7
+  - πruling ZK circuit schema (~35K constraints) per Definition 26.9
+  - New schemas: `arbitration.*.schema.json` (10 schemas)
+- **RegPack Integration (Chapter 20)**: Dynamic regulatory state management:
+  - Sanctions list integration (OFAC/EU/UN) with SanctionsChecker
+  - License registry and compliance calendar primitives
+  - Regulator profile management
+  - New schemas: `regpack.*.schema.json` (9 schemas)
+- **Agentic Execution Primitives (Chapter 17)**:
+  - AgenticTriggerType enum with 15 trigger categories
+  - ImpactLevel, LicenseStatus, RulingDisposition enums
+  - AgenticPolicy framework with STANDARD_POLICIES library
+- **MASS Protocol Compliance**:
+  - Protocol 14.1 (cross-jurisdiction transfer)
+  - Protocol 16.1 (fork resolution with 4 strategies)
+  - Protocol 18.1 (artifact graph verification)
+  - Theorem 16.1 (offline operation) verification
+  - Theorem 29.1 (identity immutability) verification
+  - Theorem 29.2 (receipt chain non-repudiation) verification
+- New `tools/mass_primitives.py` (1,630 lines): Complete MASS Protocol formal definitions
+- New `tools/arbitration.py` (1,066 lines): Arbitration system implementation
+- New `tools/regpack.py` (612 lines): RegPack implementation
+
+### Changed
+- Test coverage expanded to 264 tests
+- Schema count increased to 104
+
+### Version
+- Stack spec version bumped to `0.4.41` and all profiles updated.
+
+
+## 0.4.40
+
+### Added
+- **Trade Instrument Kit**: Canonical schemas for Invoice, Bill of Lading, Letter of Credit
+  - Party and amount schemas
+  - Transition payload schemas and rulesets for invoice/BOL/LC lifecycle transitions
+  - Registered transition kinds in transition-types registry
+- **Corridor-of-corridors settlement plans**: MSEZCorridorSettlementPlan schema with deterministic netting and settlement legs
+  - CLI: `settlement-plan-init`, `settlement-plan-verify`
+  - Attach settlement plans to corridor receipts
+- **Strict verification semantics**: Bughunt gates for production operator ergonomics
+
+### Changed
+- Registry hardening: regenerated `transition-types.lock.json` for trade + settlement primitives
+- Operator correctness improvements
+
+### Version
+- Stack spec version bumped to `0.4.40` and starter profiles updated.
+
+
+## 0.4.39
+
+### Added
+- **Cross-corridor settlement anchoring**: MSEZ settlement-anchor schema + typed attachment
+  - CLI: `settlement-anchor-init`, `settlement-anchor-verify`
+  - Attach anchors to corridor receipts for externalized settlement finality
+- **Proof binding primitives**: MSEZ proof-binding schema + typed attachment
+  - CLI: `proof-binding-init`, `proof-binding-verify`
+  - Enable replay-resistant binding of external proofs/VCs/blobs to corridor/asset commitments
+
+### Version
+- Stack spec version bumped to `0.4.39` and starter profiles updated.
+
+
 ## 0.4.38
 
 ### Added

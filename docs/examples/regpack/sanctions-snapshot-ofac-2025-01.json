@@ -1,5 +1,5 @@
 {
-  "$schema": "https://msez.momentum.xyz/schemas/regpack.sanctions-snapshot.schema.json",
+  "$schema": "https://msez.momentum.inc/schemas/regpack.sanctions-snapshot.schema.json",
   "snapshot_id": "ofac-sdn-2025-01-15",
   "source": "OFAC-SDN",
   "publication_date": "2025-01-15T00:00:00Z",

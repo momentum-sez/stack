@@ -1,5 +1,5 @@
 {
-  "$schema": "https://msez.momentum.xyz/schemas/agentic.scenario.schema.json",
+  "$schema": "https://msez.momentum.inc/schemas/agentic.scenario.schema.json",
   "scenario_id": "scenario:sanctions-halt:2025-001",
   "title": "Automatic Asset Halt on Sanctions Match",
   "description": "End-to-end example of agentic execution: sanctions monitor detects match, policy evaluates, action schedules and executes asset halt",

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Elite-tier deep verification tests for v0.4.42.
+Elite-tier deep verification tests for v0.4.43.
 
 These tests verify:
 - Schema consistency and completeness

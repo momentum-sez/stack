@@ -35,7 +35,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 # Constants
 # ─────────────────────────────────────────────────────────────────────────────
 
-STACK_SPEC_VERSION = "0.4.42"
+STACK_SPEC_VERSION = "0.4.43"
 REGPACK_VERSION = "1.0"
 
 NAMESPACE_REGPACK = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c9")
@@ -321,9 +321,11 @@ class SanctionsChecker:
                 self._name_index[norm_name] = []
             self._name_index[norm_name].append(entry)
             
-            # Index aliases
+            # Index aliases - BUG FIX: Check both 'name' and 'alias' keys for compatibility
             for alias in entry.aliases:
-                norm_alias = self._normalize(alias.get("alias", ""))
+                # Try 'name' first (OFAC format), then 'alias' for backward compatibility
+                alias_value = alias.get("name") or alias.get("alias", "")
+                norm_alias = self._normalize(alias_value)
                 if norm_alias and norm_alias not in self._name_index:
                     self._name_index[norm_alias] = []
                 if norm_alias:
@@ -349,10 +351,16 @@ class SanctionsChecker:
         query = self._normalize(query)
         target = self._normalize(target)
         
+        # BUG FIX: Empty query should never match
+        if not query or not target:
+            return 0.0
+        
         if query == target:
             return 1.0
         
-        if query in target or target in query:
+        # BUG FIX: Only check substring if query has meaningful length
+        # Empty string is substring of everything in Python
+        if len(query) >= 3 and (query in target or target in query):
             return 0.9
         
         # Simple token overlap

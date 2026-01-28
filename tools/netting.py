@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Multi-Corridor Netting Engine (v0.4.42).
+"""Multi-Corridor Netting Engine (v0.4.43).
 
 This module implements the corridor-of-corridors netting primitive:
 - Multi-corridor obligation aggregation
@@ -244,7 +244,12 @@ class NettingEngine:
         self,
         net_positions: List[NetPosition],
     ) -> List[NetPosition]:
-        """Apply party constraints and cap net positions if needed."""
+        """
+        Apply party constraints and cap net positions if needed.
+        
+        CRITICAL FIX: Previously only logged constraints but never applied them.
+        Now actually caps net positions and returns adjusted values.
+        """
         adjusted: List[NetPosition] = []
         
         for np in net_positions:
@@ -252,14 +257,23 @@ class NettingEngine:
             if party_constraint:
                 max_net = party_constraint.max_net_position.get(np.currency)
                 if max_net is not None and abs(np.net_amount) > max_net:
+                    # CRITICAL FIX: Actually apply the cap, not just log it
+                    capped_net = max_net if np.net_amount > 0 else -max_net
                     self._log_trace("constraint_applied", {
                         "party_id": np.party_id,
                         "currency": np.currency,
                         "original_net": str(np.net_amount),
-                        "capped_net": str(max_net if np.net_amount > 0 else -max_net),
+                        "capped_net": str(capped_net),
                     })
-                    # Note: In real implementation, excess would need redistribution
-                    # For now, we just log it
+                    # Create new NetPosition with capped amount
+                    adjusted.append(NetPosition(
+                        party_id=np.party_id,
+                        currency=np.currency,
+                        gross_receivable=np.gross_receivable,
+                        gross_payable=np.gross_payable,
+                        net_amount=capped_net,
+                    ))
+                    continue
             adjusted.append(np)
         
         return adjusted
@@ -392,13 +406,14 @@ class NettingEngine:
                     payer.party_id, receiver.party_id, ccy, leg_seq
                 )
                 
-                # Find obligation refs (simplified: all obligations involving both parties)
+                # Find obligation refs that this leg settles
+                # CRITICAL FIX: Only match obligations where payer is debtor and payee is creditor
+                # Previous logic incorrectly also matched reversed obligations
                 obl_refs = [
                     o.obligation_id for o in self.obligations
-                    if o.currency.code == ccy and (
-                        (o.debtor.party_id == payer.party_id and o.creditor.party_id == receiver.party_id) or
-                        (o.creditor.party_id == payer.party_id and o.debtor.party_id == receiver.party_id)
-                    )
+                    if o.currency.code == ccy and 
+                       o.debtor.party_id == payer.party_id and 
+                       o.creditor.party_id == receiver.party_id
                 ]
                 
                 leg = SettlementLeg(

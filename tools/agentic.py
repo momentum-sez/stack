@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Agentic Execution Framework (v0.4.42)
+Agentic Execution Framework (v0.4.43)
 
 MASS Protocol v0.2 Chapter 17 — Agentic Execution
 
@@ -148,10 +148,18 @@ class EnvironmentMonitor(ABC):
         self.status = MonitorStatus.STOPPED
         self.last_poll_time: Optional[datetime] = None
         self.last_state: Optional[Dict[str, Any]] = None
+        self.last_error: Optional[str] = None
+        self.last_error_time: Optional[datetime] = None
         self.consecutive_errors = 0
         self._listeners: List[Callable[[AgenticTrigger], None]] = []
         self._poll_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
+    
+    def _record_error(self, error: Exception, context: str = "") -> None:
+        """Record an error for debugging and monitoring purposes."""
+        self.consecutive_errors += 1
+        self.last_error = f"{context}: {type(error).__name__}: {error}" if context else f"{type(error).__name__}: {error}"
+        self.last_error_time = datetime.now(timezone.utc)
         
     @property
     def monitor_id(self) -> str:
@@ -243,6 +251,51 @@ class EnvironmentMonitor(ABC):
         if self.status == MonitorStatus.PAUSED:
             self.status = MonitorStatus.RUNNING
     
+    def recover(self) -> bool:
+        """
+        Attempt to recover from ERROR state.
+        
+        CRITICAL FIX: Previously there was no way to recover from ERROR state.
+        This method resets error counters and attempts to resume normal operation.
+        
+        Returns True if recovery was successful.
+        """
+        if self.status != MonitorStatus.ERROR:
+            return False
+        
+        # Reset error counters
+        self.consecutive_errors = 0
+        
+        # Attempt a single poll to verify recovery
+        try:
+            new_state = self.poll()
+            if new_state is not None:
+                self.last_state = new_state
+                self.last_poll_time = datetime.now(timezone.utc)
+                self.status = MonitorStatus.RUNNING
+                return True
+            else:
+                # Poll returned None but didn't throw - stay in error
+                return False
+        except Exception as e:
+            # Poll threw exception - recovery failed, record for debugging
+            self._record_error(e, "recover_attempt")
+            return False
+    
+    def reset(self) -> None:
+        """
+        Full reset of monitor state.
+        
+        Stops the monitor, clears all state, and resets to STOPPED status.
+        """
+        self.stop()
+        self.last_state = None
+        self.last_poll_time = None
+        self.last_error = None
+        self.last_error_time = None
+        self.consecutive_errors = 0
+        self._listeners.clear()
+    
     def _poll_loop(self) -> None:
         """Internal polling loop."""
         while not self._stop_event.is_set():
@@ -269,13 +322,15 @@ class EnvironmentMonitor(ABC):
             self._stop_event.wait(timeout=self.config.poll_interval_seconds)
     
     def get_status(self) -> Dict[str, Any]:
-        """Get current monitor status."""
+        """Get current monitor status including error tracking."""
         return {
             "monitor_id": self.monitor_id,
             "monitor_type": self.monitor_type,
             "status": self.status.value,
             "last_poll_time": self.last_poll_time.isoformat() if self.last_poll_time else None,
             "consecutive_errors": self.consecutive_errors,
+            "last_error": self.last_error,
+            "last_error_time": self.last_error_time.isoformat() if self.last_error_time else None,
             "config": self.config.to_dict(),
         }
 
@@ -330,6 +385,7 @@ class SanctionsListMonitor(EnvironmentMonitor):
                 "entity_results": results,
             }
         except Exception as e:
+            self._record_error(e, "SanctionsListMonitor.poll")
             return None
     
     def detect_changes(
@@ -448,7 +504,8 @@ class LicenseStatusMonitor(EnvironmentMonitor):
                 "licenses": results,
                 "poll_time": now.isoformat(),
             }
-        except Exception:
+        except Exception as e:
+            self._record_error(e, "LicenseExpiryMonitor.poll")
             return None
     
     def detect_changes(
@@ -562,7 +619,8 @@ class CorridorStateMonitor(EnvironmentMonitor):
                 "corridors": dict(self._tracked_corridors),
                 "poll_time": datetime.now(timezone.utc).isoformat(),
             }
-        except Exception:
+        except Exception as e:
+            self._record_error(e, "CorridorStateMonitor.poll")
             return None
     
     def detect_changes(
@@ -702,7 +760,8 @@ class GuidanceUpdateMonitor(EnvironmentMonitor):
                 "guidance": results,
                 "poll_time": now.isoformat(),
             }
-        except Exception:
+        except Exception as e:
+            self._record_error(e, "RegulatoryGuidanceMonitor.poll")
             return None
     
     def _is_effective(self, guidance_data: Dict[str, Any], now: datetime) -> bool:
@@ -798,7 +857,8 @@ class CheckpointDueMonitor(EnvironmentMonitor):
                 "assets": dict(self._tracked_assets),
                 "poll_time": now.isoformat(),
             }
-        except Exception:
+        except Exception as e:
+            self._record_error(e, "AssetCheckpointMonitor.poll")
             return None
     
     def detect_changes(
@@ -956,33 +1016,49 @@ class PolicyEvaluator:
     The evaluator guarantees determinism per Theorem 17.1:
     Given identical trigger events and policy state, evaluation
     produces identical results.
+    
+    Thread Safety:
+    This class is thread-safe. All mutations to internal state
+    are protected by locks.
     """
     
-    def __init__(self):
+    def __init__(self, max_audit_trail_size: int = 10000):
         self._policies: Dict[str, AgenticPolicy] = {}
         self._scheduled_actions: Dict[str, ScheduledAction] = {}
         self._audit_trail: List[AuditTrailEntry] = []
         self._action_handlers: Dict[TransitionKind, Callable] = {}
+        
+        # Thread safety locks
+        self._policy_lock = threading.RLock()
+        self._action_lock = threading.RLock()
+        self._audit_lock = threading.RLock()
+        
+        # Audit trail size limit to prevent memory leaks
+        self._max_audit_trail_size = max_audit_trail_size
         
         # Load standard policies
         for policy_id, policy in STANDARD_POLICIES.items():
             self._policies[policy_id] = policy
     
     def register_policy(self, policy: AgenticPolicy) -> None:
-        """Register a policy for evaluation."""
-        self._policies[policy.policy_id] = policy
+        """Register a policy for evaluation. Thread-safe."""
+        with self._policy_lock:
+            self._policies[policy.policy_id] = policy
     
     def unregister_policy(self, policy_id: str) -> None:
-        """Unregister a policy."""
-        self._policies.pop(policy_id, None)
+        """Unregister a policy. Thread-safe."""
+        with self._policy_lock:
+            self._policies.pop(policy_id, None)
     
     def get_policy(self, policy_id: str) -> Optional[AgenticPolicy]:
-        """Get a registered policy."""
-        return self._policies.get(policy_id)
+        """Get a registered policy. Thread-safe."""
+        with self._policy_lock:
+            return self._policies.get(policy_id)
     
     def list_policies(self) -> List[AgenticPolicy]:
-        """List all registered policies."""
-        return list(self._policies.values())
+        """List all registered policies. Thread-safe."""
+        with self._policy_lock:
+            return list(self._policies.values())
     
     def register_action_handler(
         self, 
@@ -1004,6 +1080,8 @@ class PolicyEvaluator:
         Theorem 17.1 (Agentic Determinism):
         This evaluation is deterministic given identical inputs.
         
+        Thread-safe: Uses locks to protect shared state.
+        
         Returns list of evaluation results for matching policies.
         """
         environment = environment or {}
@@ -1017,10 +1095,12 @@ class PolicyEvaluator:
             trigger_data=trigger.to_dict(),
         )
         
+        # Get a snapshot of policies under lock for thread safety
+        with self._policy_lock:
+            policy_snapshot = [(pid, self._policies[pid]) for pid in sorted(self._policies.keys())]
+        
         # Evaluate against each policy in deterministic order
-        for policy_id in sorted(self._policies.keys()):
-            policy = self._policies[policy_id]
-            
+        for policy_id, policy in policy_snapshot:
             matched = policy.evaluate_condition(trigger, environment)
             
             result = PolicyEvaluationResult(
@@ -1054,7 +1134,7 @@ class PolicyEvaluator:
         delay_seconds: int = 0
     ) -> List[ScheduledAction]:
         """
-        Schedule actions for matched policy evaluations.
+        Schedule actions for matched policy evaluations. Thread-safe.
         
         Returns list of scheduled actions.
         """
@@ -1074,7 +1154,8 @@ class PolicyEvaluator:
                     execute_at=execute_at.isoformat(),
                 )
                 
-                self._scheduled_actions[action.action_id] = action
+                with self._action_lock:
+                    self._scheduled_actions[action.action_id] = action
                 scheduled.append(action)
                 
                 # Record in audit trail
@@ -1088,18 +1169,19 @@ class PolicyEvaluator:
     
     def execute_action(self, action_id: str) -> Tuple[bool, Optional[str]]:
         """
-        Execute a scheduled action.
+        Execute a scheduled action. Thread-safe.
         
         Returns (success, error_message).
         """
-        action = self._scheduled_actions.get(action_id)
-        if not action:
-            return False, f"Action not found: {action_id}"
-        
-        if action.status not in ("pending", "failed"):
-            return False, f"Action not executable in status: {action.status}"
-        
-        action.status = "executing"
+        with self._action_lock:
+            action = self._scheduled_actions.get(action_id)
+            if not action:
+                return False, f"Action not found: {action_id}"
+            
+            if action.status not in ("pending", "failed"):
+                return False, f"Action not executable in status: {action.status}"
+            
+            action.status = "executing"
         
         try:
             handler = self._action_handlers.get(action.action_type)
@@ -1167,9 +1249,10 @@ class PolicyEvaluator:
         limit: int = 100
     ) -> List[AuditTrailEntry]:
         """
-        Get audit trail entries with optional filtering.
+        Get audit trail entries with optional filtering. Thread-safe.
         """
-        entries = self._audit_trail
+        with self._audit_lock:
+            entries = list(self._audit_trail)  # Copy to avoid concurrent modification
         
         if asset_id:
             entries = [e for e in entries if e.asset_id == asset_id]
@@ -1188,7 +1271,12 @@ class PolicyEvaluator:
         action_data: Optional[Dict[str, Any]] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Add an entry to the audit trail."""
+        """
+        Add an entry to the audit trail. Thread-safe.
+        
+        Implements circular buffer behavior when max_audit_trail_size is exceeded
+        to prevent unbounded memory growth.
+        """
         entry = AuditTrailEntry(
             entry_id=self._generate_id("audit"),
             entry_type=entry_type,
@@ -1199,11 +1287,18 @@ class PolicyEvaluator:
             action_data=action_data,
             metadata=metadata,
         )
-        self._audit_trail.append(entry)
+        
+        with self._audit_lock:
+            self._audit_trail.append(entry)
+            # Prevent unbounded growth - keep only recent entries
+            if len(self._audit_trail) > self._max_audit_trail_size:
+                # Remove oldest 10% when limit exceeded
+                trim_count = self._max_audit_trail_size // 10
+                self._audit_trail = self._audit_trail[trim_count:]
     
     def _generate_id(self, prefix: str) -> str:
-        """Generate a unique ID."""
-        return f"{prefix}:{uuid.uuid4().hex[:16]}"
+        """Generate a unique ID with full UUID for collision resistance."""
+        return f"{prefix}:{uuid.uuid4().hex}"
 
 
 # =============================================================================
@@ -1355,15 +1450,15 @@ class AgenticExecutionEngine:
 
 
 # =============================================================================
-# EXTENDED STANDARD POLICIES (v0.4.42)
+# EXTENDED STANDARD POLICIES (v0.4.43)
 # =============================================================================
 
-# Extend STANDARD_POLICIES with v0.4.42 additions
+# Extend STANDARD_POLICIES with v0.4.43 additions
 EXTENDED_POLICIES = {
     # From v0.4.41
     **STANDARD_POLICIES,
     
-    # v0.4.42 additions
+    # v0.4.43 additions
     "sanctions_freeze": AgenticPolicy(
         policy_id="sanctions_freeze",
         trigger_type=AgenticTriggerType.SANCTIONS_LIST_UPDATE,

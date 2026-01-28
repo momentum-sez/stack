@@ -188,7 +188,8 @@ class TestMoney:
         
         data = money.to_dict()
         
-        assert data["amount"] == 250000.0
+        # Money.to_dict() returns string for Decimal precision preservation
+        assert data["amount"] == "250000"
         assert data["currency"] == "USD"
     
     def test_money_from_dict(self):
@@ -217,7 +218,8 @@ class TestClaim:
         
         assert data["claim_id"] == "claim-001"
         assert data["claim_type"] == "breach_of_contract"
-        assert data["amount"]["amount"] == 250000.0
+        # Money.to_dict() returns string for Decimal precision preservation
+        assert data["amount"]["amount"] == "250000"
 
 
 class TestDisputeRequest:
@@ -284,7 +286,8 @@ class TestOrder:
         assert data["order_id"] == "order-001"
         assert data["order_type"] == "monetary_damages"
         assert data["obligor"] == "did:respondent"
-        assert data["amount"]["amount"] == 175000.0
+        # Money.to_dict() returns string for Decimal precision preservation
+        assert data["amount"]["amount"] == "175000"
 
 
 class TestRuling:

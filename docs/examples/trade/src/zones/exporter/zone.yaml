@@ -8,7 +8,7 @@ jurisdiction_id: ae-dubai-difc
 zone_name: Trade Playbook Exporter Zone (Example: DIFC)
 profile:
   profile_id: org.momentum.msez.profile.trade-playbook
-  version: 0.4.42
+  version: 0.4.43
 
 # Jurisdiction stack = built-in "lawpack overlays" (federal → emirate → zone)
 jurisdiction_stack:

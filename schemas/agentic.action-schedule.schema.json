@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://msez.momentum.xyz/schemas/agentic.action-schedule.schema.json",
+  "$id": "https://msez.momentum.inc/schemas/agentic.action-schedule.schema.json",
   "title": "MSEZAgenticScheduledAction",
   "description": "A scheduled action resulting from policy evaluation",
   "type": "object",

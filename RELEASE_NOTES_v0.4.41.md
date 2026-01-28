@@ -273,7 +273,7 @@ v0.4.41's primitives provide the complete foundation.
 
 ## Contributors
 
-- Momentum Protocol Research Team
+- Momentum Research Team
 - MASS Protocol Specification Authors
 
 ---

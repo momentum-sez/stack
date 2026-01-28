@@ -1,0 +1,147 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://momentum.inc/schemas/phoenix/compliance-tensor.schema.json",
+  "title": "PHOENIX Compliance Tensor",
+  "description": "Multi-dimensional compliance state representation for Smart Assets across jurisdictions and domains",
+  "type": "object",
+  "required": ["cells", "commitment"],
+  "properties": {
+    "cells": {
+      "type": "object",
+      "description": "Sparse tensor cells keyed by coordinate string",
+      "additionalProperties": {
+        "$ref": "#/definitions/TensorCell"
+      }
+    },
+    "time_quantum_period": {
+      "type": "integer",
+      "description": "Period for time quantization in seconds",
+      "default": 86400,
+      "minimum": 1
+    },
+    "commitment": {
+      "$ref": "#/definitions/TensorCommitment"
+    }
+  },
+  "definitions": {
+    "ComplianceDomain": {
+      "type": "string",
+      "enum": ["aml", "kyc", "sanctions", "tax", "securities", "corporate", "custody", "data_privacy"],
+      "description": "Compliance domain categories"
+    },
+    "ComplianceState": {
+      "type": "string",
+      "enum": ["compliant", "non_compliant", "pending", "unknown", "exempt", "expired"],
+      "description": "Compliance state values following lattice ordering"
+    },
+    "AttestationRef": {
+      "type": "object",
+      "description": "Reference to an attestation justifying compliance state",
+      "required": ["attestation_id", "attestation_type", "issuer_did", "issued_at"],
+      "properties": {
+        "attestation_id": {
+          "type": "string",
+          "description": "Unique attestation identifier"
+        },
+        "attestation_type": {
+          "type": "string",
+          "description": "Type of attestation (e.g., kyc_verification)"
+        },
+        "issuer_did": {
+          "type": "string",
+          "pattern": "^did:",
+          "description": "DID of attestation issuer"
+        },
+        "issued_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO8601 issuance timestamp"
+        },
+        "expires_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Optional expiry timestamp"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA256 digest of attestation content"
+        }
+      }
+    },
+    "TensorCell": {
+      "type": "object",
+      "description": "A single cell in the compliance tensor",
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "$ref": "#/definitions/ComplianceState"
+        },
+        "attestations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AttestationRef"
+          },
+          "description": "Supporting attestations"
+        },
+        "determined_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this state was determined"
+        },
+        "reason_code": {
+          "type": ["string", "null"],
+          "description": "Reason code for the determination"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional metadata"
+        }
+      }
+    },
+    "TensorCommitment": {
+      "type": "object",
+      "description": "Cryptographic commitment to tensor state",
+      "required": ["root", "cell_count", "timestamp"],
+      "properties": {
+        "root": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Merkle root of tensor cells"
+        },
+        "cell_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of cells in tensor"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Commitment generation time"
+        },
+        "asset_ids": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Asset IDs in tensor"
+        },
+        "jurisdiction_ids": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Jurisdiction IDs in tensor"
+        },
+        "domains": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/ComplianceDomain"},
+          "description": "Domains in tensor"
+        },
+        "time_range": {
+          "type": "array",
+          "items": {"type": "integer"},
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "[min_quantum, max_quantum]"
+        }
+      }
+    }
+  }
+}

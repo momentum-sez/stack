@@ -35,7 +35,7 @@ from typing import Any, Dict, List, Optional, Tuple
 # Constants
 # ─────────────────────────────────────────────────────────────────────────────
 
-STACK_SPEC_VERSION = "0.4.42"
+STACK_SPEC_VERSION = "0.4.43"
 
 NAMESPACE_ARBITRATION = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430ca")
 
@@ -194,11 +194,41 @@ class Money:
     currency: str
     
     def to_dict(self) -> Dict[str, Any]:
-        return {"amount": float(self.amount), "currency": self.currency}
+        # CRITICAL FIX: Use string representation to preserve Decimal precision
+        # Converting Decimal to float causes precision loss (e.g., 0.1 + 0.2 != 0.3)
+        return {"amount": str(self.amount), "currency": self.currency}
     
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "Money":
         return cls(amount=Decimal(str(d["amount"])), currency=d["currency"])
+    
+    def __add__(self, other: "Money") -> "Money":
+        """Add two Money objects with same currency."""
+        if self.currency != other.currency:
+            raise ValueError(f"Cannot add different currencies: {self.currency} vs {other.currency}")
+        return Money(amount=self.amount + other.amount, currency=self.currency)
+    
+    def __sub__(self, other: "Money") -> "Money":
+        """Subtract two Money objects with same currency."""
+        if self.currency != other.currency:
+            raise ValueError(f"Cannot subtract different currencies: {self.currency} vs {other.currency}")
+        return Money(amount=self.amount - other.amount, currency=self.currency)
+    
+    def __mul__(self, factor: Decimal) -> "Money":
+        """Multiply Money by a factor."""
+        return Money(amount=self.amount * factor, currency=self.currency)
+    
+    def __eq__(self, other: object) -> bool:
+        """Check equality."""
+        if not isinstance(other, Money):
+            return False
+        return self.amount == other.amount and self.currency == other.currency
+    
+    def __lt__(self, other: "Money") -> bool:
+        """Less than comparison."""
+        if self.currency != other.currency:
+            raise ValueError(f"Cannot compare different currencies: {self.currency} vs {other.currency}")
+        return self.amount < other.amount
 
 
 @dataclass
@@ -508,9 +538,31 @@ class ArbitrationManager:
             created_at=self._deterministic_timestamp(),
         )
     
-    def verify_ruling_vc(self, ruling_vc: Dict[str, Any]) -> Tuple[bool, List[str]]:
-        """Verify an arbitration ruling VC."""
+    def verify_ruling_vc(self, ruling_vc: Dict[str, Any], verify_signature: bool = True) -> Tuple[bool, List[str]]:
+        """
+        Verify an arbitration ruling VC.
+        
+        Args:
+            ruling_vc: The ruling verifiable credential to verify
+            verify_signature: If True, verify cryptographic signature (default: True)
+            
+        Returns:
+            Tuple of (is_valid, list of error messages)
+        """
         errors = []
+        
+        # Verify cryptographic signature first (most important check)
+        if verify_signature:
+            try:
+                from tools.vc import verify_credential
+                results = verify_credential(ruling_vc)
+                if not results:
+                    errors.append("No proof found in ruling VC")
+                elif not any(r.ok for r in results):
+                    sig_errors = [r.error for r in results if r.error]
+                    errors.append(f"Signature verification failed: {'; '.join(sig_errors)}")
+            except Exception as e:
+                errors.append(f"Signature verification error: {e}")
         
         # Check type
         if "MSEZArbitrationRulingCredential" not in ruling_vc.get("type", []):
@@ -583,6 +635,105 @@ class ArbitrationManager:
             return True
         
         return False
+    
+    def ruling_to_trigger(self, ruling_vc: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Generate an agentic trigger from an arbitration ruling.
+        
+        This bridges arbitration rulings to the agentic execution system,
+        enabling automated enforcement of arbitration orders.
+        
+        Returns a trigger dict compatible with AgenticTrigger.
+        """
+        subject = ruling_vc.get("credentialSubject", {})
+        ruling = subject.get("ruling", {})
+        
+        # Extract order details for enforcement
+        orders = []
+        for order in ruling.get("orders", []):
+            orders.append({
+                "order_id": order.get("order_id"),
+                "order_type": order.get("order_type"),
+                "obligor": order.get("obligor"),
+                "obligee": order.get("obligee"),
+                "amount": order.get("amount"),
+                "enforcement_method": order.get("enforcement_method"),
+                "smart_asset_refs": order.get("smart_asset_refs", []),
+            })
+        
+        return {
+            "trigger_type": "ruling_received",
+            "data": {
+                "dispute_id": subject.get("dispute_id"),
+                "institution_id": subject.get("institution_id"),
+                "case_reference": subject.get("case_reference"),
+                "corridor_id": subject.get("corridor_id"),
+                "ruling_type": ruling.get("ruling_type"),
+                "disposition": ruling.get("disposition"),
+                "orders": orders,
+                "claimant_id": subject.get("parties", {}).get("claimant", {}).get("party_id"),
+                "respondent_id": subject.get("parties", {}).get("respondent", {}).get("party_id"),
+                "ruling_vc_digest": self._compute_digest(ruling_vc),
+                "enforcement": subject.get("enforcement", {}),
+                "appeal": subject.get("appeal", {}),
+            },
+            "timestamp": ruling_vc.get("issuanceDate", self._deterministic_timestamp()),
+        }
+    
+    def create_enforcement_transitions(
+        self,
+        ruling_vc: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
+        """
+        Generate transition envelopes for automated enforcement of all orders.
+        
+        For each order with enforcement_method='smart_asset_state_transition',
+        creates the appropriate transition envelope.
+        """
+        transitions = []
+        subject = ruling_vc.get("credentialSubject", {})
+        ruling = subject.get("ruling", {})
+        
+        for order in ruling.get("orders", []):
+            if order.get("enforcement_method") != "smart_asset_state_transition":
+                continue
+            
+            for asset_ref in order.get("smart_asset_refs", []):
+                asset_id = asset_ref.get("asset_id")
+                if not asset_id:
+                    continue
+                
+                # Determine transition type based on order
+                order_type = order.get("order_type")
+                if order_type == "monetary_damages":
+                    transition_kind = "transfer"
+                    params = {
+                        "from": order.get("obligor"),
+                        "to": order.get("obligee"),
+                        "amount": order.get("amount", {}).get("amount"),
+                        "currency": order.get("amount", {}).get("currency"),
+                        "reason": f"arbitration_order:{order.get('order_id')}",
+                    }
+                elif order_type == "injunction":
+                    transition_kind = "halt"
+                    params = {
+                        "reason": f"arbitration_injunction:{order.get('order_id')}",
+                    }
+                else:
+                    transition_kind = "arbitration_enforce"
+                    params = {
+                        "order": order,
+                    }
+                
+                transitions.append({
+                    "asset_id": asset_id,
+                    "transition_kind": transition_kind,
+                    "params": params,
+                    "order_id": order.get("order_id"),
+                    "ruling_vc_digest": self._compute_digest(ruling_vc),
+                })
+        
+        return transitions
 
 
 # ─────────────────────────────────────────────────────────────────────────────

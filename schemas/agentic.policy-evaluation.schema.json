@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://msez.momentum.xyz/schemas/agentic.policy-evaluation.schema.json",
+  "$id": "https://msez.momentum.inc/schemas/agentic.policy-evaluation.schema.json",
   "title": "MSEZAgenticPolicyEvaluation",
   "description": "Result of evaluating a trigger against a policy per Theorem 17.1 (Agentic Determinism)",
   "type": "object",

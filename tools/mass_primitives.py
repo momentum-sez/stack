@@ -870,6 +870,18 @@ class AgenticPolicy:
         
         Theorem 17.1 (Agentic Determinism): Given identical trigger events
         and environment state, agentic execution is deterministic.
+        
+        Supported condition types:
+        - threshold: field >= threshold
+        - equals: field == value
+        - not_equals: field != value
+        - contains: item in field (field is a collection)
+        - in: field in values (values is a collection)
+        - less_than: field < threshold
+        - greater_than: field > threshold
+        - exists: field exists and is truthy
+        - and: all sub-conditions must be true
+        - or: at least one sub-condition must be true
         """
         if not self.enabled:
             return False
@@ -880,28 +892,109 @@ class AgenticPolicy:
         if self.condition is None:
             return True
         
-        # Simple predicate evaluation
-        # Full implementation would support complex predicates
-        condition_type = self.condition.get("type")
+        return self._evaluate_condition_recursive(self.condition, trigger, environment)
+    
+    def _get_nested_field(self, data: Dict[str, Any], field_path: str) -> Any:
+        """Get a nested field value using dot notation (e.g., 'match.score')."""
+        parts = field_path.split(".")
+        current = data
+        for part in parts:
+            if isinstance(current, dict) and part in current:
+                current = current[part]
+            else:
+                return None
+        return current
+    
+    def _evaluate_condition_recursive(
+        self, 
+        condition: Dict[str, Any], 
+        trigger: AgenticTrigger, 
+        environment: Dict[str, Any]
+    ) -> bool:
+        """Recursively evaluate a condition."""
+        condition_type = condition.get("type")
         
         if condition_type == "threshold":
-            field = self.condition.get("field")
-            threshold = self.condition.get("threshold")
-            value = trigger.data.get(field, 0)
-            return value >= threshold
+            field = condition.get("field", "")
+            threshold = condition.get("threshold", 0)
+            value = self._get_nested_field(trigger.data, field)
+            if value is None:
+                value = 0
+            try:
+                return value >= threshold
+            except TypeError:
+                return False
         
         if condition_type == "equals":
-            field = self.condition.get("field")
-            expected = self.condition.get("value")
-            return trigger.data.get(field) == expected
+            field = condition.get("field", "")
+            expected = condition.get("value")
+            value = self._get_nested_field(trigger.data, field)
+            return value == expected
+        
+        if condition_type == "not_equals":
+            field = condition.get("field", "")
+            expected = condition.get("value")
+            value = self._get_nested_field(trigger.data, field)
+            return value != expected
         
         if condition_type == "contains":
-            field = self.condition.get("field")
-            item = self.condition.get("item")
-            collection = trigger.data.get(field, [])
+            field = condition.get("field", "")
+            item = condition.get("item")
+            collection = self._get_nested_field(trigger.data, field)
+            if collection is None:
+                collection = []
             return item in collection
         
-        return True
+        if condition_type == "in":
+            field = condition.get("field", "")
+            values = condition.get("values", [])
+            value = self._get_nested_field(trigger.data, field)
+            return value in values
+        
+        if condition_type == "less_than":
+            field = condition.get("field", "")
+            threshold = condition.get("threshold", 0)
+            value = self._get_nested_field(trigger.data, field)
+            if value is None:
+                return False
+            try:
+                return value < threshold
+            except TypeError:
+                return False
+        
+        if condition_type == "greater_than":
+            field = condition.get("field", "")
+            threshold = condition.get("threshold", 0)
+            value = self._get_nested_field(trigger.data, field)
+            if value is None:
+                return False
+            try:
+                return value > threshold
+            except TypeError:
+                return False
+        
+        if condition_type == "exists":
+            field = condition.get("field", "")
+            value = self._get_nested_field(trigger.data, field)
+            return value is not None and bool(value)
+        
+        if condition_type == "and":
+            sub_conditions = condition.get("conditions", [])
+            return all(
+                self._evaluate_condition_recursive(sub, trigger, environment)
+                for sub in sub_conditions
+            )
+        
+        if condition_type == "or":
+            sub_conditions = condition.get("conditions", [])
+            return any(
+                self._evaluate_condition_recursive(sub, trigger, environment)
+                for sub in sub_conditions
+            )
+        
+        # SECURITY FIX: Unknown condition types return False (fail-safe)
+        # Previously returned True, which was a security vulnerability
+        return False
 
 
 # =============================================================================
@@ -1069,34 +1162,82 @@ class SmartAsset:
         return receipt
     
     def _apply_transition(self, envelope: TransitionEnvelope) -> Dict[str, Any]:
-        """Apply a transition to current state (deterministic)."""
+        """
+        Apply a transition to current state (deterministic).
+        
+        Validates:
+        - Asset not halted (except for RESUME)
+        - Sufficient balances for transfers
+        - All amounts use Decimal for precision
+        """
         new_state = copy.deepcopy(self.state)
         
+        # CRITICAL FIX: Check if asset is halted (except for RESUME transitions)
+        if new_state.get("halted", False) and envelope.kind != TransitionKind.RESUME:
+            raise ValueError("Cannot transition halted asset (except RESUME)")
+        
         if envelope.kind == TransitionKind.TRANSFER:
-            # Handle transfer
             from_holder = envelope.params.get("from")
             to_holder = envelope.params.get("to")
-            amount = envelope.params.get("amount", 0)
+            # CRITICAL FIX: Use Decimal for financial precision
+            amount = Decimal(str(envelope.params.get("amount", 0)))
             
             balances = new_state.setdefault("balances", {})
-            balances[from_holder] = balances.get(from_holder, 0) - amount
-            balances[to_holder] = balances.get(to_holder, 0) + amount
+            
+            # Convert existing balances to Decimal if needed
+            from_balance = Decimal(str(balances.get(from_holder, 0)))
+            to_balance = Decimal(str(balances.get(to_holder, 0)))
+            
+            # CRITICAL FIX: Validate sufficient balance before transfer
+            if from_balance < amount:
+                raise ValueError(
+                    f"Insufficient balance: {from_holder} has {from_balance}, "
+                    f"transfer requires {amount}"
+                )
+            
+            balances[from_holder] = from_balance - amount
+            balances[to_holder] = to_balance + amount
         
         elif envelope.kind == TransitionKind.MINT:
             to_holder = envelope.params.get("to")
-            amount = envelope.params.get("amount", 0)
+            # CRITICAL FIX: Use Decimal for financial precision
+            amount = Decimal(str(envelope.params.get("amount", 0)))
             
             balances = new_state.setdefault("balances", {})
-            balances[to_holder] = balances.get(to_holder, 0) + amount
-            new_state["total_supply"] = new_state.get("total_supply", 0) + amount
+            to_balance = Decimal(str(balances.get(to_holder, 0)))
+            balances[to_holder] = to_balance + amount
+            
+            total_supply = Decimal(str(new_state.get("total_supply", 0)))
+            new_state["total_supply"] = total_supply + amount
+        
+        elif envelope.kind == TransitionKind.BURN:
+            # CRITICAL FIX: Add BURN transition support
+            from_holder = envelope.params.get("from")
+            amount = Decimal(str(envelope.params.get("amount", 0)))
+            
+            balances = new_state.setdefault("balances", {})
+            from_balance = Decimal(str(balances.get(from_holder, 0)))
+            
+            if from_balance < amount:
+                raise ValueError(
+                    f"Insufficient balance for burn: {from_holder} has {from_balance}"
+                )
+            
+            balances[from_holder] = from_balance - amount
+            total_supply = Decimal(str(new_state.get("total_supply", 0)))
+            new_state["total_supply"] = total_supply - amount
         
         elif envelope.kind == TransitionKind.HALT:
             new_state["halted"] = True
             new_state["halt_reason"] = envelope.params.get("reason", "unspecified")
+            new_state["halted_at"] = envelope.effective_time
         
         elif envelope.kind == TransitionKind.RESUME:
+            if not new_state.get("halted", False):
+                raise ValueError("Cannot RESUME an asset that is not halted")
             new_state["halted"] = False
             new_state.pop("halt_reason", None)
+            new_state.pop("halted_at", None)
         
         # Update nonce
         new_state["nonce"] = envelope.seq

@@ -1,0 +1,204 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://momentum.inc/schemas/phoenix/migration-saga.schema.json",
+  "title": "PHOENIX Migration Saga",
+  "description": "Cross-jurisdictional Smart Asset migration with saga-based state machine",
+  "type": "object",
+  "required": ["migration_id", "state", "request"],
+  "properties": {
+    "migration_id": {
+      "type": "string",
+      "pattern": "^mig-[0-9]{14}-[a-f0-9]{16}$",
+      "description": "Unique migration identifier"
+    },
+    "state": {
+      "$ref": "#/definitions/MigrationState"
+    },
+    "state_entered_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_complete": {
+      "type": "boolean"
+    },
+    "is_successful": {
+      "type": "boolean"
+    },
+    "is_timed_out": {
+      "type": "boolean"
+    },
+    "request": {
+      "$ref": "#/definitions/MigrationRequest"
+    },
+    "evidence": {
+      "$ref": "#/definitions/MigrationEvidence"
+    },
+    "compensations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CompensationRecord"
+      }
+    }
+  },
+  "definitions": {
+    "MigrationState": {
+      "type": "string",
+      "enum": [
+        "initiated",
+        "compliance_check",
+        "attestation_gathering",
+        "source_lock",
+        "transit",
+        "destination_verification",
+        "destination_unlock",
+        "completed",
+        "compensated",
+        "disputed",
+        "cancelled"
+      ]
+    },
+    "MigrationRequest": {
+      "type": "object",
+      "required": ["asset_id", "asset_genesis_digest", "source_jurisdiction", "target_jurisdiction"],
+      "properties": {
+        "request_id": {
+          "type": "string"
+        },
+        "asset_id": {
+          "type": "string"
+        },
+        "asset_genesis_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_jurisdiction": {
+          "type": "string"
+        },
+        "target_jurisdiction": {
+          "type": "string"
+        },
+        "requestor_did": {
+          "type": "string",
+          "pattern": "^did:"
+        },
+        "deadline": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "max_time_hours": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "asset_value_usd": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        },
+        "max_fee_usd": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "StateTransition": {
+      "type": "object",
+      "required": ["from_state", "to_state", "timestamp", "reason"],
+      "properties": {
+        "from_state": {
+          "$ref": "#/definitions/MigrationState"
+        },
+        "to_state": {
+          "$ref": "#/definitions/MigrationState"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "actor_did": {
+          "type": ["string", "null"]
+        },
+        "evidence_digest": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "MigrationEvidence": {
+      "type": "object",
+      "required": ["migration_id", "request"],
+      "properties": {
+        "migration_id": {
+          "type": "string"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "transitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StateTransition"
+          }
+        },
+        "source_tensor_commitment": {
+          "type": ["object", "null"]
+        },
+        "destination_tensor_commitment": {
+          "type": ["object", "null"]
+        },
+        "collected_attestations": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "completed_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "final_state": {
+          "$ref": "#/definitions/MigrationState"
+        }
+      }
+    },
+    "CompensationAction": {
+      "type": "string",
+      "enum": [
+        "unlock_source",
+        "refund_fees",
+        "void_attestations",
+        "restore_compliance_state",
+        "notify_counterparties",
+        "file_dispute"
+      ]
+    },
+    "CompensationRecord": {
+      "type": "object",
+      "required": ["action", "timestamp", "success"],
+      "properties": {
+        "action": {
+          "$ref": "#/definitions/CompensationAction"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "success": {
+          "type": "boolean"
+        },
+        "details": {
+          "type": "object"
+        },
+        "error": {
+          "type": ["string", "null"]
+        }
+      }
+    }
+  }
+}

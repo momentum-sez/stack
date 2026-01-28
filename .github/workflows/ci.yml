@@ -1,0 +1,61 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tools/requirements.txt
+
+      - name: Validate modules (schema + artifacts)
+        run: |
+          python -m tools.msez validate --all-modules
+
+      - name: Validate profiles
+        run: |
+          python -m tools.msez validate --all-profiles
+
+      - name: Validate zones
+        run: |
+          python -m tools.msez validate --all-zones
+
+      - name: Check starter zone lockfile is canonical and up-to-date
+        run: |
+          python -m tools.msez lock jurisdictions/_starter/zone.yaml --check
+
+      - name: Check trade playbook artifacts are deterministic (byte-level verification)
+        env:
+          SOURCE_DATE_EPOCH: "1735689600"
+        run: |
+          python tools/dev/generate_trade_playbook.py --mode check
+
+      - name: Verify trade playbook artifact graph closure
+        env:
+          SOURCE_DATE_EPOCH: "1735689600"
+          MSEZ_ARTIFACT_STORE_DIRS: "docs/examples/trade/dist/artifacts"
+        run: |
+          # Verify CAS index exists and is valid
+          test -f docs/examples/trade/dist/artifacts/cas-index.json
+          # Verify closure root manifest
+          test -f docs/examples/trade/dist/manifest.playbook.root.json
+          # Verify dashboard
+          test -f docs/examples/trade/dist/dashboard.json
+
+      - name: Fetch Akoma schemas (for schema validation tests)
+        run: |
+          python -m tools.msez fetch-akoma-schemas
+
+      - name: Run conformance tests
+        run: |
+          pytest -q

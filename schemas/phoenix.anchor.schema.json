@@ -1,0 +1,165 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://momentum.inc/schemas/phoenix/anchor.schema.json",
+  "title": "PHOENIX L1 Anchor",
+  "description": "Settlement finality through Ethereum and L2 checkpointing",
+  "type": "object",
+  "definitions": {
+    "Chain": {
+      "type": "string",
+      "enum": ["ethereum", "arbitrum", "base", "polygon"],
+      "description": "Supported blockchain networks"
+    },
+    "AnchorStatus": {
+      "type": "string",
+      "enum": ["pending", "confirmed", "finalized", "failed", "challenged"]
+    },
+    "CorridorCheckpoint": {
+      "type": "object",
+      "required": ["corridor_id", "checkpoint_height", "receipt_merkle_root", "state_root", "timestamp"],
+      "properties": {
+        "corridor_id": {
+          "type": "string",
+          "description": "Corridor identifier"
+        },
+        "checkpoint_height": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "receipt_merkle_root": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "state_root": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "watcher_signature_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "receipt_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "previous_checkpoint_digest": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "AnchorRecord": {
+      "type": "object",
+      "required": ["anchor_id", "checkpoint_digest", "chain", "tx_hash", "block_number"],
+      "properties": {
+        "anchor_id": {
+          "type": "string",
+          "pattern": "^anchor-[a-f0-9]{16}$"
+        },
+        "checkpoint_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "chain": {
+          "$ref": "#/definitions/Chain"
+        },
+        "chain_id": {
+          "type": "integer"
+        },
+        "tx_hash": {
+          "type": "string",
+          "pattern": "^0x[a-f0-9]{64}$"
+        },
+        "block_number": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "block_hash": {
+          "type": "string",
+          "pattern": "^0x[a-f0-9]{64}$"
+        },
+        "contract_address": {
+          "type": "string",
+          "pattern": "^0x[a-f0-9]{40}$"
+        },
+        "status": {
+          "$ref": "#/definitions/AnchorStatus"
+        },
+        "confirmations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "is_final": {
+          "type": "boolean"
+        },
+        "submitted_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "confirmed_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "finalized_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "gas_used": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cost_eth": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        },
+        "explorer_url": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "InclusionProof": {
+      "type": "object",
+      "required": ["receipt_digest", "checkpoint_digest", "anchor_id", "merkle_path", "root", "leaf_index"],
+      "properties": {
+        "receipt_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "checkpoint_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "anchor_id": {
+          "type": "string"
+        },
+        "merkle_path": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "root": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "leaf_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "is_valid": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

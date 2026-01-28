@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Deep Edge Case and Bug Surface Tests (v0.4.42)
+Deep Edge Case and Bug Surface Tests (v0.4.43)
 
 These tests cover edge cases, boundary conditions, race conditions,
 and potential bug surfaces across the entire MSEZ stack.
@@ -96,7 +96,7 @@ class TestVersionConsistency:
         
         unique_versions = set(versions.values())
         assert len(unique_versions) == 1, f"Version mismatch: {versions}"
-        assert "0.4.42" in unique_versions
+        assert "0.4.43" in unique_versions
     
     def test_all_profile_yaml_files_have_current_version(self):
         """All profile.yaml files should reference current stack version."""
@@ -110,7 +110,7 @@ class TestVersionConsistency:
                     with open(profile_yaml) as f:
                         data = yaml.safe_load(f)
                     version = data.get("stack_spec_version")
-                    assert version == "0.4.42", f"{profile_yaml}: version={version}"
+                    assert version == "0.4.43", f"{profile_yaml}: version={version}"
     
     def test_readme_version_matches_code(self):
         """README version should match code version."""
@@ -133,7 +133,7 @@ class TestVersionConsistency:
             if "info" in data and "version" in data["info"]:
                 # Skip legacy APIs that haven't been versioned
                 if data["info"]["version"] not in ("0.1.0",):
-                    assert data["info"]["version"] == "0.4.42", f"{api_file}"
+                    assert data["info"]["version"] == "0.4.43", f"{api_file}"
 
 
 # =============================================================================
@@ -444,17 +444,24 @@ class TestSerializationRoundtrip:
         assert manager is not None
     
     def test_money_roundtrip(self):
-        """Money should survive to_dict roundtrip."""
+        """Money should survive to_dict roundtrip with proper precision."""
         from tools.arbitration import Money
+        from decimal import Decimal
         
-        original = Money(amount=10000, currency="USD")
+        original = Money(amount=Decimal("10000.50"), currency="USD")
         
         serialized = original.to_dict()
         json_str = json.dumps(serialized)
         restored_dict = json.loads(json_str)
         
-        assert restored_dict["amount"] == original.amount
+        # Amount is serialized as string for Decimal precision preservation
+        assert restored_dict["amount"] == str(original.amount)
         assert restored_dict["currency"] == original.currency
+        
+        # Verify roundtrip through from_dict
+        restored = Money.from_dict(restored_dict)
+        assert restored.amount == original.amount
+        assert restored.currency == original.currency
 
 
 # =============================================================================
@@ -644,7 +651,7 @@ class TestSchemaFileIntegrity:
             assert "title" in schema, f"{schema_file}: missing title"
     
     def test_agentic_schemas_exist(self, schemas_dir):
-        """All v0.4.42 agentic schemas should exist."""
+        """All v0.4.43 agentic schemas should exist."""
         required_schemas = [
             "agentic.environment-monitor.schema.json",
             "agentic.trigger.schema.json",
@@ -695,17 +702,17 @@ class TestSpecificationDocuments:
             assert section in content, f"Missing section: {section}"
     
     def test_changelog_has_v0442_entry(self):
-        """CHANGELOG should have v0.4.42 entry."""
+        """CHANGELOG should have v0.4.43 entry."""
         changelog_path = Path(__file__).parent.parent / "governance" / "CHANGELOG.md"
         with open(changelog_path) as f:
             content = f.read()
         
-        assert "0.4.42" in content, "Missing v0.4.42 in CHANGELOG"
+        assert "0.4.43" in content, "Missing v0.4.43 in CHANGELOG"
     
     def test_patchlist_v0442_exists(self):
-        """v0.4.42 patchlist should exist."""
-        patchlist_path = Path(__file__).parent.parent / "docs" / "patchlists" / "v0.4.42.md"
-        assert patchlist_path.exists(), "Missing v0.4.42 patchlist"
+        """v0.4.43 patchlist should exist."""
+        patchlist_path = Path(__file__).parent.parent / "docs" / "patchlists" / "v0.4.43.md"
+        assert patchlist_path.exists(), "Missing v0.4.43 patchlist"
 
 
 # =============================================================================

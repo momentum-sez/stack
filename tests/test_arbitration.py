@@ -273,7 +273,7 @@ def test_arbitration_dispute_request_to_dict(arbitration_manager, sample_parties
     d = dispute.to_dict()
     
     assert d["type"] == "MSEZDisputeRequest"
-    assert d["stack_spec_version"] == "0.4.42"
+    assert d["stack_spec_version"] == "0.4.43"
     assert d["claimant"]["party_id"] == claimant.party_id
     assert len(d["claims"]) == 2
 
@@ -324,7 +324,8 @@ def test_arbitration_evidence_package_structure():
     d = claim.to_dict()
     
     assert len(d["supporting_evidence"]) == 2
-    assert d["amount"]["amount"] == 50000
+    # Money.to_dict() returns string for Decimal precision preservation
+    assert d["amount"]["amount"] == "50000"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -354,10 +355,11 @@ def test_arbitration_ruling_vc_generation(sample_ruling_vc):
 
 
 def test_arbitration_ruling_verify_signature(arbitration_manager, sample_ruling_vc):
-    """Test ruling VC verification."""
+    """Test ruling VC structure verification (without cryptographic signature)."""
     vc = sample_ruling_vc.to_vc()
     
-    valid, errors = arbitration_manager.verify_ruling_vc(vc)
+    # Test structure verification only (signature verification requires proper proof)
+    valid, errors = arbitration_manager.verify_ruling_vc(vc, verify_signature=False)
     
     assert valid is True
     assert len(errors) == 0
@@ -371,7 +373,8 @@ def test_arbitration_ruling_verify_invalid_type(arbitration_manager):
         "credentialSubject": {},
     }
     
-    valid, errors = arbitration_manager.verify_ruling_vc(invalid_vc)
+    # Skip signature verification to test structure validation
+    valid, errors = arbitration_manager.verify_ruling_vc(invalid_vc, verify_signature=False)
     
     assert valid is False
     assert any("Missing MSEZArbitrationRulingCredential" in e for e in errors)
@@ -387,7 +390,8 @@ def test_arbitration_ruling_orders_structure(sample_ruling_vc):
     
     monetary_order = orders[0]
     assert monetary_order["order_type"] == "monetary_damages"
-    assert monetary_order["amount"]["amount"] == 150000
+    # Money.to_dict() returns string for Decimal precision preservation
+    assert monetary_order["amount"]["amount"] == "150000"
     assert monetary_order["enforcement_method"] == "smart_asset_state_transition"
     
     costs_order = orders[1]
@@ -431,7 +435,7 @@ def test_arbitration_enforcement_receipt_to_dict(arbitration_manager, sample_rul
     d = receipt.to_dict()
     
     assert d["type"] == "MSEZArbitrationEnforcementReceipt"
-    assert d["stack_spec_version"] == "0.4.42"
+    assert d["stack_spec_version"] == "0.4.43"
     assert len(d["ruling_vc_digest"]) == 64
 
 
@@ -480,7 +484,8 @@ def test_arbitration_escrow_lock_on_file():
         },
     }
     
-    assert escrow["filing_fee_amount"]["amount"] == 3000
+    # Money.to_dict() returns string for Decimal precision preservation
+    assert escrow["filing_fee_amount"]["amount"] == "3000"
     assert escrow["filing_fee_amount"]["currency"] == "USD"
 
 

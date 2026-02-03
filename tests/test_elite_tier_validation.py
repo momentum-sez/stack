@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Elite-Tier Validation Test Suite (v0.4.43-hardened)
+Elite-Tier Validation Test Suite (v0.4.44-hardened)
 
 This module comprehensively validates all critical bug fixes and enhancements:
 

@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.momentum-sez.org/msez/rule-eval-evidence.attachment.schema.json",
   "title": "Rule Evaluation Evidence Attachment",
   "description": "ArtifactRef typed attachment for rule-eval-evidence artifacts.",

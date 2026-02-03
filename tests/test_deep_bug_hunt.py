@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Deep Bug Hunt Test Suite (v0.4.43)
+Deep Bug Hunt Test Suite (v0.4.44)
 
 This module systematically exposes hidden bugs through:
 1. Concurrency stress tests

@@ -13,7 +13,7 @@
 ### I. LEGAL FOUNDATION
 > The constitutional and statutory bedrock of the zone
 
-| Module | Description | v0.4.43 Status |
+| Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | Enabling act | Jurisdictional enabling legislation (Akoma Ntoso XML) | ✅ Shipped |
 | Authority charter | Zone governance authority constitution | ✅ Shipped |
@@ -32,7 +32,7 @@
 ### II. CORPORATE SERVICES
 > CSP functions: formation through dissolution
 
-| Module | Description | v0.4.43 Status |
+| Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | Entity formation | Incorporation workflows (articles, memorandum, bylaws) | 🔶 Partial (entity-registry) |
 | Registered agent | Registered office and agent services | ❌ Missing |
@@ -48,7 +48,7 @@
 ### III. REGULATORY FRAMEWORK
 > Compliance infrastructure for the zone's regulatory authority
 
-| Module | Description | v0.4.43 Status |
+| Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | AML/CFT | Transaction monitoring, suspicious activity reporting | ✅ Shipped |
 | Sanctions | OFAC, UN, EU screening with fuzzy matching | ✅ Shipped |
@@ -64,7 +64,7 @@
 ### IV. LICENSING & REGISTRATION
 > Every license type a zone authority issues
 
-| Module | Description | v0.4.43 Status |
+| Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | CSP | Corporate Service Provider | ✅ Shipped |
 | EMI | Electronic Money Institution | ✅ Shipped |
@@ -88,7 +88,7 @@
 ### V. IDENTITY & CREDENTIALING
 > Who you are, verified — from pseudonymous to institutional
 
-| Module | Description | v0.4.43 Status |
+| Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | Digital identity (DID) | Decentralized identifiers with key management | 🔶 Spec'd (MASS Identity primitive) |
 | Resident credentials | Zone resident / business credentials | ❌ Missing |
@@ -102,7 +102,7 @@
 ### VI. FINANCIAL INFRASTRUCTURE
 > Banking, payments, and treasury for the zone economy
 
-| Module | Description | v0.4.43 Status |
+| Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | Banking adapter | Core banking integration layer | ✅ Shipped |
 | Domestic banking | Account management, ledger, statements | ✅ Shipped |
@@ -124,7 +124,7 @@
 ### VII. CAPITAL MARKETS
 > Securities issuance through post-trade settlement
 
-| Module | Description | v0.4.43 Status |
+| Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | Securities issuance | Primary market issuance workflows | 🔶 Partial (token-issuer license) |
 | Order book / matching | Exchange matching engine specification | ❌ Missing |
@@ -141,7 +141,7 @@
 ### VIII. TRADE & COMMERCE
 > The real economy: goods, services, and supply chains
 
-| Module | Description | v0.4.43 Status |
+| Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | Letters of credit | Documentary and standby LC workflows | 🔶 Partial (trade playbook schemas) |
 | Bills of lading | Trade document management and digitization | 🔶 Partial (trade playbook schemas) |
@@ -157,7 +157,7 @@
 ### IX. TAX & REVENUE
 > The zone's fiscal framework and incentive structure
 
-| Module | Description | v0.4.43 Status |
+| Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | Tax framework | Zone tax regime (rates, exemptions, incentives) | ❌ Missing |
 | Fee schedules | Zone operating fees, license fees, filing fees | ❌ Missing |
@@ -172,7 +172,7 @@
 ### X. CORRIDORS & CROSS-BORDER SETTLEMENT
 > Connecting zones to the global financial system
 
-| Module | Description | v0.4.43 Status |
+| Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | Correspondent banking | Traditional correspondent banking networks | ✅ Shipped |
 | SWIFT ISO 20022 | SWIFT messaging with ISO 20022 compliance | ✅ Shipped |
@@ -187,7 +187,7 @@
 ### XI. GOVERNANCE & CIVIC
 > Constitutional governance and democratic participation
 
-| Module | Description | v0.4.43 Status |
+| Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | Constitutional framework | 4-level protection hierarchy | ✅ Shipped |
 | Binary voting | Simple yes/no ballots | ✅ Shipped |
@@ -205,7 +205,7 @@
 ### XII. ARBITRATION & DISPUTE RESOLUTION
 > Multi-tier justice system from small claims to international arbitration
 
-| Module | Description | v0.4.43 Status |
+| Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | Institutional arbitration | DIFC-LCIA, SIAC, AIFC-IAC, ICC integration | ✅ Shipped |
 | Dispute filing & evidence | Claims, evidence bundles, case management | ✅ Shipped |
@@ -221,7 +221,7 @@
 ### XIII. OPERATIONS & OBSERVABILITY
 > Running and monitoring the zone
 
-| Module | Description | v0.4.43 Status |
+| Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | Audit logging | Tamper-evident hash chain audit trail | ✅ Shipped |
 | Regulator console | Supervisory dashboard with privacy-preserving queries | ✅ Shipped |
@@ -238,7 +238,7 @@
 ### XIV. EXECUTION LAYER (PHOENIX)
 > Smart Asset runtime: the zone's computational substrate
 
-| Module | Description | v0.4.43 Status |
+| Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | Compliance Tensor V2 | 4D compliance state lattice (asset×jurisdiction×domain×time) | ✅ Shipped |
 | ZK proof infrastructure | Groth16, PLONK, STARK circuit registry and prover | ✅ Shipped (mock) |
@@ -256,7 +256,7 @@
 ### XV. AGENTIC & AUTOMATION
 > Policy-driven autonomous execution
 
-| Module | Description | v0.4.43 Status |
+| Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | Policy engine | Declarative policy evaluation with action dispatch | ✅ Shipped |
 | Trigger system | 20 trigger types across 5 domains | ✅ Shipped |
@@ -270,7 +270,7 @@
 ### XVI. DEPLOYMENT & INFRASTRUCTURE
 > Clone → Configure → Deploy → Connect
 
-| Module | Description | v0.4.43 Status |
+| Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | Deployment profiles | 6 pre-configured zone profiles | ✅ Shipped |
 | Zone manifest + lockfile | Deterministic zone specification and pinning | ✅ Shipped |

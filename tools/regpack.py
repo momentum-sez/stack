@@ -35,7 +35,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 # Constants
 # ─────────────────────────────────────────────────────────────────────────────
 
-STACK_SPEC_VERSION = "0.4.43"
+STACK_SPEC_VERSION = "0.4.44"
 REGPACK_VERSION = "1.0"
 
 NAMESPACE_REGPACK = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c9")

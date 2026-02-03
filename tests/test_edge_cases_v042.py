@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Deep Edge Case and Bug Surface Tests (v0.4.43)
+Deep Edge Case and Bug Surface Tests (v0.4.44)
 
 These tests cover edge cases, boundary conditions, race conditions,
 and potential bug surfaces across the entire MSEZ stack.
@@ -96,7 +96,7 @@ class TestVersionConsistency:
         
         unique_versions = set(versions.values())
         assert len(unique_versions) == 1, f"Version mismatch: {versions}"
-        assert "0.4.43" in unique_versions
+        assert "0.4.44" in unique_versions
     
     def test_all_profile_yaml_files_have_current_version(self):
         """All profile.yaml files should reference current stack version."""
@@ -110,7 +110,7 @@ class TestVersionConsistency:
                     with open(profile_yaml) as f:
                         data = yaml.safe_load(f)
                     version = data.get("stack_spec_version")
-                    assert version == "0.4.43", f"{profile_yaml}: version={version}"
+                    assert version == "0.4.44", f"{profile_yaml}: version={version}"
     
     def test_readme_version_matches_code(self):
         """README version should match code version."""
@@ -133,7 +133,7 @@ class TestVersionConsistency:
             if "info" in data and "version" in data["info"]:
                 # Skip legacy APIs that haven't been versioned
                 if data["info"]["version"] not in ("0.1.0",):
-                    assert data["info"]["version"] == "0.4.43", f"{api_file}"
+                    assert data["info"]["version"] == "0.4.44", f"{api_file}"
 
 
 # =============================================================================
@@ -651,7 +651,7 @@ class TestSchemaFileIntegrity:
             assert "title" in schema, f"{schema_file}: missing title"
     
     def test_agentic_schemas_exist(self, schemas_dir):
-        """All v0.4.43 agentic schemas should exist."""
+        """All v0.4.44 agentic schemas should exist."""
         required_schemas = [
             "agentic.environment-monitor.schema.json",
             "agentic.trigger.schema.json",

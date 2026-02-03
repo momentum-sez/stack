@@ -8,7 +8,7 @@
 # additional `attestations:` section for operator policy.
 
 profile_id: org.momentum.msez.profile.asset-history-bundle-attestation
-stack_spec_version: 0.4.43
+stack_spec_version: 0.4.44
 
 # Base module set: minimal operator surface needed for asset operations + review.
 modules:

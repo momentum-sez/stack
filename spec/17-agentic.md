@@ -1,6 +1,6 @@
 # Chapter 17: Agentic Execution Framework
 
-**MSEZ Stack Specification v0.4.42**
+**MSEZ Stack Specification v0.4.44**
 
 This chapter specifies the Agentic Execution Framework, enabling autonomous asset behavior through environment monitoring, policy-driven trigger evaluation, and deterministic action scheduling.
 

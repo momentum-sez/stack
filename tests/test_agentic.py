@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive tests for the Agentic Execution Framework (v0.4.43).
+Comprehensive tests for the Agentic Execution Framework (v0.4.44).
 
 Tests cover:
 - Environment monitor lifecycle (Definition 17.4)
@@ -11,7 +11,7 @@ Tests cover:
 - Integration with Smart Assets
 - Extended policy library
 
-Target: 50+ tests per v0.4.43 acceptance criteria.
+Target: 50+ tests per v0.4.44 acceptance criteria.
 """
 
 import pytest
@@ -773,12 +773,12 @@ class TestAgenticExecutionEngine:
 # =============================================================================
 
 class TestExtendedPolicies:
-    """Tests for extended policy library (v0.4.43)."""
-    
+    """Tests for extended policy library (v0.4.44)."""
+
     def test_extended_policies_count(self):
-        """Test that extended policies include v0.4.43 additions."""
+        """Test that extended policies include v0.4.44 additions."""
         # v0.4.41 had 4 standard policies
-        # v0.4.43 should add more
+        # v0.4.44 should add more
         assert len(EXTENDED_POLICIES) >= 10
     
     def test_sanctions_freeze_policy(self):

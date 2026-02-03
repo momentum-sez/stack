@@ -393,4 +393,4 @@ def test_all_generated_artifacts_have_stack_spec_version(tmp_path: Path):
     for jf in json_files:
         obj = json.loads(Path(jf).read_text(encoding="utf-8"))
         assert "stack_spec_version" in obj, f"Missing 'stack_spec_version' in {jf}"
-        assert obj["stack_spec_version"] == "0.4.43", f"Wrong version in {jf}: {obj['stack_spec_version']}"
+        assert obj["stack_spec_version"] == "0.4.44", f"Wrong version in {jf}: {obj['stack_spec_version']}"

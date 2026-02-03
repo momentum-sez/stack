@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Meta-Audit Test Suite (v0.4.43)
+Meta-Audit Test Suite (v0.4.44)
 
 This module audits the test suite itself to ensure:
 1. Test coverage completeness
@@ -331,7 +331,7 @@ class TestDocumentationAudit:
             content = f.read()
         
         # README should mention current version
-        assert "0.4.43" in content, "README should mention current version 0.4.43"
+        assert "0.4.44" in content, "README should mention current version 0.4.44"
 
 
 # =============================================================================

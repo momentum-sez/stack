@@ -318,11 +318,17 @@ class TensorSlice:
         ]
     
     def to_dict(self) -> Dict[str, Any]:
+        # Use list of objects with full coord serialization to preserve data
+        # (str(coord) truncates asset_id for display, losing data)
+        cells_list = [
+            {
+                "coord": coord.to_dict(),
+                "cell": cell.to_dict(),
+            }
+            for coord, cell in self.cells.items()
+        ]
         return {
-            "cells": {
-                str(coord): cell.to_dict()
-                for coord, cell in self.cells.items()
-            },
+            "cells": cells_list,
             "slice_dims": self.slice_dims,
             "parent_commitment": self.parent_commitment,
             "aggregate_state": self.aggregate_state().value,
@@ -802,10 +808,14 @@ class ComplianceTensorV2:
 
         for i, coord in enumerate(sorted_coords):
             cell = self._cells[coord]
-            leaf_content = json.dumps({
-                "coord": coord.to_dict(),
+            # MUST match the leaf format used in commit() exactly
+            deterministic_data = {
+                "coord": coord.to_tuple(),
                 "state": cell.state.value,
-            }, sort_keys=True, separators=(",", ":"))
+                "attestation_digests": sorted([a.digest for a in cell.attestations]),
+                "reason_code": cell.reason_code,
+            }
+            leaf_content = json.dumps(deterministic_data, sort_keys=True, separators=(",", ":"))
             leaf_hash = hashlib.sha256(leaf_content.encode()).hexdigest()
             leaves.append(leaf_hash)
             coord_indices[coord] = i

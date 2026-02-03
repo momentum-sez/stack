@@ -998,7 +998,11 @@ def tensor_meet(t1: ComplianceTensorV2, t2: ComplianceTensorV2) -> ComplianceTen
             # Lattice meet of states
             meet_state = c1.state.meet(c2.state)
             # Combine attestations
-            combined_attestations = list(set(c1.attestations) | set(c2.attestations))
+            # Combine attestations with deterministic ordering
+            combined_attestations = sorted(
+                set(c1.attestations) | set(c2.attestations),
+                key=lambda a: a.attestation_id
+            )
             result._cells[coord] = TensorCell(
                 state=meet_state,
                 attestations=combined_attestations,
@@ -1039,7 +1043,11 @@ def tensor_join(t1: ComplianceTensorV2, t2: ComplianceTensorV2) -> ComplianceTen
             # Lattice join of states
             join_state = c1.state.join(c2.state)
             # Combine attestations
-            combined_attestations = list(set(c1.attestations) | set(c2.attestations))
+            # Combine attestations with deterministic ordering
+            combined_attestations = sorted(
+                set(c1.attestations) | set(c2.attestations),
+                key=lambda a: a.attestation_id
+            )
             result._cells[coord] = TensorCell(
                 state=join_state,
                 attestations=combined_attestations,

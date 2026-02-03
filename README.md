@@ -2,112 +2,136 @@
 
 # MSEZ Stack
 
-## SEZ-in-a-Box: Special Economic Zone Infrastructure
+## The Operating System for Special Economic Zones
 
 **v0.4.44 GENESIS**
 
-[![Tests](https://img.shields.io/badge/tests-150%2B%20passing-brightgreen?style=flat-square)]()
-[![Modules](https://img.shields.io/badge/modules-283-purple?style=flat-square)]()
-[![Lines](https://img.shields.io/badge/lines-63K%2B-blue?style=flat-square)]()
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square)]()
-[![AWS Ready](https://img.shields.io/badge/AWS-production%20ready-orange?style=flat-square)]()
+[![Modules](https://img.shields.io/badge/modules-134%2F146-brightgreen?style=flat-square)]()
+[![PHOENIX](https://img.shields.io/badge/PHOENIX-9.2K%20lines-purple?style=flat-square)]()
+[![Jurisdictions](https://img.shields.io/badge/jurisdictions-60%2B-blue?style=flat-square)]()
+[![AWS](https://img.shields.io/badge/AWS-production%20ready-orange?style=flat-square)]()
 
 ---
 
-**Complete infrastructure for deploying Special Economic Zones.**
+**Deploy a Special Economic Zone the way you deploy cloud infrastructure.**
 
-Multi-Jurisdiction Composition · Pack Trilogy · AWS Deployment · AI Arbitration
-
-[**Quick Start →**](#quick-start) · [Composition Engine](#composition-engine) · [Deploy to AWS](#aws-deployment) · [Examples](#examples)
+[Quick Start](#quick-start) · [Why This Exists](#why-this-exists) · [Architecture](#architecture) · [Hybrid Zones](#hybrid-zone-composition) · [Deploy](#deployment)
 
 </div>
 
 ---
 
-## Vision
+## Why This Exists
 
-**Deploy a Special Economic Zone as easily as spinning up cloud infrastructure.**
+Setting up a Special Economic Zone takes **3-7 years** and **$50-200M**.
 
-The MSEZ Stack enables complex multi-jurisdictional zone deployments through a composable architecture:
+You need bilateral treaties, regulatory frameworks, banking relationships, corporate registries, dispute resolution, tax treaties, customs procedures, and licensing regimes. Each component requires lawyers, regulators, and months of negotiation.
+
+The MSEZ Stack reduces this to **configuration files**.
+
+```yaml
+# zone.yaml — A complete zone definition
+zone_id: momentum.zone.nyc-de-adgm
+name: "NYC-Delaware-ADGM Hybrid"
+
+jurisdictions:
+  civic: us-ny           # New York civil law
+  corporate: us-de       # Delaware corporations
+  financial: ae-adgm     # ADGM financial services
+  digital: ae-adgm       # ADGM digital assets
+
+corridors:
+  - swift-iso20022       # Traditional banking
+  - stablecoin-usdc      # Crypto settlement
+
+arbitration:
+  primary: difc-lcia     # DIFC-LCIA Rules
+  ai_enabled: true       # AI-assisted discovery
+```
+
+This configuration generates:
+- **Legal infrastructure**: Entity registry, land registry, security interests
+- **Regulatory framework**: AML/CFT, sanctions screening, data protection
+- **Financial rails**: Banking adapters, payment processing, settlement
+- **Corporate services**: Formation, governance, beneficial ownership
+- **Dispute resolution**: Arbitration, mediation, enforcement
+
+---
+
+## What You Can Build
+
+### Digital Financial Center
+A jurisdiction optimized for fintech, digital assets, and modern financial services.
 
 ```python
 from tools.msez.composition import compose_zone
 
-# Deploy NY civic code + Delaware corporate + ADGM financial/digital assets
 zone = compose_zone(
-    "momentum.hybrid.demo",
-    "NYC-Delaware-ADGM Hybrid Zone",
-    civic=("us-ny", "New York State civic code"),
-    corporate=("us-de", "Delaware General Corporation Law"),
-    financial=("ae-abudhabi-adgm", "ADGM Financial Services Framework"),
-    digital_assets=("ae-abudhabi-adgm", "ADGM digital asset regulations"),
+    "momentum.dfc.001",
+    "Digital Financial Center",
+    base_profile="digital-financial-center",
+
+    # ADGM's crypto-forward framework
+    financial="ae-abudhabi-adgm",
+    digital_assets="ae-abudhabi-adgm",
+
+    # Delaware corporate efficiency
+    corporate="us-de",
+
+    # AI-assisted dispute resolution
+    arbitration="difc-lcia",
     ai_arbitration=True,
 )
-
-# Generate deployment artifacts
-zone_yaml = zone.to_zone_yaml()
-stack_lock = zone.to_stack_lock()
 ```
 
-Traditional SEZ setup requires years of legal structuring, bilateral treaties, and manual compliance processes. The MSEZ Stack reduces this to infrastructure-as-code deployable in hours.
+**Includes**: EMI licensing, CASP licensing, custody, token issuance, exchange operations, fund administration, regulatory sandbox.
 
-**Smart Assets transcend territorial sovereignty.**
+### Trade Hub
+A jurisdiction optimized for international trade, logistics, and supply chain finance.
 
-A Smart Asset carries its compliance state as an intrinsic property, verified through zero-knowledge proofs, enforced through cryptographic attestations, and settled through decentralized anchor networks. When regulatory conditions change—a license expires, a sanctions list updates, a corridor closes—the asset responds autonomously.
+```python
+zone = compose_zone(
+    "momentum.trade.001",
+    "Regional Trade Hub",
+    base_profile="trade-playbook",
 
----
+    # UAE free zone trade infrastructure
+    trade="ae-dubai-jafza",
+    customs="ae-dubai-jafza",
 
-## Architecture
+    # Singapore arbitration for disputes
+    arbitration="sg-siac",
 
-The stack is organized into three layers that work together to enable Smart Asset autonomy.
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         SMART ASSET OPERATING SYSTEM                         │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  LAYER 3: NETWORK COORDINATION                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
-│  │   Watcher    │  │   Security   │  │    Audit     │  │  Governance  │   │
-│  │   Economy    │  │    Layer     │  │Infrastructure│  │  Framework   │   │
-│  │              │  │              │  │              │  │              │   │
-│  │  Bonded      │  │  Replay      │  │  Tamper-     │  │  Parameter   │   │
-│  │  Attestation │  │  Prevention  │  │  Evident     │  │  Evolution   │   │
-│  │  Slashing    │  │  Time Locks  │  │  Hash Chain  │  │  Consensus   │   │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘   │
-│                                                                              │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  LAYER 2: JURISDICTIONAL INFRASTRUCTURE                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
-│  │  Compliance  │  │  Migration   │  │   Corridor   │  │  L1 Anchor   │   │
-│  │   Manifold   │  │   Protocol   │  │    Bridge    │  │   Network    │   │
-│  │              │  │              │  │              │  │              │   │
-│  │  Path        │  │  Saga-based  │  │  Two-Phase   │  │  Settlement  │   │
-│  │  Planning    │  │  State       │  │  Commit      │  │  Finality    │   │
-│  │  Dijkstra    │  │  Machine     │  │  Multi-Hop   │  │  Ethereum+L2 │   │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘   │
-│                                                                              │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  LAYER 1: ASSET INTELLIGENCE                                                │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
-│  │  Compliance  │  │  ZK Proof    │  │  Smart Asset │  │  Hardening   │   │
-│  │   Tensor     │  │Infrastructure│  │      VM      │  │    Layer     │   │
-│  │              │  │              │  │              │  │              │   │
-│  │  4D State    │  │  Groth16     │  │  256-bit     │  │  Validation  │   │
-│  │  Lattice     │  │  PLONK       │  │  Stack-based │  │  Thread-safe │   │
-│  │  Merkleized  │  │  STARK       │  │  Gas-metered │  │  Atomic Ops  │   │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘   │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+    # Stablecoin settlement for speed
+    settlement=["stablecoin-usdc", "swift-iso20022"],
+)
 ```
 
-**Layer 1: Asset Intelligence** provides the core computational substrate. The Compliance Tensor represents multi-dimensional compliance state as a sparse 4D structure indexed by (Asset, Jurisdiction, Domain, Time). The ZK Proof Infrastructure enables privacy-preserving verification without disclosing sensitive details. The Smart Asset VM provides deterministic execution with compliance and migration coprocessors.
+**Includes**: Import/export licensing, customs brokerage, letters of credit, bills of lading, supply chain finance, trade insurance, certificate of origin.
 
-**Layer 2: Jurisdictional Infrastructure** enables cross-border movement. The Compliance Manifold computes optimal migration paths through the jurisdictional landscape. The Migration Protocol implements saga-based state machines with compensation for failures. The Corridor Bridge orchestrates multi-hop transfers with two-phase commit. The L1 Anchor Network provides settlement finality through Ethereum and L2 checkpoints.
+### Charter City
+A jurisdiction with comprehensive civic infrastructure for a physical zone.
 
-**Layer 3: Network Coordination** ensures economic accountability and security. The Watcher Economy requires bonded collateral for attestations with slashing for misbehavior. The Security Layer implements defense-in-depth against replay attacks, TOCTOU vulnerabilities, and front-running. The Audit Infrastructure maintains tamper-evident forensic trails with hash chain linking.
+```python
+zone = compose_zone(
+    "momentum.city.001",
+    "Prospera-Style Charter City",
+    base_profile="charter-city",
+
+    # Common law foundation
+    civic="hn-prospera",
+
+    # Flexible corporate structures
+    corporate="ky-cayman",
+
+    # Full civic stack
+    include_governance=True,
+    include_property=True,
+    include_identity=True,
+)
+```
+
+**Includes**: Constitutional framework, voting systems (binary, ranked choice, quadratic), property registry, digital identity, work permits, professional credentialing.
 
 ---
 
@@ -115,23 +139,27 @@ The stack is organized into three layers that work together to enable Smart Asse
 
 ### Prerequisites
 
-Python 3.10 or higher is required. The stack has no external dependencies beyond the standard library and pytest for testing.
+Python 3.10+. No external dependencies.
 
 ### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/momentum-inc/msez-stack.git
 cd msez-stack
 
-# Install test dependencies
-pip install pytest --break-system-packages
+# Verify installation
+PYTHONPATH=. python -c "from tools.phoenix import __version__; print(f'PHOENIX {__version__}')"
+# → PHOENIX 0.4.44
 
-# Run the test suite (92 tests should pass)
+# Run tests
+pip install pytest
 PYTHONPATH=. pytest tests/test_phoenix.py -v
+# → 92 passed
 ```
 
-### Hello World: Compliance Tensor
+### Your First Smart Asset
+
+A **Smart Asset** is an asset with embedded compliance intelligence. It knows whether it's compliant in any jurisdiction, can identify missing attestations, and can migrate autonomously.
 
 ```python
 from tools.phoenix.tensor import (
@@ -143,50 +171,52 @@ from tools.phoenix.tensor import (
 from datetime import datetime, timezone, timedelta
 import hashlib
 
-# Create a compliance tensor
+# Create compliance tensor — the asset's compliance state across all jurisdictions
 tensor = ComplianceTensorV2()
 
 # Create an attestation from a licensed KYC provider
-attestation = AttestationRef(
+kyc_attestation = AttestationRef(
     attestation_id="att-kyc-001",
     attestation_type="kyc_verification",
-    issuer_did="did:momentum:licensed-kyc-provider",
+    issuer_did="did:momentum:kyc-provider-licensed-adgm",
     issued_at=datetime.now(timezone.utc).isoformat(),
     expires_at=(datetime.now(timezone.utc) + timedelta(days=365)).isoformat(),
-    digest=hashlib.sha256(b"kyc-evidence-bundle").hexdigest(),
+    digest=hashlib.sha256(b"kyc-evidence").hexdigest(),
 )
 
-# Set compliance state
+# Set compliance state for UAE-ADGM jurisdiction
 tensor.set(
-    asset_id="smart-asset-001",
-    jurisdiction_id="uae-difc",
+    asset_id="asset-001",
+    jurisdiction_id="ae-abudhabi-adgm",
     domain=ComplianceDomain.KYC,
     state=ComplianceState.COMPLIANT,
-    attestations=[attestation],
+    attestations=[kyc_attestation],
 )
 
-# Evaluate compliance
-is_compliant, state, issues = tensor.evaluate("smart-asset-001", "uae-difc")
+# Evaluate: Is this asset compliant in ADGM?
+is_compliant, state, issues = tensor.evaluate("asset-001", "ae-abudhabi-adgm")
 print(f"Compliant: {is_compliant}")  # True
 
-# Generate cryptographic commitment
+# Generate cryptographic commitment (Merkle root)
 commitment = tensor.commit()
-print(f"Root: {commitment.root[:16]}...")
+print(f"Tensor root: {commitment.root[:16]}...")  # Anchors to L1
 ```
 
-### Hello World: Cross-Jurisdictional Migration
+### Your First Migration
+
+Move an asset from UAE-DIFC to Kazakhstan-AIFC through the corridor network.
 
 ```python
 from tools.phoenix.bridge import create_bridge_with_manifold, BridgeRequest
 from decimal import Decimal
 
-# Create bridge with UAE-DIFC and KZ-AIFC corridors
+# Create bridge with standard corridors
 bridge = create_bridge_with_manifold()
 
 # Request migration
 request = BridgeRequest(
     bridge_id="migration-001",
-    asset_id="smart-asset-001",
+    asset_id="asset-001",
     asset_genesis_digest="a" * 64,
     source_jurisdiction="uae-difc",
     target_jurisdiction="kz-aifc",
@@ -195,245 +225,342 @@ request = BridgeRequest(
 )
 
 # Execute with two-phase commit
+# Phase 1 (PREPARE): Lock at each hop
+# Phase 2 (COMMIT): Execute transfers atomically
 execution = bridge.execute(request)
 
 if execution.is_successful:
-    print(f"Migration completed: {len(execution.hops)} hops, ${execution.total_fees} fees")
-```
-
-### Hello World: Smart Asset VM
-
-```python
-from tools.phoenix.vm import SmartAssetVM, ExecutionContext, Assembler
-
-# Initialize VM
-vm = SmartAssetVM()
-
-# Assemble bytecode
-bytecode = Assembler.assemble([
-    ('PUSH1', 42),      # Push value
-    ('PUSH1', 0),       # Push storage slot
-    ('SSTORE',),        # Store
-    ('HALT',),          # Stop
-])
-
-# Execute
-context = ExecutionContext(
-    caller="did:momentum:caller",
-    origin="did:momentum:origin",
-    jurisdiction_id="uae-difc",
-)
-
-result = vm.execute(bytecode, context)
-print(f"Success: {result.success}, Gas: {result.gas_used}")
+    print(f"Migrated via {len(execution.hops)} hops")
+    print(f"Total fees: ${execution.total_fees}")
+    print(f"Receipt chain: {len(execution.receipt_chain.receipts)} receipts")
 ```
 
 ---
 
-## PHOENIX Modules
+## Architecture
 
-The PHOENIX module suite comprises 9,221 lines of production-grade Python across 11 modules.
+The MSEZ Stack is organized into three layers.
 
-### Compliance Tensor (955 lines)
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         LAYER 3: NETWORK COORDINATION                        │
+│                                                                              │
+│  Watcher Economy        Security Layer         Hardening Layer               │
+│  ├─ Bonded attestation  ├─ Replay prevention   ├─ Input validation          │
+│  ├─ Slashing (100%/50%) ├─ TOCTOU protection   ├─ Thread safety             │
+│  └─ Reputation system   └─ Time locks (7 day)  └─ Economic guards           │
+│                                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                     LAYER 2: JURISDICTIONAL INFRASTRUCTURE                   │
+│                                                                              │
+│  Compliance Manifold    Migration Protocol     Corridor Bridge               │
+│  ├─ Path planning       ├─ Saga state machine  ├─ Two-phase commit          │
+│  ├─ Dijkstra routing    ├─ Compensation        ├─ Multi-hop atomic          │
+│  └─ Attestation gaps    └─ Evidence bundle     └─ Receipt chain             │
+│                                                                              │
+│                         L1 Anchor Network                                    │
+│                         ├─ Ethereum (64 blocks)                              │
+│                         ├─ Arbitrum/Base (1 block)                           │
+│                         └─ Cross-chain verification                          │
+│                                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                          LAYER 1: ASSET INTELLIGENCE                         │
+│                                                                              │
+│  Compliance Tensor      ZK Proof System        Smart Asset VM                │
+│  ├─ 4D sparse tensor    ├─ Groth16/PLONK/STARK ├─ 256-bit stack             │
+│  ├─ Lattice algebra     ├─ Balance sufficiency ├─ Compliance coprocessor    │
+│  ├─ Merkle commitment   ├─ Sanctions clearance ├─ Migration coprocessor     │
+│  └─ Fail-safe defaults  └─ KYC attestation     └─ Gas metering              │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
-`tools/phoenix/tensor.py`
+### Layer 1: Asset Intelligence
 
-The mathematical core of Smart Asset autonomy. Represents compliance state as a 4-dimensional sparse tensor `C: Asset × Jurisdiction × Domain × Time → State` with lattice algebra semantics.
+**Compliance Tensor** — The mathematical core. A 4D sparse structure representing compliance state:
 
-Key properties include pessimistic composition where `COMPLIANT ∧ PENDING = PENDING`, fail-safe defaults where `UNKNOWN → NON_COMPLIANT`, Merkleized commitments for L1 anchoring, and selective disclosure proofs for privacy-preserving verification.
+```
+C: Asset × Jurisdiction × Domain × Time → State
 
-### Zero-Knowledge Proofs (766 lines)
+where State ∈ {COMPLIANT, NON_COMPLIANT, PENDING, UNKNOWN, EXEMPT, EXPIRED}
+```
 
-`tools/phoenix/zkp.py`
+States form a lattice with pessimistic composition: `COMPLIANT ∧ PENDING = PENDING`. Unknown states default to `NON_COMPLIANT`. The system fails closed.
 
-Privacy-preserving compliance verification. Supports Groth16, PLONK, and STARK proof systems with a content-addressed circuit registry.
+**ZK Proofs** — Privacy-preserving compliance verification. Prove you're compliant without revealing transaction history or beneficial ownership.
 
-Standard circuits include balance sufficiency proving balance exceeds threshold without revealing amount, sanctions clearance proving non-membership in sanctions set, KYC attestation proving valid KYC from approved issuer, and compliance tensor inclusion proving specific coordinate has claimed state.
+**Smart Asset VM** — Deterministic execution environment with compliance and migration coprocessors. 256-bit stack, 64KB memory, Merkleized storage, gas metering.
 
-### Compliance Manifold (1,009 lines)
+### Layer 2: Jurisdictional Infrastructure
 
-`tools/phoenix/manifold.py`
+**Compliance Manifold** — Models jurisdictions as graph nodes, corridors as edges. Computes optimal migration paths via Dijkstra with compliance-aware weights.
 
-Path planning through the jurisdictional landscape. Models jurisdictions as nodes and corridors as edges, computing optimal migration paths using Dijkstra's algorithm with compliance-aware weights.
+**Migration Protocol** — Saga-based state machine: INITIATED → COMPLIANCE_CHECK → ATTESTATION_GATHERING → SOURCE_LOCK → TRANSIT → DESTINATION_VERIFICATION → DESTINATION_UNLOCK → COMPLETED. Compensation for failures at any stage.
 
-Features include attestation gap analysis identifying missing requirements, path cost estimation including fees and time, corridor availability checking, and multi-hop optimization.
+**Corridor Bridge** — Two-phase commit for multi-hop transfers. PREPARE locks at each hop. COMMIT executes atomically. Failure triggers coordinated compensation.
 
-### Migration Protocol (886 lines)
+**L1 Anchor** — Settlement finality via Ethereum/L2 checkpointing. Merkle inclusion proofs. Cross-chain verification for defense-in-depth.
 
-`tools/phoenix/migration.py`
+### Layer 3: Network Coordination
 
-Saga-based state machine for cross-jurisdictional transfers. State progression follows INITIATED → COMPLIANCE_CHECK → ATTESTATION_GATHERING → SOURCE_LOCK → TRANSIT → DESTINATION_VERIFICATION → DESTINATION_UNLOCK → COMPLETED with compensation paths for failure recovery at any stage.
+**Watcher Economy** — Economically-accountable attestors. Bond collateral proportional to attested volume. Slashing: 100% for equivocation, 50% for false attestation, 1% for availability failure.
 
-### Corridor Bridge (822 lines)
+**Security Layer** — Defense-in-depth: nonces for replay, versioned state for TOCTOU, time locks for front-running, hash-chained audit logs.
 
-`tools/phoenix/bridge.py`
+**Hardening Layer** — Input validation, thread safety, rate limits, economic attack prevention (10x collateral limits, whale detection).
 
-Orchestrates multi-hop transfers through the two-phase commit protocol. The PREPARE phase locks assets at each hop and collects prepare receipts. The COMMIT phase executes transfers atomically and collects commit receipts. Failure at any point triggers coordinated compensation.
+---
 
-### L1 Anchor (816 lines)
+## Hybrid Zone Composition
 
-`tools/phoenix/anchor.py`
+The composition engine enables mixing jurisdictional components from different sources.
 
-Settlement finality through Ethereum and L2 checkpointing. Supports Ethereum mainnet with 64-block finality, Arbitrum One with 1-block finality, Base with 1-block finality, and Polygon PoS with 256-block finality. Includes cross-chain verification for defense-in-depth and Merkle inclusion proofs for receipt verification.
+### How It Works
 
-### Watcher Economy (750 lines)
+Each jurisdiction provides **modules** organized into **families**:
 
-`tools/phoenix/watcher.py`
+| Family | Examples |
+|--------|----------|
+| Legal Foundation | Enabling act, civil code, commercial code |
+| Corporate Services | Formation, governance, beneficial ownership |
+| Regulatory | AML/CFT, sanctions, data protection |
+| Licensing | EMI, CASP, custody, insurance |
+| Financial | Banking, payments, settlement, FX |
+| Identity | DID, KYC tiers, credentials |
+| Tax | Framework, incentives, withholding |
+| Arbitration | Institutional, small claims, mediation |
 
-Economic accountability through bonded attestations. Watchers stake collateral proportional to attested transaction volume. Slashing conditions include equivocation at 100% for conflicting attestations, false attestation at 50% for invalid state claims, availability failure at 1% for missed attestations, and collusion at 100% plus permanent ban for coordinated misbehavior.
+When you compose a zone, you select which jurisdiction provides each family:
 
-### Smart Asset VM (1,285 lines)
+```python
+zone = compose_zone(
+    "my.zone.001",
+    "Hybrid Zone",
 
-`tools/phoenix/vm.py`
+    # New York civil law for predictability
+    civic="us-ny",
 
-Stack-based execution environment for deterministic Smart Asset operations. Features a 256-slot stack with 256-bit words, 64KB expandable memory, Merkleized persistent storage, gas metering for DoS prevention, and pre-scanned jump destination validation.
+    # Delaware corporate for flexibility
+    corporate="us-de",
 
-Instruction categories include stack operations (PUSH, POP, DUP, SWAP), arithmetic (ADD, SUB, MUL, DIV, MOD), comparison (EQ, LT, GT, AND, OR), memory (MLOAD, MSTORE), storage (SLOAD, SSTORE), control flow (JUMP, JUMPI, CALL, RETURN), context (CALLER, JURISDICTION, TIMESTAMP), compliance coprocessor (TENSOR_GET, TENSOR_SET, VERIFY_ZK), migration coprocessor (LOCK, UNLOCK, TRANSIT, SETTLE), and cryptography (SHA256, VERIFY_SIG, MERKLE_VERIFY).
+    # ADGM financial for crypto-forward regulation
+    financial="ae-abudhabi-adgm",
+    digital_assets="ae-abudhabi-adgm",
 
-### Security Layer (993 lines)
+    # DIFC arbitration for enforcement
+    arbitration="ae-dubai-difc",
+)
+```
 
-`tools/phoenix/security.py`
+The engine:
+1. Validates compatibility (no conflicting requirements)
+2. Resolves dependencies (corporate needs legal foundation)
+3. Generates zone manifest with all required modules
+4. Produces stack.lock with cryptographic hashes
 
-Defense-in-depth protection addressing replay attacks through scoped attestations with nonce binding, TOCTOU vulnerabilities through versioned state with compare-and-swap, front-running through time-locked operations with 7-day withdrawal delays, and tamper detection through hash-chained audit logs.
+### Available Jurisdictions
 
-### Hardening Layer (744 lines)
+**United Arab Emirates**
+- `ae-abudhabi-adgm` — Abu Dhabi Global Market (common law, crypto-forward)
+- `ae-dubai-difc` — Dubai International Financial Centre (common law)
+- `ae-dubai-jafza` — Jebel Ali Free Zone (trade focus)
+- `ae-dubai-dafza` — Dubai Airport Free Zone
 
-`tools/phoenix/hardening.py`
+**United States**
+- `us-de` — Delaware (corporate law)
+- `us-ny` — New York (commercial/banking law)
+- `us-wy` — Wyoming (digital assets)
 
-Production-grade validation and thread safety. Input validators cover strings, digests, addresses, amounts, timestamps, and bytes. Concurrency primitives include ThreadSafeDict, AtomicCounter, and atomic decorators. Economic guards enforce 10x collateral limits for attestations, minimum bond requirements, and whale concentration detection.
+**Kazakhstan**
+- `kz-aifc` — Astana International Financial Centre (common law enclave)
+
+**Central America**
+- `hn-prospera` — Próspera ZEDE (charter city framework)
+
+**Caribbean**
+- `ky-cayman` — Cayman Islands (funds, trusts)
+- `tc-turks` — Turks & Caicos
+
+---
+
+## Module Coverage
+
+v0.4.44 GENESIS delivers **134 of 146 modules (92%)** across 16 families:
+
+| Family | Shipped | Status |
+|--------|---------|--------|
+| Legal Foundation | 9/9 | Complete |
+| Corporate Services | 8/8 | Complete |
+| Regulatory Framework | 8/8 | Complete |
+| Licensing | 16/16 | Complete |
+| Identity | 6/6 | Complete |
+| Financial Infrastructure | 13/14 | 1 partial |
+| Capital Markets | 8/9 | 1 partial |
+| Trade & Commerce | 6/8 | 2 partial |
+| Tax & Revenue | 3/7 | 4 partial |
+| Corridors & Settlement | 7/7 | Complete |
+| Governance & Civic | 10/10 | Complete |
+| Arbitration | 7/8 | 1 partial |
+| Operations | 9/9 | Complete |
+| PHOENIX Execution | 10/10 | Complete |
+| Agentic Automation | 6/6 | Complete |
+| Deployment | 8/11 | 3 partial |
+
+### Key Modules
+
+**Licensing** (16 modules): CSP, EMI, CASP, custody, token issuer, exchange, fund admin, trust company, bank sponsor, PSP/acquirer, card program, insurance, professional services, trade license, import/export, regulatory sandbox.
+
+**MASS Five Primitives**: Entities (natural/legal persons, trusts, funds), Ownership (direct, beneficial, fractional), Instruments (debt, equity, derivatives), Identity (DIDs, verifiable credentials), Consent (transaction, data, delegation).
+
+**PHOENIX**: Compliance Tensor, ZK Proofs, Compliance Manifold, Migration Protocol, Watcher Economy, L1 Anchor, Corridor Bridge, Smart Asset VM, Security Layer, Hardening Layer.
+
+---
+
+## Deployment
+
+### Local Development
+
+```bash
+# Docker Compose for local development
+cd deploy/docker
+docker-compose up -d
+
+# Services: PostgreSQL, Redis, API server
+```
+
+### AWS Production
+
+```bash
+cd deploy/aws/terraform
+
+# Configure zone
+cat > zone.tfvars <<EOF
+zone_id         = "momentum.zone.prod"
+zone_name       = "Production Zone"
+profile         = "digital-financial-center"
+aws_region      = "us-east-1"
+environment     = "prod"
+
+# Optional: Multi-AZ for high availability
+multi_az        = true
+EOF
+
+# Deploy
+terraform init
+terraform apply -var-file=zone.tfvars
+```
+
+**Provisions**:
+- EKS cluster with auto-scaling
+- RDS PostgreSQL (Multi-AZ, encrypted)
+- ElastiCache Redis
+- S3 with versioning
+- KMS encryption
+- ALB with TLS
+
+### Kubernetes
+
+```bash
+# Helm chart deployment
+helm install msez ./deploy/helm/msez \
+  --set zone.id=momentum.zone.prod \
+  --set zone.profile=digital-financial-center \
+  --namespace msez
+```
+
+---
+
+## Pack Trilogy
+
+Regulatory state is managed through three content-addressed pack types:
+
+| Pack | Purpose | Update Frequency |
+|------|---------|------------------|
+| **Lawpack** | Immutable legal text (statutes, regulations) | Quarterly |
+| **Regpack** | Dynamic guidance (circulars, FAQs, calendars) | Weekly |
+| **Licensepack** | Live registry state (licenses, suspensions) | Hourly |
+
+```python
+from tools.licensepack import LicensePack
+
+# Load jurisdiction's license registry
+pack = LicensePack.load("ae-adgm-financial.licensepack")
+
+# Verify a license
+valid, status, license = pack.verify_license(
+    holder_did="did:key:z6Mk...",
+    activity="deposit_taking",
+    jurisdiction="ae-abudhabi-adgm",
+)
+
+if not valid:
+    print(f"License invalid: {status}")
+```
 
 ---
 
 ## Design Principles
 
-Eight core principles guide the architecture.
+**Fail-Safe Defaults.** Unknown → NON_COMPLIANT. Missing attestations invalidate. Expired credentials invalidate. The system fails closed.
 
-**Fail-Safe Defaults.** Unknown compliance states default to non-compliant. Missing attestations are treated as absent. Expired credentials invalidate compliance. The system fails closed, never open.
+**Cryptographic Integrity.** Every state transition produces proof. Tensor commitments are Merkle roots. Receipts chain cryptographically.
 
-**Cryptographic Integrity.** Every state transition produces verifiable proof. Tensor commitments are Merkle roots. Attestations are content-addressed. Receipts chain cryptographically. Nothing is trusted without verification.
+**Atomic Operations.** Migrations complete fully or compensate entirely. No partial states. Two-phase commit ensures consistency.
 
-**Atomic Operations.** Migrations either complete fully or compensate entirely. Two-phase commit ensures no partial states. Saga patterns handle distributed failures. The system is always consistent.
+**Economic Accountability.** Watchers bond collateral. Misbehavior is slashed. Incentives align with honesty.
 
-**Economic Accountability.** Watchers stake real collateral for attestations. Misbehavior is slashed automatically. Reputation affects future opportunities. Incentives align with honest behavior.
+**Privacy by Design.** ZK proofs verify without disclosure. Selective tensor slices reveal only necessary state.
 
-**Privacy by Design.** Zero-knowledge proofs verify without disclosure. Selective tensor slices reveal only necessary state. Range proofs hide exact amounts. Compliance is provable without transparency.
+**Defense in Depth.** Nonces prevent replay. Versions prevent TOCTOU. Time locks prevent front-running. Multiple layers for each threat.
 
-**Defense in Depth.** Multiple layers protect against each threat class. Nonces prevent replay. Versions prevent TOCTOU. Time locks prevent front-running. No single point of failure.
+**Zero Trust.** All inputs validated. Signatures verified. Digests recomputed. Trust earned, never assumed.
 
-**Zero Trust.** All inputs are untrusted until validated. External data is sanitized. Signatures are verified. Digests are recomputed. Trust is earned, never assumed.
-
-**Deterministic Execution.** VM operations produce identical results across all nodes. No floating point. No randomness. No external state. Consensus is achievable.
-
----
-
-## Test Suite
-
-The comprehensive test suite validates all PHOENIX components with 92 tests organized into 13 test classes.
-
-```bash
-# Run complete suite
-PYTHONPATH=. pytest tests/test_phoenix.py -v
-
-# Expected output: 92 passed in ~0.3s
-```
-
-Test coverage includes compliance tensor operations and lattice algebra, ZK proof infrastructure and circuit registry, compliance manifold path planning, migration protocol state machine, watcher economy and slashing, L1 anchoring and cross-chain verification, corridor bridge two-phase commit, hardening module validation and concurrency, security module replay prevention and time locks, Smart Asset VM execution and coprocessors, and integrated security scenarios.
+**Deterministic Execution.** No floating point. No randomness. No external state. Consensus achievable.
 
 ---
 
 ## Repository Structure
 
 ```
-msez-stack-v0.4.44/
+msez-stack/
 ├── tools/
-│   ├── msez/                     # Modular MSEZ toolkit
-│   │   ├── __init__.py           # Package exports
-│   │   ├── core.py               # Core primitives
-│   │   ├── composition.py        # Multi-jurisdiction composition engine
-│   │   └── schema.py             # Schema validation
-│   ├── phoenix/                  # PHOENIX module suite
-│   │   ├── tensor.py             # Compliance Tensor
-│   │   ├── vm.py                 # Smart Asset VM
-│   │   ├── zkp.py                # Zero-Knowledge Proofs
-│   │   └── ...                   # 11 modules total
-│   ├── licensepack.py            # License registry management
-│   ├── lawpack.py                # Legal text management
-│   ├── regpack.py                # Regulatory guidance management
-│   ├── arbitration.py            # Dispute resolution
-│   └── agentic.py                # Agentic execution framework
-├── modules/                      # 283 zone modules
-│   ├── corporate/                # Corporate services (8 modules)
-│   ├── identity/                 # Identity & credentialing (6 modules)
-│   ├── tax/                      # Tax & revenue (7 modules)
-│   ├── legal/                    # Legal infrastructure (211 modules)
-│   ├── licensing/                # Licensing (11 modules)
+│   ├── msez/                  # Zone composition engine
+│   │   ├── composition.py     # Multi-jurisdiction composer
+│   │   ├── core.py            # Core primitives
+│   │   └── schema.py          # Validation
+│   ├── phoenix/               # PHOENIX execution layer (9.2K lines)
+│   │   ├── tensor.py          # Compliance Tensor (955 lines)
+│   │   ├── vm.py              # Smart Asset VM (1,285 lines)
+│   │   ├── manifold.py        # Compliance Manifold (1,009 lines)
+│   │   ├── migration.py       # Migration Protocol (886 lines)
+│   │   ├── bridge.py          # Corridor Bridge (822 lines)
+│   │   ├── anchor.py          # L1 Anchor (816 lines)
+│   │   ├── watcher.py         # Watcher Economy (750 lines)
+│   │   ├── zkp.py             # ZK Proofs (766 lines)
+│   │   ├── security.py        # Security Layer (993 lines)
+│   │   └── hardening.py       # Hardening (744 lines)
+│   ├── lawpack.py             # Legal text management
+│   ├── regpack.py             # Regulatory guidance
+│   ├── licensepack.py         # License registry
+│   ├── arbitration.py         # Dispute resolution
+│   └── agentic.py             # Policy automation
+├── modules/                   # 134 zone modules
+│   ├── legal/                 # Legal infrastructure (60+ jurisdictions)
+│   ├── corporate/             # Corporate services (8 modules)
+│   ├── licensing/             # Licensing (16 modules)
+│   ├── financial/             # Financial infrastructure (13 modules)
+│   ├── identity/              # Identity & credentials (6 modules)
+│   ├── arbitration/           # Dispute resolution (7 modules)
+│   ├── mass-primitives/       # MASS protocol (6 modules)
 │   └── ...
 ├── deploy/
-│   ├── aws/terraform/            # AWS Terraform infrastructure
-│   ├── docker/                   # Docker Compose for local dev
-│   └── scripts/                  # Deployment automation
-├── tests/                        # 150+ tests
-├── schemas/                      # 116 JSON schemas
-├── spec/                         # 25 specification documents
-├── CHANGELOG.md
-├── VERSION
-└── README.md
-```
-
----
-
-## AWS Deployment
-
-Deploy a production zone to AWS with Terraform:
-
-```bash
-cd deploy/aws/terraform
-
-# Configure your zone
-cat > my-zone.tfvars <<EOF
-zone_id         = "momentum.hybrid.nyc-de-adgm"
-zone_name       = "NYC-Delaware-ADGM Hybrid Zone"
-jurisdiction_id = "ae-abudhabi-adgm"
-profile         = "digital-financial-center"
-aws_region      = "us-east-1"
-environment     = "prod"
-EOF
-
-# Deploy infrastructure
-terraform init
-terraform apply -var-file=my-zone.tfvars
-```
-
-This deploys:
-- **EKS Cluster** with auto-scaling node groups
-- **RDS PostgreSQL** with Multi-AZ and encryption
-- **ElastiCache Redis** for caching and pub/sub
-- **S3** for artifact storage with versioning
-- **KMS** encryption for all data at rest
-- **ALB Ingress** with TLS termination
-
----
-
-## Pack Trilogy
-
-The MSEZ Stack uses three content-addressed pack types for regulatory state:
-
-| Pack Type | Purpose | Update Frequency |
-|-----------|---------|------------------|
-| **Lawpack** | Immutable legal text (statutes, regulations) | Quarterly |
-| **Regpack** | Dynamic regulatory guidance (circulars, FAQs) | Weekly |
-| **Licensepack** | Live license registry state | Daily/Hourly |
-
-```python
-from tools.licensepack import LicensePack, License, LicenseStatus
-
-# Verify a holder's license for an activity
-pack = LicensePack.load("ae-dubai-difc-financial.licensepack")
-is_valid, state, license = pack.verify_license(
-    holder_did="did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
-    activity="deposit_taking",
-    jurisdiction="ae-dubai-difc",
-)
+│   ├── aws/terraform/         # AWS infrastructure
+│   ├── docker/                # Local development
+│   └── helm/                  # Kubernetes charts
+├── tests/                     # Test suites
+├── schemas/                   # JSON schemas (116)
+├── spec/                      # Specifications (25)
+└── docs/                      # Documentation
 ```
 
 ---
@@ -442,19 +569,21 @@ is_valid, state, license = pack.verify_license(
 
 | Version | Codename | Highlights |
 |---------|----------|------------|
-| **0.4.44** | GENESIS | Multi-jurisdiction composition, Pack trilogy complete, AWS deployment, 283 modules |
-| 0.4.43 | PHOENIX ASCENSION | Smart Asset VM, Security Layer, 9,221 lines, 92 tests |
-| 0.4.42 | Agentic Ascension | Agentic framework, 16 policies, 5 monitors |
+| **0.4.44** | **GENESIS** | 134/146 modules, full licensing, MASS primitives, adversarial test suite |
+| 0.4.43 | PHOENIX ASCENSION | Smart Asset VM, Security Layer, 9.2K lines |
+| 0.4.42 | Agentic Ascension | Policy automation, 16 policies, 5 monitors |
 | 0.4.41 | Radical Yahoo | Arbitration, RegPack, cryptographic proofs |
 | 0.4.40 | — | Trade instruments, settlement netting |
 
 ---
 
-## About Momentum
+## Contributing
 
-Momentum is a venture fund and studio pioneering programmable institutions—organizations that operate through cryptographic primitives across networks, continents, and markets.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
-We partner with founders building the rails for durable economies of the next century, with a focus on financial infrastructure, governance, identity, compliance and regulatory primitives, arbitration, settlement and property rights, and rigorous market and protocol design.
+## License
+
+Proprietary. See [LICENSE](./LICENSE).
 
 ---
 
@@ -462,11 +591,9 @@ We partner with founders building the rails for durable economies of the next ce
 
 **Built by [Momentum](https://momentum.inc)**
 
-[Documentation](./docs/) · [Specification](./spec/) · [Examples](./docs/examples/)
+*Programmable institutions for durable economies.*
 
----
-
-*Smart Asset Operating System for programmable jurisdictions.*
+[Documentation](./docs/) · [Architecture](./docs/ARCHITECTURE.md) · [Specification](./spec/)
 
 Contact: engineering@momentum.inc
 

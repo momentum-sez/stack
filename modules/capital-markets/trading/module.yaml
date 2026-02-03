@@ -1,0 +1,93 @@
+# Trading Infrastructure Module
+# Order book and execution services
+
+module_id: org.momentum.msez.capital-markets.trading
+version: 0.1.0
+kind: capital-markets
+name: Trading Infrastructure
+description: |
+  Trading infrastructure including order management, matching engine,
+  and execution services for securities and digital assets.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.capital-markets.trading.v1
+    operations:
+      - submit_order
+      - cancel_order
+      - modify_order
+      - query_order_status
+      - query_order_book
+      - query_trades
+
+order_types:
+  basic:
+    - market
+    - limit
+    - stop
+    - stop_limit
+  advanced:
+    - iceberg
+    - fill_or_kill
+    - immediate_or_cancel
+    - good_till_cancelled
+    - good_till_date
+  algorithmic:
+    - twap
+    - vwap
+    - pov
+    - implementation_shortfall
+
+matching_rules:
+  price_time_priority:
+    description: Standard price-time priority
+    default: true
+  pro_rata:
+    description: Proportional allocation
+    applicable: large_orders
+  auction:
+    description: Periodic auction matching
+    applicable: opening_closing
+
+market_structure:
+  continuous_trading:
+    hours: "09:00-16:00"
+    timezone: zone_local
+  auctions:
+    opening: "08:50-09:00"
+    closing: "16:00-16:10"
+    volatility: on_trigger
+  market_makers:
+    obligations:
+      - two_sided_quotes
+      - minimum_size
+      - maximum_spread
+    incentives:
+      - fee_rebates
+      - priority
+
+execution_quality:
+  best_execution:
+    factors:
+      - price
+      - cost
+      - speed
+      - likelihood_of_execution
+      - settlement
+  reporting:
+    - execution_quality_statistics
+    - venue_comparison
+
+compliance:
+  required_licenses:
+    - exchange_operator
+    - mtf_operator
+    - broker_dealer
+  market_surveillance:
+    - wash_trading_detection
+    - spoofing_detection
+    - insider_trading_monitoring
+  reporting:
+    - transaction_reporting
+    - order_record_keeping

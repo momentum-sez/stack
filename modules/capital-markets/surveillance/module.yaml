@@ -1,0 +1,116 @@
+# Market Surveillance Module
+# Real-time market monitoring and abuse detection
+
+module_id: org.momentum.msez.capital-markets.surveillance
+version: 0.1.0
+kind: capital-markets
+name: Market Surveillance
+description: |
+  Market surveillance infrastructure for detecting market abuse,
+  unusual trading patterns, and ensuring market integrity.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.capital-markets.surveillance.v1
+    operations:
+      - monitor_trading_activity
+      - detect_anomalies
+      - generate_alerts
+      - investigate_alert
+      - report_suspicious_activity
+
+detection_patterns:
+  market_manipulation:
+    wash_trading:
+      description: Trades without genuine change in ownership
+      indicators:
+        - same_beneficial_owner
+        - circular_trading
+        - pre_arranged_trades
+    spoofing:
+      description: Orders placed without intent to execute
+      indicators:
+        - order_cancel_ratio
+        - layering_patterns
+        - order_to_trade_imbalance
+    pump_and_dump:
+      description: Artificial price inflation followed by selling
+      indicators:
+        - unusual_volume
+        - price_spike
+        - coordinated_promotion
+
+  insider_trading:
+    indicators:
+      - trading_before_announcement
+      - unusual_options_activity
+      - connected_party_trading
+    correlation_analysis:
+      - news_event_matching
+      - access_log_correlation
+
+  front_running:
+    indicators:
+      - order_anticipation
+      - large_order_detection
+      - preferential_execution
+
+circuit_breakers:
+  price_based:
+    single_stock:
+      threshold: 10%
+      reference: previous_close
+      action: trading_halt
+      duration: 5_minutes
+    market_wide:
+      level_1:
+        threshold: 7%
+        action: trading_halt
+        duration: 15_minutes
+      level_2:
+        threshold: 13%
+        action: trading_halt
+        duration: 15_minutes
+      level_3:
+        threshold: 20%
+        action: market_close
+
+  volume_based:
+    unusual_volume:
+      threshold: 3x_average
+      action: enhanced_monitoring
+
+alert_management:
+  triage:
+    - automatic_scoring
+    - risk_based_prioritization
+    - false_positive_filtering
+  investigation:
+    - data_gathering
+    - pattern_analysis
+    - timeline_reconstruction
+  escalation:
+    - internal_compliance
+    - exchange_notification
+    - regulatory_reporting
+
+reporting:
+  regulatory:
+    - suspicious_transaction_reports
+    - market_abuse_notifications
+    - trade_surveillance_statistics
+  internal:
+    - daily_surveillance_summary
+    - alert_statistics
+    - pattern_trends
+
+compliance:
+  record_retention:
+    alerts: 7_years
+    order_data: 7_years
+    trade_data: 7_years
+  audit_trail:
+    - alert_lifecycle
+    - investigation_notes
+    - decision_rationale

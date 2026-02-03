@@ -1,0 +1,88 @@
+# Securities Issuance Module
+# Primary market infrastructure for capital raising
+
+module_id: org.momentum.msez.capital-markets.securities-issuance
+version: 0.1.0
+kind: capital-markets
+name: Securities Issuance
+description: |
+  Primary market securities issuance including equity, debt,
+  and structured products. Supports both traditional and
+  tokenized securities under unified regulatory framework.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.capital-markets.securities-issuance.v1
+    operations:
+      - create_issuance_application
+      - approve_issuance
+      - execute_issuance
+      - register_securities
+      - distribute_securities
+
+asset_types:
+  equity:
+    - ordinary_shares
+    - preference_shares
+    - convertible_preference
+    - redeemable_shares
+  debt:
+    - bonds
+    - notes
+    - sukuk
+    - convertible_bonds
+    - medium_term_notes
+  structured:
+    - warrants
+    - options
+    - certificates
+    - structured_notes
+
+issuance_workflows:
+  ipo:
+    stages:
+      - due_diligence
+      - prospectus_preparation
+      - regulatory_approval
+      - book_building
+      - pricing
+      - allocation
+      - settlement
+      - listing
+    required_documents:
+      - prospectus
+      - financial_statements
+      - legal_opinions
+      - underwriting_agreement
+
+  private_placement:
+    stages:
+      - investor_qualification
+      - offering_memorandum
+      - subscription
+      - closing
+      - settlement
+    investor_requirements:
+      - accredited_investor
+      - qualified_institutional_buyer
+      - sophisticated_investor
+
+  rights_issue:
+    stages:
+      - board_approval
+      - shareholder_notification
+      - record_date
+      - rights_trading
+      - subscription
+      - allotment
+      - listing
+
+compliance:
+  required_licenses:
+    - securities-dealer
+    - underwriter
+  disclosure_requirements:
+    - prospectus_rules
+    - continuous_disclosure
+    - material_events

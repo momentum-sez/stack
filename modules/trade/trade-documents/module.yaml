@@ -1,0 +1,114 @@
+# Trade Documents Module
+# Bills of lading, invoices, and certificates
+
+module_id: org.momentum.msez.trade.trade-documents
+version: 0.1.0
+kind: trade
+name: Trade Documents
+description: |
+  Electronic and paper trade document management including
+  bills of lading, commercial invoices, and certificates.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.trade.documents.v1
+    operations:
+      - create_document
+      - issue_document
+      - endorse_document
+      - transfer_document
+      - verify_document
+      - query_document_status
+
+document_types:
+  transport:
+    bill_of_lading:
+      description: Document of title for ocean cargo
+      variants:
+        - clean
+        - claused
+        - received_for_shipment
+        - shipped_on_board
+        - multimodal
+      negotiability:
+        - negotiable (to order)
+        - non_negotiable (straight)
+    airway_bill:
+      description: Air transport document
+      negotiability: non_negotiable
+    road_waybill:
+      description: Road transport document
+      negotiability: non_negotiable
+    railway_consignment_note:
+      description: Rail transport document
+      negotiability: non_negotiable
+
+  commercial:
+    commercial_invoice:
+      description: Seller's request for payment
+      required_fields:
+        - seller
+        - buyer
+        - goods_description
+        - quantity
+        - unit_price
+        - total_amount
+        - incoterms
+    packing_list:
+      description: Details of package contents
+      required_fields:
+        - packages
+        - weights
+        - dimensions
+        - marks_and_numbers
+    proforma_invoice:
+      description: Pre-shipment invoice estimate
+      use_case: customs_pre_clearance
+
+  certificates:
+    certificate_of_origin:
+      description: Country of origin attestation
+      issuers:
+        - chamber_of_commerce
+        - customs_authority
+        - manufacturer
+      variants:
+        - preferential (for FTA)
+        - non_preferential
+    inspection_certificate:
+      description: Pre-shipment inspection result
+      issuers:
+        - authorized_inspection_company
+    phytosanitary_certificate:
+      description: Plant health attestation
+      issuers:
+        - plant_protection_authority
+    insurance_certificate:
+      description: Proof of cargo insurance
+      issuers:
+        - insurance_company
+
+electronic_documents:
+  ebl:
+    description: Electronic bill of lading
+    platforms:
+      - bolero
+      - essdocs
+      - tradelens
+    legal_recognition:
+      - mletr_compliant
+      - uncitral_model_law
+  verification:
+    methods:
+      - digital_signature
+      - blockchain_hash
+      - registry_lookup
+
+compliance:
+  document_standards:
+    - un_layout_key
+    - iso_15000
+  data_elements:
+    - un_cefact_ccl
+    - wco_data_model

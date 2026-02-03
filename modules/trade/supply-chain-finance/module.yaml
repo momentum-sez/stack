@@ -1,0 +1,104 @@
+# Supply Chain Finance Module
+# Reverse factoring, dynamic discounting, and inventory finance
+
+module_id: org.momentum.msez.trade.supply-chain-finance
+version: 0.1.0
+kind: trade
+name: Supply Chain Finance
+description: |
+  Supply chain finance programs including reverse factoring,
+  dynamic discounting, and inventory financing.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.trade.supply-chain-finance.v1
+    operations:
+      - create_scf_program
+      - onboard_supplier
+      - upload_invoices
+      - approve_invoices
+      - request_early_payment
+      - calculate_discount
+      - process_settlement
+
+programs:
+  reverse_factoring:
+    description: Buyer-led supplier financing
+    flow:
+      - buyer_uploads_approved_invoices
+      - finance_provider_offers_early_payment
+      - supplier_accepts_offer
+      - finance_provider_pays_supplier
+      - buyer_pays_finance_provider_at_maturity
+    benefits:
+      supplier: early_access_to_cash
+      buyer: extended_payment_terms
+      finance_provider: low_risk_financing
+
+  dynamic_discounting:
+    description: Buyer uses own cash for early payment
+    flow:
+      - buyer_offers_early_payment_discount
+      - supplier_accepts_offer
+      - buyer_pays_supplier_early
+    discount_calculation:
+      formula: annual_rate * (days_early / 360)
+      sliding_scale: true
+
+  inventory_finance:
+    description: Financing against inventory
+    collateral:
+      - raw_materials
+      - work_in_progress
+      - finished_goods
+    monitoring:
+      - inventory_reports
+      - field_audits
+
+  receivables_finance:
+    description: Financing against receivables
+    types:
+      factoring:
+        - with_recourse
+        - without_recourse
+      invoice_discounting:
+        - confidential
+        - disclosed
+
+platform_features:
+  invoice_management:
+    - upload
+    - validation
+    - matching
+    - approval_workflow
+  offer_management:
+    - rate_calculation
+    - offer_generation
+    - acceptance
+    - expiry
+  settlement:
+    - payment_instruction
+    - reconciliation
+    - reporting
+
+risk_management:
+  credit_assessment:
+    - buyer_credit_rating
+    - supplier_credit_rating
+    - dilution_risk
+  concentration_limits:
+    - per_buyer
+    - per_supplier
+    - per_industry
+  fraud_prevention:
+    - duplicate_invoice_detection
+    - fictitious_invoice_detection
+
+compliance:
+  accounting_treatment:
+    - off_balance_sheet
+    - trade_payables_vs_debt
+  disclosure:
+    - related_party
+    - material_programs

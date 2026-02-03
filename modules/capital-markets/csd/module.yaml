@@ -1,0 +1,94 @@
+# Central Securities Depository Module
+# Custody and safekeeping infrastructure
+
+module_id: org.momentum.msez.capital-markets.csd
+version: 0.1.0
+kind: capital-markets
+name: Central Securities Depository
+description: |
+  Central Securities Depository (CSD) infrastructure providing
+  immobilization, dematerialization, and safekeeping of securities.
+  Supports both traditional and digital asset custody.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.capital-markets.csd.v1
+    operations:
+      - open_securities_account
+      - deposit_securities
+      - withdraw_securities
+      - transfer_securities
+      - pledge_securities
+      - query_holdings
+      - generate_holding_statement
+
+account_types:
+  segregated:
+    description: Individual beneficial owner accounts
+    segregation_level: full
+    transparency: beneficial_owner_visible
+  omnibus:
+    description: Pooled accounts held by intermediary
+    segregation_level: intermediary
+    transparency: intermediary_only
+  nominee:
+    description: Held in name of custodian for client
+    segregation_level: beneficial_ownership_records
+    transparency: custodian_records
+
+custody_models:
+  direct_holding:
+    description: Securities held directly with CSD
+    legal_ownership: beneficial_owner
+    settlement: csd_to_csd
+  indirect_holding:
+    description: Securities held through intermediary chain
+    legal_ownership: intermediary_chain
+    settlement: account_operator
+
+asset_servicing:
+  corporate_actions:
+    - dividends
+    - interest_payments
+    - redemptions
+    - stock_splits
+    - mergers
+    - rights_issues
+    - tender_offers
+  proxy_voting:
+    - notification
+    - voting_instruction
+    - confirmation
+  tax_services:
+    - withholding_tax
+    - reclaim_processing
+    - reporting
+
+digital_asset_custody:
+  supported_types:
+    - security_tokens
+    - tokenized_traditional
+    - digital_bonds
+    - tokenized_funds
+  key_management:
+    - cold_storage
+    - hot_wallet
+    - multi_signature
+    - mpc_custody
+  blockchain_integration:
+    - ethereum
+    - polygon
+    - arbitrum
+    - private_permissioned
+
+compliance:
+  required_licenses:
+    - custodian
+    - csd_operator
+  segregation_requirements:
+    - client_asset_segregation
+    - proprietary_separation
+  auditing:
+    - reconciliation_daily
+    - external_audit_annual

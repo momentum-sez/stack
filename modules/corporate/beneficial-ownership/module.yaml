@@ -1,0 +1,60 @@
+module_id: org.momentum.msez.corporate.beneficial-ownership
+version: 0.1.0
+kind: corporate
+license: Apache-2.0
+description: |
+  Beneficial Ownership (UBO) Registry module.
+  Tracks ultimate beneficial owners with verification chains,
+  supporting FATF recommendations and jurisdictional transparency requirements.
+
+variants:
+  - baseline
+  - enhanced-diligence
+  - public-registry
+
+depends_on:
+  - module_id: org.momentum.msez.legal.entity-registry
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.reg.aml-cft
+    constraint: ">=0.1.0,<1.0.0"
+
+provides:
+  - interface: msez.corporate.ubo.declaration.v1
+    path: forms/ubo-declaration.schema.json
+    media_type: application/json
+  - interface: msez.corporate.ubo.registry.v1
+    path: schemas/ubo-registry.schema.json
+    media_type: application/json
+  - interface: msez.policy.opa.bundle.v1
+    path: policy/
+    media_type: text/plain
+
+parameters:
+  ownership_threshold_percentage:
+    type: number
+    default: 25
+    description: "Ownership percentage that triggers UBO declaration"
+  control_threshold_percentage:
+    type: number
+    default: 25
+    description: "Control percentage that triggers UBO declaration"
+  verification_required:
+    type: boolean
+    default: true
+    description: "Whether UBO verification is required"
+  reverification_period_months:
+    type: integer
+    default: 12
+    description: "Months between reverification"
+  public_access:
+    type: boolean
+    default: false
+    description: "Whether UBO data is publicly accessible"
+  pep_screening_required:
+    type: boolean
+    default: true
+    description: "Screen UBOs against PEP lists"
+  sanctions_screening_required:
+    type: boolean
+    default: true
+    description: "Screen UBOs against sanctions lists"

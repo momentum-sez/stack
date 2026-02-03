@@ -1,0 +1,79 @@
+module_id: org.momentum.msez.corporate
+version: 0.1.0
+kind: corporate
+license: Apache-2.0
+description: |
+  Corporate Services module family for Special Economic Zone operations.
+  Provides the full CSP (Corporate Service Provider) lifecycle from entity
+  formation through annual compliance to dissolution.
+
+  Sub-modules:
+  - formation: Entity incorporation workflows
+  - registered-agent: Registered office and agent services
+  - secretarial: Corporate secretarial services
+  - beneficial-ownership: UBO registry and verification
+  - governance-templates: Corporate governance documents
+  - annual-compliance: Filing calendars and compliance automation
+  - dissolution: Winding up procedures
+  - cap-table: Share capital and equity management
+
+variants:
+  - baseline
+  - common-law
+  - civil-law
+
+depends_on:
+  - module_id: org.momentum.msez.legal.core
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.legal.entity-registry
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.lic.csp
+    constraint: ">=0.1.0,<1.0.0"
+
+provides:
+  - interface: msez.corporate.formation.v1
+    path: formation/
+    media_type: application/yaml
+  - interface: msez.corporate.registered-agent.v1
+    path: registered-agent/
+    media_type: application/yaml
+  - interface: msez.corporate.secretarial.v1
+    path: secretarial/
+    media_type: application/yaml
+  - interface: msez.corporate.beneficial-ownership.v1
+    path: beneficial-ownership/
+    media_type: application/yaml
+  - interface: msez.corporate.governance.v1
+    path: governance-templates/
+    media_type: application/yaml
+  - interface: msez.corporate.annual-compliance.v1
+    path: annual-compliance/
+    media_type: application/yaml
+  - interface: msez.corporate.dissolution.v1
+    path: dissolution/
+    media_type: application/yaml
+  - interface: msez.corporate.cap-table.v1
+    path: cap-table/
+    media_type: application/yaml
+
+parameters:
+  default_jurisdiction:
+    type: string
+    default: "ex"
+    description: "Default jurisdiction for corporate services"
+  require_ubo_verification:
+    type: boolean
+    default: true
+    description: "Require beneficial ownership verification"
+  ubo_threshold_percentage:
+    type: number
+    default: 25
+    description: "Ownership percentage threshold for UBO declaration"
+  annual_return_deadline_days:
+    type: integer
+    default: 90
+    description: "Days after year-end for annual return filing"
+  require_resident_director:
+    type: boolean
+    default: false
+    description: "Require at least one resident director"

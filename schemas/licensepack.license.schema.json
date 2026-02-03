@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://momentum-sez.org/schemas/licensepack.license.schema.json",
+  "title": "Licensepack License Record",
+  "description": "Individual license record within a licensepack",
+  "type": "object",
+  "required": [
+    "license_id",
+    "license_type_id",
+    "status",
+    "issued_date",
+    "holder_id",
+    "holder_legal_name",
+    "regulator_id"
+  ],
+  "properties": {
+    "license_id": {
+      "type": "string",
+      "pattern": "^lic:[a-z0-9-]+:[a-zA-Z0-9-]+$",
+      "description": "Unique license identifier (lic:regulator:number)"
+    },
+    "license_type_id": {
+      "type": "string",
+      "description": "License type identifier"
+    },
+    "license_number": {
+      "type": "string",
+      "description": "Human-readable license number"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "suspended", "revoked", "expired", "pending", "surrendered"],
+      "description": "Current license status"
+    },
+    "status_effective_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date current status took effect"
+    },
+    "status_reason": {
+      "type": "string",
+      "description": "Reason for current status (if not active)"
+    },
+    "issued_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date license was issued"
+    },
+    "effective_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date license became effective"
+    },
+    "expiry_date": {
+      "type": "string",
+      "format": "date",
+      "description": "License expiration date"
+    },
+    "holder_id": {
+      "type": "string",
+      "description": "Unique holder identifier"
+    },
+    "holder_legal_name": {
+      "type": "string",
+      "description": "Legal name of license holder"
+    },
+    "holder_registration_number": {
+      "type": "string",
+      "description": "Corporate registration number"
+    },
+    "holder_did": {
+      "type": "string",
+      "pattern": "^did:",
+      "description": "Holder's decentralized identifier"
+    },
+    "regulator_id": {
+      "type": "string",
+      "description": "Issuing regulator identifier"
+    },
+    "issuing_authority": {
+      "type": "string",
+      "description": "Full name of issuing authority"
+    },
+    "permitted_activities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Activities permitted under this license"
+    },
+    "asset_classes_authorized": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Asset classes authorized to handle"
+    },
+    "client_types_permitted": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["retail_client", "professional_client", "market_counterparty", "eligible_counterparty"]
+      },
+      "description": "Client types permitted to serve"
+    },
+    "geographic_scope": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Jurisdictions where license is valid"
+    },
+    "prudential_category": {
+      "type": "string",
+      "description": "Prudential/regulatory category"
+    },
+    "capital_requirement": {
+      "type": "object",
+      "properties": {
+        "minimum_base_capital": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "Minimum capital (string decimal)"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "risk_based_capital_ratio": {
+          "type": "string",
+          "pattern": "^[0-9.]+$",
+          "description": "Risk-based capital ratio (string decimal)"
+        }
+      },
+      "description": "Capital requirements"
+    },
+    "conditions_ref": {
+      "type": "string",
+      "description": "Path to conditions.json"
+    },
+    "permissions_ref": {
+      "type": "string",
+      "description": "Path to permissions.json"
+    },
+    "restrictions_ref": {
+      "type": "string",
+      "description": "Path to restrictions.json"
+    },
+    "audit_trail_ref": {
+      "type": "string",
+      "description": "Path to audit-trail.json"
+    },
+    "verification": {
+      "type": "object",
+      "properties": {
+        "verifiable_credential_id": {
+          "type": "string",
+          "description": "Associated VC identifier"
+        },
+        "vc_digest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "issuer_did": {
+          "type": "string",
+          "pattern": "^did:"
+        },
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "description": "Verification credentials"
+    }
+  }
+}

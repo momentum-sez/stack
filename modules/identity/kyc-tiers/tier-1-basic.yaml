@@ -1,0 +1,199 @@
+# Tier 1: Basic KYC Identity
+# Name and jurisdiction verified
+
+tier_id: tier-1
+tier_name: "Basic"
+tier_description: |
+  Standard identity tier with name and jurisdiction verification.
+  Suitable for most retail financial activities.
+  Requires government-issued ID.
+
+requirements:
+  identity:
+    - requirement: valid_did
+      description: "Valid DID from Tier 0"
+      verification: automatic
+      evidence: existing_tier_0_credential
+
+  documents:
+    - document: government_id
+      description: "Government-issued photo ID"
+      accepted_types:
+        - passport
+        - national_id_card
+        - drivers_license
+      verification: automated_ocr_plus_manual
+      requirements:
+        - not_expired
+        - photo_visible
+        - mrz_readable  # For passports
+      evidence: document_hash
+
+    - document: selfie
+      description: "Live selfie for liveness check"
+      verification: automated_liveness
+      requirements:
+        - face_matches_id
+        - liveness_confirmed
+      evidence: liveness_check_result
+
+  verification_checks:
+    - check: name_verification
+      description: "Verify name matches ID"
+      automated: true
+
+    - check: jurisdiction_verification
+      description: "Verify nationality/residence jurisdiction"
+      automated: true
+
+    - check: sanctions_screening
+      description: "Screen against sanctions lists"
+      lists:
+        - OFAC_SDN
+        - UN_Consolidated
+        - EU_Consolidated
+      automated: true
+
+    - check: pep_screening
+      description: "Screen against PEP databases"
+      automated: true
+
+capabilities:
+  transactions:
+    single_transaction_limit:
+      amount: "15000"
+      currency: "USD"
+      period: "per_transaction"
+    daily_limit:
+      amount: "50000"
+      currency: "USD"
+    monthly_limit:
+      amount: "200000"
+      currency: "USD"
+
+  activities:
+    allowed:
+      - all_tier_0_activities
+      - fiat_onramp
+      - fiat_offramp
+      - crypto_trading
+      - basic_banking
+      - payment_services
+      - credential_issuance
+    restricted:
+      - large_transactions_above_limit
+      - institutional_services
+      - certain_regulated_activities
+      - complex_financial_products
+
+  services:
+    - retail_banking
+    - payment_processing
+    - crypto_exchange
+    - basic_custody
+
+  jurisdictions:
+    allowed:
+      - zone_jurisdiction
+      - approved_corridors
+    restricted:
+      - high_risk_jurisdictions
+
+verification_process:
+  steps:
+    - step: 1
+      action: document_upload
+      description: "Upload government-issued ID"
+      automated: false
+      time_estimate: "2-5 minutes"
+
+    - step: 2
+      action: ocr_extraction
+      description: "Extract data from ID via OCR"
+      automated: true
+      time_estimate: "< 30 seconds"
+
+    - step: 3
+      action: liveness_check
+      description: "Perform selfie liveness verification"
+      automated: true
+      time_estimate: "< 1 minute"
+
+    - step: 4
+      action: face_match
+      description: "Match selfie to ID photo"
+      automated: true
+      time_estimate: "< 30 seconds"
+
+    - step: 5
+      action: sanctions_screening
+      description: "Screen against sanctions lists"
+      automated: true
+      time_estimate: "< 10 seconds"
+
+    - step: 6
+      action: pep_screening
+      description: "Screen against PEP databases"
+      automated: true
+      time_estimate: "< 10 seconds"
+
+    - step: 7
+      action: manual_review
+      description: "Manual review if automated checks inconclusive"
+      automated: false
+      time_estimate: "1-24 hours"
+      conditional: true
+      trigger: "automated_check_inconclusive"
+
+    - step: 8
+      action: issue_tier_1_credential
+      description: "Issue Tier 1 identity credential"
+      automated: true
+      time_estimate: "instant"
+
+  total_time_estimate: "5 minutes - 24 hours"
+  manual_review_required: conditional
+
+credential_issued:
+  type: "IdentityTierCredential"
+  claims:
+    - tier: 1
+    - tier_name: "Basic"
+    - legal_name: verified_name
+    - nationality: country_code
+    - date_of_birth: dob  # hashed or ZK-provable
+    - jurisdiction: residence_jurisdiction
+    - sanctions_clear: boolean
+    - pep_status: boolean_or_details
+    - verified_at: timestamp
+    - valid_until: timestamp
+  validity_period_days: 365
+  auto_renew: false
+  renewal_requires: reverification
+
+selective_disclosure:
+  supported: true
+  disclosable_claims:
+    - over_18  # ZK proof
+    - over_21  # ZK proof
+    - nationality_in_list  # ZK proof
+    - sanctions_clear
+    - tier_level
+
+upgrade_path:
+  next_tier: 2
+  requirements_preview:
+    - "Proof of address"
+    - "Source of funds declaration"
+    - "Enhanced due diligence"
+
+ongoing_monitoring:
+  sanctions_rescreening:
+    frequency: daily
+    automated: true
+  pep_rescreening:
+    frequency: monthly
+    automated: true
+  adverse_media:
+    frequency: monthly
+    automated: true

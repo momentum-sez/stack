@@ -1,0 +1,44 @@
+module_id: org.momentum.msez.identity.binding
+version: 0.1.0
+kind: identity
+license: Apache-2.0
+description: |
+  Identity Binding module for linking identities to entities,
+  financial instruments, and other zone objects.
+
+  Supports:
+  - Entity-to-identity binding (corporate identity)
+  - Identity-to-instrument binding (ownership)
+  - Multi-party authorization
+  - Delegation chains
+
+variants:
+  - baseline
+
+depends_on:
+  - module_id: org.momentum.msez.identity.core
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.legal.entity-registry
+    constraint: ">=0.1.0,<1.0.0"
+
+provides:
+  - interface: msez.identity.binding.entity.v1
+    path: schemas/entity-binding.schema.json
+    media_type: application/json
+  - interface: msez.identity.binding.instrument.v1
+    path: schemas/instrument-binding.schema.json
+    media_type: application/json
+  - interface: msez.policy.opa.bundle.v1
+    path: policy/
+    media_type: text/plain
+
+parameters:
+  require_board_approval_for_entity_binding:
+    type: boolean
+    default: true
+  allow_delegation:
+    type: boolean
+    default: true
+  max_delegation_depth:
+    type: integer
+    default: 3

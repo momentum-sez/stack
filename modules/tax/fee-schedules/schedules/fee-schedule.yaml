@@ -1,0 +1,357 @@
+# Zone Fee Schedule
+# All fees charged by the zone authority
+
+schedule_id: msez.tax.fees.schedule.v1
+schedule_version: "2026.1"
+effective_date: "2026-01-01"
+base_currency: "USD"
+
+description: |
+  Comprehensive fee schedule for zone operations.
+  All fees are in USD unless otherwise specified.
+
+# Entity Formation Fees
+formation_fees:
+  - fee_id: "formation.llc"
+    name: "LLC Formation"
+    description: "Formation of Limited Liability Company"
+    amount: "1000"
+    currency: "USD"
+    includes:
+      - name_reservation
+      - certificate_of_formation
+      - first_year_registered_agent
+
+  - fee_id: "formation.corporation"
+    name: "Corporation Formation"
+    description: "Formation of Corporation / Company Limited by Shares"
+    amount: "1500"
+    currency: "USD"
+    includes:
+      - name_reservation
+      - certificate_of_incorporation
+      - first_year_registered_agent
+
+  - fee_id: "formation.partnership"
+    name: "Partnership Formation"
+    description: "Formation of General or Limited Partnership"
+    amount: "1200"
+    currency: "USD"
+
+  - fee_id: "formation.trust"
+    name: "Trust Formation"
+    description: "Formation of Trust"
+    amount: "2000"
+    currency: "USD"
+
+  - fee_id: "formation.foundation"
+    name: "Foundation Formation"
+    description: "Formation of Foundation"
+    amount: "2500"
+    currency: "USD"
+
+  - fee_id: "formation.name_reservation"
+    name: "Name Reservation"
+    description: "Reserve company name for 90 days"
+    amount: "100"
+    currency: "USD"
+    validity_days: 90
+
+# Annual Fees
+annual_fees:
+  - fee_id: "annual.registration"
+    name: "Annual Registration Fee"
+    description: "Annual fee to maintain entity registration"
+    base_amount: "500"
+    currency: "USD"
+    tiers:
+      - tier: "startup"
+        revenue_up_to: "100000"
+        amount: "250"
+      - tier: "sme"
+        revenue_up_to: "1000000"
+        amount: "500"
+      - tier: "standard"
+        revenue_up_to: "10000000"
+        amount: "1000"
+      - tier: "enterprise"
+        revenue_above: "10000000"
+        amount: "2500"
+
+  - fee_id: "annual.registered_agent"
+    name: "Registered Agent Fee"
+    description: "Annual registered agent service fee"
+    amount: "500"
+    currency: "USD"
+
+  - fee_id: "annual.registered_office"
+    name: "Registered Office Fee"
+    description: "Annual registered office address fee"
+    amount: "1000"
+    currency: "USD"
+
+# License Fees
+license_fees:
+  # Corporate Services
+  - fee_id: "license.csp"
+    name: "CSP License"
+    description: "Corporate Service Provider license"
+    application_fee: "5000"
+    annual_fee: "10000"
+    currency: "USD"
+
+  # Financial Services
+  - fee_id: "license.emi"
+    name: "EMI License"
+    description: "Electronic Money Institution license"
+    application_fee: "15000"
+    annual_fee: "25000"
+    currency: "USD"
+    supervision_levy:
+      basis: "transaction_volume"
+      rate: "0.001%"
+      minimum: "5000"
+      maximum: "100000"
+
+  - fee_id: "license.casp"
+    name: "CASP License"
+    description: "Crypto Asset Service Provider license"
+    application_fee: "10000"
+    annual_fee: "20000"
+    currency: "USD"
+
+  - fee_id: "license.custody"
+    name: "Custody License"
+    description: "Digital/Traditional Asset Custody license"
+    application_fee: "20000"
+    annual_fee: "35000"
+    currency: "USD"
+    supervision_levy:
+      basis: "assets_under_custody"
+      rate: "0.005%"
+      minimum: "10000"
+      maximum: "500000"
+
+  - fee_id: "license.exchange"
+    name: "Exchange License"
+    description: "Securities/Crypto Exchange Operator license"
+    application_fee: "50000"
+    annual_fee: "100000"
+    currency: "USD"
+    supervision_levy:
+      basis: "trading_volume"
+      rate: "0.0005%"
+      minimum: "25000"
+      maximum: "1000000"
+
+  - fee_id: "license.bank_sponsor"
+    name: "Bank Sponsor License"
+    description: "Bank Sponsor / Settlement Bank license"
+    application_fee: "100000"
+    annual_fee: "200000"
+    currency: "USD"
+
+  - fee_id: "license.psp"
+    name: "PSP License"
+    description: "Payment Service Provider license"
+    application_fee: "7500"
+    annual_fee: "15000"
+    currency: "USD"
+
+  - fee_id: "license.fund_admin"
+    name: "Fund Admin License"
+    description: "Fund Administration license"
+    application_fee: "10000"
+    annual_fee: "20000"
+    currency: "USD"
+
+  - fee_id: "license.trust"
+    name: "Trust Company License"
+    description: "Trust Company license"
+    application_fee: "15000"
+    annual_fee: "25000"
+    currency: "USD"
+
+  - fee_id: "license.insurance"
+    name: "Insurance License"
+    description: "Insurance Company license"
+    application_fee: "25000"
+    annual_fee: "50000"
+    currency: "USD"
+
+# Filing Fees
+filing_fees:
+  - fee_id: "filing.annual_return"
+    name: "Annual Return Filing"
+    amount: "150"
+    currency: "USD"
+
+  - fee_id: "filing.change_of_directors"
+    name: "Change of Directors"
+    amount: "100"
+    currency: "USD"
+
+  - fee_id: "filing.change_of_shareholders"
+    name: "Change of Shareholders"
+    amount: "100"
+    currency: "USD"
+
+  - fee_id: "filing.change_of_address"
+    name: "Change of Registered Address"
+    amount: "75"
+    currency: "USD"
+
+  - fee_id: "filing.change_of_name"
+    name: "Change of Entity Name"
+    amount: "500"
+    currency: "USD"
+
+  - fee_id: "filing.articles_amendment"
+    name: "Amendment of Articles"
+    amount: "200"
+    currency: "USD"
+
+  - fee_id: "filing.share_capital_increase"
+    name: "Increase of Share Capital"
+    amount: "250"
+    currency: "USD"
+
+  - fee_id: "filing.ubo_declaration"
+    name: "UBO Declaration"
+    amount: "0"
+    currency: "USD"
+    notes: "No fee for statutory filing"
+
+  - fee_id: "filing.economic_substance"
+    name: "Economic Substance Return"
+    amount: "100"
+    currency: "USD"
+
+# Service Fees
+service_fees:
+  - fee_id: "service.certificate_good_standing"
+    name: "Certificate of Good Standing"
+    amount: "100"
+    currency: "USD"
+    processing_time: "same_day"
+
+  - fee_id: "service.certified_copy"
+    name: "Certified Document Copy"
+    amount: "50"
+    currency: "USD"
+    per: "document"
+
+  - fee_id: "service.apostille"
+    name: "Apostille Service"
+    amount: "150"
+    currency: "USD"
+    per: "document"
+
+  - fee_id: "service.notarization"
+    name: "Notarization"
+    amount: "75"
+    currency: "USD"
+    per: "signature"
+
+  - fee_id: "service.expedited_processing"
+    name: "Expedited Processing"
+    amount: "500"
+    currency: "USD"
+    processing_time: "24_hours"
+
+  - fee_id: "service.registry_search"
+    name: "Registry Search"
+    amount: "25"
+    currency: "USD"
+    per: "search"
+
+# Late Fees and Penalties
+penalties:
+  - fee_id: "penalty.late_annual_return"
+    name: "Late Annual Return"
+    fixed_amount: "500"
+    daily_amount: "50"
+    currency: "USD"
+    maximum: "5000"
+    grace_period_days: 0
+
+  - fee_id: "penalty.late_annual_fee"
+    name: "Late Annual Fee Payment"
+    fixed_amount: "250"
+    interest_rate: "1.5%"
+    interest_basis: "per_month"
+    currency: "USD"
+
+  - fee_id: "penalty.late_license_renewal"
+    name: "Late License Renewal"
+    percentage_of_annual_fee: "25%"
+    currency: "USD"
+    grace_period_days: 30
+
+  - fee_id: "penalty.non_compliance"
+    name: "Non-Compliance Penalty"
+    minimum: "1000"
+    maximum: "100000"
+    currency: "USD"
+    determination: "case_by_case"
+
+# Discounts
+discounts:
+  - discount_id: "startup"
+    name: "Startup Discount"
+    description: "For qualifying startups (< 2 years, < $100k revenue)"
+    percentage: 50
+    applicable_to:
+      - formation_fees
+      - license_fees.application_fee
+      - annual_fees
+    conditions:
+      - entity_age_under_years: 2
+      - revenue_under: 100000
+    validity_years: 2
+
+  - discount_id: "sme"
+    name: "SME Discount"
+    description: "For small and medium enterprises"
+    percentage: 25
+    applicable_to:
+      - annual_fees
+      - license_fees.annual_fee
+    conditions:
+      - revenue_under: 1000000
+      - employees_under: 50
+
+  - discount_id: "early_payment"
+    name: "Early Payment Discount"
+    description: "Pay annual fees 60 days early"
+    percentage: 5
+    applicable_to:
+      - annual_fees
+    conditions:
+      - paid_60_days_before_due
+
+# Payment Terms
+payment_terms:
+  accepted_methods:
+    - bank_transfer
+    - credit_card
+    - debit_card
+    - crypto_stablecoin
+
+  currencies_accepted:
+    - USD
+    - EUR
+    - AED
+    - USDC
+    - USDT
+
+  payment_deadlines:
+    formation_fees: "before_processing"
+    annual_fees: "anniversary_of_incorporation"
+    license_fees: "before_license_issuance"
+    filing_fees: "at_time_of_filing"
+
+  refund_policy:
+    formation_fees: "non_refundable_after_processing"
+    application_fees: "non_refundable"
+    annual_fees: "pro_rata_if_dissolved_within_6_months"

@@ -1,0 +1,56 @@
+module_id: org.momentum.msez.tax.framework
+version: 0.1.0
+kind: tax
+license: Apache-2.0
+description: |
+  Tax Framework module defining the zone's tax regime.
+  Configurable for tax-free, low-tax, or standard tax jurisdictions.
+
+variants:
+  - tax-free
+  - low-tax
+  - standard
+
+depends_on:
+  - module_id: org.momentum.msez.legal.core
+    constraint: ">=0.1.0,<1.0.0"
+
+provides:
+  - interface: msez.tax.framework.regime.v1
+    path: templates/tax-regime.yaml
+    media_type: application/yaml
+  - interface: msez.tax.framework.rates.v1
+    path: templates/tax-rates.yaml
+    media_type: application/yaml
+  - interface: msez.policy.opa.bundle.v1
+    path: policy/
+    media_type: text/plain
+
+parameters:
+  regime_type:
+    type: string
+    default: "territorial"
+  corporate_income_tax:
+    type: object
+    default:
+      rate: 0
+      applies_to: "none"
+  personal_income_tax:
+    type: object
+    default:
+      rate: 0
+      applies_to: "none"
+  capital_gains_tax:
+    type: object
+    default:
+      rate: 0
+      applies_to: "none"
+  vat_gst:
+    type: object
+    default:
+      rate: 0
+      threshold: 0
+  stamp_duty:
+    type: object
+    default:
+      rate: 0

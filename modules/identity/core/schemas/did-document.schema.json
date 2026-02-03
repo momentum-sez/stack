@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://momentum-sez.org/schemas/identity.did-document.schema.json",
+  "title": "DID Document",
+  "description": "W3C DID Document for zone identity management",
+  "type": "object",
+  "required": ["@context", "id", "verificationMethod"],
+  "properties": {
+    "@context": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [
+        "https://www.w3.org/ns/did/v1",
+        "https://w3id.org/security/suites/ed25519-2020/v1",
+        "https://momentum-sez.org/ns/identity/v1"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^did:[a-z]+:.+$",
+      "description": "DID identifier"
+    },
+    "controller": {
+      "oneOf": [
+        { "type": "string", "pattern": "^did:" },
+        { "type": "array", "items": { "type": "string", "pattern": "^did:" } }
+      ],
+      "description": "Controller DID(s)"
+    },
+    "alsoKnownAs": {
+      "type": "array",
+      "items": { "type": "string", "format": "uri" },
+      "description": "Alternative identifiers"
+    },
+    "verificationMethod": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/verificationMethod"
+      }
+    },
+    "authentication": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string" },
+          { "$ref": "#/$defs/verificationMethod" }
+        ]
+      },
+      "description": "Authentication verification methods"
+    },
+    "assertionMethod": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string" },
+          { "$ref": "#/$defs/verificationMethod" }
+        ]
+      },
+      "description": "Assertion verification methods"
+    },
+    "keyAgreement": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string" },
+          { "$ref": "#/$defs/verificationMethod" }
+        ]
+      },
+      "description": "Key agreement methods"
+    },
+    "capabilityInvocation": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string" },
+          { "$ref": "#/$defs/verificationMethod" }
+        ]
+      },
+      "description": "Capability invocation methods"
+    },
+    "capabilityDelegation": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string" },
+          { "$ref": "#/$defs/verificationMethod" }
+        ]
+      },
+      "description": "Capability delegation methods"
+    },
+    "service": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/service"
+      },
+      "description": "Service endpoints"
+    },
+    "msez:identityTier": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3,
+      "description": "MSEZ KYC tier level"
+    },
+    "msez:jurisdiction": {
+      "type": "string",
+      "description": "Primary jurisdiction"
+    },
+    "msez:entityBinding": {
+      "type": "string",
+      "description": "Bound entity ID (if identity is for a legal entity)"
+    },
+    "msez:created": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "msez:updated": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "verificationMethod": {
+      "type": "object",
+      "required": ["id", "type", "controller"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Verification method ID"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "Ed25519VerificationKey2020",
+            "JsonWebKey2020",
+            "EcdsaSecp256k1VerificationKey2019",
+            "X25519KeyAgreementKey2020"
+          ]
+        },
+        "controller": {
+          "type": "string",
+          "pattern": "^did:"
+        },
+        "publicKeyMultibase": {
+          "type": "string",
+          "pattern": "^z[a-km-zA-HJ-NP-Z1-9]+$",
+          "description": "Multibase-encoded public key"
+        },
+        "publicKeyJwk": {
+          "type": "object",
+          "properties": {
+            "kty": { "type": "string" },
+            "crv": { "type": "string" },
+            "x": { "type": "string" },
+            "y": { "type": "string" }
+          },
+          "description": "JWK-encoded public key"
+        },
+        "msez:keyPurpose": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["primary", "recovery", "delegation", "rotation"]
+          }
+        },
+        "msez:validFrom": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "msez:validUntil": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "service": {
+      "type": "object",
+      "required": ["id", "type", "serviceEndpoint"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "CredentialRegistry",
+            "LinkedDomains",
+            "DIDCommMessaging",
+            "MSEZIdentityService",
+            "MSEZComplianceService"
+          ]
+        },
+        "serviceEndpoint": {
+          "oneOf": [
+            { "type": "string", "format": "uri" },
+            { "type": "array", "items": { "type": "string", "format": "uri" } },
+            { "type": "object" }
+          ]
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

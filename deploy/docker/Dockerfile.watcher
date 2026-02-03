@@ -1,0 +1,41 @@
+# MSEZ Watcher Service
+# Corridor watcher with bonding and attestation
+
+FROM python:3.11-slim AS base
+
+LABEL org.opencontainers.image.title="MSEZ Watcher"
+LABEL org.opencontainers.image.description="Corridor watcher service with economic accountability"
+LABEL org.opencontainers.image.vendor="Momentum"
+LABEL org.opencontainers.image.version="0.4.44"
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    MSEZ_HOME=/app \
+    MSEZ_WATCHER_DATA=/watcher-data
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -r msez && useradd -r -g msez msez
+RUN mkdir -p /app /watcher-data && chown -R msez:msez /app /watcher-data
+
+WORKDIR /app
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY --chown=msez:msez tools/phoenix/ ./tools/phoenix/
+COPY --chown=msez:msez tools/vc.py ./tools/
+COPY --chown=msez:msez schemas/ ./schemas/
+
+USER msez
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8082/health || exit 1
+
+EXPOSE 8082
+
+CMD ["python", "-m", "tools.phoenix.watcher", "serve", "--host", "0.0.0.0", "--port", "8082"]

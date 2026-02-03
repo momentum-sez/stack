@@ -1,0 +1,255 @@
+# Zone Tax Regime Definition
+# Configurable template for zone tax structure
+
+regime_id: msez.tax.framework.regime.v1
+regime_version: "1.0"
+
+description: |
+  Defines the comprehensive tax regime for the Special Economic Zone.
+  This template supports tax-free zones, low-tax zones, and standard
+  tax jurisdictions with full configurability.
+
+regime_metadata:
+  jurisdiction_id: "${jurisdiction_id}"
+  zone_id: "${zone_id}"
+  effective_date: "${effective_date}"
+  regime_type: "${regime_type}"  # territorial, worldwide, tax_free, flat_rate
+
+# Corporate Income Tax
+corporate_income_tax:
+  enabled: false  # Set to true for taxable zones
+  standard_rate: "0%"
+
+  # Rate schedules (for progressive systems)
+  rate_schedule:
+    - bracket_from: "0"
+      bracket_to: "unlimited"
+      rate: "0%"
+
+  # Taxable income calculation
+  taxable_base:
+    method: "territorial"  # territorial, worldwide
+    includes:
+      - zone_source_income
+    excludes:
+      - foreign_source_income
+      - exempt_activities
+
+  # Deductions
+  deductions:
+    allowed:
+      - operating_expenses
+      - depreciation
+      - interest_expense
+      - bad_debts
+      - charitable_contributions
+    limitations:
+      interest_deduction:
+        method: "earnings_stripping"
+        threshold: "30%"  # of EBITDA
+      related_party_payments:
+        requires: "arms_length"
+
+  # Exemptions
+  exemptions:
+    - exemption_id: "qualified_business"
+      description: "Qualified zone business activities"
+      conditions:
+        - economic_substance_test
+        - license_in_good_standing
+      duration: "perpetual"
+
+    - exemption_id: "startup_exemption"
+      description: "New establishment tax holiday"
+      conditions:
+        - new_establishment
+        - minimum_investment
+      duration_years: 5
+
+# Personal Income Tax
+personal_income_tax:
+  enabled: false
+  standard_rate: "0%"
+
+  # For zones that tax personal income
+  rate_schedule:
+    - bracket_from: "0"
+      bracket_to: "unlimited"
+      rate: "0%"
+
+  # Residency rules
+  residency:
+    days_threshold: 183
+    tie_breaker_rules:
+      - permanent_home
+      - center_of_vital_interests
+      - habitual_abode
+      - nationality
+
+# Withholding Taxes
+withholding_taxes:
+  enabled: false
+
+  rates:
+    dividends:
+      standard: "0%"
+      treaty_reduced: "0%"
+    interest:
+      standard: "0%"
+      treaty_reduced: "0%"
+    royalties:
+      standard: "0%"
+      treaty_reduced: "0%"
+    technical_services:
+      standard: "0%"
+      treaty_reduced: "0%"
+    management_fees:
+      standard: "0%"
+      treaty_reduced: "0%"
+
+  exemptions:
+    - payments_to_zone_entities
+    - payments_to_treaty_countries
+    - certain_financial_instruments
+
+# Capital Gains Tax
+capital_gains_tax:
+  enabled: false
+
+  rates:
+    short_term: "0%"  # < 1 year holding
+    long_term: "0%"   # >= 1 year holding
+
+  exemptions:
+    - shares_in_zone_companies
+    - real_property_in_zone
+    - qualifying_investments
+
+# Value Added Tax / Goods & Services Tax
+vat_gst:
+  enabled: false
+  standard_rate: "0%"
+
+  # Registration
+  registration:
+    mandatory_threshold: "0"  # Revenue threshold
+    voluntary_allowed: true
+
+  # Rate categories
+  rates:
+    standard: "0%"
+    reduced: "0%"
+    zero_rated: "0%"
+    exempt: "exempt"
+
+  # Zero-rated supplies
+  zero_rated_supplies:
+    - exports
+    - international_services
+    - certain_financial_services
+
+  # Exempt supplies
+  exempt_supplies:
+    - financial_services
+    - insurance
+    - real_property_leasing
+
+  # Input tax recovery
+  input_tax:
+    full_recovery: true
+    blocked_items: []
+
+# Stamp Duty
+stamp_duty:
+  enabled: false
+
+  rates:
+    share_transfers: "0%"
+    property_transfers: "0%"
+    loan_agreements: "0%"
+    lease_agreements: "0%"
+
+  exemptions:
+    - intra_group_transfers
+    - qualifying_reorganizations
+
+# Economic Substance
+economic_substance:
+  required: true
+
+  relevant_activities:
+    - banking
+    - insurance
+    - fund_management
+    - financing_and_leasing
+    - headquarters
+    - shipping
+    - holding_company
+    - intellectual_property
+    - distribution_and_service_center
+
+  substance_requirements:
+    - directed_and_managed_in_zone
+    - adequate_employees
+    - adequate_expenditure
+    - core_income_generating_activities
+
+  reporting:
+    annual_return: true
+    deadline_days_after_year_end: 365
+
+# Tax Incentives
+incentives:
+  available_programs:
+    - program_id: "new_establishment"
+      name: "New Establishment Tax Holiday"
+      type: "tax_holiday"
+      duration_years: 5
+      conditions:
+        - new_entity_in_zone
+        - minimum_investment_usd: 100000
+      benefits:
+        - corporate_tax_exemption
+        - import_duty_exemption
+
+    - program_id: "innovation_credit"
+      name: "Innovation Tax Credit"
+      type: "tax_credit"
+      credit_percentage: 25
+      applies_to: "r_and_d_expenditure"
+      conditions:
+        - qualifying_r_and_d_activities
+
+    - program_id: "employment_incentive"
+      name: "Employment Incentive"
+      type: "deduction"
+      deduction_percentage: 150
+      applies_to: "local_employment_costs"
+      conditions:
+        - employs_zone_residents
+
+# Compliance Calendar
+compliance_calendar:
+  corporate_tax_return:
+    deadline: "6 months after year end"
+    extensions_available: true
+
+  withholding_tax_remittance:
+    frequency: "monthly"
+    deadline: "15th of following month"
+
+  vat_return:
+    frequency: "quarterly"
+    deadline: "28 days after quarter end"
+
+  economic_substance_return:
+    frequency: "annual"
+    deadline: "12 months after year end"
+
+  crs_reporting:
+    frequency: "annual"
+    deadline: "per_treaty_requirements"
+
+  fatca_reporting:
+    frequency: "annual"
+    deadline: "march_31"

@@ -1,0 +1,74 @@
+# Prometheus configuration for MSEZ Stack
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers: []
+
+rule_files: []
+
+scrape_configs:
+  # Zone Authority metrics
+  - job_name: 'zone-authority'
+    static_configs:
+      - targets: ['zone-authority:8080']
+    metrics_path: '/metrics'
+
+  # Entity Registry metrics
+  - job_name: 'entity-registry'
+    static_configs:
+      - targets: ['entity-registry:8083']
+    metrics_path: '/metrics'
+
+  # License Registry metrics
+  - job_name: 'license-registry'
+    static_configs:
+      - targets: ['license-registry:8084']
+    metrics_path: '/metrics'
+
+  # Corridor Node metrics
+  - job_name: 'corridor-node'
+    static_configs:
+      - targets: ['corridor-node:8081']
+    metrics_path: '/metrics'
+
+  # Watcher metrics
+  - job_name: 'watcher'
+    static_configs:
+      - targets: ['watcher:8082']
+    metrics_path: '/metrics'
+
+  # Identity Service metrics
+  - job_name: 'identity-service'
+    static_configs:
+      - targets: ['identity-service:8085']
+    metrics_path: '/metrics'
+
+  # Settlement Service metrics
+  - job_name: 'settlement-service'
+    static_configs:
+      - targets: ['settlement-service:8086']
+    metrics_path: '/metrics'
+
+  # Compliance Service metrics
+  - job_name: 'compliance-service'
+    static_configs:
+      - targets: ['compliance-service:8087']
+    metrics_path: '/metrics'
+
+  # Regulator Console metrics
+  - job_name: 'regulator-console'
+    static_configs:
+      - targets: ['regulator-console:8088']
+    metrics_path: '/metrics'
+
+  # PostgreSQL metrics (if using postgres_exporter)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+
+  # Redis metrics (if using redis_exporter)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']

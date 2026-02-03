@@ -1,0 +1,225 @@
+# Tier 2: Enhanced KYC Identity
+# Address and source of funds verified
+
+tier_id: tier-2
+tier_name: "Enhanced"
+tier_description: |
+  Enhanced identity tier with address verification and source of funds.
+  Suitable for higher-value transactions and professional activities.
+  Required for certain regulated activities.
+
+requirements:
+  identity:
+    - requirement: valid_tier_1
+      description: "Valid Tier 1 identity credential"
+      verification: automatic
+      evidence: existing_tier_1_credential
+
+  documents:
+    - document: proof_of_address
+      description: "Recent proof of residential address"
+      accepted_types:
+        - utility_bill
+        - bank_statement
+        - tax_document
+        - government_correspondence
+      requirements:
+        - dated_within_90_days
+        - name_matches_id
+        - full_address_visible
+      verification: automated_plus_manual
+
+    - document: source_of_funds
+      description: "Evidence of source of funds"
+      accepted_types:
+        - employment_letter
+        - tax_returns
+        - bank_statements
+        - investment_statements
+        - business_ownership_documents
+        - inheritance_documentation
+        - sale_proceeds
+      requirements:
+        - explains_expected_activity
+        - legitimate_source
+      verification: manual_review
+
+    - document: source_of_wealth
+      description: "Evidence of overall wealth accumulation"
+      accepted_types:
+        - tax_returns_multi_year
+        - property_valuations
+        - investment_portfolio
+        - business_financials
+      requirements:
+        - consistent_with_profile
+      verification: manual_review
+      conditional: true
+      trigger: "high_net_worth_or_high_volume"
+
+  verification_checks:
+    - check: address_verification
+      description: "Verify residential address"
+      methods:
+        - document_verification
+        - database_check
+        - postal_verification
+      automated: partially
+
+    - check: source_of_funds_review
+      description: "Review and verify source of funds"
+      automated: false
+      reviewer: compliance_officer
+
+    - check: enhanced_sanctions_screening
+      description: "Enhanced sanctions screening with fuzzy matching"
+      automated: true
+
+    - check: adverse_media_screening
+      description: "Screen for negative news coverage"
+      automated: true
+
+    - check: risk_assessment
+      description: "Calculate customer risk score"
+      automated: true
+      factors:
+        - jurisdiction_risk
+        - activity_risk
+        - source_of_funds_risk
+        - pep_association
+        - adverse_media
+
+capabilities:
+  transactions:
+    single_transaction_limit:
+      amount: "100000"
+      currency: "USD"
+      period: "per_transaction"
+    daily_limit:
+      amount: "500000"
+      currency: "USD"
+    monthly_limit:
+      amount: "2000000"
+      currency: "USD"
+
+  activities:
+    allowed:
+      - all_tier_1_activities
+      - large_transactions
+      - professional_services
+      - investment_products
+      - margin_trading
+      - derivatives_basic
+      - lending_services
+      - license_applications
+    restricted:
+      - institutional_only_products
+      - market_making
+      - prime_brokerage
+
+  services:
+    - full_banking_services
+    - investment_services
+    - custody_services
+    - trading_all_products
+    - credit_facilities
+
+  jurisdictions:
+    allowed:
+      - all_standard_jurisdictions
+      - enhanced_corridor_access
+    restricted:
+      - fatf_blacklist
+
+verification_process:
+  steps:
+    - step: 1
+      action: proof_of_address_upload
+      description: "Upload proof of address document"
+      automated: false
+      time_estimate: "2-5 minutes"
+
+    - step: 2
+      action: address_extraction
+      description: "Extract and verify address"
+      automated: partially
+      time_estimate: "1-2 minutes"
+
+    - step: 3
+      action: source_of_funds_upload
+      description: "Upload source of funds documentation"
+      automated: false
+      time_estimate: "5-15 minutes"
+
+    - step: 4
+      action: source_of_funds_review
+      description: "Manual review of source of funds"
+      automated: false
+      reviewer: compliance_officer
+      time_estimate: "1-3 business days"
+
+    - step: 5
+      action: enhanced_screening
+      description: "Enhanced sanctions and adverse media screening"
+      automated: true
+      time_estimate: "< 1 minute"
+
+    - step: 6
+      action: risk_scoring
+      description: "Calculate risk score"
+      automated: true
+      time_estimate: "instant"
+
+    - step: 7
+      action: compliance_approval
+      description: "Final compliance approval"
+      automated: false
+      approver: compliance_officer
+      time_estimate: "1-2 business days"
+
+    - step: 8
+      action: issue_tier_2_credential
+      description: "Issue Tier 2 identity credential"
+      automated: true
+      time_estimate: "instant"
+
+  total_time_estimate: "2-5 business days"
+  manual_review_required: true
+
+credential_issued:
+  type: "IdentityTierCredential"
+  claims:
+    - tier: 2
+    - tier_name: "Enhanced"
+    - all_tier_1_claims: inherited
+    - residential_address: hashed_address
+    - address_jurisdiction: country_code
+    - source_of_funds_verified: boolean
+    - source_of_funds_category: category
+    - risk_score: low_medium_high
+    - verified_at: timestamp
+    - valid_until: timestamp
+  validity_period_days: 365
+  auto_renew: false
+  renewal_requires: full_reverification
+
+upgrade_path:
+  next_tier: 3
+  requirements_preview:
+    - "Full due diligence package"
+    - "Site visit (for entities)"
+    - "Senior management approval"
+    - "Ongoing monitoring agreement"
+
+ongoing_monitoring:
+  transaction_monitoring:
+    enabled: true
+    thresholds: enhanced
+  periodic_review:
+    frequency: annual
+    scope: full_reverification
+  trigger_events:
+    - significant_change_in_activity
+    - adverse_media_alert
+    - sanctions_hit
+    - high_risk_transaction

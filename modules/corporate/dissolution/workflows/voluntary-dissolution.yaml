@@ -1,0 +1,275 @@
+# Voluntary Dissolution Workflow
+# For solvent companies wishing to wind up
+
+workflow_id: msez.corporate.dissolution.voluntary.v1
+workflow_version: "1.0"
+workflow_type: voluntary_dissolution
+
+description: |
+  Workflow for voluntary dissolution of a solvent company.
+  Follows statutory requirements for member's voluntary liquidation.
+
+prerequisites:
+  - entity_status: active
+  - no_outstanding_regulatory_actions: true
+  - all_filings_current: true
+  - solvency_declaration: required
+
+stages:
+  # Stage 1: Board Resolution to Dissolve
+  - stage_id: board_resolution
+    name: "Board Resolution"
+    description: "Board resolves to recommend dissolution to shareholders"
+    sequence: 1
+    required: true
+    actions:
+      - action: pass_board_resolution
+        description: "Pass resolution recommending voluntary winding up"
+        template: dissolution_board_resolution
+      - action: solvency_declaration
+        description: "Directors make statutory declaration of solvency"
+        requirements:
+          - majority_of_directors_sign: true
+          - statement_of_assets_liabilities: required
+          - ability_to_pay_debts: declared
+        validity_period_days: 35
+    outputs:
+      - board_resolution_document
+      - solvency_declaration_document
+    timeline:
+      estimated_days: 7
+
+  # Stage 2: Shareholder Resolution
+  - stage_id: shareholder_resolution
+    name: "Shareholder Resolution"
+    description: "Shareholders pass special resolution to wind up"
+    sequence: 2
+    required: true
+    dependencies:
+      - board_resolution
+    actions:
+      - action: convene_egm
+        description: "Convene extraordinary general meeting"
+        notice_period_days: 14
+      - action: pass_special_resolution
+        description: "Pass special resolution for voluntary winding up"
+        majority_required: 75
+        resolution_type: special
+    outputs:
+      - egm_notice
+      - egm_minutes
+      - special_resolution_document
+    timeline:
+      estimated_days: 21
+
+  # Stage 3: Appoint Liquidator
+  - stage_id: appoint_liquidator
+    name: "Appoint Liquidator"
+    description: "Appoint licensed liquidator to conduct winding up"
+    sequence: 3
+    required: true
+    dependencies:
+      - shareholder_resolution
+    actions:
+      - action: select_liquidator
+        description: "Select licensed insolvency practitioner"
+        requirements:
+          - licensed_insolvency_practitioner: true
+          - no_conflict_of_interest: true
+      - action: liquidator_consent
+        description: "Obtain liquidator's consent to act"
+      - action: file_liquidator_appointment
+        description: "File notice of liquidator appointment with registry"
+    outputs:
+      - liquidator_appointment_document
+      - liquidator_consent_document
+      - registry_filing_confirmation
+    timeline:
+      estimated_days: 7
+
+  # Stage 4: Notify Creditors
+  - stage_id: notify_creditors
+    name: "Notify Creditors"
+    description: "Publish notice and notify known creditors"
+    sequence: 4
+    required: true
+    dependencies:
+      - appoint_liquidator
+    actions:
+      - action: publish_gazette_notice
+        description: "Publish notice in official gazette"
+        notice_type: winding_up_commencement
+      - action: notify_known_creditors
+        description: "Send written notice to all known creditors"
+        deadline_for_claims_days: 90
+      - action: notify_regulators
+        description: "Notify relevant regulatory authorities"
+    outputs:
+      - gazette_notice_reference
+      - creditor_notification_log
+      - regulator_notifications
+    timeline:
+      estimated_days: 14
+
+  # Stage 5: Realize Assets
+  - stage_id: realize_assets
+    name: "Realize Assets"
+    description: "Liquidator realizes company assets"
+    sequence: 5
+    required: true
+    dependencies:
+      - notify_creditors
+    actions:
+      - action: asset_inventory
+        description: "Complete inventory of all assets"
+      - action: collect_receivables
+        description: "Collect outstanding receivables"
+      - action: sell_assets
+        description: "Sell assets at best obtainable price"
+      - action: terminate_contracts
+        description: "Terminate ongoing contracts"
+      - action: close_bank_accounts
+        description: "Close bank accounts (retain one for distributions)"
+    outputs:
+      - asset_inventory_report
+      - asset_realization_report
+      - contract_termination_log
+    timeline:
+      estimated_days: 90
+
+  # Stage 6: Settle Liabilities
+  - stage_id: settle_liabilities
+    name: "Settle Liabilities"
+    description: "Pay creditors in statutory order of priority"
+    sequence: 6
+    required: true
+    dependencies:
+      - realize_assets
+    priority_order:
+      - secured_creditors
+      - costs_of_liquidation
+      - preferential_creditors
+      - unsecured_creditors
+      - deferred_creditors
+    actions:
+      - action: adjudicate_claims
+        description: "Review and adjudicate creditor claims"
+      - action: pay_creditors
+        description: "Pay admitted claims in priority order"
+      - action: final_tax_clearance
+        description: "Obtain tax clearance certificate"
+    outputs:
+      - claims_adjudication_report
+      - payment_schedule
+      - tax_clearance_certificate
+    timeline:
+      estimated_days: 60
+
+  # Stage 7: Final Distribution
+  - stage_id: final_distribution
+    name: "Final Distribution to Shareholders"
+    description: "Distribute remaining assets to shareholders"
+    sequence: 7
+    required: true
+    dependencies:
+      - settle_liabilities
+    preconditions:
+      - all_creditors_paid: true
+      - tax_clearance_obtained: true
+    actions:
+      - action: calculate_distribution
+        description: "Calculate distribution per share class"
+        distribution_order:
+          - liquidation_preference_holders
+          - participating_preferred
+          - common_shareholders
+      - action: distribute_assets
+        description: "Distribute remaining assets to shareholders"
+    outputs:
+      - distribution_calculation
+      - distribution_receipts
+    timeline:
+      estimated_days: 14
+
+  # Stage 8: Final Meeting
+  - stage_id: final_meeting
+    name: "Final General Meeting"
+    description: "Liquidator presents final accounts to shareholders"
+    sequence: 8
+    required: true
+    dependencies:
+      - final_distribution
+    actions:
+      - action: prepare_final_accounts
+        description: "Prepare final accounts showing receipts and payments"
+      - action: convene_final_meeting
+        description: "Convene final general meeting"
+        notice_period_days: 28
+      - action: present_final_accounts
+        description: "Present final accounts for approval"
+    outputs:
+      - final_accounts
+      - final_meeting_minutes
+    timeline:
+      estimated_days: 35
+
+  # Stage 9: File Final Documents
+  - stage_id: file_final_documents
+    name: "File Final Documents"
+    description: "File final return and request dissolution"
+    sequence: 9
+    required: true
+    dependencies:
+      - final_meeting
+    actions:
+      - action: file_final_return
+        description: "File final return with registry"
+      - action: return_licenses
+        description: "Surrender all licenses and permits"
+      - action: request_dissolution
+        description: "Request formal dissolution of company"
+    outputs:
+      - final_return_confirmation
+      - license_surrender_confirmations
+      - dissolution_application
+    timeline:
+      estimated_days: 14
+
+  # Stage 10: Dissolution
+  - stage_id: dissolution
+    name: "Dissolution"
+    description: "Company formally dissolved"
+    sequence: 10
+    required: true
+    dependencies:
+      - file_final_documents
+    actions:
+      - action: registry_processing
+        description: "Registry processes dissolution"
+        processing_time_days: 14
+      - action: issue_dissolution_certificate
+        description: "Registry issues certificate of dissolution"
+      - action: gazette_publication
+        description: "Dissolution published in official gazette"
+    outputs:
+      - certificate_of_dissolution
+      - gazette_publication_reference
+    timeline:
+      estimated_days: 30
+
+total_estimated_timeline:
+  minimum_days: 180
+  typical_days: 270
+  maximum_days: 365
+
+documents_retained:
+  retention_period_years: 7
+  documents:
+    - all_board_minutes_and_resolutions
+    - all_shareholder_minutes_and_resolutions
+    - solvency_declaration
+    - liquidator_reports
+    - final_accounts
+    - certificate_of_dissolution
+    - creditor_claims_and_payments
+    - tax_returns_and_clearances

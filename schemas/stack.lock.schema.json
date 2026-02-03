@@ -279,6 +279,156 @@
         },
         "additionalProperties": true
       }
+    },
+    "licensepacks": {
+      "type": "array",
+      "description": "Pinned licensepack digests for jurisdictional licensing registries used by this zone.",
+      "items": {
+        "type": "object",
+        "required": [
+          "jurisdiction_id",
+          "domain",
+          "licensepack_digest_sha256"
+        ],
+        "properties": {
+          "jurisdiction_id": {
+            "type": "string",
+            "description": "Jurisdiction identifier (e.g., 'ae-dubai-difc')"
+          },
+          "domain": {
+            "type": "string",
+            "enum": ["financial", "corporate", "professional", "trade", "insurance", "mixed"],
+            "description": "License domain"
+          },
+          "licensepack_digest_sha256": {
+            "description": "SHA256 digest over canonicalized licensepack content (see spec/98-licensepacks.md).",
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "allOf": [
+                  {
+                    "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                  },
+                  {
+                    "properties": {
+                      "artifact_type": {
+                        "const": "licensepack"
+                      }
+                    },
+                    "required": [
+                      "artifact_type",
+                      "digest_sha256"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "licensepack_lock_path": {
+            "type": "string",
+            "description": "Relative path to the licensepack.lock.json source for this pin."
+          },
+          "licensepack_lock_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "licensepack_artifact_path": {
+            "type": "string",
+            "description": "Path to licensepack artifact in CAS"
+          },
+          "as_of_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Snapshot date of the licensepack"
+          },
+          "snapshot_timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Exact snapshot timestamp"
+          },
+          "includes": {
+            "type": "object",
+            "properties": {
+              "licenses_active": {
+                "type": "integer"
+              },
+              "licenses_total": {
+                "type": "integer"
+              },
+              "license_types": {
+                "type": "integer"
+              }
+            },
+            "description": "Summary of licensepack contents"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "regpacks": {
+      "type": "array",
+      "description": "Pinned regpack digests for regulatory state snapshots used by this zone.",
+      "items": {
+        "type": "object",
+        "required": [
+          "jurisdiction_id",
+          "domain",
+          "regpack_digest_sha256"
+        ],
+        "properties": {
+          "jurisdiction_id": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string",
+            "enum": ["financial", "customs", "sanctions", "tax", "trade", "licensing", "mixed"]
+          },
+          "regpack_digest_sha256": {
+            "description": "SHA256 digest over canonicalized regpack content.",
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "allOf": [
+                  {
+                    "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                  },
+                  {
+                    "properties": {
+                      "artifact_type": {
+                        "const": "regpack"
+                      }
+                    },
+                    "required": [
+                      "artifact_type",
+                      "digest_sha256"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "regpack_lock_path": {
+            "type": "string"
+          },
+          "regpack_lock_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "regpack_artifact_path": {
+            "type": "string"
+          },
+          "as_of_date": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
     }
   }
 }

@@ -1,0 +1,276 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://momentum-sez.org/schemas/licensepack.schema.json",
+  "title": "MSEZ Licensepack",
+  "description": "Content-addressed snapshot of jurisdictional licensing state",
+  "type": "object",
+  "required": [
+    "licensepack_format_version",
+    "licensepack_id",
+    "jurisdiction_id",
+    "domain",
+    "as_of_date",
+    "snapshot_timestamp",
+    "sources",
+    "regulator",
+    "includes",
+    "license",
+    "normalization"
+  ],
+  "properties": {
+    "licensepack_format_version": {
+      "type": "string",
+      "const": "1",
+      "description": "Licensepack format version"
+    },
+    "licensepack_id": {
+      "type": "string",
+      "pattern": "^licensepack:[a-z0-9-]+:[a-z0-9-]+:[0-9T:.Z-]+$",
+      "description": "Unique licensepack identifier (licensepack:jurisdiction:domain:timestamp)"
+    },
+    "jurisdiction_id": {
+      "type": "string",
+      "pattern": "^[a-z]{2}(-[a-z0-9-]+)*$",
+      "description": "Jurisdiction identifier (e.g., ae-dubai-difc)"
+    },
+    "domain": {
+      "type": "string",
+      "enum": ["financial", "corporate", "professional", "trade", "insurance", "mixed"],
+      "description": "License domain"
+    },
+    "as_of_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Snapshot date (YYYY-MM-DD)"
+    },
+    "snapshot_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Exact snapshot timestamp (ISO 8601)"
+    },
+    "snapshot_type": {
+      "type": "string",
+      "enum": ["hourly", "daily", "weekly", "on_demand"],
+      "default": "daily",
+      "description": "Snapshot frequency type"
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/source"
+      },
+      "description": "Data sources for this licensepack"
+    },
+    "regulator": {
+      "$ref": "#/$defs/regulator",
+      "description": "Regulatory authority that issues these licenses"
+    },
+    "includes": {
+      "type": "object",
+      "required": ["license_types", "licenses_active", "licenses_total"],
+      "properties": {
+        "license_types": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of license type definitions"
+        },
+        "licenses_active": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of active licenses"
+        },
+        "licenses_suspended": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of suspended licenses"
+        },
+        "licenses_total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total licenses in pack"
+        },
+        "permits": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of sub-permits"
+        },
+        "conditions": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of license conditions"
+        },
+        "holders": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of unique license holders"
+        }
+      },
+      "description": "Content summary"
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX license identifier for the data"
+    },
+    "normalization": {
+      "type": "object",
+      "required": ["recipe_id", "tool", "tool_version"],
+      "properties": {
+        "recipe_id": {
+          "type": "string",
+          "description": "Normalization recipe identifier"
+        },
+        "tool": {
+          "type": "string",
+          "description": "Tool used for normalization"
+        },
+        "tool_version": {
+          "type": "string",
+          "description": "Tool version"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_id": { "type": "string" }
+            }
+          },
+          "description": "Input source references"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Normalization notes"
+        }
+      },
+      "description": "Normalization metadata"
+    },
+    "previous_licensepack_digest": {
+      "type": "string",
+      "pattern": "^(sha256:)?[a-f0-9]{64}$",
+      "description": "SHA256 digest of previous licensepack for delta computation"
+    },
+    "delta": {
+      "type": "object",
+      "properties": {
+        "licenses_granted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "licenses_revoked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "licenses_suspended": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "licenses_reinstated": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "conditions_added": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "conditions_removed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "permits_issued": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "permits_revoked": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "description": "Changes from previous licensepack"
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "required": ["source_id", "uri", "media_type", "retrieved_at"],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "description": "Unique source identifier"
+        },
+        "uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "Source URI"
+        },
+        "media_type": {
+          "type": "string",
+          "description": "MIME type of source"
+        },
+        "retrieved_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Retrieval timestamp"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA256 digest of source data"
+        },
+        "record_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of records from this source"
+        },
+        "license": {
+          "type": "string",
+          "description": "Data license"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Source notes"
+        },
+        "artifact_ref": {
+          "$ref": "artifact-ref.schema.json",
+          "description": "Reference to raw artifact in CAS"
+        }
+      }
+    },
+    "regulator": {
+      "type": "object",
+      "required": ["regulator_id", "name", "jurisdiction_id"],
+      "properties": {
+        "regulator_id": {
+          "type": "string",
+          "description": "Regulator identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "Full regulatory authority name"
+        },
+        "jurisdiction_id": {
+          "type": "string",
+          "description": "Regulator's jurisdiction"
+        },
+        "registry_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Public registry URL"
+        },
+        "did": {
+          "type": "string",
+          "pattern": "^did:",
+          "description": "Regulator DID for verification"
+        },
+        "api_capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["license_verification", "holder_lookup", "condition_query", "status_check", "bulk_export"]
+          },
+          "description": "Available API capabilities"
+        }
+      }
+    }
+  }
+}

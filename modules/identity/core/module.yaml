@@ -1,0 +1,52 @@
+module_id: org.momentum.msez.identity.core
+version: 0.1.0
+kind: identity
+license: Apache-2.0
+description: |
+  Core Identity module implementing DID (Decentralized Identifier) management
+  and cryptographic key lifecycle. Foundation for all identity operations.
+
+  Supports:
+  - did:key for self-sovereign identifiers
+  - did:web for organization identifiers
+  - Key rotation and recovery
+  - Multi-key authentication
+
+variants:
+  - baseline
+  - hardware-backed
+
+depends_on: []
+
+provides:
+  - interface: msez.identity.did.v1
+    path: schemas/did-document.schema.json
+    media_type: application/json
+  - interface: msez.identity.key.v1
+    path: schemas/key-binding.schema.json
+    media_type: application/json
+  - interface: msez.policy.opa.bundle.v1
+    path: policy/
+    media_type: text/plain
+
+parameters:
+  supported_did_methods:
+    type: array
+    default: ["did:key", "did:web"]
+    description: "Supported DID methods"
+  default_key_algorithm:
+    type: string
+    default: "Ed25519"
+    description: "Default key algorithm"
+  key_rotation_days:
+    type: integer
+    default: 365
+    description: "Recommended key rotation period"
+  recovery_threshold:
+    type: integer
+    default: 2
+    description: "Recovery key threshold (of n)"
+  recovery_total:
+    type: integer
+    default: 3
+    description: "Total recovery keys (n)"

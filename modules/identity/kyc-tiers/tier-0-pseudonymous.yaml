@@ -1,0 +1,105 @@
+# Tier 0: Pseudonymous Identity
+# DID-only identity with minimal capabilities
+
+tier_id: tier-0
+tier_name: "Pseudonymous"
+tier_description: |
+  Entry-level identity tier requiring only a DID.
+  Suitable for exploration and limited interactions.
+  No personal information required.
+
+requirements:
+  identity:
+    - requirement: valid_did
+      description: "Valid DID (did:key or did:web)"
+      verification: automatic
+      evidence: did_document
+
+  documents: []
+
+  verification_checks: []
+
+capabilities:
+  transactions:
+    single_transaction_limit:
+      amount: "1000"
+      currency: "USD"
+      period: "per_transaction"
+    daily_limit:
+      amount: "3000"
+      currency: "USD"
+    monthly_limit:
+      amount: "10000"
+      currency: "USD"
+
+  activities:
+    allowed:
+      - view_public_information
+      - create_did
+      - receive_credentials
+      - basic_messaging
+      - testnet_transactions
+    restricted:
+      - fiat_transactions
+      - large_crypto_transactions
+      - license_applications
+      - entity_formation
+      - regulated_activities
+
+  services:
+    - public_registry_access
+    - testnet_access
+    - basic_wallet
+
+  jurisdictions:
+    - all  # No jurisdiction restrictions at Tier 0
+
+verification_process:
+  steps:
+    - step: 1
+      action: generate_did
+      description: "Generate or provide DID"
+      automated: true
+      time_estimate: "instant"
+
+    - step: 2
+      action: verify_did_control
+      description: "Verify control of DID via signature challenge"
+      automated: true
+      time_estimate: "instant"
+
+    - step: 3
+      action: issue_tier_0_credential
+      description: "Issue Tier 0 identity credential"
+      automated: true
+      time_estimate: "instant"
+
+  total_time_estimate: "< 1 minute"
+  manual_review_required: false
+
+credential_issued:
+  type: "IdentityTierCredential"
+  claims:
+    - tier: 0
+    - tier_name: "Pseudonymous"
+    - verified_at: timestamp
+    - valid_until: timestamp
+  validity_period_days: 365
+  auto_renew: true
+
+upgrade_path:
+  next_tier: 1
+  requirements_preview:
+    - "Government-issued ID"
+    - "Name verification"
+    - "Jurisdiction confirmation"
+
+risks_and_mitigations:
+  risks:
+    - "Sybil attacks (multiple identities)"
+    - "Limited accountability"
+  mitigations:
+    - "Transaction limits"
+    - "Activity restrictions"
+    - "Rate limiting"
+    - "Behavior monitoring"

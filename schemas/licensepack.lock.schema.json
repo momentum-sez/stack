@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://momentum-sez.org/schemas/licensepack.lock.schema.json",
+  "title": "Licensepack Lock File",
+  "description": "Lock file pinning a licensepack to a module",
+  "type": "object",
+  "required": [
+    "lock_version",
+    "generated_at",
+    "generator",
+    "generator_version",
+    "licensepack",
+    "artifact"
+  ],
+  "properties": {
+    "lock_version": {
+      "type": "string",
+      "const": "1",
+      "description": "Lock file format version"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Lock file generation timestamp"
+    },
+    "generator": {
+      "type": "string",
+      "description": "Tool that generated the lock file"
+    },
+    "generator_version": {
+      "type": "string",
+      "description": "Generator tool version"
+    },
+    "licensepack": {
+      "type": "object",
+      "required": ["licensepack_id", "jurisdiction_id", "domain", "as_of_date", "digest_sha256"],
+      "properties": {
+        "licensepack_id": {
+          "type": "string",
+          "description": "Licensepack identifier"
+        },
+        "jurisdiction_id": {
+          "type": "string",
+          "description": "Jurisdiction"
+        },
+        "domain": {
+          "type": "string",
+          "description": "License domain"
+        },
+        "as_of_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Snapshot date"
+        },
+        "digest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Content-addressed digest"
+        }
+      },
+      "description": "Licensepack metadata"
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["artifact_type", "digest_sha256", "uri", "media_type", "byte_length"],
+      "properties": {
+        "artifact_type": {
+          "type": "string",
+          "const": "licensepack"
+        },
+        "digest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "uri": {
+          "type": "string",
+          "description": "Path to artifact"
+        },
+        "media_type": {
+          "type": "string",
+          "const": "application/zip"
+        },
+        "byte_length": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "description": "Artifact reference"
+    },
+    "component_digests": {
+      "type": "object",
+      "properties": {
+        "metadata": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "index": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "license_types": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "licenses": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "permits": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "suspensions": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "revocations": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "description": "Per-component digests"
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_id": { "type": "string" },
+              "uri": { "type": "string" },
+              "retrieved_at": { "type": "string", "format": "date-time" },
+              "digest_sha256": { "type": "string" }
+            }
+          }
+        },
+        "normalization": {
+          "type": "object",
+          "properties": {
+            "recipe_id": { "type": "string" },
+            "tool": { "type": "string" },
+            "tool_version": { "type": "string" }
+          }
+        }
+      },
+      "description": "Data provenance"
+    },
+    "verification": {
+      "type": "object",
+      "properties": {
+        "verified_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "verifier": {
+          "type": "string"
+        },
+        "digest_verified": {
+          "type": "boolean"
+        },
+        "schema_valid": {
+          "type": "boolean"
+        }
+      },
+      "description": "Verification status"
+    }
+  }
+}

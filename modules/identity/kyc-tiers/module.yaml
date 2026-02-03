@@ -1,0 +1,78 @@
+module_id: org.momentum.msez.identity.kyc-tiers
+version: 0.1.0
+kind: identity
+license: Apache-2.0
+description: |
+  Progressive KYC Verification module implementing the MASS Protocol
+  4-tier identity system:
+
+  - Tier 0: Pseudonymous (DID only)
+  - Tier 1: Basic KYC (name + jurisdiction verification)
+  - Tier 2: Enhanced KYC (address + source of funds)
+  - Tier 3: Institutional (full due diligence)
+
+  Each tier unlocks progressively more capabilities while maintaining
+  privacy through selective disclosure.
+
+variants:
+  - baseline
+  - fast-track
+  - enhanced-diligence
+
+depends_on:
+  - module_id: org.momentum.msez.identity.core
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.reg.aml-cft
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.reg.sanctions
+    constraint: ">=0.1.0,<1.0.0"
+
+provides:
+  - interface: msez.identity.kyc.tier-0.v1
+    path: tier-0-pseudonymous.yaml
+    media_type: application/yaml
+  - interface: msez.identity.kyc.tier-1.v1
+    path: tier-1-basic.yaml
+    media_type: application/yaml
+  - interface: msez.identity.kyc.tier-2.v1
+    path: tier-2-enhanced.yaml
+    media_type: application/yaml
+  - interface: msez.identity.kyc.tier-3.v1
+    path: tier-3-institutional.yaml
+    media_type: application/yaml
+  - interface: msez.identity.kyc.application.v1
+    path: forms/kyc-application.schema.json
+    media_type: application/json
+  - interface: msez.policy.opa.bundle.v1
+    path: policy/
+    media_type: text/plain
+
+parameters:
+  allow_tier_0:
+    type: boolean
+    default: true
+    description: "Allow pseudonymous Tier 0 identities"
+  tier_0_transaction_limit:
+    type: number
+    default: 1000
+    description: "Transaction limit for Tier 0 (USD equivalent)"
+  tier_1_transaction_limit:
+    type: number
+    default: 15000
+    description: "Transaction limit for Tier 1"
+  tier_2_transaction_limit:
+    type: number
+    default: 100000
+    description: "Transaction limit for Tier 2"
+  tier_3_transaction_limit:
+    type: number
+    default: 0
+    description: "0 = unlimited for Tier 3"
+  auto_upgrade_eligible:
+    type: boolean
+    default: true
+    description: "Allow automatic tier upgrade when requirements met"
+  verification_expiry_days:
+    type: integer
+    default: 365
+    description: "Days until reverification required"

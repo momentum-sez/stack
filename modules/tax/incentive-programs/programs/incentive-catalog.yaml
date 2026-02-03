@@ -1,0 +1,341 @@
+# Zone Tax Incentive Programs Catalog
+# Available incentive programs for qualifying entities
+
+catalog_id: msez.tax.incentives.catalog.v1
+catalog_version: "2026.1"
+effective_date: "2026-01-01"
+
+description: |
+  Catalog of tax incentive programs available to entities
+  establishing or operating in the Special Economic Zone.
+
+programs:
+
+  # ============================================
+  # NEW ESTABLISHMENT INCENTIVES
+  # ============================================
+
+  - program_id: "new_establishment_holiday"
+    name: "New Establishment Tax Holiday"
+    category: "tax_holiday"
+    status: "active"
+
+    description: |
+      Tax holiday for newly established entities in the zone.
+      Provides exemption from corporate income tax and related
+      taxes for qualifying new businesses.
+
+    eligibility:
+      entity_requirements:
+        - new_entity_formed_in_zone
+        - not_successor_to_existing_business
+        - genuine_economic_activity
+
+      investment_requirements:
+        minimum_investment:
+          amount: "100000"
+          currency: "USD"
+          types_accepted:
+            - paid_up_capital
+            - fixed_assets
+            - technology_investment
+
+      activity_requirements:
+        qualifying_activities:
+          - financial_services
+          - technology
+          - professional_services
+          - headquarters
+          - trading
+          - manufacturing
+        excluded_activities:
+          - pure_holding
+          - passive_investment
+
+      substance_requirements:
+        - minimum_employees: 2
+        - physical_presence: required
+        - core_activities_in_zone: required
+
+    benefits:
+      tax_exemptions:
+        - corporate_income_tax:
+            rate: "0%"
+            duration_years: 5
+            extendable: true
+            max_extension_years: 5
+
+        - withholding_tax:
+            types: ["dividends", "interest", "royalties"]
+            rate: "0%"
+            duration_years: 5
+
+        - import_duties:
+            on: ["capital_equipment", "raw_materials"]
+            rate: "0%"
+            duration_years: 5
+
+      additional_benefits:
+        - expedited_licensing
+        - dedicated_relationship_manager
+        - priority_processing
+
+    application_process:
+      application_fee: "500"
+      currency: "USD"
+      processing_time_days: 30
+      required_documents:
+        - business_plan
+        - investment_commitment
+        - employment_projections
+        - economic_substance_plan
+
+    compliance:
+      annual_reporting: required
+      substance_audit: every_2_years
+      clawback_conditions:
+        - failure_to_meet_investment_commitment
+        - relocation_out_of_zone
+        - material_misrepresentation
+      clawback_period_years: 3
+
+  # ============================================
+  # R&D AND INNOVATION INCENTIVES
+  # ============================================
+
+  - program_id: "innovation_credit"
+    name: "Innovation and R&D Tax Credit"
+    category: "tax_credit"
+    status: "active"
+
+    description: |
+      Tax credit for qualifying research and development
+      expenditure to encourage innovation in the zone.
+
+    eligibility:
+      qualifying_rd_activities:
+        - basic_research
+        - applied_research
+        - experimental_development
+        - software_development
+        - process_innovation
+
+      excluded_activities:
+        - market_research
+        - social_science_research
+        - routine_data_collection
+        - cosmetic_modifications
+
+    benefits:
+      tax_credit:
+        credit_rate: "25%"
+        applies_to: "qualifying_rd_expenditure"
+
+        qualifying_expenditure:
+          - employee_costs_rd_staff
+          - consumables
+          - software
+          - contract_rd_costs
+          - equipment_depreciation
+
+        limitations:
+          max_credit_per_year: "500000"
+          currency: "USD"
+          carryforward_years: 5
+
+      enhanced_credit:
+        for: "collaboration_with_universities"
+        credit_rate: "35%"
+        conditions:
+          - formal_collaboration_agreement
+          - published_research_outcomes
+
+    application_process:
+      claim_with: "annual_tax_return"
+      documentation_required:
+        - rd_project_descriptions
+        - expenditure_breakdown
+        - technical_narrative
+        - staff_time_records
+
+  # ============================================
+  # EMPLOYMENT INCENTIVES
+  # ============================================
+
+  - program_id: "employment_grant"
+    name: "Employment Creation Grant"
+    category: "grant"
+    status: "active"
+
+    description: |
+      Cash grant for creating qualifying employment
+      positions in the zone.
+
+    eligibility:
+      qualifying_positions:
+        - full_time_permanent
+        - minimum_salary: "50000"
+        - salary_currency: "USD"
+        - local_hire_or_relocating
+
+      excluded_positions:
+        - part_time
+        - temporary_contract
+        - outsourced
+        - intra_group_secondment
+
+    benefits:
+      grant_per_employee:
+        standard: "5000"
+        currency: "USD"
+
+        enhanced_tiers:
+          - tier: "high_skill"
+            salary_above: "100000"
+            grant: "10000"
+
+          - tier: "specialist"
+            salary_above: "200000"
+            grant: "20000"
+
+          - tier: "c_suite"
+            salary_above: "500000"
+            grant: "50000"
+
+      limitations:
+        max_grant_per_entity: "500000"
+        max_employees_per_year: 50
+        employment_retention_period_months: 24
+
+    clawback:
+      trigger: "employee_departure_before_retention_period"
+      amount: "pro_rata"
+
+  - program_id: "training_subsidy"
+    name: "Employee Training Subsidy"
+    category: "subsidy"
+    status: "active"
+
+    description: |
+      Subsidy for qualifying employee training and
+      professional development expenditure.
+
+    benefits:
+      subsidy_rate: "50%"
+      max_per_employee: "5000"
+      max_per_entity: "100000"
+      currency: "USD"
+
+      qualifying_training:
+        - professional_certifications
+        - technical_skills
+        - management_development
+        - compliance_training
+
+  # ============================================
+  # HEADQUARTERS INCENTIVES
+  # ============================================
+
+  - program_id: "headquarters_incentive"
+    name: "Regional Headquarters Incentive"
+    category: "composite"
+    status: "active"
+
+    description: |
+      Comprehensive incentive package for entities
+      establishing regional or global headquarters
+      in the zone.
+
+    eligibility:
+      hq_requirements:
+        - regional_or_global_hq
+        - minimum_countries_supervised: 3
+        - strategic_decision_making_in_zone
+
+      investment_requirements:
+        minimum_investment: "1000000"
+        currency: "USD"
+
+      employment_requirements:
+        minimum_employees: 10
+        minimum_executive_positions: 3
+
+    benefits:
+      tax_benefits:
+        - corporate_tax_exemption:
+            duration_years: 10
+        - management_fee_exemption:
+            withholding: "0%"
+
+      grants:
+        - establishment_grant:
+            amount: "100000"
+            currency: "USD"
+        - relocation_support:
+            amount: "50000"
+            currency: "USD"
+
+      operational_benefits:
+        - priority_visa_processing
+        - dedicated_government_liaison
+        - subsidized_office_space
+
+  # ============================================
+  # GREEN / SUSTAINABLE INCENTIVES
+  # ============================================
+
+  - program_id: "green_investment_credit"
+    name: "Green Investment Tax Credit"
+    category: "tax_credit"
+    status: "active"
+
+    description: |
+      Tax credit for investments in environmentally
+      sustainable technologies and practices.
+
+    eligibility:
+      qualifying_investments:
+        - renewable_energy_systems
+        - energy_efficiency_upgrades
+        - waste_reduction_technology
+        - sustainable_transportation
+        - green_building_certification
+
+    benefits:
+      credit_rate: "30%"
+      max_credit: "200000"
+      currency: "USD"
+      carryforward_years: 5
+
+# Application and Administration
+administration:
+  incentive_authority: "Zone Investment Authority"
+
+  general_requirements:
+    - zone_registered_entity
+    - good_regulatory_standing
+    - no_outstanding_penalties
+    - current_on_all_filings
+
+  application_process:
+    standard:
+      submission: "online_portal"
+      review_period_days: 30
+      appeal_period_days: 14
+
+    expedited:
+      fee: "1000"
+      review_period_days: 10
+
+  monitoring:
+    annual_compliance_review: required
+    site_visits: "as_needed"
+    documentation_retention_years: 7
+
+  termination:
+    voluntary: "30_days_notice"
+    for_cause:
+      - material_breach
+      - fraud
+      - insolvency
+      - relocation

@@ -1,0 +1,46 @@
+module_id: org.momentum.msez.corporate.registered-agent
+version: 0.1.0
+kind: corporate
+license: Apache-2.0
+description: |
+  Registered Agent and Registered Office Services module.
+  Provides statutory registered office address and agent services
+  for zone-registered entities.
+
+variants:
+  - baseline
+  - premium-service
+
+depends_on:
+  - module_id: org.momentum.msez.lic.csp
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.legal.entity-registry
+    constraint: ">=0.1.0,<1.0.0"
+
+provides:
+  - interface: msez.corporate.registered-agent.appointment.v1
+    path: forms/agent-appointment.schema.json
+    media_type: application/json
+  - interface: msez.corporate.registered-agent.services.v1
+    path: templates/service-agreement.yaml
+    media_type: application/yaml
+  - interface: msez.policy.opa.bundle.v1
+    path: policy/
+    media_type: text/plain
+
+parameters:
+  require_licensed_agent:
+    type: boolean
+    default: true
+    description: "Require registered agent to hold CSP license"
+  document_forwarding_sla_hours:
+    type: integer
+    default: 24
+    description: "Hours to forward received documents"
+  annual_renewal_required:
+    type: boolean
+    default: true
+  resignation_notice_days:
+    type: integer
+    default: 30
+    description: "Notice period for agent resignation"

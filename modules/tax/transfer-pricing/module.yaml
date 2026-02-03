@@ -1,0 +1,317 @@
+module_id: tax.transfer-pricing
+version: 0.4.44
+kind: tax-infrastructure
+name: Transfer Pricing Compliance
+description: |
+  Transfer pricing documentation and compliance system for related-party
+  transactions within Special Economic Zones. Implements OECD Transfer
+  Pricing Guidelines and arm's length principle enforcement.
+
+  Supports:
+  - Comparable analysis and benchmarking
+  - Documentation requirements (Master File, Local File, CbCR)
+  - Advance Pricing Agreements (APA)
+  - Related-party transaction monitoring
+  - Risk assessment and audit support
+
+license: CC-BY-4.0
+
+interfaces:
+  - interface_id: tax.transfer-pricing.analysis
+    name: Transfer Pricing Analysis Interface
+    description: Analyze and benchmark related-party transactions
+    operations:
+      - op_id: identify_related_parties
+        name: Identify Related Parties
+        description: Determine related party relationships for an entity
+        inputs:
+          - name: entity_id
+            type: string
+            description: Primary entity DID
+          - name: ownership_threshold
+            type: number
+            description: Ownership percentage threshold (default 25%)
+        outputs:
+          - name: related_parties
+            type: array
+            description: List of related party relationships
+
+      - op_id: classify_transaction
+        name: Classify Controlled Transaction
+        description: Classify transaction type for transfer pricing purposes
+        inputs:
+          - name: transaction_id
+            type: string
+            description: Transaction to classify
+          - name: transaction_details
+            type: TransactionDetails
+            description: Full transaction information
+        outputs:
+          - name: classification
+            type: TransactionClassification
+            description: TP classification (tangible goods, services, intangibles, financial, cost sharing)
+
+      - op_id: select_method
+        name: Select Transfer Pricing Method
+        description: Determine most appropriate TP method
+        inputs:
+          - name: transaction_type
+            type: string
+            description: Type of controlled transaction
+          - name: available_data
+            type: DataAvailability
+            description: Available comparable data
+        outputs:
+          - name: method_selection
+            type: MethodSelection
+            description: Recommended method with justification
+
+      - op_id: perform_benchmark
+        name: Perform Benchmarking Study
+        description: Conduct comparable analysis and determine arm's length range
+        inputs:
+          - name: transaction_id
+            type: string
+            description: Subject transaction
+          - name: method
+            type: string
+            enum: [CUP, RPM, CPM, TNMM, PSM]
+            description: Transfer pricing method
+          - name: search_criteria
+            type: BenchmarkSearchCriteria
+            description: Comparable search parameters
+        outputs:
+          - name: benchmark_study
+            type: BenchmarkStudy
+            description: Full benchmarking analysis with arm's length range
+
+  - interface_id: tax.transfer-pricing.documentation
+    name: Transfer Pricing Documentation Interface
+    description: Generate and maintain TP documentation
+    operations:
+      - op_id: generate_master_file
+        name: Generate Master File
+        description: Create OECD-compliant Master File documentation
+        inputs:
+          - name: group_id
+            type: string
+            description: Multinational group identifier
+          - name: fiscal_year
+            type: integer
+            description: Reporting fiscal year
+        outputs:
+          - name: master_file
+            type: MasterFile
+            description: Complete Master File document
+
+      - op_id: generate_local_file
+        name: Generate Local File
+        description: Create entity-specific Local File documentation
+        inputs:
+          - name: entity_id
+            type: string
+            description: Reporting entity
+          - name: fiscal_year
+            type: integer
+            description: Reporting fiscal year
+          - name: transactions
+            type: array
+            description: Controlled transactions to document
+        outputs:
+          - name: local_file
+            type: LocalFile
+            description: Complete Local File document
+
+      - op_id: generate_cbcr
+        name: Generate Country-by-Country Report
+        description: Create CbCR for multinational groups
+        inputs:
+          - name: group_id
+            type: string
+            description: Ultimate parent entity group
+          - name: fiscal_year
+            type: integer
+            description: Reporting fiscal year
+        outputs:
+          - name: cbcr
+            type: CountryByCountryReport
+            description: OECD-format CbCR
+
+  - interface_id: tax.transfer-pricing.apa
+    name: Advance Pricing Agreement Interface
+    description: Manage Advance Pricing Agreements
+    operations:
+      - op_id: submit_apa_request
+        name: Submit APA Request
+        description: Initiate Advance Pricing Agreement process
+        inputs:
+          - name: entity_id
+            type: string
+            description: Requesting entity
+          - name: covered_transactions
+            type: array
+            description: Transactions to be covered
+          - name: proposed_method
+            type: string
+            description: Proposed TP methodology
+          - name: proposed_term
+            type: integer
+            description: Requested APA term in years
+        outputs:
+          - name: apa_application
+            type: APAApplication
+            description: Filed APA application
+
+      - op_id: negotiate_apa
+        name: Negotiate APA Terms
+        description: Process APA negotiation and modifications
+        inputs:
+          - name: apa_id
+            type: string
+            description: APA application reference
+          - name: negotiation_points
+            type: array
+            description: Points under negotiation
+        outputs:
+          - name: negotiation_status
+            type: NegotiationStatus
+            description: Current negotiation state
+
+      - op_id: execute_apa
+        name: Execute APA
+        description: Finalize and execute APA agreement
+        inputs:
+          - name: apa_id
+            type: string
+            description: Negotiated APA reference
+          - name: final_terms
+            type: APATerms
+            description: Agreed terms and conditions
+        outputs:
+          - name: executed_apa
+            type: ExecutedAPA
+            description: Binding APA document
+
+schemas:
+  - schema_id: BenchmarkStudy
+    description: Transfer pricing benchmarking analysis
+    properties:
+      study_id:
+        type: string
+      transaction_id:
+        type: string
+      method:
+        type: string
+        enum: [CUP, RPM, CPM, TNMM, PSM]
+      tested_party:
+        type: string
+      profit_level_indicator:
+        type: string
+      comparables:
+        type: array
+        items:
+          type: object
+          properties:
+            company_name:
+              type: string
+            country:
+              type: string
+            financial_data:
+              type: object
+      interquartile_range:
+        type: object
+        properties:
+          lower_quartile:
+            type: number
+          median:
+            type: number
+          upper_quartile:
+            type: number
+      arm_length_conclusion:
+        type: string
+        enum: [within_range, below_range, above_range]
+      adjustment_required:
+        type: number
+
+  - schema_id: MasterFile
+    description: OECD Master File documentation
+    properties:
+      group_structure:
+        type: object
+        description: Organizational structure chart
+      business_description:
+        type: object
+        description: Description of business operations
+      intangibles:
+        type: object
+        description: Important intangibles and ownership
+      intercompany_financing:
+        type: object
+        description: Financial arrangements description
+      financial_tax_positions:
+        type: object
+        description: Consolidated financials and APAs
+
+  - schema_id: ExecutedAPA
+    description: Finalized Advance Pricing Agreement
+    properties:
+      apa_id:
+        type: string
+      entity_id:
+        type: string
+      counterparty_authorities:
+        type: array
+        description: Tax authorities party to APA
+      covered_transactions:
+        type: array
+      agreed_method:
+        type: string
+      critical_assumptions:
+        type: array
+      term_start:
+        type: string
+        format: date
+      term_end:
+        type: string
+        format: date
+      rollback_years:
+        type: integer
+      annual_reporting_requirements:
+        type: array
+
+dependencies:
+  - module_id: legal.entity-registry
+    version: ">=0.1.0"
+    reason: Entity and group structure information
+  - module_id: tax.reporting
+    version: ">=0.1.0"
+    reason: Tax reporting integration
+  - module_id: tax.treaty-management
+    version: ">=0.1.0"
+    reason: Treaty-based APA provisions
+
+variants:
+  - variant_id: full
+    name: Full Transfer Pricing Suite
+    description: Complete TP compliance capabilities
+    features:
+      - benchmarking
+      - documentation
+      - apa_management
+      - risk_assessment
+
+  - variant_id: documentation_only
+    name: Documentation Only
+    description: TP documentation without APA management
+    features:
+      - benchmarking
+      - documentation
+
+tags:
+  - tax
+  - transfer-pricing
+  - oecd
+  - compliance
+  - documentation
+  - apa
+  - beps

@@ -1,13 +1,190 @@
-module_id: org.momentum.msez.fin.banking-adapter
-version: 0.2.0
-kind: financial
+module_id: financial.banking-adapter
+version: 0.4.44
+kind: financial-infrastructure
+name: Banking Adapter
+description: |
+  Universal banking integration adapter for Special Economic Zones.
+  Provides standardized interfaces to connect with banking partners,
+  core banking systems, and payment networks.
+
+  Supported Integrations:
+  - Core Banking Systems (Temenos, Finacle, Flexcube)
+  - Payment Networks (SWIFT, SEPA, Faster Payments, FedWire)
+  - Open Banking APIs (PSD2, UK Open Banking)
+  - Real-time Gross Settlement (RTGS) systems
+  - Automated Clearing House (ACH) networks
+
 license: Apache-2.0
-description: "Banking Adapter (stub)."
+
+interfaces:
+  - interface_id: financial.banking-adapter.account
+    name: Account Management Interface
+    description: Banking account lifecycle operations
+    operations:
+      - op_id: open_account
+        name: Open Banking Account
+        description: Open a new account with banking partner
+        inputs:
+          - name: entity_id
+            type: string
+          - name: account_type
+            type: string
+            enum: [current, savings, escrow, nostro, vostro, settlement]
+          - name: currency
+            type: string
+          - name: banking_partner_id
+            type: string
+        outputs:
+          - name: account
+            type: BankAccount
+
+      - op_id: get_balance
+        name: Get Account Balance
+        inputs:
+          - name: account_id
+            type: string
+          - name: balance_type
+            type: string
+            enum: [available, current, pending]
+        outputs:
+          - name: balance
+            type: AccountBalance
+
+      - op_id: get_statement
+        name: Get Account Statement
+        inputs:
+          - name: account_id
+            type: string
+          - name: start_date
+            type: string
+            format: date
+          - name: end_date
+            type: string
+            format: date
+          - name: format
+            type: string
+            enum: [camt.053, mt940, csv, pdf]
+        outputs:
+          - name: statement
+            type: AccountStatement
+
+  - interface_id: financial.banking-adapter.transfer
+    name: Fund Transfer Interface
+    operations:
+      - op_id: initiate_transfer
+        name: Initiate Fund Transfer
+        inputs:
+          - name: from_account
+            type: string
+          - name: to_account
+            type: BeneficiaryAccount
+          - name: amount
+            type: number
+          - name: currency
+            type: string
+          - name: value_date
+            type: string
+            format: date
+          - name: channel
+            type: string
+            enum: [swift, sepa, ach, rtgs, internal, faster_payments]
+        outputs:
+          - name: transfer
+            type: TransferInitiation
+
+      - op_id: get_transfer_status
+        name: Get Transfer Status
+        inputs:
+          - name: transfer_id
+            type: string
+        outputs:
+          - name: status
+            type: TransferStatus
+
+  - interface_id: financial.banking-adapter.fx
+    name: Foreign Exchange Interface
+    operations:
+      - op_id: get_fx_quote
+        name: Get FX Quote
+        inputs:
+          - name: sell_currency
+            type: string
+          - name: buy_currency
+            type: string
+          - name: amount
+            type: number
+          - name: value_date
+            type: string
+            format: date
+        outputs:
+          - name: quote
+            type: FXQuote
+
+      - op_id: execute_fx
+        name: Execute FX Transaction
+        inputs:
+          - name: quote_id
+            type: string
+          - name: from_account
+            type: string
+          - name: to_account
+            type: string
+        outputs:
+          - name: execution
+            type: FXExecution
+
+schemas:
+  - schema_id: BankAccount
+    properties:
+      account_id:
+        type: string
+      account_number:
+        type: string
+      iban:
+        type: string
+      bic:
+        type: string
+      currency:
+        type: string
+      status:
+        type: string
+        enum: [active, dormant, blocked, closed]
+
+  - schema_id: TransferInitiation
+    properties:
+      transfer_id:
+        type: string
+      status:
+        type: string
+        enum: [initiated, processing, completed, failed]
+      channel:
+        type: string
+      value_date:
+        type: string
+        format: date
+
+  - schema_id: FXQuote
+    properties:
+      quote_id:
+        type: string
+      rate:
+        type: number
+      valid_until:
+        type: string
+        format: date-time
+
+dependencies:
+  - module_id: identity.did-registry
+    version: ">=0.1.0"
+  - module_id: regulatory.aml-cft
+    version: ">=0.1.0"
+
 variants:
-  - baseline
-depends_on: []
-provides:
-  - interface: msez.fin.banking-adapter.v1
-    path: spec/README.md
-    media_type: text/markdown
-parameters: {}
+  - variant_id: full
+    name: Full Banking Integration
+    features: [account_management, fund_transfers, fx_operations]
+  - variant_id: payments_only
+    name: Payments Only
+    features: [fund_transfers]
+
+tags: [banking, payments, swift, iso20022, integration]

@@ -1,13 +1,220 @@
-module_id: org.momentum.msez.fin.fx
-version: 0.2.0
-kind: financial
+module_id: financial.fx
+version: 0.4.44
+kind: financial-infrastructure
+name: Foreign Exchange Services
+description: |
+  Foreign exchange trading and settlement infrastructure for
+  Special Economic Zones. Provides spot, forward, and swap
+  capabilities with multi-currency support.
+
+  Capabilities:
+  - Spot FX Trading
+  - Forward Contracts
+  - FX Swaps
+  - Currency Options
+  - Rate Feeds and Aggregation
+  - Settlement and Netting
+  - Hedge Accounting Support
+
 license: Apache-2.0
-description: "FX Module (stub)."
+
+interfaces:
+  - interface_id: financial.fx.trading
+    name: FX Trading Interface
+    operations:
+      - op_id: get_spot_rate
+        name: Get Spot Rate
+        inputs:
+          - name: base_currency
+            type: string
+          - name: quote_currency
+            type: string
+          - name: amount
+            type: number
+          - name: direction
+            type: string
+            enum: [buy, sell]
+        outputs:
+          - name: quote
+            type: FXSpotQuote
+
+      - op_id: execute_spot_trade
+        name: Execute Spot Trade
+        inputs:
+          - name: quote_id
+            type: string
+        outputs:
+          - name: trade
+            type: FXTrade
+
+      - op_id: book_forward
+        name: Book Forward Contract
+        inputs:
+          - name: base_currency
+            type: string
+          - name: quote_currency
+            type: string
+          - name: amount
+            type: number
+          - name: direction
+            type: string
+            enum: [buy, sell]
+          - name: value_date
+            type: string
+            format: date
+        outputs:
+          - name: forward
+            type: FXForward
+
+      - op_id: book_swap
+        name: Book FX Swap
+        inputs:
+          - name: base_currency
+            type: string
+          - name: quote_currency
+            type: string
+          - name: near_amount
+            type: number
+          - name: near_date
+            type: string
+            format: date
+          - name: far_date
+            type: string
+            format: date
+        outputs:
+          - name: swap
+            type: FXSwap
+
+  - interface_id: financial.fx.settlement
+    name: FX Settlement Interface
+    operations:
+      - op_id: settle_trade
+        name: Settle FX Trade
+        inputs:
+          - name: trade_id
+            type: string
+          - name: settlement_instructions
+            type: SettlementInstructions
+        outputs:
+          - name: settlement
+            type: FXSettlement
+
+      - op_id: net_trades
+        name: Net FX Trades
+        inputs:
+          - name: trade_ids
+            type: array
+          - name: netting_date
+            type: string
+            format: date
+        outputs:
+          - name: netting
+            type: FXNetting
+
+  - interface_id: financial.fx.rates
+    name: FX Rates Interface
+    operations:
+      - op_id: subscribe_rates
+        name: Subscribe to Rate Feed
+        inputs:
+          - name: currency_pairs
+            type: array
+          - name: callback_url
+            type: string
+        outputs:
+          - name: subscription
+            type: RateSubscription
+
+      - op_id: get_historical_rates
+        name: Get Historical Rates
+        inputs:
+          - name: base_currency
+            type: string
+          - name: quote_currency
+            type: string
+          - name: start_date
+            type: string
+            format: date
+          - name: end_date
+            type: string
+            format: date
+        outputs:
+          - name: rates
+            type: HistoricalRates
+
+schemas:
+  - schema_id: FXSpotQuote
+    properties:
+      quote_id:
+        type: string
+      base_currency:
+        type: string
+      quote_currency:
+        type: string
+      bid:
+        type: number
+      ask:
+        type: number
+      mid:
+        type: number
+      valid_until:
+        type: string
+        format: date-time
+
+  - schema_id: FXTrade
+    properties:
+      trade_id:
+        type: string
+      trade_type:
+        type: string
+        enum: [spot, forward, swap]
+      base_currency:
+        type: string
+      quote_currency:
+        type: string
+      base_amount:
+        type: number
+      quote_amount:
+        type: number
+      rate:
+        type: number
+      value_date:
+        type: string
+        format: date
+      status:
+        type: string
+        enum: [executed, pending_settlement, settled, cancelled]
+
+  - schema_id: FXForward
+    properties:
+      forward_id:
+        type: string
+      base_currency:
+        type: string
+      quote_currency:
+        type: string
+      amount:
+        type: number
+      forward_rate:
+        type: number
+      value_date:
+        type: string
+        format: date
+      status:
+        type: string
+
+dependencies:
+  - module_id: financial.banking-adapter
+    version: ">=0.1.0"
+  - module_id: financial.settlement-adapter
+    version: ">=0.1.0"
+
 variants:
-  - baseline
-depends_on: []
-provides:
-  - interface: msez.fin.fx.v1
-    path: spec/README.md
-    media_type: text/markdown
-parameters: {}
+  - variant_id: full
+    name: Full FX Services
+    features: [spot, forward, swap, options, settlement]
+  - variant_id: spot_only
+    name: Spot Trading Only
+    features: [spot, settlement]
+
+tags: [fx, foreign-exchange, trading, settlement, hedging]

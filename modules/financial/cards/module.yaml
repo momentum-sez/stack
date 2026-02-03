@@ -1,13 +1,163 @@
-module_id: org.momentum.msez.fin.cards
-version: 0.2.0
-kind: financial
+module_id: financial.cards
+version: 0.4.44
+kind: financial-infrastructure
+name: Card Payment Services
+description: |
+  Card payment processing infrastructure for Special Economic Zones.
+  Supports debit, credit, and prepaid card issuance, acquiring,
+  and processing services.
+
+  Capabilities:
+  - Card Issuance (physical and virtual)
+  - Merchant Acquiring
+  - Payment Processing (authorization, clearing, settlement)
+  - Card Program Management
+  - Fraud Detection and Prevention
+  - 3D Secure Authentication
+  - PCI-DSS Compliance
+
 license: Apache-2.0
-description: "Cards Module (stub)."
+
+interfaces:
+  - interface_id: financial.cards.issuing
+    name: Card Issuing Interface
+    operations:
+      - op_id: issue_card
+        name: Issue Card
+        inputs:
+          - name: cardholder_id
+            type: string
+          - name: card_type
+            type: string
+            enum: [debit, credit, prepaid, virtual]
+          - name: card_program
+            type: string
+          - name: currency
+            type: string
+        outputs:
+          - name: card
+            type: IssuedCard
+
+      - op_id: activate_card
+        name: Activate Card
+        inputs:
+          - name: card_id
+            type: string
+          - name: activation_code
+            type: string
+        outputs:
+          - name: activation
+            type: CardActivation
+
+      - op_id: set_card_limits
+        name: Set Card Limits
+        inputs:
+          - name: card_id
+            type: string
+          - name: daily_limit
+            type: number
+          - name: transaction_limit
+            type: number
+        outputs:
+          - name: limits
+            type: CardLimits
+
+      - op_id: block_card
+        name: Block Card
+        inputs:
+          - name: card_id
+            type: string
+          - name: reason
+            type: string
+            enum: [lost, stolen, fraud, customer_request]
+        outputs:
+          - name: block
+            type: CardBlock
+
+  - interface_id: financial.cards.acquiring
+    name: Card Acquiring Interface
+    operations:
+      - op_id: authorize_transaction
+        name: Authorize Transaction
+        inputs:
+          - name: merchant_id
+            type: string
+          - name: card_data
+            type: CardData
+          - name: amount
+            type: number
+          - name: currency
+            type: string
+        outputs:
+          - name: authorization
+            type: TransactionAuthorization
+
+      - op_id: capture_transaction
+        name: Capture Transaction
+        inputs:
+          - name: authorization_id
+            type: string
+          - name: amount
+            type: number
+        outputs:
+          - name: capture
+            type: TransactionCapture
+
+      - op_id: refund_transaction
+        name: Refund Transaction
+        inputs:
+          - name: transaction_id
+            type: string
+          - name: amount
+            type: number
+          - name: reason
+            type: string
+        outputs:
+          - name: refund
+            type: TransactionRefund
+
+schemas:
+  - schema_id: IssuedCard
+    properties:
+      card_id:
+        type: string
+      masked_pan:
+        type: string
+      card_type:
+        type: string
+      expiry_date:
+        type: string
+      status:
+        type: string
+        enum: [inactive, active, blocked, expired]
+
+  - schema_id: TransactionAuthorization
+    properties:
+      authorization_id:
+        type: string
+      status:
+        type: string
+        enum: [approved, declined, pending]
+      authorization_code:
+        type: string
+      response_code:
+        type: string
+
+dependencies:
+  - module_id: identity.kyc-tiers
+    version: ">=0.1.0"
+  - module_id: regulatory.aml-cft
+    version: ">=0.1.0"
+
 variants:
-  - baseline
-depends_on: []
-provides:
-  - interface: msez.fin.cards.v1
-    path: spec/README.md
-    media_type: text/markdown
-parameters: {}
+  - variant_id: full
+    name: Full Card Services
+    features: [issuing, acquiring, processing]
+  - variant_id: issuing_only
+    name: Issuing Only
+    features: [issuing]
+  - variant_id: acquiring_only
+    name: Acquiring Only
+    features: [acquiring]
+
+tags: [cards, payments, pci-dss, acquiring, issuing]

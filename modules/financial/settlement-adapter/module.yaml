@@ -1,13 +1,212 @@
-module_id: org.momentum.msez.fin.settlement-adapter
-version: 0.2.0
-kind: financial
+module_id: financial.settlement-adapter
+version: 0.4.44
+kind: financial-infrastructure
+name: Settlement Adapter
+description: |
+  Universal settlement infrastructure adapter for Special Economic Zones.
+  Connects to various settlement systems and provides unified interfaces
+  for multi-asset, multi-currency settlement.
+
+  Settlement Systems:
+  - CLS (Continuous Linked Settlement)
+  - TARGET2 (EU RTGS)
+  - CHAPS (UK)
+  - Fedwire (US)
+  - Stablecoin Settlement Networks
+  - Blockchain Settlement Layers
+
+  Capabilities:
+  - Payment vs Payment (PvP)
+  - Delivery vs Payment (DvP)
+  - Netting and Optimization
+  - Settlement Finality Tracking
+  - Failed Settlement Handling
+
 license: Apache-2.0
-description: "Settlement Adapter (stub)."
+
+interfaces:
+  - interface_id: financial.settlement-adapter.settlement
+    name: Settlement Execution Interface
+    operations:
+      - op_id: submit_settlement
+        name: Submit Settlement Instruction
+        inputs:
+          - name: settlement_type
+            type: string
+            enum: [pvp, dvp, free_of_payment]
+          - name: leg1
+            type: SettlementLeg
+          - name: leg2
+            type: SettlementLeg
+          - name: settlement_date
+            type: string
+            format: date
+          - name: settlement_system
+            type: string
+        outputs:
+          - name: settlement
+            type: SettlementInstruction
+
+      - op_id: get_settlement_status
+        name: Get Settlement Status
+        inputs:
+          - name: settlement_id
+            type: string
+        outputs:
+          - name: status
+            type: SettlementStatus
+
+      - op_id: cancel_settlement
+        name: Cancel Settlement
+        inputs:
+          - name: settlement_id
+            type: string
+          - name: reason
+            type: string
+        outputs:
+          - name: cancellation
+            type: SettlementCancellation
+
+  - interface_id: financial.settlement-adapter.netting
+    name: Netting Interface
+    operations:
+      - op_id: calculate_net_positions
+        name: Calculate Net Positions
+        inputs:
+          - name: counterparty_id
+            type: string
+          - name: settlement_date
+            type: string
+            format: date
+          - name: currency
+            type: string
+        outputs:
+          - name: net_positions
+            type: NetPositions
+
+      - op_id: submit_netted_settlement
+        name: Submit Netted Settlement
+        inputs:
+          - name: netting_set_id
+            type: string
+          - name: net_amount
+            type: number
+          - name: direction
+            type: string
+            enum: [pay, receive]
+        outputs:
+          - name: settlement
+            type: SettlementInstruction
+
+  - interface_id: financial.settlement-adapter.finality
+    name: Settlement Finality Interface
+    operations:
+      - op_id: check_finality
+        name: Check Settlement Finality
+        inputs:
+          - name: settlement_id
+            type: string
+        outputs:
+          - name: finality
+            type: FinalityStatus
+
+      - op_id: get_finality_proof
+        name: Get Finality Proof
+        inputs:
+          - name: settlement_id
+            type: string
+        outputs:
+          - name: proof
+            type: FinalityProof
+
+  - interface_id: financial.settlement-adapter.failed
+    name: Failed Settlement Interface
+    operations:
+      - op_id: report_failed_settlement
+        name: Report Failed Settlement
+        inputs:
+          - name: settlement_id
+            type: string
+          - name: failure_reason
+            type: string
+        outputs:
+          - name: failure_report
+            type: FailureReport
+
+      - op_id: initiate_buy_in
+        name: Initiate Buy-In
+        inputs:
+          - name: failed_settlement_id
+            type: string
+        outputs:
+          - name: buy_in
+            type: BuyInProcess
+
+schemas:
+  - schema_id: SettlementInstruction
+    properties:
+      settlement_id:
+        type: string
+      settlement_type:
+        type: string
+      status:
+        type: string
+        enum: [pending, matched, settling, settled, failed, cancelled]
+      settlement_date:
+        type: string
+        format: date
+      settlement_system:
+        type: string
+      legs:
+        type: array
+
+  - schema_id: FinalityStatus
+    properties:
+      settlement_id:
+        type: string
+      is_final:
+        type: boolean
+      finality_time:
+        type: string
+        format: date-time
+      finality_type:
+        type: string
+        enum: [irrevocable, conditional, pending]
+      proof_available:
+        type: boolean
+
+  - schema_id: NetPositions
+    properties:
+      netting_set_id:
+        type: string
+      counterparty_id:
+        type: string
+      currency:
+        type: string
+      gross_payable:
+        type: number
+      gross_receivable:
+        type: number
+      net_amount:
+        type: number
+      net_direction:
+        type: string
+        enum: [pay, receive, zero]
+      trade_count:
+        type: integer
+
+dependencies:
+  - module_id: financial.banking-adapter
+    version: ">=0.1.0"
+  - module_id: corridors.settlement
+    version: ">=0.1.0"
+
 variants:
-  - baseline
-depends_on: []
-provides:
-  - interface: msez.fin.settlement-adapter.v1
-    path: spec/README.md
-    media_type: text/markdown
-parameters: {}
+  - variant_id: full
+    name: Full Settlement Services
+    features: [settlement, netting, finality, failed_settlement]
+  - variant_id: basic
+    name: Basic Settlement
+    features: [settlement, finality]
+
+tags: [settlement, pvp, dvp, netting, finality, clearing]

@@ -1,13 +1,253 @@
-module_id: org.momentum.msez.ops.transparency-dashboard
-version: 0.2.0
-kind: operational
+module_id: operational.transparency-dashboard
+version: 0.4.44
+kind: operational-infrastructure
+name: Transparency Dashboard
+description: |
+  Public transparency dashboard for Special Economic Zones.
+  Provides real-time visibility into zone operations, compliance status,
+  and key performance indicators for stakeholders, regulators, and the public.
+
+  Transparency Principles:
+  - Open by Default
+  - Real-time Updates
+  - Verifiable Data
+  - Privacy-Preserving Aggregation
+
+  Dashboard Categories:
+  - Zone Health and Operations
+  - Compliance and Regulatory Status
+  - Financial Metrics (aggregated)
+  - Watcher Network Status
+  - Attestation Activity
+  - Entity Registry Statistics
+
 license: Apache-2.0
-description: "Transparency Dashboard (stub)."
+
+interfaces:
+  - interface_id: operational.transparency-dashboard.metrics
+    name: Transparency Metrics Interface
+    operations:
+      - op_id: get_zone_overview
+        name: Get Zone Overview
+        inputs:
+          - name: zone_id
+            type: string
+        outputs:
+          - name: overview
+            type: ZoneOverview
+
+      - op_id: get_compliance_summary
+        name: Get Compliance Summary
+        inputs:
+          - name: zone_id
+            type: string
+          - name: period
+            type: string
+            enum: [day, week, month, quarter]
+        outputs:
+          - name: summary
+            type: ComplianceSummary
+
+      - op_id: get_watcher_network_status
+        name: Get Watcher Network Status
+        inputs:
+          - name: zone_id
+            type: string
+        outputs:
+          - name: status
+            type: WatcherNetworkStatus
+
+      - op_id: get_attestation_activity
+        name: Get Attestation Activity
+        inputs:
+          - name: zone_id
+            type: string
+          - name: time_range
+            type: string
+            enum: [hour, day, week, month]
+        outputs:
+          - name: activity
+            type: AttestationActivity
+
+  - interface_id: operational.transparency-dashboard.registry
+    name: Registry Statistics Interface
+    operations:
+      - op_id: get_entity_statistics
+        name: Get Entity Statistics
+        inputs:
+          - name: zone_id
+            type: string
+        outputs:
+          - name: statistics
+            type: EntityStatistics
+
+      - op_id: get_license_statistics
+        name: Get License Statistics
+        inputs:
+          - name: zone_id
+            type: string
+        outputs:
+          - name: statistics
+            type: LicenseStatistics
+
+      - op_id: get_transaction_volume
+        name: Get Transaction Volume
+        inputs:
+          - name: zone_id
+            type: string
+          - name: period
+            type: string
+            enum: [day, week, month]
+        outputs:
+          - name: volume
+            type: TransactionVolume
+
+  - interface_id: operational.transparency-dashboard.feeds
+    name: Data Feed Interface
+    operations:
+      - op_id: subscribe_to_updates
+        name: Subscribe to Updates
+        inputs:
+          - name: zone_id
+            type: string
+          - name: feed_types
+            type: array
+          - name: callback_url
+            type: string
+        outputs:
+          - name: subscription
+            type: FeedSubscription
+
+      - op_id: get_historical_data
+        name: Get Historical Data
+        inputs:
+          - name: zone_id
+            type: string
+          - name: metric_type
+            type: string
+          - name: start_date
+            type: string
+            format: date
+          - name: end_date
+            type: string
+            format: date
+          - name: granularity
+            type: string
+            enum: [hourly, daily, weekly, monthly]
+        outputs:
+          - name: data
+            type: HistoricalData
+
+      - op_id: export_dashboard_data
+        name: Export Dashboard Data
+        inputs:
+          - name: zone_id
+            type: string
+          - name: format
+            type: string
+            enum: [json, csv, excel]
+        outputs:
+          - name: export
+            type: DashboardExport
+
+schemas:
+  - schema_id: ZoneOverview
+    properties:
+      zone_id:
+        type: string
+      zone_name:
+        type: string
+      status:
+        type: string
+        enum: [operational, degraded, maintenance]
+      uptime_percentage:
+        type: number
+      registered_entities:
+        type: integer
+      active_licenses:
+        type: integer
+      active_watchers:
+        type: integer
+      last_updated:
+        type: string
+        format: date-time
+
+  - schema_id: ComplianceSummary
+    properties:
+      zone_id:
+        type: string
+      period:
+        type: string
+      overall_compliance_rate:
+        type: number
+      compliance_by_domain:
+        type: object
+      attestations_processed:
+        type: integer
+      violations_detected:
+        type: integer
+      remediation_in_progress:
+        type: integer
+
+  - schema_id: WatcherNetworkStatus
+    properties:
+      zone_id:
+        type: string
+      total_watchers:
+        type: integer
+      active_watchers:
+        type: integer
+      average_reputation:
+        type: number
+      total_stake:
+        type: number
+      attestations_24h:
+        type: integer
+      network_health_score:
+        type: number
+
+  - schema_id: EntityStatistics
+    properties:
+      zone_id:
+        type: string
+      total_entities:
+        type: integer
+      entities_by_type:
+        type: object
+      new_registrations_30d:
+        type: integer
+      active_entities:
+        type: integer
+      entities_by_jurisdiction:
+        type: object
+
+  - schema_id: TransactionVolume
+    properties:
+      zone_id:
+        type: string
+      period:
+        type: string
+      total_transactions:
+        type: integer
+      total_value_usd:
+        type: number
+      average_transaction_size:
+        type: number
+      transactions_by_type:
+        type: object
+
+dependencies:
+  - module_id: operational.attestation-analytics
+    version: ">=0.1.0"
+  - module_id: legal.entity-registry
+    version: ">=0.1.0"
+
 variants:
-  - baseline
-depends_on: []
-provides:
-  - interface: msez.ops.transparency-dashboard.v1
-    path: docs/README.md
-    media_type: text/markdown
-parameters: {}
+  - variant_id: full
+    name: Full Transparency Dashboard
+    features: [metrics, registry, feeds, historical]
+  - variant_id: public
+    name: Public Dashboard Only
+    features: [metrics, registry]
+
+tags: [transparency, dashboard, metrics, public, monitoring, compliance]

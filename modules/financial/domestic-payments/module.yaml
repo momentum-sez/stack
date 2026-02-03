@@ -1,13 +1,163 @@
-module_id: org.momentum.msez.fin.domestic-payments
-version: 0.2.0
-kind: financial
+module_id: financial.domestic-payments
+version: 0.4.44
+kind: financial-infrastructure
+name: Domestic Payment Systems
+description: |
+  Domestic payment infrastructure for Special Economic Zones.
+  Connects to national payment systems and enables local
+  payment clearing and settlement.
+
+  Supported Systems:
+  - Real-Time Gross Settlement (RTGS)
+  - Automated Clearing House (ACH)
+  - Instant Payment Systems
+  - Direct Debit Schemes
+  - Bill Payment Systems
+  - Mobile Payment Integration
+
 license: Apache-2.0
-description: "Domestic Payments Module (stub)."
+
+interfaces:
+  - interface_id: financial.domestic-payments.rtgs
+    name: RTGS Payment Interface
+    operations:
+      - op_id: submit_rtgs_payment
+        name: Submit RTGS Payment
+        inputs:
+          - name: from_account
+            type: string
+          - name: to_account
+            type: BeneficiaryAccount
+          - name: amount
+            type: number
+          - name: currency
+            type: string
+          - name: reference
+            type: string
+        outputs:
+          - name: payment
+            type: RTGSPayment
+
+      - op_id: get_rtgs_status
+        name: Get RTGS Payment Status
+        inputs:
+          - name: payment_id
+            type: string
+        outputs:
+          - name: status
+            type: PaymentStatus
+
+  - interface_id: financial.domestic-payments.ach
+    name: ACH Payment Interface
+    operations:
+      - op_id: submit_ach_credit
+        name: Submit ACH Credit
+        inputs:
+          - name: from_account
+            type: string
+          - name: to_account
+            type: BeneficiaryAccount
+          - name: amount
+            type: number
+          - name: effective_date
+            type: string
+            format: date
+        outputs:
+          - name: payment
+            type: ACHPayment
+
+      - op_id: submit_ach_debit
+        name: Submit ACH Debit
+        inputs:
+          - name: to_account
+            type: string
+          - name: from_account
+            type: DebitAccount
+          - name: amount
+            type: number
+          - name: mandate_id
+            type: string
+        outputs:
+          - name: payment
+            type: ACHPayment
+
+      - op_id: create_direct_debit_mandate
+        name: Create Direct Debit Mandate
+        inputs:
+          - name: debtor_account
+            type: string
+          - name: creditor_id
+            type: string
+          - name: max_amount
+            type: number
+        outputs:
+          - name: mandate
+            type: DirectDebitMandate
+
+  - interface_id: financial.domestic-payments.instant
+    name: Instant Payment Interface
+    operations:
+      - op_id: send_instant_payment
+        name: Send Instant Payment
+        inputs:
+          - name: from_account
+            type: string
+          - name: to_identifier
+            type: PaymentIdentifier
+          - name: amount
+            type: number
+        outputs:
+          - name: payment
+            type: InstantPayment
+
+schemas:
+  - schema_id: RTGSPayment
+    properties:
+      payment_id:
+        type: string
+      status:
+        type: string
+        enum: [submitted, processing, settled, rejected]
+      settlement_time:
+        type: string
+        format: date-time
+
+  - schema_id: ACHPayment
+    properties:
+      payment_id:
+        type: string
+      batch_id:
+        type: string
+      status:
+        type: string
+        enum: [pending, submitted, processed, returned]
+      effective_date:
+        type: string
+        format: date
+
+  - schema_id: InstantPayment
+    properties:
+      payment_id:
+        type: string
+      status:
+        type: string
+        enum: [completed, failed]
+      completion_time:
+        type: string
+        format: date-time
+
+dependencies:
+  - module_id: financial.banking-adapter
+    version: ">=0.1.0"
+  - module_id: regulatory.aml-cft
+    version: ">=0.1.0"
+
 variants:
-  - baseline
-depends_on: []
-provides:
-  - interface: msez.fin.domestic-payments.v1
-    path: spec/README.md
-    media_type: text/markdown
-parameters: {}
+  - variant_id: full
+    name: Full Domestic Payments
+    features: [rtgs, ach, instant, direct_debit]
+  - variant_id: basic
+    name: Basic Payments
+    features: [rtgs, ach]
+
+tags: [payments, rtgs, ach, instant, domestic, clearing]

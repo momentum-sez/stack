@@ -1,0 +1,386 @@
+module_id: tax.treaty-management
+version: 0.4.44
+kind: tax-infrastructure
+name: Tax Treaty Management
+description: |
+  Comprehensive tax treaty management system for Special Economic Zones.
+  Manages bilateral and multilateral tax agreements, treaty benefits,
+  withholding tax rates, and anti-abuse provisions.
+
+  Implements:
+  - OECD Model Tax Convention provisions
+  - UN Model Double Taxation Convention
+  - Multilateral Instrument (MLI) modifications
+  - Treaty benefit eligibility determination
+  - Withholding tax rate determination
+  - Limitation on Benefits (LOB) testing
+  - Principal Purpose Test (PPT) analysis
+
+license: CC-BY-4.0
+
+interfaces:
+  - interface_id: tax.treaty-management.registry
+    name: Treaty Registry Interface
+    description: Maintain registry of tax treaties and their provisions
+    operations:
+      - op_id: register_treaty
+        name: Register Tax Treaty
+        description: Add a tax treaty to the registry
+        inputs:
+          - name: treaty_details
+            type: TreatyDetails
+            description: Full treaty information
+          - name: effective_date
+            type: string
+            format: date
+            description: Treaty effective date
+        outputs:
+          - name: treaty_registration
+            type: TreatyRegistration
+            description: Registered treaty record
+
+      - op_id: update_treaty
+        name: Update Treaty Provisions
+        description: Update treaty due to protocol or MLI modification
+        inputs:
+          - name: treaty_id
+            type: string
+            description: Treaty to update
+          - name: modifications
+            type: array
+            description: Article modifications
+          - name: effective_date
+            type: string
+            format: date
+            description: Modification effective date
+        outputs:
+          - name: updated_treaty
+            type: TreatyRegistration
+            description: Updated treaty record
+
+      - op_id: query_treaty
+        name: Query Treaty Provisions
+        description: Retrieve specific treaty provisions
+        inputs:
+          - name: country_a
+            type: string
+            description: First contracting state (ISO code)
+          - name: country_b
+            type: string
+            description: Second contracting state (ISO code)
+          - name: article
+            type: string
+            description: Specific article (optional)
+        outputs:
+          - name: treaty_provisions
+            type: TreatyProvisions
+            description: Applicable treaty provisions
+
+  - interface_id: tax.treaty-management.benefits
+    name: Treaty Benefits Interface
+    description: Determine treaty benefit eligibility and rates
+    operations:
+      - op_id: determine_withholding_rate
+        name: Determine Withholding Tax Rate
+        description: Calculate applicable withholding rate under treaty
+        inputs:
+          - name: payment_type
+            type: string
+            enum: [dividends, interest, royalties, fees_for_technical_services, other]
+            description: Type of payment
+          - name: source_country
+            type: string
+            description: Country of payer (ISO code)
+          - name: residence_country
+            type: string
+            description: Country of recipient (ISO code)
+          - name: recipient_details
+            type: RecipientDetails
+            description: Recipient entity information
+        outputs:
+          - name: rate_determination
+            type: WithholdingRateDetermination
+            description: Applicable rate with treaty basis
+
+      - op_id: test_beneficial_owner
+        name: Test Beneficial Ownership
+        description: Determine if recipient is beneficial owner
+        inputs:
+          - name: recipient_id
+            type: string
+            description: Recipient entity DID
+          - name: payment_details
+            type: PaymentDetails
+            description: Payment information
+          - name: ownership_structure
+            type: OwnershipStructure
+            description: Recipient's ownership chain
+        outputs:
+          - name: beneficial_owner_test
+            type: BeneficialOwnerTest
+            description: Beneficial ownership determination
+
+      - op_id: apply_lob_test
+        name: Apply Limitation on Benefits Test
+        description: Determine if entity qualifies under LOB provisions
+        inputs:
+          - name: entity_id
+            type: string
+            description: Entity claiming benefits
+          - name: treaty_id
+            type: string
+            description: Applicable treaty
+          - name: entity_details
+            type: LOBEntityDetails
+            description: Entity characteristics for LOB tests
+        outputs:
+          - name: lob_result
+            type: LOBTestResult
+            description: LOB qualification result
+
+      - op_id: apply_ppt_test
+        name: Apply Principal Purpose Test
+        description: Evaluate transaction under PPT anti-abuse rule
+        inputs:
+          - name: transaction_id
+            type: string
+            description: Transaction to evaluate
+          - name: arrangement_details
+            type: ArrangementDetails
+            description: Full arrangement description
+        outputs:
+          - name: ppt_result
+            type: PPTTestResult
+            description: PPT analysis result
+
+  - interface_id: tax.treaty-management.certification
+    name: Treaty Certification Interface
+    description: Issue and validate treaty benefit certifications
+    operations:
+      - op_id: issue_residence_certificate
+        name: Issue Tax Residence Certificate
+        description: Issue certificate of tax residence for treaty purposes
+        inputs:
+          - name: entity_id
+            type: string
+            description: Requesting entity
+          - name: tax_year
+            type: integer
+            description: Applicable tax year
+          - name: purpose
+            type: string
+            description: Purpose of certificate
+        outputs:
+          - name: residence_certificate
+            type: ResidenceCertificate
+            description: Official residence certificate
+
+      - op_id: validate_foreign_certificate
+        name: Validate Foreign Certificate
+        description: Validate tax residence certificate from treaty partner
+        inputs:
+          - name: certificate
+            type: ForeignCertificate
+            description: Certificate to validate
+          - name: issuing_authority
+            type: string
+            description: Authority that issued certificate
+        outputs:
+          - name: validation_result
+            type: CertificateValidation
+            description: Validation outcome
+
+      - op_id: issue_treaty_claim_form
+        name: Issue Treaty Claim Form
+        description: Generate form for claiming treaty benefits
+        inputs:
+          - name: claimant_id
+            type: string
+            description: Entity claiming benefits
+          - name: treaty_id
+            type: string
+            description: Applicable treaty
+          - name: income_type
+            type: string
+            description: Type of income
+        outputs:
+          - name: claim_form
+            type: TreatyClaimForm
+            description: Pre-populated claim form
+
+schemas:
+  - schema_id: TreatyRegistration
+    description: Registered tax treaty record
+    properties:
+      treaty_id:
+        type: string
+        description: Unique treaty identifier
+      contracting_states:
+        type: array
+        items:
+          type: string
+        description: ISO codes of contracting states
+      treaty_type:
+        type: string
+        enum: [bilateral, multilateral]
+      model_basis:
+        type: string
+        enum: [oecd, un, us, other]
+      signature_date:
+        type: string
+        format: date
+      effective_date:
+        type: string
+        format: date
+      mli_covered:
+        type: boolean
+        description: Whether MLI applies
+      articles:
+        type: array
+        items:
+          $ref: "#/schemas/TreatyArticle"
+      protocols:
+        type: array
+        description: Amending protocols
+
+  - schema_id: TreatyArticle
+    description: Individual treaty article
+    properties:
+      article_number:
+        type: string
+      title:
+        type: string
+      provisions:
+        type: array
+        items:
+          type: object
+          properties:
+            paragraph:
+              type: string
+            text:
+              type: string
+            rates:
+              type: object
+              description: Applicable rates if any
+      mli_modifications:
+        type: array
+        description: MLI article substitutions or modifications
+
+  - schema_id: WithholdingRateDetermination
+    description: Determined withholding tax rate
+    properties:
+      determination_id:
+        type: string
+      payment_type:
+        type: string
+      source_country:
+        type: string
+      residence_country:
+        type: string
+      domestic_rate:
+        type: number
+        description: Rate without treaty
+      treaty_rate:
+        type: number
+        description: Reduced treaty rate
+      applicable_rate:
+        type: number
+        description: Final applicable rate
+      treaty_article:
+        type: string
+        description: Treaty article basis
+      conditions:
+        type: array
+        description: Conditions for reduced rate
+      anti_abuse_cleared:
+        type: boolean
+        description: Whether anti-abuse tests passed
+
+  - schema_id: LOBTestResult
+    description: Limitation on Benefits test result
+    properties:
+      entity_id:
+        type: string
+      treaty_id:
+        type: string
+      tests_applied:
+        type: array
+        items:
+          type: object
+          properties:
+            test_name:
+              type: string
+              enum: [publicly_traded, subsidiary_of_publicly_traded, ownership_base_erosion, active_trade_business, derivative_benefits, discretionary_determination]
+            result:
+              type: string
+              enum: [passed, failed, not_applicable]
+            details:
+              type: string
+      overall_qualification:
+        type: boolean
+      qualifying_test:
+        type: string
+
+  - schema_id: ResidenceCertificate
+    description: Tax residence certificate
+    properties:
+      certificate_id:
+        type: string
+      entity_id:
+        type: string
+      entity_name:
+        type: string
+      residence_country:
+        type: string
+      tax_year:
+        type: integer
+      issue_date:
+        type: string
+        format: date
+      valid_until:
+        type: string
+        format: date
+      issuing_authority:
+        type: string
+      certificate_number:
+        type: string
+      digital_signature:
+        type: string
+
+dependencies:
+  - module_id: legal.entity-registry
+    version: ">=0.1.0"
+    reason: Entity residence and structure information
+  - module_id: tax.framework
+    version: ">=0.1.0"
+    reason: Domestic tax rate information
+  - module_id: regulatory.aml-cft
+    version: ">=0.1.0"
+    reason: Beneficial ownership verification
+
+variants:
+  - variant_id: full
+    name: Full Treaty Management
+    description: Complete treaty management with all features
+    features:
+      - registry
+      - benefits_determination
+      - certification
+      - anti_abuse_testing
+
+  - variant_id: basic
+    name: Basic Treaty Lookup
+    description: Treaty rate lookup without advanced testing
+    features:
+      - registry
+      - benefits_determination
+
+tags:
+  - tax
+  - treaty
+  - withholding
+  - double-taxation
+  - oecd
+  - mli
+  - lob
+  - ppt

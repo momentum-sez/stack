@@ -1,13 +1,212 @@
-module_id: org.momentum.msez.fin.open-banking
-version: 0.2.0
-kind: financial
+module_id: financial.open-banking
+version: 0.4.44
+kind: financial-infrastructure
+name: Open Banking Integration
+description: |
+  Open Banking API infrastructure for Special Economic Zones.
+  Implements PSD2, UK Open Banking, and emerging global standards
+  for account information and payment initiation services.
+
+  Standards Supported:
+  - PSD2/PSD3 (EU)
+  - UK Open Banking
+  - FDX (Financial Data Exchange)
+  - CIBA (Client Initiated Backchannel Authentication)
+  - FAPI (Financial-grade API)
+
+  Services:
+  - Account Information Services (AIS)
+  - Payment Initiation Services (PIS)
+  - Confirmation of Funds (CoF)
+  - Variable Recurring Payments (VRP)
+
 license: Apache-2.0
-description: "Open Banking Module (stub)."
+
+interfaces:
+  - interface_id: financial.open-banking.consent
+    name: Consent Management Interface
+    operations:
+      - op_id: create_consent
+        name: Create Consent
+        inputs:
+          - name: psu_id
+            type: string
+            description: Payment Service User identifier
+          - name: consent_type
+            type: string
+            enum: [ais, pis, cof, vrp]
+          - name: permissions
+            type: array
+          - name: expiration
+            type: string
+            format: date-time
+        outputs:
+          - name: consent
+            type: Consent
+
+      - op_id: authorize_consent
+        name: Authorize Consent
+        inputs:
+          - name: consent_id
+            type: string
+          - name: authorization_code
+            type: string
+        outputs:
+          - name: authorization
+            type: ConsentAuthorization
+
+      - op_id: revoke_consent
+        name: Revoke Consent
+        inputs:
+          - name: consent_id
+            type: string
+        outputs:
+          - name: revocation
+            type: ConsentRevocation
+
+  - interface_id: financial.open-banking.ais
+    name: Account Information Services Interface
+    operations:
+      - op_id: get_accounts
+        name: Get Accounts
+        inputs:
+          - name: consent_id
+            type: string
+        outputs:
+          - name: accounts
+            type: array
+
+      - op_id: get_balances
+        name: Get Account Balances
+        inputs:
+          - name: consent_id
+            type: string
+          - name: account_id
+            type: string
+        outputs:
+          - name: balances
+            type: AccountBalances
+
+      - op_id: get_transactions
+        name: Get Transactions
+        inputs:
+          - name: consent_id
+            type: string
+          - name: account_id
+            type: string
+          - name: from_date
+            type: string
+            format: date
+          - name: to_date
+            type: string
+            format: date
+        outputs:
+          - name: transactions
+            type: TransactionList
+
+  - interface_id: financial.open-banking.pis
+    name: Payment Initiation Services Interface
+    operations:
+      - op_id: initiate_payment
+        name: Initiate Payment
+        inputs:
+          - name: consent_id
+            type: string
+          - name: debtor_account
+            type: string
+          - name: creditor_account
+            type: CreditorAccount
+          - name: amount
+            type: number
+          - name: currency
+            type: string
+        outputs:
+          - name: payment
+            type: PaymentInitiation
+
+      - op_id: get_payment_status
+        name: Get Payment Status
+        inputs:
+          - name: payment_id
+            type: string
+        outputs:
+          - name: status
+            type: PaymentStatus
+
+  - interface_id: financial.open-banking.vrp
+    name: Variable Recurring Payments Interface
+    operations:
+      - op_id: create_vrp_consent
+        name: Create VRP Consent
+        inputs:
+          - name: psu_id
+            type: string
+          - name: debtor_account
+            type: string
+          - name: creditor_account
+            type: CreditorAccount
+          - name: max_amount
+            type: number
+          - name: frequency
+            type: string
+        outputs:
+          - name: vrp_consent
+            type: VRPConsent
+
+      - op_id: execute_vrp
+        name: Execute VRP
+        inputs:
+          - name: vrp_consent_id
+            type: string
+          - name: amount
+            type: number
+        outputs:
+          - name: payment
+            type: VRPExecution
+
+schemas:
+  - schema_id: Consent
+    properties:
+      consent_id:
+        type: string
+      consent_type:
+        type: string
+      status:
+        type: string
+        enum: [awaiting_authorization, authorized, rejected, revoked, expired]
+      permissions:
+        type: array
+      creation_date:
+        type: string
+        format: date-time
+      expiration_date:
+        type: string
+        format: date-time
+
+  - schema_id: PaymentInitiation
+    properties:
+      payment_id:
+        type: string
+      status:
+        type: string
+        enum: [pending, accepted, rejected, settled]
+      amount:
+        type: number
+      currency:
+        type: string
+
+dependencies:
+  - module_id: identity.did-registry
+    version: ">=0.1.0"
+  - module_id: financial.banking-adapter
+    version: ">=0.1.0"
+
 variants:
-  - baseline
-depends_on: []
-provides:
-  - interface: msez.fin.open-banking.v1
-    path: spec/README.md
-    media_type: text/markdown
-parameters: {}
+  - variant_id: full
+    name: Full Open Banking
+    features: [ais, pis, cof, vrp]
+  - variant_id: ais_only
+    name: AIS Only
+    features: [ais]
+
+tags: [open-banking, psd2, api, ais, pis, vrp, fapi]

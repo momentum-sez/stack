@@ -1,13 +1,234 @@
-module_id: org.momentum.msez.ops.audit-logging
-version: 0.2.0
-kind: operational
+module_id: operational.audit-logging
+version: 0.4.44
+kind: operational-infrastructure
+name: Audit Logging System
+description: |
+  Comprehensive audit logging infrastructure for Special Economic Zones.
+  Provides immutable, tamper-evident logging of all system operations
+  for regulatory compliance, security forensics, and operational visibility.
+
+  Compliance Standards:
+  - SOC 2 Type II
+  - ISO 27001
+  - GDPR Audit Requirements
+  - Financial Services Regulations
+
+  Capabilities:
+  - Immutable Audit Trail
+  - Cryptographic Integrity (hash chains)
+  - Real-time Log Streaming
+  - Log Retention Management
+  - Forensic Search and Analysis
+  - Regulatory Export Formats
+
 license: Apache-2.0
-description: "Audit Logging (stub)."
+
+interfaces:
+  - interface_id: operational.audit-logging.write
+    name: Audit Log Write Interface
+    operations:
+      - op_id: log_event
+        name: Log Audit Event
+        inputs:
+          - name: event_type
+            type: string
+          - name: actor_id
+            type: string
+          - name: action
+            type: string
+          - name: resource_type
+            type: string
+          - name: resource_id
+            type: string
+          - name: outcome
+            type: string
+            enum: [success, failure, partial]
+          - name: details
+            type: object
+        outputs:
+          - name: log_entry
+            type: AuditLogEntry
+
+      - op_id: log_security_event
+        name: Log Security Event
+        inputs:
+          - name: event_type
+            type: string
+            enum: [authentication, authorization, access_denied, suspicious_activity]
+          - name: actor_id
+            type: string
+          - name: ip_address
+            type: string
+          - name: user_agent
+            type: string
+          - name: details
+            type: object
+        outputs:
+          - name: log_entry
+            type: SecurityLogEntry
+
+      - op_id: log_compliance_event
+        name: Log Compliance Event
+        inputs:
+          - name: regulation
+            type: string
+          - name: requirement
+            type: string
+          - name: entity_id
+            type: string
+          - name: status
+            type: string
+            enum: [compliant, non_compliant, remediation]
+          - name: evidence
+            type: object
+        outputs:
+          - name: log_entry
+            type: ComplianceLogEntry
+
+  - interface_id: operational.audit-logging.read
+    name: Audit Log Read Interface
+    operations:
+      - op_id: search_logs
+        name: Search Audit Logs
+        inputs:
+          - name: query
+            type: AuditQuery
+          - name: start_time
+            type: string
+            format: date-time
+          - name: end_time
+            type: string
+            format: date-time
+          - name: limit
+            type: integer
+        outputs:
+          - name: results
+            type: AuditSearchResults
+
+      - op_id: get_actor_history
+        name: Get Actor History
+        inputs:
+          - name: actor_id
+            type: string
+          - name: start_time
+            type: string
+            format: date-time
+          - name: end_time
+            type: string
+            format: date-time
+        outputs:
+          - name: history
+            type: ActorHistory
+
+      - op_id: verify_integrity
+        name: Verify Log Integrity
+        inputs:
+          - name: start_sequence
+            type: integer
+          - name: end_sequence
+            type: integer
+        outputs:
+          - name: verification
+            type: IntegrityVerification
+
+  - interface_id: operational.audit-logging.export
+    name: Audit Log Export Interface
+    operations:
+      - op_id: export_for_regulator
+        name: Export for Regulator
+        inputs:
+          - name: regulator_id
+            type: string
+          - name: start_date
+            type: string
+            format: date
+          - name: end_date
+            type: string
+            format: date
+          - name: format
+            type: string
+            enum: [json, xml, csv]
+        outputs:
+          - name: export
+            type: RegulatoryExport
+
+      - op_id: generate_compliance_report
+        name: Generate Compliance Report
+        inputs:
+          - name: report_type
+            type: string
+            enum: [soc2, iso27001, gdpr, custom]
+          - name: period
+            type: string
+        outputs:
+          - name: report
+            type: ComplianceReport
+
+schemas:
+  - schema_id: AuditLogEntry
+    properties:
+      entry_id:
+        type: string
+      sequence_number:
+        type: integer
+      timestamp:
+        type: string
+        format: date-time
+      event_type:
+        type: string
+      actor_id:
+        type: string
+      action:
+        type: string
+      resource_type:
+        type: string
+      resource_id:
+        type: string
+      outcome:
+        type: string
+      details:
+        type: object
+      previous_hash:
+        type: string
+      entry_hash:
+        type: string
+
+  - schema_id: IntegrityVerification
+    properties:
+      verified:
+        type: boolean
+      start_sequence:
+        type: integer
+      end_sequence:
+        type: integer
+      entries_checked:
+        type: integer
+      hash_chain_valid:
+        type: boolean
+      discrepancies:
+        type: array
+
+  - schema_id: AuditQuery
+    properties:
+      event_types:
+        type: array
+      actor_ids:
+        type: array
+      resource_types:
+        type: array
+      outcomes:
+        type: array
+      keyword:
+        type: string
+
+dependencies: []
+
 variants:
-  - baseline
-depends_on: []
-provides:
-  - interface: msez.ops.audit-logging.v1
-    path: docs/README.md
-    media_type: text/markdown
-parameters: {}
+  - variant_id: full
+    name: Full Audit Logging
+    features: [write, read, export, integrity_verification]
+  - variant_id: basic
+    name: Basic Logging
+    features: [write, read]
+
+tags: [audit, logging, compliance, security, forensics, immutable]

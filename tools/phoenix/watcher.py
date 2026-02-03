@@ -618,8 +618,8 @@ class WatcherRegistry:
         # Sort by reputation (descending)
         candidates.sort(key=lambda x: x[0], reverse=True)
         
-        # Return top watchers
-        return [w for _, w in candidates[:max(min_count, len(candidates))]]
+        # Return top watchers (limit to requested count)
+        return [w for _, w in candidates[:min(min_count, len(candidates))]]
     
     def record_attestation(
         self,

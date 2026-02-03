@@ -1,0 +1,52 @@
+module_id: org.momentum.msez.corporate.dissolution
+version: 0.1.0
+kind: corporate
+license: Apache-2.0
+description: |
+  Entity Dissolution and Winding Up module.
+  Supports voluntary and involuntary dissolution,
+  liquidation procedures, and final filings.
+
+variants:
+  - baseline
+  - court-supervised
+
+depends_on:
+  - module_id: org.momentum.msez.legal.entity-registry
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.corporate.secretarial
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.corporate.annual-compliance
+    constraint: ">=0.1.0,<1.0.0"
+
+provides:
+  - interface: msez.corporate.dissolution.voluntary.v1
+    path: workflows/voluntary-dissolution.yaml
+    media_type: application/yaml
+  - interface: msez.corporate.dissolution.involuntary.v1
+    path: workflows/involuntary-dissolution.yaml
+    media_type: application/yaml
+  - interface: msez.corporate.dissolution.forms.v1
+    path: forms/
+    media_type: application/json
+  - interface: msez.policy.opa.bundle.v1
+    path: policy/
+    media_type: text/plain
+
+parameters:
+  creditor_notice_period_days:
+    type: integer
+    default: 90
+    description: "Days for creditors to submit claims"
+  final_accounts_deadline_days:
+    type: integer
+    default: 30
+    description: "Days to file final accounts after dissolution"
+  strike_off_notice_period_days:
+    type: integer
+    default: 90
+    description: "Notice period before strike-off"
+  minimum_liquidation_period_days:
+    type: integer
+    default: 90
+    description: "Minimum period for liquidation process"

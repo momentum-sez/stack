@@ -1,0 +1,46 @@
+module_id: org.momentum.msez.tax.reporting
+version: 0.1.0
+kind: tax
+license: Apache-2.0
+description: |
+  Tax Reporting module for international tax information exchange
+  and local tax compliance. Supports CRS, FATCA, and local reporting.
+
+variants:
+  - baseline
+  - full-exchange
+
+depends_on:
+  - module_id: org.momentum.msez.legal.entity-registry
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.identity.core
+    constraint: ">=0.1.0,<1.0.0"
+
+provides:
+  - interface: msez.tax.reporting.crs.v1
+    path: templates/crs-reporting.yaml
+    media_type: application/yaml
+  - interface: msez.tax.reporting.fatca.v1
+    path: templates/fatca-reporting.yaml
+    media_type: application/yaml
+  - interface: msez.tax.reporting.local.v1
+    path: templates/local-filing.yaml
+    media_type: application/yaml
+  - interface: msez.tax.reporting.schema.v1
+    path: schemas/
+    media_type: application/json
+
+parameters:
+  crs_participating:
+    type: boolean
+    default: true
+  fatca_iga_type:
+    type: string
+    default: "model_1"
+    enum: ["model_1", "model_2", "none"]
+  automatic_exchange_partners:
+    type: array
+    default: []
+  reporting_currency:
+    type: string
+    default: "USD"

@@ -1,5 +1,174 @@
 # CHANGELOG
 
+## [0.4.44] - 2026-02-03 - GENESIS
+
+### Codename: GENESIS
+**"The zone is born."**
+
+This release transforms the MSEZ Stack from infrastructure into a fully forkable, deployable Special Economic Zone. v0.4.44 introduces three new module families (Corporate Services, Identity, Tax & Revenue), the Licensepack specification completing the "pack trilogy," and one-click deployment automation.
+
+### Major Features
+
+#### Licensepack Specification (spec/98-licensepacks.md)
+Content-addressed snapshots of jurisdictional licensing state, completing the pack trilogy alongside lawpacks (static law) and regpacks (dynamic guidance). Licensepacks capture live licensing registries — who holds what licenses, under what conditions, with what permissions and restrictions.
+
+Key capabilities include cryptographic digest computation for content addressing, license record schemas (conditions, permissions, restrictions), holder profile management with UBO integration, compliance tensor LICENSING domain integration, and verifiable credential export for license attestations.
+
+The `tools/licensepack.py` module (900+ lines) provides LicensePack class with full CRUD operations, license verification for compliance tensor integration, delta computation between snapshots, and CLI commands for fetch, verify, lock, query, and export-vc operations.
+
+#### Corporate Services Module Family (modules/corporate/)
+Eight modules implementing full CSP (Corporate Service Provider) lifecycle:
+
+The `formation` module provides entity incorporation workflows with JSON Schema forms for LLC, Corporation, Partnership, Trust, and DAO formation. Supports share capital definition, director appointments, UBO declarations, and jurisdiction-specific requirements.
+
+The `beneficial-ownership` module implements UBO registry with verification chains, supporting FATF-compliant beneficial ownership declarations, ownership chain tracking, PEP and sanctions screening integration.
+
+The `cap-table` module delivers complete capitalization table management including share classes with rights definitions, shareholder holdings with vesting schedules, option pools and grants, convertible instruments (SAFEs, notes), and warrants.
+
+The `secretarial` module provides corporate secretarial services with 10+ board resolution templates, meeting minutes, annual returns, and director change filings.
+
+The `annual-compliance` module implements compliance calendar automation with filing deadline tracking, reminder schedules, late penalty calculations, and event-triggered filings.
+
+The `dissolution` module delivers voluntary dissolution workflows with 10-stage state machine from board resolution through final dissolution certificate.
+
+The `registered-agent` module provides registered office and agent appointment services.
+
+The `governance-templates` module delivers corporate governance document templates including articles of association, shareholder agreements, and director service agreements.
+
+#### Identity & Credentialing Module Family (modules/identity/)
+Six modules implementing the MASS Protocol Identity primitive with progressive verification tiers:
+
+The `core` module provides DID management with did:key and did:web support, W3C DID Document schema, key lifecycle management, and multi-key authentication.
+
+The `kyc-tiers` module implements 4-tier progressive KYC:
+- Tier 0 (Pseudonymous): DID only, $1,000 transaction limit
+- Tier 1 (Basic): Government ID + selfie, $15,000 limit
+- Tier 2 (Enhanced): Address + source of funds, $100,000 limit
+- Tier 3 (Institutional): Full due diligence, unlimited
+
+Each tier includes detailed verification workflows, document requirements, screening checks, and capability unlocks.
+
+The `credentials` module provides verifiable credential issuance with selective disclosure and ZK proof support.
+
+The `binding` module enables entity-identity-instrument linkage for corporate identity management.
+
+#### Tax & Revenue Module Family (modules/tax/)
+Seven modules implementing zone fiscal infrastructure:
+
+The `framework` module defines configurable tax regimes supporting tax-free zones, low-tax zones, and standard taxation with corporate income tax, personal income tax, withholding taxes, VAT/GST, stamp duty, and economic substance requirements.
+
+The `fee-schedules` module delivers comprehensive zone fee catalogs including formation fees ($1,000-$2,500), annual fees (tiered by revenue), license fees (by license type), filing fees, service fees, and penalty structures.
+
+The `incentive-programs` module provides 6 tax incentive programs: new establishment holiday (5-10 year tax exemption), innovation/R&D credit (25-35%), employment grants ($5k-$50k per hire), training subsidies (50%), headquarters incentive (composite), and green investment credit (30%).
+
+The `reporting` module implements international tax reporting with CRS (Common Reporting Standard) and FATCA templates, including due diligence procedures, XML schema integration, and compliance calendars.
+
+#### Deployment Automation (deploy/)
+One-click zone deployment with Docker Compose:
+
+`deploy/docker/docker-compose.yaml` orchestrates 12 services:
+- Core: zone-authority, entity-registry, license-registry
+- Corridor: corridor-node, watcher
+- Identity: identity-service
+- Financial: settlement-service
+- Compliance: compliance-service, regulator-console
+- Infrastructure: PostgreSQL, Redis
+- Observability: Prometheus, Grafana
+
+`deploy/docker/Dockerfile.*` provides optimized container images for each service type.
+
+`deploy/docker/init-db.sql` initializes all required databases with schemas for entities, licensing, identity, compliance, corridors, watchers, and settlement.
+
+`deploy/scripts/deploy-zone.sh` provides one-command deployment:
+```bash
+./deploy-zone.sh digital-financial-center my-zone ae-dubai-difc
+```
+
+### Schema Updates
+
+#### zone.schema.json
+Added `licensepack_domains` array for specifying license domains to pin, `licensepack_refresh_policy` object for per-domain refresh configuration, and `regpack_domains` array for regulatory pack domains.
+
+#### stack.lock.schema.json
+Added `licensepacks` array with full licensepack pinning support including digest, lock path, artifact path, snapshot timestamp, and content summary. Added `regpacks` array with parallel structure for regulatory packs.
+
+### New Schemas
+
+- `licensepack.schema.json` — Main licensepack structure
+- `licensepack.license.schema.json` — Individual license records
+- `licensepack.lock.schema.json` — Licensepack lock file format
+
+### Module Count
+
+| Category | v0.4.43 | v0.4.44 | Delta |
+|----------|---------|---------|-------|
+| Legal | 13 | 13 | - |
+| Regulatory | 8 | 8 | - |
+| Licensing | 11 | 11 | - |
+| Financial | 10 | 10 | - |
+| Corridors | 5 | 5 | - |
+| Governance | 9 | 9 | - |
+| Operational | 9 | 9 | - |
+| **Corporate** | 0 | **8** | +8 |
+| **Identity** | 0 | **6** | +6 |
+| **Tax** | 0 | **7** | +7 |
+| **TOTAL** | 65 | **86** | +21 |
+
+### Breaking Changes
+
+None. All new modules are additive. Existing zone manifests continue to work without modification.
+
+### Migration Guide
+
+To adopt new module families, add them to your profile:
+
+```yaml
+modules:
+  # Existing modules...
+
+  # Add Corporate Services
+  - module_id: org.momentum.msez.corporate
+    version: 0.1.0
+    variant: baseline
+
+  # Add Identity
+  - module_id: org.momentum.msez.identity
+    version: 0.1.0
+    variant: baseline
+
+  # Add Tax & Revenue
+  - module_id: org.momentum.msez.tax
+    version: 0.1.0
+    variant: tax-free-zone
+```
+
+To enable licensepacks, add to zone.yaml:
+
+```yaml
+licensepack_domains:
+  - financial
+  - corporate
+
+licensepack_refresh_policy:
+  default:
+    refresh_frequency: daily
+    max_staleness_hours: 24
+```
+
+### Future Work
+
+Version 0.4.45 will target Capital Markets module family (securities issuance, CSD, clearing, DVP/PVP).
+
+Version 0.4.46 will focus on Trade & Commerce module family (letters of credit, trade documents, supply chain finance).
+
+Version 0.4.47 will deliver MASS Five Primitives (Entities, Ownership, Instruments, Identity, Consent).
+
+### Contributors
+
+Engineering team at Momentum (engineering@momentum.inc)
+
+---
+
 ## [0.4.43] - 2026-01-29 - PHOENIX ASCENSION
 
 ### Codename: PHOENIX ASCENSION

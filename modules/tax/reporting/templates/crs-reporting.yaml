@@ -1,0 +1,185 @@
+# Common Reporting Standard (CRS) Reporting Template
+# OECD Automatic Exchange of Information
+
+template_id: msez.tax.reporting.crs.v1
+template_version: "1.0"
+
+description: |
+  Template for Common Reporting Standard (CRS) reporting
+  under the OECD Standard for Automatic Exchange of
+  Financial Account Information.
+
+reporting_standard:
+  name: "Common Reporting Standard"
+  version: "2.0"
+  authority: "OECD"
+  schema: "CRS XML Schema v2.0"
+
+participating_jurisdictions:
+  # List of CRS participating jurisdictions
+  # Zone authority maintains current list
+  source: "oecd_aeoi_portal"
+  update_frequency: "annual"
+
+reporting_entities:
+  # Who must report
+  covered_entities:
+    - depository_institutions
+    - custodial_institutions
+    - investment_entities
+    - specified_insurance_companies
+
+  # Who is exempt
+  exempt_entities:
+    - governmental_entities
+    - international_organizations
+    - central_banks
+    - broad_participation_retirement_funds
+    - narrow_participation_retirement_funds
+    - qualified_credit_card_issuers
+    - exempt_collective_investment_vehicles
+
+reportable_accounts:
+  # Account types
+  account_types:
+    - depository_accounts
+    - custodial_accounts
+    - equity_interests
+    - debt_interests
+    - cash_value_insurance
+    - annuity_contracts
+
+  # Thresholds
+  thresholds:
+    preexisting_individual_lower_value:
+      threshold: "1000000"
+      currency: "USD"
+      enhanced_review_above: true
+
+    preexisting_individual_high_value:
+      threshold: "1000000"
+      currency: "USD"
+      review_deadline: "december_31_following_year"
+
+    preexisting_entity:
+      threshold: "250000"
+      currency: "USD"
+      aggregation: "by_account_holder"
+
+    new_accounts:
+      threshold: "0"
+      no_de_minimis: true
+
+due_diligence:
+  # For new individual accounts
+  new_individual_accounts:
+    self_certification: required
+    reasonableness_test: required
+    documentary_evidence: if_indicators
+
+  # For preexisting individual accounts
+  preexisting_individual_lower_value:
+    residence_address_test: required
+    indicia_search: required
+    relationship_manager_inquiry: if_high_value
+
+  preexisting_individual_high_value:
+    all_lower_value_procedures: required
+    electronic_record_search: required
+    paper_record_search: if_not_electronic
+    relationship_manager_inquiry: required
+
+  # For entity accounts
+  entity_accounts:
+    self_certification: required
+    documentary_evidence: if_required
+    controlling_persons_identification: required
+
+reportable_information:
+  account_holder_information:
+    - name
+    - address
+    - jurisdiction_of_residence
+    - tin  # Tax Identification Number
+    - date_of_birth  # for individuals
+    - place_of_birth  # if available
+
+  account_information:
+    - account_number
+    - account_balance_or_value
+    - currency
+
+  financial_information:
+    - gross_interest
+    - gross_dividends
+    - other_income
+    - gross_proceeds
+    - redemptions
+
+reporting_deadlines:
+  reporting_period: "calendar_year"
+  due_date: "varies_by_jurisdiction"
+  typical_deadline: "september_30_following_year"
+
+  # Zone-specific deadlines
+  zone_deadlines:
+    data_collection_cutoff: "january_31"
+    internal_review: "march_31"
+    submission_to_authority: "may_31"
+    exchange_with_partners: "september_30"
+
+xml_schema:
+  namespace: "urn:oecd:ties:crs:v2"
+  message_type: "CRS"
+
+  required_elements:
+    message_spec:
+      - sending_country
+      - receiving_country
+      - message_type
+      - warning
+      - contact
+      - message_ref_id
+      - corr_message_ref_id
+      - reporting_period
+      - timestamp
+
+    reporting_fi:
+      - res_country_code
+      - tin
+      - name
+      - address
+
+    account_report:
+      - doc_spec
+      - account_number
+      - account_holder
+      - account_balance
+      - payment
+
+compliance_procedures:
+  record_retention:
+    period_years: 6
+    from: "end_of_reporting_period"
+
+  corrections:
+    corrected_data: "submit_immediately"
+    void_record: "if_originally_incorrect"
+
+  nil_returns:
+    required: "if_no_reportable_accounts"
+    deadline: "same_as_regular_return"
+
+penalties:
+  failure_to_report:
+    range: "1000_to_50000"
+    currency: "USD"
+    per: "occurrence"
+
+  false_self_certification:
+    range: "1000_to_10000"
+    currency: "USD"
+
+  failure_to_maintain_records:
+    range: "500_to_25000"
+    currency: "USD"

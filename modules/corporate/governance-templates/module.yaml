@@ -1,0 +1,61 @@
+module_id: org.momentum.msez.corporate.governance-templates
+version: 0.1.0
+kind: corporate
+license: Apache-2.0
+description: |
+  Corporate Governance Document Templates module.
+  Provides standard templates for articles of association,
+  shareholder agreements, director service agreements, and
+  other governance documents.
+
+variants:
+  - baseline
+  - common-law
+  - civil-law
+  - startup-friendly
+
+depends_on:
+  - module_id: org.momentum.msez.legal.core
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.corporate.formation
+    constraint: ">=0.1.0,<1.0.0"
+
+provides:
+  - interface: msez.corporate.governance.articles.v1
+    path: templates/articles-of-association.yaml
+    media_type: application/yaml
+  - interface: msez.corporate.governance.sha.v1
+    path: templates/shareholder-agreement.yaml
+    media_type: application/yaml
+  - interface: msez.corporate.governance.dsa.v1
+    path: templates/director-service-agreement.yaml
+    media_type: application/yaml
+  - interface: msez.corporate.governance.poa.v1
+    path: templates/power-of-attorney.yaml
+    media_type: application/yaml
+
+parameters:
+  default_jurisdiction_variant:
+    type: string
+    default: "common-law"
+    description: "Default legal system variant"
+  include_drag_along:
+    type: boolean
+    default: true
+    description: "Include drag-along provisions in SHA"
+  include_tag_along:
+    type: boolean
+    default: true
+    description: "Include tag-along provisions in SHA"
+  include_rofr:
+    type: boolean
+    default: true
+    description: "Include right of first refusal"
+  standard_vesting_months:
+    type: integer
+    default: 48
+    description: "Standard vesting period for founders"
+  standard_cliff_months:
+    type: integer
+    default: 12
+    description: "Standard cliff period"

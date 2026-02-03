@@ -1,0 +1,59 @@
+module_id: org.momentum.msez.corporate.cap-table
+version: 0.1.0
+kind: corporate
+license: Apache-2.0
+description: |
+  Cap Table (Capitalization Table) management module.
+  Tracks share capital, equity ownership, vesting schedules,
+  convertible instruments, and option pools.
+
+variants:
+  - baseline
+  - startup-focused
+  - fund-focused
+
+depends_on:
+  - module_id: org.momentum.msez.legal.entity-registry
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.corporate.formation
+    constraint: ">=0.1.0,<1.0.0"
+
+provides:
+  - interface: msez.corporate.cap-table.v1
+    path: schemas/cap-table.schema.json
+    media_type: application/json
+  - interface: msez.corporate.share-issuance.v1
+    path: forms/share-issuance.schema.json
+    media_type: application/json
+  - interface: msez.corporate.share-transfer.v1
+    path: forms/share-transfer.schema.json
+    media_type: application/json
+  - interface: msez.corporate.vesting.v1
+    path: templates/vesting-schedule.yaml
+    media_type: application/yaml
+
+parameters:
+  track_fully_diluted:
+    type: boolean
+    default: true
+    description: "Track fully diluted ownership"
+  support_convertibles:
+    type: boolean
+    default: true
+    description: "Support convertible instruments (SAFEs, notes)"
+  support_options:
+    type: boolean
+    default: true
+    description: "Support stock options and option pools"
+  support_warrants:
+    type: boolean
+    default: true
+    description: "Support warrants"
+  require_board_approval:
+    type: boolean
+    default: true
+    description: "Require board approval for share transactions"
+  maintain_share_register:
+    type: boolean
+    default: true
+    description: "Maintain statutory share register"

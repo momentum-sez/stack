@@ -1,10 +1,10 @@
 - profile_id: org.momentum.msez.profile.minimal-mvp
-  latest: 0.4.3
+  latest: 0.4.44
 - profile_id: org.momentum.msez.profile.digital-native-free-zone
-  latest: 0.4.3
+  latest: 0.4.44
 - profile_id: org.momentum.msez.profile.digital-financial-center
-  latest: 0.4.3
+  latest: 0.4.44
 - profile_id: org.momentum.msez.profile.charter-city
-  latest: 0.4.3
+  latest: 0.4.44
 - profile_id: org.momentum.msez.profile.trade-playbook
-  latest: 0.4.43
+  latest: 0.4.44

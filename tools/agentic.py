@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Agentic Execution Framework (v0.4.43)
+Agentic Execution Framework (v0.4.44)
 
 MASS Protocol v0.2 Chapter 17 — Agentic Execution
 
@@ -29,7 +29,6 @@ from typing import Any, Dict, List, Optional, Callable, Tuple, Set
 import hashlib
 import json
 import threading
-import time
 import uuid
 
 
@@ -75,7 +74,7 @@ class MonitorStatus(Enum):
 class MonitorMode(Enum):
     """Operating mode for environment monitors."""
     POLLING = "polling"       # Periodic polling
-    WEBHOOK = "webhook"       # Event-driven (v0.4.43)
+    WEBHOOK = "webhook"       # Event-driven
     HYBRID = "hybrid"         # Both modes
 
 
@@ -1450,15 +1449,15 @@ class AgenticExecutionEngine:
 
 
 # =============================================================================
-# EXTENDED STANDARD POLICIES (v0.4.43)
+# EXTENDED STANDARD POLICIES (v0.4.44)
 # =============================================================================
 
-# Extend STANDARD_POLICIES with v0.4.43 additions
+# Extend STANDARD_POLICIES with v0.4.44 additions
 EXTENDED_POLICIES = {
     # From v0.4.41
     **STANDARD_POLICIES,
-    
-    # v0.4.43 additions
+
+    # v0.4.44 additions
     "sanctions_freeze": AgenticPolicy(
         policy_id="sanctions_freeze",
         trigger_type=AgenticTriggerType.SANCTIONS_LIST_UPDATE,

@@ -1,0 +1,115 @@
+# Letters of Credit Module
+# Documentary and standby letter of credit infrastructure
+
+module_id: org.momentum.msez.trade.letters-of-credit
+version: 0.1.0
+kind: trade
+name: Letters of Credit
+description: |
+  Documentary and standby letter of credit infrastructure
+  compliant with UCP 600 and ISP98 standards.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.trade.letters-of-credit.v1
+    operations:
+      - apply_for_lc
+      - issue_lc
+      - advise_lc
+      - confirm_lc
+      - amend_lc
+      - present_documents
+      - examine_documents
+      - honor_or_negotiate
+      - reimburse
+
+lc_types:
+  documentary:
+    description: Payment against complying documents
+    standards: UCP_600
+    variants:
+      - sight
+      - usance
+      - deferred_payment
+      - acceptance
+      - negotiation
+  standby:
+    description: Payment upon default
+    standards: ISP98
+    variants:
+      - performance
+      - financial
+      - advance_payment
+      - bid_bond
+      - counter_standby
+  transferable:
+    description: Can be transferred to second beneficiary
+    conditions:
+      - must_be_expressly_stated
+      - only_once
+  back_to_back:
+    description: Second LC backed by master LC
+    use_case: intermediary_trade
+  revolving:
+    description: Automatically reinstates
+    variants:
+      - cumulative
+      - non_cumulative
+
+workflow:
+  issuance:
+    stages:
+      - application
+      - credit_assessment
+      - approval
+      - issuance
+      - advice
+    participants:
+      - applicant
+      - issuing_bank
+      - advising_bank
+      - beneficiary
+  presentation:
+    stages:
+      - document_preparation
+      - presentation
+      - examination
+      - discrepancy_handling
+      - honor_or_refuse
+    examination_period: 5_banking_days
+  settlement:
+    methods:
+      - sight_payment
+      - deferred_payment
+      - acceptance
+      - negotiation
+
+document_checking:
+  ucp_600_compliance:
+    - article_14_standard
+    - strict_compliance
+    - document_on_face
+  common_discrepancies:
+    - late_presentation
+    - expired_lc
+    - description_mismatch
+    - missing_documents
+    - inconsistent_data
+  discrepancy_handling:
+    - refuse
+    - request_waiver
+    - amend
+
+compliance:
+  sanctions_screening:
+    - parties
+    - goods
+    - vessels
+    - ports
+  dual_use_goods:
+    - export_license_check
+  trade_based_money_laundering:
+    - price_verification
+    - over_invoicing_detection
+    - phantom_shipment_detection

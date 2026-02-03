@@ -1,0 +1,89 @@
+# Post-Trade Module
+# Trade confirmation, allocation, and settlement instruction processing
+
+module_id: org.momentum.msez.capital-markets.post-trade
+version: 0.1.0
+kind: capital-markets
+name: Post-Trade Processing
+description: |
+  Post-trade processing infrastructure handling trade confirmation,
+  allocation, affirmation, and settlement instruction generation.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.capital-markets.post-trade.v1
+    operations:
+      - confirm_trade
+      - allocate_trade
+      - affirm_allocation
+      - generate_settlement_instruction
+      - match_settlement_instructions
+      - enrich_trade
+
+workflows:
+  institutional_trade:
+    stages:
+      - execution_report
+      - trade_notification
+      - allocation_instruction
+      - allocation_confirmation
+      - affirmation
+      - settlement_instruction
+    sla:
+      allocation: T+0
+      affirmation: T+0
+      settlement_instruction: T+1
+
+  retail_trade:
+    stages:
+      - execution_report
+      - trade_confirmation
+      - settlement_instruction
+    sla:
+      confirmation: real_time
+      settlement_instruction: T+0
+
+confirmation:
+  methods:
+    - electronic_matching
+    - bilateral_affirmation
+    - automatic_confirmation
+  platforms:
+    - omgeo_ctm
+    - bloomberg_vcon
+    - swift_alliance
+  stp_rate_target: 98%
+
+allocation:
+  types:
+    - pre_trade_allocation
+    - post_trade_allocation
+    - step_out
+    - give_up
+  rules:
+    - pro_rata
+    - specific_allocation
+    - average_price
+
+enrichment:
+  static_data:
+    - security_identifiers
+    - party_identifiers
+    - settlement_instructions
+  market_data:
+    - settlement_price
+    - accrued_interest
+    - fx_rates
+  fees:
+    - commission
+    - clearing_fees
+    - settlement_fees
+
+compliance:
+  record_keeping:
+    retention_period: 7_years
+    format: electronic
+  reconciliation:
+    frequency: daily
+    scope: all_trades

@@ -1,0 +1,102 @@
+# Corporate Actions Module
+# Processing of corporate events affecting securities
+
+module_id: org.momentum.msez.capital-markets.corporate-actions
+version: 0.1.0
+kind: capital-markets
+name: Corporate Actions Processing
+description: |
+  Corporate actions processing infrastructure for dividends,
+  reorganizations, and other events affecting securities.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.capital-markets.corporate-actions.v1
+    operations:
+      - announce_corporate_action
+      - calculate_entitlements
+      - process_elections
+      - execute_distribution
+      - reconcile_positions
+
+event_types:
+  distributions:
+    cash_dividend:
+      description: Cash payment to shareholders
+      components: [record_date, ex_date, payment_date]
+    stock_dividend:
+      description: Additional shares to shareholders
+      components: [record_date, ex_date, distribution_date]
+    interest_payment:
+      description: Periodic interest on bonds
+      components: [record_date, payment_date]
+
+  reorganizations:
+    stock_split:
+      description: Increase shares, reduce price
+      components: [record_date, effective_date, ratio]
+    reverse_split:
+      description: Reduce shares, increase price
+      components: [record_date, effective_date, ratio]
+    merger:
+      description: Combination of companies
+      components: [announcement, record_date, effective_date, consideration]
+    spin_off:
+      description: Separation into new company
+      components: [record_date, distribution_date, ratio]
+
+  capital_events:
+    rights_issue:
+      description: Offer to buy new shares
+      components: [record_date, subscription_period, ratio, price]
+    tender_offer:
+      description: Offer to purchase shares
+      components: [offer_period, price, conditions]
+    redemption:
+      description: Issuer repurchases securities
+      components: [call_date, settlement_date, price]
+    conversion:
+      description: Convert to different security
+      components: [conversion_period, ratio, new_security]
+
+processing:
+  announcement:
+    sources:
+      - issuer_notification
+      - exchange_announcement
+      - regulatory_filing
+    distribution:
+      - csd_notification
+      - custodian_notification
+      - beneficial_owner_notification
+
+  election:
+    types:
+      - mandatory
+      - mandatory_with_options
+      - voluntary
+    default_options:
+      - most_common
+      - issuer_specified
+    deadline_management:
+      - reminder_notifications
+      - default_on_miss
+
+  settlement:
+    entitlement_calculation:
+      - position_as_of_record_date
+      - fractional_treatment
+      - tax_withholding
+    distribution:
+      - csd_settlement
+      - cash_payment
+      - security_delivery
+
+compliance:
+  iso_standards:
+    - iso_15022
+    - iso_20022
+  tax_reporting:
+    - withholding_tax_certificates
+    - capital_gains_reporting

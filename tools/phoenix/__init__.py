@@ -91,8 +91,8 @@ Copyright © 2026 Momentum. All rights reserved.
 Contact: engineering@momentum.inc
 """
 
-__version__ = "0.4.43"
-__codename__ = "PHOENIX ASCENSION"
+__version__ = "0.4.44"
+__codename__ = "GENESIS"
 
 # Lazy imports to avoid circular dependencies
 def __getattr__(name):

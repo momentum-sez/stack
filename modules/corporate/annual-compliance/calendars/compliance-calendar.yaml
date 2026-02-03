@@ -1,0 +1,260 @@
+# Corporate Compliance Calendar Template
+# Defines standard filing obligations and deadlines
+
+calendar_id: msez.corporate.annual-compliance.calendar.v1
+calendar_version: "1.0"
+
+description: |
+  Standard compliance calendar for zone-registered entities.
+  Deadlines are calculated relative to financial year end.
+
+filing_types:
+  # Annual Return / Confirmation Statement
+  - filing_id: annual_return
+    name: "Annual Return"
+    description: "Confirmation of company details and shareholding"
+    frequency: annual
+    deadline_calculation:
+      reference_date: financial_year_end
+      days_after: 90
+    required_for:
+      - all_entities
+    documents_required:
+      - annual_return_form
+      - current_shareholders_list
+      - current_directors_list
+    fee_type: annual_return_fee
+    late_penalty:
+      type: fixed_plus_daily
+      fixed_amount: "500"
+      daily_amount: "50"
+      currency: "USD"
+      max_penalty: "5000"
+
+  # Audited Financial Statements
+  - filing_id: financial_statements
+    name: "Audited Financial Statements"
+    description: "Annual audited accounts"
+    frequency: annual
+    deadline_calculation:
+      reference_date: financial_year_end
+      days_after: 180
+    required_for:
+      - entities_requiring_audit
+    exemptions:
+      - small_company_exemption
+      - dormant_company_exemption
+    documents_required:
+      - audited_financial_statements
+      - auditor_report
+      - directors_report
+    fee_type: filing_fee
+
+  # Annual General Meeting
+  - filing_id: agm
+    name: "Annual General Meeting"
+    description: "Hold AGM and file minutes"
+    frequency: annual
+    deadline_calculation:
+      reference_date: financial_year_end
+      months_after: 6
+    required_for:
+      - public_companies
+      - entities_with_multiple_shareholders
+    exemptions:
+      - single_member_company
+      - elective_resolution_to_dispense
+    documents_required:
+      - agm_notice
+      - agm_minutes
+      - ordinary_resolutions
+      - special_resolutions
+
+  # UBO Declaration
+  - filing_id: ubo_annual_confirmation
+    name: "Beneficial Ownership Confirmation"
+    description: "Annual confirmation of beneficial owners"
+    frequency: annual
+    deadline_calculation:
+      reference_date: anniversary_of_incorporation
+      days_after: 30
+    required_for:
+      - all_entities
+    documents_required:
+      - ubo_declaration
+    fee_type: none
+
+  # Registered Agent Renewal
+  - filing_id: registered_agent_renewal
+    name: "Registered Agent Renewal"
+    description: "Annual renewal of registered agent appointment"
+    frequency: annual
+    deadline_calculation:
+      reference_date: anniversary_of_incorporation
+      days_before: 30
+    required_for:
+      - entities_using_registered_agent
+    documents_required:
+      - registered_agent_consent
+    fee_type: registered_agent_fee
+
+  # License Renewal
+  - filing_id: license_renewal
+    name: "Business License Renewal"
+    description: "Annual business license renewal"
+    frequency: annual
+    deadline_calculation:
+      reference_date: license_expiry_date
+      days_before: 30
+    required_for:
+      - licensed_entities
+    documents_required:
+      - license_renewal_application
+      - compliance_certificate
+    fee_type: license_renewal_fee
+
+  # Economic Substance Return
+  - filing_id: economic_substance_return
+    name: "Economic Substance Return"
+    description: "Annual economic substance declaration"
+    frequency: annual
+    deadline_calculation:
+      reference_date: financial_year_end
+      days_after: 365
+    required_for:
+      - relevant_activities_entities
+    documents_required:
+      - economic_substance_declaration
+      - substance_evidence
+    fee_type: filing_fee
+
+  # Country-by-Country Reporting
+  - filing_id: cbcr
+    name: "Country-by-Country Report"
+    description: "CbCR for multinational groups"
+    frequency: annual
+    deadline_calculation:
+      reference_date: financial_year_end
+      months_after: 12
+    required_for:
+      - mnc_ultimate_parent
+      - mnc_surrogate_parent
+    threshold:
+      consolidated_revenue: "750000000"
+      currency: "EUR"
+    documents_required:
+      - cbcr_report
+    fee_type: none
+
+quarterly_filings:
+  - filing_id: vat_return
+    name: "VAT Return"
+    description: "Quarterly VAT return"
+    frequency: quarterly
+    deadline_calculation:
+      reference_date: quarter_end
+      days_after: 28
+    required_for:
+      - vat_registered_entities
+    documents_required:
+      - vat_return_form
+    fee_type: none
+
+  - filing_id: regulatory_return
+    name: "Regulatory Return"
+    description: "Quarterly prudential return for licensed entities"
+    frequency: quarterly
+    deadline_calculation:
+      reference_date: quarter_end
+      days_after: 30
+    required_for:
+      - regulated_financial_entities
+    documents_required:
+      - prudential_return
+      - capital_adequacy_statement
+    fee_type: none
+
+event_triggered_filings:
+  - filing_id: change_of_directors
+    name: "Change of Directors"
+    description: "Notification of director appointment/resignation"
+    trigger: director_change
+    deadline_days: 14
+    documents_required:
+      - director_change_form
+      - director_consent
+      - director_kyc
+    fee_type: change_fee
+
+  - filing_id: change_of_shareholders
+    name: "Change of Shareholders"
+    description: "Notification of share transfer"
+    trigger: share_transfer
+    deadline_days: 14
+    documents_required:
+      - share_transfer_form
+      - updated_share_register
+    fee_type: change_fee
+
+  - filing_id: change_of_registered_office
+    name: "Change of Registered Office"
+    description: "Notification of address change"
+    trigger: address_change
+    deadline_days: 14
+    documents_required:
+      - address_change_form
+    fee_type: change_fee
+
+  - filing_id: change_of_name
+    name: "Change of Company Name"
+    description: "Registration of new company name"
+    trigger: name_change
+    deadline_days: 14
+    documents_required:
+      - name_change_application
+      - special_resolution
+      - name_availability_certificate
+    fee_type: name_change_fee
+
+  - filing_id: change_of_articles
+    name: "Amendment of Articles"
+    description: "Filing of amended articles of association"
+    trigger: articles_amendment
+    deadline_days: 14
+    documents_required:
+      - amended_articles
+      - special_resolution
+    fee_type: change_fee
+
+  - filing_id: ubo_change
+    name: "Change of Beneficial Ownership"
+    description: "Notification of UBO change"
+    trigger: ubo_change
+    deadline_days: 14
+    documents_required:
+      - ubo_change_declaration
+      - ubo_kyc
+    fee_type: none
+
+notifications:
+  channels:
+    - email
+    - dashboard
+    - api_webhook
+
+  reminder_schedule:
+    - days_before: 30
+      priority: low
+      message_template: "Upcoming filing: {filing_name} due in 30 days"
+    - days_before: 14
+      priority: medium
+      message_template: "Filing reminder: {filing_name} due in 14 days"
+    - days_before: 7
+      priority: high
+      message_template: "Urgent: {filing_name} due in 7 days"
+    - days_before: 1
+      priority: critical
+      message_template: "Final reminder: {filing_name} due tomorrow"
+    - days_after: 1
+      priority: critical
+      message_template: "OVERDUE: {filing_name} was due yesterday"

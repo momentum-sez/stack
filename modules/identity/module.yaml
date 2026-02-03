@@ -1,0 +1,69 @@
+module_id: org.momentum.msez.identity
+version: 0.1.0
+kind: identity
+license: Apache-2.0
+description: |
+  Identity & Credentialing module family for Special Economic Zone operations.
+  Implements the MASS Protocol Identity primitive with progressive verification
+  tiers (Tier 0-3) and verifiable credential issuance.
+
+  Sub-modules:
+  - core: DID management and key lifecycle
+  - credentials: Verifiable credential issuance and verification
+  - kyc-tiers: Progressive KYC workflows (Tier 0-3)
+  - professional-licensing: Professional credential management
+  - work-authorization: Employment authorization for zone workers
+  - binding: Entity-identity-instrument linkage
+
+variants:
+  - baseline
+  - privacy-preserving
+  - enhanced-verification
+
+depends_on:
+  - module_id: org.momentum.msez.legal.core
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.reg.aml-cft
+    constraint: ">=0.1.0,<1.0.0"
+
+provides:
+  - interface: msez.identity.core.v1
+    path: core/
+    media_type: application/yaml
+  - interface: msez.identity.credentials.v1
+    path: credentials/
+    media_type: application/yaml
+  - interface: msez.identity.kyc.v1
+    path: kyc-tiers/
+    media_type: application/yaml
+  - interface: msez.identity.professional.v1
+    path: professional-licensing/
+    media_type: application/yaml
+  - interface: msez.identity.work-auth.v1
+    path: work-authorization/
+    media_type: application/yaml
+  - interface: msez.identity.binding.v1
+    path: binding/
+    media_type: application/yaml
+
+parameters:
+  default_identity_tier:
+    type: integer
+    default: 1
+    description: "Default KYC tier for new identities"
+  require_tier_for_transactions:
+    type: integer
+    default: 1
+    description: "Minimum tier for financial transactions"
+  credential_validity_days:
+    type: integer
+    default: 365
+    description: "Default validity period for credentials"
+  support_zk_proofs:
+    type: boolean
+    default: true
+    description: "Support zero-knowledge identity proofs"
+  allow_pseudonymous:
+    type: boolean
+    default: true
+    description: "Allow Tier 0 pseudonymous identities"

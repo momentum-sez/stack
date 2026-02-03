@@ -1,0 +1,54 @@
+module_id: org.momentum.msez.corporate.secretarial
+version: 0.1.0
+kind: corporate
+license: Apache-2.0
+description: |
+  Corporate Secretarial Services module.
+  Board meeting management, resolutions, statutory records,
+  and corporate governance administration.
+
+variants:
+  - baseline
+  - full-service
+
+depends_on:
+  - module_id: org.momentum.msez.legal.entity-registry
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.corporate.formation
+    constraint: ">=0.1.0,<1.0.0"
+
+provides:
+  - interface: msez.corporate.secretarial.board-resolution.v1
+    path: templates/board-resolution.yaml
+    media_type: application/yaml
+  - interface: msez.corporate.secretarial.shareholder-resolution.v1
+    path: templates/shareholder-resolution.yaml
+    media_type: application/yaml
+  - interface: msez.corporate.secretarial.minutes.v1
+    path: templates/meeting-minutes.yaml
+    media_type: application/yaml
+  - interface: msez.corporate.secretarial.annual-return.v1
+    path: forms/annual-return.schema.json
+    media_type: application/json
+  - interface: msez.corporate.secretarial.change-of-directors.v1
+    path: forms/change-of-directors.schema.json
+    media_type: application/json
+
+parameters:
+  require_written_resolutions:
+    type: boolean
+    default: true
+  minimum_notice_days_board:
+    type: integer
+    default: 7
+    description: "Minimum notice for board meetings"
+  minimum_notice_days_agm:
+    type: integer
+    default: 21
+    description: "Minimum notice for AGM"
+  quorum_percentage_board:
+    type: number
+    default: 50
+  quorum_percentage_shareholders:
+    type: number
+    default: 50

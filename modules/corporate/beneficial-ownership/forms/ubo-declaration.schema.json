@@ -1,0 +1,367 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://momentum-sez.org/schemas/corporate.ubo-declaration.schema.json",
+  "title": "Beneficial Ownership Declaration",
+  "description": "Declaration of ultimate beneficial owners for an entity",
+  "type": "object",
+  "required": [
+    "declaration_id",
+    "entity_id",
+    "declaration_date",
+    "beneficial_owners",
+    "declarant",
+    "certification"
+  ],
+  "properties": {
+    "declaration_id": {
+      "type": "string",
+      "pattern": "^ubo-decl:[a-zA-Z0-9-]+$"
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "Entity making the declaration"
+    },
+    "entity_name": {
+      "type": "string"
+    },
+    "declaration_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "effective_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date from which ownership structure applies"
+    },
+    "declaration_type": {
+      "type": "string",
+      "enum": ["initial", "update", "annual_confirmation", "correction"],
+      "default": "initial"
+    },
+    "previous_declaration_id": {
+      "type": "string",
+      "description": "Reference to superseded declaration"
+    },
+    "beneficial_owners": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/beneficial_owner"
+      },
+      "description": "List of beneficial owners"
+    },
+    "no_beneficial_owner": {
+      "type": "object",
+      "properties": {
+        "applies": {
+          "type": "boolean",
+          "description": "True if no individual meets UBO threshold"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "widely_held",
+            "government_owned",
+            "regulated_entity",
+            "listed_entity",
+            "no_individual_threshold"
+          ]
+        },
+        "senior_managing_officials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/managing_official"
+          },
+          "description": "Senior managing officials when no UBO identified"
+        }
+      }
+    },
+    "ownership_structure": {
+      "type": "object",
+      "properties": {
+        "structure_type": {
+          "type": "string",
+          "enum": ["simple", "multi_layer", "complex", "trust", "nominee"]
+        },
+        "layers": {
+          "type": "integer",
+          "description": "Number of ownership layers"
+        },
+        "structure_diagram_ref": {
+          "type": "string",
+          "description": "Reference to ownership structure diagram"
+        },
+        "intermediate_entities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/intermediate_entity"
+          }
+        }
+      }
+    },
+    "declarant": {
+      "type": "object",
+      "required": ["name", "position", "contact"],
+      "properties": {
+        "name": { "type": "string" },
+        "did": {
+          "type": "string",
+          "pattern": "^did:"
+        },
+        "position": { "type": "string" },
+        "contact": {
+          "type": "object",
+          "properties": {
+            "email": { "type": "string", "format": "email" },
+            "phone": { "type": "string" }
+          }
+        }
+      }
+    },
+    "certification": {
+      "type": "object",
+      "required": ["accurate_complete", "notify_changes", "consent_verification"],
+      "properties": {
+        "accurate_complete": {
+          "type": "boolean",
+          "const": true,
+          "description": "Information is accurate and complete"
+        },
+        "notify_changes": {
+          "type": "boolean",
+          "const": true,
+          "description": "Will notify of changes within required timeframe"
+        },
+        "consent_verification": {
+          "type": "boolean",
+          "const": true,
+          "description": "Consent to verification of information"
+        },
+        "signature_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "signature_ref": {
+          "type": "string",
+          "description": "Reference to digital signature"
+        }
+      }
+    },
+    "verification_status": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["pending", "verified", "partially_verified", "failed", "expired"]
+        },
+        "verified_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "verified_by": {
+          "type": "string"
+        },
+        "next_reverification_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "verification_notes": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "beneficial_owner": {
+      "type": "object",
+      "required": ["name", "ownership_type", "percentage"],
+      "properties": {
+        "ubo_id": {
+          "type": "string",
+          "description": "Unique identifier for this UBO record"
+        },
+        "name": {
+          "type": "string",
+          "description": "Full legal name"
+        },
+        "did": {
+          "type": "string",
+          "pattern": "^did:"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["natural_person"],
+          "const": "natural_person",
+          "description": "UBOs must be natural persons"
+        },
+        "date_of_birth": {
+          "type": "string",
+          "format": "date"
+        },
+        "nationality": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
+        },
+        "country_of_residence": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
+        },
+        "residential_address": {
+          "$ref": "#/$defs/address"
+        },
+        "identification": {
+          "type": "object",
+          "properties": {
+            "document_type": {
+              "type": "string",
+              "enum": ["passport", "national_id", "drivers_license"]
+            },
+            "document_number": {
+              "type": "string"
+            },
+            "issuing_country": {
+              "type": "string",
+              "pattern": "^[A-Z]{2}$"
+            },
+            "expiry_date": {
+              "type": "string",
+              "format": "date"
+            },
+            "document_ref": {
+              "type": "string",
+              "description": "Reference to verified document"
+            }
+          }
+        },
+        "ownership_type": {
+          "type": "string",
+          "enum": [
+            "direct_ownership",
+            "indirect_ownership",
+            "control_through_voting",
+            "control_through_contract",
+            "control_through_other_means",
+            "beneficiary_of_trust",
+            "settlor_of_trust"
+          ]
+        },
+        "percentage": {
+          "type": "string",
+          "pattern": "^[0-9.]+$",
+          "description": "Ownership/control percentage (string decimal)"
+        },
+        "voting_rights_percentage": {
+          "type": "string",
+          "pattern": "^[0-9.]+$",
+          "description": "Voting rights percentage if different"
+        },
+        "ownership_chain": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "entity_name": { "type": "string" },
+              "entity_type": { "type": "string" },
+              "jurisdiction": { "type": "string" },
+              "registration_number": { "type": "string" },
+              "ownership_percentage": { "type": "string" }
+            }
+          },
+          "description": "Chain of entities for indirect ownership"
+        },
+        "nature_of_control": {
+          "type": "string",
+          "description": "Description of how control is exercised"
+        },
+        "date_became_ubo": {
+          "type": "string",
+          "format": "date"
+        },
+        "pep_status": {
+          "type": "object",
+          "properties": {
+            "is_pep": {
+              "type": "boolean"
+            },
+            "pep_type": {
+              "type": "string",
+              "enum": ["domestic", "foreign", "international_organization", "family_member", "close_associate"]
+            },
+            "position": {
+              "type": "string"
+            },
+            "country": {
+              "type": "string"
+            }
+          }
+        },
+        "sanctions_check": {
+          "type": "object",
+          "properties": {
+            "checked_date": {
+              "type": "string",
+              "format": "date"
+            },
+            "clear": {
+              "type": "boolean"
+            },
+            "lists_checked": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "managing_official": {
+      "type": "object",
+      "required": ["name", "position"],
+      "properties": {
+        "name": { "type": "string" },
+        "did": {
+          "type": "string",
+          "pattern": "^did:"
+        },
+        "position": { "type": "string" },
+        "date_of_birth": {
+          "type": "string",
+          "format": "date"
+        },
+        "nationality": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
+        }
+      }
+    },
+    "intermediate_entity": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "entity_type": { "type": "string" },
+        "jurisdiction": { "type": "string" },
+        "registration_number": { "type": "string" },
+        "ownership_percentage_held": {
+          "type": "string",
+          "description": "Percentage of target entity held"
+        },
+        "owned_by": {
+          "type": "string",
+          "description": "Parent entity or UBO name"
+        }
+      }
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "line1": { "type": "string" },
+        "line2": { "type": "string" },
+        "city": { "type": "string" },
+        "state_province": { "type": "string" },
+        "postal_code": { "type": "string" },
+        "country": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
+        }
+      }
+    }
+  }
+}

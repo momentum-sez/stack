@@ -1,0 +1,54 @@
+# Trade & Commerce Module Family
+# International trade finance and commerce infrastructure
+
+module_id: org.momentum.msez.trade
+version: 0.1.0
+kind: trade
+name: Trade & Commerce Infrastructure
+description: |
+  Complete trade finance infrastructure including letters of credit,
+  trade documents, supply chain finance, customs, and trade insurance.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.trade.letters-of-credit.v1
+    description: Documentary and standby letters of credit
+  - interface: msez.trade.documents.v1
+    description: Bills of lading, invoices, certificates
+  - interface: msez.trade.supply-chain-finance.v1
+    description: Reverse factoring, dynamic discounting
+  - interface: msez.trade.customs.v1
+    description: Tariffs and customs procedures
+  - interface: msez.trade.insurance.v1
+    description: Trade credit and cargo insurance
+
+dependencies:
+  - module_id: org.momentum.msez.corridors
+    version: ">=0.1.0"
+  - module_id: org.momentum.msez.identity
+    version: ">=0.1.0"
+  - module_id: org.momentum.msez.legal.entity-registry
+    version: ">=0.1.0"
+
+submodules:
+  - letters-of-credit
+  - trade-documents
+  - supply-chain-finance
+  - customs
+  - trade-insurance
+
+compliance:
+  domains:
+    - TRADE
+    - AML_CFT
+    - SANCTIONS
+  standards:
+    - ucp_600  # Uniform Customs and Practice for Documentary Credits
+    - isbp_745  # International Standard Banking Practice
+    - urc_522  # Uniform Rules for Collections
+    - urdg_758  # Uniform Rules for Demand Guarantees
+  reporting:
+    - trade_based_money_laundering_monitoring
+    - sanctions_screening
+    - export_control_compliance

@@ -1,0 +1,51 @@
+module_id: org.momentum.msez.corporate.annual-compliance
+version: 0.1.0
+kind: corporate
+license: Apache-2.0
+description: |
+  Annual Compliance and Filing Calendar module.
+  Tracks filing deadlines, automates reminders,
+  and manages statutory compliance obligations.
+
+variants:
+  - baseline
+  - automated-filing
+
+depends_on:
+  - module_id: org.momentum.msez.legal.entity-registry
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.corporate.secretarial
+    constraint: ">=0.1.0,<1.0.0"
+
+provides:
+  - interface: msez.corporate.annual-compliance.calendar.v1
+    path: calendars/compliance-calendar.yaml
+    media_type: application/yaml
+  - interface: msez.corporate.annual-compliance.filings.v1
+    path: forms/
+    media_type: application/json
+  - interface: msez.policy.opa.bundle.v1
+    path: policy/
+    media_type: text/plain
+
+parameters:
+  reminder_days_before:
+    type: array
+    default: [30, 14, 7, 1]
+    description: "Days before deadline to send reminders"
+  auto_calculate_deadlines:
+    type: boolean
+    default: true
+    description: "Auto-calculate deadlines from year-end"
+  annual_return_deadline_days:
+    type: integer
+    default: 90
+    description: "Days after year-end for annual return"
+  financial_statements_deadline_days:
+    type: integer
+    default: 180
+    description: "Days after year-end for financial statements"
+  agm_deadline_months:
+    type: integer
+    default: 6
+    description: "Months after year-end to hold AGM"

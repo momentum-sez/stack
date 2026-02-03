@@ -1,0 +1,125 @@
+# Trade Insurance Module
+# Trade credit and cargo insurance
+
+module_id: org.momentum.msez.trade.trade-insurance
+version: 0.1.0
+kind: trade
+name: Trade Insurance
+description: |
+  Trade insurance infrastructure including trade credit insurance,
+  cargo insurance, and political risk insurance.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.trade.insurance.v1
+    operations:
+      - request_quote
+      - bind_coverage
+      - issue_certificate
+      - file_claim
+      - process_claim
+      - renew_policy
+
+insurance_types:
+  trade_credit:
+    description: Protection against buyer non-payment
+    coverage:
+      commercial_risk:
+        - insolvency
+        - protracted_default
+      political_risk:
+        - transfer_restriction
+        - war
+        - expropriation
+    policy_types:
+      whole_turnover:
+        description: All credit sales covered
+        pricing: percentage_of_turnover
+      single_buyer:
+        description: Specific buyer coverage
+        pricing: percentage_of_exposure
+      single_transaction:
+        description: One-off transaction
+        pricing: flat_fee
+
+  cargo:
+    description: Protection for goods in transit
+    coverage_levels:
+      icc_a:  # Institute Cargo Clauses
+        description: All risks
+        exclusions:
+          - inherent_vice
+          - delay
+          - insolvency
+      icc_b:
+        description: Named perils
+        covered:
+          - fire
+          - explosion
+          - stranding
+          - collision
+      icc_c:
+        description: Major casualties only
+    valuation:
+      cif_plus_10: standard
+      replacement_cost: optional
+      agreed_value: optional
+
+  political_risk:
+    description: Protection against political events
+    covered_risks:
+      - expropriation
+      - currency_inconvertibility
+      - political_violence
+      - contract_frustration
+      - arbitration_award_default
+    tenor: up_to_15_years
+
+claims:
+  notification:
+    timing:
+      trade_credit: within_30_days
+      cargo: immediately_on_discovery
+    required_information:
+      - policy_number
+      - loss_details
+      - estimated_amount
+  documentation:
+    trade_credit:
+      - proof_of_delivery
+      - collection_efforts
+      - insolvency_documents
+    cargo:
+      - bill_of_lading
+      - survey_report
+      - commercial_invoice
+  settlement:
+    waiting_period:
+      trade_credit: 180_days
+      cargo: upon_adjustment
+    recovery:
+      subrogation: yes
+
+underwriting:
+  credit_assessment:
+    - buyer_financials
+    - payment_history
+    - country_risk
+  limits:
+    discretionary: automatic_coverage_up_to_limit
+    special_approval: above_limit
+  pricing_factors:
+    - buyer_rating
+    - country_rating
+    - payment_terms
+    - loss_history
+
+compliance:
+  regulatory:
+    - insurance_license
+    - reinsurance_arrangements
+  reporting:
+    - premium_records
+    - claims_records
+    - loss_ratios

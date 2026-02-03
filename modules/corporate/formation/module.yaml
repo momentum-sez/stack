@@ -1,0 +1,53 @@
+module_id: org.momentum.msez.corporate.formation
+version: 0.1.0
+kind: corporate
+license: Apache-2.0
+description: |
+  Entity formation and incorporation module.
+  Supports LLC, Corporation, Partnership, Trust, and DAO formation
+  with jurisdiction-specific requirements.
+
+variants:
+  - baseline
+  - llc-only
+  - full-spectrum
+
+depends_on:
+  - module_id: org.momentum.msez.legal.entity-registry
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.corporate.beneficial-ownership
+    constraint: ">=0.1.0,<1.0.0"
+
+provides:
+  - interface: msez.corporate.formation.application.v1
+    path: forms/formation-application.schema.json
+    media_type: application/json
+  - interface: msez.corporate.formation.workflows.v1
+    path: workflows/
+    media_type: application/yaml
+  - interface: msez.corporate.formation.templates.v1
+    path: templates/
+    media_type: application/yaml
+  - interface: msez.policy.opa.bundle.v1
+    path: policy/
+    media_type: text/plain
+
+parameters:
+  supported_entity_types:
+    type: array
+    default: ["llc", "corporation", "partnership", "trust"]
+    description: "Entity types available for formation"
+  default_share_capital:
+    type: number
+    default: 10000
+    description: "Default authorized share capital"
+  default_share_capital_currency:
+    type: string
+    default: "USD"
+  minimum_directors:
+    type: integer
+    default: 1
+    description: "Minimum number of directors required"
+  require_local_registered_office:
+    type: boolean
+    default: true

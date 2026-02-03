@@ -1,0 +1,70 @@
+# Capital Markets Module Family
+# Provides complete capital markets infrastructure for SEZ-in-a-Box
+
+module_id: org.momentum.msez.capital-markets
+version: 0.1.0
+kind: capital-markets
+name: Capital Markets Infrastructure
+description: |
+  Complete capital markets infrastructure including securities issuance,
+  trading, post-trade processing, central securities depository (CSD),
+  clearing, DVP/PVP settlement, and market surveillance.
+
+  Enables traditional and digital asset custody within a unified framework.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.capital-markets.securities-issuance.v1
+    description: Primary market securities issuance
+  - interface: msez.capital-markets.trading.v1
+    description: Order book and trading infrastructure
+  - interface: msez.capital-markets.post-trade.v1
+    description: Trade confirmation, allocation, settlement instructions
+  - interface: msez.capital-markets.csd.v1
+    description: Central Securities Depository
+  - interface: msez.capital-markets.clearing.v1
+    description: CCP clearing services
+  - interface: msez.capital-markets.dvp-pvp.v1
+    description: Delivery vs Payment / Payment vs Payment
+  - interface: msez.capital-markets.corporate-actions.v1
+    description: Dividends, splits, mergers, rights issues
+  - interface: msez.capital-markets.surveillance.v1
+    description: Market monitoring and circuit breakers
+
+dependencies:
+  - module_id: org.momentum.msez.legal.entity-registry
+    version: ">=0.1.0"
+  - module_id: org.momentum.msez.identity
+    version: ">=0.1.0"
+  - module_id: org.momentum.msez.licensing
+    version: ">=0.1.0"
+
+submodules:
+  - securities-issuance
+  - trading
+  - post-trade
+  - csd
+  - clearing
+  - dvp-pvp
+  - corporate-actions
+  - surveillance
+
+compliance:
+  domains:
+    - SECURITIES
+    - CUSTODY
+    - CLEARING
+    - SETTLEMENT
+  required_licenses:
+    - securities-dealer
+    - investment-manager
+    - custodian
+    - clearing-member
+  reporting:
+    - type: trade_reporting
+      frequency: real-time
+    - type: position_reporting
+      frequency: daily
+    - type: regulatory_reporting
+      frequency: as-required

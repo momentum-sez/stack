@@ -1,5 +1,5 @@
 """
-PHOENIX v0.4.43 Comprehensive Test Suite
+PHOENIX v0.4.44 Comprehensive Test Suite
 
 Tests for all PHOENIX components:
 - Compliance Tensor (tensor algebra, commitment, slicing)

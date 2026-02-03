@@ -103,6 +103,54 @@
         "type": "string"
       },
       "description": "Optional list of lawpack domains to pin (default: ['civil','financial'])."
+    },
+    "licensepack_domains": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["financial", "corporate", "professional", "trade", "insurance", "mixed"]
+      },
+      "description": "Optional list of licensepack domains to pin (e.g., ['financial', 'corporate']). Licensepacks capture live licensing registry state."
+    },
+    "licensepack_refresh_policy": {
+      "type": "object",
+      "properties": {
+        "default": {
+          "type": "object",
+          "properties": {
+            "refresh_frequency": {
+              "type": "string",
+              "enum": ["hourly", "daily", "weekly"],
+              "default": "daily"
+            },
+            "max_staleness_hours": {
+              "type": "integer",
+              "default": 24
+            }
+          }
+        }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "refresh_frequency": {
+            "type": "string",
+            "enum": ["hourly", "daily", "weekly"]
+          },
+          "max_staleness_hours": {
+            "type": "integer"
+          }
+        }
+      },
+      "description": "Licensepack refresh policy per domain. Keys are domain names or 'default'."
+    },
+    "regpack_domains": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["financial", "customs", "sanctions", "tax", "trade", "licensing", "mixed"]
+      },
+      "description": "Optional list of regpack domains to pin."
     }
   }
 }

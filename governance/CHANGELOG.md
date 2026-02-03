@@ -9,6 +9,52 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 - TBD
 
 
+## 0.4.44
+
+### Added
+- **Complete SEZ Module Families**: 21 new modules across 3 families:
+  - Corporate Services (8 modules): entity-formation, registered-agent, corporate-secretarial, beneficial-ownership, corporate-governance, annual-compliance, dissolution, cap-table
+  - Identity & Credentialing (6 modules): digital-identity, resident-credentials, progressive-kyc, professional-credentials, work-permits, identity-binding
+  - Tax & Revenue (7 modules): tax-framework, zone-incentives, transfer-pricing, withholding, vat-gst, reporting, tax-treaties
+- **Licensepack Infrastructure (spec/98-licensepacks.md)**: Live registry state management with real-time license status tracking, expiry monitoring, and compliance attestation
+- **Multi-jurisdiction Composition Engine**: Complex zone deployments combining laws from multiple jurisdictions
+- **AWS Deployment Automation**: Production-ready Terraform modules for EKS, RDS, ElastiCache, S3, KMS
+- **PHOENIX GENESIS Codename**: Completing the SEZ-in-a-Box vision
+
+### Changed
+- Schema count increased to 116
+- Module count increased to 86 (from 65)
+- All profiles updated to v0.4.44
+
+### Version
+- Stack spec version bumped to `0.4.44` and all profiles updated.
+
+
+## 0.4.43
+
+### Added
+- **PHOENIX Smart Asset Operating System**: Complete infrastructure for autonomous Smart Assets:
+  - Compliance Tensor (tensor.py, 955 lines): 4D compliance state
+  - ZK Proof Infrastructure (zkp.py, 766 lines): Circuit registry, proof generation
+  - Compliance Manifold (manifold.py, 1,009 lines): Path planning
+  - Migration Protocol (migration.py, 886 lines): Saga-based state machine
+  - Corridor Bridge (bridge.py, 822 lines): Two-phase commit transfers
+  - L1 Anchor (anchor.py, 816 lines): Settlement finality
+  - Watcher Economy (watcher.py, 750 lines): Bonded attestations with slashing
+  - Smart Asset VM (vm.py, 1,285 lines): Stack-based VM
+  - Security Layer (security.py, 993 lines): Defense-in-depth
+  - Hardening Layer (hardening.py, 744 lines): Validation, thread safety
+- **9,221 lines of PHOENIX infrastructure** across 11 modules
+- **92 new tests** for all PHOENIX components
+
+### Changed
+- Schema count increased to 110
+- Total test count: 450+
+
+### Version
+- Stack spec version bumped to `0.4.43` and all profiles updated.
+
+
 ## 0.4.42
 
 ### Added

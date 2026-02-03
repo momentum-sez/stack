@@ -1,0 +1,77 @@
+module_id: org.momentum.msez.tax
+version: 0.1.0
+kind: tax
+license: Apache-2.0
+description: |
+  Tax & Revenue module family for Special Economic Zone fiscal operations.
+  Defines the zone's tax framework, fee structures, incentive programs,
+  and reporting requirements.
+
+  Sub-modules:
+  - framework: Zone tax regime definition (rates, exemptions)
+  - fee-schedules: Zone operating fees and license fees
+  - revenue-collection: Assessment, billing, and collection
+  - transfer-pricing: Arm's-length rules and documentation
+  - treaty-management: Double taxation agreement application
+  - incentive-programs: Tax holidays and investment credits
+  - reporting: CRS, FATCA, and local tax reporting
+
+variants:
+  - baseline
+  - tax-free-zone
+  - low-tax-zone
+  - standard-tax
+
+depends_on:
+  - module_id: org.momentum.msez.legal.core
+    constraint: ">=0.1.0,<1.0.0"
+  - module_id: org.momentum.msez.legal.entity-registry
+    constraint: ">=0.1.0,<1.0.0"
+
+provides:
+  - interface: msez.tax.framework.v1
+    path: framework/
+    media_type: application/yaml
+  - interface: msez.tax.fees.v1
+    path: fee-schedules/
+    media_type: application/yaml
+  - interface: msez.tax.collection.v1
+    path: revenue-collection/
+    media_type: application/yaml
+  - interface: msez.tax.transfer-pricing.v1
+    path: transfer-pricing/
+    media_type: application/yaml
+  - interface: msez.tax.treaties.v1
+    path: treaty-management/
+    media_type: application/yaml
+  - interface: msez.tax.incentives.v1
+    path: incentive-programs/
+    media_type: application/yaml
+  - interface: msez.tax.reporting.v1
+    path: reporting/
+    media_type: application/yaml
+
+parameters:
+  tax_regime_type:
+    type: string
+    default: "territorial"
+    enum: ["territorial", "worldwide", "tax_free", "flat_rate"]
+  corporate_tax_rate:
+    type: number
+    default: 0
+    description: "Corporate income tax rate (0 for tax-free zones)"
+  withholding_tax_default:
+    type: number
+    default: 0
+  vat_rate:
+    type: number
+    default: 0
+  crs_reporting_required:
+    type: boolean
+    default: true
+  fatca_reporting_required:
+    type: boolean
+    default: true
+  economic_substance_required:
+    type: boolean
+    default: true

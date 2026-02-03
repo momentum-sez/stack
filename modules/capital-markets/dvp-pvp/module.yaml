@@ -1,0 +1,96 @@
+# DVP/PVP Module
+# Delivery versus Payment / Payment versus Payment Settlement
+
+module_id: org.momentum.msez.capital-markets.dvp-pvp
+version: 0.1.0
+kind: capital-markets
+name: DVP/PVP Settlement
+description: |
+  Atomic settlement infrastructure ensuring simultaneous exchange
+  of securities and cash (DVP) or currencies (PVP) with finality.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.capital-markets.dvp-pvp.v1
+    operations:
+      - create_dvp_instruction
+      - create_pvp_instruction
+      - match_instructions
+      - execute_settlement
+      - query_settlement_status
+      - handle_failed_settlement
+
+dvp_models:
+  dvp_model_1:
+    description: Gross, simultaneous, final
+    securities: gross
+    cash: gross
+    timing: simultaneous
+    finality: immediate
+  dvp_model_2:
+    description: Gross securities, net cash
+    securities: gross
+    cash: net
+    timing: end_of_day
+    finality: end_of_cycle
+  dvp_model_3:
+    description: Net securities, net cash
+    securities: net
+    cash: net
+    timing: end_of_day
+    finality: end_of_cycle
+
+settlement_cycles:
+  equities:
+    standard: T+2
+    accelerated: T+1
+    same_day: T+0
+  fixed_income:
+    government: T+1
+    corporate: T+2
+  digital_assets:
+    standard: T+0
+    instant: real_time
+
+pvp_settlement:
+  description: Payment versus Payment for FX
+  use_cases:
+    - spot_fx
+    - fx_forwards
+    - cross_currency_swaps
+  netting:
+    enabled: true
+    granularity: currency_pair
+
+fail_management:
+  buy_in:
+    trigger: settlement_fail + n_days
+    process: market_buy_in
+    cost_allocation: failing_party
+  partial_settlement:
+    enabled: true
+    threshold: configurable
+  shaping:
+    description: Split into multiple settlements
+    enabled: true
+
+integration:
+  csd:
+    - securities_delivery
+    - receipt_confirmation
+  payment_systems:
+    - rtgs_connection
+    - central_bank_money
+    - commercial_bank_money
+  corridors:
+    - cross_border_settlement
+    - corridor_bridging
+
+compliance:
+  settlement_finality:
+    legal_basis: settlement_finality_directive
+    irrevocability: moment_of_entry
+  operational_resilience:
+    rto: 2_hours
+    rpo: 0

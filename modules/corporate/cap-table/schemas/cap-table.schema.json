@@ -1,0 +1,562 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://momentum-sez.org/schemas/corporate.cap-table.schema.json",
+  "title": "Capitalization Table",
+  "description": "Complete capitalization table for an entity",
+  "type": "object",
+  "required": [
+    "cap_table_id",
+    "entity_id",
+    "as_of_date",
+    "authorized_capital",
+    "share_classes",
+    "shareholders"
+  ],
+  "properties": {
+    "cap_table_id": {
+      "type": "string",
+      "pattern": "^cap:[a-zA-Z0-9-]+$"
+    },
+    "entity_id": {
+      "type": "string"
+    },
+    "entity_name": {
+      "type": "string"
+    },
+    "as_of_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "version": {
+      "type": "integer",
+      "description": "Cap table version number"
+    },
+    "previous_version_id": {
+      "type": "string"
+    },
+    "authorized_capital": {
+      "type": "object",
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        }
+      }
+    },
+    "share_classes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/share_class"
+      }
+    },
+    "shareholders": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/shareholder"
+      }
+    },
+    "option_pools": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/option_pool"
+      }
+    },
+    "convertible_instruments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/convertible_instrument"
+      }
+    },
+    "warrants": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/warrant"
+      }
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "total_shares_authorized": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "total_shares_issued": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "total_shares_outstanding": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "shares_reserved_for_options": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "shares_available_for_issuance": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "fully_diluted_shares": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        }
+      }
+    },
+    "valuation": {
+      "type": "object",
+      "properties": {
+        "valuation_type": {
+          "type": "string",
+          "enum": ["409a", "fair_market_value", "post_money", "pre_money"]
+        },
+        "valuation_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "share_price": {
+          "type": "string",
+          "pattern": "^[0-9.]+$"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "total_valuation": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "valuation_provider": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "share_class": {
+      "type": "object",
+      "required": ["class_id", "class_name", "authorized_shares"],
+      "properties": {
+        "class_id": {
+          "type": "string"
+        },
+        "class_name": {
+          "type": "string",
+          "description": "e.g., 'Common', 'Series A Preferred'"
+        },
+        "authorized_shares": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "issued_shares": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "par_value": {
+          "type": "string",
+          "pattern": "^[0-9.]+$"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "rights": {
+          "type": "object",
+          "properties": {
+            "voting": {
+              "type": "boolean",
+              "default": true
+            },
+            "votes_per_share": {
+              "type": "integer",
+              "default": 1
+            },
+            "dividend_rate": {
+              "type": "string",
+              "pattern": "^[0-9.]+%?$"
+            },
+            "dividend_preference": {
+              "type": "string",
+              "enum": ["none", "non_cumulative", "cumulative", "participating"]
+            },
+            "liquidation_preference": {
+              "type": "string",
+              "pattern": "^[0-9.]+x?$"
+            },
+            "participation_cap": {
+              "type": "string",
+              "pattern": "^[0-9.]+x?$"
+            },
+            "anti_dilution": {
+              "type": "string",
+              "enum": ["none", "weighted_average_broad", "weighted_average_narrow", "full_ratchet"]
+            },
+            "conversion_ratio": {
+              "type": "string",
+              "pattern": "^[0-9.]+$"
+            },
+            "auto_conversion_threshold": {
+              "type": "string"
+            }
+          }
+        },
+        "protective_provisions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Actions requiring class approval"
+        }
+      }
+    },
+    "shareholder": {
+      "type": "object",
+      "required": ["shareholder_id", "name", "holdings"],
+      "properties": {
+        "shareholder_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "did": {
+          "type": "string",
+          "pattern": "^did:"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["founder", "investor", "employee", "advisor", "other"]
+        },
+        "entity_type": {
+          "type": "string",
+          "enum": ["natural_person", "corporation", "llc", "trust", "partnership", "fund"]
+        },
+        "jurisdiction": {
+          "type": "string"
+        },
+        "holdings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/holding"
+          }
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/option_grant"
+          }
+        },
+        "total_ownership_percentage": {
+          "type": "string",
+          "pattern": "^[0-9.]+$"
+        },
+        "fully_diluted_percentage": {
+          "type": "string",
+          "pattern": "^[0-9.]+$"
+        }
+      }
+    },
+    "holding": {
+      "type": "object",
+      "required": ["share_class", "shares"],
+      "properties": {
+        "holding_id": {
+          "type": "string"
+        },
+        "share_class": {
+          "type": "string"
+        },
+        "shares": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "acquisition_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "acquisition_price_per_share": {
+          "type": "string",
+          "pattern": "^[0-9.]+$"
+        },
+        "acquisition_type": {
+          "type": "string",
+          "enum": ["purchase", "grant", "exercise", "conversion", "transfer", "inheritance"]
+        },
+        "certificate_number": {
+          "type": "string"
+        },
+        "vesting": {
+          "$ref": "#/$defs/vesting_schedule"
+        },
+        "restrictions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "restriction_type": {
+                "type": "string",
+                "enum": ["transfer_restriction", "right_of_first_refusal", "co_sale", "drag_along", "lock_up"]
+              },
+              "description": { "type": "string" },
+              "expiry_date": {
+                "type": "string",
+                "format": "date"
+              }
+            }
+          }
+        }
+      }
+    },
+    "vesting_schedule": {
+      "type": "object",
+      "properties": {
+        "total_shares": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "vested_shares": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "unvested_shares": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "cliff_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "cliff_percentage": {
+          "type": "string",
+          "pattern": "^[0-9.]+$"
+        },
+        "vesting_period_months": {
+          "type": "integer"
+        },
+        "vesting_frequency": {
+          "type": "string",
+          "enum": ["monthly", "quarterly", "annually"]
+        },
+        "acceleration": {
+          "type": "object",
+          "properties": {
+            "single_trigger": {
+              "type": "boolean"
+            },
+            "double_trigger": {
+              "type": "boolean"
+            },
+            "acceleration_percentage": {
+              "type": "string",
+              "pattern": "^[0-9.]+$"
+            }
+          }
+        }
+      }
+    },
+    "option_pool": {
+      "type": "object",
+      "required": ["pool_id", "name", "authorized_shares"],
+      "properties": {
+        "pool_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "authorized_shares": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "granted_shares": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "exercised_shares": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "cancelled_shares": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "available_shares": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "share_class": {
+          "type": "string"
+        },
+        "plan_document_ref": {
+          "type": "string"
+        }
+      }
+    },
+    "option_grant": {
+      "type": "object",
+      "required": ["grant_id", "shares", "exercise_price", "grant_date"],
+      "properties": {
+        "grant_id": {
+          "type": "string"
+        },
+        "pool_id": {
+          "type": "string"
+        },
+        "shares": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "exercise_price": {
+          "type": "string",
+          "pattern": "^[0-9.]+$"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "grant_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "expiry_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "option_type": {
+          "type": "string",
+          "enum": ["iso", "nso", "emi", "other"]
+        },
+        "vesting": {
+          "$ref": "#/$defs/vesting_schedule"
+        },
+        "exercised_shares": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "exercised", "expired", "cancelled", "forfeited"]
+        }
+      }
+    },
+    "convertible_instrument": {
+      "type": "object",
+      "required": ["instrument_id", "type", "principal_amount", "holder_id"],
+      "properties": {
+        "instrument_id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["safe", "convertible_note", "kiss", "other"]
+        },
+        "holder_id": {
+          "type": "string"
+        },
+        "holder_name": {
+          "type": "string"
+        },
+        "principal_amount": {
+          "type": "string",
+          "pattern": "^[0-9.]+$"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "issue_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "maturity_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "interest_rate": {
+          "type": "string",
+          "pattern": "^[0-9.]+%?$"
+        },
+        "valuation_cap": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "discount_rate": {
+          "type": "string",
+          "pattern": "^[0-9.]+%?$"
+        },
+        "conversion_triggers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["qualified_financing", "change_of_control", "maturity", "optional"]
+          }
+        },
+        "pro_rata_rights": {
+          "type": "boolean"
+        },
+        "mfn_rights": {
+          "type": "boolean",
+          "description": "Most favored nation rights"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["outstanding", "converted", "repaid", "cancelled"]
+        }
+      }
+    },
+    "warrant": {
+      "type": "object",
+      "required": ["warrant_id", "shares", "exercise_price", "holder_id"],
+      "properties": {
+        "warrant_id": {
+          "type": "string"
+        },
+        "holder_id": {
+          "type": "string"
+        },
+        "holder_name": {
+          "type": "string"
+        },
+        "shares": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "share_class": {
+          "type": "string"
+        },
+        "exercise_price": {
+          "type": "string",
+          "pattern": "^[0-9.]+$"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "issue_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "expiry_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "exercised_shares": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["outstanding", "exercised", "expired", "cancelled"]
+        }
+      }
+    }
+  }
+}

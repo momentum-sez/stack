@@ -1,0 +1,120 @@
+# Customs Module
+# Tariffs, duties, and customs procedures
+
+module_id: org.momentum.msez.trade.customs
+version: 0.1.0
+kind: trade
+name: Customs & Tariffs
+description: |
+  Customs and tariff management including import/export declarations,
+  duty calculation, and free zone procedures.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.trade.customs.v1
+    operations:
+      - submit_declaration
+      - calculate_duties
+      - request_clearance
+      - manage_warehouse_entry
+      - apply_for_preference
+      - query_tariff_classification
+
+declaration_types:
+  import:
+    standard_import:
+      description: Regular import for home use
+      duties: full
+    temporary_import:
+      description: Goods to be re-exported
+      duties: suspended
+    inward_processing:
+      description: Import for processing and re-export
+      duties: suspended_or_drawback
+    warehousing:
+      description: Storage under customs control
+      duties: suspended_until_release
+  export:
+    standard_export:
+      description: Regular export
+      requirements:
+        - export_declaration
+        - license_if_controlled
+    re_export:
+      description: Export of previously imported goods
+      documentation:
+        - original_import_reference
+
+free_zone_procedures:
+  entry_to_zone:
+    - goods_declaration
+    - customs_release
+    - zone_admission
+  operations_in_zone:
+    - storage
+    - manufacturing
+    - assembly
+    - repackaging
+  exit_from_zone:
+    to_domestic:
+      - import_declaration
+      - duty_payment
+    to_export:
+      - export_declaration
+      - no_duty
+
+tariff_classification:
+  system: harmonized_system
+  structure:
+    - chapter (2 digits)
+    - heading (4 digits)
+    - subheading (6 digits)
+    - national_lines (8-10 digits)
+  ruling:
+    binding_tariff_information:
+      validity: 3_years
+      application: advance_ruling
+
+duty_calculation:
+  types:
+    ad_valorem:
+      basis: customs_value
+      rate: percentage
+    specific:
+      basis: quantity
+      rate: per_unit
+    mixed:
+      basis: higher_of
+  reliefs:
+    preferential:
+      - free_trade_agreements
+      - gsp
+      - customs_unions
+    exemptions:
+      - diplomatic
+      - humanitarian
+      - research
+
+valuation:
+  methods:  # WTO valuation agreement
+    - transaction_value
+    - transaction_value_identical
+    - transaction_value_similar
+    - deductive_value
+    - computed_value
+    - fallback_method
+
+compliance:
+  aeo:
+    description: Authorized Economic Operator
+    benefits:
+      - simplified_procedures
+      - reduced_inspections
+      - priority_clearance
+  single_window:
+    description: Single submission point
+    integration:
+      - customs
+      - quarantine
+      - permits

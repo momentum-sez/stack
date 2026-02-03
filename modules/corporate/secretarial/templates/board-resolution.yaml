@@ -1,0 +1,177 @@
+# Board Resolution Template
+# For written resolutions passed by the board of directors
+
+template_id: msez.corporate.secretarial.board-resolution.v1
+template_version: "1.0"
+document_type: board_resolution
+
+metadata:
+  title: "Board Resolution"
+  description: "Template for board of directors written resolutions"
+  jurisdiction_variants:
+    - common-law
+    - civil-law
+  languages:
+    - en
+    - ar
+
+structure:
+  header:
+    required: true
+    fields:
+      - field: resolution_number
+        type: string
+        format: "BR-{YYYY}-{NNN}"
+        description: "Unique resolution number"
+      - field: entity_name
+        type: string
+        required: true
+      - field: registration_number
+        type: string
+        required: true
+      - field: resolution_date
+        type: date
+        required: true
+      - field: resolution_type
+        type: enum
+        values:
+          - written_resolution
+          - meeting_resolution
+        default: written_resolution
+
+  preamble:
+    required: true
+    fields:
+      - field: recitals
+        type: array
+        description: "WHEREAS clauses explaining context"
+        items:
+          type: string
+
+  resolutions:
+    required: true
+    fields:
+      - field: resolved_items
+        type: array
+        min_items: 1
+        items:
+          type: object
+          properties:
+            item_number:
+              type: integer
+            resolution_text:
+              type: string
+              description: "RESOLVED THAT..."
+            effective_date:
+              type: date
+            conditions:
+              type: array
+              items:
+                type: string
+
+  authorization:
+    required: true
+    fields:
+      - field: authorized_signatories
+        type: array
+        description: "Persons authorized to execute documents"
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            position:
+              type: string
+            scope:
+              type: string
+      - field: authorization_scope
+        type: string
+        description: "Scope of authorization granted"
+
+  signatures:
+    required: true
+    fields:
+      - field: director_signatures
+        type: array
+        min_items: 1
+        items:
+          type: object
+          properties:
+            director_name:
+              type: string
+              required: true
+            director_position:
+              type: string
+            signature_date:
+              type: date
+            signature_ref:
+              type: string
+              description: "Reference to digital signature"
+
+common_resolution_types:
+  - id: bank_account_opening
+    title: "Opening of Bank Account"
+    template: |
+      RESOLVED THAT the Company open a bank account with {bank_name}
+      and that {authorized_signatories} be and are hereby authorized
+      to operate the said account on behalf of the Company.
+
+  - id: appointment_of_director
+    title: "Appointment of Director"
+    template: |
+      RESOLVED THAT {director_name}, having consented to act as a director,
+      be and is hereby appointed as a {director_type} Director of the Company
+      with effect from {effective_date}.
+
+  - id: resignation_of_director
+    title: "Acceptance of Director Resignation"
+    template: |
+      RESOLVED THAT the resignation of {director_name} as a Director of the
+      Company be and is hereby accepted with effect from {effective_date}.
+
+  - id: allotment_of_shares
+    title: "Allotment of Shares"
+    template: |
+      RESOLVED THAT {number_of_shares} {share_class} shares of the Company
+      be and are hereby allotted to {allottee_name} at a price of {price_per_share}
+      per share, credited as fully paid.
+
+  - id: declaration_of_dividend
+    title: "Declaration of Dividend"
+    template: |
+      RESOLVED THAT a dividend of {dividend_amount} per share be and is hereby
+      declared on the {share_class} shares of the Company, payable on {payment_date}
+      to shareholders of record as at {record_date}.
+
+  - id: approval_of_accounts
+    title: "Approval of Annual Accounts"
+    template: |
+      RESOLVED THAT the audited financial statements of the Company for the
+      financial year ended {year_end_date} be and are hereby approved.
+
+  - id: appointment_of_auditor
+    title: "Appointment of Auditor"
+    template: |
+      RESOLVED THAT {auditor_name} be and is hereby appointed as the auditor
+      of the Company for the financial year ending {year_end_date} at a
+      remuneration of {remuneration}.
+
+  - id: change_of_registered_office
+    title: "Change of Registered Office"
+    template: |
+      RESOLVED THAT the registered office of the Company be changed from
+      {current_address} to {new_address} with effect from {effective_date}.
+
+  - id: entering_into_contract
+    title: "Approval to Enter into Contract"
+    template: |
+      RESOLVED THAT the Company enter into the {contract_type} with {counterparty}
+      substantially in the form presented to this meeting and that {authorized_signatory}
+      be and is hereby authorized to execute the same on behalf of the Company.
+
+  - id: power_of_attorney
+    title: "Granting of Power of Attorney"
+    template: |
+      RESOLVED THAT {attorney_name} be and is hereby appointed as the attorney
+      of the Company with power to {scope_of_authority} for a period of
+      {validity_period}.

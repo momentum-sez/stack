@@ -1,0 +1,260 @@
+# Tier 3: Institutional Identity
+# Full due diligence for institutional and high-net-worth
+
+tier_id: tier-3
+tier_name: "Institutional"
+tier_description: |
+  Highest identity tier with comprehensive due diligence.
+  Required for institutional clients, regulated entities,
+  and high-net-worth individuals.
+  Unlimited transaction capabilities.
+
+requirements:
+  identity:
+    - requirement: valid_tier_2
+      description: "Valid Tier 2 identity credential"
+      verification: automatic
+      evidence: existing_tier_2_credential
+
+  documents:
+    # For Legal Entities
+    entity_documents:
+      - document: certificate_of_incorporation
+        description: "Certificate of incorporation or equivalent"
+        verification: registry_check
+
+      - document: certificate_of_good_standing
+        description: "Recent certificate of good standing"
+        requirements:
+          - dated_within_30_days
+        verification: registry_check
+
+      - document: constitutional_documents
+        description: "Articles of association, bylaws, etc."
+        verification: manual_review
+
+      - document: ownership_structure
+        description: "Complete ownership structure to UBOs"
+        verification: manual_review
+
+      - document: board_resolution
+        description: "Board resolution authorizing relationship"
+        verification: manual_review
+
+      - document: authorized_signatories
+        description: "List of authorized signatories with specimens"
+        verification: manual_review
+
+      - document: audited_financials
+        description: "Audited financial statements (2 years)"
+        verification: manual_review
+
+      - document: regulatory_licenses
+        description: "All applicable regulatory licenses"
+        verification: registry_check
+
+    # For Natural Persons (HNWI)
+    individual_documents:
+      - document: wealth_verification
+        description: "Comprehensive wealth verification"
+        accepted_types:
+          - audited_net_worth_statement
+          - private_bank_confirmation
+          - tax_advisor_letter
+        verification: manual_review
+
+      - document: professional_references
+        description: "Professional references"
+        requirements:
+          - minimum_2_references
+          - from_regulated_institutions
+        verification: manual_verification
+
+  verification_checks:
+    - check: comprehensive_screening
+      description: "Full screening package"
+      includes:
+        - sanctions_all_lists
+        - pep_extended
+        - adverse_media_deep
+        - litigation_search
+        - bankruptcy_search
+        - regulatory_actions
+      automated: partially
+
+    - check: ubo_verification
+      description: "Verify all UBOs to 10% threshold"
+      threshold: "10%"
+      verification: manual_with_documentation
+
+    - check: site_visit
+      description: "Physical site visit"
+      conditional: true
+      trigger: "entity_or_high_risk"
+      verification: compliance_officer
+
+    - check: management_interview
+      description: "Interview with senior management"
+      conditional: true
+      trigger: "entity_or_high_risk"
+      verification: compliance_officer
+
+    - check: reference_verification
+      description: "Verify professional references"
+      verification: manual
+
+    - check: regulatory_status_verification
+      description: "Verify regulatory licenses and standing"
+      verification: registry_check
+
+capabilities:
+  transactions:
+    single_transaction_limit:
+      amount: "0"  # Unlimited
+      currency: "USD"
+      period: "per_transaction"
+    daily_limit:
+      amount: "0"  # Unlimited
+      currency: "USD"
+    monthly_limit:
+      amount: "0"  # Unlimited
+      currency: "USD"
+
+  activities:
+    allowed:
+      - all_tier_2_activities
+      - unlimited_transactions
+      - institutional_products
+      - market_making
+      - prime_brokerage
+      - white_label_services
+      - api_access_full
+      - omnibus_accounts
+      - sub_accounting
+    restricted: []  # No restrictions
+
+  services:
+    - all_services
+    - dedicated_relationship_manager
+    - priority_support
+    - custom_reporting
+    - api_integration
+    - white_glove_onboarding
+
+  jurisdictions:
+    allowed:
+      - all_jurisdictions
+    restricted: []  # Case by case for sanctioned jurisdictions
+
+verification_process:
+  steps:
+    - step: 1
+      action: document_collection
+      description: "Collect full documentation package"
+      automated: false
+      time_estimate: "1-2 weeks"
+
+    - step: 2
+      action: document_review
+      description: "Initial document review"
+      automated: false
+      reviewer: analyst
+      time_estimate: "2-3 business days"
+
+    - step: 3
+      action: screening_package
+      description: "Run comprehensive screening"
+      automated: partially
+      time_estimate: "1-2 business days"
+
+    - step: 4
+      action: ubo_verification
+      description: "Verify all beneficial owners"
+      automated: false
+      time_estimate: "3-5 business days"
+
+    - step: 5
+      action: site_visit
+      description: "Conduct site visit (if applicable)"
+      automated: false
+      conditional: true
+      time_estimate: "1-2 weeks"
+
+    - step: 6
+      action: management_interview
+      description: "Conduct management interview"
+      automated: false
+      conditional: true
+      time_estimate: "1 week"
+
+    - step: 7
+      action: reference_checks
+      description: "Verify references"
+      automated: false
+      time_estimate: "1 week"
+
+    - step: 8
+      action: risk_committee_review
+      description: "Risk committee review and approval"
+      automated: false
+      approver: risk_committee
+      time_estimate: "1 week"
+
+    - step: 9
+      action: senior_approval
+      description: "Senior management approval"
+      automated: false
+      approver: mlro_or_cco
+      time_estimate: "2-3 business days"
+
+    - step: 10
+      action: issue_tier_3_credential
+      description: "Issue Tier 3 identity credential"
+      automated: true
+      time_estimate: "instant"
+
+  total_time_estimate: "4-8 weeks"
+  manual_review_required: true
+  committee_approval_required: true
+
+credential_issued:
+  type: "IdentityTierCredential"
+  claims:
+    - tier: 3
+    - tier_name: "Institutional"
+    - all_tier_2_claims: inherited
+    - entity_type: legal_entity_or_hnwi
+    - regulatory_status: regulated_or_na
+    - licenses: list_of_licenses
+    - ubos_verified: count
+    - site_visit_completed: boolean
+    - risk_committee_approved: boolean
+    - relationship_manager: assigned_rm
+    - verified_at: timestamp
+    - valid_until: timestamp
+  validity_period_days: 365
+  auto_renew: false
+  renewal_requires: annual_review
+
+ongoing_monitoring:
+  transaction_monitoring:
+    enabled: true
+    thresholds: institutional
+    real_time: true
+  periodic_review:
+    frequency: annual
+    scope: full_review
+    includes:
+      - updated_financials
+      - updated_screening
+      - relationship_review
+      - activity_analysis
+  trigger_events:
+    - any_adverse_event
+    - material_change
+    - regulatory_inquiry
+    - significant_transaction_pattern_change
+  enhanced_monitoring:
+    news_monitoring: daily
+    regulatory_monitoring: daily
+    peer_comparison: quarterly

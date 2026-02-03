@@ -1,13 +1,152 @@
-module_id: org.momentum.msez.fin.domestic-banking
-version: 0.2.0
-kind: financial
+module_id: financial.domestic-banking
+version: 0.4.44
+kind: financial-infrastructure
+name: Domestic Banking Services
+description: |
+  Domestic banking services for Special Economic Zone residents.
+  Provides retail and commercial banking capabilities tailored
+  for zone-based operations.
+
+  Services:
+  - Current and Savings Accounts
+  - Term Deposits
+  - Lending (personal, business, trade finance)
+  - Overdraft Facilities
+  - Standing Orders and Direct Debits
+  - Cheque Services
+  - Safe Deposit
+
 license: Apache-2.0
-description: "Domestic Banking Module (stub)."
+
+interfaces:
+  - interface_id: financial.domestic-banking.accounts
+    name: Account Services Interface
+    operations:
+      - op_id: open_retail_account
+        name: Open Retail Account
+        inputs:
+          - name: customer_id
+            type: string
+          - name: account_type
+            type: string
+            enum: [current, savings, fixed_deposit]
+          - name: currency
+            type: string
+        outputs:
+          - name: account
+            type: RetailAccount
+
+      - op_id: open_business_account
+        name: Open Business Account
+        inputs:
+          - name: entity_id
+            type: string
+          - name: account_type
+            type: string
+            enum: [operating, payroll, escrow, collection]
+          - name: signatories
+            type: array
+        outputs:
+          - name: account
+            type: BusinessAccount
+
+      - op_id: setup_standing_order
+        name: Setup Standing Order
+        inputs:
+          - name: from_account
+            type: string
+          - name: to_account
+            type: string
+          - name: amount
+            type: number
+          - name: frequency
+            type: string
+            enum: [daily, weekly, monthly, quarterly]
+        outputs:
+          - name: standing_order
+            type: StandingOrder
+
+  - interface_id: financial.domestic-banking.lending
+    name: Lending Services Interface
+    operations:
+      - op_id: apply_for_loan
+        name: Apply for Loan
+        inputs:
+          - name: applicant_id
+            type: string
+          - name: loan_type
+            type: string
+            enum: [personal, business, mortgage, trade_finance]
+          - name: amount
+            type: number
+          - name: term_months
+            type: integer
+        outputs:
+          - name: application
+            type: LoanApplication
+
+      - op_id: disburse_loan
+        name: Disburse Loan
+        inputs:
+          - name: loan_id
+            type: string
+          - name: disbursement_account
+            type: string
+        outputs:
+          - name: disbursement
+            type: LoanDisbursement
+
+      - op_id: setup_overdraft
+        name: Setup Overdraft Facility
+        inputs:
+          - name: account_id
+            type: string
+          - name: limit
+            type: number
+        outputs:
+          - name: overdraft
+            type: OverdraftFacility
+
+schemas:
+  - schema_id: RetailAccount
+    properties:
+      account_id:
+        type: string
+      account_number:
+        type: string
+      account_type:
+        type: string
+      currency:
+        type: string
+      interest_rate:
+        type: number
+
+  - schema_id: LoanApplication
+    properties:
+      application_id:
+        type: string
+      status:
+        type: string
+        enum: [submitted, under_review, approved, rejected, disbursed]
+      amount:
+        type: number
+      interest_rate:
+        type: number
+      term_months:
+        type: integer
+
+dependencies:
+  - module_id: identity.kyc-tiers
+    version: ">=0.1.0"
+  - module_id: legal.entity-registry
+    version: ">=0.1.0"
+
 variants:
-  - baseline
-depends_on: []
-provides:
-  - interface: msez.fin.domestic-banking.v1
-    path: spec/README.md
-    media_type: text/markdown
-parameters: {}
+  - variant_id: full
+    name: Full Domestic Banking
+    features: [accounts, deposits, lending, payments]
+  - variant_id: retail
+    name: Retail Banking Only
+    features: [accounts, deposits]
+
+tags: [banking, retail, commercial, lending, deposits]

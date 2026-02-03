@@ -1,13 +1,287 @@
-module_id: org.momentum.msez.fin.treasury
-version: 0.2.0
-kind: financial
+module_id: financial.treasury
+version: 0.4.44
+kind: financial-infrastructure
+name: Treasury Management
+description: |
+  Treasury management infrastructure for Special Economic Zones.
+  Provides comprehensive cash management, liquidity optimization,
+  and treasury operations capabilities.
+
+  Capabilities:
+  - Cash Position Management
+  - Liquidity Forecasting
+  - Cash Pooling and Sweeping
+  - Investment Management
+  - Debt Management
+  - Bank Relationship Management
+  - Treasury Reporting
+
 license: Apache-2.0
-description: "Treasury Module (stub)."
+
+interfaces:
+  - interface_id: financial.treasury.cash
+    name: Cash Management Interface
+    operations:
+      - op_id: get_cash_position
+        name: Get Cash Position
+        inputs:
+          - name: entity_id
+            type: string
+          - name: currency
+            type: string
+          - name: as_of_date
+            type: string
+            format: date
+        outputs:
+          - name: position
+            type: CashPosition
+
+      - op_id: forecast_liquidity
+        name: Forecast Liquidity
+        inputs:
+          - name: entity_id
+            type: string
+          - name: forecast_horizon_days
+            type: integer
+          - name: currency
+            type: string
+        outputs:
+          - name: forecast
+            type: LiquidityForecast
+
+      - op_id: execute_sweep
+        name: Execute Cash Sweep
+        inputs:
+          - name: source_account
+            type: string
+          - name: target_account
+            type: string
+          - name: sweep_type
+            type: string
+            enum: [zero_balance, target_balance, threshold]
+          - name: target_amount
+            type: number
+        outputs:
+          - name: sweep
+            type: SweepExecution
+
+      - op_id: setup_cash_pool
+        name: Setup Cash Pool
+        inputs:
+          - name: pool_name
+            type: string
+          - name: header_account
+            type: string
+          - name: participant_accounts
+            type: array
+          - name: pool_type
+            type: string
+            enum: [notional, physical, hybrid]
+        outputs:
+          - name: pool
+            type: CashPool
+
+  - interface_id: financial.treasury.investment
+    name: Investment Management Interface
+    operations:
+      - op_id: invest_surplus
+        name: Invest Surplus Cash
+        inputs:
+          - name: entity_id
+            type: string
+          - name: amount
+            type: number
+          - name: currency
+            type: string
+          - name: instrument_type
+            type: string
+            enum: [money_market, time_deposit, commercial_paper, treasury_bills]
+          - name: tenor_days
+            type: integer
+        outputs:
+          - name: investment
+            type: Investment
+
+      - op_id: mature_investment
+        name: Mature Investment
+        inputs:
+          - name: investment_id
+            type: string
+        outputs:
+          - name: maturity
+            type: InvestmentMaturity
+
+      - op_id: get_investment_portfolio
+        name: Get Investment Portfolio
+        inputs:
+          - name: entity_id
+            type: string
+        outputs:
+          - name: portfolio
+            type: InvestmentPortfolio
+
+  - interface_id: financial.treasury.debt
+    name: Debt Management Interface
+    operations:
+      - op_id: drawdown_facility
+        name: Drawdown Credit Facility
+        inputs:
+          - name: facility_id
+            type: string
+          - name: amount
+            type: number
+          - name: currency
+            type: string
+        outputs:
+          - name: drawdown
+            type: FacilityDrawdown
+
+      - op_id: repay_facility
+        name: Repay Credit Facility
+        inputs:
+          - name: facility_id
+            type: string
+          - name: amount
+            type: number
+        outputs:
+          - name: repayment
+            type: FacilityRepayment
+
+      - op_id: get_debt_position
+        name: Get Debt Position
+        inputs:
+          - name: entity_id
+            type: string
+        outputs:
+          - name: debt_position
+            type: DebtPosition
+
+  - interface_id: financial.treasury.reporting
+    name: Treasury Reporting Interface
+    operations:
+      - op_id: generate_cash_report
+        name: Generate Cash Report
+        inputs:
+          - name: entity_id
+            type: string
+          - name: report_date
+            type: string
+            format: date
+          - name: report_type
+            type: string
+            enum: [daily, weekly, monthly]
+        outputs:
+          - name: report
+            type: CashReport
+
+      - op_id: generate_exposure_report
+        name: Generate Exposure Report
+        inputs:
+          - name: entity_id
+            type: string
+          - name: exposure_type
+            type: string
+            enum: [fx, interest_rate, counterparty, liquidity]
+        outputs:
+          - name: report
+            type: ExposureReport
+
+schemas:
+  - schema_id: CashPosition
+    properties:
+      entity_id:
+        type: string
+      currency:
+        type: string
+      opening_balance:
+        type: number
+      inflows:
+        type: number
+      outflows:
+        type: number
+      closing_balance:
+        type: number
+      available_balance:
+        type: number
+      as_of_date:
+        type: string
+        format: date
+
+  - schema_id: LiquidityForecast
+    properties:
+      entity_id:
+        type: string
+      currency:
+        type: string
+      forecast_date:
+        type: string
+        format: date
+      daily_projections:
+        type: array
+        items:
+          type: object
+          properties:
+            date:
+              type: string
+              format: date
+            projected_inflows:
+              type: number
+            projected_outflows:
+              type: number
+            projected_balance:
+              type: number
+
+  - schema_id: CashPool
+    properties:
+      pool_id:
+        type: string
+      pool_name:
+        type: string
+      pool_type:
+        type: string
+      header_account:
+        type: string
+      participants:
+        type: array
+      currency:
+        type: string
+      total_balance:
+        type: number
+
+  - schema_id: Investment
+    properties:
+      investment_id:
+        type: string
+      instrument_type:
+        type: string
+      principal:
+        type: number
+      currency:
+        type: string
+      interest_rate:
+        type: number
+      start_date:
+        type: string
+        format: date
+      maturity_date:
+        type: string
+        format: date
+      status:
+        type: string
+        enum: [active, matured, redeemed]
+
+dependencies:
+  - module_id: financial.banking-adapter
+    version: ">=0.1.0"
+  - module_id: financial.fx
+    version: ">=0.1.0"
+
 variants:
-  - baseline
-depends_on: []
-provides:
-  - interface: msez.fin.treasury.v1
-    path: spec/README.md
-    media_type: text/markdown
-parameters: {}
+  - variant_id: full
+    name: Full Treasury Management
+    features: [cash_management, pooling, investment, debt, reporting]
+  - variant_id: basic
+    name: Basic Cash Management
+    features: [cash_management, reporting]
+
+tags: [treasury, cash-management, liquidity, investment, pooling]

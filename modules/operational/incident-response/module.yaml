@@ -1,13 +1,270 @@
-module_id: org.momentum.msez.ops.incident-response
-version: 0.2.0
-kind: operational
+module_id: operational.incident-response
+version: 0.4.44
+kind: operational-infrastructure
+name: Incident Response Management
+description: |
+  Incident response and management infrastructure for Special Economic Zones.
+  Provides structured workflows for detecting, responding to, and recovering
+  from security incidents, operational failures, and compliance breaches.
+
+  Compliance Frameworks:
+  - NIST Incident Response (SP 800-61)
+  - ISO 27035 Incident Management
+  - SOC 2 Incident Response
+  - Financial Services Incident Reporting
+
+  Capabilities:
+  - Incident Detection and Triage
+  - Escalation Workflows
+  - Response Coordination
+  - Evidence Collection
+  - Root Cause Analysis
+  - Post-Incident Review
+  - Regulatory Notification
+
 license: Apache-2.0
-description: "Incident Response (stub)."
+
+interfaces:
+  - interface_id: operational.incident-response.detection
+    name: Incident Detection Interface
+    operations:
+      - op_id: create_incident
+        name: Create Incident
+        inputs:
+          - name: incident_type
+            type: string
+            enum: [security, operational, compliance, financial, data_breach]
+          - name: severity
+            type: string
+            enum: [critical, high, medium, low]
+          - name: title
+            type: string
+          - name: description
+            type: string
+          - name: affected_systems
+            type: array
+          - name: reporter_id
+            type: string
+        outputs:
+          - name: incident
+            type: Incident
+
+      - op_id: triage_incident
+        name: Triage Incident
+        inputs:
+          - name: incident_id
+            type: string
+          - name: severity
+            type: string
+            enum: [critical, high, medium, low]
+          - name: category
+            type: string
+          - name: assigned_team
+            type: string
+        outputs:
+          - name: triage
+            type: IncidentTriage
+
+      - op_id: escalate_incident
+        name: Escalate Incident
+        inputs:
+          - name: incident_id
+            type: string
+          - name: escalation_level
+            type: integer
+          - name: reason
+            type: string
+        outputs:
+          - name: escalation
+            type: IncidentEscalation
+
+  - interface_id: operational.incident-response.response
+    name: Incident Response Interface
+    operations:
+      - op_id: assign_responder
+        name: Assign Responder
+        inputs:
+          - name: incident_id
+            type: string
+          - name: responder_id
+            type: string
+          - name: role
+            type: string
+            enum: [lead, analyst, communicator, technical]
+        outputs:
+          - name: assignment
+            type: ResponderAssignment
+
+      - op_id: log_action
+        name: Log Response Action
+        inputs:
+          - name: incident_id
+            type: string
+          - name: action_type
+            type: string
+          - name: description
+            type: string
+          - name: performer_id
+            type: string
+          - name: outcome
+            type: string
+        outputs:
+          - name: action_log
+            type: ResponseAction
+
+      - op_id: update_status
+        name: Update Incident Status
+        inputs:
+          - name: incident_id
+            type: string
+          - name: status
+            type: string
+            enum: [open, investigating, containing, eradicating, recovering, closed]
+          - name: notes
+            type: string
+        outputs:
+          - name: status_update
+            type: StatusUpdate
+
+  - interface_id: operational.incident-response.evidence
+    name: Evidence Collection Interface
+    operations:
+      - op_id: collect_evidence
+        name: Collect Evidence
+        inputs:
+          - name: incident_id
+            type: string
+          - name: evidence_type
+            type: string
+            enum: [logs, screenshots, memory_dump, network_capture, configuration]
+          - name: source_system
+            type: string
+          - name: collector_id
+            type: string
+        outputs:
+          - name: evidence
+            type: EvidenceRecord
+
+      - op_id: preserve_evidence
+        name: Preserve Evidence
+        inputs:
+          - name: evidence_id
+            type: string
+          - name: storage_location
+            type: string
+        outputs:
+          - name: preservation
+            type: EvidencePreservation
+
+  - interface_id: operational.incident-response.notification
+    name: Regulatory Notification Interface
+    operations:
+      - op_id: notify_regulator
+        name: Notify Regulator
+        inputs:
+          - name: incident_id
+            type: string
+          - name: regulator_id
+            type: string
+          - name: notification_type
+            type: string
+            enum: [initial, update, final]
+          - name: report
+            type: object
+        outputs:
+          - name: notification
+            type: RegulatoryNotification
+
+      - op_id: notify_affected_parties
+        name: Notify Affected Parties
+        inputs:
+          - name: incident_id
+            type: string
+          - name: affected_parties
+            type: array
+          - name: notification_template
+            type: string
+        outputs:
+          - name: notifications
+            type: PartyNotifications
+
+schemas:
+  - schema_id: Incident
+    properties:
+      incident_id:
+        type: string
+      incident_type:
+        type: string
+      severity:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      description:
+        type: string
+      created_at:
+        type: string
+        format: date-time
+      affected_systems:
+        type: array
+      assigned_team:
+        type: string
+      timeline:
+        type: array
+
+  - schema_id: ResponseAction
+    properties:
+      action_id:
+        type: string
+      incident_id:
+        type: string
+      action_type:
+        type: string
+      description:
+        type: string
+      performer_id:
+        type: string
+      timestamp:
+        type: string
+        format: date-time
+      outcome:
+        type: string
+      duration_minutes:
+        type: integer
+
+  - schema_id: EvidenceRecord
+    properties:
+      evidence_id:
+        type: string
+      incident_id:
+        type: string
+      evidence_type:
+        type: string
+      source_system:
+        type: string
+      collected_at:
+        type: string
+        format: date-time
+      collector_id:
+        type: string
+      hash:
+        type: string
+      storage_location:
+        type: string
+      chain_of_custody:
+        type: array
+
+dependencies:
+  - module_id: operational.audit-logging
+    version: ">=0.1.0"
+
 variants:
-  - baseline
-depends_on: []
-provides:
-  - interface: msez.ops.incident-response.v1
-    path: docs/README.md
-    media_type: text/markdown
-parameters: {}
+  - variant_id: full
+    name: Full Incident Response
+    features: [detection, response, evidence, notification, analysis]
+  - variant_id: basic
+    name: Basic Incident Management
+    features: [detection, response]
+
+tags: [incident, security, response, forensics, compliance, notification]

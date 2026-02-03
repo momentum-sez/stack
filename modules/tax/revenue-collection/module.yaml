@@ -1,0 +1,288 @@
+module_id: tax.revenue-collection
+version: 0.4.44
+kind: tax-infrastructure
+name: Revenue Collection System
+description: |
+  Comprehensive tax revenue collection infrastructure for Special Economic Zones.
+  Handles assessment, billing, collection, reconciliation, and enforcement of
+  all zone taxes, fees, levies, and contributions.
+
+  Integrates with:
+  - Zone fee schedules for rate determination
+  - Entity registry for taxpayer identification
+  - Banking adapters for payment processing
+  - Audit logging for compliance trails
+
+license: CC-BY-4.0
+
+interfaces:
+  - interface_id: tax.revenue-collection.assessment
+    name: Tax Assessment Interface
+    description: Calculate tax obligations for entities and transactions
+    operations:
+      - op_id: assess_entity_tax
+        name: Assess Entity Tax
+        description: Calculate periodic tax obligations for a registered entity
+        inputs:
+          - name: entity_id
+            type: string
+            description: DID of the taxable entity
+          - name: tax_period
+            type: object
+            description: Period for assessment (start_date, end_date)
+          - name: tax_types
+            type: array
+            description: Types of taxes to assess (income, corporate, vat, etc.)
+        outputs:
+          - name: assessment
+            type: TaxAssessment
+            description: Detailed tax assessment with line items
+
+      - op_id: assess_transaction_tax
+        name: Assess Transaction Tax
+        description: Calculate taxes due on a specific transaction
+        inputs:
+          - name: transaction_id
+            type: string
+            description: Unique transaction identifier
+          - name: transaction_details
+            type: TransactionDetails
+            description: Transaction amount, type, parties, jurisdiction
+        outputs:
+          - name: tax_liability
+            type: TaxLiability
+            description: Computed tax liability for the transaction
+
+      - op_id: generate_tax_bill
+        name: Generate Tax Bill
+        description: Create formal tax bill from assessment
+        inputs:
+          - name: assessment_id
+            type: string
+            description: Reference to tax assessment
+          - name: due_date
+            type: string
+            format: date
+            description: Payment due date
+        outputs:
+          - name: tax_bill
+            type: TaxBill
+            description: Formal tax bill with payment instructions
+
+  - interface_id: tax.revenue-collection.payment
+    name: Tax Payment Interface
+    description: Process tax payments and issue receipts
+    operations:
+      - op_id: record_payment
+        name: Record Tax Payment
+        description: Record receipt of tax payment
+        inputs:
+          - name: bill_id
+            type: string
+            description: Reference to tax bill being paid
+          - name: payment_details
+            type: PaymentDetails
+            description: Payment amount, method, reference
+        outputs:
+          - name: receipt
+            type: TaxReceipt
+            description: Official tax payment receipt
+
+      - op_id: process_refund
+        name: Process Tax Refund
+        description: Process approved tax refund
+        inputs:
+          - name: refund_request_id
+            type: string
+            description: Approved refund request reference
+          - name: disbursement_details
+            type: DisbursementDetails
+            description: Bank account and amount details
+        outputs:
+          - name: refund_confirmation
+            type: RefundConfirmation
+            description: Confirmation of refund processing
+
+      - op_id: apply_credit
+        name: Apply Tax Credit
+        description: Apply tax credit to outstanding liability
+        inputs:
+          - name: entity_id
+            type: string
+            description: Entity receiving credit
+          - name: credit_details
+            type: CreditDetails
+            description: Credit amount, type, and source
+        outputs:
+          - name: credit_application
+            type: CreditApplication
+            description: Record of credit application
+
+  - interface_id: tax.revenue-collection.enforcement
+    name: Tax Enforcement Interface
+    description: Manage delinquent accounts and enforcement actions
+    operations:
+      - op_id: flag_delinquent
+        name: Flag Delinquent Account
+        description: Mark account as delinquent after grace period
+        inputs:
+          - name: entity_id
+            type: string
+            description: Delinquent taxpayer
+          - name: outstanding_bills
+            type: array
+            description: List of unpaid bill references
+        outputs:
+          - name: delinquency_notice
+            type: DelinquencyNotice
+            description: Formal delinquency notification
+
+      - op_id: initiate_collection
+        name: Initiate Collection Action
+        description: Begin formal collection proceedings
+        inputs:
+          - name: entity_id
+            type: string
+            description: Subject of collection action
+          - name: action_type
+            type: string
+            enum: [reminder, warning, lien, levy, license_suspension]
+            description: Type of collection action
+        outputs:
+          - name: collection_case
+            type: CollectionCase
+            description: Collection case record
+
+      - op_id: calculate_penalties
+        name: Calculate Penalties and Interest
+        description: Compute penalties and interest on overdue taxes
+        inputs:
+          - name: bill_id
+            type: string
+            description: Overdue tax bill
+          - name: calculation_date
+            type: string
+            format: date
+            description: Date for calculation
+        outputs:
+          - name: penalties
+            type: PenaltyCalculation
+            description: Itemized penalties and interest
+
+schemas:
+  - schema_id: TaxAssessment
+    description: Detailed tax assessment for an entity or period
+    properties:
+      assessment_id:
+        type: string
+        description: Unique assessment identifier
+      entity_id:
+        type: string
+        description: Taxpayer entity DID
+      period:
+        type: object
+        properties:
+          start_date:
+            type: string
+            format: date
+          end_date:
+            type: string
+            format: date
+      line_items:
+        type: array
+        items:
+          type: object
+          properties:
+            tax_type:
+              type: string
+            taxable_base:
+              type: number
+            rate:
+              type: number
+            amount:
+              type: number
+      total_liability:
+        type: number
+      status:
+        type: string
+        enum: [draft, finalized, appealed, adjusted]
+
+  - schema_id: TaxBill
+    description: Formal tax bill issued to taxpayer
+    properties:
+      bill_id:
+        type: string
+      assessment_id:
+        type: string
+      entity_id:
+        type: string
+      amount_due:
+        type: number
+      currency:
+        type: string
+      due_date:
+        type: string
+        format: date
+      payment_instructions:
+        type: object
+      status:
+        type: string
+        enum: [issued, partially_paid, paid, overdue, cancelled]
+
+  - schema_id: TaxReceipt
+    description: Official receipt for tax payment
+    properties:
+      receipt_id:
+        type: string
+      bill_id:
+        type: string
+      payment_amount:
+        type: number
+      payment_date:
+        type: string
+        format: date-time
+      payment_method:
+        type: string
+      confirmation_number:
+        type: string
+
+dependencies:
+  - module_id: tax.fee-schedules
+    version: ">=0.1.0"
+    reason: Rate determination for tax calculations
+  - module_id: legal.entity-registry
+    version: ">=0.1.0"
+    reason: Taxpayer identification and status
+  - module_id: financial.payments-adapter
+    version: ">=0.1.0"
+    reason: Payment processing integration
+  - module_id: operational.audit-logging
+    version: ">=0.1.0"
+    reason: Compliance audit trail
+
+variants:
+  - variant_id: standard
+    name: Standard Revenue Collection
+    description: Full revenue collection capabilities
+    features:
+      - assessment
+      - billing
+      - payment_processing
+      - enforcement
+      - reporting
+
+  - variant_id: simplified
+    name: Simplified Collection
+    description: Basic collection for low-volume zones
+    features:
+      - assessment
+      - billing
+      - payment_processing
+
+tags:
+  - tax
+  - revenue
+  - collection
+  - billing
+  - enforcement
+  - compliance

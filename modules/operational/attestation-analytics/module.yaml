@@ -1,13 +1,202 @@
-module_id: org.momentum.msez.ops.attestation-analytics
-version: 0.2.0
-kind: operational
+module_id: operational.attestation-analytics
+version: 0.4.44
+kind: operational-infrastructure
+name: Attestation Analytics
+description: |
+  Analytics and monitoring infrastructure for attestation networks
+  in Special Economic Zones. Provides real-time insights into
+  watcher performance, attestation patterns, and network health.
+
+  Capabilities:
+  - Watcher Performance Metrics
+  - Attestation Volume Analytics
+  - Latency and Throughput Monitoring
+  - Anomaly Detection
+  - SLA Compliance Tracking
+  - Network Health Scoring
+  - Historical Trend Analysis
+
 license: Apache-2.0
-description: "Attestation Analytics (stub)."
+
+interfaces:
+  - interface_id: operational.attestation-analytics.metrics
+    name: Metrics Collection Interface
+    operations:
+      - op_id: record_attestation
+        name: Record Attestation Event
+        inputs:
+          - name: attestation_id
+            type: string
+          - name: watcher_id
+            type: string
+          - name: attestation_type
+            type: string
+          - name: latency_ms
+            type: integer
+          - name: timestamp
+            type: string
+            format: date-time
+        outputs:
+          - name: recorded
+            type: boolean
+
+      - op_id: get_watcher_metrics
+        name: Get Watcher Metrics
+        inputs:
+          - name: watcher_id
+            type: string
+          - name: period
+            type: string
+            enum: [hour, day, week, month]
+        outputs:
+          - name: metrics
+            type: WatcherMetrics
+
+      - op_id: get_network_metrics
+        name: Get Network Metrics
+        inputs:
+          - name: jurisdiction_id
+            type: string
+          - name: period
+            type: string
+            enum: [hour, day, week, month]
+        outputs:
+          - name: metrics
+            type: NetworkMetrics
+
+  - interface_id: operational.attestation-analytics.health
+    name: Network Health Interface
+    operations:
+      - op_id: calculate_health_score
+        name: Calculate Network Health Score
+        inputs:
+          - name: jurisdiction_id
+            type: string
+        outputs:
+          - name: health
+            type: NetworkHealth
+
+      - op_id: detect_anomalies
+        name: Detect Attestation Anomalies
+        inputs:
+          - name: time_window_minutes
+            type: integer
+          - name: sensitivity
+            type: string
+            enum: [low, medium, high]
+        outputs:
+          - name: anomalies
+            type: AnomalyReport
+
+      - op_id: check_sla_compliance
+        name: Check SLA Compliance
+        inputs:
+          - name: watcher_id
+            type: string
+          - name: sla_id
+            type: string
+        outputs:
+          - name: compliance
+            type: SLACompliance
+
+  - interface_id: operational.attestation-analytics.reporting
+    name: Analytics Reporting Interface
+    operations:
+      - op_id: generate_daily_report
+        name: Generate Daily Analytics Report
+        inputs:
+          - name: report_date
+            type: string
+            format: date
+          - name: jurisdiction_id
+            type: string
+        outputs:
+          - name: report
+            type: DailyReport
+
+      - op_id: export_metrics
+        name: Export Metrics Data
+        inputs:
+          - name: start_date
+            type: string
+            format: date
+          - name: end_date
+            type: string
+            format: date
+          - name: format
+            type: string
+            enum: [csv, json, parquet]
+        outputs:
+          - name: export
+            type: MetricsExport
+
+schemas:
+  - schema_id: WatcherMetrics
+    properties:
+      watcher_id:
+        type: string
+      period:
+        type: string
+      attestation_count:
+        type: integer
+      success_rate:
+        type: number
+      average_latency_ms:
+        type: number
+      p95_latency_ms:
+        type: number
+      uptime_percentage:
+        type: number
+
+  - schema_id: NetworkHealth
+    properties:
+      jurisdiction_id:
+        type: string
+      health_score:
+        type: number
+        description: 0-100 health score
+      active_watchers:
+        type: integer
+      attestations_per_minute:
+        type: number
+      average_latency_ms:
+        type: number
+      issues:
+        type: array
+
+  - schema_id: AnomalyReport
+    properties:
+      report_id:
+        type: string
+      detection_time:
+        type: string
+        format: date-time
+      anomalies:
+        type: array
+        items:
+          type: object
+          properties:
+            anomaly_type:
+              type: string
+            severity:
+              type: string
+            affected_watchers:
+              type: array
+            description:
+              type: string
+
+dependencies:
+  - module_id: phoenix.watcher
+    version: ">=0.1.0"
+  - module_id: operational.audit-logging
+    version: ">=0.1.0"
+
 variants:
-  - baseline
-depends_on: []
-provides:
-  - interface: msez.ops.attestation-analytics.v1
-    path: docs/README.md
-    media_type: text/markdown
-parameters: {}
+  - variant_id: full
+    name: Full Analytics Suite
+    features: [metrics, health, reporting, anomaly_detection]
+  - variant_id: basic
+    name: Basic Metrics
+    features: [metrics, reporting]
+
+tags: [analytics, monitoring, attestation, watcher, metrics, health]

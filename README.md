@@ -2,22 +2,23 @@
 
 # MSEZ Stack
 
-## Smart Asset Operating System
+## SEZ-in-a-Box: Special Economic Zone Infrastructure
 
-**v0.4.43 PHOENIX ASCENSION**
+**v0.4.44 GENESIS**
 
-[![Tests](https://img.shields.io/badge/tests-92%20passing-brightgreen?style=flat-square)]()
-[![PHOENIX Modules](https://img.shields.io/badge/PHOENIX-11%20modules-purple?style=flat-square)]()
-[![Lines](https://img.shields.io/badge/lines-9,221-blue?style=flat-square)]()
+[![Tests](https://img.shields.io/badge/tests-150%2B%20passing-brightgreen?style=flat-square)]()
+[![Modules](https://img.shields.io/badge/modules-283-purple?style=flat-square)]()
+[![Lines](https://img.shields.io/badge/lines-63K%2B-blue?style=flat-square)]()
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square)]()
+[![AWS Ready](https://img.shields.io/badge/AWS-production%20ready-orange?style=flat-square)]()
 
 ---
 
-**Infrastructure for autonomous Smart Assets across programmable jurisdictions.**
+**Complete infrastructure for deploying Special Economic Zones.**
 
-Compliance Tensor · Zero-Knowledge Proofs · Smart Asset VM · Economic Accountability
+Multi-Jurisdiction Composition · Pack Trilogy · AWS Deployment · AI Arbitration
 
-[**Quick Start →**](#quick-start) · [Architecture](#architecture) · [PHOENIX Modules](#phoenix-modules) · [Examples](#examples)
+[**Quick Start →**](#quick-start) · [Composition Engine](#composition-engine) · [Deploy to AWS](#aws-deployment) · [Examples](#examples)
 
 </div>
 
@@ -25,13 +26,34 @@ Compliance Tensor · Zero-Knowledge Proofs · Smart Asset VM · Economic Account
 
 ## Vision
 
-Traditional assets are prisoners of territorial sovereignty—bound to single jurisdictions by manual compliance processes, paper-based audits, and bilateral trust relationships that take months to establish. Cross-border movement requires navigating 195+ incompatible regulatory regimes, each demanding its own documentation, verification, and settlement procedures.
+**Deploy a Special Economic Zone as easily as spinning up cloud infrastructure.**
 
-**Smart Assets transcend these limitations.**
+The MSEZ Stack enables complex multi-jurisdictional zone deployments through a composable architecture:
 
-A Smart Asset carries its compliance state as an intrinsic property, verified through zero-knowledge proofs, enforced through cryptographic attestations, and settled through decentralized anchor networks. When regulatory conditions change—a license expires, a sanctions list updates, a corridor closes—the asset responds autonomously, migrating to compliant jurisdictions or halting operations as required.
+```python
+from tools.msez.composition import compose_zone
 
-The MSEZ Stack provides the operating system for this new class of assets: a complete infrastructure layer enabling trillion-dollar asset mobility across programmable jurisdictions.
+# Deploy NY civic code + Delaware corporate + ADGM financial/digital assets
+zone = compose_zone(
+    "momentum.hybrid.demo",
+    "NYC-Delaware-ADGM Hybrid Zone",
+    civic=("us-ny", "New York State civic code"),
+    corporate=("us-de", "Delaware General Corporation Law"),
+    financial=("ae-abudhabi-adgm", "ADGM Financial Services Framework"),
+    digital_assets=("ae-abudhabi-adgm", "ADGM digital asset regulations"),
+    ai_arbitration=True,
+)
+
+# Generate deployment artifacts
+zone_yaml = zone.to_zone_yaml()
+stack_lock = zone.to_stack_lock()
+```
+
+Traditional SEZ setup requires years of legal structuring, bilateral treaties, and manual compliance processes. The MSEZ Stack reduces this to infrastructure-as-code deployable in hours.
+
+**Smart Assets transcend territorial sovereignty.**
+
+A Smart Asset carries its compliance state as an intrinsic property, verified through zero-knowledge proofs, enforced through cryptographic attestations, and settled through decentralized anchor networks. When regulatory conditions change—a license expires, a sanctions list updates, a corridor closes—the asset responds autonomously.
 
 ---
 
@@ -322,32 +344,96 @@ Test coverage includes compliance tensor operations and lattice algebra, ZK proo
 ## Repository Structure
 
 ```
-momentum-sez-stack-v0.4.43/
+msez-stack-v0.4.44/
 ├── tools/
-│   ├── phoenix/                  # PHOENIX module suite (9,221 lines)
-│   │   ├── __init__.py           # Lazy imports and exports
+│   ├── msez/                     # Modular MSEZ toolkit
+│   │   ├── __init__.py           # Package exports
+│   │   ├── core.py               # Core primitives
+│   │   ├── composition.py        # Multi-jurisdiction composition engine
+│   │   └── schema.py             # Schema validation
+│   ├── phoenix/                  # PHOENIX module suite
 │   │   ├── tensor.py             # Compliance Tensor
-│   │   ├── zkp.py                # ZK Proof Infrastructure
-│   │   ├── manifold.py           # Compliance Manifold
-│   │   ├── migration.py          # Migration Protocol
-│   │   ├── bridge.py             # Corridor Bridge
-│   │   ├── anchor.py             # L1 Anchor Network
-│   │   ├── watcher.py            # Watcher Economy
 │   │   ├── vm.py                 # Smart Asset VM
-│   │   ├── security.py           # Security Layer
-│   │   └── hardening.py          # Hardening Layer
-│   ├── msez.py                   # CLI tool
-│   ├── agentic.py                # Agentic execution framework
-│   ├── regpack.py                # Regulatory pack tools
-│   └── arbitration.py            # Dispute resolution
-├── tests/
-│   └── test_phoenix.py           # PHOENIX test suite (92 tests)
-├── schemas/                      # JSON schemas (113 files)
-├── docs/                         # Documentation
-├── spec/                         # Specification documents
-├── CHANGELOG.md                  # Release history
-├── VERSION                       # Current version
-└── README.md                     # This file
+│   │   ├── zkp.py                # Zero-Knowledge Proofs
+│   │   └── ...                   # 11 modules total
+│   ├── licensepack.py            # License registry management
+│   ├── lawpack.py                # Legal text management
+│   ├── regpack.py                # Regulatory guidance management
+│   ├── arbitration.py            # Dispute resolution
+│   └── agentic.py                # Agentic execution framework
+├── modules/                      # 283 zone modules
+│   ├── corporate/                # Corporate services (8 modules)
+│   ├── identity/                 # Identity & credentialing (6 modules)
+│   ├── tax/                      # Tax & revenue (7 modules)
+│   ├── legal/                    # Legal infrastructure (211 modules)
+│   ├── licensing/                # Licensing (11 modules)
+│   └── ...
+├── deploy/
+│   ├── aws/terraform/            # AWS Terraform infrastructure
+│   ├── docker/                   # Docker Compose for local dev
+│   └── scripts/                  # Deployment automation
+├── tests/                        # 150+ tests
+├── schemas/                      # 116 JSON schemas
+├── spec/                         # 25 specification documents
+├── CHANGELOG.md
+├── VERSION
+└── README.md
+```
+
+---
+
+## AWS Deployment
+
+Deploy a production zone to AWS with Terraform:
+
+```bash
+cd deploy/aws/terraform
+
+# Configure your zone
+cat > my-zone.tfvars <<EOF
+zone_id         = "momentum.hybrid.nyc-de-adgm"
+zone_name       = "NYC-Delaware-ADGM Hybrid Zone"
+jurisdiction_id = "ae-abudhabi-adgm"
+profile         = "digital-financial-center"
+aws_region      = "us-east-1"
+environment     = "prod"
+EOF
+
+# Deploy infrastructure
+terraform init
+terraform apply -var-file=my-zone.tfvars
+```
+
+This deploys:
+- **EKS Cluster** with auto-scaling node groups
+- **RDS PostgreSQL** with Multi-AZ and encryption
+- **ElastiCache Redis** for caching and pub/sub
+- **S3** for artifact storage with versioning
+- **KMS** encryption for all data at rest
+- **ALB Ingress** with TLS termination
+
+---
+
+## Pack Trilogy
+
+The MSEZ Stack uses three content-addressed pack types for regulatory state:
+
+| Pack Type | Purpose | Update Frequency |
+|-----------|---------|------------------|
+| **Lawpack** | Immutable legal text (statutes, regulations) | Quarterly |
+| **Regpack** | Dynamic regulatory guidance (circulars, FAQs) | Weekly |
+| **Licensepack** | Live license registry state | Daily/Hourly |
+
+```python
+from tools.licensepack import LicensePack, License, LicenseStatus
+
+# Verify a holder's license for an activity
+pack = LicensePack.load("ae-dubai-difc-financial.licensepack")
+is_valid, state, license = pack.verify_license(
+    holder_did="did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+    activity="deposit_taking",
+    jurisdiction="ae-dubai-difc",
+)
 ```
 
 ---
@@ -356,7 +442,8 @@ momentum-sez-stack-v0.4.43/
 
 | Version | Codename | Highlights |
 |---------|----------|------------|
-| **0.4.43** | PHOENIX ASCENSION | Smart Asset VM, Security Layer, 9,221 lines, 92 tests |
+| **0.4.44** | GENESIS | Multi-jurisdiction composition, Pack trilogy complete, AWS deployment, 283 modules |
+| 0.4.43 | PHOENIX ASCENSION | Smart Asset VM, Security Layer, 9,221 lines, 92 tests |
 | 0.4.42 | Agentic Ascension | Agentic framework, 16 policies, 5 monitors |
 | 0.4.41 | Radical Yahoo | Arbitration, RegPack, cryptographic proofs |
 | 0.4.40 | — | Trade instruments, settlement netting |

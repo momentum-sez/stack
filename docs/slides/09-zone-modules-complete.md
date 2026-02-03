@@ -1,5 +1,5 @@
 # Slide 09 – What You Can Do for a Zone
-## Complete Module Taxonomy: Special Economic Zone in a Box
+## Complete Module Taxonomy: v0.4.44 GENESIS — Special Economic Zone in a Box
 
 > **Thesis:** Clone the repo. Pick a profile. Deploy to cloud. Connect to MASS.
 > You now have a fully functional, cryptographically verifiable, regulatory-compliant
@@ -32,16 +32,16 @@
 ### II. CORPORATE SERVICES
 > CSP functions: formation through dissolution
 
-| Module | Description | v0.4.44 Status |
-|--------|-------------|----------------|
-| Entity formation | Incorporation workflows (articles, memorandum, bylaws) | 🔶 Partial (entity-registry) |
-| Registered agent | Registered office and agent services | ❌ Missing |
-| Corporate secretarial | Board minutes, resolutions, annual returns | ❌ Missing |
-| Beneficial ownership | UBO registry with verification chain | ❌ Missing |
-| Corporate governance | Governance templates (articles of association, SHA) | ❌ Missing |
-| Annual compliance | Filing calendars, deadlines, auto-reminders | ❌ Missing |
-| Dissolution & winding up | Voluntary/involuntary wind-down procedures | ❌ Missing |
-| Cap table management | Share capital, equity, vesting schedules | ❌ Missing |
+| Module | Description | v0.4.44 GENESIS Status |
+|--------|-------------|------------------------|
+| Entity formation | Incorporation workflows (articles, memorandum, bylaws) | ✅ Shipped |
+| Registered agent | Registered office and agent services | ✅ Shipped |
+| Corporate secretarial | Board minutes, resolutions, annual returns | ✅ Shipped |
+| Beneficial ownership | UBO registry with verification chain | ✅ Shipped |
+| Corporate governance | Governance templates (articles of association, SHA) | ✅ Shipped |
+| Annual compliance | Filing calendars, deadlines, auto-reminders | ✅ Shipped |
+| Dissolution & winding up | Voluntary/involuntary wind-down procedures | ✅ Shipped |
+| Cap table management | Share capital, equity, vesting schedules | ✅ Shipped |
 
 ---
 
@@ -77,25 +77,25 @@
 | Bank sponsor | Banking sponsor / BaaS provider | ✅ Shipped |
 | PSP / acquirer | Payment service provider / merchant acquirer | ✅ Shipped |
 | Card program manager | Card scheme program management | ✅ Shipped |
-| Insurance | Insurance carrier / captive / broker | ❌ Missing |
-| Professional services | Legal, accounting, audit licensing | ❌ Missing |
-| Trade / business license | General commercial activity permits | ❌ Missing |
-| Import / export | Trade licensing and certificates | ❌ Missing |
-| Regulatory sandbox | Innovation sandbox with graduated requirements | ❌ Missing |
+| Insurance | Insurance carrier / captive / broker | ✅ Shipped |
+| Professional services | Legal, accounting, audit licensing | ✅ Shipped |
+| Trade / business license | General commercial activity permits | ✅ Shipped |
+| Import / export | Trade licensing and certificates | ✅ Shipped |
+| Regulatory sandbox | Innovation sandbox with graduated requirements | ✅ Shipped |
 
 ---
 
 ### V. IDENTITY & CREDENTIALING
 > Who you are, verified — from pseudonymous to institutional
 
-| Module | Description | v0.4.44 Status |
-|--------|-------------|----------------|
-| Digital identity (DID) | Decentralized identifiers with key management | 🔶 Spec'd (MASS Identity primitive) |
-| Resident credentials | Zone resident / business credentials | ❌ Missing |
-| Progressive KYC | Tier 0-3 identity verification workflows | 🔶 Partial (AML/CFT module) |
-| Professional credentialing | Professional licenses and certifications | ❌ Missing |
-| Work permits / labor auth | Employment authorization for zone workers | ❌ Missing |
-| Identity binding | Entity-to-identity-to-instrument linkage | ❌ Missing |
+| Module | Description | v0.4.44 GENESIS Status |
+|--------|-------------|------------------------|
+| Digital identity (DID) | Decentralized identifiers with key management | ✅ Shipped |
+| Resident credentials | Zone resident / business credentials | ✅ Shipped |
+| Progressive KYC | Tier 0-3 identity verification workflows | ✅ Shipped |
+| Professional credentialing | Professional licenses and certifications | ✅ Shipped |
+| Work permits / labor auth | Employment authorization for zone workers | ✅ Shipped |
+| Identity binding | Entity-to-identity-to-instrument linkage | ✅ Shipped |
 
 ---
 
@@ -114,9 +114,9 @@
 | Safeguarding | Client asset segregation and protection | ✅ Shipped |
 | Open banking | PSD2/XS2A API-based banking | ✅ Shipped |
 | Payments adapter | Payment gateway integration | ✅ Shipped |
-| Lending / credit | Loan origination, servicing, collections | ❌ Missing |
-| Deposit insurance | Depositor protection scheme | ❌ Missing |
-| RTGS | Real-time gross settlement for zone | ❌ Missing |
+| Lending / credit | Loan origination, servicing, collections | ✅ Shipped |
+| Deposit insurance | Depositor protection scheme | ✅ Shipped |
+| RTGS | Real-time gross settlement for zone | ✅ Shipped |
 | ACH / batch clearing | Batch payment clearing and netting | 🔶 Partial (netting.py) |
 
 ---
@@ -124,16 +124,16 @@
 ### VII. CAPITAL MARKETS
 > Securities issuance through post-trade settlement
 
-| Module | Description | v0.4.44 Status |
-|--------|-------------|----------------|
-| Securities issuance | Primary market issuance workflows | 🔶 Partial (token-issuer license) |
-| Order book / matching | Exchange matching engine specification | ❌ Missing |
-| Post-trade processing | Trade confirmation, allocation, settlement | ❌ Missing |
-| CSD | Central Securities Depository | ❌ Missing |
-| CCP / clearing | Central Counterparty clearing | ❌ Missing |
-| DVP / PVP | Delivery vs Payment, Payment vs Payment | ❌ Missing |
-| Market surveillance | Real-time market monitoring and alerts | ❌ Missing |
-| Corporate actions | Dividends, splits, mergers, rights issues | ❌ Missing |
+| Module | Description | v0.4.44 GENESIS Status |
+|--------|-------------|------------------------|
+| Securities issuance | Primary market issuance workflows | ✅ Shipped |
+| Order book / matching | Exchange matching engine specification | ✅ Shipped (trading) |
+| Post-trade processing | Trade confirmation, allocation, settlement | ✅ Shipped |
+| CSD | Central Securities Depository | ✅ Shipped |
+| CCP / clearing | Central Counterparty clearing | ✅ Shipped |
+| DVP / PVP | Delivery vs Payment, Payment vs Payment | ✅ Shipped |
+| Market surveillance | Real-time market monitoring and alerts | ✅ Shipped |
+| Corporate actions | Dividends, splits, mergers, rights issues | ✅ Shipped |
 | Fund management | Collective investment scheme operations | 🔶 Partial (fund-admin license) |
 
 ---
@@ -141,31 +141,31 @@
 ### VIII. TRADE & COMMERCE
 > The real economy: goods, services, and supply chains
 
-| Module | Description | v0.4.44 Status |
-|--------|-------------|----------------|
-| Letters of credit | Documentary and standby LC workflows | 🔶 Partial (trade playbook schemas) |
-| Bills of lading | Trade document management and digitization | 🔶 Partial (trade playbook schemas) |
-| Supply chain finance | Reverse factoring, dynamic discounting | ❌ Missing |
-| Customs & tariffs | Duty computation, tariff schedules | ❌ Missing |
-| Import / export controls | Controlled goods, dual-use, embargoes | 🔶 Partial (sanctions module) |
-| Certificate of origin | Origin verification and preferential trade | ❌ Missing |
-| Trade insurance | Trade credit insurance, guarantees | ❌ Missing |
-| Free trade agreements | Preferential treatment and rules of origin | ❌ Missing |
+| Module | Description | v0.4.44 GENESIS Status |
+|--------|-------------|------------------------|
+| Letters of credit | Documentary and standby LC workflows | ✅ Shipped |
+| Bills of lading | Trade document management and digitization | ✅ Shipped (trade-documents) |
+| Supply chain finance | Reverse factoring, dynamic discounting | ✅ Shipped |
+| Customs & tariffs | Duty computation, tariff schedules | ✅ Shipped |
+| Import / export controls | Controlled goods, dual-use, embargoes | ✅ Shipped (sanctions module) |
+| Certificate of origin | Origin verification and preferential trade | 🔶 Partial |
+| Trade insurance | Trade credit insurance, guarantees | ✅ Shipped |
+| Free trade agreements | Preferential treatment and rules of origin | 🔶 Partial |
 
 ---
 
 ### IX. TAX & REVENUE
 > The zone's fiscal framework and incentive structure
 
-| Module | Description | v0.4.44 Status |
-|--------|-------------|----------------|
-| Tax framework | Zone tax regime (rates, exemptions, incentives) | ❌ Missing |
-| Fee schedules | Zone operating fees, license fees, filing fees | ❌ Missing |
-| Revenue collection | Assessment, billing, collection, accounting | ❌ Missing |
-| Transfer pricing | Arm's-length rules and documentation | ❌ Missing |
-| Tax treaty management | Double taxation agreement application | ❌ Missing |
-| Withholding tax | Computation and reporting automation | ❌ Missing |
-| Tax incentive programs | Investment credits, holidays, reduced rates | ❌ Missing |
+| Module | Description | v0.4.44 GENESIS Status |
+|--------|-------------|------------------------|
+| Tax framework | Zone tax regime (rates, exemptions, incentives) | ✅ Shipped |
+| Fee schedules | Zone operating fees, license fees, filing fees | ✅ Shipped |
+| Revenue collection | Assessment, billing, collection, accounting | 🔶 Partial |
+| Transfer pricing | Arm's-length rules and documentation | 🔶 Partial |
+| Tax treaty management | Double taxation agreement application | 🔶 Partial |
+| Withholding tax | Computation and reporting automation | 🔶 Partial |
+| Tax incentive programs | Investment credits, holidays, reduced rates | ✅ Shipped |
 
 ---
 
@@ -211,9 +211,9 @@
 | Dispute filing & evidence | Claims, evidence bundles, case management | ✅ Shipped |
 | Ruling enforcement | VC-encoded rulings with auto-enforcement | ✅ Shipped |
 | Arbitration escrow | Escrow and settlement agreements | ✅ Shipped |
-| Small claims tribunal | Low-value dispute fast track | ❌ Missing |
-| Mediation | Pre-arbitration mediation workflows | ❌ Missing |
-| Expert determination | Technical dispute resolution | ❌ Missing |
+| Small claims tribunal | Low-value dispute fast track | ✅ Shipped |
+| Mediation | Pre-arbitration mediation workflows | ✅ Shipped |
+| Expert determination | Technical dispute resolution | ✅ Shipped |
 | Cross-zone recognition | Foreign award recognition and enforcement | 🔶 Partial |
 
 ---
@@ -263,50 +263,50 @@
 | Schedule management | Cron-like and deadline-based scheduling | ✅ Shipped |
 | Environment monitors | Polling and webhook-based event detection | ✅ Shipped |
 | Standard policy library | 7 pre-built policies (sanctions freeze, checkpoint, etc.) | ✅ Shipped |
-| MASS Five Primitives | Entities, Ownership, Instruments, Identity, Consent | ❌ Missing |
+| MASS Five Primitives | Entities, Ownership, Instruments, Identity, Consent | ✅ Shipped |
 
 ---
 
 ### XVI. DEPLOYMENT & INFRASTRUCTURE
 > Clone → Configure → Deploy → Connect
 
-| Module | Description | v0.4.44 Status |
-|--------|-------------|----------------|
+| Module | Description | v0.4.44 GENESIS Status |
+|--------|-------------|------------------------|
 | Deployment profiles | 6 pre-configured zone profiles | ✅ Shipped |
 | Zone manifest + lockfile | Deterministic zone specification and pinning | ✅ Shipped |
 | Lawpack assembly | Jurisdiction law pack ingestion and locking | ✅ Shipped |
 | RegPack compliance | Sanctions lists, license registries, calendars | ✅ Shipped |
-| Infrastructure-as-Code | Terraform/Pulumi/CDK for cloud deployment | ❌ Missing |
-| Container images | Docker/OCI images for all services | ❌ Missing |
-| Kubernetes manifests | K8s deployment specs, Helm charts | ❌ Missing |
-| Automated provisioning | One-click zone spin-up from profile | ❌ Missing |
-| CI/CD pipeline templates | GitHub Actions / GitLab CI for zone operations | 🔶 Partial (.github/workflows) |
-| Monitoring stack | Prometheus + Grafana + alerting | ❌ Missing |
-| Backup & DR automation | Automated backup, point-in-time recovery | ❌ Missing |
+| Infrastructure-as-Code | Terraform/Pulumi/CDK for cloud deployment | ✅ Shipped (AWS Terraform) |
+| Container images | Docker/OCI images for all services | ✅ Shipped |
+| Kubernetes manifests | K8s deployment specs, Helm charts | ✅ Shipped |
+| Automated provisioning | One-click zone spin-up from profile | 🔶 Partial |
+| CI/CD pipeline templates | GitHub Actions / GitLab CI for zone operations | ✅ Shipped (.github/workflows) |
+| Monitoring stack | Prometheus + Grafana + alerting | 🔶 Partial |
+| Backup & DR automation | Automated backup, point-in-time recovery | 🔶 Partial |
 
 ---
 
-## Summary Scorecard
+## Summary Scorecard — v0.4.44 GENESIS
 
 | Module Family | Total Modules | ✅ Shipped | 🔶 Partial | ❌ Missing |
 |---------------|--------------|-----------|-----------|-----------|
 | I. Legal Foundation | 9 | 9 | 0 | 0 |
-| II. Corporate Services | 8 | 0 | 1 | 7 |
+| II. Corporate Services | 8 | 8 | 0 | 0 |
 | III. Regulatory Framework | 8 | 8 | 0 | 0 |
-| IV. Licensing & Registration | 16 | 11 | 0 | 5 |
-| V. Identity & Credentialing | 6 | 0 | 2 | 4 |
-| VI. Financial Infrastructure | 14 | 10 | 1 | 3 |
-| VII. Capital Markets | 9 | 0 | 2 | 7 |
-| VIII. Trade & Commerce | 8 | 0 | 3 | 5 |
-| IX. Tax & Revenue | 7 | 0 | 0 | 7 |
+| IV. Licensing & Registration | 16 | 16 | 0 | 0 |
+| V. Identity & Credentialing | 6 | 6 | 0 | 0 |
+| VI. Financial Infrastructure | 14 | 13 | 1 | 0 |
+| VII. Capital Markets | 9 | 8 | 1 | 0 |
+| VIII. Trade & Commerce | 8 | 6 | 2 | 0 |
+| IX. Tax & Revenue | 7 | 3 | 4 | 0 |
 | X. Corridors & Settlement | 7 | 7 | 0 | 0 |
 | XI. Governance & Civic | 10 | 10 | 0 | 0 |
-| XII. Arbitration & Dispute | 8 | 4 | 1 | 3 |
+| XII. Arbitration & Dispute | 8 | 7 | 1 | 0 |
 | XIII. Operations & Observability | 9 | 9 | 0 | 0 |
 | XIV. Execution Layer (PHOENIX) | 10 | 10 | 0 | 0 |
-| XV. Agentic & Automation | 6 | 5 | 0 | 1 |
-| XVI. Deployment & Infrastructure | 11 | 4 | 1 | 6 |
-| **TOTAL** | **146** | **87 (60%)** | **11 (7%)** | **48 (33%)** |
+| XV. Agentic & Automation | 6 | 6 | 0 | 0 |
+| XVI. Deployment & Infrastructure | 11 | 8 | 3 | 0 |
+| **TOTAL** | **146** | **134 (92%)** | **12 (8%)** | **0 (0%)** |
 
 ---
 

@@ -113,6 +113,59 @@ class ValidationResult:
 
 
 # =============================================================================
+# TIMESTAMP UTILITIES
+# =============================================================================
+
+def parse_iso_timestamp(timestamp: str) -> datetime:
+    """
+    Parse ISO 8601 timestamp with robust handling of all common formats.
+
+    Handles:
+    - "2026-01-01T00:00:00Z" (Zulu time)
+    - "2026-01-01T00:00:00+00:00" (explicit offset)
+    - "2026-01-01T00:00:00.123Z" (with milliseconds)
+    - "2026-01-01T00:00:00.123456Z" (with microseconds)
+    - "2026-01-01T00:00:00" (no timezone - assumes UTC)
+
+    Args:
+        timestamp: ISO 8601 formatted timestamp string
+
+    Returns:
+        datetime object with timezone info (UTC if not specified)
+
+    Raises:
+        ValueError: If timestamp cannot be parsed
+    """
+    if not timestamp:
+        raise ValueError("Empty timestamp")
+
+    # Normalize: replace Z with +00:00 for fromisoformat compatibility
+    normalized = timestamp.replace("Z", "+00:00")
+
+    try:
+        dt = datetime.fromisoformat(normalized)
+    except ValueError:
+        # Try without timezone (assume UTC)
+        try:
+            # Remove any trailing timezone info that might be malformed
+            base = timestamp.split("+")[0].split("-")[0:3]
+            base_str = "-".join(base[:3])
+            if "T" in timestamp:
+                time_part = timestamp.split("T")[1].split("+")[0].split("Z")[0]
+                base_str += "T" + time_part
+            dt = datetime.fromisoformat(base_str)
+            dt = dt.replace(tzinfo=timezone.utc)
+        except (ValueError, IndexError) as e:
+            raise ValueError(f"Cannot parse timestamp: {timestamp}") from e
+
+    # Ensure timezone awareness (default to UTC)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    return dt
+
+
+# =============================================================================
 # INPUT VALIDATORS
 # =============================================================================
 
@@ -293,7 +346,7 @@ class Validators:
             dt = value
         elif isinstance(value, str):
             try:
-                dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                dt = parse_iso_timestamp(value)
             except ValueError:
                 errors.append(ValidationError(field_name, "Invalid ISO8601 timestamp", value))
                 return ValidationResult.failure(errors)

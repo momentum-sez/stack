@@ -196,10 +196,7 @@ class AnchorRecord:
     
     def __post_init__(self):
         if not self.submitted_at:
-            object.__setattr__(
-                self, 'submitted_at',
-                datetime.now(timezone.utc).isoformat()
-            )
+            self.submitted_at = datetime.now(timezone.utc).isoformat()
     
     @property
     def is_final(self) -> bool:

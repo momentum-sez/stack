@@ -1,0 +1,220 @@
+# MASS Ownership Primitive
+# Ownership claims, transfers, and encumbrances
+
+module_id: org.momentum.msez.mass-primitives.ownership
+version: 0.1.0
+kind: protocol
+name: MASS Ownership Primitive
+description: |
+  Ownership primitive representing claims to assets, beneficial
+  ownership structures, and ownership transfer mechanisms.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.mass.ownership.direct.v1
+    description: Direct ownership claims
+  - interface: msez.mass.ownership.beneficial.v1
+    description: Beneficial ownership tracking
+  - interface: msez.mass.ownership.fractional.v1
+    description: Fractional ownership management
+
+ownership_types:
+  direct:
+    description: Legal title holder with full rights
+    rights:
+      - possess
+      - use
+      - transfer
+      - encumber
+      - destroy
+    attributes:
+      - owner_entity_id
+      - asset_id
+      - acquisition_date
+      - acquisition_method
+
+  beneficial:
+    description: Economic interest without legal title
+    rights:
+      - receive_income
+      - direct_trustee
+      - request_distribution
+    attributes:
+      - beneficial_owner_id
+      - legal_owner_id
+      - beneficial_percentage
+      - vesting_schedule
+
+  legal:
+    description: Legal title without economic interest
+    duties:
+      - hold_for_beneficiary
+      - follow_instructions
+      - maintain_asset
+    attributes:
+      - legal_owner_id
+      - beneficial_owner_id
+      - fiduciary_agreement_hash
+
+  fractional:
+    description: Divisible ownership shares
+    attributes:
+      - owner_entity_id
+      - asset_id
+      - ownership_units
+      - total_units
+      - unit_class
+    rights_per_unit:
+      - proportional_income
+      - voting_if_applicable
+      - transfer_freely
+
+  joint:
+    types:
+      tenants_in_common:
+        divisible: true
+        survivorship: false
+      joint_tenants:
+        divisible: false
+        survivorship: true
+      community_property:
+        jurisdictions: limited
+        equal_shares: true
+
+  custodial:
+    description: Third-party custody arrangement
+    attributes:
+      - beneficial_owner_id
+      - custodian_id
+      - custody_agreement_hash
+      - segregation_level
+
+encumbrances:
+  types:
+    pledge:
+      description: Security interest with possession
+      creditor_rights:
+        - hold_asset
+        - sell_on_default
+    lien:
+      description: Security interest without possession
+      creditor_rights:
+        - prevent_transfer
+        - force_sale_on_default
+    mortgage:
+      description: Real property security
+      creditor_rights:
+        - foreclosure
+    charge:
+      description: Floating or fixed charge
+      subtypes:
+        - fixed_charge
+        - floating_charge
+
+  priority:
+    rules:
+      - first_in_time
+      - purchase_money_priority
+      - statutory_priority
+    registration:
+      required: true
+      registry: zone_security_registry
+
+operations:
+  claim:
+    description: Assert ownership claim
+    inputs:
+      - claimant_entity_id
+      - asset_id
+      - claim_basis
+      - evidence_hash
+    outputs:
+      - ownership_claim_id
+      - claim_receipt
+    constraints:
+      - valid_entity
+      - valid_asset
+      - no_conflicting_claims
+
+  transfer:
+    description: Transfer ownership
+    inputs:
+      - current_owner_id
+      - new_owner_id
+      - asset_id
+      - transfer_type
+      - consideration
+    outputs:
+      - transfer_receipt
+      - new_ownership_record
+    constraints:
+      - authorized_transferor
+      - no_blocking_encumbrances
+      - consideration_if_required
+
+  encumber:
+    description: Create encumbrance on ownership
+    inputs:
+      - owner_id
+      - creditor_id
+      - asset_id
+      - encumbrance_type
+      - terms
+    outputs:
+      - encumbrance_id
+      - registration_receipt
+    constraints:
+      - owner_consent
+      - priority_determined
+      - registered
+
+  release:
+    description: Release encumbrance
+    inputs:
+      - encumbrance_id
+      - creditor_authorization
+    outputs:
+      - release_receipt
+    constraints:
+      - obligation_satisfied
+      - creditor_authorized
+
+  attest:
+    description: Provide ownership attestation
+    inputs:
+      - ownership_claim_id
+      - attestor_id
+      - attestation_type
+    outputs:
+      - attestation_vc
+    constraints:
+      - authorized_attestor
+      - valid_claim
+
+state_machine:
+  states:
+    - claimed
+    - verified
+    - encumbered
+    - transferred
+    - disputed
+  transitions:
+    claimed_to_verified:
+      trigger: attestation_received
+    verified_to_encumbered:
+      trigger: encumbrance_created
+    encumbered_to_verified:
+      trigger: encumbrance_released
+    any_to_disputed:
+      trigger: dispute_filed
+    disputed_to_verified:
+      trigger: dispute_resolved
+
+schemas:
+  ownership_claim:
+    ref: schemas/mass.ownership.claim.schema.json
+  ownership_transfer:
+    ref: schemas/mass.ownership.transfer.schema.json
+  encumbrance:
+    ref: schemas/mass.ownership.encumbrance.schema.json

@@ -150,11 +150,8 @@ class ProvingKey:
     
     def __post_init__(self):
         if not self.digest:
-            object.__setattr__(
-                self, 'digest',
-                hashlib.sha256(self.key_data).hexdigest()
-            )
-    
+            self.digest = hashlib.sha256(self.key_data).hexdigest()
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "circuit_id": self.circuit_id,
@@ -169,7 +166,7 @@ class ProvingKey:
 class VerificationKey:
     """
     Verification key for a specific circuit.
-    
+
     Contains the elements needed to verify proofs for the circuit.
     Much smaller than the proving key.
     """
@@ -178,13 +175,10 @@ class VerificationKey:
     public_input_count: int
     key_data: bytes  # Serialized verification key
     digest: str = ""
-    
+
     def __post_init__(self):
         if not self.digest:
-            object.__setattr__(
-                self, 'digest',
-                hashlib.sha256(self.key_data).hexdigest()
-            )
+            self.digest = hashlib.sha256(self.key_data).hexdigest()
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -229,8 +223,33 @@ class Witness:
     
     def _to_field_element(self, value: Any) -> FieldElement:
         """Convert a value to a field element."""
-        if isinstance(value, int):
-            return FieldElement(hex(value)[2:].zfill(64))
+        from decimal import Decimal as DecimalType
+
+        if isinstance(value, bool):
+            # Check bool before int since bool is subclass of int
+            return FieldElement.one() if value else FieldElement.zero()
+        elif isinstance(value, int):
+            # Handle negative integers with two's complement in 256-bit field
+            if value < 0:
+                # Two's complement: convert to positive representation in field
+                value = (1 << 256) + value
+            # Ensure value fits in 256 bits
+            value = value % (1 << 256)
+            # Format as 64-character hex (256 bits = 32 bytes = 64 hex chars)
+            hex_str = format(value, '064x')
+            return FieldElement(hex_str)
+        elif isinstance(value, DecimalType):
+            # Convert Decimal to integer (scale by 10^18 for precision)
+            # This is a common pattern for fixed-point arithmetic
+            scaled = int(value * DecimalType("1000000000000000000"))  # 10^18
+            if scaled < 0:
+                scaled = (1 << 256) + scaled
+            scaled = scaled % (1 << 256)
+            hex_str = format(scaled, '064x')
+            return FieldElement(hex_str)
+        elif isinstance(value, float):
+            # Convert float to Decimal then to field element
+            return self._to_field_element(DecimalType(str(value)))
         elif isinstance(value, str):
             # Hash string to field element
             h = hashlib.sha256(value.encode()).hexdigest()
@@ -238,8 +257,6 @@ class Witness:
         elif isinstance(value, bytes):
             h = hashlib.sha256(value).hexdigest()
             return FieldElement(h)
-        elif isinstance(value, bool):
-            return FieldElement.one() if value else FieldElement.zero()
         else:
             raise ValueError(f"Cannot convert {type(value)} to field element")
 
@@ -378,7 +395,8 @@ class CircuitRegistry:
     """
     
     def __init__(self):
-        self._circuits: Dict[str, Circuit] = {}
+        self._circuits: Dict[str, Circuit] = {}  # digest -> Circuit
+        self._circuit_id_to_digest: Dict[str, str] = {}  # circuit_id -> digest
         self._proving_keys: Dict[str, ProvingKey] = {}
         self._verification_keys: Dict[str, VerificationKey] = {}
     
@@ -395,17 +413,29 @@ class CircuitRegistry:
         """
         digest = circuit.digest
         self._circuits[digest] = circuit
-        
+        self._circuit_id_to_digest[circuit.circuit_id] = digest
+
         if proving_key:
             self._proving_keys[digest] = proving_key
         if verification_key:
             self._verification_keys[digest] = verification_key
-        
+
         return digest
     
     def get_circuit(self, digest: str) -> Optional[Circuit]:
         """Retrieve a circuit by digest."""
         return self._circuits.get(digest)
+
+    def get_circuit_by_id(self, circuit_id: str) -> Optional[Circuit]:
+        """Retrieve a circuit by its circuit_id (human-readable name)."""
+        digest = self._circuit_id_to_digest.get(circuit_id)
+        if digest:
+            return self._circuits.get(digest)
+        return None
+
+    def get_digest_by_circuit_id(self, circuit_id: str) -> Optional[str]:
+        """Get the digest for a circuit by its circuit_id."""
+        return self._circuit_id_to_digest.get(circuit_id)
     
     def get_proving_key(self, circuit_digest: str) -> Optional[ProvingKey]:
         """Retrieve proving key for a circuit."""
@@ -497,10 +527,15 @@ class MockProver:
             json.dumps(witness.private_inputs, sort_keys=True).encode()
         ).digest()
         
-        public_inputs = [
-            witness._to_field_element(witness.public_inputs[name])
-            for name in circuit.public_input_names
-        ]
+        public_inputs = []
+        for name in circuit.public_input_names:
+            if name not in witness.public_inputs:
+                raise ValueError(
+                    f"Missing required public input '{name}' in witness. "
+                    f"Circuit requires: {circuit.public_input_names}, "
+                    f"witness provides: {list(witness.public_inputs.keys())}"
+                )
+            public_inputs.append(witness._to_field_element(witness.public_inputs[name]))
         
         # Mock proof is hash of witness || circuit_id
         mock_proof_data = hashlib.sha256(
@@ -708,21 +743,29 @@ class ProofAggregator:
     ) -> bool:
         """
         Verify an aggregated proof.
-        
+
         Returns True iff all individual proofs are valid.
         """
         verifier = MockVerifier()
-        
+
         for proof in aggregated.individual_proofs:
-            circuit = registry.get_circuit(proof.circuit_id)
-            vk = registry.get_verification_key(proof.circuit_id)
-            
-            if not circuit or not vk:
+            # Look up circuit by circuit_id (human-readable name), not digest
+            circuit = registry.get_circuit_by_id(proof.circuit_id)
+            if not circuit:
                 return False
-            
+
+            # Get the circuit digest to look up verification key
+            digest = registry.get_digest_by_circuit_id(proof.circuit_id)
+            if not digest:
+                return False
+
+            vk = registry.get_verification_key(digest)
+            if not vk:
+                return False
+
             if not verifier.verify(circuit, vk, proof):
                 return False
-        
+
         return True
 
 

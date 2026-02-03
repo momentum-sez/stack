@@ -1,0 +1,193 @@
+# Mediation Module
+# Pre-arbitration and standalone mediation workflows
+
+module_id: org.momentum.msez.arbitration.mediation
+version: 0.1.0
+kind: arbitration
+name: Mediation Services
+description: |
+  Facilitative and evaluative mediation services for commercial
+  and civil disputes. Supports pre-arbitration mediation, court-
+  annexed mediation, and standalone mediation proceedings.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.arbitration.mediation.facilitative.v1
+    description: Facilitative mediation services
+  - interface: msez.arbitration.mediation.evaluative.v1
+    description: Evaluative mediation services
+  - interface: msez.arbitration.mediation.online.v1
+    description: Online mediation platform
+  - interface: msez.arbitration.mediation.enforcement.v1
+    description: Settlement agreement enforcement
+
+dependencies:
+  - module_id: org.momentum.msez.legal.dispute-resolution
+    version: ">=0.1.0"
+  - module_id: org.momentum.msez.arbitration.institutions
+    version: ">=0.1.0"
+
+mediation_types:
+  facilitative:
+    description: Mediator facilitates communication without evaluating
+    mediator_role: facilitator
+    outcome_determination: parties
+    typical_disputes:
+      - commercial_contracts
+      - employment
+      - partnership
+      - family_business
+
+  evaluative:
+    description: Mediator provides assessment of merits
+    mediator_role: evaluator
+    opinion_provided: true
+    non_binding: true
+    typical_disputes:
+      - construction
+      - insurance
+      - professional_liability
+      - complex_commercial
+
+  transformative:
+    description: Focus on relationship transformation
+    mediator_role: facilitator
+    emphasis: empowerment_and_recognition
+    typical_disputes:
+      - workplace_conflicts
+      - community_disputes
+      - ongoing_relationships
+
+  med_arb:
+    description: Mediation followed by arbitration if needed
+    hybrid: true
+    sequence:
+      - mediation_first
+      - arbitration_if_no_settlement
+    same_neutral: configurable
+
+institutions:
+  zone_mediation_center:
+    id: zone-mediation-center
+    name: Zone Mediation Center
+    rules: zone_mediation_rules_v1
+    panel_size: 50
+
+  icc_mediation:
+    id: icc-mediation
+    name: ICC Mediation
+    rules: icc_mediation_rules_2014
+    international: true
+
+  cedr:
+    id: cedr
+    name: CEDR
+    rules: cedr_mediation_rules
+    specialty: commercial
+
+procedures:
+  initiation:
+    request_form: true
+    filing_fee_usd: 500
+    response_deadline_days: 14
+    joint_submission_option: true
+
+  mediator_selection:
+    methods:
+      - party_agreement
+      - institution_appointment
+      - list_procedure
+    qualifications:
+      - accredited_mediator
+      - subject_matter_expertise
+      - language_proficiency
+    conflict_check: mandatory
+
+  pre_mediation:
+    preliminary_conference: true
+    document_exchange:
+      optional: true
+      confidential: true
+    position_statements:
+      optional: true
+      page_limit: 10
+
+  mediation_session:
+    format:
+      in_person: true
+      video_conference: true
+      hybrid: true
+    duration:
+      half_day: 4_hours
+      full_day: 8_hours
+      multi_day: as_needed
+    structure:
+      opening_statements: true
+      joint_sessions: true
+      caucuses: true
+      negotiation: true
+
+  settlement:
+    agreement_drafting: mediator_assisted
+    legal_review_recommended: true
+    enforceability:
+      contract: true
+      consent_judgment_option: true
+      singapore_convention: true
+
+confidentiality:
+  scope:
+    all_communications: true
+    documents_exchanged: true
+    mediator_notes: true
+    settlement_terms: configurable
+  exceptions:
+    - court_order
+    - criminal_conduct
+    - child_protection
+    - party_consent
+  privilege:
+    mediation_privilege: true
+    duration: perpetual
+
+costs:
+  administrative_fees:
+    filing: 500
+    case_management_hourly: 150
+  mediator_fees:
+    hourly_rate_range: [300, 800]
+    daily_rate_range: [2000, 5000]
+  allocation:
+    default: equal_split
+    agreement_based: true
+
+online_mediation:
+  platform: secure_video
+  features:
+    - breakout_rooms_for_caucuses
+    - secure_document_sharing
+    - digital_whiteboard
+    - electronic_signature
+    - session_recording_optional
+  technical_requirements:
+    bandwidth_min_mbps: 5
+    encryption: end_to_end
+
+success_metrics:
+  settlement_rate_target: 0.70
+  time_to_resolution_days: 60
+  party_satisfaction_target: 0.85
+
+compliance:
+  domains:
+    - DISPUTE_RESOLUTION
+    - CONFIDENTIALITY
+  standards:
+    - uncitral_mediation_rules
+    - singapore_convention
+    - eu_mediation_directive
+  reporting:
+    - annual_case_statistics
+    - settlement_rates
+    - mediator_evaluations

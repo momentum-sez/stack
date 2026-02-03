@@ -1,0 +1,137 @@
+# Trade / Business License Module
+# General commercial activity permits for zone businesses
+
+module_id: org.momentum.msez.licensing.trade-license
+version: 0.1.0
+kind: licensing
+name: Trade and Business License
+description: |
+  General commercial activity permits enabling businesses to operate
+  within the zone. Covers retail, wholesale, services, manufacturing,
+  and e-commerce activities.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.licensing.trade.retail.v1
+    description: Retail business licensing
+  - interface: msez.licensing.trade.wholesale.v1
+    description: Wholesale and distribution licensing
+  - interface: msez.licensing.trade.services.v1
+    description: Service business licensing
+  - interface: msez.licensing.trade.manufacturing.v1
+    description: Manufacturing and production licensing
+  - interface: msez.licensing.trade.ecommerce.v1
+    description: E-commerce and digital business licensing
+
+dependencies:
+  - module_id: org.momentum.msez.legal.entity-registry
+    version: ">=0.1.0"
+  - module_id: org.momentum.msez.corporate.formation
+    version: ">=0.1.0"
+
+license_types:
+  retail:
+    name: Retail Trade License
+    categories:
+      - general_retail
+      - food_beverage
+      - electronics
+      - fashion_apparel
+      - luxury_goods
+      - pharmacy
+    requirements:
+      premises_required: true
+      fire_safety_certificate: true
+      health_permit_if_food: true
+    fees:
+      application_usd: 500
+      annual_usd: 1000
+    renewal_period_months: 12
+
+  wholesale:
+    name: Wholesale Trade License
+    categories:
+      - general_wholesale
+      - food_distribution
+      - industrial_supplies
+      - consumer_goods
+    requirements:
+      warehouse_required: true
+      inventory_management_system: true
+    fees:
+      application_usd: 1000
+      annual_usd: 2000
+    renewal_period_months: 12
+
+  services:
+    name: Services Trade License
+    categories:
+      - general_services
+      - hospitality
+      - transportation
+      - logistics
+      - maintenance
+      - cleaning
+      - security
+    requirements:
+      varies_by_category: true
+    fees:
+      application_usd: 500
+      annual_usd: 1000
+    renewal_period_months: 12
+
+  manufacturing:
+    name: Manufacturing License
+    categories:
+      - light_manufacturing
+      - heavy_manufacturing
+      - food_processing
+      - pharmaceutical_manufacturing
+      - electronics_assembly
+    requirements:
+      environmental_permit: true
+      occupational_safety_compliance: true
+      waste_management_plan: true
+    fees:
+      application_usd: 2000
+      annual_usd: 5000
+    renewal_period_months: 12
+
+  ecommerce:
+    name: E-Commerce License
+    categories:
+      - b2c_marketplace
+      - b2b_platform
+      - dropshipping
+      - digital_services
+      - saas_provider
+    requirements:
+      data_protection_compliance: true
+      consumer_protection_policy: true
+      payment_gateway_integration: true
+    fees:
+      application_usd: 500
+      annual_usd: 1000
+    renewal_period_months: 12
+
+activity_codes:
+  # ISIC Rev. 4 aligned
+  retail_sale: "47"
+  wholesale_trade: "46"
+  accommodation: "55"
+  food_service: "56"
+  information_technology: "62"
+  manufacturing: "10-33"
+
+compliance:
+  domains:
+    - COMMERCIAL
+    - CONSUMER_PROTECTION
+    - TAX
+  standards:
+    - zone_business_regulations
+    - consumer_rights_act
+  reporting:
+    - annual_turnover_declaration
+    - employee_count_update

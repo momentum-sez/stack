@@ -1,0 +1,250 @@
+# MASS Instruments Primitive
+# Financial and legal instruments
+
+module_id: org.momentum.msez.mass-primitives.instruments
+version: 0.1.0
+kind: protocol
+name: MASS Instruments Primitive
+description: |
+  Instruments primitive representing financial and legal instruments
+  that can be issued, transferred, exercised, and settled.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.mass.instruments.debt.v1
+    description: Debt instruments (bonds, loans, notes)
+  - interface: msez.mass.instruments.equity.v1
+    description: Equity instruments (shares, units)
+  - interface: msez.mass.instruments.derivative.v1
+    description: Derivative instruments (options, futures, swaps)
+
+instrument_types:
+  debt:
+    subtypes:
+      bond:
+        attributes:
+          - issuer_id
+          - principal_amount
+          - coupon_rate
+          - coupon_frequency
+          - maturity_date
+          - seniority
+          - covenants_hash
+        lifecycle:
+          - issuance
+          - coupon_payment
+          - maturity_redemption
+          - early_redemption
+
+      loan:
+        attributes:
+          - lender_id
+          - borrower_id
+          - principal
+          - interest_rate
+          - repayment_schedule
+          - collateral
+        lifecycle:
+          - origination
+          - drawdown
+          - repayment
+          - prepayment
+          - default
+
+      promissory_note:
+        attributes:
+          - maker_id
+          - payee_id
+          - principal
+          - interest_rate
+          - due_date
+        negotiable: true
+
+  equity:
+    subtypes:
+      common_share:
+        attributes:
+          - issuer_id
+          - share_class
+          - par_value
+          - voting_rights
+          - dividend_rights
+        rights:
+          - vote_at_meetings
+          - receive_dividends
+          - participate_in_liquidation
+          - preemption_if_granted
+
+      preferred_share:
+        attributes:
+          - issuer_id
+          - preference_amount
+          - dividend_rate
+          - conversion_terms
+          - redemption_terms
+        rights:
+          - fixed_dividend
+          - liquidation_preference
+          - conversion_if_granted
+
+      partnership_unit:
+        attributes:
+          - partnership_id
+          - unit_class
+          - capital_account
+          - profit_share
+          - loss_share
+        rights:
+          - share_of_profits
+          - share_of_losses
+          - distributions
+
+      fund_unit:
+        attributes:
+          - fund_id
+          - unit_class
+          - nav_per_unit
+          - subscription_date
+        rights:
+          - redemption
+          - distributions
+          - nav_participation
+
+  derivative:
+    subtypes:
+      option:
+        attributes:
+          - underlying_instrument_id
+          - strike_price
+          - expiration_date
+          - option_type  # call/put
+          - exercise_style  # american/european/bermudan
+        lifecycle:
+          - creation
+          - exercise
+          - expiration
+
+      future:
+        attributes:
+          - underlying_instrument_id
+          - contract_size
+          - delivery_date
+          - settlement_type  # physical/cash
+        lifecycle:
+          - creation
+          - margin_calls
+          - settlement
+
+      swap:
+        attributes:
+          - leg_a_terms
+          - leg_b_terms
+          - notional_amount
+          - payment_dates
+          - termination_date
+        types:
+          - interest_rate_swap
+          - currency_swap
+          - credit_default_swap
+          - total_return_swap
+
+  payment:
+    subtypes:
+      check:
+        attributes:
+          - drawer_id
+          - drawee_bank
+          - payee_id
+          - amount
+          - date
+        negotiable: true
+
+      bill_of_exchange:
+        attributes:
+          - drawer_id
+          - drawee_id
+          - payee_id
+          - amount
+          - maturity_date
+        acceptance_required: true
+
+operations:
+  issue:
+    description: Issue new instrument
+    inputs:
+      - issuer_id
+      - instrument_type
+      - terms
+      - initial_holders
+    outputs:
+      - instrument_id
+      - issuance_receipt
+    constraints:
+      - authorized_issuer
+      - valid_terms
+      - regulatory_compliance
+
+  transfer:
+    description: Transfer instrument ownership
+    inputs:
+      - instrument_id
+      - from_holder_id
+      - to_holder_id
+      - units_or_amount
+    outputs:
+      - transfer_receipt
+    constraints:
+      - authorized_transferor
+      - sufficient_holdings
+      - no_transfer_restrictions
+
+  exercise:
+    description: Exercise rights under instrument
+    inputs:
+      - instrument_id
+      - holder_id
+      - exercise_type
+      - exercise_amount
+    outputs:
+      - exercise_receipt
+      - resulting_position
+    constraints:
+      - valid_exercise_period
+      - sufficient_holdings
+      - exercise_conditions_met
+
+  settle:
+    description: Settle instrument obligations
+    inputs:
+      - instrument_id
+      - settlement_amount
+      - settlement_method
+    outputs:
+      - settlement_receipt
+    constraints:
+      - valid_settlement_date
+      - funds_available
+      - delivery_possible
+
+  redeem:
+    description: Redeem instrument for underlying value
+    inputs:
+      - instrument_id
+      - holder_id
+      - redemption_amount
+    outputs:
+      - redemption_receipt
+      - payment_or_delivery
+    constraints:
+      - redemption_permitted
+      - sufficient_holdings
+      - issuer_able_to_pay
+
+schemas:
+  instrument_genesis:
+    ref: schemas/mass.instrument.genesis.schema.json
+  instrument_transfer:
+    ref: schemas/mass.instrument.transfer.schema.json
+  instrument_exercise:
+    ref: schemas/mass.instrument.exercise.schema.json

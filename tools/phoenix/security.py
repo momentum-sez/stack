@@ -104,8 +104,9 @@ class AttestationScope:
     
     def is_valid_at(self, timestamp: datetime) -> bool:
         """Check if scope is valid at given time."""
-        valid_from = datetime.fromisoformat(self.valid_from.replace("Z", "+00:00"))
-        valid_until = datetime.fromisoformat(self.valid_until.replace("Z", "+00:00"))
+        from tools.phoenix.hardening import parse_iso_timestamp
+        valid_from = parse_iso_timestamp(self.valid_from)
+        valid_until = parse_iso_timestamp(self.valid_until)
         return valid_from <= timestamp <= valid_until
 
 
@@ -369,17 +370,19 @@ class TimeLock:
         """Check if operation can now be executed."""
         if self.state != TimeLockState.PENDING:
             return False
-        
+
+        from tools.phoenix.hardening import parse_iso_timestamp
         now = datetime.now(timezone.utc)
-        unlock_time = datetime.fromisoformat(self.unlock_at.replace("Z", "+00:00"))
-        expires_time = datetime.fromisoformat(self.expires_at.replace("Z", "+00:00"))
-        
+        unlock_time = parse_iso_timestamp(self.unlock_at)
+        expires_time = parse_iso_timestamp(self.expires_at)
+
         return unlock_time <= now <= expires_time
-    
+
     def is_expired(self) -> bool:
         """Check if lock has expired."""
+        from tools.phoenix.hardening import parse_iso_timestamp
         now = datetime.now(timezone.utc)
-        expires_time = datetime.fromisoformat(self.expires_at.replace("Z", "+00:00"))
+        expires_time = parse_iso_timestamp(self.expires_at)
         return now > expires_time
 
 
@@ -797,8 +800,8 @@ class AuditLogger:
         if resource_id:
             events = [e for e in events if e.resource_id == resource_id]
         if since:
-            events = [e for e in events if 
-                     datetime.fromisoformat(e.timestamp.replace("Z", "+00:00")) >= since]
+            from tools.phoenix.hardening import parse_iso_timestamp
+            events = [e for e in events if parse_iso_timestamp(e.timestamp) >= since]
         
         return events[-limit:]
     
@@ -937,9 +940,10 @@ class SecureWithdrawalManager:
                 return (False, f"Request in invalid state: {request.state}")
             
             # Check unlock time
+            from tools.phoenix.hardening import parse_iso_timestamp
             now = datetime.now(timezone.utc)
-            unlocks_at = datetime.fromisoformat(request.unlocks_at.replace("Z", "+00:00"))
-            expires_at = datetime.fromisoformat(request.expires_at.replace("Z", "+00:00"))
+            unlocks_at = parse_iso_timestamp(request.unlocks_at)
+            expires_at = parse_iso_timestamp(request.expires_at)
             
             if now < unlocks_at:
                 remaining = (unlocks_at - now).total_seconds() / 3600

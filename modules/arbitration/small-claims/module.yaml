@@ -1,0 +1,157 @@
+# Small Claims Tribunal Module
+# Low-value dispute fast track resolution
+
+module_id: org.momentum.msez.arbitration.small-claims
+version: 0.1.0
+kind: arbitration
+name: Small Claims Tribunal
+description: |
+  Fast-track dispute resolution for low-value claims. Provides
+  simplified procedures, reduced formality, and expedited timelines
+  for consumer and small business disputes.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.arbitration.small-claims.filing.v1
+    description: Simplified claim filing
+  - interface: msez.arbitration.small-claims.hearing.v1
+    description: Streamlined hearing process
+  - interface: msez.arbitration.small-claims.judgment.v1
+    description: Expedited judgment and enforcement
+
+dependencies:
+  - module_id: org.momentum.msez.legal.dispute-resolution
+    version: ">=0.1.0"
+  - module_id: org.momentum.msez.identity.core
+    version: ">=0.1.0"
+
+jurisdiction:
+  monetary_limits:
+    consumer_claims_max_usd: 10000
+    business_claims_max_usd: 25000
+    property_disputes_max_usd: 10000
+
+  eligible_claims:
+    included:
+      - breach_of_contract
+      - consumer_complaints
+      - property_damage
+      - unpaid_invoices
+      - security_deposit_disputes
+      - warranty_claims
+      - service_disputes
+    excluded:
+      - defamation
+      - malicious_prosecution
+      - class_actions
+      - title_to_real_property
+      - probate_matters
+      - family_law
+      - criminal_matters
+
+  parties:
+    plaintiff:
+      individuals: true
+      sole_proprietors: true
+      small_businesses: true
+      corporations_limited: true
+    defendant:
+      any_legal_entity: true
+
+procedures:
+  filing:
+    online_submission: true
+    in_person_available: true
+    filing_fee_usd: 50
+    required_documents:
+      - claim_form
+      - supporting_evidence
+      - identification
+    service_methods:
+      - electronic
+      - registered_mail
+      - personal_service
+
+  pre_hearing:
+    response_deadline_days: 14
+    counterclaim_allowed: true
+    counterclaim_limit: same_as_claim
+    discovery:
+      limited: true
+      document_exchange_only: true
+      no_depositions: true
+    settlement_conference:
+      mandatory: true
+      timing: before_hearing
+
+  hearing:
+    format:
+      in_person: true
+      video_conference: true
+      paper_review: true
+    duration_max_minutes: 60
+    rules_of_evidence:
+      relaxed: true
+      hearsay_admissible: true
+    representation:
+      self_representation_encouraged: true
+      attorneys_allowed: true
+      no_attorney_fees_recoverable: true
+    adjudicator:
+      single_judge: true
+      qualifications: zone_appointed
+
+  judgment:
+    timeline_days: 14
+    written_decision: true
+    reasons_summary: true
+    enforcement:
+      same_as_court_judgment: true
+      garnishment_available: true
+      property_lien: true
+
+  appeals:
+    limited_grounds:
+      - procedural_error
+      - jurisdictional_error
+      - fraud
+    appeal_deadline_days: 30
+    appeal_fee_usd: 100
+    de_novo_review: false
+
+online_dispute_resolution:
+  enabled: true
+  platform_features:
+    - secure_messaging
+    - document_upload
+    - video_hearing
+    - payment_integration
+  asynchronous_proceedings:
+    available: true
+    response_window_hours: 48
+
+costs:
+  filing_fees:
+    claims_under_1000: 25
+    claims_1000_5000: 50
+    claims_5000_10000: 75
+    claims_over_10000: 100
+  recovery:
+    winning_party_recovers_fee: true
+    no_attorney_fees: true
+  fee_waiver:
+    income_based: true
+    threshold: poverty_line_150_pct
+
+compliance:
+  domains:
+    - ACCESS_TO_JUSTICE
+    - CONSUMER_PROTECTION
+  standards:
+    - uncitral_odr_standards
+    - zone_small_claims_rules
+  reporting:
+    - monthly_case_statistics
+    - disposition_times
+    - satisfaction_surveys

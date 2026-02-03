@@ -162,7 +162,7 @@ class MigrationRequest:
         if not self.request_id:
             # Generate deterministic request ID
             content = f"{self.asset_id}:{self.source_jurisdiction}:{self.target_jurisdiction}:{self.created_at}"
-            object.__setattr__(self, 'request_id', hashlib.sha256(content.encode()).hexdigest()[:24])
+            self.request_id = hashlib.sha256(content.encode()).hexdigest()[:24]
     
     def to_dict(self) -> Dict[str, Any]:
         return {

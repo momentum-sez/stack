@@ -1,0 +1,96 @@
+# Insurance Licensing Module
+# Carrier, captive, and broker licensing for zone insurance operations
+
+module_id: org.momentum.msez.licensing.insurance
+version: 0.1.0
+kind: licensing
+name: Insurance Licensing
+description: |
+  Insurance licensing framework covering carriers, captives, reinsurers,
+  and brokers operating within the zone. Supports multiple insurance classes
+  with capital adequacy and solvency requirements.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.licensing.insurance.carrier.v1
+    description: Insurance carrier licensing
+  - interface: msez.licensing.insurance.captive.v1
+    description: Captive insurance company licensing
+  - interface: msez.licensing.insurance.broker.v1
+    description: Insurance broker/agent licensing
+  - interface: msez.licensing.insurance.reinsurer.v1
+    description: Reinsurance company licensing
+
+dependencies:
+  - module_id: org.momentum.msez.legal.core
+    version: ">=0.1.0"
+  - module_id: org.momentum.msez.regulatory.financial-supervision
+    version: ">=0.2.0"
+
+license_types:
+  carrier:
+    name: Insurance Carrier License
+    classes:
+      - life
+      - general
+      - health
+      - property_casualty
+    capital_requirements:
+      life: { min_usd: 5000000, solvency_ratio: 1.5 }
+      general: { min_usd: 2000000, solvency_ratio: 1.25 }
+      health: { min_usd: 3000000, solvency_ratio: 1.5 }
+      property_casualty: { min_usd: 2500000, solvency_ratio: 1.25 }
+    renewal_period_months: 12
+
+  captive:
+    name: Captive Insurance Company License
+    classes:
+      - single_parent
+      - group
+      - association
+      - cell
+    capital_requirements:
+      single_parent: { min_usd: 250000, solvency_ratio: 1.0 }
+      group: { min_usd: 500000, solvency_ratio: 1.0 }
+      association: { min_usd: 750000, solvency_ratio: 1.0 }
+      cell: { min_usd: 100000, solvency_ratio: 1.0 }
+    renewal_period_months: 12
+
+  broker:
+    name: Insurance Broker License
+    classes:
+      - general
+      - life
+      - reinsurance
+    requirements:
+      professional_indemnity_min_usd: 1000000
+      errors_omissions_coverage: true
+      continuing_education_hours: 24
+    renewal_period_months: 12
+
+  reinsurer:
+    name: Reinsurance Company License
+    classes:
+      - treaty
+      - facultative
+      - finite
+    capital_requirements:
+      treaty: { min_usd: 20000000, solvency_ratio: 1.5 }
+      facultative: { min_usd: 10000000, solvency_ratio: 1.25 }
+      finite: { min_usd: 15000000, solvency_ratio: 1.5 }
+    renewal_period_months: 12
+
+compliance:
+  domains:
+    - INSURANCE
+    - AML_CFT
+    - CONSUMER_PROTECTION
+  standards:
+    - iais_core_principles
+    - solvency_ii_equivalent
+    - ifrs_17
+  reporting:
+    - quarterly_solvency_returns
+    - annual_actuarial_certification
+    - claims_statistics

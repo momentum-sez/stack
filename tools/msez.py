@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MSEZ Stack tool (reference implementation) — v0.4.44
+"""MSEZ Stack tool (reference implementation) — v0.4.44 GENESIS
 
 Capabilities:
 - validate modules/profiles/zones against schemas

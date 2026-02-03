@@ -1,0 +1,182 @@
+# Lending / Credit Module
+# Loan origination, servicing, and collections infrastructure
+
+module_id: org.momentum.msez.financial.lending
+version: 0.1.0
+kind: financial
+name: Lending and Credit
+description: |
+  Comprehensive lending infrastructure covering loan origination,
+  underwriting, servicing, collections, and securitization. Supports
+  consumer lending, commercial lending, and alternative credit products.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.financial.lending.origination.v1
+    description: Loan application and origination
+  - interface: msez.financial.lending.underwriting.v1
+    description: Credit underwriting and decisioning
+  - interface: msez.financial.lending.servicing.v1
+    description: Loan servicing and administration
+  - interface: msez.financial.lending.collections.v1
+    description: Collections and recovery
+  - interface: msez.financial.lending.securitization.v1
+    description: Loan securitization and sale
+
+dependencies:
+  - module_id: org.momentum.msez.identity.kyc-tiers
+    version: ">=0.1.0"
+  - module_id: org.momentum.msez.regulatory.consumer-protection
+    version: ">=0.1.0"
+  - module_id: org.momentum.msez.regulatory.aml-cft
+    version: ">=0.1.0"
+
+loan_products:
+  consumer:
+    personal_loan:
+      max_amount_usd: 100000
+      max_term_months: 84
+      interest_rate_type: [fixed, variable]
+      collateral_required: false
+    auto_loan:
+      max_amount_usd: 150000
+      max_term_months: 84
+      interest_rate_type: [fixed]
+      collateral_required: true
+      collateral_type: vehicle
+    mortgage:
+      max_amount_usd: 5000000
+      max_term_months: 360
+      interest_rate_type: [fixed, variable, hybrid]
+      collateral_required: true
+      collateral_type: real_property
+      ltv_max: 0.80
+    credit_card:
+      max_limit_usd: 50000
+      interest_rate_type: [variable]
+      revolving: true
+
+  commercial:
+    term_loan:
+      max_amount_usd: 50000000
+      max_term_months: 120
+      interest_rate_type: [fixed, variable]
+      collateral_types: [real_property, equipment, inventory, receivables]
+    line_of_credit:
+      max_amount_usd: 25000000
+      revolving: true
+      commitment_fee: true
+    equipment_finance:
+      max_amount_usd: 10000000
+      max_term_months: 84
+      collateral_required: true
+      collateral_type: equipment
+    real_estate_finance:
+      max_amount_usd: 100000000
+      max_term_months: 300
+      collateral_required: true
+      collateral_type: real_property
+      ltv_max: 0.75
+
+  alternative:
+    peer_to_peer:
+      max_amount_usd: 50000
+      platform_facilitated: true
+    buy_now_pay_later:
+      max_amount_usd: 5000
+      max_installments: 12
+      interest_free_option: true
+    invoice_financing:
+      advance_rate_max: 0.90
+      recourse: [full, limited, non]
+    merchant_cash_advance:
+      max_amount_usd: 500000
+      repayment_method: revenue_percentage
+
+underwriting:
+  credit_scoring:
+    models:
+      - traditional_credit_bureau
+      - alternative_data
+      - ai_ml_models
+    factors:
+      - payment_history
+      - credit_utilization
+      - length_of_history
+      - credit_mix
+      - new_credit
+    minimum_scores:
+      prime: 720
+      near_prime: 660
+      subprime: 580
+
+  debt_ratios:
+    dti_max: 0.43
+    pti_max: 0.28
+    dscr_min: 1.25
+
+  documentation:
+    full_doc:
+      - income_verification
+      - employment_verification
+      - asset_verification
+    lite_doc:
+      - stated_income
+      - bank_statement_only
+    no_doc:
+      - asset_based_only
+
+servicing:
+  payment_processing:
+    methods: [ach, wire, card, check]
+    grace_period_days: 15
+    late_fee_structure: [flat, percentage]
+  escrow_management:
+    property_tax: true
+    insurance: true
+  statement_generation:
+    frequency: monthly
+    delivery: [mail, email, portal]
+  customer_service:
+    channels: [phone, email, chat, portal]
+
+collections:
+  stages:
+    early:
+      days_past_due: [1, 30]
+      actions: [reminder, call]
+    mid:
+      days_past_due: [31, 60]
+      actions: [demand_letter, payment_plan]
+    late:
+      days_past_due: [61, 90]
+      actions: [acceleration, legal_notice]
+    charge_off:
+      days_past_due: [91, 180]
+      actions: [charge_off, agency_placement, legal_action]
+
+  recovery:
+    workout_options:
+      - payment_plan
+      - loan_modification
+      - forbearance
+      - short_sale
+      - deed_in_lieu
+    foreclosure_timeline_days: 180
+
+compliance:
+  domains:
+    - CONSUMER_LENDING
+    - FAIR_LENDING
+    - AML_CFT
+    - DATA_PRIVACY
+  standards:
+    - tila_equivalent  # Truth in Lending
+    - ecoa_equivalent  # Equal Credit Opportunity
+    - fcra_equivalent  # Fair Credit Reporting
+    - fdcpa_equivalent # Fair Debt Collection
+  reporting:
+    - call_report_quarterly
+    - hmda_equivalent
+    - suspicious_activity_reports

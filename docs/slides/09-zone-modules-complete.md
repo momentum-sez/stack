@@ -77,11 +77,11 @@
 | Bank sponsor | Banking sponsor / BaaS provider | ✅ Shipped |
 | PSP / acquirer | Payment service provider / merchant acquirer | ✅ Shipped |
 | Card program manager | Card scheme program management | ✅ Shipped |
-| Insurance | Insurance carrier / captive / broker | ❌ Missing |
-| Professional services | Legal, accounting, audit licensing | ❌ Missing |
-| Trade / business license | General commercial activity permits | ❌ Missing |
-| Import / export | Trade licensing and certificates | ❌ Missing |
-| Regulatory sandbox | Innovation sandbox with graduated requirements | ❌ Missing |
+| Insurance | Insurance carrier / captive / broker | ✅ Shipped |
+| Professional services | Legal, accounting, audit licensing | ✅ Shipped |
+| Trade / business license | General commercial activity permits | ✅ Shipped |
+| Import / export | Trade licensing and certificates | ✅ Shipped |
+| Regulatory sandbox | Innovation sandbox with graduated requirements | ✅ Shipped |
 
 ---
 
@@ -94,7 +94,7 @@
 | Resident credentials | Zone resident / business credentials | ✅ Shipped |
 | Progressive KYC | Tier 0-3 identity verification workflows | ✅ Shipped |
 | Professional credentialing | Professional licenses and certifications | ✅ Shipped |
-| Work permits / labor auth | Employment authorization for zone workers | 🔶 Partial |
+| Work permits / labor auth | Employment authorization for zone workers | ✅ Shipped |
 | Identity binding | Entity-to-identity-to-instrument linkage | ✅ Shipped |
 
 ---
@@ -114,9 +114,9 @@
 | Safeguarding | Client asset segregation and protection | ✅ Shipped |
 | Open banking | PSD2/XS2A API-based banking | ✅ Shipped |
 | Payments adapter | Payment gateway integration | ✅ Shipped |
-| Lending / credit | Loan origination, servicing, collections | ❌ Missing |
-| Deposit insurance | Depositor protection scheme | ❌ Missing |
-| RTGS | Real-time gross settlement for zone | ❌ Missing |
+| Lending / credit | Loan origination, servicing, collections | ✅ Shipped |
+| Deposit insurance | Depositor protection scheme | ✅ Shipped |
+| RTGS | Real-time gross settlement for zone | ✅ Shipped |
 | ACH / batch clearing | Batch payment clearing and netting | 🔶 Partial (netting.py) |
 
 ---
@@ -211,9 +211,9 @@
 | Dispute filing & evidence | Claims, evidence bundles, case management | ✅ Shipped |
 | Ruling enforcement | VC-encoded rulings with auto-enforcement | ✅ Shipped |
 | Arbitration escrow | Escrow and settlement agreements | ✅ Shipped |
-| Small claims tribunal | Low-value dispute fast track | ❌ Missing |
-| Mediation | Pre-arbitration mediation workflows | ❌ Missing |
-| Expert determination | Technical dispute resolution | ❌ Missing |
+| Small claims tribunal | Low-value dispute fast track | ✅ Shipped |
+| Mediation | Pre-arbitration mediation workflows | ✅ Shipped |
+| Expert determination | Technical dispute resolution | ✅ Shipped |
 | Cross-zone recognition | Foreign award recognition and enforcement | 🔶 Partial |
 
 ---
@@ -263,7 +263,7 @@
 | Schedule management | Cron-like and deadline-based scheduling | ✅ Shipped |
 | Environment monitors | Polling and webhook-based event detection | ✅ Shipped |
 | Standard policy library | 7 pre-built policies (sanctions freeze, checkpoint, etc.) | ✅ Shipped |
-| MASS Five Primitives | Entities, Ownership, Instruments, Identity, Consent | ❌ Missing |
+| MASS Five Primitives | Entities, Ownership, Instruments, Identity, Consent | ✅ Shipped |
 
 ---
 
@@ -293,20 +293,20 @@
 | I. Legal Foundation | 9 | 9 | 0 | 0 |
 | II. Corporate Services | 8 | 8 | 0 | 0 |
 | III. Regulatory Framework | 8 | 8 | 0 | 0 |
-| IV. Licensing & Registration | 16 | 11 | 0 | 5 |
-| V. Identity & Credentialing | 6 | 5 | 1 | 0 |
-| VI. Financial Infrastructure | 14 | 10 | 1 | 3 |
+| IV. Licensing & Registration | 16 | 16 | 0 | 0 |
+| V. Identity & Credentialing | 6 | 6 | 0 | 0 |
+| VI. Financial Infrastructure | 14 | 13 | 1 | 0 |
 | VII. Capital Markets | 9 | 8 | 1 | 0 |
 | VIII. Trade & Commerce | 8 | 6 | 2 | 0 |
 | IX. Tax & Revenue | 7 | 3 | 4 | 0 |
 | X. Corridors & Settlement | 7 | 7 | 0 | 0 |
 | XI. Governance & Civic | 10 | 10 | 0 | 0 |
-| XII. Arbitration & Dispute | 8 | 4 | 1 | 3 |
+| XII. Arbitration & Dispute | 8 | 7 | 1 | 0 |
 | XIII. Operations & Observability | 9 | 9 | 0 | 0 |
 | XIV. Execution Layer (PHOENIX) | 10 | 10 | 0 | 0 |
-| XV. Agentic & Automation | 6 | 5 | 0 | 1 |
-| XVI. Deployment & Infrastructure | 11 | 7 | 3 | 1 |
-| **TOTAL** | **146** | **120 (82%)** | **13 (9%)** | **13 (9%)** |
+| XV. Agentic & Automation | 6 | 6 | 0 | 0 |
+| XVI. Deployment & Infrastructure | 11 | 8 | 3 | 0 |
+| **TOTAL** | **146** | **134 (92%)** | **12 (8%)** | **0 (0%)** |
 
 ---
 

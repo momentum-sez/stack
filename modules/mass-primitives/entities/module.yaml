@@ -1,0 +1,182 @@
+# MASS Entities Primitive
+# Legal and natural entity representation
+
+module_id: org.momentum.msez.mass-primitives.entities
+version: 0.1.0
+kind: protocol
+name: MASS Entities Primitive
+description: |
+  Entities primitive representing legal persons, natural persons,
+  and organizational structures that can hold rights and obligations.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.mass.entities.natural.v1
+    description: Natural person entities
+  - interface: msez.mass.entities.legal.v1
+    description: Legal entity representation
+  - interface: msez.mass.entities.trust.v1
+    description: Trust and fiduciary structures
+
+entity_types:
+  natural_person:
+    attributes:
+      - did: string  # Decentralized identifier
+      - kyc_level: enum[0,1,2,3]
+      - jurisdictions: list[jurisdiction_id]
+      - date_of_birth: date  # Hashed or ZK-proven
+      - nationality: list[iso_country]
+    capabilities:
+      - hold_assets
+      - sign_transactions
+      - grant_consent
+      - receive_payments
+
+  legal_entity:
+    subtypes:
+      corporation:
+        attributes:
+          - registration_number
+          - jurisdiction
+          - incorporation_date
+          - authorized_capital
+          - directors
+          - shareholders
+      partnership:
+        attributes:
+          - registration_number
+          - jurisdiction
+          - partners
+          - capital_contributions
+      llc:
+        attributes:
+          - registration_number
+          - jurisdiction
+          - members
+          - operating_agreement_hash
+    capabilities:
+      - hold_assets
+      - sign_transactions
+      - employ_persons
+      - enter_contracts
+
+  trust:
+    attributes:
+      - trust_deed_hash
+      - settlor
+      - trustees
+      - beneficiaries
+      - protector
+      - jurisdiction
+      - purpose
+    subtypes:
+      - discretionary
+      - fixed
+      - charitable
+      - purpose
+    capabilities:
+      - hold_assets
+      - distribute_income
+      - appoint_trustees
+
+  fund:
+    attributes:
+      - fund_manager
+      - custodian
+      - administrator
+      - investors
+      - nav_currency
+      - strategy
+    subtypes:
+      - open_ended
+      - closed_ended
+      - hedge_fund
+      - private_equity
+      - venture_capital
+    capabilities:
+      - pool_capital
+      - invest_assets
+      - distribute_returns
+
+operations:
+  register:
+    description: Register a new entity
+    inputs:
+      - entity_type
+      - attributes
+      - supporting_documents_hash
+    outputs:
+      - entity_id
+      - registration_receipt
+    constraints:
+      - unique_identifier
+      - valid_jurisdiction
+      - required_attributes_present
+
+  update:
+    description: Update entity attributes
+    inputs:
+      - entity_id
+      - updated_attributes
+      - authorization_proof
+    outputs:
+      - update_receipt
+    constraints:
+      - entity_exists
+      - authorized_updater
+      - immutable_fields_unchanged
+
+  dissolve:
+    description: Dissolve or deregister an entity
+    inputs:
+      - entity_id
+      - dissolution_reason
+      - authorization_proof
+    outputs:
+      - dissolution_receipt
+    constraints:
+      - no_outstanding_obligations
+      - proper_authorization
+      - wind_down_complete
+
+  merge:
+    description: Merge two entities
+    inputs:
+      - source_entities
+      - target_entity_attributes
+      - merger_agreement_hash
+    outputs:
+      - merged_entity_id
+      - merger_receipt
+    constraints:
+      - compatible_entity_types
+      - authorized_by_all_parties
+      - regulatory_approval
+
+state_machine:
+  states:
+    - draft
+    - pending_registration
+    - active
+    - suspended
+    - dissolved
+  transitions:
+    draft_to_pending:
+      trigger: submit_registration
+    pending_to_active:
+      trigger: registration_approved
+    active_to_suspended:
+      trigger: regulatory_action
+    suspended_to_active:
+      trigger: suspension_lifted
+    active_to_dissolved:
+      trigger: dissolution_approved
+
+schemas:
+  entity_genesis:
+    ref: schemas/mass.entity.genesis.schema.json
+  entity_update:
+    ref: schemas/mass.entity.update.schema.json
+  entity_receipt:
+    ref: schemas/mass.entity.receipt.schema.json

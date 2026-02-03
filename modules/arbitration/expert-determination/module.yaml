@@ -1,0 +1,209 @@
+# Expert Determination Module
+# Technical dispute resolution by subject matter experts
+
+module_id: org.momentum.msez.arbitration.expert-determination
+version: 0.1.0
+kind: arbitration
+name: Expert Determination
+description: |
+  Binding or non-binding determination of technical disputes by
+  independent experts. Suitable for valuation disputes, technical
+  disagreements, and specialized subject matter requiring domain
+  expertise.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.arbitration.expert.valuation.v1
+    description: Valuation dispute determination
+  - interface: msez.arbitration.expert.technical.v1
+    description: Technical dispute determination
+  - interface: msez.arbitration.expert.accounting.v1
+    description: Accounting dispute determination
+  - interface: msez.arbitration.expert.construction.v1
+    description: Construction dispute determination
+
+dependencies:
+  - module_id: org.momentum.msez.legal.dispute-resolution
+    version: ">=0.1.0"
+  - module_id: org.momentum.msez.licensing.professional-services
+    version: ">=0.1.0"
+
+determination_types:
+  valuation:
+    typical_disputes:
+      - share_valuation
+      - business_valuation
+      - property_valuation
+      - earn_out_calculations
+      - completion_account_disputes
+    expert_qualifications:
+      - chartered_valuer
+      - cfa_charterholder
+      - certified_business_appraiser
+    binding: typically_yes
+
+  technical:
+    typical_disputes:
+      - software_specifications
+      - engineering_standards
+      - manufacturing_quality
+      - patent_validity
+      - technology_performance
+    expert_qualifications:
+      - domain_specific_certification
+      - professional_engineer
+      - technical_specialist
+    binding: configurable
+
+  accounting:
+    typical_disputes:
+      - completion_accounts
+      - working_capital_adjustments
+      - profit_calculations
+      - warranty_claims
+      - earn_out_metrics
+    expert_qualifications:
+      - chartered_accountant
+      - cpa
+      - forensic_accountant
+    binding: typically_yes
+
+  construction:
+    typical_disputes:
+      - defects_assessment
+      - delay_analysis
+      - variation_valuation
+      - extension_of_time
+      - quantum_disputes
+    expert_qualifications:
+      - quantity_surveyor
+      - construction_manager
+      - delay_analyst
+    binding: configurable
+
+procedures:
+  initiation:
+    agreement_reference: true
+    standalone_agreement: true
+    court_referral: true
+    required_elements:
+      - scope_of_determination
+      - binding_or_advisory
+      - expert_qualifications
+      - timeline
+
+  expert_appointment:
+    methods:
+      party_agreement:
+        joint_nomination: true
+        list_procedure: true
+      appointing_authority:
+        institution: zone_expert_panel
+        criteria_based: true
+    conflict_check:
+      disclosure_required: true
+      challenge_procedure: true
+    replacement:
+      grounds: [conflict, incapacity, failure_to_act]
+      appointing_authority_decides: true
+
+  procedure:
+    flexibility: high
+    typical_steps:
+      - terms_of_reference
+      - document_submission
+      - information_requests
+      - site_visits_if_needed
+      - draft_determination_optional
+      - final_determination
+    representation:
+      parties_may_be_assisted: true
+      legal_counsel_optional: true
+    hearings:
+      at_expert_discretion: true
+      typically_document_based: true
+
+  determination:
+    form: written_with_reasons
+    timeline_typical_days: 30_to_90
+    content:
+      - issues_determined
+      - methodology_applied
+      - calculations_shown
+      - conclusion
+    finality:
+      binding: per_agreement
+      challenge_grounds_limited:
+        - fraud
+        - material_error
+        - procedural_irregularity
+
+legal_framework:
+  contractual_basis: true
+  statutory_recognition: zone_expert_determination_act
+  enforcement:
+    as_contract: true
+    specific_performance: available
+    damages_for_breach: available
+
+  challenge:
+    grounds:
+      - fraud_or_collusion
+      - manifest_error
+      - excess_of_authority
+      - serious_procedural_irregularity
+    time_limit_days: 28
+    forum: zone_courts
+
+costs:
+  expert_fees:
+    hourly_rate_range: [400, 1200]
+    daily_rate_range: [3000, 8000]
+  administrative_fees:
+    appointing_authority: 1000
+  allocation:
+    as_agreed: true
+    expert_determines: true
+    equal_default: true
+
+expert_panels:
+  zone_expert_panel:
+    domains:
+      - valuation
+      - accounting
+      - construction
+      - technology
+      - engineering
+      - financial
+    qualification_requirements:
+      - minimum_10_years_experience
+      - professional_certification
+      - no_conflicts_of_interest
+      - insurance_coverage
+
+  specialist_institutions:
+    - rics_drs  # Royal Institution of Chartered Surveyors
+    - aicpa_forensic  # AICPA Forensic and Valuation
+    - ice_adjudication  # Institution of Civil Engineers
+
+confidentiality:
+  proceedings_confidential: true
+  determination_confidential: true
+  exceptions:
+    - enforcement_proceedings
+    - challenge_proceedings
+    - regulatory_disclosure
+
+compliance:
+  domains:
+    - DISPUTE_RESOLUTION
+    - PROFESSIONAL_STANDARDS
+  standards:
+    - rics_expert_determination
+    - tecbar_expert_rules
+    - zone_expert_rules
+  reporting:
+    - annual_appointment_statistics
+    - determination_outcomes
+    - challenge_rates

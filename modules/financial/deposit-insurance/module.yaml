@@ -1,0 +1,166 @@
+# Deposit Insurance Module
+# Depositor protection scheme for zone financial institutions
+
+module_id: org.momentum.msez.financial.deposit-insurance
+version: 0.1.0
+kind: financial
+name: Deposit Insurance
+description: |
+  Depositor protection scheme providing insurance coverage for
+  eligible deposits held at zone financial institutions. Implements
+  risk-based premium assessment and resolution framework.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.financial.deposit-insurance.coverage.v1
+    description: Deposit coverage determination
+  - interface: msez.financial.deposit-insurance.premium.v1
+    description: Risk-based premium assessment
+  - interface: msez.financial.deposit-insurance.payout.v1
+    description: Depositor payout processing
+  - interface: msez.financial.deposit-insurance.resolution.v1
+    description: Failed institution resolution
+
+dependencies:
+  - module_id: org.momentum.msez.regulatory.financial-supervision
+    version: ">=0.2.0"
+  - module_id: org.momentum.msez.financial.domestic-banking
+    version: ">=0.1.0"
+
+coverage:
+  standard_coverage:
+    per_depositor_per_institution_usd: 250000
+    joint_accounts:
+      separate_coverage: true
+      per_co_owner: true
+    trust_accounts:
+      per_beneficiary: true
+      max_beneficiaries: 5
+
+  eligible_deposits:
+    included:
+      - checking_accounts
+      - savings_accounts
+      - money_market_deposit_accounts
+      - certificates_of_deposit
+      - negotiable_order_of_withdrawal
+    excluded:
+      - investment_products
+      - mutual_funds
+      - annuities
+      - life_insurance
+      - stocks_bonds
+      - cryptocurrency
+
+  ownership_categories:
+    - single_ownership
+    - joint_ownership
+    - revocable_trust
+    - irrevocable_trust
+    - employee_benefit_plan
+    - corporation_partnership
+    - government_accounts
+
+premium_assessment:
+  base_rate_bps: 5  # 0.05% of insured deposits
+  risk_adjustment:
+    categories:
+      well_capitalized:
+        capital_ratio_min: 0.10
+        adjustment_factor: 0.80
+      adequately_capitalized:
+        capital_ratio_min: 0.08
+        adjustment_factor: 1.00
+      undercapitalized:
+        capital_ratio_min: 0.06
+        adjustment_factor: 1.50
+      significantly_undercapitalized:
+        capital_ratio_min: 0.04
+        adjustment_factor: 2.00
+      critically_undercapitalized:
+        capital_ratio_max: 0.04
+        adjustment_factor: 3.00
+
+  supervisory_ratings:
+    composite_1:
+      adjustment_factor: 0.90
+    composite_2:
+      adjustment_factor: 1.00
+    composite_3:
+      adjustment_factor: 1.25
+    composite_4:
+      adjustment_factor: 1.75
+    composite_5:
+      adjustment_factor: 2.50
+
+  assessment_frequency: quarterly
+  payment_due_days: 30
+
+fund_management:
+  target_fund_ratio: 0.0135  # 1.35% of insured deposits
+  minimum_fund_ratio: 0.01
+  designated_reserve_ratio: 0.02
+  investment_policy:
+    permitted_investments:
+      - government_securities
+      - agency_securities
+      - high_grade_corporate_bonds
+    duration_limit_years: 5
+    credit_quality_min: AA
+
+resolution_framework:
+  triggers:
+    - capital_ratio_below: 0.02
+    - unable_to_meet_obligations: true
+    - unsafe_unsound_condition: true
+
+  resolution_methods:
+    purchase_and_assumption:
+      preferred: true
+      acquirer_assumption:
+        - deposits
+        - assets
+        - liabilities
+    deposit_payoff:
+      direct_payment: true
+      transferred_deposits: false
+    bridge_institution:
+      temporary_operation: true
+      max_duration_years: 2
+    liquidation:
+      last_resort: true
+      asset_disposition: true
+
+  least_cost_resolution:
+    requirement: true
+    comparison_basis: present_value
+    systemic_risk_exception:
+      board_determination: true
+      treasury_concurrence: true
+
+payout_process:
+  notification:
+    depositor_notice_days: 2
+    claim_deadline_months: 18
+  verification:
+    ownership_determination: true
+    hold_set_off_analysis: true
+  payment:
+    methods:
+      - check
+      - wire_transfer
+      - transfer_to_new_account
+    target_days: 3
+
+compliance:
+  domains:
+    - DEPOSITOR_PROTECTION
+    - FINANCIAL_STABILITY
+  standards:
+    - iadi_core_principles
+    - fsb_key_attributes
+  reporting:
+    - quarterly_deposit_reports
+    - annual_fund_adequacy
+    - resolution_readiness_assessment

@@ -1,0 +1,267 @@
+# MASS Consent Primitive
+# Consent management and delegation
+
+module_id: org.momentum.msez.mass-primitives.consent
+version: 0.1.0
+kind: protocol
+name: MASS Consent Primitive
+description: |
+  Consent primitive for managing permissions, authorizations, and
+  delegations. Implements granular consent with audit trail and
+  revocation capabilities.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.mass.consent.transaction.v1
+    description: Transaction consent management
+  - interface: msez.mass.consent.data.v1
+    description: Data processing consent
+  - interface: msez.mass.consent.delegation.v1
+    description: Authority delegation
+
+consent_types:
+  transaction:
+    description: Authorization for specific transactions
+    scopes:
+      single_transaction:
+        description: One-time consent for specific transaction
+        attributes:
+          - transaction_id
+          - amount
+          - counterparty
+          - expiry
+      recurring:
+        description: Standing consent for recurring transactions
+        attributes:
+          - transaction_type
+          - max_amount
+          - frequency
+          - counterparty
+          - valid_until
+      threshold:
+        description: Consent required above threshold
+        attributes:
+          - amount_threshold
+          - requires_approval_from
+          - approval_quorum
+
+  data:
+    description: Consent for data collection and processing
+    purposes:
+      - kyc_verification
+      - credit_assessment
+      - marketing
+      - analytics
+      - regulatory_reporting
+      - third_party_sharing
+    attributes:
+      - data_categories
+      - processing_purposes
+      - data_recipients
+      - retention_period
+      - cross_border_transfer
+    rights:
+      - access
+      - rectification
+      - erasure
+      - portability
+      - object
+
+  delegation:
+    description: Delegation of authority to act
+    types:
+      power_of_attorney:
+        scope: broad
+        formality: high
+        revocable: true
+      specific_authorization:
+        scope: narrow
+        formality: medium
+        revocable: true
+      sub_delegation:
+        allowed_if: explicitly_permitted
+        chain_limit: 2
+
+  standing:
+    description: Pre-approved consent for defined scenarios
+    triggers:
+      - condition_based
+      - time_based
+      - event_based
+    constraints:
+      - max_amount
+      - valid_period
+      - counterparty_whitelist
+
+consent_lifecycle:
+  states:
+    - draft
+    - requested
+    - granted
+    - active
+    - suspended
+    - revoked
+    - expired
+
+  transitions:
+    draft_to_requested:
+      trigger: submit_request
+      actor: requestor
+    requested_to_granted:
+      trigger: approve
+      actor: grantor
+    requested_to_rejected:
+      trigger: reject
+      actor: grantor
+    granted_to_active:
+      trigger: acceptance
+      conditions: all_conditions_met
+    active_to_suspended:
+      trigger: suspend
+      actor: grantor_or_system
+    suspended_to_active:
+      trigger: reinstate
+      actor: grantor
+    active_to_revoked:
+      trigger: revoke
+      actor: grantor
+    active_to_expired:
+      trigger: expiry_date_reached
+      automatic: true
+
+operations:
+  grant:
+    description: Grant consent
+    inputs:
+      - grantor_id
+      - grantee_id
+      - consent_type
+      - scope
+      - duration
+      - conditions
+    outputs:
+      - consent_id
+      - consent_credential
+    constraints:
+      - grantor_authorized
+      - valid_scope
+      - conditions_satisfiable
+
+  revoke:
+    description: Revoke granted consent
+    inputs:
+      - consent_id
+      - grantor_id
+      - revocation_reason
+      - effective_date
+    outputs:
+      - revocation_receipt
+    constraints:
+      - consent_exists
+      - grantor_authorized
+      - revocable_consent
+
+  delegate:
+    description: Delegate consent authority
+    inputs:
+      - consent_id
+      - delegator_id
+      - delegate_id
+      - delegation_scope
+      - sub_delegation_allowed
+    outputs:
+      - delegation_id
+      - delegation_credential
+    constraints:
+      - consent_allows_delegation
+      - delegation_chain_valid
+      - scope_within_original
+
+  verify:
+    description: Verify consent for action
+    inputs:
+      - consent_id
+      - action_details
+      - requestor_id
+    outputs:
+      - verification_result
+      - applicable_constraints
+    constraints:
+      - consent_active
+      - action_within_scope
+      - conditions_satisfied
+
+  audit:
+    description: Retrieve consent audit trail
+    inputs:
+      - consent_id
+      - time_range
+      - event_types
+    outputs:
+      - audit_events
+    constraints:
+      - authorized_auditor
+      - consent_exists
+
+audit_trail:
+  events:
+    - consent_requested
+    - consent_granted
+    - consent_rejected
+    - consent_used
+    - consent_modified
+    - consent_suspended
+    - consent_revoked
+    - consent_expired
+    - delegation_created
+    - delegation_revoked
+
+  retention:
+    active_consent: indefinite
+    revoked_consent_years: 7
+    audit_events_years: 10
+
+verification:
+  real_time:
+    description: Verify consent before action
+    latency_target_ms: 50
+    cache_enabled: true
+
+  batch:
+    description: Bulk verification for reporting
+    async: true
+    result_format: structured
+
+  cryptographic:
+    description: Verify consent credential signature
+    methods:
+      - ed25519
+      - secp256k1
+      - bls
+
+multi_party:
+  joint_consent:
+    description: Consent required from multiple parties
+    threshold_types:
+      - all_required
+      - majority
+      - weighted_threshold
+    collection:
+      - parallel
+      - sequential
+
+  collective_consent:
+    description: Consent on behalf of group
+    delegation_from_group: true
+    binding_on_members: true
+
+schemas:
+  consent_request:
+    ref: schemas/mass.consent.request.schema.json
+  consent_grant:
+    ref: schemas/mass.consent.grant.schema.json
+  consent_verification:
+    ref: schemas/mass.consent.verification.schema.json
+  delegation:
+    ref: schemas/mass.consent.delegation.schema.json

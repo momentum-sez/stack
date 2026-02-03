@@ -1,0 +1,130 @@
+# Professional Services Licensing Module
+# Legal, accounting, audit, and advisory licensing
+
+module_id: org.momentum.msez.licensing.professional-services
+version: 0.1.0
+kind: licensing
+name: Professional Services Licensing
+description: |
+  Licensing framework for professional service providers including
+  law firms, accounting practices, audit firms, tax advisors, and
+  management consultants operating within the zone.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.licensing.professional.legal.v1
+    description: Law firm and legal practitioner licensing
+  - interface: msez.licensing.professional.accounting.v1
+    description: Accounting and bookkeeping firm licensing
+  - interface: msez.licensing.professional.audit.v1
+    description: Audit firm licensing with independence requirements
+  - interface: msez.licensing.professional.tax.v1
+    description: Tax advisory and preparation licensing
+  - interface: msez.licensing.professional.consulting.v1
+    description: Management and business consulting licensing
+
+dependencies:
+  - module_id: org.momentum.msez.legal.core
+    version: ">=0.1.0"
+  - module_id: org.momentum.msez.identity.credentials
+    version: ">=0.1.0"
+
+license_types:
+  legal_firm:
+    name: Law Firm License
+    requirements:
+      - qualified_lawyers_min: 1
+      - professional_indemnity_min_usd: 2000000
+      - bar_admission_required: true
+      - continuing_legal_education_hours: 40
+    practice_areas:
+      - corporate
+      - litigation
+      - regulatory
+      - intellectual_property
+      - employment
+      - real_estate
+      - tax
+    renewal_period_months: 12
+
+  accounting_firm:
+    name: Accounting Firm License
+    requirements:
+      - qualified_accountants_min: 1
+      - professional_indemnity_min_usd: 1000000
+      - cpa_equivalent_required: true
+      - continuing_professional_education_hours: 40
+    service_categories:
+      - bookkeeping
+      - financial_statements
+      - management_accounting
+      - forensic_accounting
+      - valuation
+    renewal_period_months: 12
+
+  audit_firm:
+    name: Audit Firm License
+    requirements:
+      - qualified_auditors_min: 2
+      - professional_indemnity_min_usd: 5000000
+      - independence_policies_required: true
+      - peer_review_frequency_years: 3
+      - quality_control_manual: true
+    audit_types:
+      - statutory_audit
+      - internal_audit
+      - forensic_audit
+      - compliance_audit
+      - it_audit
+    independence_rules:
+      rotation_period_years: 7
+      cooling_off_period_years: 2
+      prohibited_services_during_engagement:
+        - bookkeeping
+        - financial_system_design
+        - actuarial_services
+        - internal_audit_outsourcing
+        - management_functions
+        - legal_services
+    renewal_period_months: 12
+
+  tax_advisory:
+    name: Tax Advisory License
+    requirements:
+      - qualified_tax_professionals_min: 1
+      - professional_indemnity_min_usd: 1000000
+      - enrolled_agent_or_equivalent: true
+    service_scope:
+      - tax_planning
+      - tax_compliance
+      - transfer_pricing
+      - international_tax
+      - vat_gst_advisory
+    renewal_period_months: 12
+
+  consulting:
+    name: Management Consulting License
+    requirements:
+      - professional_indemnity_min_usd: 500000
+    service_categories:
+      - strategy
+      - operations
+      - technology
+      - human_resources
+      - financial_advisory
+    renewal_period_months: 12
+
+compliance:
+  domains:
+    - PROFESSIONAL_CONDUCT
+    - AML_CFT
+    - DATA_PRIVACY
+  standards:
+    - iesba_code_of_ethics
+    - isqm_1_quality_management
+    - gdpr_equivalent
+  reporting:
+    - annual_practice_review
+    - client_money_handling_audit
+    - complaints_register

@@ -1,0 +1,167 @@
+# MASS Five Primitives Module Family
+# Core primitives from MASS Protocol specification
+
+module_id: org.momentum.msez.mass-primitives
+version: 0.1.0
+kind: protocol
+name: MASS Five Primitives
+description: |
+  Implementation of the five core primitives from the MASS Protocol:
+  Entities, Ownership, Instruments, Identity, and Consent. These
+  primitives form the foundational layer for Smart Asset operations.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.mass.entities.v1
+    description: Legal and natural entity representation
+  - interface: msez.mass.ownership.v1
+    description: Ownership claims and transfers
+  - interface: msez.mass.instruments.v1
+    description: Financial and legal instruments
+  - interface: msez.mass.identity.v1
+    description: Decentralized identity and verification
+  - interface: msez.mass.consent.v1
+    description: Consent management and delegation
+
+dependencies:
+  - module_id: org.momentum.msez.legal.entity-registry
+    version: ">=0.1.0"
+  - module_id: org.momentum.msez.identity.core
+    version: ">=0.1.0"
+
+submodules:
+  - entities
+  - ownership
+  - instruments
+  - identity
+  - consent
+
+primitives:
+  entities:
+    description: |
+      Represents legal and natural persons that can hold rights,
+      enter obligations, and participate in transactions.
+    types:
+      - natural_person
+      - legal_entity
+      - trust
+      - partnership
+      - fund
+      - special_purpose_vehicle
+    attributes:
+      - identifier
+      - jurisdiction
+      - formation_date
+      - status
+      - governance_structure
+    operations:
+      - register
+      - update
+      - dissolve
+      - merge
+      - split
+
+  ownership:
+    description: |
+      Represents claims to assets, including fractional ownership,
+      beneficial ownership, and ownership chains.
+    types:
+      - direct_ownership
+      - beneficial_ownership
+      - legal_ownership
+      - fractional_ownership
+      - joint_ownership
+      - custodial_holding
+    attributes:
+      - owner_entity
+      - asset_reference
+      - ownership_percentage
+      - restrictions
+      - encumbrances
+    operations:
+      - claim
+      - transfer
+      - encumber
+      - release
+      - attest
+
+  instruments:
+    description: |
+      Represents financial and legal instruments that can be
+      created, transferred, and settled.
+    types:
+      - debt_instrument
+      - equity_instrument
+      - derivative_instrument
+      - payment_instrument
+      - insurance_instrument
+      - contract_instrument
+    attributes:
+      - instrument_id
+      - issuer
+      - terms
+      - underlying
+      - maturity
+    operations:
+      - issue
+      - transfer
+      - exercise
+      - settle
+      - redeem
+
+  identity:
+    description: |
+      Represents verifiable identity with progressive disclosure
+      and privacy-preserving verification.
+    types:
+      - decentralized_identifier
+      - verifiable_credential
+      - attestation
+      - authorization
+    attributes:
+      - did
+      - verification_methods
+      - credentials
+      - authorizations
+    operations:
+      - create
+      - update
+      - revoke
+      - verify
+      - delegate
+
+  consent:
+    description: |
+      Represents permissions and consents for data usage,
+      transaction authorization, and delegation.
+    types:
+      - transaction_consent
+      - data_consent
+      - delegation_consent
+      - standing_consent
+    attributes:
+      - grantor
+      - grantee
+      - scope
+      - duration
+      - conditions
+    operations:
+      - grant
+      - revoke
+      - delegate
+      - verify
+      - audit
+
+compliance:
+  domains:
+    - MASS_PROTOCOL
+    - SMART_ASSETS
+    - COMPLIANCE
+  standards:
+    - mass_protocol_v0.2
+    - w3c_did
+    - w3c_vc
+  reporting:
+    - primitive_usage_statistics
+    - cross_primitive_integrity

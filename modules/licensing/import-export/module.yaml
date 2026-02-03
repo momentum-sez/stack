@@ -1,0 +1,147 @@
+# Import / Export Licensing Module
+# Trade licensing and certificates for cross-border commerce
+
+module_id: org.momentum.msez.licensing.import-export
+version: 0.1.0
+kind: licensing
+name: Import Export License
+description: |
+  Import and export licensing for businesses engaged in international
+  trade. Covers general trade licenses, specific commodity permits,
+  and compliance with customs and trade control regulations.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.licensing.trade.importer.v1
+    description: General import license
+  - interface: msez.licensing.trade.exporter.v1
+    description: General export license
+  - interface: msez.licensing.trade.customs-broker.v1
+    description: Customs brokerage license
+  - interface: msez.licensing.trade.freight-forwarder.v1
+    description: Freight forwarding license
+  - interface: msez.licensing.trade.bonded-warehouse.v1
+    description: Bonded warehouse operator license
+
+dependencies:
+  - module_id: org.momentum.msez.trade.customs
+    version: ">=0.1.0"
+  - module_id: org.momentum.msez.regulatory.sanctions
+    version: ">=0.1.0"
+
+license_types:
+  general_importer:
+    name: General Import License
+    requirements:
+      - registered_business_entity: true
+      - customs_registration: true
+      - bank_guarantee_or_bond: true
+    permitted_goods:
+      - general_merchandise
+      - consumer_goods
+      - industrial_equipment
+      - raw_materials
+    restricted_categories:
+      - controlled_substances
+      - weapons_ammunition
+      - hazardous_materials
+      - protected_species
+    fees:
+      application_usd: 1000
+      annual_usd: 2500
+    renewal_period_months: 12
+
+  general_exporter:
+    name: General Export License
+    requirements:
+      - registered_business_entity: true
+      - customs_registration: true
+      - export_control_compliance_program: true
+    export_control:
+      dual_use_screening: true
+      sanctions_compliance: true
+      end_user_verification: true
+    fees:
+      application_usd: 1000
+      annual_usd: 2500
+    renewal_period_months: 12
+
+  customs_broker:
+    name: Customs Broker License
+    requirements:
+      - customs_broker_examination_passed: true
+      - professional_indemnity_min_usd: 500000
+      - bond_min_usd: 50000
+      - continuing_education_hours: 24
+    authorized_activities:
+      - customs_clearance
+      - tariff_classification
+      - valuation_advisory
+      - duty_optimization
+      - compliance_audits
+    fees:
+      application_usd: 2000
+      annual_usd: 3000
+    renewal_period_months: 12
+
+  freight_forwarder:
+    name: Freight Forwarder License
+    requirements:
+      - registered_business_entity: true
+      - cargo_insurance_min_usd: 100000
+      - fiata_membership_recommended: true
+    modes:
+      - ocean_freight
+      - air_freight
+      - road_freight
+      - rail_freight
+      - multimodal
+    fees:
+      application_usd: 1500
+      annual_usd: 2000
+    renewal_period_months: 12
+
+  bonded_warehouse:
+    name: Bonded Warehouse License
+    requirements:
+      - secure_facility: true
+      - customs_approved_premises: true
+      - inventory_management_system: true
+      - bond_min_usd: 100000
+    warehouse_types:
+      - public_bonded
+      - private_bonded
+      - free_zone_warehouse
+      - temporary_storage
+    fees:
+      application_usd: 5000
+      annual_usd: 10000
+    renewal_period_months: 12
+
+special_permits:
+  controlled_goods:
+    categories:
+      - pharmaceuticals
+      - chemicals
+      - dual_use_technology
+      - strategic_goods
+    requirements:
+      - end_user_certificate
+      - import_permit_per_shipment
+      - record_keeping_years: 7
+
+compliance:
+  domains:
+    - CUSTOMS
+    - EXPORT_CONTROL
+    - SANCTIONS
+    - AML_CFT
+  standards:
+    - wcf_safe_framework
+    - incoterms_2020
+    - hs_nomenclature
+  reporting:
+    - monthly_customs_declarations
+    - annual_trade_statistics
+    - suspicious_transaction_reports

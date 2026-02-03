@@ -1,0 +1,237 @@
+# MASS Identity Primitive
+# Decentralized identity and verification
+
+module_id: org.momentum.msez.mass-primitives.identity
+version: 0.1.0
+kind: protocol
+name: MASS Identity Primitive
+description: |
+  Identity primitive implementing W3C DID and Verifiable Credentials
+  standards for decentralized, privacy-preserving identity verification.
+
+spec_version: "0.4.44"
+
+provides:
+  - interface: msez.mass.identity.did.v1
+    description: Decentralized Identifier management
+  - interface: msez.mass.identity.vc.v1
+    description: Verifiable Credential issuance and verification
+  - interface: msez.mass.identity.zkp.v1
+    description: Zero-knowledge proof identity verification
+
+did_methods:
+  did_key:
+    description: Cryptographic key-based DID
+    format: "did:key:{multibase-encoded-public-key}"
+    resolution: self-describing
+    use_case: ephemeral_identities
+
+  did_web:
+    description: Web domain-based DID
+    format: "did:web:{domain}:{path}"
+    resolution: https_fetch
+    use_case: organizational_identities
+
+  did_msez:
+    description: Zone-native DID method
+    format: "did:msez:{zone_id}:{entity_hash}"
+    resolution: zone_registry
+    use_case: zone_registered_entities
+    features:
+      - cross_zone_resolution
+      - compliance_attestation_binding
+      - key_rotation_support
+
+key_management:
+  key_types:
+    - Ed25519
+    - secp256k1
+    - P-256
+    - P-384
+
+  key_purposes:
+    authentication:
+      description: Prove control of DID
+    assertion:
+      description: Issue credentials
+    key_agreement:
+      description: Establish encrypted channels
+    capability_invocation:
+      description: Authorize operations
+    capability_delegation:
+      description: Delegate authority
+
+  rotation:
+    policy:
+      recommended_period_days: 365
+      mandatory_on_compromise: true
+    mechanism:
+      publish_new_key: true
+      revoke_old_key: true
+      transition_period_days: 30
+
+verifiable_credentials:
+  types:
+    identity_credential:
+      claims:
+        - name
+        - date_of_birth
+        - nationality
+        - government_id_hash
+      verification_level: kyc_tier_3
+
+    accreditation_credential:
+      claims:
+        - accreditation_type
+        - jurisdiction
+        - expiration_date
+      use_case: investor_status
+
+    license_credential:
+      claims:
+        - license_type
+        - issuing_authority
+        - valid_from
+        - valid_until
+        - conditions
+      use_case: professional_licensing
+
+    employment_credential:
+      claims:
+        - employer_id
+        - position
+        - start_date
+        - compensation_range
+      use_case: income_verification
+
+    compliance_credential:
+      claims:
+        - compliance_domain
+        - jurisdiction
+        - assessment_date
+        - status
+        - attestor_id
+      use_case: regulatory_compliance
+
+  issuance:
+    process:
+      - request_credential
+      - verify_claims
+      - sign_credential
+      - deliver_credential
+    formats:
+      - jwt_vc
+      - json_ld_vc
+      - sd_jwt
+
+  verification:
+    checks:
+      - signature_valid
+      - issuer_trusted
+      - not_expired
+      - not_revoked
+      - schema_valid
+
+  revocation:
+    methods:
+      status_list:
+        description: Bitstring status list
+        privacy: moderate
+      accumulator:
+        description: Cryptographic accumulator
+        privacy: high
+      credential_status:
+        description: Credential-specific endpoint
+        privacy: low
+
+zero_knowledge:
+  proof_types:
+    range_proof:
+      description: Prove value in range without revealing
+      use_case: age_verification
+    membership_proof:
+      description: Prove membership without revealing identity
+      use_case: accredited_investor
+    non_membership_proof:
+      description: Prove not on list
+      use_case: sanctions_clearance
+    equality_proof:
+      description: Prove two values equal
+      use_case: cross_credential_linking
+
+  circuits:
+    - age_over_threshold
+    - accredited_investor_status
+    - sanctions_clearance
+    - jurisdiction_residency
+    - income_threshold
+
+operations:
+  create:
+    description: Create new DID
+    inputs:
+      - method
+      - initial_keys
+      - service_endpoints
+    outputs:
+      - did
+      - did_document
+    constraints:
+      - unique_identifier
+      - valid_keys
+
+  update:
+    description: Update DID document
+    inputs:
+      - did
+      - updates
+      - authorization_proof
+    outputs:
+      - updated_document
+    constraints:
+      - authorized_controller
+      - valid_updates
+
+  revoke:
+    description: Revoke DID
+    inputs:
+      - did
+      - authorization_proof
+      - revocation_reason
+    outputs:
+      - revocation_receipt
+    constraints:
+      - authorized_controller
+
+  verify:
+    description: Verify credential or proof
+    inputs:
+      - presentation
+      - verification_requirements
+    outputs:
+      - verification_result
+      - verified_claims
+    constraints:
+      - valid_presentation
+      - trusted_issuer
+
+  delegate:
+    description: Delegate identity authority
+    inputs:
+      - did
+      - delegate_did
+      - scope
+      - duration
+    outputs:
+      - delegation_credential
+    constraints:
+      - authorized_delegator
+      - valid_scope
+
+schemas:
+  did_document:
+    ref: schemas/mass.identity.did-document.schema.json
+  verifiable_credential:
+    ref: schemas/mass.identity.vc.schema.json
+  verifiable_presentation:
+    ref: schemas/mass.identity.vp.schema.json

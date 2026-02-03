@@ -152,7 +152,8 @@ class AttestationRef:
         if not self.expires_at:
             return False
         as_of = as_of or datetime.now(timezone.utc)
-        expiry = datetime.fromisoformat(self.expires_at.replace("Z", "+00:00"))
+        from tools.phoenix.hardening import parse_iso_timestamp
+        expiry = parse_iso_timestamp(self.expires_at)
         return as_of > expiry
     
     def to_dict(self) -> Dict[str, Any]:
@@ -218,19 +219,51 @@ class TensorCell:
 class TensorCoord:
     """
     Coordinates in the 4-dimensional compliance tensor.
-    
+
     Immutable to enable use as dictionary key.
     """
     asset_id: str
     jurisdiction_id: str
     domain: ComplianceDomain
     time_quantum: int  # Discrete time bucket
-    
+
     def to_tuple(self) -> Tuple[str, str, str, int]:
         return (self.asset_id, self.jurisdiction_id, self.domain.value, self.time_quantum)
-    
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize to dictionary for storage/transmission."""
+        return {
+            "asset_id": self.asset_id,
+            "jurisdiction_id": self.jurisdiction_id,
+            "domain": self.domain.value,
+            "time_quantum": self.time_quantum,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'TensorCoord':
+        """Deserialize from dictionary."""
+        return cls(
+            asset_id=data["asset_id"],
+            jurisdiction_id=data["jurisdiction_id"],
+            domain=ComplianceDomain(data["domain"]),
+            time_quantum=data["time_quantum"],
+        )
+
+    def to_key_string(self) -> str:
+        """
+        Generate a deterministic key string for use as dictionary key.
+
+        Uses base64-encoded hash of full asset_id to ensure uniqueness
+        while keeping the key readable.
+        """
+        asset_hash = hashlib.sha256(self.asset_id.encode()).hexdigest()[:12]
+        return f"{asset_hash}:{self.jurisdiction_id}:{self.domain.value}:t{self.time_quantum}"
+
     def __str__(self) -> str:
-        return f"{self.asset_id[:8]}:{self.jurisdiction_id}:{self.domain.value}:t{self.time_quantum}"
+        """Human-readable representation (may truncate for display)."""
+        # Truncate only for display, use to_dict for serialization
+        display_asset = self.asset_id[:16] + "..." if len(self.asset_id) > 16 else self.asset_id
+        return f"{display_asset}:{self.jurisdiction_id}:{self.domain.value}:t{self.time_quantum}"
 
 
 # =============================================================================
@@ -726,33 +759,99 @@ class ComplianceTensorV2:
     ) -> ComplianceProof:
         """
         Generate a proof of compliance for specific coordinates.
-        
+
         The proof includes Merkle inclusion proofs for the specified
         coordinates within the tensor commitment.
-        
+
         Args:
             coordinates: List of coordinates to prove
-            
+
         Returns:
             A ComplianceProof object
         """
         commitment = self.commit()
-        
+
         claimed_states: Dict[str, ComplianceState] = {}
         for coord in coordinates:
             cell = self._cells.get(coord, TensorCell(state=ComplianceState.UNKNOWN))
             claimed_states[str(coord)] = cell.state
-        
-        # Generate Merkle proof (simplified - full implementation would
-        # track siblings during tree construction)
-        merkle_proof: List[str] = []  # TODO: Full Merkle proof generation
-        
+
+        # Generate Merkle proof with sibling hashes
+        merkle_proof = self._generate_merkle_proof(coordinates)
+
         return ComplianceProof(
             coordinates=coordinates,
             claimed_states=claimed_states,
             tensor_commitment=commitment,
             merkle_proof=merkle_proof,
         )
+
+    def _generate_merkle_proof(self, coordinates: List[TensorCoord]) -> List[str]:
+        """
+        Generate Merkle inclusion proof for the given coordinates.
+
+        Returns a list of sibling hashes needed to verify inclusion.
+        """
+        if not self._cells:
+            return []
+
+        # Build ordered list of leaf hashes
+        sorted_coords = sorted(self._cells.keys(), key=lambda c: c.to_tuple())
+        leaves: List[str] = []
+        coord_indices: Dict[TensorCoord, int] = {}
+
+        for i, coord in enumerate(sorted_coords):
+            cell = self._cells[coord]
+            leaf_content = json.dumps({
+                "coord": coord.to_dict(),
+                "state": cell.state.value,
+            }, sort_keys=True, separators=(",", ":"))
+            leaf_hash = hashlib.sha256(leaf_content.encode()).hexdigest()
+            leaves.append(leaf_hash)
+            coord_indices[coord] = i
+
+        # Find indices of coordinates we're proving
+        target_indices = set()
+        for coord in coordinates:
+            if coord in coord_indices:
+                target_indices.add(coord_indices[coord])
+
+        if not target_indices:
+            return []
+
+        # Pad leaves to power of 2
+        original_len = len(leaves)
+        while len(leaves) & (len(leaves) - 1):
+            leaves.append(leaves[-1])
+
+        # Build tree and collect proof siblings
+        proof_siblings: List[str] = []
+        current_level = leaves[:]
+
+        while len(current_level) > 1:
+            next_level: List[str] = []
+            next_target_indices = set()
+
+            for i in range(0, len(current_level), 2):
+                left = current_level[i]
+                right = current_level[i + 1] if i + 1 < len(current_level) else left
+
+                # If either child is a target, add sibling to proof
+                if i in target_indices:
+                    proof_siblings.append(right)
+                    next_target_indices.add(i // 2)
+                elif i + 1 in target_indices:
+                    proof_siblings.append(left)
+                    next_target_indices.add(i // 2)
+
+                combined = left + right
+                parent = hashlib.sha256(combined.encode()).hexdigest()
+                next_level.append(parent)
+
+            current_level = next_level
+            target_indices = next_target_indices
+
+        return proof_siblings
     
     def merge(self, other: 'ComplianceTensorV2') -> 'ComplianceTensorV2':
         """
@@ -785,45 +884,65 @@ class ComplianceTensorV2:
         return self
     
     def to_dict(self) -> Dict[str, Any]:
-        """Serialize tensor to dictionary."""
+        """Serialize tensor to dictionary with full coordinate preservation."""
+        # Use JSON-serializable coordinate representation
+        cells_list = [
+            {
+                "coord": coord.to_dict(),
+                "cell": cell.to_dict(),
+            }
+            for coord, cell in self._cells.items()
+        ]
         return {
-            "cells": {
-                str(coord): cell.to_dict()
-                for coord, cell in self._cells.items()
-            },
+            "cells": cells_list,
             "time_quantum_period": self._time_quantum_period,
             "commitment": self.commit().to_dict(),
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ComplianceTensorV2':
         """Deserialize tensor from dictionary."""
         tensor = cls(time_quantum_period=data.get("time_quantum_period", cls.TIME_QUANTUM_PERIOD))
-        
-        for coord_str, cell_data in data.get("cells", {}).items():
-            # Parse coordinate string
-            parts = coord_str.split(":")
-            if len(parts) >= 4:
-                asset_id = parts[0]
-                jurisdiction_id = parts[1]
-                domain = ComplianceDomain(parts[2])
-                time_quantum = int(parts[3].replace("t", ""))
-                
-                cell = TensorCell.from_dict(cell_data)
-                
-                coord = TensorCoord(
-                    asset_id=asset_id,
-                    jurisdiction_id=jurisdiction_id,
-                    domain=domain,
-                    time_quantum=time_quantum,
-                )
-                
+
+        cells_data = data.get("cells", [])
+
+        # Support both new list format and legacy string-key format
+        if isinstance(cells_data, list):
+            # New format: list of {coord, cell} objects
+            for item in cells_data:
+                coord = TensorCoord.from_dict(item["coord"])
+                cell = TensorCell.from_dict(item["cell"])
+
                 tensor._cells[coord] = cell
-                tensor._asset_ids.add(asset_id)
-                tensor._jurisdiction_ids.add(jurisdiction_id)
-                tensor._domains.add(domain)
-                tensor._time_quanta.add(time_quantum)
-        
+                tensor._asset_ids.add(coord.asset_id)
+                tensor._jurisdiction_ids.add(coord.jurisdiction_id)
+                tensor._domains.add(coord.domain)
+                tensor._time_quanta.add(coord.time_quantum)
+        else:
+            # Legacy format: string keys (best effort parsing)
+            for coord_str, cell_data in cells_data.items():
+                parts = coord_str.split(":")
+                if len(parts) >= 4:
+                    asset_id = parts[0]
+                    jurisdiction_id = parts[1]
+                    domain = ComplianceDomain(parts[2])
+                    time_quantum = int(parts[3].replace("t", ""))
+
+                    cell = TensorCell.from_dict(cell_data)
+
+                    coord = TensorCoord(
+                        asset_id=asset_id,
+                        jurisdiction_id=jurisdiction_id,
+                        domain=domain,
+                        time_quantum=time_quantum,
+                    )
+
+                    tensor._cells[coord] = cell
+                    tensor._asset_ids.add(asset_id)
+                    tensor._jurisdiction_ids.add(jurisdiction_id)
+                    tensor._domains.add(domain)
+                    tensor._time_quanta.add(time_quantum)
+
         return tensor
     
     def __len__(self) -> int:

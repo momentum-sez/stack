@@ -106,17 +106,14 @@ class WatcherBond:
     
     def __post_init__(self):
         if not self.valid_from:
-            object.__setattr__(self, 'valid_from', datetime.now(timezone.utc).isoformat())
+            self.valid_from = datetime.now(timezone.utc).isoformat()
         if not self.valid_until:
             # Default 1 year validity
             expiry = datetime.now(timezone.utc) + timedelta(days=365)
-            object.__setattr__(self, 'valid_until', expiry.isoformat())
+            self.valid_until = expiry.isoformat()
         if self.max_attestation_value_usd == Decimal("0"):
             # Default 10x collateral
-            object.__setattr__(
-                self, 'max_attestation_value_usd',
-                self.collateral_amount * Decimal("10")
-            )
+            self.max_attestation_value_usd = self.collateral_amount * Decimal("10")
     
     @property
     def available_collateral(self) -> Decimal:
@@ -132,9 +129,10 @@ class WatcherBond:
         """Check if bond is currently valid."""
         if not self.is_active:
             return False
+        from tools.phoenix.hardening import parse_iso_timestamp
         now = datetime.now(timezone.utc)
-        valid_from = datetime.fromisoformat(self.valid_from.replace("Z", "+00:00"))
-        valid_until = datetime.fromisoformat(self.valid_until.replace("Z", "+00:00"))
+        valid_from = parse_iso_timestamp(self.valid_from)
+        valid_until = parse_iso_timestamp(self.valid_until)
         return valid_from <= now <= valid_until
     
     def can_attest(self, value_usd: Decimal) -> bool:
@@ -213,14 +211,11 @@ class SlashingEvidence:
     evidence_type: str
     evidence_data: Dict[str, Any]
     evidence_digest: str = ""
-    
+
     def __post_init__(self):
         if not self.evidence_digest:
             content = json.dumps(self.evidence_data, sort_keys=True)
-            object.__setattr__(
-                self, 'evidence_digest',
-                hashlib.sha256(content.encode()).hexdigest()
-            )
+            self.evidence_digest = hashlib.sha256(content.encode()).hexdigest()
 
 
 @dataclass
@@ -276,12 +271,13 @@ class SlashingClaim:
         if not self.challenge_deadline:
             # 7 day challenge period
             deadline = datetime.now(timezone.utc) + timedelta(days=7)
-            object.__setattr__(self, 'challenge_deadline', deadline.isoformat())
+            self.challenge_deadline = deadline.isoformat()
     
     @property
     def is_past_challenge_period(self) -> bool:
+        from tools.phoenix.hardening import parse_iso_timestamp
         now = datetime.now(timezone.utc)
-        deadline = datetime.fromisoformat(self.challenge_deadline.replace("Z", "+00:00"))
+        deadline = parse_iso_timestamp(self.challenge_deadline)
         return now > deadline
     
     @property

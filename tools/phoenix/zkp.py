@@ -150,11 +150,8 @@ class ProvingKey:
     
     def __post_init__(self):
         if not self.digest:
-            object.__setattr__(
-                self, 'digest',
-                hashlib.sha256(self.key_data).hexdigest()
-            )
-    
+            self.digest = hashlib.sha256(self.key_data).hexdigest()
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "circuit_id": self.circuit_id,
@@ -169,7 +166,7 @@ class ProvingKey:
 class VerificationKey:
     """
     Verification key for a specific circuit.
-    
+
     Contains the elements needed to verify proofs for the circuit.
     Much smaller than the proving key.
     """
@@ -178,13 +175,10 @@ class VerificationKey:
     public_input_count: int
     key_data: bytes  # Serialized verification key
     digest: str = ""
-    
+
     def __post_init__(self):
         if not self.digest:
-            object.__setattr__(
-                self, 'digest',
-                hashlib.sha256(self.key_data).hexdigest()
-            )
+            self.digest = hashlib.sha256(self.key_data).hexdigest()
     
     def to_dict(self) -> Dict[str, Any]:
         return {

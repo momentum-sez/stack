@@ -117,7 +117,8 @@ class AttestationRequirement:
             return False
         
         # Age check
-        issued = datetime.fromisoformat(attestation.issued_at.replace("Z", "+00:00"))
+        from tools.phoenix.hardening import parse_iso_timestamp
+        issued = parse_iso_timestamp(attestation.issued_at)
         age = as_of - issued
         if age.days > self.max_age_days:
             return False
@@ -366,7 +367,7 @@ class MigrationPath:
             # Generate deterministic path ID
             content = f"{self.source_jurisdiction}:{self.target_jurisdiction}:" + \
                       ":".join(h.corridor.corridor_id for h in self.hops)
-            object.__setattr__(self, 'path_id', hashlib.sha256(content.encode()).hexdigest()[:16])
+            self.path_id = hashlib.sha256(content.encode()).hexdigest()[:16]
     
     @property
     def hop_count(self) -> int:

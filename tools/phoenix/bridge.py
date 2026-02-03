@@ -608,7 +608,8 @@ class CorridorBridge:
         
         # Calculate total time
         if execution.started_at:
-            start = datetime.fromisoformat(execution.started_at.replace("Z", "+00:00"))
+            from tools.phoenix.hardening import parse_iso_timestamp
+            start = parse_iso_timestamp(execution.started_at)
             now = datetime.now(timezone.utc)
             execution.total_time_seconds = int((now - start).total_seconds())
         

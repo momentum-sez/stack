@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Agentic Execution Framework (v0.4.44)
+Agentic Execution Framework (v0.4.44 GENESIS)
 
 MASS Protocol v0.2 Chapter 17 — Agentic Execution
 

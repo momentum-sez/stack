@@ -2,7 +2,7 @@
 
 ## Smart Asset Operating System
 
-Version 0.4.44 SEZ-in-a-Box
+Version 0.4.44 GENESIS
 
 This document describes the architectural foundations of the PHOENIX system, the core infrastructure enabling autonomous Smart Assets to operate across programmable jurisdictions.
 

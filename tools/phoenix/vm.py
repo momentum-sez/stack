@@ -1001,7 +1001,21 @@ class SmartAssetVM:
         elif opcode == OpCode.MOD:
             b, a = state.pop(), state.pop()
             state.push(a % b)
-        
+
+        elif opcode == OpCode.EXP:
+            exp, base = state.pop(), state.pop()
+            result = pow(base.to_int(), exp.to_int(), 1 << 256)
+            state.push(Word.from_int(result))
+
+        elif opcode == OpCode.NEG:
+            a = state.pop()
+            state.push(Word.from_int(-a.to_int(signed=True)))
+
+        elif opcode == OpCode.ABS:
+            a = state.pop()
+            val = a.to_int(signed=True)
+            state.push(Word.from_int(abs(val)))
+
         # Comparison
         elif opcode == OpCode.EQ:
             b, a = state.pop(), state.pop()
@@ -1028,7 +1042,24 @@ class SmartAssetVM:
         elif opcode == OpCode.NOT:
             a = state.pop()
             state.push(Word.one() if not a else Word.zero())
-        
+
+        elif opcode == OpCode.NE:
+            b, a = state.pop(), state.pop()
+            state.push(Word.one() if a != b else Word.zero())
+
+        elif opcode == OpCode.LE:
+            b, a = state.pop(), state.pop()
+            state.push(Word.one() if a.to_int() <= b.to_int() else Word.zero())
+
+        elif opcode == OpCode.GE:
+            b, a = state.pop(), state.pop()
+            state.push(Word.one() if a.to_int() >= b.to_int() else Word.zero())
+
+        elif opcode == OpCode.XOR:
+            b, a = state.pop(), state.pop()
+            result = bytes(x ^ y for x, y in zip(a.data, b.data))
+            state.push(Word(result))
+
         # Memory
         elif opcode == OpCode.MLOAD:
             offset = state.pop().to_int()
@@ -1046,7 +1077,15 @@ class SmartAssetVM:
             
         elif opcode == OpCode.MSIZE:
             state.push(Word.from_int(len(state.memory)))
-        
+
+        elif opcode == OpCode.MCOPY:
+            length = state.pop().to_int()
+            src = state.pop().to_int()
+            dest = state.pop().to_int()
+            state._expand_memory(max(src + length, dest + length))
+            data = bytes(state.memory[src:src + length])
+            state.memory[dest:dest + length] = data
+
         # Storage
         elif opcode == OpCode.SLOAD:
             key = state.pop().to_hex()
@@ -1056,7 +1095,19 @@ class SmartAssetVM:
             key = state.pop().to_hex()
             value = state.pop()
             state.sstore(key, value)
-        
+
+        elif opcode == OpCode.SDELETE:
+            key = state.pop().to_hex()
+            if key in state.storage:
+                del state.storage[key]
+                state.push(Word.one())
+            else:
+                state.push(Word.zero())
+
+        elif opcode == OpCode.SHAS:
+            key = state.pop().to_hex()
+            state.push(Word.one() if key in state.storage else Word.zero())
+
         # Control flow
         elif opcode == OpCode.JUMP:
             dest = state.pop().to_int()
@@ -1089,7 +1140,25 @@ class SmartAssetVM:
             state.return_data = bytes(state.memory[offset:offset + size])
             state.reverted = True
             state.halted = True
-        
+
+        elif opcode == OpCode.ASSERT:
+            condition = state.pop()
+            if not condition:
+                raise SecurityViolation("Assertion failed")
+
+        elif opcode == OpCode.CALL:
+            # Simplified call - pushes success indicator
+            # Full implementation would handle nested execution
+            _gas = state.pop().to_int()
+            _addr = state.pop()
+            _value = state.pop().to_int()
+            _args_offset = state.pop().to_int()
+            _args_size = state.pop().to_int()
+            _ret_offset = state.pop().to_int()
+            _ret_size = state.pop().to_int()
+            # Mock success for now - real impl would execute nested call
+            state.push(Word.one())
+
         # Context
         elif opcode == OpCode.CALLER:
             state.push(Word.from_bytes(context.caller.encode()[:32]))
@@ -1112,7 +1181,10 @@ class SmartAssetVM:
         elif opcode == OpCode.GAS:
             remaining = context.gas_limit - state.gas_used
             state.push(Word.from_int(remaining))
-        
+
+        elif opcode == OpCode.GASPRICE:
+            state.push(Word.from_int(context.gas_price))
+
         # Compliance coprocessor
         elif opcode == OpCode.TENSOR_GET:
             domain_code = state.pop().to_int()
@@ -1139,7 +1211,53 @@ class SmartAssetVM:
         elif opcode == OpCode.TENSOR_COMMIT:
             root = self._compliance.tensor_commit()
             state.push(Word.from_hex(root))
-        
+
+        elif opcode == OpCode.TENSOR_EVAL:
+            jurisdiction = state.pop().data.decode('utf-8', errors='ignore').rstrip('\x00')
+            asset = state.pop().data.decode('utf-8', errors='ignore').rstrip('\x00')
+            is_compliant, state_code, issues = self._compliance.tensor_evaluate(asset, jurisdiction)
+            state.push(Word.from_int(1 if is_compliant else 0))
+            state.push(Word.from_int(state_code))
+            state.push(Word.from_int(len(issues)))
+
+        elif opcode == OpCode.ATTEST:
+            attestation_type = state.pop().to_int()
+            domain_code = state.pop().to_int()
+            jurisdiction = state.pop().data.decode('utf-8', errors='ignore').rstrip('\x00')
+            asset = state.pop().data.decode('utf-8', errors='ignore').rstrip('\x00')
+            # Create attestation record (simplified)
+            attestation_id = CryptoUtils.secure_random_hex(16)
+            state.push(Word.from_bytes(attestation_id.encode()[:32]))
+
+        elif opcode == OpCode.VERIFY_ATTEST:
+            attestation_id = state.pop().data.decode('utf-8', errors='ignore').rstrip('\x00')
+            # Verify attestation exists and is valid (simplified - returns true)
+            state.push(Word.one())
+
+        elif opcode == OpCode.VERIFY_ZK:
+            proof_size = state.pop().to_int()
+            proof_offset = state.pop().to_int()
+            inputs_count = state.pop().to_int()
+            circuit_id = state.pop().data.decode('utf-8', errors='ignore').rstrip('\x00')
+
+            proof_data = bytes(state.memory[proof_offset:proof_offset + proof_size])
+            public_inputs = []
+            for _ in range(inputs_count):
+                inp = state.pop()
+                public_inputs.append(inp.data)
+
+            result = self._compliance.verify_zk_proof(circuit_id, public_inputs, proof_data)
+            state.push(Word.one() if result else Word.zero())
+
+        elif opcode == OpCode.COMPLIANCE_CHECK:
+            domain_code = state.pop().to_int()
+            jurisdiction = state.pop().data.decode('utf-8', errors='ignore').rstrip('\x00')
+            asset = state.pop().data.decode('utf-8', errors='ignore').rstrip('\x00')
+            state_code, has_expired = self._compliance.tensor_get(asset, jurisdiction, domain_code)
+            # Return 1 if compliant (state_code == 1) and not expired
+            is_ok = state_code == 1 and not has_expired
+            state.push(Word.one() if is_ok else Word.zero())
+
         # Migration coprocessor
         elif opcode == OpCode.LOCK:
             duration = state.pop().to_int()
@@ -1172,7 +1290,26 @@ class SmartAssetVM:
             transit_id = state.pop().data.decode('utf-8', errors='ignore').rstrip('\x00')
             success = self._migration.settle(transit_id)
             state.push(Word.from_int(1 if success else 0))
-        
+
+        elif opcode == OpCode.TRANSIT_END:
+            transit_id = state.pop().data.decode('utf-8', errors='ignore').rstrip('\x00')
+            success = self._migration.transit_end(transit_id)
+            state.push(Word.from_int(1 if success else 0))
+
+        elif opcode == OpCode.COMPENSATE:
+            transit_id = state.pop().data.decode('utf-8', errors='ignore').rstrip('\x00')
+            success = self._migration.compensate(transit_id)
+            state.push(Word.from_int(1 if success else 0))
+
+        elif opcode == OpCode.MIGRATION_STATE:
+            transit_id = state.pop().data.decode('utf-8', errors='ignore').rstrip('\x00')
+            if transit_id in self._migration._transits:
+                transit = self._migration._transits[transit_id]
+                status_map = {"in_transit": 1, "arrived": 2, "settled": 3, "compensated": 4}
+                state.push(Word.from_int(status_map.get(transit["status"], 0)))
+            else:
+                state.push(Word.zero())
+
         # Crypto
         elif opcode == OpCode.SHA256:
             size = state.pop().to_int()
@@ -1180,7 +1317,49 @@ class SmartAssetVM:
             data = bytes(state.memory[offset:offset + size])
             digest = hashlib.sha256(data).digest()
             state.push(Word(digest))
-        
+
+        elif opcode == OpCode.KECCAK256:
+            size = state.pop().to_int()
+            offset = state.pop().to_int()
+            data = bytes(state.memory[offset:offset + size])
+            # Use sha3_256 as keccak approximation (for environments without keccak)
+            import hashlib as hl
+            digest = hl.sha3_256(data).digest()
+            state.push(Word(digest))
+
+        elif opcode == OpCode.VERIFY_SIG:
+            sig_size = state.pop().to_int()
+            sig_offset = state.pop().to_int()
+            msg_size = state.pop().to_int()
+            msg_offset = state.pop().to_int()
+            pubkey = state.pop()
+
+            _sig = bytes(state.memory[sig_offset:sig_offset + sig_size])
+            _msg = bytes(state.memory[msg_offset:msg_offset + msg_size])
+            # Simplified verification - real impl would use ed25519/secp256k1
+            # For now, return success if signature is non-empty
+            state.push(Word.one() if sig_size > 0 else Word.zero())
+
+        elif opcode == OpCode.MERKLE_ROOT:
+            count = state.pop().to_int()
+            leaves = []
+            for _ in range(count):
+                leaf = state.pop()
+                leaves.append(leaf.to_hex()[2:])  # Remove 0x prefix
+            root = CryptoUtils.merkle_root(leaves) if leaves else "0" * 64
+            state.push(Word.from_hex(root))
+
+        elif opcode == OpCode.MERKLE_VERIFY:
+            root = state.pop()
+            leaf = state.pop()
+            proof_count = state.pop().to_int()
+            proof = []
+            for _ in range(proof_count):
+                proof.append(state.pop().to_hex()[2:])
+            # Simplified verification - check if leaf contributes to root
+            # Real impl would verify the merkle path
+            state.push(Word.one())
+
         # System
         elif opcode == OpCode.HALT:
             state.halted = True
@@ -1199,10 +1378,20 @@ class SmartAssetVM:
                 "data": data.hex(),
                 "topics": topics,
             })
-            
+
+        elif opcode == OpCode.DEBUG:
+            # Debug opcode - logs top of stack without consuming it
+            if state.stack:
+                top = state.peek(0)
+                state.logs.append({
+                    "type": "debug",
+                    "value": top.to_hex(),
+                    "pc": state.pc,
+                })
+
         elif opcode == OpCode.INVALID:
             raise SecurityViolation("Invalid opcode")
-            
+
         else:
             raise SecurityViolation(f"Unimplemented opcode: {opcode}")
 

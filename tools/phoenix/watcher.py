@@ -545,7 +545,14 @@ class WatcherRegistry:
             claim.resolved_at = datetime.now(timezone.utc).isoformat()
             return Decimal("0")
         
-        # Calculate slash amount
+        # Calculate slash amount with zero collateral protection
+        if bond.collateral_amount <= 0:
+            claim.is_resolved = True
+            claim.resolution = "zero_collateral"
+            claim.actual_slash_amount = Decimal("0")
+            claim.resolved_at = datetime.now(timezone.utc).isoformat()
+            return Decimal("0")
+
         slash_percentage = SLASH_PERCENTAGES.get(claim.condition, Decimal("0.10"))
         slash_amount = bond.collateral_amount * slash_percentage
         

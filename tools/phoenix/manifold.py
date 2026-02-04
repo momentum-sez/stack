@@ -830,21 +830,31 @@ class ComplianceManifold:
         # Find alternatives by excluding corridors from previous paths
         excluded_corridors: Set[str] = set()
         
+        # Track path IDs to avoid duplicates
+        seen_path_ids: Set[str] = {p.path_id for p in paths}
+
         for _ in range(max_paths - 1):
             if not paths:
                 break
-            
+
             # Exclude corridors from last found path
             last_path = paths[-1]
+
+            # Handle direct paths (no hops) - add path_id to prevent infinite loop
+            if not last_path.hops:
+                # Direct path found, no more alternatives possible via this method
+                break
+
             for hop in last_path.hops:
                 excluded_corridors.add(hop.corridor.corridor_id)
-            
+
             # Try to find alternative
             alt = self._find_path_excluding(
                 source, target, constraints, excluded_corridors
             )
-            if alt and alt.path_id not in {p.path_id for p in paths}:
+            if alt and alt.path_id not in seen_path_ids:
                 paths.append(alt)
+                seen_path_ids.add(alt.path_id)
         
         # Sort by cost
         paths.sort(key=lambda p: p.total_cost_usd)

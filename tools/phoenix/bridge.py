@@ -533,7 +533,8 @@ class CorridorBridge:
             self._record_phase(execution, BridgePhase.FAILED)
             return
         
-        fee_bps = int(path.total_cost_usd / request.amount * 10000)
+        # Use Decimal arithmetic to preserve precision before int conversion
+        fee_bps = int((Decimal(str(path.total_cost_usd)) / Decimal(str(request.amount))) * Decimal("10000"))
         if fee_bps > request.max_fee_bps:
             execution.fatal_error = (
                 f"Path fees ({fee_bps} bps) exceed max ({request.max_fee_bps} bps)"

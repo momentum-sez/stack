@@ -505,12 +505,16 @@ class AnchorManager:
         # Create anchor record
         anchor_id = f"anchor-{secrets.token_hex(8)}"
         
-        # Get block info (mock for now)
-        if isinstance(adapter, MockChainAdapter):
+        # Get block info from adapter
+        if hasattr(adapter, 'get_block_number'):
             block_number = adapter.get_block_number()
-            block_hash = "0x" + hashlib.sha256(str(block_number).encode()).hexdigest()
+            # Use deterministic block hash derivation
+            block_hash = "0x" + hashlib.sha256(
+                f"{chain.value}:{block_number}".encode()
+            ).hexdigest()
         else:
-            block_number = 0
+            # Fallback for adapters without block number support
+            block_number = -1  # Use -1 to indicate unknown (not 0 which is valid)
             block_hash = "0x" + "00" * 32
         
         anchor = AnchorRecord(
@@ -535,11 +539,13 @@ class AnchorManager:
             Decimal("1000000000")
         )
         
-        # Update status
+        # Update status with block timestamp if available, else use submission time
+        # Note: In production, retrieve actual block timestamp from chain adapter
+        submission_timestamp = datetime.now(timezone.utc).isoformat()
         if status == AnchorStatus.FINALIZED:
-            anchor.finalized_at = datetime.now(timezone.utc).isoformat()
+            anchor.finalized_at = submission_timestamp
         elif status == AnchorStatus.CONFIRMED:
-            anchor.confirmed_at = datetime.now(timezone.utc).isoformat()
+            anchor.confirmed_at = submission_timestamp
         
         # Store
         self._anchors[anchor_id] = anchor

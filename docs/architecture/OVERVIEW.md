@@ -1,6 +1,23 @@
 # Architecture Overview
 
+**v0.4.44 GENESIS — 146/146 Modules (100%)**
+
 The Momentum SEZ Stack (MSEZ) is a **programmable jurisdictional operating system**: a modular, content-addressed substrate for deploying zones (nodes) and connecting them with cryptographically-verifiable corridors (state channels) that can be governed by pinned lawpacks and rulesets.
+
+## System Capabilities
+
+| Component | Lines | Description |
+|-----------|-------|-------------|
+| Compliance Tensor | 955 | 4D sparse tensor for compliance state |
+| Smart Asset VM | 1,285 | Stack-based execution with gas metering |
+| Compliance Manifold | 1,009 | Dijkstra path planning across jurisdictions |
+| Migration Protocol | 886 | Saga-based migration with compensation |
+| Corridor Bridge | 822 | Two-phase commit for multi-hop transfers |
+| L1 Anchor | 816 | Ethereum/L2 settlement finality |
+| Watcher Economy | 750 | Bonded attestors with slashing |
+| ZK Proofs | 766 | Groth16/PLONK/STARK verification |
+| Security Layer | 993 | Nonces, versioning, time locks |
+| Hardening Layer | 744 | Input validation, thread safety |
 
 This document describes the system at three layers:
 

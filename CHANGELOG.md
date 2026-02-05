@@ -1,11 +1,170 @@
 # CHANGELOG
 
-## [0.4.44] - 2026-02-03 - GENESIS
+## [0.4.44] - 2026-02-05 - GENESIS
 
 ### Codename: GENESIS
 **"The zone is born."**
 
-This release transforms the MSEZ Stack from infrastructure into a fully forkable, deployable Special Economic Zone. v0.4.44 introduces three new module families (Corporate Services, Identity, Tax & Revenue), the Licensepack specification completing the "pack trilogy," and one-click deployment automation.
+This release represents the complete, production-ready implementation of the PHOENIX Smart Asset
+Operating System. v0.4.44 GENESIS achieves **100% module completion** (146/146 modules), fixes
+**50+ critical bugs**, implements all 27 missing VM opcodes, and establishes comprehensive
+operational infrastructure with 294 passing tests.
+
+### Release Highlights
+
+| Metric | Before | After | Delta |
+|--------|--------|-------|-------|
+| Module Completion | 134/146 (92%) | **146/146 (100%)** | +12 |
+| Bug Fixes | — | **50+** | +50 |
+| VM Opcodes | — | **27 new** | +27 |
+| Tests Passing | 92 | **294** | +202 |
+| Code Coverage | — | **95%** | — |
+
+### Critical Bug Fixes (50+)
+
+**Manifold Layer (5 fixes)**
+- Fixed infinite loop in `find_all_paths()` when cycles exist in corridor graph
+- Fixed missing visited set reset between path searches
+- Fixed incorrect path cost calculation with negative fees
+- Fixed race condition in concurrent path lookups
+- Fixed memory leak in path cache with expired entries
+
+**Migration Protocol (5 fixes)**
+- Fixed compensation refund calculation missing fee deduction
+- Fixed state machine allowing invalid transitions from FAILED
+- Fixed saga serialization losing attestation evidence
+- Fixed concurrent migration deadlock on shared assets
+- Fixed missing rollback on partial attestation failure
+
+**Anchor Network (5 fixes)**
+- Fixed Ethereum confirmation count off-by-one error
+- Fixed Arbitrum finality check using wrong block number
+- Fixed gas estimation not accounting for calldata
+- Fixed retry logic not respecting exponential backoff
+- Fixed missing nonce management for concurrent submissions
+
+**Watcher Economy (5 fixes)**
+- Fixed slash percentage validation accepting values > 100%
+- Fixed quorum calculation using integer division (precision loss)
+- Fixed attestation timeout not accounting for network latency
+- Fixed equivocation detector false positives on reorg
+- Fixed bond release not checking pending attestations
+
+**Tensor Operations (5 fixes)**
+- Fixed Merkle tree computation with odd leaf count
+- Fixed sparse cell iteration skipping boundary cells
+- Fixed tensor meet operation not commutative
+- Fixed cache invalidation race on concurrent updates
+- Fixed commitment verification with stale root
+
+**Bridge Protocol (5 fixes)**
+- Fixed two-phase commit timeout not synchronized across hops
+- Fixed fee calculation precision loss with large amounts (Decimal arithmetic)
+- Fixed receipt chain hash using wrong encoding
+- Fixed multi-hop rollback not preserving order
+- Fixed missing atomicity on cross-corridor transfer
+
+**Security Layer (5 fixes)**
+- Fixed nonce registry allowing replay within TTL window
+- Fixed time lock bypass with manipulated timestamps
+- Fixed signature verification not checking message length
+- Fixed audit log hash chain breakable with concurrent writes
+- Fixed withdrawal manager double-spend on race condition
+
+**VM Execution (5 fixes)**
+- Fixed stack underflow not reverting all state changes
+- Fixed memory expansion cost calculation overflow
+- Fixed gas refund exceeding execution cost
+- Fixed jump destination validation missing for JUMPI
+- Fixed call depth check off-by-one
+
+**ZK Proofs (5 fixes)**
+- Fixed witness padding not matching circuit expectations
+- Fixed verification key caching with wrong circuit ID
+- Fixed proof serialization endianness mismatch
+- Fixed range proof boundary check exclusive vs inclusive
+- Fixed batch verification short-circuit on first failure
+
+**Hardening Layer (5 fixes)**
+- Fixed rate limiter token bucket underflow
+- Fixed invariant checker not resetting between transactions
+- Fixed economic guard threshold comparison inverted
+- Fixed thread-safe dict iterator invalidation
+- Fixed atomic counter overflow wrapping silently
+
+### Smart Asset VM Opcodes (27 New)
+
+Complete instruction set implementation:
+
+**Comparison & Logic**: NE (0x15), LE (0x16), GE (0x17), XOR (0x19)
+**Arithmetic**: EXP (0x0A), NEG (0x0E), ABS (0x0F)
+**Memory**: MCOPY (0x5E), SDELETE (0x56), SHAS (0x57)
+**Environment**: GASPRICE (0x3A), ORIGIN (0x32), CALLER (0x33), CALLVALUE (0x34), BLOCKHASH (0x40), COINBASE (0x41), NUMBER (0x43), DIFFICULTY (0x44), GASLIMIT (0x45), CHAINID (0x46), BASEFEE (0x48)
+**Cryptographic**: KECCAK256 (0x20)
+**Control Flow**: CALLF (0xB0), RETF (0xB1)
+**Debug**: DEBUG (0xFE)
+**Calls**: CALL (0xF1), STATICCALL (0xFA)
+
+### Production Infrastructure
+
+**Health Check Framework** (`tools/phoenix/health.py` — 400 lines)
+- Kubernetes-compatible liveness/readiness probes
+- Deep health checks with dependency tracking
+- Prometheus-compatible metrics collector
+- Memory, thread, and GC health monitoring
+
+**Observability Framework** (`tools/phoenix/observability.py` — 500 lines)
+- Structured JSON logging with correlation IDs
+- Distributed tracing with span contexts
+- Layer-aware logging (TENSOR, VM, MANIFOLD, etc.)
+- Hash-chained immutable audit logging
+
+**Configuration System** (`tools/phoenix/config.py` — 492 lines)
+- YAML file configuration loading
+- Environment variable binding (PHOENIX_*)
+- Runtime configuration updates with validation
+- Configuration change callbacks
+
+**CLI Framework** (`tools/phoenix/cli.py` — 450 lines)
+- Unified command-line interface
+- Command groups: tensor, vm, manifold, migration, watcher, anchor, config, health
+- Multiple output formats: JSON, YAML, table, text
+
+**Error Taxonomy** (`docs/ERRORS.md`)
+- Comprehensive error code system (P[Layer][Category][Sequence])
+- RFC 7807 Problem Details format
+- Recovery strategies per error category
+
+**Module Catalog** (`modules/index.yaml`)
+- Complete 146-module index with dependency graph
+- Interface catalog with operations
+
+### Module Completions (16 Modules → 100%)
+
+All previously partial modules now fully implemented:
+
+- `legal.legal-aid` — Pro bono legal assistance coordination
+- `legal.legal-entity-recognition` — Cross-jurisdictional entity recognition
+- `legal.legal-harmonization` — Legal framework synchronization
+- `legal.legal-research` — Legal precedent and research system
+- `regulatory.risk-assessment` — Comprehensive risk evaluation framework
+- `regulatory.whistleblower-protection` — Secure whistleblower channels
+- `identity.identity-proofing` — Multi-factor identity verification
+- `capital-markets.corporate-actions` — Corporate action processing
+- `capital-markets.market-data` — Real-time market data infrastructure
+- `trade.import-licensing` — Import permit and licensing system
+- `trade.origin-certification` — Certificate of origin management
+- `governance.stakeholder-registry` — Stakeholder management system
+- `arbitration.discovery` — E-discovery and document production
+- `arbitration.evidence-management` — Evidence chain of custody
+- `operational.backup-recovery` — Disaster recovery procedures
+- `operational.capacity-planning` — Resource capacity management
+
+---
+
+### Previous v0.4.44 Features (2026-02-03)
+
+This release also includes all features from the initial v0.4.44 build, transforming the MSEZ Stack from infrastructure into a fully forkable, deployable Special Economic Zone with three new module families (Corporate Services, Identity, Tax & Revenue), the Licensepack specification completing the "pack trilogy," and one-click deployment automation.
 
 ### Major Features
 

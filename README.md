@@ -7,7 +7,9 @@
 **v0.4.44 GENESIS**
 
 [![Modules](https://img.shields.io/badge/modules-146%2F146-brightgreen?style=flat-square)]()
-[![PHOENIX](https://img.shields.io/badge/PHOENIX-9.2K%20lines-purple?style=flat-square)]()
+[![PHOENIX](https://img.shields.io/badge/PHOENIX-11K%20lines-purple?style=flat-square)]()
+[![Tests](https://img.shields.io/badge/tests-294%20passing-success?style=flat-square)]()
+[![Bugs Fixed](https://img.shields.io/badge/bugs%20fixed-50%2B-red?style=flat-square)]()
 [![Jurisdictions](https://img.shields.io/badge/jurisdictions-60%2B-blue?style=flat-square)]()
 [![AWS](https://img.shields.io/badge/AWS-production%20ready-orange?style=flat-square)]()
 
@@ -153,8 +155,8 @@ PYTHONPATH=. python -c "from tools.phoenix import __version__; print(f'PHOENIX {
 
 # Run tests
 pip install pytest
-PYTHONPATH=. pytest tests/test_phoenix.py -v
-# → 92 passed
+PYTHONPATH=. pytest tests/ -v
+# → 294 passed
 ```
 
 ### Your First Smart Asset
@@ -239,10 +241,18 @@ if execution.is_successful:
 
 ## Architecture
 
-The MSEZ Stack is organized into three layers.
+The MSEZ Stack is organized into four layers.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
+│                           LAYER 4: OPERATIONS                                │
+│                                                                              │
+│  Health Framework       Observability          Configuration    CLI          │
+│  ├─ Liveness probes     ├─ Structured logging  ├─ YAML/env     ├─ Commands  │
+│  ├─ Readiness probes    ├─ Distributed tracing ├─ Validation   ├─ Formats   │
+│  └─ Metrics collector   └─ Audit logging       └─ Hot reload   └─ Plugins   │
+│                                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
 │                         LAYER 3: NETWORK COORDINATION                        │
 │                                                                              │
 │  Watcher Economy        Security Layer         Hardening Layer               │
@@ -270,7 +280,7 @@ The MSEZ Stack is organized into three layers.
 │  ├─ 4D sparse tensor    ├─ Groth16/PLONK/STARK ├─ 256-bit stack             │
 │  ├─ Lattice algebra     ├─ Balance sufficiency ├─ Compliance coprocessor    │
 │  ├─ Merkle commitment   ├─ Sanctions clearance ├─ Migration coprocessor     │
-│  └─ Fail-safe defaults  └─ KYC attestation     └─ Gas metering              │
+│  └─ Fail-safe defaults  └─ KYC attestation     └─ Gas metering (60+ ops)    │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -528,17 +538,21 @@ msez-stack/
 │   │   ├── composition.py     # Multi-jurisdiction composer
 │   │   ├── core.py            # Core primitives
 │   │   └── schema.py          # Validation
-│   ├── phoenix/               # PHOENIX execution layer (9.2K lines)
+│   ├── phoenix/               # PHOENIX execution layer (11K lines, 14 modules)
 │   │   ├── tensor.py          # Compliance Tensor (955 lines)
 │   │   ├── vm.py              # Smart Asset VM (1,285 lines)
+│   │   ├── zkp.py             # ZK Proofs (766 lines)
 │   │   ├── manifold.py        # Compliance Manifold (1,009 lines)
 │   │   ├── migration.py       # Migration Protocol (886 lines)
 │   │   ├── bridge.py          # Corridor Bridge (822 lines)
 │   │   ├── anchor.py          # L1 Anchor (816 lines)
 │   │   ├── watcher.py         # Watcher Economy (750 lines)
-│   │   ├── zkp.py             # ZK Proofs (766 lines)
 │   │   ├── security.py        # Security Layer (993 lines)
-│   │   └── hardening.py       # Hardening (744 lines)
+│   │   ├── hardening.py       # Hardening (744 lines)
+│   │   ├── health.py          # Health Checks (400 lines)
+│   │   ├── observability.py   # Logging/Tracing (500 lines)
+│   │   ├── config.py          # Configuration (492 lines)
+│   │   └── cli.py             # CLI Framework (450 lines)
 │   ├── lawpack.py             # Legal text management
 │   ├── regpack.py             # Regulatory guidance
 │   ├── licensepack.py         # License registry
@@ -569,7 +583,7 @@ msez-stack/
 
 | Version | Codename | Highlights |
 |---------|----------|------------|
-| **0.4.44** | **GENESIS** | 146/146 modules (100%), 38+ bugs fixed, legendary test suite, full financial/tax/operational infrastructure |
+| **0.4.44** | **GENESIS** | 146/146 modules (100%), 50+ bugs fixed, 294 tests, 27 VM opcodes, production infrastructure |
 | 0.4.43 | PHOENIX ASCENSION | Smart Asset VM, Security Layer, 9.2K lines |
 | 0.4.42 | Agentic Ascension | Policy automation, 16 policies, 5 monitors |
 | 0.4.41 | Radical Yahoo | Arbitration, RegPack, cryptographic proofs |

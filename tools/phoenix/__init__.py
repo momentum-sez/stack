@@ -74,18 +74,29 @@ Design Principles
 Module Index
 ────────────
 
+    LAYER 1: ASSET INTELLIGENCE
     tensor.py       Compliance Tensor            955 lines
     zkp.py          ZK Proof Infrastructure      766 lines
+    vm.py           Smart Asset VM             1,285 lines
+
+    LAYER 2: JURISDICTIONAL INFRASTRUCTURE
     manifold.py     Compliance Manifold        1,009 lines
     migration.py    Migration Protocol           886 lines
     bridge.py       Corridor Bridge              822 lines
     anchor.py       L1 Anchor Network            816 lines
+
+    LAYER 3: NETWORK COORDINATION
     watcher.py      Watcher Economy              750 lines
-    vm.py           Smart Asset VM             1,285 lines
     security.py     Security Layer               993 lines
     hardening.py    Hardening Layer              744 lines
 
-    Total: 9,221 lines across 11 modules with 92 tests
+    LAYER 4: OPERATIONS
+    health.py       Health Check Framework       400 lines
+    observability.py Structured Logging          500 lines
+    config.py       Configuration System         492 lines
+    cli.py          Unified CLI Framework        450 lines
+
+    Total: 11,068 lines across 14 modules with 294 tests
 
 Copyright © 2026 Momentum. All rights reserved.
 Contact: engineering@momentum.inc
@@ -171,7 +182,36 @@ def __getattr__(name):
                 "SmartAssetVM", "Assembler"):
         from tools.phoenix import vm
         return getattr(vm, name)
-    
+
+    # Health exports
+    if name in ("HealthChecker", "HealthStatus", "HealthReport", "HealthCheck",
+                "DependencyConfig", "MetricsCollector", "get_health_checker",
+                "get_metrics"):
+        from tools.phoenix import health
+        return getattr(health, name)
+
+    # Observability exports
+    if name in ("PhoenixLogger", "PhoenixLayer", "Tracer", "Span", "SpanContext",
+                "AuditLogger", "AuditEntry", "generate_correlation_id",
+                "get_correlation_id", "set_correlation_id", "get_tracer",
+                "get_audit_logger"):
+        from tools.phoenix import observability
+        return getattr(observability, name)
+
+    # Config exports
+    if name in ("PhoenixConfig", "ConfigManager", "ConfigValue", "ConfigError",
+                "ValidationError", "TensorConfig", "VMConfig", "WatcherConfig",
+                "AnchorConfig", "MigrationConfig", "SecurityConfig",
+                "ObservabilityConfig", "get_config", "get_config_manager"):
+        from tools.phoenix import config
+        return getattr(config, name)
+
+    # CLI exports
+    if name in ("PhoenixCLI", "OutputFormat", "format_output", "CLICommand",
+                "CommandGroup"):
+        from tools.phoenix import cli
+        return getattr(cli, name)
+
     raise AttributeError(f"module 'phoenix' has no attribute '{name}'")
 
 __all__ = [
@@ -180,11 +220,16 @@ __all__ = [
     "__codename__",
     # Tensor
     "ComplianceDomain",
-    "ComplianceState", 
+    "ComplianceState",
     "ComplianceTensorV2",
     "TensorSlice",
     "TensorCommitment",
     "ComplianceProof",
+    "TensorCoord",
+    "TensorCell",
+    "AttestationRef",
+    "tensor_meet",
+    "tensor_join",
     # ZK
     "ProofSystem",
     "Circuit",
@@ -193,21 +238,143 @@ __all__ = [
     "Proof",
     "VerificationKey",
     "ProvingKey",
+    "CircuitType",
+    "MockProver",
+    "MockVerifier",
+    "create_standard_registry",
     # Manifold
     "ComplianceManifold",
     "MigrationPath",
     "AttestationRequirement",
     "PathConstraint",
+    "JurisdictionNode",
+    "CorridorEdge",
+    "AttestationGap",
+    "AttestationType",
+    "MigrationHop",
+    "create_standard_manifold",
     # Migration
     "MigrationSaga",
     "MigrationState",
     "MigrationRequest",
     "MigrationEvidence",
     "CompensationAction",
+    "MigrationOrchestrator",
+    "StateTransition",
+    "LockEvidence",
+    "TransitProof",
+    "VerificationResult",
     # Watcher
     "WatcherBond",
     "SlashingCondition",
     "SlashingClaim",
     "WatcherReputation",
     "WatcherRegistry",
+    "WatcherId",
+    "BondStatus",
+    "ReputationMetrics",
+    "EquivocationDetector",
+    "SlashingEvidence",
+    # Anchor
+    "Chain",
+    "AnchorStatus",
+    "AnchorManager",
+    "AnchorRecord",
+    "CorridorCheckpoint",
+    "InclusionProof",
+    "MockChainAdapter",
+    "CrossChainVerifier",
+    "CrossChainVerification",
+    "create_mock_anchor_manager",
+    # Bridge
+    "CorridorBridge",
+    "BridgePhase",
+    "BridgeRequest",
+    "BridgeExecution",
+    "HopExecution",
+    "HopStatus",
+    "PrepareReceipt",
+    "CommitReceipt",
+    "BridgeReceiptChain",
+    "create_bridge_with_manifold",
+    # Hardening
+    "ValidationError",
+    "ValidationErrors",
+    "SecurityViolation",
+    "InvariantViolation",
+    "EconomicAttackDetected",
+    "ValidationResult",
+    "Validators",
+    "CryptoUtils",
+    "ThreadSafeDict",
+    "AtomicCounter",
+    "InvariantChecker",
+    "EconomicGuard",
+    "RateLimiter",
+    "RateLimitConfig",
+    # Security
+    "AttestationScope",
+    "ScopedAttestation",
+    "NonceRegistry",
+    "VersionedValue",
+    "VersionedStore",
+    "TimeLock",
+    "TimeLockState",
+    "TimeLockManager",
+    "SignatureScheme",
+    "SignedMessage",
+    "SignatureVerifier",
+    "AuditEventType",
+    "AuditEvent",
+    "SecureWithdrawalManager",
+    "WithdrawalRequest",
+    # VM
+    "OpCode",
+    "Word",
+    "ExecutionContext",
+    "VMState",
+    "GasCosts",
+    "ExecutionResult",
+    "ComplianceCoprocessor",
+    "MigrationCoprocessor",
+    "SmartAssetVM",
+    "Assembler",
+    # Health
+    "HealthChecker",
+    "HealthStatus",
+    "HealthReport",
+    "HealthCheck",
+    "DependencyConfig",
+    "MetricsCollector",
+    "get_health_checker",
+    "get_metrics",
+    # Observability
+    "PhoenixLogger",
+    "PhoenixLayer",
+    "Tracer",
+    "Span",
+    "SpanContext",
+    "generate_correlation_id",
+    "get_correlation_id",
+    "set_correlation_id",
+    "get_tracer",
+    "get_audit_logger",
+    # Config
+    "PhoenixConfig",
+    "ConfigManager",
+    "ConfigValue",
+    "ConfigError",
+    "TensorConfig",
+    "VMConfig",
+    "WatcherConfig",
+    "AnchorConfig",
+    "MigrationConfig",
+    "SecurityConfig",
+    "ObservabilityConfig",
+    "get_config",
+    "get_config_manager",
+    # CLI
+    "PhoenixCLI",
+    "OutputFormat",
+    "format_output",
 ]

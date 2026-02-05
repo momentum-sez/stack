@@ -96,7 +96,12 @@ Module Index
     config.py       Configuration System         492 lines
     cli.py          Unified CLI Framework        450 lines
 
-    Total: 11,068 lines across 14 modules with 294 tests
+    LAYER 5: INFRASTRUCTURE PATTERNS
+    resilience.py   Circuit Breaker/Retry        750 lines
+    events.py       Event Bus/Sourcing           650 lines
+    cache.py        LRU/TTL Caching              600 lines
+
+    Total: 13,068 lines across 17 modules with 294 tests
 
 Copyright © 2026 Momentum. All rights reserved.
 Contact: engineering@momentum.inc
@@ -211,6 +216,33 @@ def __getattr__(name):
                 "CommandGroup"):
         from tools.phoenix import cli
         return getattr(cli, name)
+
+    # Resilience exports
+    if name in ("CircuitBreaker", "CircuitState", "CircuitBreakerError",
+                "CircuitBreakerConfig", "CircuitBreakerMetrics",
+                "RetryPolicy", "BackoffStrategy", "RetryExhaustedError",
+                "Bulkhead", "BulkheadFullError", "Timeout", "Fallback",
+                "resilient", "ResilienceRegistry", "get_resilience_registry"):
+        from tools.phoenix import resilience
+        return getattr(resilience, name)
+
+    # Events exports
+    if name in ("Event", "EventBus", "EventStore", "EventRecord",
+                "EventProcessor", "Projection", "EventSourcedAggregate",
+                "Saga", "SagaState", "SagaStep", "ConcurrencyError",
+                "AssetCreated", "AssetMigrated", "ComplianceStateChanged",
+                "AttestationReceived", "MigrationStarted", "MigrationStepCompleted",
+                "MigrationCompleted", "MigrationFailed", "WatcherSlashed",
+                "AnchorSubmitted", "get_event_bus", "get_event_store", "event_handler"):
+        from tools.phoenix import events
+        return getattr(events, name)
+
+    # Cache exports
+    if name in ("Cache", "LRUCache", "TTLCache", "TieredCache",
+                "WriteThroughCache", "ComputeCache", "CacheEntry", "CacheMetrics",
+                "CacheRegistry", "cached", "get_cache_registry"):
+        from tools.phoenix import cache
+        return getattr(cache, name)
 
     raise AttributeError(f"module 'phoenix' has no attribute '{name}'")
 
@@ -377,4 +409,57 @@ __all__ = [
     "PhoenixCLI",
     "OutputFormat",
     "format_output",
+    # Resilience
+    "CircuitBreaker",
+    "CircuitState",
+    "CircuitBreakerError",
+    "CircuitBreakerConfig",
+    "CircuitBreakerMetrics",
+    "RetryPolicy",
+    "BackoffStrategy",
+    "RetryExhaustedError",
+    "Bulkhead",
+    "BulkheadFullError",
+    "Timeout",
+    "Fallback",
+    "resilient",
+    "ResilienceRegistry",
+    "get_resilience_registry",
+    # Events
+    "Event",
+    "EventBus",
+    "EventStore",
+    "EventRecord",
+    "EventProcessor",
+    "Projection",
+    "EventSourcedAggregate",
+    "Saga",
+    "SagaState",
+    "SagaStep",
+    "ConcurrencyError",
+    "AssetCreated",
+    "AssetMigrated",
+    "ComplianceStateChanged",
+    "AttestationReceived",
+    "MigrationStarted",
+    "MigrationStepCompleted",
+    "MigrationCompleted",
+    "MigrationFailed",
+    "WatcherSlashed",
+    "AnchorSubmitted",
+    "get_event_bus",
+    "get_event_store",
+    "event_handler",
+    # Cache
+    "Cache",
+    "LRUCache",
+    "TTLCache",
+    "TieredCache",
+    "WriteThroughCache",
+    "ComputeCache",
+    "CacheEntry",
+    "CacheMetrics",
+    "CacheRegistry",
+    "cached",
+    "get_cache_registry",
 ]

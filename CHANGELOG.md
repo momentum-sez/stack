@@ -139,6 +139,35 @@ Complete instruction set implementation:
 - Complete 146-module index with dependency graph
 - Interface catalog with operations
 
+### Layer 5: Infrastructure Patterns
+
+**Resilience Framework** (`tools/phoenix/resilience.py` — 750 lines)
+- Circuit Breaker pattern with CLOSED/OPEN/HALF_OPEN states
+- Retry policy with exponential backoff and jitter
+- Bulkhead pattern for concurrency isolation
+- Timeout pattern for operation time limits
+- Fallback pattern for graceful degradation
+- `@resilient` composite decorator combining all patterns
+- ResilienceRegistry singleton for centralized management
+
+**Event Infrastructure** (`tools/phoenix/events.py` — 650 lines)
+- EventBus with type-safe publish/subscribe
+- EventStore with optimistic concurrency control
+- Event sourcing with stream versioning
+- Saga pattern with compensation support
+- Projection infrastructure for read models
+- Domain events: AssetCreated, AssetMigrated, ComplianceStateChanged, etc.
+- `@event_handler` decorator for clean handler registration
+
+**Caching Layer** (`tools/phoenix/cache.py` — 600 lines)
+- LRUCache with O(1) get/set via OrderedDict
+- TTLCache with automatic expiration
+- TieredCache (L1/L2) with promotion on hit
+- WriteThroughCache for consistency
+- ComputeCache with lazy computation
+- CacheRegistry singleton for centralized management
+- `@cached` decorator for function memoization
+
 ### Module Completions (16 Modules → 100%)
 
 All previously partial modules now fully implemented:

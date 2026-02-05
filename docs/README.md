@@ -4,7 +4,7 @@
 
 **The Operating System for Special Economic Zones**
 
-This documentation covers the complete MSEZ Stack: a programmable jurisdictional operating system delivering **146 fully-implemented modules** across 16 families, powered by the **PHOENIX execution layer** (11K+ lines across 14 modules).
+This documentation covers the complete MSEZ Stack: a programmable jurisdictional operating system delivering **146 fully-implemented modules** across 16 families, powered by the **PHOENIX Smart Asset Operating System** (13K+ lines across 17 modules).
 
 ---
 
@@ -54,7 +54,7 @@ This documentation covers the complete MSEZ Stack: a programmable jurisdictional
 | Governance & Civic | 10 | ✓ Complete |
 | Arbitration | 8 | ✓ Complete |
 | Operations | 9 | ✓ Complete |
-| PHOENIX Execution | 10 | ✓ Complete |
+| PHOENIX Execution | 17 | ✓ Complete |
 | Agentic Automation | 6 | ✓ Complete |
 | Deployment | 11 | ✓ Complete |
 
@@ -82,6 +82,11 @@ This documentation covers the complete MSEZ Stack: a programmable jurisdictional
 - **Configuration** — YAML/environment binding, validation
 - **CLI** — Unified command interface, multiple output formats
 
+**Layer 5: Infrastructure Patterns**
+- **Resilience** — Circuit breaker, retry, bulkhead, timeout, fallback
+- **Events** — Event bus, event sourcing, saga orchestration, projections
+- **Cache** — LRU/TTL caching, tiered cache, compute cache
+
 ### Quality Assurance
 
 - **50+ bugs identified and fixed** via comprehensive code audit
@@ -103,17 +108,20 @@ This documentation covers the complete MSEZ Stack: a programmable jurisdictional
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
+│                      LAYER 5: INFRASTRUCTURE PATTERNS                        │
+│  Circuit Breaker │ Retry Policy │ Event Bus │ Event Sourcing │ Caching      │
+├─────────────────────────────────────────────────────────────────────────────┤
 │                           LAYER 4: OPERATIONS                                │
-│  Health Framework │ Observability │ Configuration │ CLI                     │
+│  Health Framework │ Observability │ Configuration │ CLI                      │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                         LAYER 3: NETWORK COORDINATION                        │
-│  Watcher Economy │ Security Layer │ Hardening Layer                         │
+│  Watcher Economy │ Security Layer │ Hardening Layer                          │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                     LAYER 2: JURISDICTIONAL INFRASTRUCTURE                   │
 │  Compliance Manifold │ Migration Protocol │ Corridor Bridge │ L1 Anchor     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                          LAYER 1: ASSET INTELLIGENCE                         │
-│  Compliance Tensor │ ZK Proof System │ Smart Asset VM                       │
+│  Compliance Tensor │ ZK Proof System │ Smart Asset VM                        │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 

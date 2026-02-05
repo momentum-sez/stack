@@ -6,18 +6,32 @@ The Momentum SEZ Stack (MSEZ) is a **programmable jurisdictional operating syste
 
 ## System Capabilities
 
-| Component | Lines | Description |
-|-----------|-------|-------------|
-| Compliance Tensor | 955 | 4D sparse tensor for compliance state |
-| Smart Asset VM | 1,285 | Stack-based execution with gas metering |
-| Compliance Manifold | 1,009 | Dijkstra path planning across jurisdictions |
-| Migration Protocol | 886 | Saga-based migration with compensation |
-| Corridor Bridge | 822 | Two-phase commit for multi-hop transfers |
-| L1 Anchor | 816 | Ethereum/L2 settlement finality |
-| Watcher Economy | 750 | Bonded attestors with slashing |
-| ZK Proofs | 766 | Groth16/PLONK/STARK verification |
-| Security Layer | 993 | Nonces, versioning, time locks |
-| Hardening Layer | 744 | Input validation, thread safety |
+**PHOENIX Smart Asset Operating System — 13,068 lines across 17 modules**
+
+| Layer | Module | Lines | Description |
+|-------|--------|-------|-------------|
+| **Layer 1: Asset Intelligence** ||||
+|| Compliance Tensor | 955 | 4D sparse tensor for compliance state |
+|| ZK Proofs | 766 | Groth16/PLONK/STARK verification |
+|| Smart Asset VM | 1,285 | Stack-based execution with gas metering |
+| **Layer 2: Jurisdictional Infrastructure** ||||
+|| Compliance Manifold | 1,009 | Dijkstra path planning across jurisdictions |
+|| Migration Protocol | 886 | Saga-based migration with compensation |
+|| Corridor Bridge | 822 | Two-phase commit for multi-hop transfers |
+|| L1 Anchor | 816 | Ethereum/L2 settlement finality |
+| **Layer 3: Network Coordination** ||||
+|| Watcher Economy | 750 | Bonded attestors with slashing |
+|| Security Layer | 993 | Nonces, versioning, time locks |
+|| Hardening Layer | 744 | Input validation, thread safety |
+| **Layer 4: Operations** ||||
+|| Health Framework | 400 | Kubernetes liveness/readiness probes |
+|| Observability | 500 | Structured logging, distributed tracing |
+|| Configuration | 492 | YAML/environment binding, validation |
+|| CLI Framework | 450 | Unified command interface |
+| **Layer 5: Infrastructure Patterns** ||||
+|| Resilience | 750 | Circuit breaker, retry, bulkhead, timeout |
+|| Events | 650 | Event bus, event sourcing, saga pattern |
+|| Cache | 600 | LRU/TTL caching, tiered cache |
 
 This document describes the system at three layers:
 

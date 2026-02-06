@@ -576,7 +576,7 @@ class MockProver:
     ) -> Proof:
         # Create deterministic mock proof from witness
         witness_hash = hashlib.sha256(
-            json.dumps(witness.private_inputs, sort_keys=True).encode()
+            json.dumps(witness.private_inputs, sort_keys=True, separators=(",", ":")).encode()
         ).digest()
         
         public_inputs = []

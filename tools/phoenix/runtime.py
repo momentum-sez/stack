@@ -881,9 +881,9 @@ class PhoenixKernel:
 
         try:
             # Wait for in-flight requests with timeout
-            start = time.time()
+            start = time.monotonic()
             while self._active_requests.get() > 0:
-                if time.time() - start > timeout:
+                if time.monotonic() - start > timeout:
                     logger.warning("Shutdown timeout reached with active requests")
                     break
                 await asyncio.sleep(0.1)
@@ -933,7 +933,7 @@ class PhoenixKernel:
 
         self._active_requests.inc()
         self._requests_total.inc()
-        start = time.time()
+        start = time.monotonic()
 
         token = propagate_context(ctx)
         try:
@@ -941,7 +941,7 @@ class PhoenixKernel:
         finally:
             _current_context.reset(token)
             self._active_requests.dec()
-            duration = time.time() - start
+            duration = time.monotonic() - start
             self._request_duration.observe(duration)
 
     @contextmanager
@@ -952,7 +952,7 @@ class PhoenixKernel:
 
         self._active_requests.inc()
         self._requests_total.inc()
-        start = time.time()
+        start = time.monotonic()
 
         token = propagate_context(ctx)
         try:
@@ -960,7 +960,7 @@ class PhoenixKernel:
         finally:
             _current_context.reset(token)
             self._active_requests.dec()
-            duration = time.time() - start
+            duration = time.monotonic() - start
             self._request_duration.observe(duration)
 
     def _register_builtin_services(self) -> None:

@@ -214,7 +214,7 @@ class SlashingEvidence:
 
     def __post_init__(self):
         if not self.evidence_digest:
-            content = json.dumps(self.evidence_data, sort_keys=True)
+            content = json.dumps(self.evidence_data, sort_keys=True, separators=(",", ":"))
             self.evidence_digest = hashlib.sha256(content.encode()).hexdigest()
 
 
@@ -232,7 +232,7 @@ class EquivocationEvidence:
             "attestation_1": self.attestation_1,
             "attestation_2": self.attestation_2,
         }
-        content = json.dumps(self.evidence_data, sort_keys=True)
+        content = json.dumps(self.evidence_data, sort_keys=True, separators=(",", ":"))
         self.evidence_digest = hashlib.sha256(content.encode()).hexdigest()
 
 

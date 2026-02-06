@@ -815,7 +815,7 @@ class MigrationSaga:
         self._state_entered_monotonic = time.monotonic()
 
         # Record dispute evidence
-        evidence_json = json.dumps(evidence, sort_keys=True)
+        evidence_json = json.dumps(evidence, sort_keys=True, separators=(",", ":"))
         evidence_digest = hashlib.sha256(evidence_json.encode()).hexdigest()
         
         self._record_transition(

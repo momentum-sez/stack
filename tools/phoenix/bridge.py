@@ -59,12 +59,7 @@ from tools.phoenix.manifold import (
     CorridorEdge,
     JurisdictionNode,
 )
-
-
-def _canonical_hash(data: Dict[str, Any]) -> str:
-    """Compute a deterministic hash using canonical JSON serialization (sorted keys, no spaces)."""
-    canonical = json.dumps(data, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode()).hexdigest()
+from tools.phoenix.hardening import canonical_json_hash as _canonical_hash
 
 
 # =============================================================================

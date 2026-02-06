@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import re
 import secrets
 import threading
@@ -553,6 +554,21 @@ class ThreadSafeDict(Dict[str, T]):
         with self._lock:
             super().update(*args, **kwargs)
     
+    def items(self):
+        """Return a snapshot of items (safe to iterate while dict is modified)."""
+        with self._lock:
+            return list(super().items())
+
+    def keys(self):
+        """Return a snapshot of keys."""
+        with self._lock:
+            return list(super().keys())
+
+    def values(self):
+        """Return a snapshot of values."""
+        with self._lock:
+            return list(super().values())
+
     @contextmanager
     def transaction(self):
         """Context manager for atomic multi-operation transactions."""
@@ -596,6 +612,118 @@ class AtomicCounter:
         """Atomically reset the counter to the given value."""
         with self._lock:
             self._value = value
+
+
+# =============================================================================
+# REUSABLE DEFENSIVE INFRASTRUCTURE
+# =============================================================================
+#
+# These primitives address the root-cause anti-patterns found during the
+# comprehensive bug audit.  Modules should use these instead of hand-rolling
+# their own locking, singletons, canonical hashing, or time utilities.
+#
+
+def thread_safe_singleton(cls):
+    """
+    Decorator that makes a class a thread-safe singleton.
+
+    Eliminates the race condition where two threads both see ``_instance is None``
+    and each create a separate instance.  Uses double-checked locking for
+    performance (the lock is only acquired when the instance hasn't been created
+    yet).
+
+    Usage::
+
+        @thread_safe_singleton
+        class MyService:
+            ...
+
+        svc = MyService()  # always the same instance
+    """
+    _lock = threading.Lock()
+    _instance = None
+
+    original_init = cls.__init__
+
+    def _get_instance(*args, **kwargs):
+        nonlocal _instance
+        if _instance is None:
+            with _lock:
+                if _instance is None:
+                    obj = object.__new__(cls)
+                    original_init(obj, *args, **kwargs)
+                    _instance = obj
+        return _instance
+
+    cls._singleton_reset = staticmethod(lambda: _reset_singleton())
+
+    def _reset_singleton():
+        nonlocal _instance
+        with _lock:
+            _instance = None
+
+    cls._singleton_reset = staticmethod(_reset_singleton)
+    cls.__new__ = lambda cls_arg, *a, **kw: _get_instance(*a, **kw)
+
+    return cls
+
+
+def canonical_json_hash(obj: Any) -> str:
+    """
+    Compute a deterministic SHA-256 hash of a JSON-serialisable object.
+
+    Always uses ``sort_keys=True`` and compact ``(",", ":")`` separators so
+    the hash is the same regardless of dict insertion order or formatting.
+    This is the ONLY function that should be used when hashing JSON for
+    Merkle trees, audit logs, receipt chains, or any integrity check.
+    """
+    canonical = json.dumps(obj, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+class MonotonicTimer:
+    """
+    A monotonic-clock timer for measuring elapsed intervals.
+
+    Wall-clock time (``time.time()``) can jump forward or backward due to NTP
+    adjustments, DST transitions, or ``settimeofday()`` calls.  Interval logic
+    (timeouts, rate-limiters, circuit-breaker durations) MUST use the monotonic
+    clock which only moves forward.
+
+    Usage::
+
+        timer = MonotonicTimer()
+        # ... some work ...
+        if timer.elapsed_seconds() > 30:
+            raise TimeoutError
+    """
+
+    def __init__(self):
+        self._start = time.monotonic()
+
+    def elapsed_seconds(self) -> float:
+        return time.monotonic() - self._start
+
+    def reset(self) -> None:
+        self._start = time.monotonic()
+
+    @staticmethod
+    def now() -> float:
+        """Return the current monotonic timestamp (for storing)."""
+        return time.monotonic()
+
+
+def frozen_copy(collection):
+    """
+    Return a shallow copy of a list or dict, suitable for safe iteration.
+
+    Prevents the ``RuntimeError: dictionary changed size during iteration``
+    family of bugs that occurs when iterating a dict/list that another thread
+    (or the iteration body itself) may modify.
+    """
+    if isinstance(collection, dict):
+        return list(collection.items())
+    return list(collection)
 
 
 # =============================================================================

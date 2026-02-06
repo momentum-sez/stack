@@ -228,8 +228,10 @@ class JurisdictionNode:
     
     def total_entry_cost(self) -> Decimal:
         """Calculate total cost to enter jurisdiction."""
+        # Bug #32: Use Decimal start value to ensure Decimal result
         attestation_costs = sum(
-            r.estimated_cost_usd for r in self.entry_requirements
+            (r.estimated_cost_usd for r in self.entry_requirements),
+            Decimal("0"),
         )
         return self.entry_fee_usd + attestation_costs
     
@@ -250,6 +252,15 @@ class JurisdictionNode:
             "entry_fee_usd": str(self.entry_fee_usd),
             "is_active": self.is_active,
         }
+
+    # Bug #26: Value-based equality and hashing using jurisdiction ID
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, JurisdictionNode):
+            return NotImplemented
+        return self.jurisdiction_id == other.jurisdiction_id
+
+    def __hash__(self) -> int:
+        return hash(self.jurisdiction_id)
 
 
 @dataclass
@@ -293,7 +304,11 @@ class CorridorEdge:
         return self.flat_fee_usd + bps_cost
     
     def total_attestation_cost(self) -> Decimal:
-        return sum(r.estimated_cost_usd for r in self.transfer_requirements)
+        # Bug #32: Use Decimal start value to ensure Decimal result
+        return sum(
+            (r.estimated_cost_usd for r in self.transfer_requirements),
+            Decimal("0"),
+        )
     
     def total_time_hours(self) -> int:
         return self.estimated_transfer_hours + self.settlement_finality_hours
@@ -310,6 +325,15 @@ class CorridorEdge:
             "flat_fee_usd": str(self.flat_fee_usd),
             "estimated_transfer_hours": self.estimated_transfer_hours,
         }
+
+    # Bug #26: Value-based equality and hashing using corridor ID
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, CorridorEdge):
+            return NotImplemented
+        return self.corridor_id == other.corridor_id
+
+    def __hash__(self) -> int:
+        return hash(self.corridor_id)
 
 
 # =============================================================================
@@ -423,11 +447,15 @@ class AttestationGap:
     
     def estimated_resolution_cost(self) -> Decimal:
         """Estimate cost to resolve all gaps."""
-        missing_cost = sum(r.estimated_cost_usd for r in self.missing)
+        # Bug #32: Use Decimal start value to ensure Decimal result
+        missing_cost = sum(
+            (r.estimated_cost_usd for r in self.missing), Decimal("0")
+        )
         # Renewals typically cost less
+        # Bug #32: Use Decimal start value to ensure Decimal result
         renewal_cost = sum(
-            r.estimated_cost_usd * Decimal("0.5")
-            for r, _ in self.expired
+            (r.estimated_cost_usd * Decimal("0.5") for r, _ in self.expired),
+            Decimal("0"),
         )
         return missing_cost + renewal_cost
     
@@ -481,7 +509,10 @@ class ComplianceManifold:
             constraints=PathConstraint(max_total_cost_usd=Decimal("10000")),
         )
     """
-    
+
+    # Bug #28: Maximum reasonable cost to prevent overflow
+    MAX_COST_USD = Decimal("999999999999")  # ~$1 trillion cap
+
     def __init__(self):
         self._jurisdictions: Dict[str, JurisdictionNode] = {}
         self._corridors: Dict[str, CorridorEdge] = {}
@@ -508,6 +539,34 @@ class ComplianceManifold:
                 self._adjacency[corridor.target_jurisdiction] = []
             self._adjacency[corridor.target_jurisdiction].append(corridor.corridor_id)
     
+    def deactivate_corridor(self, corridor_id: str) -> None:
+        """Deactivate a corridor and remove it from the adjacency list.
+
+        Bug #31: Ensures stale entries are cleaned up from the adjacency
+        list when a corridor is deactivated.
+        """
+        corridor = self._corridors.get(corridor_id)
+        if corridor is None:
+            return
+
+        # Mark as inactive
+        corridor.is_active = False
+
+        # Remove from adjacency list to prevent stale entries
+        source = corridor.source_jurisdiction
+        if source in self._adjacency:
+            self._adjacency[source] = [
+                cid for cid in self._adjacency[source] if cid != corridor_id
+            ]
+
+        if corridor.is_bidirectional:
+            target_jur = corridor.target_jurisdiction
+            if target_jur in self._adjacency:
+                self._adjacency[target_jur] = [
+                    cid for cid in self._adjacency[target_jur]
+                    if cid != corridor_id
+                ]
+
     def get_jurisdiction(self, jurisdiction_id: str) -> Optional[JurisdictionNode]:
         return self._jurisdictions.get(jurisdiction_id)
     
@@ -640,13 +699,23 @@ class ComplianceManifold:
                     previous[neighbor] = (current, corridor_id)
                     heapq.heappush(pq, (new_dist, new_time, neighbor))
         
-        # Reconstruct path
-        if distances[target] == Decimal("Infinity"):
+        # Bug #27: Handle disconnected graphs - check if target was reached
+        if target not in visited or distances[target] == Decimal("Infinity"):
             return None
-        
-        return self._reconstruct_path(
+
+        path = self._reconstruct_path(
             source, target, previous, asset_value_usd, existing_attestations
         )
+
+        # Bug #29: Validate the path has no cycles
+        if path is not None:
+            seen_jurisdictions: Set[str] = set()
+            for jurisdiction_id in path.jurisdictions:
+                if jurisdiction_id in seen_jurisdictions:
+                    return None
+                seen_jurisdictions.add(jurisdiction_id)
+
+        return path
     
     def _count_hops(
         self,
@@ -680,8 +749,14 @@ class ComplianceManifold:
         # Target jurisdiction entry cost
         target = self._jurisdictions.get(corridor.target_jurisdiction)
         entry_cost = target.entry_fee_usd if target else Decimal("0")
-        
-        return transfer_cost + attestation_cost + entry_cost
+
+        total = transfer_cost + attestation_cost + entry_cost
+
+        # Bug #28: Cap cost to prevent overflow with large corridor costs
+        if total > self.MAX_COST_USD:
+            return self.MAX_COST_USD
+
+        return total
     
     def _reconstruct_path(
         self,
@@ -778,11 +853,21 @@ class ComplianceManifold:
             AttestationGap analysis
         """
         as_of = as_of or datetime.now(timezone.utc)
-        
+
         required = path.all_requirements
         missing: List[AttestationRequirement] = []
         expired: List[Tuple[AttestationRequirement, AttestationRef]] = []
-        
+
+        # Bug #30: Handle empty attestation lists explicitly
+        if not available_attestations:
+            # No attestations available - all requirements are missing
+            return AttestationGap(
+                required=required,
+                available=available_attestations,
+                missing=list(required),
+                expired=[],
+            )
+
         for req in required:
             satisfying = None
             for att in available_attestations:

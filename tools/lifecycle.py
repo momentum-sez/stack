@@ -172,8 +172,23 @@ def apply_lifecycle_transition(
     if from_state != str(lifecycle.get("state")):
         return lifecycle, [f"from_state mismatch: lifecycle={lifecycle.get('state')} transition={from_state}"]
 
-    # Find transition rule
+    # BUG FIX #99: Terminal states must not allow re-entry or transitions out.
+    # Check explicitly defined terminal_states first, then check if the state
+    # has no outgoing transitions in the allowed_transitions list.
+    terminal_states = set(state_machine.get("terminal_states") or [])
     rules = state_machine.get("allowed_transitions") or []
+
+    if not terminal_states:
+        # Infer terminal states: any state that appears only as a "to" target
+        # but never as a "from" source is a terminal state.
+        from_states = {str(r.get("from")) for r in rules}
+        to_states = {str(r.get("to")) for r in rules}
+        terminal_states = to_states - from_states
+
+    if from_state in terminal_states:
+        return lifecycle, [f"cannot transition from terminal state: {from_state!r}"]
+
+    # Find transition rule
     rule = None
     for r in rules:
         if str(r.get("from")) == from_state and str(r.get("to")) == to_state:

@@ -28,6 +28,7 @@ import hmac
 import re
 import secrets
 import threading
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -158,7 +159,8 @@ def parse_iso_timestamp(timestamp: str) -> datetime:
         except (ValueError, IndexError) as e:
             raise ValueError(f"Cannot parse timestamp: {timestamp}") from e
 
-    # Ensure timezone awareness (default to UTC)
+    # Bug #67: Ensure timezone awareness - default to UTC for timezone-naive
+    # strings to prevent comparison issues between tz-aware and tz-naive datetimes
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
 
@@ -253,6 +255,10 @@ class Validators:
     @classmethod
     def validate_did(cls, value: Any) -> ValidationResult:
         """Validate a DID."""
+        if isinstance(value, str) and not value.strip():
+            return ValidationResult.failure([
+                ValidationError("did", "DID cannot be empty", value)
+            ])
         return cls.validate_string(
             value, "did",
             min_length=8, max_length=256,
@@ -445,12 +451,15 @@ class CryptoUtils:
         
         Uses the convention of duplicating the last leaf when odd.
         """
+        # Work on a copy to avoid mutating the caller's list
+        leaves = list(leaves)
+
         if not leaves:
             return "0" * 64
-        
+
         if len(leaves) == 1:
             return leaves[0]
-        
+
         # Ensure even number by duplicating last
         current_level = list(leaves)
         
@@ -519,7 +528,15 @@ class ThreadSafeDict(Dict[str, T]):
     def __contains__(self, key: object) -> bool:
         with self._lock:
             return super().__contains__(key)
-    
+
+    def __iter__(self):
+        with self._lock:
+            return iter(list(super().keys()))
+
+    def __len__(self):
+        with self._lock:
+            return super().__len__()
+
     def get(self, key: str, default: T = None) -> Optional[T]:
         with self._lock:
             return super().get(key, default)
@@ -574,6 +591,11 @@ class AtomicCounter:
                 self._value = new_value
                 return True
             return False
+
+    def reset(self, value: int = 0) -> None:
+        """Atomically reset the counter to the given value."""
+        with self._lock:
+            self._value = value
 
 
 # =============================================================================
@@ -717,17 +739,17 @@ class RateLimiter:
     def __init__(self, config: RateLimitConfig):
         self.config = config
         self._tokens = float(config.burst_size)
-        self._last_update = datetime.now(timezone.utc)
+        self._last_update = time.monotonic()
         self._lock = threading.Lock()
-        
+
         # Tokens refill per second
         self._refill_rate = config.requests_per_minute / 60.0
-    
+
     def acquire(self, tokens: int = 1) -> bool:
         """Try to acquire tokens. Returns True if successful."""
         with self._lock:
-            now = datetime.now(timezone.utc)
-            elapsed = (now - self._last_update).total_seconds()
+            now = time.monotonic()
+            elapsed = now - self._last_update
             self._last_update = now
             
             # Refill tokens
@@ -743,17 +765,16 @@ class RateLimiter:
     
     def wait_and_acquire(self, tokens: int = 1, max_wait_seconds: float = 10.0) -> bool:
         """Wait for tokens to become available."""
-        start = datetime.now(timezone.utc)
+        start = time.monotonic()
         while True:
             if self.acquire(tokens):
                 return True
-            
-            elapsed = (datetime.now(timezone.utc) - start).total_seconds()
+
+            elapsed = time.monotonic() - start
             if elapsed >= max_wait_seconds:
                 return False
-            
+
             # Sleep a bit
-            import time
             time.sleep(0.1)
 
 

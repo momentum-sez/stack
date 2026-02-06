@@ -20,12 +20,13 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import hmac
 import json
 import os
 import pathlib
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from cryptography.hazmat.primitives import serialization
@@ -232,8 +233,9 @@ def _validate_proof_object(p: Dict[str, Any]) -> None:
     we can produce tighter error messages and enforce invariants in CI.
     """
 
+    # Bug #77: Use constant-time comparison for proof type to prevent timing attacks
     t = p.get("type")
-    if t != _PROOF_TYPE:
+    if not isinstance(t, str) or not hmac.compare_digest(t, _PROOF_TYPE):
         raise ValueError(f"Unsupported proof.type: {t!r} (expected {_PROOF_TYPE})")
 
     created = p.get("created")
@@ -289,6 +291,53 @@ def verify_credential(credential: Dict[str, Any]) -> List[ProofResult]:
         except Exception as ex:
             results.append(ProofResult(verification_method=vm, ok=False, error=str(ex)))
     return results
+
+
+def validate_credential(credential: Dict[str, Any]) -> List[str]:
+    """Validate credential structure including date checks.
+
+    Returns a list of error messages (empty list means valid).
+
+    Checks:
+    - Bug #78: issuanceDate must not be in the future
+    - Bug #79: expirationDate is handled explicitly (missing = never expires)
+    """
+    errors: List[str] = []
+    now = datetime.now(timezone.utc)
+
+    # Bug #78: Reject VCs with issuance date in the future
+    issuance_date = credential.get("issuanceDate")
+    if issuance_date is not None:
+        try:
+            normalized = str(issuance_date).replace("Z", "+00:00")
+            idt = datetime.fromisoformat(normalized)
+            if idt.tzinfo is None:
+                idt = idt.replace(tzinfo=timezone.utc)
+            if idt > now + timedelta(seconds=60):  # 60s clock skew allowance
+                errors.append(
+                    f"issuanceDate is in the future: {issuance_date}"
+                )
+        except (ValueError, TypeError) as e:
+            errors.append(f"Invalid issuanceDate: {e}")
+
+    # Bug #79: Handle expirationDate explicitly
+    expiration_date = credential.get("expirationDate")
+    if expiration_date is not None:
+        try:
+            normalized = str(expiration_date).replace("Z", "+00:00")
+            edt = datetime.fromisoformat(normalized)
+            if edt.tzinfo is None:
+                edt = edt.replace(tzinfo=timezone.utc)
+            if edt < now:
+                errors.append(
+                    f"Credential has expired: {expiration_date}"
+                )
+        except (ValueError, TypeError) as e:
+            errors.append(f"Invalid expirationDate: {e}")
+    # When expirationDate is absent, the credential never expires.
+    # Callers should apply their own policy for credentials without expiration.
+
+    return errors
 
 
 def add_ed25519_proof(

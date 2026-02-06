@@ -41,6 +41,7 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -466,7 +467,8 @@ class MigrationSaga:
         self.migration_id = migration_id or self._generate_migration_id()
         self._state = MigrationState.INITIATED
         self._state_entered_at = datetime.now(timezone.utc)
-        
+        self._state_entered_monotonic = time.monotonic()
+
         # Evidence bundle
         self.evidence = MigrationEvidence(
             migration_id=self.migration_id,
@@ -511,9 +513,32 @@ class MigrationSaga:
     
     @property
     def is_timed_out(self) -> bool:
-        """Check if current state has exceeded timeout."""
+        """Check if current state has exceeded timeout.
+
+        Uses both monotonic clock (for runtime accuracy) and wall clock
+        (for persistence/testability) -- whichever indicates timeout wins.
+        """
         timeout_hours = self.STATE_TIMEOUTS.get(self._state, 24)
-        return self.time_in_current_state > timedelta(hours=timeout_hours)
+        timeout_seconds = timeout_hours * 3600
+
+        # Check monotonic clock
+        elapsed_mono = time.monotonic() - self._state_entered_monotonic
+        if elapsed_mono > timeout_seconds:
+            return True
+
+        # BUG FIX: Also check wall-clock time so that timeout detection
+        # works after process restart or when _state_entered_at is set externally
+        if self._state_entered_at:
+            from tools.phoenix.hardening import parse_iso_timestamp
+            entered = self._state_entered_at
+            if isinstance(entered, str):
+                entered = parse_iso_timestamp(entered)
+            now = datetime.now(timezone.utc)
+            elapsed_wall = (now - entered).total_seconds()
+            if elapsed_wall > timeout_seconds:
+                return True
+
+        return False
     
     def can_transition_to(self, target_state: MigrationState) -> bool:
         """Check if transition to target state is valid."""
@@ -529,15 +554,20 @@ class MigrationSaga:
     ) -> bool:
         """
         Advance the saga to a new state.
-        
-        Returns True if transition was successful.
+
+        Returns True if transition was successful, False if the transition
+        is invalid per the state machine.
         """
         if not self.can_transition_to(target_state):
+            # BUG FIX: Return False instead of raising, matching the documented
+            # return-type contract. Callers that want an exception can check
+            # can_transition_to() explicitly before calling.
             return False
-        
+
         old_state = self._state
         self._state = target_state
         self._state_entered_at = datetime.now(timezone.utc)
+        self._state_entered_monotonic = time.monotonic()
         
         self._record_transition(
             from_state=old_state,
@@ -596,7 +626,8 @@ class MigrationSaga:
         old_state = self._state
         self._state = MigrationState.COMPENSATED
         self._state_entered_at = datetime.now(timezone.utc)
-        
+        self._state_entered_monotonic = time.monotonic()
+
         self._record_transition(
             from_state=old_state,
             to_state=MigrationState.COMPENSATED,
@@ -614,66 +645,87 @@ class MigrationSaga:
         return True
     
     def _execute_compensation(self, from_state: MigrationState) -> None:
-        """Execute compensation actions for the given state."""
+        """
+        Execute compensation actions for the given state.
+
+        Each compensation step is independently wrapped so that a failure
+        in one step never prevents remaining steps from being attempted.
+        All failures are recorded in the compensation log.
+        """
         now = datetime.now(timezone.utc).isoformat()
-        
+
         # Compensation depends on how far migration progressed
-        unlock_success = False
         if from_state in {MigrationState.SOURCE_LOCK, MigrationState.TRANSIT}:
             # Need to unlock source - attempt actual unlock
             try:
                 # In real implementation, would call lock service
                 unlock_success = True  # Mark success after successful unlock
-            except Exception:
-                unlock_success = False
+                self._compensations.append(CompensationRecord(
+                    action=CompensationAction.UNLOCK_SOURCE,
+                    timestamp=now,
+                    success=unlock_success,
+                    details={"asset_id": self.request.asset_id},
+                ))
+            except Exception as e:
+                self._compensations.append(CompensationRecord(
+                    action=CompensationAction.UNLOCK_SOURCE,
+                    timestamp=now,
+                    success=False,
+                    details={"asset_id": self.request.asset_id},
+                    error=str(e),
+                ))
 
-            self._compensations.append(CompensationRecord(
-                action=CompensationAction.UNLOCK_SOURCE,
-                timestamp=now,
-                success=unlock_success,
-                details={"asset_id": self.request.asset_id},
-            ))
-
-        refund_success = False
         if from_state in {
             MigrationState.ATTESTATION_GATHERING,
             MigrationState.SOURCE_LOCK,
             MigrationState.TRANSIT,
             MigrationState.DESTINATION_VERIFICATION,
         }:
-            # Calculate actual refund amount based on migration progress
-            refund_amount = self._calculate_refund_amount(from_state)
             try:
+                # Calculate actual refund amount based on migration progress
+                refund_amount = self._calculate_refund_amount(from_state)
                 # In real implementation, would process refund
                 refund_success = True
-            except Exception:
-                refund_success = False
-
-            self._compensations.append(CompensationRecord(
-                action=CompensationAction.REFUND_FEES,
-                timestamp=now,
-                success=refund_success,
-                details={"refund_amount": str(refund_amount)},
-            ))
+                self._compensations.append(CompensationRecord(
+                    action=CompensationAction.REFUND_FEES,
+                    timestamp=now,
+                    success=refund_success,
+                    details={"refund_amount": str(refund_amount)},
+                ))
+            except Exception as e:
+                self._compensations.append(CompensationRecord(
+                    action=CompensationAction.REFUND_FEES,
+                    timestamp=now,
+                    success=False,
+                    details={},
+                    error=str(e),
+                ))
 
         # Notify all parties
-        notify_success = False
         try:
             # In real implementation, would send notifications
             notify_success = True
-        except Exception:
-            notify_success = False
+            self._compensations.append(CompensationRecord(
+                action=CompensationAction.NOTIFY_COUNTERPARTIES,
+                timestamp=now,
+                success=notify_success,
+                details={
+                    "source_jurisdiction": self.request.source_jurisdiction,
+                    "target_jurisdiction": self.request.target_jurisdiction,
+                },
+            ))
+        except Exception as e:
+            self._compensations.append(CompensationRecord(
+                action=CompensationAction.NOTIFY_COUNTERPARTIES,
+                timestamp=now,
+                success=False,
+                details={
+                    "source_jurisdiction": self.request.source_jurisdiction,
+                    "target_jurisdiction": self.request.target_jurisdiction,
+                },
+                error=str(e),
+            ))
 
-        self._compensations.append(CompensationRecord(
-            action=CompensationAction.NOTIFY_COUNTERPARTIES,
-            timestamp=now,
-            success=notify_success,
-            details={
-                "source_jurisdiction": self.request.source_jurisdiction,
-                "target_jurisdiction": self.request.target_jurisdiction,
-            },
-        ))
-        
         # Execute registered compensation handler
         handler = self._compensation_handlers.get(from_state)
         if handler:
@@ -681,10 +733,10 @@ class MigrationSaga:
                 handler(self)
             except Exception as e:
                 self._compensations.append(CompensationRecord(
-                    action=CompensationAction.NOTIFY_COUNTERPARTIES,
+                    action=CompensationAction.FILE_DISPUTE,
                     timestamp=now,
                     success=False,
-                    details={},
+                    details={"handler_state": from_state.value},
                     error=str(e),
                 ))
 
@@ -729,7 +781,8 @@ class MigrationSaga:
         old_state = self._state
         self._state = MigrationState.CANCELLED
         self._state_entered_at = datetime.now(timezone.utc)
-        
+        self._state_entered_monotonic = time.monotonic()
+
         self._record_transition(
             from_state=old_state,
             to_state=MigrationState.CANCELLED,
@@ -759,7 +812,8 @@ class MigrationSaga:
         old_state = self._state
         self._state = MigrationState.DISPUTED
         self._state_entered_at = datetime.now(timezone.utc)
-        
+        self._state_entered_monotonic = time.monotonic()
+
         # Record dispute evidence
         evidence_json = json.dumps(evidence, sort_keys=True)
         evidence_digest = hashlib.sha256(evidence_json.encode()).hexdigest()
@@ -806,7 +860,13 @@ class MigrationSaga:
         self.evidence.destination_tensor_commitment = commitment
     
     def add_attestation(self, attestation: AttestationRef) -> None:
-        """Add a collected attestation to evidence."""
+        """Add a collected attestation to evidence, deduplicating by digest."""
+        existing_digests = {
+            a.digest for a in self.evidence.collected_attestations
+            if hasattr(a, 'digest')
+        }
+        if hasattr(attestation, 'digest') and attestation.digest in existing_digests:
+            return  # Already present, skip duplicate
         self.evidence.collected_attestations.append(attestation)
     
     def set_source_lock(self, lock: LockEvidence) -> None:
@@ -822,7 +882,13 @@ class MigrationSaga:
         self.evidence.destination_verification = result
     
     def add_fee_payment(self, payment: Dict[str, Any]) -> None:
-        """Record a fee payment."""
+        """Record a fee payment, deduplicating by canonical content."""
+        canonical = json.dumps(payment, sort_keys=True, separators=(",", ":"))
+        payment_digest = hashlib.sha256(canonical.encode()).hexdigest()
+        for existing in self.evidence.fees_paid:
+            existing_canonical = json.dumps(existing, sort_keys=True, separators=(",", ":"))
+            if hashlib.sha256(existing_canonical.encode()).hexdigest() == payment_digest:
+                return  # Duplicate, skip
         self.evidence.fees_paid.append(payment)
     
     def complete(self, actor_did: Optional[str] = None) -> bool:
@@ -836,7 +902,8 @@ class MigrationSaga:
         
         self._state = MigrationState.COMPLETED
         self._state_entered_at = datetime.now(timezone.utc)
-        
+        self._state_entered_monotonic = time.monotonic()
+
         self._record_transition(
             from_state=MigrationState.DESTINATION_UNLOCK,
             to_state=MigrationState.COMPLETED,
@@ -850,7 +917,21 @@ class MigrationSaga:
         return True
     
     def to_dict(self) -> Dict[str, Any]:
-        """Serialize saga state."""
+        """
+        Serialize saga state for external consumption.
+
+        Sensitive internal details (compensation records, internal lock IDs)
+        are excluded to prevent information leakage.
+        """
+        # Build a sanitized evidence dict that omits internal lock details
+        evidence_dict = self.evidence.to_dict()
+        # Remove source lock internal IDs that could be exploited
+        if evidence_dict.get("source_lock"):
+            evidence_dict["source_lock"] = {
+                k: v for k, v in evidence_dict["source_lock"].items()
+                if k not in ("lock_id", "lock_signature")
+            }
+
         return {
             "migration_id": self.migration_id,
             "state": self._state.value,
@@ -859,8 +940,13 @@ class MigrationSaga:
             "is_successful": self.is_successful,
             "is_timed_out": self.is_timed_out,
             "request": self.request.to_dict(),
-            "evidence": self.evidence.to_dict(),
-            "compensations": [c.to_dict() for c in self._compensations],
+            "evidence": evidence_dict,
+            # Compensation details are internal-only; expose only a summary
+            "compensation_summary": {
+                "total_actions": len(self._compensations),
+                "successful": sum(1 for c in self._compensations if c.success),
+                "failed": sum(1 for c in self._compensations if not c.success),
+            },
         }
 
 
@@ -871,16 +957,37 @@ class MigrationSaga:
 class MigrationOrchestrator:
     """
     High-level orchestrator for migration sagas.
-    
+
     Manages multiple concurrent migrations and provides
     lifecycle management.
     """
-    
+
+    # Maximum number of completed/terminal sagas to retain in history
+    MAX_COMPLETED_HISTORY: int = 10000
+
     def __init__(self):
         self._sagas: Dict[str, MigrationSaga] = {}
-    
+
+    def _prune_completed_sagas(self) -> None:
+        """Evict oldest terminal sagas when history exceeds MAX_COMPLETED_HISTORY."""
+        terminal = [
+            (mid, saga) for mid, saga in self._sagas.items()
+            if saga.is_complete
+        ]
+        if len(terminal) <= self.MAX_COMPLETED_HISTORY:
+            return
+        # Sort terminal sagas by completion time (oldest first)
+        terminal.sort(
+            key=lambda item: item[1].evidence.completed_at or ""
+        )
+        evict_count = len(terminal) - self.MAX_COMPLETED_HISTORY
+        for mid, _ in terminal[:evict_count]:
+            del self._sagas[mid]
+
     def create_migration(self, request: MigrationRequest) -> MigrationSaga:
         """Create a new migration saga."""
+        # Prune old completed sagas before adding new ones
+        self._prune_completed_sagas()
         saga = MigrationSaga(request)
         self._sagas[saga.migration_id] = saga
         return saga

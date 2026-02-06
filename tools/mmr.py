@@ -129,6 +129,12 @@ def _peak_plan(size: int) -> List[Tuple[int, int]]:
         cnt = 1 << h
         out.append((h, cnt))
         n -= cnt
+    # Bug #71: Validate peak counts sum to size (catch off-by-one at boundaries)
+    total = sum(cnt for _, cnt in out)
+    if total != size:
+        raise RuntimeError(
+            f"Peak calculation error: peaks sum to {total}, expected {size}"
+        )
     return out
 
 
@@ -216,6 +222,9 @@ def build_inclusion_proof(next_roots_hex: List[str], leaf_index: int) -> Dict[st
 
 def verify_inclusion_proof(proof: Dict[str, Any]) -> bool:
     """Verify an inclusion proof object produced by build_inclusion_proof()."""
+    # Bug #73: Reject empty or missing proof
+    if not proof:
+        return False
     try:
         size = int(proof.get("size"))
         leaf_index = int(proof.get("leaf_index"))
@@ -266,6 +275,9 @@ def verify_inclusion_proof(proof: Dict[str, Any]) -> bool:
     # Compute peak root from path.
     cur = leaf_hash
     if not isinstance(path, list):
+        return False
+    # Bug #73: Validate path length matches peak height
+    if len(path) != peak_height:
         return False
     for step in path:
         if not isinstance(step, dict):
@@ -323,4 +335,11 @@ def append_peaks(existing_peaks: List[Peak], new_leaf_hashes: List[str]) -> List
             cur = mmr_node_hash(left, cur)
             cur_h = left_h + 1
         stack.append((cur_h, cur))
+    # Bug #72: Validate peak heights are strictly decreasing after merge
+    for i in range(1, len(stack)):
+        if stack[i][0] >= stack[i - 1][0]:
+            raise RuntimeError(
+                f"Peak merging error: non-decreasing heights at positions {i - 1},{i}: "
+                f"{stack[i - 1][0]} -> {stack[i][0]}"
+            )
     return [Peak(height=h, hash=d) for (h, d) in stack]

@@ -84,30 +84,82 @@ class CircuitType(Enum):
 class FieldElement:
     """
     Element of the scalar field for the proof system.
-    
+
     For BN254/BLS12-381: 254-bit field elements
     Represented as hex string for serialization.
+
+    All arithmetic operations are performed modulo the BN254 scalar field prime
+    to ensure values remain valid field elements.
     """
     value: str  # Hex representation
-    
+
+    # BN254 scalar field order (also known as Fr)
+    FIELD_MODULUS: int = 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001
+
     def __post_init__(self):
         if not all(c in '0123456789abcdef' for c in self.value.lower()):
             raise ValueError("Field element must be hex string")
-    
+
     @classmethod
     def zero(cls) -> 'FieldElement':
         return cls("0" * 64)
-    
+
     @classmethod
     def one(cls) -> 'FieldElement':
         return cls("0" * 63 + "1")
-    
+
     @classmethod
     def random(cls) -> 'FieldElement':
-        return cls(secrets.token_hex(32))
-    
+        val = int.from_bytes(secrets.token_bytes(32), 'big') % cls.FIELD_MODULUS
+        return cls(format(val, '064x'))
+
+    @classmethod
+    def from_int(cls, n: int) -> 'FieldElement':
+        """Create a field element from an integer, reducing modulo FIELD_MODULUS."""
+        val = n % cls.FIELD_MODULUS
+        return cls(format(val, '064x'))
+
+    def to_int(self) -> int:
+        """Convert to integer."""
+        return int(self.value, 16)
+
     def to_bytes(self) -> bytes:
         return bytes.fromhex(self.value)
+
+    def __add__(self, other: 'FieldElement') -> 'FieldElement':
+        result = (self.to_int() + other.to_int()) % self.FIELD_MODULUS
+        return FieldElement(format(result, '064x'))
+
+    def __sub__(self, other: 'FieldElement') -> 'FieldElement':
+        result = (self.to_int() - other.to_int()) % self.FIELD_MODULUS
+        return FieldElement(format(result, '064x'))
+
+    def __mul__(self, other: 'FieldElement') -> 'FieldElement':
+        result = (self.to_int() * other.to_int()) % self.FIELD_MODULUS
+        return FieldElement(format(result, '064x'))
+
+    def __neg__(self) -> 'FieldElement':
+        result = (self.FIELD_MODULUS - self.to_int()) % self.FIELD_MODULUS
+        return FieldElement(format(result, '064x'))
+
+    def inverse(self) -> 'FieldElement':
+        """Compute modular multiplicative inverse using Fermat's little theorem."""
+        val = self.to_int()
+        if val == 0:
+            raise ZeroDivisionError("Cannot invert zero field element")
+        result = pow(val, self.FIELD_MODULUS - 2, self.FIELD_MODULUS)
+        return FieldElement(format(result, '064x'))
+
+    def __truediv__(self, other: 'FieldElement') -> 'FieldElement':
+        return self * other.inverse()
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, FieldElement):
+            return self.to_int() % self.FIELD_MODULUS == other.to_int() % self.FIELD_MODULUS
+        return False
+
+    def __hash__(self) -> int:
+        return hash(self.to_int() % self.FIELD_MODULUS)
 
 
 @dataclass(frozen=True)
@@ -558,6 +610,13 @@ class MockVerifier:
     NOT CRYPTOGRAPHICALLY SECURE - for testing only.
     """
     
+    # Minimum proof sizes by proof system (in bytes)
+    MIN_PROOF_SIZES = {
+        ProofSystem.GROTH16: 32,
+        ProofSystem.PLONK: 32,
+        ProofSystem.STARK: 32,
+    }
+
     def verify(
         self,
         circuit: Circuit,
@@ -573,7 +632,25 @@ class MockVerifier:
             return False
         if len(proof.proof_data) == 0:
             return False
-        
+
+        # Verify proof_data meets minimum size for the proof system
+        min_size = self.MIN_PROOF_SIZES.get(proof.proof_system, 32)
+        if len(proof.proof_data) < min_size:
+            return False
+
+        # Verify all public inputs are well-formed (non-empty field elements)
+        for pi in proof.public_inputs:
+            if not isinstance(pi, FieldElement):
+                return False
+            if not pi.value or len(pi.value) == 0:
+                return False
+
+        # Verify verification key matches the circuit
+        if verification_key.circuit_id != circuit.circuit_id:
+            return False
+        if verification_key.proof_system != circuit.proof_system:
+            return False
+
         return True
 
 

@@ -70,7 +70,10 @@ def _format_table(data: Any) -> str:
     if isinstance(data, list) and data and isinstance(data[0], dict):
         headers = list(data[0].keys())
         rows = [[str(row.get(h, ""))[:40] for h in headers] for row in data]
-        widths = [max(len(h), max(len(r[i]) for r in rows)) for i, h in enumerate(headers)]
+        # BUG FIX: Handle empty rows list that would cause ValueError in max()
+        if not rows:
+            return " | ".join(headers)
+        widths = [max(len(h), max((len(r[i]) for r in rows), default=0)) for i, h in enumerate(headers)]
 
         lines = []
         header_line = " | ".join(h.ljust(widths[i]) for i, h in enumerate(headers))

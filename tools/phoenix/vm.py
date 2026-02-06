@@ -496,6 +496,48 @@ class GasCosts:
             OpCode.AND: cls.VERY_LOW,
             OpCode.OR: cls.VERY_LOW,
             OpCode.NOT: cls.VERY_LOW,
+            OpCode.NE: cls.VERY_LOW,
+            OpCode.LE: cls.VERY_LOW,
+            OpCode.GE: cls.VERY_LOW,
+            OpCode.XOR: cls.VERY_LOW,
+            OpCode.EXP: cls.HIGH,
+            OpCode.NEG: cls.VERY_LOW,
+            OpCode.ABS: cls.VERY_LOW,
+            OpCode.MSTORE8: cls.VERY_LOW,
+            OpCode.MSIZE: cls.BASE,
+            OpCode.MCOPY: cls.VERY_LOW,
+            OpCode.SDELETE: cls.SLOAD,
+            OpCode.SHAS: cls.SLOAD,
+            OpCode.JUMPDEST: cls.BASE,
+            OpCode.CALL: cls.CALL,
+            OpCode.RETURN: cls.ZERO,
+            OpCode.REVERT: cls.ZERO,
+            OpCode.ASSERT: cls.VERY_LOW,
+            OpCode.CALLER: cls.BASE,
+            OpCode.ORIGIN: cls.BASE,
+            OpCode.JURISDICTION: cls.BASE,
+            OpCode.TIMESTAMP: cls.BASE,
+            OpCode.BLOCK_HEIGHT: cls.BASE,
+            OpCode.ASSET_ID: cls.BASE,
+            OpCode.GAS: cls.BASE,
+            OpCode.GASPRICE: cls.BASE,
+            OpCode.TENSOR_EVAL: cls.TENSOR_READ,
+            OpCode.TENSOR_COMMIT: cls.TENSOR_READ,
+            OpCode.ATTEST: cls.ATTEST,
+            OpCode.VERIFY_ATTEST: cls.ATTEST,
+            OpCode.COMPLIANCE_CHECK: cls.TENSOR_READ,
+            OpCode.TRANSIT_BEGIN: cls.TRANSIT,
+            OpCode.TRANSIT_END: cls.TRANSIT,
+            OpCode.COMPENSATE: cls.LOCK,
+            OpCode.MIGRATION_STATE: cls.SLOAD,
+            OpCode.KECCAK256: cls.SHA256_BASE,
+            OpCode.MERKLE_ROOT: cls.SHA256_BASE,
+            OpCode.MERKLE_VERIFY: cls.SHA256_BASE,
+            OpCode.HALT: cls.ZERO,
+            OpCode.LOG0: cls.MID,
+            OpCode.LOG1: cls.MID,
+            OpCode.LOG2: cls.MID,
+            OpCode.DEBUG: cls.ZERO,
             OpCode.MLOAD: cls.VERY_LOW,
             OpCode.MSTORE: cls.VERY_LOW,
             OpCode.SLOAD: cls.SLOAD,
@@ -1131,12 +1173,14 @@ class SmartAssetVM:
         elif opcode == OpCode.RETURN:
             offset = state.pop().to_int()
             size = state.pop().to_int()
+            state._expand_memory(offset + size)
             state.return_data = bytes(state.memory[offset:offset + size])
             state.halted = True
-            
+
         elif opcode == OpCode.REVERT:
             offset = state.pop().to_int()
             size = state.pop().to_int()
+            state._expand_memory(offset + size)
             state.return_data = bytes(state.memory[offset:offset + size])
             state.reverted = True
             state.halted = True
@@ -1240,6 +1284,7 @@ class SmartAssetVM:
             inputs_count = state.pop().to_int()
             circuit_id = state.pop().data.decode('utf-8', errors='ignore').rstrip('\x00')
 
+            state._expand_memory(proof_offset + proof_size)
             proof_data = bytes(state.memory[proof_offset:proof_offset + proof_size])
             public_inputs = []
             for _ in range(inputs_count):
@@ -1314,6 +1359,7 @@ class SmartAssetVM:
         elif opcode == OpCode.SHA256:
             size = state.pop().to_int()
             offset = state.pop().to_int()
+            state._expand_memory(offset + size)
             data = bytes(state.memory[offset:offset + size])
             digest = hashlib.sha256(data).digest()
             state.push(Word(digest))
@@ -1321,6 +1367,7 @@ class SmartAssetVM:
         elif opcode == OpCode.KECCAK256:
             size = state.pop().to_int()
             offset = state.pop().to_int()
+            state._expand_memory(offset + size)
             data = bytes(state.memory[offset:offset + size])
             # Use sha3_256 as keccak approximation (for environments without keccak)
             import hashlib as hl
@@ -1334,6 +1381,7 @@ class SmartAssetVM:
             msg_offset = state.pop().to_int()
             pubkey = state.pop()
 
+            state._expand_memory(max(sig_offset + sig_size, msg_offset + msg_size))
             _sig = bytes(state.memory[sig_offset:sig_offset + sig_size])
             _msg = bytes(state.memory[msg_offset:msg_offset + msg_size])
             # Simplified verification - real impl would use ed25519/secp256k1
@@ -1367,6 +1415,7 @@ class SmartAssetVM:
         elif opcode in {OpCode.LOG0, OpCode.LOG1, OpCode.LOG2}:
             size = state.pop().to_int()
             offset = state.pop().to_int()
+            state._expand_memory(offset + size)
             data = bytes(state.memory[offset:offset + size])
             
             topics = []

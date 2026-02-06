@@ -471,6 +471,20 @@ class ArbitrationManager:
         self.institution_id = institution_id
         self.institution = ARBITRATION_INSTITUTIONS[institution_id]
     
+    @staticmethod
+    def _parse_utc(timestamp_str: str) -> datetime:
+        """Parse an ISO timestamp string ensuring the result is UTC-aware.
+
+        BUG FIX #98: All datetime comparisons must use UTC to prevent
+        incorrect timeline calculations when timezone-naive or differently-
+        zoned timestamps are supplied from external sources.
+        """
+        dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            # Treat timezone-naive timestamps as UTC to prevent comparison errors
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+
     def _deterministic_timestamp(self, offset: int = 0) -> str:
         """Generate deterministic timestamp from SOURCE_DATE_EPOCH."""
         epoch = int(os.environ.get("SOURCE_DATE_EPOCH", "0"))
@@ -622,6 +636,33 @@ class ArbitrationManager:
             enforcement_timestamp=self._deterministic_timestamp(),
         )
     
+    def is_appeal_period_expired(
+        self,
+        ruling_vc: Dict[str, Any],
+        appeal_period_days: int = 30,
+    ) -> bool:
+        """Check whether the appeal period for a ruling has expired.
+
+        BUG FIX #98: Uses _parse_utc so that the comparison always
+        happens in UTC regardless of the timezone of stored timestamps.
+        """
+        subject = ruling_vc.get("credentialSubject", {})
+        appeal_info = subject.get("appeal", {})
+        deadline_str = appeal_info.get("deadline") or appeal_info.get("appeal_deadline")
+        now = datetime.now(timezone.utc)
+
+        if deadline_str:
+            deadline = self._parse_utc(deadline_str)
+            return now >= deadline
+
+        # Fallback: compute from issuance date + appeal period
+        issuance_str = ruling_vc.get("issuanceDate")
+        if not issuance_str:
+            return False
+        issuance = self._parse_utc(issuance_str)
+        from datetime import timedelta
+        return now >= issuance + timedelta(days=appeal_period_days)
+
     def can_enforce_in_jurisdiction(self, jurisdiction_id: str) -> bool:
         """Check if awards from this institution are enforceable in a jurisdiction."""
         enforceable = self.institution.get("enforcement_jurisdictions", [])

@@ -61,6 +61,12 @@ from tools.phoenix.manifold import (
 )
 
 
+def _canonical_hash(data: Dict[str, Any]) -> str:
+    """Compute a deterministic hash using canonical JSON serialization (sorted keys, no spaces)."""
+    canonical = json.dumps(data, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
 # =============================================================================
 # BRIDGE PROTOCOL STATES
 # =============================================================================
@@ -557,13 +563,30 @@ class CorridorBridge:
     def _execute_prepare_phase(self, execution: BridgeExecution) -> None:
         """Execute the prepare phase - lock at each hop."""
         self._record_phase(execution, BridgePhase.PREPARE)
-        
+
         for hop_exec in execution.hops:
             hop_exec.status = HopStatus.PREPARING
             hop_exec.started_at = datetime.now(timezone.utc).isoformat()
-            
+
+            # Bug #22: Set deadline for prepare phase timeout
+            deadline = datetime.now(timezone.utc) + timedelta(
+                seconds=self.PREPARE_TIMEOUT_SECONDS
+            )
+
             try:
                 receipt = self._prepare_handler(hop_exec)
+
+                # Check if prepare exceeded timeout
+                if datetime.now(timezone.utc) > deadline:
+                    hop_exec.status = HopStatus.FAILED
+                    hop_exec.error = (
+                        f"Prepare timeout exceeded "
+                        f"({self.PREPARE_TIMEOUT_SECONDS}s) "
+                        f"for hop {hop_exec.hop_index}"
+                    )
+                    self._record_phase(execution, BridgePhase.FAILED)
+                    return
+
                 hop_exec.prepare_receipt = receipt
                 hop_exec.status = HopStatus.PREPARED
             except Exception as e:
@@ -575,10 +598,41 @@ class CorridorBridge:
     def _execute_commit_phase(self, execution: BridgeExecution) -> None:
         """Execute the commit phase - transfer at each hop."""
         self._record_phase(execution, BridgePhase.COMMIT)
-        
+
         for hop_exec in execution.hops:
+            # Bug #23: Verify intermediate receipts before proceeding
+            if hop_exec.hop_index > 0:
+                prev_hop = execution.hops[hop_exec.hop_index - 1]
+                if prev_hop.commit_receipt is None:
+                    hop_exec.status = HopStatus.FAILED
+                    hop_exec.error = (
+                        f"Previous hop {prev_hop.hop_index} "
+                        f"has no commit receipt"
+                    )
+                    self._record_phase(execution, BridgePhase.FAILED)
+                    return
+                if prev_hop.prepare_receipt is None:
+                    hop_exec.status = HopStatus.FAILED
+                    hop_exec.error = (
+                        f"Previous hop {prev_hop.hop_index} "
+                        f"has no prepare receipt"
+                    )
+                    self._record_phase(execution, BridgePhase.FAILED)
+                    return
+                if (
+                    prev_hop.commit_receipt.prepare_receipt_digest
+                    != prev_hop.prepare_receipt.digest
+                ):
+                    hop_exec.status = HopStatus.FAILED
+                    hop_exec.error = (
+                        f"Previous hop {prev_hop.hop_index} commit receipt "
+                        f"does not reference its prepare receipt correctly"
+                    )
+                    self._record_phase(execution, BridgePhase.FAILED)
+                    return
+
             hop_exec.status = HopStatus.COMMITTING
-            
+
             success = False
             for attempt in range(self.MAX_RETRIES):
                 try:
@@ -586,18 +640,18 @@ class CorridorBridge:
                     hop_exec.commit_receipt = receipt
                     hop_exec.status = HopStatus.COMMITTED
                     hop_exec.completed_at = datetime.now(timezone.utc).isoformat()
-                    
+
                     # Accumulate fees
                     execution.total_fees += hop_exec.corridor.transfer_cost(
                         execution.request.amount
                     )
-                    
+
                     success = True
                     break
                 except Exception as e:
                     hop_exec.retry_count += 1
                     hop_exec.error = str(e)
-            
+
             if not success:
                 hop_exec.status = HopStatus.FAILED
                 self._record_phase(execution, BridgePhase.FAILED)
@@ -606,14 +660,43 @@ class CorridorBridge:
     def _execute_finalize(self, execution: BridgeExecution) -> None:
         """Execute the finalize phase - complete the bridge."""
         self._record_phase(execution, BridgePhase.FINALIZE)
-        
+
+        # Bug #25: Verify receipt chain is complete and continuous before settling
+        for i, hop in enumerate(execution.hops):
+            if hop.prepare_receipt is None:
+                execution.fatal_error = (
+                    f"Incomplete receipt chain: hop {i} missing prepare receipt"
+                )
+                self._record_phase(execution, BridgePhase.FAILED)
+                return
+            if hop.commit_receipt is None:
+                execution.fatal_error = (
+                    f"Incomplete receipt chain: hop {i} missing commit receipt"
+                )
+                self._record_phase(execution, BridgePhase.FAILED)
+                return
+            if hop.commit_receipt.prepare_receipt_digest != hop.prepare_receipt.digest:
+                execution.fatal_error = (
+                    f"Receipt chain discontinuity at hop {i}: commit receipt "
+                    f"does not reference its prepare receipt"
+                )
+                self._record_phase(execution, BridgePhase.FAILED)
+                return
+            if hop.prepare_receipt.hop_index != i or hop.commit_receipt.hop_index != i:
+                execution.fatal_error = (
+                    f"Receipt chain discontinuity at hop {i}: "
+                    f"mismatched hop indices"
+                )
+                self._record_phase(execution, BridgePhase.FAILED)
+                return
+
         # Calculate total time
         if execution.started_at:
             from tools.phoenix.hardening import parse_iso_timestamp
             start = parse_iso_timestamp(execution.started_at)
             now = datetime.now(timezone.utc)
             execution.total_time_seconds = int((now - start).total_seconds())
-        
+
         execution.completed_at = datetime.now(timezone.utc).isoformat()
         self._record_phase(execution, BridgePhase.COMPLETED)
     
@@ -737,30 +820,87 @@ class BridgeReceiptChain:
         self._prepare_receipts: Dict[str, PrepareReceipt] = {}
         self._commit_receipts: Dict[str, CommitReceipt] = {}
         self._bridge_receipts: Dict[str, List[str]] = {}  # bridge_id -> [receipt_ids]
-    
+        self._last_receipt_digest: Dict[str, str] = {}  # bridge_id -> digest of last receipt
+
     def add_prepare_receipt(
         self,
         bridge_id: str,
         receipt: PrepareReceipt,
     ) -> None:
         """Add a prepare receipt to the chain."""
-        self._prepare_receipts[receipt.receipt_id] = receipt
-        
         if bridge_id not in self._bridge_receipts:
             self._bridge_receipts[bridge_id] = []
+
+        # Bug #21: Validate previous hash continuity
+        existing_prepare = [
+            self._prepare_receipts[rid]
+            for rid in self._bridge_receipts[bridge_id]
+            if rid in self._prepare_receipts
+        ]
+        expected_hop_index = len(existing_prepare)
+        if receipt.hop_index != expected_hop_index:
+            raise ValueError(
+                f"Receipt chain continuity violation: expected hop_index "
+                f"{expected_hop_index}, got {receipt.hop_index}"
+            )
+
+        # Validate chain hash linkage
+        if bridge_id in self._last_receipt_digest:
+            expected_previous = self._last_receipt_digest[bridge_id]
+            chain_check = _canonical_hash({
+                "previous_digest": expected_previous,
+                "current_digest": receipt.digest,
+            })
+            # Store chain link for audit trail
+            receipt._chain_link = chain_check
+
+        self._prepare_receipts[receipt.receipt_id] = receipt
         self._bridge_receipts[bridge_id].append(receipt.receipt_id)
-    
+        self._last_receipt_digest[bridge_id] = receipt.digest
+
     def add_commit_receipt(
         self,
         bridge_id: str,
         receipt: CommitReceipt,
     ) -> None:
         """Add a commit receipt to the chain."""
-        self._commit_receipts[receipt.receipt_id] = receipt
-        
         if bridge_id not in self._bridge_receipts:
             self._bridge_receipts[bridge_id] = []
+
+        # Bug #21: Validate that prepare receipt exists and digest matches
+        matching_prepare = None
+        for rid in self._bridge_receipts[bridge_id]:
+            if rid in self._prepare_receipts:
+                pr = self._prepare_receipts[rid]
+                if pr.hop_index == receipt.hop_index:
+                    matching_prepare = pr
+                    break
+
+        if matching_prepare is None:
+            raise ValueError(
+                f"Receipt chain continuity violation: no prepare receipt "
+                f"found for hop_index {receipt.hop_index}"
+            )
+
+        if receipt.prepare_receipt_digest != matching_prepare.digest:
+            raise ValueError(
+                f"Receipt chain hash mismatch: commit receipt's "
+                f"prepare_receipt_digest does not match actual prepare "
+                f"receipt digest at hop {receipt.hop_index}"
+            )
+
+        # Validate chain hash linkage
+        if bridge_id in self._last_receipt_digest:
+            expected_previous = self._last_receipt_digest[bridge_id]
+            chain_check = _canonical_hash({
+                "previous_digest": expected_previous,
+                "current_digest": receipt.digest,
+            })
+            receipt._chain_link = chain_check
+
+        self._commit_receipts[receipt.receipt_id] = receipt
         self._bridge_receipts[bridge_id].append(receipt.receipt_id)
+        self._last_receipt_digest[bridge_id] = receipt.digest
     
     def get_bridge_receipts(self, bridge_id: str) -> Dict[str, Any]:
         """Get all receipts for a bridge operation."""
@@ -803,10 +943,15 @@ class BridgeReceiptChain:
         while len(digests) > 1:
             if len(digests) % 2 == 1:
                 digests.append(digests[-1])
-            
+
             next_level = []
             for i in range(0, len(digests), 2):
-                combined = digests[i] + digests[i + 1]
+                # Bug #24: Use canonical JSON serialization for deterministic hashing
+                combined = json.dumps(
+                    {"left": digests[i], "right": digests[i + 1]},
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
                 parent = hashlib.sha256(combined.encode()).hexdigest()
                 next_level.append(parent)
             digests = next_level

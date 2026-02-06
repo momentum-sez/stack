@@ -27,6 +27,9 @@ import yaml
 
 T = TypeVar("T")
 
+# BUG FIX: Sentinel object for unset config values (distinct from None)
+_UNSET = object()
+
 
 class ConfigError(Exception):
     """Configuration error."""
@@ -51,7 +54,7 @@ class ConfigValue(Generic[T]):
     description: str = ""
     validator: Optional[Callable[[T], bool]] = None
     secret: bool = False  # Don't log if True
-    _value: Optional[T] = field(default=None, repr=False)
+    _value: Any = field(default=_UNSET, repr=False)
     _callbacks: List[Callable[[T, T], None]] = field(default_factory=list, repr=False)
 
     def get(self) -> T:
@@ -61,8 +64,9 @@ class ConfigValue(Generic[T]):
             env_value = os.environ[self.env_var]
             return self._coerce(env_value)
 
-        # Return set value or default
-        return self._value if self._value is not None else self.default
+        # BUG FIX: Use sentinel instead of None check so that explicit
+        # None values are preserved correctly
+        return self._value if self._value is not _UNSET else self.default
 
     def set(self, value: T) -> None:
         """Set the value with validation."""
@@ -81,6 +85,9 @@ class ConfigValue(Generic[T]):
         target_type = type(self.default)
 
         if target_type == bool:
+            # NOTE (Bug #90): Strings like "false", "0", "no", "off" correctly
+            # return False here because they are NOT in the truthy set.
+            # Any string not in ("true", "1", "yes", "on") evaluates to False.
             return value.lower() in ("true", "1", "yes", "on")  # type: ignore
         elif target_type == int:
             return int(value)  # type: ignore
@@ -378,12 +385,24 @@ class ConfigManager:
                     pass  # Ignore errors in default config loading
 
     def _apply_dict(self, data: Dict[str, Any], prefix: str = "") -> None:
-        """Apply dictionary values to configuration."""
+        """Apply dictionary values to configuration.
+
+        BUG FIX #88: Coerce types before calling set() so that YAML
+        values with the wrong type (e.g., string instead of int) are
+        handled gracefully instead of producing confusing errors.
+        """
         def apply_to_config(config_obj: Any, values: Dict[str, Any]) -> None:
             for key, value in values.items():
                 if hasattr(config_obj, key):
                     attr = getattr(config_obj, key)
                     if isinstance(attr, ConfigValue):
+                        # Coerce the value to the expected type if it's a string
+                        # but the default is a different type
+                        if isinstance(value, str) and not isinstance(attr.default, str):
+                            try:
+                                value = attr._coerce(value)
+                            except (ValueError, TypeError):
+                                pass  # Let set() handle the validation error
                         attr.set(value)
                     elif hasattr(attr, "__dataclass_fields__") and isinstance(value, dict):
                         apply_to_config(attr, value)
@@ -429,10 +448,28 @@ class ConfigManager:
         self._watchers.append(callback)
 
     def reload(self) -> None:
-        """Reload configuration from all loaded files."""
-        for path in self._config_paths:
-            if path.exists():
-                self.load_from_file(path)
+        """Reload configuration from all loaded files.
+
+        BUG FIX #89: Save config state before reloading so that if any
+        file fails mid-load, we can roll back to the previous consistent
+        state instead of leaving config partially updated.
+        """
+        import copy
+
+        # Snapshot current config state
+        old_config = copy.deepcopy(self._config)
+
+        try:
+            for path in self._config_paths:
+                if path.exists():
+                    with open(path) as f:
+                        data = yaml.safe_load(f)
+                    if data:
+                        self._apply_dict(data)
+        except Exception:
+            # Rollback to the previous consistent config on any failure
+            self._config = old_config
+            raise
 
         for watcher in self._watchers:
             watcher(self._config)

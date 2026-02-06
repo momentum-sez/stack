@@ -16,7 +16,8 @@ for integration tests and pilots.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from decimal import Decimal, InvalidOperation
+from typing import Any, Dict, List, Optional
 
 import xml.etree.ElementTree as ET
 
@@ -96,12 +97,52 @@ class SwiftISO20022Adapter:
     # A fake namespace to avoid accidentally claiming spec compliance.
     NS = "urn:msez:swift:iso20022:stub"
 
+    def validate_payload(self, payload: Dict[str, Any]) -> List[str]:
+        """Validate an ISO 20022 pacs.008 payload and return a list of errors.
+
+        BUG FIX #94: Check all required fields, not just message_type/amount/currency.
+        BUG FIX #95: Validate amount as a valid decimal to prevent precision loss.
+        """
+        errors: List[str] = []
+        p = Pacs008Payload.from_dict(payload)
+
+        if not p.message_type:
+            errors.append("missing required field: message_type")
+        if not p.currency:
+            errors.append("missing required field: currency")
+        if not p.amount:
+            errors.append("missing required field: amount")
+        else:
+            # Validate amount is a valid decimal number (avoids float precision loss)
+            try:
+                Decimal(p.amount)
+            except InvalidOperation:
+                errors.append(f"amount is not a valid decimal number: {p.amount!r}")
+
+        # Debtor required fields
+        if not p.debtor_name:
+            errors.append("missing required field: debtor.name")
+        if not p.debtor_account:
+            errors.append("missing required field: debtor.account")
+        if not p.debtor_agent_bic:
+            errors.append("missing required field: debtor.agent_bic")
+
+        # Creditor required fields
+        if not p.creditor_name:
+            errors.append("missing required field: creditor.name")
+        if not p.creditor_account:
+            errors.append("missing required field: creditor.account")
+        if not p.creditor_agent_bic:
+            errors.append("missing required field: creditor.agent_bic")
+
+        return errors
+
     def payload_to_xml(self, payload: Dict[str, Any]) -> str:
         p = Pacs008Payload.from_dict(payload)
-        if not p.message_type:
-            raise ValueError("missing message_type")
-        if not p.amount or not p.currency:
-            raise ValueError("missing amount/currency")
+        # BUG FIX #94: Validate all required fields before XML generation
+        errors = self.validate_payload(payload)
+        if errors:
+            raise ValueError(f"invalid pacs.008 payload: {'; '.join(errors)}")
 
         ET.register_namespace("msez", self.NS)
 

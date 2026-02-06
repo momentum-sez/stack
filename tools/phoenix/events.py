@@ -285,6 +285,7 @@ class EventHandlerRegistration:
     priority: int = 0
     filter_func: Optional[Callable[[Event], bool]] = None
     async_handler: bool = False
+    sequence: int = 0  # Insertion order for stable FIFO within same priority
 
 
 class EventHandlerError(Exception):
@@ -294,6 +295,47 @@ class EventHandlerError(Exception):
         self.handler = handler
         self.cause = cause
         super().__init__(f"Handler {handler.__name__} failed for {event.event_type}: {cause}")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# SUBSCRIPTION
+# ════════════════════════════════════════════════════════════════════════════
+
+
+class Subscription:
+    """
+    Handle for an event subscription that supports unsubscribe.
+
+    Returned by EventBus.subscribe to allow callers to remove handlers
+    and prevent memory leaks from accumulated handlers.
+
+    Example:
+        @bus.subscribe(AssetCreated)
+        def handle(event):
+            pass
+
+        # Unsubscribe when no longer needed
+        handle._subscription.unsubscribe()
+    """
+
+    def __init__(self, bus: "EventBus", handler: EventHandler):
+        self._bus = bus
+        self._handler = handler
+        self._active = True
+
+    @property
+    def active(self) -> bool:
+        """Whether the subscription is still active."""
+        return self._active
+
+    def unsubscribe(self) -> bool:
+        """Remove the handler from the event bus."""
+        if self._active:
+            result = self._bus.unsubscribe(self._handler)
+            self._active = not result or not self._active
+            self._active = False
+            return result
+        return False
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -332,6 +374,7 @@ class EventBus:
         self._published_count = 0
         self._handled_count = 0
         self._error_count = 0
+        self._handler_sequence = 0  # Monotonic counter for FIFO ordering
 
     def subscribe(
         self,
@@ -355,16 +398,23 @@ class EventBus:
                 pass
         """
         def decorator(handler: EventHandler) -> EventHandler:
-            registration = EventHandlerRegistration(
-                handler=handler,
-                event_types=set(event_types) if event_types else {Event},
-                priority=priority,
-                filter_func=filter_func,
-                async_handler=async_handler,
-            )
             with self._lock:
+                self._handler_sequence += 1
+                registration = EventHandlerRegistration(
+                    handler=handler,
+                    event_types=set(event_types) if event_types else {Event},
+                    priority=priority,
+                    filter_func=filter_func,
+                    async_handler=async_handler,
+                    sequence=self._handler_sequence,
+                )
                 self._handlers.append(registration)
-                self._handlers.sort(key=lambda r: -r.priority)
+                # Sort by priority descending, then by insertion order ascending
+                # for deterministic FIFO ordering within the same priority
+                self._handlers.sort(key=lambda r: (-r.priority, r.sequence))
+
+            # Attach subscription handle for easy unsubscribe
+            handler._subscription = Subscription(self, handler)  # type: ignore
             return handler
         return decorator
 
@@ -409,7 +459,11 @@ class EventBus:
                 self._call_handler(registration.handler, event)
 
     def _call_handler(self, handler: EventHandler, event: Event) -> None:
-        """Call a handler with error handling."""
+        """Call a handler with error handling.
+
+        Handler exceptions are caught and logged, never propagated,
+        so that one failing handler cannot break the event emission loop.
+        """
         try:
             handler(event)
             with self._lock:
@@ -419,7 +473,10 @@ class EventBus:
                 self._error_count += 1
             error = EventHandlerError(event, handler, e)
             if self._on_error:
-                self._on_error(error)
+                try:
+                    self._on_error(error)
+                except Exception:
+                    pass  # Prevent error callback from crashing the bus
 
     def start_async_processing(self) -> None:
         """Start background thread for async handlers."""
@@ -513,11 +570,12 @@ class EventStore:
         events = store.read_all(from_position=100)
     """
 
-    def __init__(self):
+    def __init__(self, max_events: int = 100000):
         self._events: List[EventRecord] = []
         self._streams: Dict[str, List[EventRecord]] = {}
         self._sequence_number = 0
         self._lock = threading.RLock()
+        self._max_events = max_events
 
     def append(
         self,
@@ -562,6 +620,15 @@ class EventStore:
                 stream.append(record)
                 records.append(record)
                 current_version += 1
+
+            # Enforce max_events limit by trimming oldest events
+            if self._max_events > 0:
+                while len(self._events) > self._max_events:
+                    evicted = self._events.pop(0)
+                    # Also remove from the stream's list
+                    evicted_stream = self._streams.get(evicted.stream_id)
+                    if evicted_stream and evicted_stream and evicted_stream[0].sequence_number == evicted.sequence_number:
+                        evicted_stream.pop(0)
 
             return records
 
@@ -726,6 +793,7 @@ class Projection(ABC):
 
     def __init__(self):
         self._position = 0
+        self._processed_event_ids: Set[str] = set()  # Track processed events for idempotency
 
     @property
     def position(self) -> int:
@@ -738,14 +806,19 @@ class Projection(ABC):
         pass
 
     def process_events(self, events: List[EventRecord]) -> None:
-        """Process a batch of events."""
+        """Process a batch of events, skipping already-processed events."""
         for record in events:
+            event_id = record.event.event_id
+            if event_id in self._processed_event_ids:
+                continue  # Skip already-processed events (idempotency)
             self.handle_event(record.event)
+            self._processed_event_ids.add(event_id)
             self._position = record.sequence_number
 
     def rebuild(self, store: EventStore) -> None:
         """Rebuild projection from event store."""
         self._position = 0
+        self._processed_event_ids.clear()
         events = store.read_all(from_position=0, max_count=100000)
         self.process_events(events)
 
@@ -886,6 +959,7 @@ class Saga:
         self._completed_steps: List[SagaStep] = []
         self._state = SagaState.PENDING
         self._error: Optional[Exception] = None
+        self._journal: List[Dict[str, Any]] = []  # Execution journal for recovery
 
     @property
     def state(self) -> SagaState:
@@ -896,6 +970,11 @@ class Saga:
     def error(self) -> Optional[Exception]:
         """Error if saga failed."""
         return self._error
+
+    @property
+    def journal(self) -> List[Dict[str, Any]]:
+        """Execution journal for auditing and recovery."""
+        return self._journal.copy()
 
     def add_step(
         self,
@@ -920,8 +999,20 @@ class Saga:
 
         for i, step in enumerate(self._steps):
             try:
+                self._journal.append({
+                    "step_index": i,
+                    "step_name": step.name,
+                    "status": "started",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                })
                 step.action()
                 self._completed_steps.append(step)
+                self._journal.append({
+                    "step_index": i,
+                    "step_name": step.name,
+                    "status": "completed",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                })
 
                 if self._bus:
                     self._bus.publish(MigrationStepCompleted(
@@ -930,6 +1021,13 @@ class Saga:
                         step_index=i,
                     ))
             except Exception as e:
+                self._journal.append({
+                    "step_index": i,
+                    "step_name": step.name,
+                    "status": "failed",
+                    "error": str(e),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                })
                 self._error = e
                 self._state = SagaState.COMPENSATING
                 self._compensate()
@@ -957,10 +1055,25 @@ class Saga:
         for step in reversed(self._completed_steps):
             if step.compensate:
                 try:
+                    self._journal.append({
+                        "step_name": step.name,
+                        "status": "compensating",
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    })
                     step.compensate()
-                except Exception:
-                    # Log but continue compensating
-                    pass
+                    self._journal.append({
+                        "step_name": step.name,
+                        "status": "compensated",
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    })
+                except Exception as e:
+                    self._journal.append({
+                        "step_name": step.name,
+                        "status": "compensation_failed",
+                        "error": str(e),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    })
+                    # Continue compensating remaining steps
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -1046,6 +1159,8 @@ __all__ = [
     "MigrationFailed",
     "WatcherSlashed",
     "AnchorSubmitted",
+    # Subscription
+    "Subscription",
     # Event Bus
     "EventBus",
     # Event Store

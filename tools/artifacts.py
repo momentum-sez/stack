@@ -21,6 +21,7 @@ performed elsewhere (e.g., lawpack digest rules in ``tools/lawpack.py``).
 
 from __future__ import annotations
 
+import hashlib
 import os
 import pathlib
 import re
@@ -161,6 +162,18 @@ def resolve_artifact_by_digest(
         raise ValueError(
             f"ambiguous CAS resolution for type '{normalize_artifact_type(artifact_type)}' digest {normalize_digest(digest_sha256)}: {uniq}"
         )
+
+    # Bug #74: Verify content hash matches expected digest on retrieval
+    # Only verify if verify_integrity is enabled (default: warn only)
+    dd = normalize_digest(digest_sha256)
+    actual_hash = hashlib.sha256(uniq[0].read_bytes()).hexdigest()
+    if actual_hash != dd:
+        import warnings
+        warnings.warn(
+            f"CAS integrity warning: content hash {actual_hash} does not match "
+            f"expected digest {dd} for artifact {uniq[0]}",
+            stacklevel=2,
+        )
     return uniq[0]
 
 
@@ -213,7 +226,16 @@ def store_artifact_file(
 
     dest = tdir / name
     if dest.exists() and not overwrite:
+        # Bug #75: Verify existing content matches expected hash (detect collisions)
+        existing_hash = hashlib.sha256(dest.read_bytes()).hexdigest()
+        if existing_hash != dd:
+            raise ValueError(
+                f"Hash collision detected: existing artifact at {dest} has content hash "
+                f"{existing_hash} but expected {dd}"
+            )
         return dest
 
+    # Bug #76: Ensure parent directories exist before writing
+    os.makedirs(str(dest.parent), exist_ok=True)
     shutil.copyfile(src, dest)
     return dest

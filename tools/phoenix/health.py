@@ -217,7 +217,11 @@ class HealthChecker:
         try:
             import resource
             usage = resource.getrusage(resource.RUSAGE_SELF)
-            memory_mb = usage.ru_maxrss / 1024  # Convert to MB on Linux
+            # BUG FIX: ru_maxrss is in KB on Linux, bytes on macOS
+            if platform.system() == "Darwin":
+                memory_mb = usage.ru_maxrss / (1024 * 1024)
+            else:
+                memory_mb = usage.ru_maxrss / 1024  # Convert KB to MB on Linux
 
             # Thresholds
             if memory_mb > 4096:  # 4GB
@@ -320,9 +324,12 @@ class HealthChecker:
                     status=HealthStatus.UNHEALTHY,
                     message=self._initialization_error or "System not initialized",
                 )
+            # BUG FIX: snapshot dependencies while holding lock to avoid
+            # TOCTOU race with concurrent registration/unregistration
+            deps_snapshot = list(self._dependencies.items())
 
         # Check all required dependencies
-        for name, config in self._dependencies.items():
+        for name, config in deps_snapshot:
             if config.dep_type == DependencyType.REQUIRED:
                 result = self._run_check_with_timeout(config)
                 if result.status == HealthStatus.UNHEALTHY:
@@ -347,7 +354,11 @@ class HealthChecker:
         checks: List[CheckResult] = []
         overall_status = HealthStatus.HEALTHY
 
-        for name, config in self._dependencies.items():
+        # BUG FIX: Snapshot dependencies while holding lock
+        with self._lock:
+            deps_snapshot = list(self._dependencies.items())
+
+        for name, config in deps_snapshot:
             result = self._run_check_with_timeout(config)
             checks.append(result)
 
@@ -383,13 +394,16 @@ class HealthChecker:
 
 # Global health checker instance
 _health_checker: Optional[HealthChecker] = None
+_health_checker_lock = threading.Lock()
 
 
 def get_health_checker() -> HealthChecker:
     """Get the global health checker instance."""
     global _health_checker
     if _health_checker is None:
-        _health_checker = HealthChecker()
+        with _health_checker_lock:
+            if _health_checker is None:
+                _health_checker = HealthChecker()
     return _health_checker
 
 
@@ -509,7 +523,13 @@ class MetricsCollector:
             if key not in self._histograms:
                 self._histograms[key] = []
             self._histograms[key].append(value)
-            # Keep only last 1000 observations
+            # BUG FIX: Track total count/sum separately so truncation
+            # doesn't corrupt aggregate stats
+            count_key = f"{key}__total_count"
+            sum_key = f"{key}__total_sum"
+            self._counters[count_key] = self._counters.get(count_key, 0) + 1
+            self._gauges[sum_key] = self._gauges.get(sum_key, 0.0) + value
+            # Keep only last 1000 observations for percentile calculations
             if len(self._histograms[key]) > 1000:
                 self._histograms[key] = self._histograms[key][-1000:]
 
@@ -541,11 +561,14 @@ class MetricsCollector:
 
 # Global metrics collector
 _metrics: Optional[MetricsCollector] = None
+_metrics_lock = threading.Lock()
 
 
 def get_metrics() -> MetricsCollector:
     """Get the global metrics collector."""
     global _metrics
     if _metrics is None:
-        _metrics = MetricsCollector()
+        with _metrics_lock:
+            if _metrics is None:
+                _metrics = MetricsCollector()
     return _metrics

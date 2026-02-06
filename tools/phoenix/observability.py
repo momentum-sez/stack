@@ -419,13 +419,16 @@ def get_correlation_id() -> str:
 
 # Global tracer instance
 _tracer: Optional[Tracer] = None
+_tracer_lock = threading.Lock()
 
 
 def get_tracer() -> Tracer:
     """Get the global tracer instance."""
     global _tracer
     if _tracer is None:
-        _tracer = Tracer()
+        with _tracer_lock:
+            if _tracer is None:
+                _tracer = Tracer()
     return _tracer
 
 
@@ -493,10 +496,11 @@ class AuditLogger:
         self._last_hash: str = "genesis"
         self._lock = threading.Lock()
 
-    def _compute_hash(self, event: AuditEvent) -> str:
-        """Compute hash for audit event."""
+    def _compute_hash_locked(self, event: AuditEvent) -> str:
+        """Compute hash for audit event. Must be called with self._lock held."""
         import hashlib
-        data = json.dumps(event.to_dict(), sort_keys=True) + self._last_hash
+        # BUG FIX: Use sort_keys=True with compact separators for deterministic hashing
+        data = json.dumps(event.to_dict(), sort_keys=True, separators=(",", ":")) + self._last_hash
         return hashlib.sha256(data.encode()).hexdigest()
 
     def log(
@@ -524,7 +528,8 @@ class AuditLogger:
         )
 
         with self._lock:
-            event_hash = self._compute_hash(event)
+            # BUG FIX: _compute_hash reads _last_hash, must be inside lock
+            event_hash = self._compute_hash_locked(event)
             self._last_hash = event_hash
 
         self._logger.info(

@@ -135,30 +135,44 @@ class CacheEntry(Generic[V]):
 # ════════════════════════════════════════════════════════════════════════════
 
 
-@dataclass
 class CacheMetrics:
-    """Cache performance metrics."""
-    hits: int = 0
-    misses: int = 0
-    evictions: int = 0
-    expirations: int = 0
-    sets: int = 0
-    deletes: int = 0
-    current_size: int = 0
-    max_size: int = 0
+    """Cache performance metrics with thread-safe counters."""
+
+    def __init__(
+        self,
+        hits: int = 0,
+        misses: int = 0,
+        evictions: int = 0,
+        expirations: int = 0,
+        sets: int = 0,
+        deletes: int = 0,
+        current_size: int = 0,
+        max_size: int = 0,
+    ):
+        self._lock = threading.Lock()
+        self.hits = hits
+        self.misses = misses
+        self.evictions = evictions
+        self.expirations = expirations
+        self.sets = sets
+        self.deletes = deletes
+        self.current_size = current_size
+        self.max_size = max_size
 
     @property
     def total_requests(self) -> int:
         """Total cache requests."""
-        return self.hits + self.misses
+        with self._lock:
+            return self.hits + self.misses
 
     @property
     def hit_ratio(self) -> float:
         """Cache hit ratio (0.0 - 1.0)."""
-        total = self.total_requests
-        if total == 0:
-            return 0.0
-        return self.hits / total
+        with self._lock:
+            total = self.hits + self.misses
+            if total == 0:
+                return 0.0
+            return self.hits / total
 
     @property
     def miss_ratio(self) -> float:
@@ -167,19 +181,20 @@ class CacheMetrics:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
-        return {
-            "hits": self.hits,
-            "misses": self.misses,
-            "evictions": self.evictions,
-            "expirations": self.expirations,
-            "sets": self.sets,
-            "deletes": self.deletes,
-            "current_size": self.current_size,
-            "max_size": self.max_size,
-            "hit_ratio": round(self.hit_ratio, 4),
-            "miss_ratio": round(self.miss_ratio, 4),
-            "total_requests": self.total_requests,
-        }
+        with self._lock:
+            return {
+                "hits": self.hits,
+                "misses": self.misses,
+                "evictions": self.evictions,
+                "expirations": self.expirations,
+                "sets": self.sets,
+                "deletes": self.deletes,
+                "current_size": self.current_size,
+                "max_size": self.max_size,
+                "hit_ratio": round(self.hits / (self.hits + self.misses) if (self.hits + self.misses) > 0 else 0.0, 4),
+                "miss_ratio": round(self.misses / (self.hits + self.misses) if (self.hits + self.misses) > 0 else 0.0, 4),
+                "total_requests": self.hits + self.misses,
+            }
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -263,13 +278,31 @@ class LRUCache(Cache[K, V]):
         self._on_evict = on_evict
 
     def get(self, key: K, default: Optional[V] = None) -> Optional[V]:
-        """Get value, moving to end of LRU list."""
+        """Get value, moving to end of LRU list.
+
+        Performs lazy expiration: if the entry's TTL has passed,
+        it is removed and treated as a miss.
+        """
         with self._lock:
             if key not in self._cache:
                 self._metrics.misses += 1
                 return default
 
             entry = self._cache[key]
+
+            # Lazy expiration: check TTL before returning
+            if entry.is_expired:
+                del self._cache[key]
+                self._metrics.expirations += 1
+                self._metrics.misses += 1
+                self._metrics.current_size = len(self._cache)
+                if self._on_evict:
+                    try:
+                        self._on_evict(key, entry.value)
+                    except Exception:
+                        pass
+                return default
+
             entry.touch()
 
             # Move to end (most recently used)
@@ -314,13 +347,27 @@ class LRUCache(Cache[K, V]):
             return False
 
     def contains(self, key: K) -> bool:
-        """Check if key exists (doesn't update LRU order)."""
+        """Check if key exists and is not expired (doesn't update LRU order)."""
         with self._lock:
-            return key in self._cache
+            if key not in self._cache:
+                return False
+            entry = self._cache[key]
+            if entry.is_expired:
+                del self._cache[key]
+                self._metrics.expirations += 1
+                self._metrics.current_size = len(self._cache)
+                return False
+            return True
 
     def clear(self) -> None:
-        """Clear all entries."""
+        """Clear all entries, calling eviction callbacks for each."""
         with self._lock:
+            if self._on_evict:
+                for key, entry in self._cache.items():
+                    try:
+                        self._on_evict(key, entry.value)
+                    except Exception:
+                        pass  # Best-effort cleanup
             self._cache.clear()
             self._metrics.current_size = 0
 
@@ -354,7 +401,10 @@ class LRUCache(Cache[K, V]):
         self._metrics.evictions += 1
 
         if self._on_evict:
-            self._on_evict(key, entry.value)
+            try:
+                self._on_evict(key, entry.value)
+            except Exception:
+                pass  # Best-effort cleanup callback
 
     def keys(self) -> List[K]:
         """Get all keys (most recently used last)."""
@@ -691,6 +741,19 @@ class TieredCache(Cache[K, V]):
                 total.max_size += m.max_size
             return total
 
+    def invalidate(self, key: K) -> bool:
+        """Invalidate a key across all tiers.
+
+        Ensures that all tiers are cleared for the given key,
+        preventing stale data from being served from any tier.
+        """
+        with self._lock:
+            invalidated = False
+            for tier in self._tiers:
+                if tier.delete(key):
+                    invalidated = True
+            return invalidated
+
     def tier_metrics(self) -> List[CacheMetrics]:
         """Metrics for each tier."""
         with self._lock:
@@ -825,10 +888,15 @@ class ComputeCache(Generic[K, V]):
             else LRUCache(max_size=max_size)
         )
         self._computing: Dict[K, threading.Event] = {}
+        self._compute_errors: Dict[K, Exception] = {}  # Store errors for waiting threads
         self._lock = threading.RLock()
 
     def get(self, key: K) -> V:
-        """Get value, computing if not cached."""
+        """Get value, computing if not cached.
+
+        If the compute function raises an exception, it is NOT cached
+        and is propagated to all waiting threads.
+        """
         # Check cache first
         with self._lock:
             value = self._cache.get(key)
@@ -846,14 +914,28 @@ class ComputeCache(Generic[K, V]):
         # Wait if another thread is computing
         if event is not None:
             event.wait()
-            return self._cache.get(key)  # type: ignore
+            # Check if the computation failed
+            with self._lock:
+                if key in self._compute_errors:
+                    raise self._compute_errors[key]
+            value = self._cache.get(key)
+            if value is None:
+                raise RuntimeError(f"Compute cache: no value available for key {key!r}")
+            return value
 
         # Compute value
         try:
             value = self._compute(key)
             with self._lock:
                 self._cache.set(key, value)
+                # Clear any previous error for this key
+                self._compute_errors.pop(key, None)
             return value
+        except Exception as e:
+            # Do NOT cache the error; store it so waiting threads can see it
+            with self._lock:
+                self._compute_errors[key] = e
+            raise
         finally:
             with self._lock:
                 if key in self._computing:

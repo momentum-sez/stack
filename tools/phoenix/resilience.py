@@ -215,22 +215,43 @@ class CircuitBreaker:
             if elapsed >= self.config.timeout_seconds:
                 self._transition_to(CircuitState.HALF_OPEN)
 
-    def _transition_to(self, new_state: CircuitState) -> None:
-        """Transition to a new state."""
+    # Valid state transitions (source -> set of allowed targets)
+    _VALID_TRANSITIONS = {
+        CircuitState.CLOSED: {CircuitState.OPEN},
+        CircuitState.OPEN: {CircuitState.HALF_OPEN},
+        CircuitState.HALF_OPEN: {CircuitState.CLOSED, CircuitState.OPEN},
+    }
+
+    def _transition_to(self, new_state: CircuitState, force: bool = False) -> None:
+        """Transition to a new state.
+
+        Args:
+            new_state: The target state.
+            force: If True, bypass transition validation (used by reset()).
+        """
         old_state = self._state
-        if old_state != new_state:
-            self._state = new_state
-            self._last_state_change = datetime.now(timezone.utc)
-            self._metrics.state_transitions += 1
+        if old_state == new_state:
+            return
 
-            if new_state == CircuitState.HALF_OPEN:
-                self._half_open_calls = 0
-                self._metrics.consecutive_successes = 0
-            elif new_state == CircuitState.CLOSED:
-                self._metrics.consecutive_failures = 0
+        # Validate transition unless forced (e.g. administrative reset)
+        if not force:
+            allowed = self._VALID_TRANSITIONS.get(old_state, set())
+            if new_state not in allowed:
+                return
 
-            if self._on_state_change:
-                self._on_state_change(old_state, new_state)
+        self._state = new_state
+        self._last_state_change = datetime.now(timezone.utc)
+        self._metrics.state_transitions += 1
+
+        if new_state == CircuitState.HALF_OPEN:
+            self._half_open_calls = 0
+            self._metrics.consecutive_successes = 0
+            self._metrics.consecutive_failures = 0
+        elif new_state == CircuitState.CLOSED:
+            self._metrics.consecutive_failures = 0
+
+        if self._on_state_change:
+            self._on_state_change(old_state, new_state)
 
     def _is_failure(self, exc: Exception) -> bool:
         """Check if exception should count as failure."""
@@ -319,7 +340,7 @@ class CircuitBreaker:
     def reset(self) -> None:
         """Reset circuit breaker to closed state."""
         with self._lock:
-            self._transition_to(CircuitState.CLOSED)
+            self._transition_to(CircuitState.CLOSED, force=True)
             self._metrics = CircuitBreakerMetrics()
 
 
@@ -396,7 +417,7 @@ class RetryPolicy:
         on_retry: Optional[Callable[[int, Exception, float], None]] = None,
     ):
         self.config = RetryConfig(
-            max_attempts=max_attempts,
+            max_attempts=max(1, max_attempts),  # Always execute at least once
             base_delay_seconds=base_delay_seconds,
             max_delay_seconds=max_delay_seconds,
             backoff_strategy=backoff_strategy,
@@ -429,7 +450,10 @@ class RetryPolicy:
         elif self.config.backoff_strategy == BackoffStrategy.LINEAR:
             delay = base * attempt
         elif self.config.backoff_strategy == BackoffStrategy.EXPONENTIAL:
-            delay = base * (2 ** (attempt - 1))
+            exp_delay = base * (2 ** (attempt - 1))
+            # Add small random jitter to prevent thundering herd
+            jitter = random.uniform(0, 0.25 * exp_delay)
+            delay = exp_delay + jitter
         elif self.config.backoff_strategy == BackoffStrategy.EXPONENTIAL_JITTER:
             exp_delay = base * (2 ** (attempt - 1))
             jitter = random.uniform(0, self.config.jitter_factor * exp_delay)
@@ -598,9 +622,12 @@ class Bulkhead:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
-        self._release()
-        with self._lock:
-            self._metrics.successful_calls += 1
+        try:
+            if exc_type is None:
+                with self._lock:
+                    self._metrics.successful_calls += 1
+        finally:
+            self._release()
         return False
 
     def __call__(self, func: Callable[..., T]) -> Callable[..., T]:
@@ -694,9 +721,14 @@ class Timeout:
             self._metrics.total_calls += 1
 
         start_time = time.monotonic()
+        timed_out = threading.Event()
+
+        def _wrapped():
+            """Wrapper that checks the timed_out flag."""
+            return func()
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(func)
+            future = executor.submit(_wrapped)
             try:
                 result = future.result(timeout=self.seconds)
                 duration = time.monotonic() - start_time
@@ -705,6 +737,9 @@ class Timeout:
                     self._metrics.total_duration_seconds += duration
                 return result
             except concurrent.futures.TimeoutError:
+                # Mark as timed out and attempt to cancel
+                timed_out.set()
+                future.cancel()
                 with self._lock:
                     self._metrics.timed_out_calls += 1
                 if self._on_timeout:

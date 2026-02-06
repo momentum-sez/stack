@@ -1039,8 +1039,51 @@ class PolicyEvaluator:
         for policy_id, policy in STANDARD_POLICIES.items():
             self._policies[policy_id] = policy
     
+    # BUG FIX #97: Known safe condition types for policy trigger evaluation.
+    # Conditions from external sources must be validated/sanitized against
+    # this allowlist to prevent injection of unsupported condition types.
+    _VALID_CONDITION_TYPES = frozenset({
+        "threshold", "equals", "not_equals", "contains", "in",
+        "less_than", "greater_than", "exists", "and", "or",
+    })
+
+    def _validate_condition(self, condition: Optional[Dict[str, Any]], path: str = "condition") -> List[str]:
+        """Validate a policy condition structure recursively.
+
+        Returns a list of validation error messages (empty if valid).
+        """
+        errors: List[str] = []
+        if condition is None:
+            return errors
+        if not isinstance(condition, dict):
+            errors.append(f"{path}: condition must be a dict, got {type(condition).__name__}")
+            return errors
+        ctype = condition.get("type")
+        if ctype is None:
+            errors.append(f"{path}: missing 'type' field")
+            return errors
+        if ctype not in self._VALID_CONDITION_TYPES:
+            errors.append(f"{path}: unknown condition type {ctype!r}")
+            return errors
+        # Validate nested conditions for compound types
+        if ctype in ("and", "or"):
+            sub = condition.get("conditions")
+            if not isinstance(sub, list):
+                errors.append(f"{path}.conditions: must be a list for '{ctype}' condition")
+            else:
+                for i, sc in enumerate(sub):
+                    errors.extend(self._validate_condition(sc, f"{path}.conditions[{i}]"))
+        return errors
+
     def register_policy(self, policy: AgenticPolicy) -> None:
-        """Register a policy for evaluation. Thread-safe."""
+        """Register a policy for evaluation. Thread-safe.
+
+        BUG FIX #97: Validates the policy condition structure before
+        registration to prevent injection of unsupported condition types.
+        """
+        errors = self._validate_condition(policy.condition)
+        if errors:
+            raise ValueError(f"Invalid policy condition for {policy.policy_id!r}: {'; '.join(errors)}")
         with self._policy_lock:
             self._policies[policy.policy_id] = policy
     

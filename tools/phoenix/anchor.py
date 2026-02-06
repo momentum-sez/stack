@@ -39,8 +39,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import secrets
+import time
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -447,6 +450,9 @@ class AnchorManager:
     - Cross-chain verification
     """
     
+    # TTL for finalized/failed anchor entries (seconds). Default: 30 days.
+    ANCHOR_TTL_SECONDS: int = 30 * 24 * 3600
+
     def __init__(
         self,
         adapters: Optional[Dict[Chain, ChainAdapter]] = None,
@@ -456,7 +462,9 @@ class AnchorManager:
         self._default_chain = default_chain
         self._anchors: Dict[str, AnchorRecord] = {}
         self._checkpoint_anchors: Dict[str, str] = {}  # checkpoint_digest -> anchor_id
-        
+        # Track insertion time (monotonic) for TTL expiration
+        self._anchor_created_at: Dict[str, float] = {}  # anchor_id -> monotonic timestamp
+
         # Default contract addresses (would be configured per deployment)
         self._contracts: Dict[Chain, str] = {
             Chain.ETHEREUM: "0x" + "00" * 19 + "01",
@@ -472,7 +480,37 @@ class AnchorManager:
     def set_contract(self, chain: Chain, address: str) -> None:
         """Set contract address for a chain."""
         self._contracts[chain] = address
+
+    def _expire_old_anchors(self) -> None:
+        """
+        Remove anchor entries that have exceeded their TTL.
+
+        Only terminal anchors (FINALIZED or FAILED) are eligible for expiration.
+        PENDING and CONFIRMED anchors are kept regardless of age.
+        """
+        now = time.monotonic()
+        expired_ids = []
+        for anchor_id, created_at in self._anchor_created_at.items():
+            if now - created_at < self.ANCHOR_TTL_SECONDS:
+                continue
+            anchor = self._anchors.get(anchor_id)
+            if anchor and anchor.status in {AnchorStatus.FINALIZED, AnchorStatus.FAILED}:
+                expired_ids.append(anchor_id)
+        for anchor_id in expired_ids:
+            anchor = self._anchors.pop(anchor_id, None)
+            self._anchor_created_at.pop(anchor_id, None)
+            if anchor:
+                # Also remove from checkpoint -> anchor mapping
+                digest = anchor.checkpoint.digest
+                if self._checkpoint_anchors.get(digest) == anchor_id:
+                    del self._checkpoint_anchors[digest]
     
+    # SHA-256 hex digest: exactly 64 lowercase hex characters
+    _VALID_DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
+
+    # Gas estimation congestion multiplier (20% buffer for network congestion)
+    GAS_CONGESTION_MULTIPLIER: Decimal = Decimal("1.20")
+
     def anchor_checkpoint(
         self,
         checkpoint: CorridorCheckpoint,
@@ -480,19 +518,37 @@ class AnchorManager:
     ) -> AnchorRecord:
         """
         Anchor a checkpoint to a blockchain.
-        
+
         Args:
             checkpoint: The checkpoint to anchor
             chain: Optional chain override (defaults to default_chain)
-            
+
         Returns:
             AnchorRecord with transaction details
+
+        Raises:
+            ValueError: If checkpoint digest is not a valid 64-char hex string
+                        or if no adapter is configured for the chain.
         """
+        # Bug #39: Validate checkpoint digest format
+        digest = checkpoint.digest
+        if not self._VALID_DIGEST_RE.match(digest):
+            raise ValueError(
+                f"Invalid checkpoint digest format: expected 64-character lowercase "
+                f"hex string, got '{digest}' (length {len(digest)})"
+            )
+
         chain = chain or self._default_chain
-        
+
+        # Bug #43: Idempotency check - if this checkpoint was already anchored,
+        # return the existing anchor instead of submitting a duplicate.
+        existing_anchor_id = self._checkpoint_anchors.get(digest)
+        if existing_anchor_id and existing_anchor_id in self._anchors:
+            return self._anchors[existing_anchor_id]
+
         if chain not in self._adapters:
             raise ValueError(f"No adapter configured for {chain.value}")
-        
+
         adapter = self._adapters[chain]
         contract = self._contracts.get(chain, "")
         
@@ -528,7 +584,10 @@ class AnchorManager:
             log_index=0,
             status=status,
             confirmations=confirmations,
-            gas_used=adapter.estimate_gas(checkpoint, contract),
+            gas_used=int(
+                Decimal(adapter.estimate_gas(checkpoint, contract))
+                * self.GAS_CONGESTION_MULTIPLIER
+            ),
             gas_price_gwei=adapter.get_current_gas_price(),
         )
         
@@ -550,7 +609,11 @@ class AnchorManager:
         # Store
         self._anchors[anchor_id] = anchor
         self._checkpoint_anchors[checkpoint.digest] = anchor_id
-        
+        self._anchor_created_at[anchor_id] = time.monotonic()
+
+        # Bug #42: Expire old terminal anchor entries on each new submission
+        self._expire_old_anchors()
+
         return anchor
     
     def get_anchor(self, anchor_id: str) -> Optional[AnchorRecord]:
@@ -568,25 +631,42 @@ class AnchorManager:
         return None
     
     def refresh_anchor_status(self, anchor_id: str) -> Optional[AnchorRecord]:
-        """Refresh the status of an anchor."""
+        """
+        Refresh the status of an anchor.
+
+        Uses >= for the finality comparison so that exactly meeting the
+        required confirmation count is sufficient (fixing off-by-one).
+        """
         anchor = self._anchors.get(anchor_id)
         if not anchor:
             return None
-        
+
         adapter = self._adapters.get(anchor.chain)
         if not adapter:
             return anchor
-        
+
         status, confirmations = adapter.get_transaction_status(anchor.tx_hash)
-        
-        anchor.status = status
+
         anchor.confirmations = confirmations
-        
+
+        # Bug #44: Use >= (not >) for the finality threshold comparison.
+        # If the adapter reports CONFIRMED but the confirmation count meets
+        # finality requirements, promote to FINALIZED.
+        required = anchor.chain.finality_blocks
+        if status == AnchorStatus.CONFIRMED and confirmations >= required:
+            status = AnchorStatus.FINALIZED
+
+        anchor.status = status
+
+        now_iso = datetime.now(timezone.utc).isoformat()
         if status == AnchorStatus.CONFIRMED and not anchor.confirmed_at:
-            anchor.confirmed_at = datetime.now(timezone.utc).isoformat()
-        elif status == AnchorStatus.FINALIZED and not anchor.finalized_at:
-            anchor.finalized_at = datetime.now(timezone.utc).isoformat()
-        
+            anchor.confirmed_at = now_iso
+        elif status == AnchorStatus.FINALIZED:
+            if not anchor.confirmed_at:
+                anchor.confirmed_at = now_iso
+            if not anchor.finalized_at:
+                anchor.finalized_at = now_iso
+
         return anchor
     
     def verify_checkpoint_inclusion(
@@ -596,21 +676,41 @@ class AnchorManager:
     ) -> bool:
         """
         Verify that a checkpoint is anchored on-chain.
+
+        Handles chain reorganizations by refreshing the anchor status
+        before verifying inclusion. If the anchor's block is no longer
+        in the canonical chain (reorg detected), the anchor is marked
+        as FAILED and verification returns False.
         """
         anchor = self.get_anchor_for_checkpoint(checkpoint.digest)
         if not anchor:
             return False
-        
+
         chain = chain or anchor.chain
         adapter = self._adapters.get(chain)
         if not adapter:
             return False
-        
-        return adapter.verify_inclusion(
+
+        # Refresh anchor status to detect reorgs
+        refreshed = self.refresh_anchor_status(anchor.anchor_id)
+        if refreshed and refreshed.status == AnchorStatus.FAILED:
+            # Transaction is no longer valid (possibly due to reorg)
+            return False
+
+        # Verify on-chain inclusion; if the block was reorged away,
+        # the adapter's verify_inclusion should return False.
+        included = adapter.verify_inclusion(
             checkpoint.digest,
             anchor.contract_address,
             anchor.block_number,
         )
+
+        if not included:
+            # Reorg detected: the anchor block is no longer canonical.
+            # Mark anchor as failed so subsequent checks are fast.
+            anchor.status = AnchorStatus.FAILED
+
+        return included
     
     def generate_inclusion_proof(
         self,

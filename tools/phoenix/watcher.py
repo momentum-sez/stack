@@ -466,6 +466,8 @@ class WatcherRegistry:
             return False
         if bond.watcher_id.did in self._banned:
             return False
+        if bond.collateral_amount <= Decimal("0"):
+            return False
         
         self._bonds[bond.bond_id] = bond
         self._watcher_bonds[bond.watcher_id.did].append(bond.bond_id)
@@ -587,18 +589,22 @@ class WatcherRegistry:
     ) -> List[WatcherId]:
         """
         Select watchers for a jurisdiction.
-        
+
         Returns watchers sorted by reputation, filtered by requirements.
         """
+        # Guard against empty registry to prevent division by zero in quorum calculations
+        if not self._watchers:
+            return []
+
         tier_order = {"novice": 0, "standard": 1, "trusted": 2, "elite": 3}
         min_tier_rank = tier_order.get(min_tier, 1)
         
         candidates: List[Tuple[float, WatcherId]] = []
         
-        for did, watcher in self._watchers.items():
+        for did, watcher in list(self._watchers.items()):
             if did in self._banned:
                 continue
-            
+
             bond = self.get_active_bond(did)
             if not bond:
                 continue
@@ -685,15 +691,15 @@ class WatcherRegistry:
                     "public_key": watcher.public_key_hex,
                     "is_banned": did in self._banned,
                 }
-                for did, watcher in self._watchers.items()
+                for did, watcher in list(self._watchers.items())
             },
             "bonds": {
                 bid: bond.to_dict()
-                for bid, bond in self._bonds.items()
+                for bid, bond in list(self._bonds.items())
             },
             "reputations": {
                 did: rep.to_dict()
-                for did, rep in self._reputations.items()
+                for did, rep in list(self._reputations.items())
             },
             "statistics": self.get_statistics(),
         }

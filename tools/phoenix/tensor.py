@@ -105,6 +105,8 @@ class ComplianceState(Enum):
     
     def __lt__(self, other: 'ComplianceState') -> bool:
         """Lattice ordering: NON_COMPLIANT < EXPIRED < UNKNOWN < PENDING < EXEMPT < COMPLIANT"""
+        if not isinstance(other, ComplianceState):
+            return NotImplemented
         order = {
             ComplianceState.NON_COMPLIANT: 0,
             ComplianceState.EXPIRED: 1,
@@ -114,6 +116,21 @@ class ComplianceState(Enum):
             ComplianceState.COMPLIANT: 5,
         }
         return order[self] < order[other]
+
+    def __le__(self, other: 'ComplianceState') -> bool:
+        if not isinstance(other, ComplianceState):
+            return NotImplemented
+        return self == other or self.__lt__(other)
+
+    def __gt__(self, other: 'ComplianceState') -> bool:
+        if not isinstance(other, ComplianceState):
+            return NotImplemented
+        return not self.__le__(other)
+
+    def __ge__(self, other: 'ComplianceState') -> bool:
+        if not isinstance(other, ComplianceState):
+            return NotImplemented
+        return self == other or self.__gt__(other)
     
     def meet(self, other: 'ComplianceState') -> 'ComplianceState':
         """Lattice meet (greatest lower bound) - pessimistic composition."""
@@ -740,24 +757,27 @@ class ComplianceTensorV2:
         """Compute Merkle root from leaf hashes."""
         if not leaves:
             return "0" * 64
-        
+
         if len(leaves) == 1:
             return leaves[0]
-        
+
+        # BUG FIX #1: Work on a copy to avoid mutating the caller's list
+        working = list(leaves)
+
         # Pad to power of 2
-        while len(leaves) & (len(leaves) - 1):
-            leaves.append(leaves[-1])
-        
+        while len(working) & (len(working) - 1):
+            working.append(working[-1])
+
         # Build tree bottom-up
-        while len(leaves) > 1:
+        while len(working) > 1:
             next_level: List[str] = []
-            for i in range(0, len(leaves), 2):
-                combined = leaves[i] + leaves[i + 1]
+            for i in range(0, len(working), 2):
+                combined = working[i] + working[i + 1]
                 parent = hashlib.sha256(combined.encode()).hexdigest()
                 next_level.append(parent)
-            leaves = next_level
-        
-        return leaves[0]
+            working = next_level
+
+        return working[0]
     
     def prove_compliance(
         self,
@@ -829,14 +849,15 @@ class ComplianceTensorV2:
         if not target_indices:
             return []
 
-        # Pad leaves to power of 2
+        # BUG FIX #2: Pad leaves to power of 2 without mutating original
         original_len = len(leaves)
-        while len(leaves) & (len(leaves) - 1):
-            leaves.append(leaves[-1])
+        padded_leaves = list(leaves)
+        while len(padded_leaves) & (len(padded_leaves) - 1):
+            padded_leaves.append(padded_leaves[-1])
 
         # Build tree and collect proof siblings
         proof_siblings: List[str] = []
-        current_level = leaves[:]
+        current_level = padded_leaves[:]
 
         while len(current_level) > 1:
             next_level: List[str] = []

@@ -534,6 +534,47 @@ def cmd_asset_attestation_init(args: argparse.Namespace) -> int:
 
 
 
+def verify_receipt_chain_continuity(receipts: List[Dict[str, Any]]) -> List[str]:
+    """Verify that a list of corridor receipts forms a continuous hash chain.
+
+    BUG FIX #100: Each receipt's previous_hash must match the SHA-256 digest
+    of the canonicalized prior receipt to ensure chain integrity.  Returns a
+    list of error strings (empty if the chain is valid).
+    """
+    errors: List[str] = []
+    if not receipts:
+        return errors
+
+    for i in range(1, len(receipts)):
+        prev = receipts[i - 1]
+        curr = receipts[i]
+
+        # Compute expected hash from the previous receipt
+        expected_hash = sha256_hex(canonicalize_json(prev))
+        actual_prev_hash = curr.get("previous_hash") or curr.get("prev_root") or curr.get("prev_hash")
+
+        if actual_prev_hash is None:
+            errors.append(
+                f"receipt[{i}]: missing previous_hash/prev_root field"
+            )
+        elif actual_prev_hash != expected_hash:
+            errors.append(
+                f"receipt[{i}]: chain break - previous_hash={actual_prev_hash!r} "
+                f"does not match hash of receipt[{i - 1}]={expected_hash!r}"
+            )
+
+        # Verify sequence numbers are strictly increasing (if present)
+        prev_seq = prev.get("seq")
+        curr_seq = curr.get("seq")
+        if prev_seq is not None and curr_seq is not None:
+            if curr_seq != prev_seq + 1:
+                errors.append(
+                    f"receipt[{i}]: sequence gap - expected seq={prev_seq + 1}, got {curr_seq}"
+                )
+
+    return errors
+
+
 def _extract_transition_envelope(obj: Dict[str, Any]) -> Dict[str, Any]:
     """Unwrap a transition envelope from either a bare envelope or a corridor receipt."""
     if not isinstance(obj, dict):

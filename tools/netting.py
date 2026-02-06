@@ -144,7 +144,7 @@ class SettlementPlan:
     constraints_applied: NettingConstraints
     total_gross_volume: Dict[str, Decimal]
     total_net_volume: Dict[str, Decimal]
-    reduction_ratio: Dict[str, float]
+    reduction_ratio: Dict[str, Decimal]
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -165,7 +165,7 @@ class SettlementPlan:
             "trace": [{"step": t.step, "action": t.action, "details": t.details} for t in self.trace],
             "total_gross_volume": {k: str(v) for k, v in self.total_gross_volume.items()},
             "total_net_volume": {k: str(v) for k, v in self.total_net_volume.items()},
-            "reduction_ratio": self.reduction_ratio,
+            "reduction_ratio": {k: str(v) for k, v in self.reduction_ratio.items()},
         }
 
 
@@ -200,8 +200,16 @@ class NettingEngine:
     def compute_gross_positions(self) -> Dict[str, Dict[str, Dict[str, Decimal]]]:
         """Compute gross receivable/payable for each party per currency."""
         positions: Dict[str, Dict[str, Dict[str, Decimal]]] = {}
-        
+
         for obl in self.obligations:
+            # BUG FIX: Validate obligation amounts are positive
+            if obl.amount <= 0:
+                self._log_trace("invalid_obligation_skipped", {
+                    "obligation_id": obl.obligation_id,
+                    "amount": str(obl.amount),
+                    "reason": "non-positive amount",
+                })
+                continue
             debtor_id = obl.debtor.party_id
             creditor_id = obl.creditor.party_id
             ccy = obl.currency.code
@@ -304,7 +312,18 @@ class NettingEngine:
                 if payer_constraint.allowed_rails is not None:
                     if rail.rail_id not in payer_constraint.allowed_rails:
                         continue
-            
+                # BUG FIX: Also check blocked counterparties
+                if payee in payer_constraint.blocked_counterparties:
+                    continue
+
+            payee_constraint = self.constraints.party_constraints.get(payee)
+            if payee_constraint:
+                if payee_constraint.allowed_rails is not None:
+                    if rail.rail_id not in payee_constraint.allowed_rails:
+                        continue
+                if payer in payee_constraint.blocked_counterparties:
+                    continue
+
             candidates.append(rail)
         
         if not candidates:
@@ -355,7 +374,19 @@ class NettingEngine:
             payer_remaining: Dict[str, Decimal] = {p.party_id: -p.net_amount for p in payers}
             receiver_remaining: Dict[str, Decimal] = {r.party_id: r.net_amount for r in receivers}
             
+            # Bug #68: Guard against O(n!) worst case with iteration bound
+            max_iterations = len(payers) * len(receivers) + len(payers) + len(receivers)
+            iteration_count = 0
             while payer_idx < len(payers) and receiver_idx < len(receivers):
+                iteration_count += 1
+                if iteration_count > max_iterations:
+                    self._log_trace("netting_iteration_limit_reached", {
+                        "currency": ccy,
+                        "max_iterations": max_iterations,
+                        "payer_idx": payer_idx,
+                        "receiver_idx": receiver_idx,
+                    })
+                    break
                 payer = payers[payer_idx]
                 receiver = receivers[receiver_idx]
                 
@@ -464,7 +495,14 @@ class NettingEngine:
         
         # Step 4: Generate settlement legs
         settlement_legs = self._generate_settlement_legs(net_positions)
-        
+
+        # Bug #70: Validate non-negative balances after netting
+        for leg in settlement_legs:
+            if leg.amount < Decimal("0"):
+                raise ValueError(
+                    f"Settlement leg {leg.leg_id} produced negative amount: {leg.amount}"
+                )
+
         # Compute volumes
         total_gross: Dict[str, Decimal] = {}
         total_net: Dict[str, Decimal] = {}
@@ -477,15 +515,15 @@ class NettingEngine:
             ccy = leg.currency
             total_net[ccy] = total_net.get(ccy, Decimal(0)) + leg.amount
         
-        # Compute reduction ratio
-        reduction: Dict[str, float] = {}
+        # Compute reduction ratio (Bug #69: use Decimal instead of float)
+        reduction: Dict[str, Decimal] = {}
         for ccy in total_gross:
             gross = total_gross[ccy]
             net = total_net.get(ccy, Decimal(0))
             if gross > 0:
-                reduction[ccy] = float((gross - net) / gross)
+                reduction[ccy] = (gross - net) / gross
             else:
-                reduction[ccy] = 0.0
+                reduction[ccy] = Decimal("0")
         
         self._log_trace("netting_completed", {
             "legs_created": len(settlement_legs),

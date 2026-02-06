@@ -232,7 +232,7 @@ class NonceRegistry:
     def _cleanup(self) -> None:
         """Remove expired nonces."""
         cutoff = datetime.now(timezone.utc) - self._max_age
-        expired = [n for n, t in self._nonces.items() if t < cutoff]
+        expired = [n for n, t in list(self._nonces.items()) if t < cutoff]
         for nonce in expired:
             del self._nonces[nonce]
     
@@ -489,9 +489,22 @@ class TimeLockManager:
             lock.operation_data = operation_data
             lock.state = TimeLockState.EXECUTED
             lock.executed_at = datetime.now(timezone.utc).isoformat()
-            
+
+            # Cleanup expired and executed entries to prevent unbounded growth
+            self._cleanup_completed()
+
             return (True, "Operation executed successfully")
-    
+
+    def _cleanup_completed(self) -> None:
+        """Remove executed, cancelled, and expired locks to prevent unbounded growth."""
+        to_remove = [
+            lid for lid, lock in list(self._locks.items())
+            if lock.state in (TimeLockState.EXECUTED, TimeLockState.CANCELLED)
+            or (lock.state == TimeLockState.PENDING and lock.is_expired())
+        ]
+        for lid in to_remove:
+            del self._locks[lid]
+
     def cancel(self, lock_id: str, operator_did: str) -> bool:
         """Cancel a pending time lock."""
         with self._lock:

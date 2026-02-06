@@ -18,6 +18,7 @@ corridor receipts.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, Optional, Protocol
 
 
@@ -60,6 +61,23 @@ class USDCCircleAdapter:
         idem = str(payload.get("idempotency_key") or "")
         if not amount or not destination or not idem:
             raise ValueError("missing amount/destination_address/idempotency_key")
+
+        # BUG FIX #96: USDC uses 6 decimal places. Validate that the amount
+        # doesn't exceed 6 decimal places to prevent precision errors.
+        try:
+            dec_amount = Decimal(amount)
+        except InvalidOperation:
+            raise ValueError(f"amount is not a valid decimal number: {amount!r}")
+        if dec_amount <= 0:
+            raise ValueError(f"amount must be positive, got {amount}")
+        # Check decimal places: USDC supports exactly 6 decimal places
+        if dec_amount.as_tuple().exponent is not None:
+            exponent = dec_amount.as_tuple().exponent
+            if isinstance(exponent, int) and exponent < -6:
+                raise ValueError(
+                    f"USDC supports at most 6 decimal places, "
+                    f"got {amount!r} ({-exponent} decimal places)"
+                )
 
         resp = self._client.create_transfer(amount=amount, destination=destination, idempotency_key=idem)
         transfer_id = str(resp.get("transfer_id") or resp.get("id") or "")

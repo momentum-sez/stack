@@ -18,12 +18,18 @@ Reference: MASS Protocol Technical Specification v0.2, November 2025
 from __future__ import annotations
 import hashlib
 import json
+import re
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any, Dict, List, Optional, Set, Tuple, Callable, Union
 from datetime import datetime, timezone
 from decimal import Decimal
 import copy
+
+
+# BUG FIX #101: DID format validation regex.
+# Matches W3C DID syntax: did:<method>:<method-specific-id>
+_DID_PATTERN = re.compile(r"^did:[a-z0-9]+:[a-zA-Z0-9._:%-]+$")
 
 
 # =============================================================================
@@ -1179,6 +1185,13 @@ class SmartAsset:
         if envelope.kind == TransitionKind.TRANSFER:
             from_holder = envelope.params.get("from")
             to_holder = envelope.params.get("to")
+
+            # BUG FIX #101: Validate holder identifiers are non-empty
+            if not to_holder:
+                raise ValueError("Missing destination holder for transfer")
+            if not from_holder:
+                raise ValueError("Missing source holder for transfer")
+
             # CRITICAL FIX: Use Decimal for financial precision
             amount = Decimal(str(envelope.params.get("amount", 0)))
             
@@ -1200,6 +1213,9 @@ class SmartAsset:
         
         elif envelope.kind == TransitionKind.MINT:
             to_holder = envelope.params.get("to")
+            # BUG FIX #101: Validate holder identifier is non-empty for mint
+            if not to_holder:
+                raise ValueError("Missing destination holder for mint")
             # CRITICAL FIX: Use Decimal for financial precision
             amount = Decimal(str(envelope.params.get("amount", 0)))
             

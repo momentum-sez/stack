@@ -6,10 +6,12 @@ The Momentum SEZ Stack (MSEZ) is a **programmable jurisdictional operating syste
 
 ## System Capabilities
 
-**PHOENIX Smart Asset Operating System — 13,068 lines across 17 modules**
+**PHOENIX Smart Asset Operating System — 13,868 lines across 18 modules**
 
 | Layer | Module | Lines | Description |
 |-------|--------|-------|-------------|
+| **Layer 0: Kernel** ||||
+|| Runtime | 800 | Unified orchestration, lifecycle, metrics |
 | **Layer 1: Asset Intelligence** ||||
 || Compliance Tensor | 955 | 4D sparse tensor for compliance state |
 || ZK Proofs | 766 | Groth16/PLONK/STARK verification |

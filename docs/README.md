@@ -4,7 +4,7 @@
 
 **The Operating System for Special Economic Zones**
 
-This documentation covers the complete MSEZ Stack: a programmable jurisdictional operating system delivering **146 fully-implemented modules** across 16 families, powered by the **PHOENIX Smart Asset Operating System** (13K+ lines across 17 modules).
+This documentation covers the complete MSEZ Stack: a programmable jurisdictional operating system delivering **146 fully-implemented modules** across 16 families, powered by the **PHOENIX Smart Asset Operating System** (14K+ lines across 18 modules).
 
 ---
 
@@ -54,7 +54,7 @@ This documentation covers the complete MSEZ Stack: a programmable jurisdictional
 | Governance & Civic | 10 | ✓ Complete |
 | Arbitration | 8 | ✓ Complete |
 | Operations | 9 | ✓ Complete |
-| PHOENIX Execution | 17 | ✓ Complete |
+| PHOENIX Execution | 18 | ✓ Complete |
 | Agentic Automation | 6 | ✓ Complete |
 | Deployment | 11 | ✓ Complete |
 
@@ -86,6 +86,9 @@ This documentation covers the complete MSEZ Stack: a programmable jurisdictional
 - **Resilience** — Circuit breaker, retry, bulkhead, timeout, fallback
 - **Events** — Event bus, event sourcing, saga orchestration, projections
 - **Cache** — LRU/TTL caching, tiered cache, compute cache
+
+**Layer 0: Kernel**
+- **Runtime** — Unified orchestration, lifecycle management, context propagation, metrics aggregation
 
 ### Quality Assurance
 
@@ -122,6 +125,9 @@ This documentation covers the complete MSEZ Stack: a programmable jurisdictional
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                          LAYER 1: ASSET INTELLIGENCE                         │
 │  Compliance Tensor │ ZK Proof System │ Smart Asset VM                        │
+├═════════════════════════════════════════════════════════════════════════════┤
+│                              LAYER 0: KERNEL                                 │
+│  Phoenix Runtime │ Lifecycle │ Context Propagation │ Metrics │ DI/Services  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 

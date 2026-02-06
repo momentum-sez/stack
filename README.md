@@ -7,7 +7,7 @@
 **v0.4.44 GENESIS**
 
 [![Modules](https://img.shields.io/badge/modules-146%2F146-brightgreen?style=flat-square)]()
-[![PHOENIX](https://img.shields.io/badge/PHOENIX-13K%20lines-purple?style=flat-square)]()
+[![PHOENIX](https://img.shields.io/badge/PHOENIX-14K%20lines%20%7C%2018%20modules-purple?style=flat-square)]()
 [![Tests](https://img.shields.io/badge/tests-294%20passing-success?style=flat-square)]()
 [![Bugs Fixed](https://img.shields.io/badge/bugs%20fixed-50%2B-red?style=flat-square)]()
 [![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen?style=flat-square)]()
@@ -242,7 +242,7 @@ if execution.is_successful:
 
 ## Architecture
 
-The PHOENIX execution layer is organized into **five layers** with **17 modules** totaling **13,068 lines**.
+The PHOENIX execution layer is organized into **six layers** with **18 modules** totaling **13,868 lines**.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -292,6 +292,16 @@ The PHOENIX execution layer is organized into **five layers** with **17 modules*
 │  ├─ Lattice algebra     ├─ Balance sufficiency ├─ Compliance coprocessor    │
 │  ├─ Merkle commitment   ├─ Sanctions clearance ├─ Migration coprocessor     │
 │  └─ Fail-safe defaults  └─ KYC attestation     └─ Gas metering (60+ ops)    │
+│                                                                              │
+├══════════════════════════════════════════════════════════════════════════════┤
+│                              LAYER 0: KERNEL                                 │
+│                                                                              │
+│  Phoenix Runtime — Unified orchestration layer                               │
+│  ├─ Lifecycle management: ordered startup/shutdown with dependencies         │
+│  ├─ Context propagation: correlation IDs, trace spans across all layers     │
+│  ├─ Metrics aggregation: Prometheus-compatible counters, gauges, histograms │
+│  ├─ Component registry: dependency injection, service location              │
+│  └─ Health orchestration: aggregate health from all subsystems              │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -360,6 +370,31 @@ States form a lattice with pessimistic composition: `COMPLIANT ∧ PENDING = PEN
 - *TTLCache*: Time-based expiration with background cleanup
 - *TieredCache*: L1/L2 hierarchy with promotion on hit
 - *ComputeCache*: Memoization with single-flight pattern
+
+### Layer 0: Kernel
+
+**Phoenix Runtime** — The unified orchestration layer that brings all 18 modules together:
+- *Lifecycle Management*: Dependency-aware ordered startup and reverse-order shutdown
+- *Context Propagation*: Request-scoped correlation IDs and trace spans flow through all layers
+- *Metrics Aggregation*: Prometheus-compatible counters, gauges, and histograms from all subsystems
+- *Component Registry*: Dependency injection and service location for clean wiring
+- *Health Orchestration*: Aggregate health checks from all components into unified status
+
+```python
+from tools.phoenix.runtime import PhoenixKernel
+
+# Initialize and start all subsystems
+kernel = PhoenixKernel()
+await kernel.start()
+
+# All operations share request context
+async with kernel.request_context() as ctx:
+    # ctx.correlation_id flows through all layers
+    result = await do_migration(asset_id)
+
+# Graceful shutdown with drain
+await kernel.shutdown()
+```
 
 ---
 

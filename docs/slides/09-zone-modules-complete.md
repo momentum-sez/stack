@@ -236,7 +236,12 @@
 ---
 
 ### XIV. EXECUTION LAYER (PHOENIX)
-> Smart Asset runtime: the zone's computational substrate — 13K+ lines across 17 modules
+> Smart Asset runtime: the zone's computational substrate — 14K+ lines across 18 modules
+
+**Layer 0: Kernel**
+| Module | Description | v0.4.44 Status |
+|--------|-------------|----------------|
+| Phoenix Runtime | Unified orchestration, lifecycle, context, metrics, DI | ✅ Shipped |
 
 **Layer 1: Asset Intelligence**
 | Module | Description | v0.4.44 Status |
@@ -327,10 +332,10 @@
 | XI. Governance & Civic | 10 | 10 | 0 | 0 |
 | XII. Arbitration & Dispute | 8 | 7 | 1 | 0 |
 | XIII. Operations & Observability | 9 | 9 | 0 | 0 |
-| XIV. Execution Layer (PHOENIX) | 17 | 17 | 0 | 0 |
+| XIV. Execution Layer (PHOENIX) | 18 | 18 | 0 | 0 |
 | XV. Agentic & Automation | 6 | 6 | 0 | 0 |
 | XVI. Deployment & Infrastructure | 11 | 8 | 3 | 0 |
-| **TOTAL** | **153** | **141 (92%)** | **12 (8%)** | **0 (0%)** |
+| **TOTAL** | **154** | **142 (92%)** | **12 (8%)** | **0 (0%)** |
 
 ---
 

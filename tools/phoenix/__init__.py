@@ -14,6 +14,17 @@ Architecture
     ┌─────────────────────────────────────────────────────────────────────────┐
     │                     SMART ASSET OPERATING SYSTEM                         │
     │                                                                          │
+    │  LAYER 5: INFRASTRUCTURE PATTERNS                                       │
+    │    resilience.py  Circuit breaker, retry, bulkhead, timeout, fallback   │
+    │    events.py      Event bus, event sourcing, saga orchestration         │
+    │    cache.py       LRU/TTL caching, tiered cache, compute cache          │
+    │                                                                          │
+    │  LAYER 4: OPERATIONS                                                    │
+    │    health.py      Kubernetes-compatible liveness/readiness probes       │
+    │    observability.py Structured logging, distributed tracing             │
+    │    config.py      YAML/environment binding, runtime validation          │
+    │    cli.py         Unified command interface, multiple output formats    │
+    │                                                                          │
     │  LAYER 3: NETWORK COORDINATION                                          │
     │    watcher.py     Bonded attestations with slashing for misbehavior     │
     │    security.py    Defense-in-depth: replay, TOCTOU, front-running       │
@@ -30,6 +41,9 @@ Architecture
     │    zkp.py         Zero-knowledge proof circuits and verification        │
     │    vm.py          Stack-based VM with compliance coprocessors           │
     │                                                                          │
+    │  ═══════════════════════════════════════════════════════════════════════│
+    │  LAYER 0: KERNEL                                                        │
+    │    runtime.py     Unified orchestration, lifecycle, context, metrics    │
     └─────────────────────────────────────────────────────────────────────────┘
 
 Core Concepts
@@ -74,34 +88,37 @@ Design Principles
 Module Index
 ────────────
 
+    LAYER 0: KERNEL
+    runtime.py      Phoenix Runtime Kernel        800 lines
+
     LAYER 1: ASSET INTELLIGENCE
-    tensor.py       Compliance Tensor            955 lines
-    zkp.py          ZK Proof Infrastructure      766 lines
-    vm.py           Smart Asset VM             1,285 lines
+    tensor.py       Compliance Tensor             955 lines
+    zkp.py          ZK Proof Infrastructure       766 lines
+    vm.py           Smart Asset VM              1,285 lines
 
     LAYER 2: JURISDICTIONAL INFRASTRUCTURE
-    manifold.py     Compliance Manifold        1,009 lines
-    migration.py    Migration Protocol           886 lines
-    bridge.py       Corridor Bridge              822 lines
-    anchor.py       L1 Anchor Network            816 lines
+    manifold.py     Compliance Manifold         1,009 lines
+    migration.py    Migration Protocol            886 lines
+    bridge.py       Corridor Bridge               822 lines
+    anchor.py       L1 Anchor Network             816 lines
 
     LAYER 3: NETWORK COORDINATION
-    watcher.py      Watcher Economy              750 lines
-    security.py     Security Layer               993 lines
-    hardening.py    Hardening Layer              744 lines
+    watcher.py      Watcher Economy               750 lines
+    security.py     Security Layer                993 lines
+    hardening.py    Hardening Layer               744 lines
 
     LAYER 4: OPERATIONS
-    health.py       Health Check Framework       400 lines
-    observability.py Structured Logging          500 lines
-    config.py       Configuration System         492 lines
-    cli.py          Unified CLI Framework        450 lines
+    health.py       Health Check Framework        400 lines
+    observability.py Structured Logging           500 lines
+    config.py       Configuration System          492 lines
+    cli.py          Unified CLI Framework         450 lines
 
     LAYER 5: INFRASTRUCTURE PATTERNS
-    resilience.py   Circuit Breaker/Retry        750 lines
-    events.py       Event Bus/Sourcing           650 lines
-    cache.py        LRU/TTL Caching              600 lines
+    resilience.py   Circuit Breaker/Retry         750 lines
+    events.py       Event Bus/Sourcing            650 lines
+    cache.py        LRU/TTL Caching               600 lines
 
-    Total: 13,068 lines across 17 modules with 294 tests
+    Total: 13,868 lines across 18 modules with 294 tests
 
 Copyright © 2026 Momentum. All rights reserved.
 Contact: engineering@momentum.inc
@@ -243,6 +260,16 @@ def __getattr__(name):
                 "CacheRegistry", "cached", "get_cache_registry"):
         from tools.phoenix import cache
         return getattr(cache, name)
+
+    # Runtime/Kernel exports
+    if name in ("PhoenixKernel", "get_kernel", "LifecycleState", "LifecycleHook",
+                "Component", "ComponentHealth", "RequestContext", "get_current_context",
+                "propagate_context", "request_scope", "async_request_scope",
+                "MetricsAggregator", "Metric", "MetricType", "Counter", "Gauge",
+                "Histogram", "ComponentRegistry", "ServiceLocator",
+                "kernel_component", "with_context", "get_metrics"):
+        from tools.phoenix import runtime
+        return getattr(runtime, name)
 
     raise AttributeError(f"module 'phoenix' has no attribute '{name}'")
 
@@ -462,4 +489,26 @@ __all__ = [
     "CacheRegistry",
     "cached",
     "get_cache_registry",
+    # Runtime/Kernel
+    "PhoenixKernel",
+    "get_kernel",
+    "LifecycleState",
+    "LifecycleHook",
+    "Component",
+    "ComponentHealth",
+    "RequestContext",
+    "get_current_context",
+    "propagate_context",
+    "request_scope",
+    "async_request_scope",
+    "MetricsAggregator",
+    "Metric",
+    "MetricType",
+    "Counter",
+    "Gauge",
+    "Histogram",
+    "ComponentRegistry",
+    "ServiceLocator",
+    "kernel_component",
+    "with_context",
 ]

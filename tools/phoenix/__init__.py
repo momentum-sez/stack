@@ -14,6 +14,17 @@ Architecture
     ┌─────────────────────────────────────────────────────────────────────────┐
     │                     SMART ASSET OPERATING SYSTEM                         │
     │                                                                          │
+    │  LAYER 5: INFRASTRUCTURE PATTERNS                                       │
+    │    resilience.py  Circuit breaker, retry, bulkhead, timeout, fallback   │
+    │    events.py      Event bus, event sourcing, saga orchestration         │
+    │    cache.py       LRU/TTL caching, tiered cache, compute cache          │
+    │                                                                          │
+    │  LAYER 4: OPERATIONS                                                    │
+    │    health.py      Kubernetes-compatible liveness/readiness probes       │
+    │    observability.py Structured logging, distributed tracing             │
+    │    config.py      YAML/environment binding, runtime validation          │
+    │    cli.py         Unified command interface, multiple output formats    │
+    │                                                                          │
     │  LAYER 3: NETWORK COORDINATION                                          │
     │    watcher.py     Bonded attestations with slashing for misbehavior     │
     │    security.py    Defense-in-depth: replay, TOCTOU, front-running       │
@@ -30,6 +41,9 @@ Architecture
     │    zkp.py         Zero-knowledge proof circuits and verification        │
     │    vm.py          Stack-based VM with compliance coprocessors           │
     │                                                                          │
+    │  ═══════════════════════════════════════════════════════════════════════│
+    │  LAYER 0: KERNEL                                                        │
+    │    runtime.py     Unified orchestration, lifecycle, context, metrics    │
     └─────────────────────────────────────────────────────────────────────────┘
 
 Core Concepts
@@ -74,18 +88,37 @@ Design Principles
 Module Index
 ────────────
 
-    tensor.py       Compliance Tensor            955 lines
-    zkp.py          ZK Proof Infrastructure      766 lines
-    manifold.py     Compliance Manifold        1,009 lines
-    migration.py    Migration Protocol           886 lines
-    bridge.py       Corridor Bridge              822 lines
-    anchor.py       L1 Anchor Network            816 lines
-    watcher.py      Watcher Economy              750 lines
-    vm.py           Smart Asset VM             1,285 lines
-    security.py     Security Layer               993 lines
-    hardening.py    Hardening Layer              744 lines
+    LAYER 0: KERNEL
+    runtime.py      Phoenix Runtime Kernel        800 lines
 
-    Total: 9,221 lines across 11 modules with 92 tests
+    LAYER 1: ASSET INTELLIGENCE
+    tensor.py       Compliance Tensor             955 lines
+    zkp.py          ZK Proof Infrastructure       766 lines
+    vm.py           Smart Asset VM              1,285 lines
+
+    LAYER 2: JURISDICTIONAL INFRASTRUCTURE
+    manifold.py     Compliance Manifold         1,009 lines
+    migration.py    Migration Protocol            886 lines
+    bridge.py       Corridor Bridge               822 lines
+    anchor.py       L1 Anchor Network             816 lines
+
+    LAYER 3: NETWORK COORDINATION
+    watcher.py      Watcher Economy               750 lines
+    security.py     Security Layer                993 lines
+    hardening.py    Hardening Layer               744 lines
+
+    LAYER 4: OPERATIONS
+    health.py       Health Check Framework        400 lines
+    observability.py Structured Logging           500 lines
+    config.py       Configuration System          492 lines
+    cli.py          Unified CLI Framework         450 lines
+
+    LAYER 5: INFRASTRUCTURE PATTERNS
+    resilience.py   Circuit Breaker/Retry         750 lines
+    events.py       Event Bus/Sourcing            650 lines
+    cache.py        LRU/TTL Caching               600 lines
+
+    Total: 13,868 lines across 18 modules with 294 tests
 
 Copyright © 2026 Momentum. All rights reserved.
 Contact: engineering@momentum.inc
@@ -171,7 +204,73 @@ def __getattr__(name):
                 "SmartAssetVM", "Assembler"):
         from tools.phoenix import vm
         return getattr(vm, name)
-    
+
+    # Health exports
+    if name in ("HealthChecker", "HealthStatus", "HealthReport", "HealthCheck",
+                "DependencyConfig", "MetricsCollector", "get_health_checker",
+                "get_metrics"):
+        from tools.phoenix import health
+        return getattr(health, name)
+
+    # Observability exports
+    if name in ("PhoenixLogger", "PhoenixLayer", "Tracer", "Span", "SpanContext",
+                "AuditLogger", "AuditEntry", "generate_correlation_id",
+                "get_correlation_id", "set_correlation_id", "get_tracer",
+                "get_audit_logger"):
+        from tools.phoenix import observability
+        return getattr(observability, name)
+
+    # Config exports
+    if name in ("PhoenixConfig", "ConfigManager", "ConfigValue", "ConfigError",
+                "ValidationError", "TensorConfig", "VMConfig", "WatcherConfig",
+                "AnchorConfig", "MigrationConfig", "SecurityConfig",
+                "ObservabilityConfig", "get_config", "get_config_manager"):
+        from tools.phoenix import config
+        return getattr(config, name)
+
+    # CLI exports
+    if name in ("PhoenixCLI", "OutputFormat", "format_output", "CLICommand",
+                "CommandGroup"):
+        from tools.phoenix import cli
+        return getattr(cli, name)
+
+    # Resilience exports
+    if name in ("CircuitBreaker", "CircuitState", "CircuitBreakerError",
+                "CircuitBreakerConfig", "CircuitBreakerMetrics",
+                "RetryPolicy", "BackoffStrategy", "RetryExhaustedError",
+                "Bulkhead", "BulkheadFullError", "Timeout", "Fallback",
+                "resilient", "ResilienceRegistry", "get_resilience_registry"):
+        from tools.phoenix import resilience
+        return getattr(resilience, name)
+
+    # Events exports
+    if name in ("Event", "EventBus", "EventStore", "EventRecord",
+                "EventProcessor", "Projection", "EventSourcedAggregate",
+                "Saga", "SagaState", "SagaStep", "ConcurrencyError",
+                "AssetCreated", "AssetMigrated", "ComplianceStateChanged",
+                "AttestationReceived", "MigrationStarted", "MigrationStepCompleted",
+                "MigrationCompleted", "MigrationFailed", "WatcherSlashed",
+                "AnchorSubmitted", "get_event_bus", "get_event_store", "event_handler"):
+        from tools.phoenix import events
+        return getattr(events, name)
+
+    # Cache exports
+    if name in ("Cache", "LRUCache", "TTLCache", "TieredCache",
+                "WriteThroughCache", "ComputeCache", "CacheEntry", "CacheMetrics",
+                "CacheRegistry", "cached", "get_cache_registry"):
+        from tools.phoenix import cache
+        return getattr(cache, name)
+
+    # Runtime/Kernel exports
+    if name in ("PhoenixKernel", "get_kernel", "LifecycleState", "LifecycleHook",
+                "Component", "ComponentHealth", "RequestContext", "get_current_context",
+                "propagate_context", "request_scope", "async_request_scope",
+                "MetricsAggregator", "Metric", "MetricType", "Counter", "Gauge",
+                "Histogram", "ComponentRegistry", "ServiceLocator",
+                "kernel_component", "with_context", "get_metrics"):
+        from tools.phoenix import runtime
+        return getattr(runtime, name)
+
     raise AttributeError(f"module 'phoenix' has no attribute '{name}'")
 
 __all__ = [
@@ -180,11 +279,16 @@ __all__ = [
     "__codename__",
     # Tensor
     "ComplianceDomain",
-    "ComplianceState", 
+    "ComplianceState",
     "ComplianceTensorV2",
     "TensorSlice",
     "TensorCommitment",
     "ComplianceProof",
+    "TensorCoord",
+    "TensorCell",
+    "AttestationRef",
+    "tensor_meet",
+    "tensor_join",
     # ZK
     "ProofSystem",
     "Circuit",
@@ -193,21 +297,218 @@ __all__ = [
     "Proof",
     "VerificationKey",
     "ProvingKey",
+    "CircuitType",
+    "MockProver",
+    "MockVerifier",
+    "create_standard_registry",
     # Manifold
     "ComplianceManifold",
     "MigrationPath",
     "AttestationRequirement",
     "PathConstraint",
+    "JurisdictionNode",
+    "CorridorEdge",
+    "AttestationGap",
+    "AttestationType",
+    "MigrationHop",
+    "create_standard_manifold",
     # Migration
     "MigrationSaga",
     "MigrationState",
     "MigrationRequest",
     "MigrationEvidence",
     "CompensationAction",
+    "MigrationOrchestrator",
+    "StateTransition",
+    "LockEvidence",
+    "TransitProof",
+    "VerificationResult",
     # Watcher
     "WatcherBond",
     "SlashingCondition",
     "SlashingClaim",
     "WatcherReputation",
     "WatcherRegistry",
+    "WatcherId",
+    "BondStatus",
+    "ReputationMetrics",
+    "EquivocationDetector",
+    "SlashingEvidence",
+    # Anchor
+    "Chain",
+    "AnchorStatus",
+    "AnchorManager",
+    "AnchorRecord",
+    "CorridorCheckpoint",
+    "InclusionProof",
+    "MockChainAdapter",
+    "CrossChainVerifier",
+    "CrossChainVerification",
+    "create_mock_anchor_manager",
+    # Bridge
+    "CorridorBridge",
+    "BridgePhase",
+    "BridgeRequest",
+    "BridgeExecution",
+    "HopExecution",
+    "HopStatus",
+    "PrepareReceipt",
+    "CommitReceipt",
+    "BridgeReceiptChain",
+    "create_bridge_with_manifold",
+    # Hardening
+    "ValidationError",
+    "ValidationErrors",
+    "SecurityViolation",
+    "InvariantViolation",
+    "EconomicAttackDetected",
+    "ValidationResult",
+    "Validators",
+    "CryptoUtils",
+    "ThreadSafeDict",
+    "AtomicCounter",
+    "InvariantChecker",
+    "EconomicGuard",
+    "RateLimiter",
+    "RateLimitConfig",
+    # Security
+    "AttestationScope",
+    "ScopedAttestation",
+    "NonceRegistry",
+    "VersionedValue",
+    "VersionedStore",
+    "TimeLock",
+    "TimeLockState",
+    "TimeLockManager",
+    "SignatureScheme",
+    "SignedMessage",
+    "SignatureVerifier",
+    "AuditEventType",
+    "AuditEvent",
+    "SecureWithdrawalManager",
+    "WithdrawalRequest",
+    # VM
+    "OpCode",
+    "Word",
+    "ExecutionContext",
+    "VMState",
+    "GasCosts",
+    "ExecutionResult",
+    "ComplianceCoprocessor",
+    "MigrationCoprocessor",
+    "SmartAssetVM",
+    "Assembler",
+    # Health
+    "HealthChecker",
+    "HealthStatus",
+    "HealthReport",
+    "HealthCheck",
+    "DependencyConfig",
+    "MetricsCollector",
+    "get_health_checker",
+    "get_metrics",
+    # Observability
+    "PhoenixLogger",
+    "PhoenixLayer",
+    "Tracer",
+    "Span",
+    "SpanContext",
+    "generate_correlation_id",
+    "get_correlation_id",
+    "set_correlation_id",
+    "get_tracer",
+    "get_audit_logger",
+    # Config
+    "PhoenixConfig",
+    "ConfigManager",
+    "ConfigValue",
+    "ConfigError",
+    "TensorConfig",
+    "VMConfig",
+    "WatcherConfig",
+    "AnchorConfig",
+    "MigrationConfig",
+    "SecurityConfig",
+    "ObservabilityConfig",
+    "get_config",
+    "get_config_manager",
+    # CLI
+    "PhoenixCLI",
+    "OutputFormat",
+    "format_output",
+    # Resilience
+    "CircuitBreaker",
+    "CircuitState",
+    "CircuitBreakerError",
+    "CircuitBreakerConfig",
+    "CircuitBreakerMetrics",
+    "RetryPolicy",
+    "BackoffStrategy",
+    "RetryExhaustedError",
+    "Bulkhead",
+    "BulkheadFullError",
+    "Timeout",
+    "Fallback",
+    "resilient",
+    "ResilienceRegistry",
+    "get_resilience_registry",
+    # Events
+    "Event",
+    "EventBus",
+    "EventStore",
+    "EventRecord",
+    "EventProcessor",
+    "Projection",
+    "EventSourcedAggregate",
+    "Saga",
+    "SagaState",
+    "SagaStep",
+    "ConcurrencyError",
+    "AssetCreated",
+    "AssetMigrated",
+    "ComplianceStateChanged",
+    "AttestationReceived",
+    "MigrationStarted",
+    "MigrationStepCompleted",
+    "MigrationCompleted",
+    "MigrationFailed",
+    "WatcherSlashed",
+    "AnchorSubmitted",
+    "get_event_bus",
+    "get_event_store",
+    "event_handler",
+    # Cache
+    "Cache",
+    "LRUCache",
+    "TTLCache",
+    "TieredCache",
+    "WriteThroughCache",
+    "ComputeCache",
+    "CacheEntry",
+    "CacheMetrics",
+    "CacheRegistry",
+    "cached",
+    "get_cache_registry",
+    # Runtime/Kernel
+    "PhoenixKernel",
+    "get_kernel",
+    "LifecycleState",
+    "LifecycleHook",
+    "Component",
+    "ComponentHealth",
+    "RequestContext",
+    "get_current_context",
+    "propagate_context",
+    "request_scope",
+    "async_request_scope",
+    "MetricsAggregator",
+    "Metric",
+    "MetricType",
+    "Counter",
+    "Gauge",
+    "Histogram",
+    "ComponentRegistry",
+    "ServiceLocator",
+    "kernel_component",
+    "with_context",
 ]

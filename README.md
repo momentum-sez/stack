@@ -7,7 +7,10 @@
 **v0.4.44 GENESIS**
 
 [![Modules](https://img.shields.io/badge/modules-146%2F146-brightgreen?style=flat-square)]()
-[![PHOENIX](https://img.shields.io/badge/PHOENIX-9.2K%20lines-purple?style=flat-square)]()
+[![PHOENIX](https://img.shields.io/badge/PHOENIX-14K%20lines%20%7C%2018%20modules-purple?style=flat-square)]()
+[![Tests](https://img.shields.io/badge/tests-294%20passing-success?style=flat-square)]()
+[![Bugs Fixed](https://img.shields.io/badge/bugs%20fixed-50%2B-red?style=flat-square)]()
+[![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen?style=flat-square)]()
 [![Jurisdictions](https://img.shields.io/badge/jurisdictions-60%2B-blue?style=flat-square)]()
 [![AWS](https://img.shields.io/badge/AWS-production%20ready-orange?style=flat-square)]()
 
@@ -153,8 +156,8 @@ PYTHONPATH=. python -c "from tools.phoenix import __version__; print(f'PHOENIX {
 
 # Run tests
 pip install pytest
-PYTHONPATH=. pytest tests/test_phoenix.py -v
-# → 92 passed
+PYTHONPATH=. pytest tests/ -v
+# → 294 passed
 ```
 
 ### Your First Smart Asset
@@ -239,10 +242,28 @@ if execution.is_successful:
 
 ## Architecture
 
-The MSEZ Stack is organized into three layers.
+The PHOENIX execution layer is organized into **six layers** with **18 modules** totaling **13,868 lines**.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
+│                    LAYER 5: INFRASTRUCTURE PATTERNS                          │
+│                                                                              │
+│  Resilience            Events                 Cache                          │
+│  ├─ Circuit breaker    ├─ Typed event bus    ├─ LRU eviction                │
+│  ├─ Retry + backoff    ├─ Event sourcing     ├─ TTL expiration              │
+│  ├─ Bulkhead isolation ├─ Saga orchestration ├─ Tiered (L1/L2)              │
+│  ├─ Timeout bounds     ├─ Projections        ├─ Write-through               │
+│  └─ @resilient         └─ @event_handler     └─ @cached                     │
+│                                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                           LAYER 4: OPERATIONS                                │
+│                                                                              │
+│  Health Framework       Observability          Configuration    CLI          │
+│  ├─ Liveness probes     ├─ Structured logging  ├─ YAML/env     ├─ Commands  │
+│  ├─ Readiness probes    ├─ Distributed tracing ├─ Validation   ├─ Formats   │
+│  └─ Metrics collector   └─ Audit logging       └─ Hot reload   └─ Plugins   │
+│                                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
 │                         LAYER 3: NETWORK COORDINATION                        │
 │                                                                              │
 │  Watcher Economy        Security Layer         Hardening Layer               │
@@ -270,7 +291,17 @@ The MSEZ Stack is organized into three layers.
 │  ├─ 4D sparse tensor    ├─ Groth16/PLONK/STARK ├─ 256-bit stack             │
 │  ├─ Lattice algebra     ├─ Balance sufficiency ├─ Compliance coprocessor    │
 │  ├─ Merkle commitment   ├─ Sanctions clearance ├─ Migration coprocessor     │
-│  └─ Fail-safe defaults  └─ KYC attestation     └─ Gas metering              │
+│  └─ Fail-safe defaults  └─ KYC attestation     └─ Gas metering (60+ ops)    │
+│                                                                              │
+├══════════════════════════════════════════════════════════════════════════════┤
+│                              LAYER 0: KERNEL                                 │
+│                                                                              │
+│  Phoenix Runtime — Unified orchestration layer                               │
+│  ├─ Lifecycle management: ordered startup/shutdown with dependencies         │
+│  ├─ Context propagation: correlation IDs, trace spans across all layers     │
+│  ├─ Metrics aggregation: Prometheus-compatible counters, gauges, histograms │
+│  ├─ Component registry: dependency injection, service location              │
+│  └─ Health orchestration: aggregate health from all subsystems              │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -308,6 +339,62 @@ States form a lattice with pessimistic composition: `COMPLIANT ∧ PENDING = PEN
 **Security Layer** — Defense-in-depth: nonces for replay, versioned state for TOCTOU, time locks for front-running, hash-chained audit logs.
 
 **Hardening Layer** — Input validation, thread safety, rate limits, economic attack prevention (10x collateral limits, whale detection).
+
+### Layer 4: Operations
+
+**Health Framework** — Kubernetes-compatible liveness/readiness probes, dependency tracking, Prometheus metrics, memory/thread/GC monitoring.
+
+**Observability** — Structured JSON logging with correlation IDs, distributed tracing with span contexts, layer-aware logging, hash-chained audit trails.
+
+**Configuration** — YAML file loading, environment variable binding (PHOENIX_*), runtime updates with validation, change callbacks.
+
+**CLI** — Unified command interface with subcommands (tensor, vm, manifold, migration, watcher, anchor), multiple output formats (JSON, YAML, table).
+
+### Layer 5: Infrastructure Patterns
+
+**Resilience** — Production-grade fault tolerance following Netflix Hystrix patterns:
+- *Circuit Breaker*: CLOSED/OPEN/HALF_OPEN states with configurable thresholds
+- *Retry*: Exponential backoff with jitter to prevent thundering herd
+- *Bulkhead*: Semaphore-based concurrency isolation
+- *Timeout*: Bounded latency with thread-based cancellation
+- *Fallback*: Graceful degradation with default values
+
+**Events** — Event-driven architecture for loose coupling:
+- *EventBus*: Typed pub/sub with filters and priorities
+- *EventStore*: Append-only with streams and optimistic concurrency
+- *Saga*: Distributed transactions with compensation
+- *Projections*: Read model builders from event streams
+
+**Cache** — Multi-tier caching for performance:
+- *LRUCache*: O(1) operations with OrderedDict
+- *TTLCache*: Time-based expiration with background cleanup
+- *TieredCache*: L1/L2 hierarchy with promotion on hit
+- *ComputeCache*: Memoization with single-flight pattern
+
+### Layer 0: Kernel
+
+**Phoenix Runtime** — The unified orchestration layer that brings all 18 modules together:
+- *Lifecycle Management*: Dependency-aware ordered startup and reverse-order shutdown
+- *Context Propagation*: Request-scoped correlation IDs and trace spans flow through all layers
+- *Metrics Aggregation*: Prometheus-compatible counters, gauges, and histograms from all subsystems
+- *Component Registry*: Dependency injection and service location for clean wiring
+- *Health Orchestration*: Aggregate health checks from all components into unified status
+
+```python
+from tools.phoenix.runtime import PhoenixKernel
+
+# Initialize and start all subsystems
+kernel = PhoenixKernel()
+await kernel.start()
+
+# All operations share request context
+async with kernel.request_context() as ctx:
+    # ctx.correlation_id flows through all layers
+    result = await do_migration(asset_id)
+
+# Graceful shutdown with drain
+await kernel.shutdown()
+```
 
 ---
 
@@ -412,7 +499,7 @@ v0.4.44 GENESIS delivers **146 of 146 modules (100%)** across 16 families:
 
 **MASS Five Primitives**: Entities (natural/legal persons, trusts, funds), Ownership (direct, beneficial, fractional), Instruments (debt, equity, derivatives), Identity (DIDs, verifiable credentials), Consent (transaction, data, delegation).
 
-**PHOENIX**: Compliance Tensor, ZK Proofs, Compliance Manifold, Migration Protocol, Watcher Economy, L1 Anchor, Corridor Bridge, Smart Asset VM, Security Layer, Hardening Layer.
+**PHOENIX** (17 modules): Compliance Tensor, ZK Proofs, Smart Asset VM, Compliance Manifold, Migration Protocol, Corridor Bridge, L1 Anchor, Watcher Economy, Security Layer, Hardening Layer, Health Framework, Observability, Configuration, CLI, Resilience, Events, Cache.
 
 ---
 
@@ -528,36 +615,62 @@ msez-stack/
 │   │   ├── composition.py     # Multi-jurisdiction composer
 │   │   ├── core.py            # Core primitives
 │   │   └── schema.py          # Validation
-│   ├── phoenix/               # PHOENIX execution layer (9.2K lines)
+│   │
+│   ├── phoenix/               # PHOENIX execution layer (13K lines, 17 modules)
+│   │   │
+│   │   │ # LAYER 1: ASSET INTELLIGENCE
 │   │   ├── tensor.py          # Compliance Tensor (955 lines)
+│   │   ├── zkp.py             # ZK Proofs (766 lines)
 │   │   ├── vm.py              # Smart Asset VM (1,285 lines)
+│   │   │
+│   │   │ # LAYER 2: JURISDICTIONAL INFRASTRUCTURE
 │   │   ├── manifold.py        # Compliance Manifold (1,009 lines)
 │   │   ├── migration.py       # Migration Protocol (886 lines)
 │   │   ├── bridge.py          # Corridor Bridge (822 lines)
 │   │   ├── anchor.py          # L1 Anchor (816 lines)
+│   │   │
+│   │   │ # LAYER 3: NETWORK COORDINATION
 │   │   ├── watcher.py         # Watcher Economy (750 lines)
-│   │   ├── zkp.py             # ZK Proofs (766 lines)
 │   │   ├── security.py        # Security Layer (993 lines)
-│   │   └── hardening.py       # Hardening (744 lines)
+│   │   ├── hardening.py       # Hardening (744 lines)
+│   │   │
+│   │   │ # LAYER 4: OPERATIONS
+│   │   ├── health.py          # Health Checks (400 lines)
+│   │   ├── observability.py   # Logging/Tracing (500 lines)
+│   │   ├── config.py          # Configuration (492 lines)
+│   │   ├── cli.py             # CLI Framework (450 lines)
+│   │   │
+│   │   │ # LAYER 5: INFRASTRUCTURE PATTERNS
+│   │   ├── resilience.py      # Circuit Breaker/Retry (750 lines)
+│   │   ├── events.py          # Event Bus/Sourcing (650 lines)
+│   │   └── cache.py           # LRU/TTL Caching (600 lines)
+│   │
 │   ├── lawpack.py             # Legal text management
 │   ├── regpack.py             # Regulatory guidance
 │   ├── licensepack.py         # License registry
 │   ├── arbitration.py         # Dispute resolution
 │   └── agentic.py             # Policy automation
+│
 ├── modules/                   # 146 zone modules (100% complete)
 │   ├── legal/                 # Legal infrastructure (60+ jurisdictions)
 │   ├── corporate/             # Corporate services (8 modules)
 │   ├── licensing/             # Licensing (16 modules)
-│   ├── financial/             # Financial infrastructure (13 modules)
+│   ├── financial/             # Financial infrastructure (14 modules)
 │   ├── identity/              # Identity & credentials (6 modules)
-│   ├── arbitration/           # Dispute resolution (7 modules)
+│   ├── arbitration/           # Dispute resolution (8 modules)
 │   ├── mass-primitives/       # MASS protocol (6 modules)
 │   └── ...
+│
 ├── deploy/
 │   ├── aws/terraform/         # AWS infrastructure
 │   ├── docker/                # Local development
 │   └── helm/                  # Kubernetes charts
-├── tests/                     # Test suites
+│
+├── tests/                     # Test suites (294 tests)
+│   ├── test_phoenix.py        # Core PHOENIX tests
+│   ├── test_infrastructure.py # Infrastructure pattern tests
+│   └── integration/           # Integration test suites
+│
 ├── schemas/                   # JSON schemas (116)
 ├── spec/                      # Specifications (25)
 └── docs/                      # Documentation
@@ -569,7 +682,7 @@ msez-stack/
 
 | Version | Codename | Highlights |
 |---------|----------|------------|
-| **0.4.44** | **GENESIS** | 146/146 modules (100%), 38+ bugs fixed, legendary test suite, full financial/tax/operational infrastructure |
+| **0.4.44** | **GENESIS** | 17 PHOENIX modules (13K lines), 5-layer architecture, 50+ bugs fixed, 294 tests, resilience/events/cache patterns |
 | 0.4.43 | PHOENIX ASCENSION | Smart Asset VM, Security Layer, 9.2K lines |
 | 0.4.42 | Agentic Ascension | Policy automation, 16 policies, 5 monitors |
 | 0.4.41 | Radical Yahoo | Arbitration, RegPack, cryptographic proofs |

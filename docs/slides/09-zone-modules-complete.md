@@ -236,20 +236,49 @@
 ---
 
 ### XIV. EXECUTION LAYER (PHOENIX)
-> Smart Asset runtime: the zone's computational substrate
+> Smart Asset runtime: the zone's computational substrate — 14K+ lines across 18 modules
 
+**Layer 0: Kernel**
+| Module | Description | v0.4.44 Status |
+|--------|-------------|----------------|
+| Phoenix Runtime | Unified orchestration, lifecycle, context, metrics, DI | ✅ Shipped |
+
+**Layer 1: Asset Intelligence**
 | Module | Description | v0.4.44 Status |
 |--------|-------------|----------------|
 | Compliance Tensor V2 | 4D compliance state lattice (asset×jurisdiction×domain×time) | ✅ Shipped |
 | ZK proof infrastructure | Groth16, PLONK, STARK circuit registry and prover | ✅ Shipped (mock) |
+| Smart Asset VM | 256-bit stack VM with compliance/migration coprocessors | ✅ Shipped |
+
+**Layer 2: Jurisdictional Infrastructure**
+| Module | Description | v0.4.44 Status |
+|--------|-------------|----------------|
 | Compliance Manifold | Differential-geometric compliance path planning | ✅ Shipped |
 | Migration Protocol | Saga-based cross-jurisdictional migration | ✅ Shipped |
-| Watcher Economy | Bonded watchers with slashing and reputation | ✅ Shipped |
-| L1 Anchor Network | Ethereum + L2 checkpoint anchoring | ✅ Shipped (mock) |
 | Corridor Bridge | Multi-hop atomic bridge protocol | ✅ Shipped |
-| Smart Asset VM | 256-bit stack VM with compliance/migration coprocessors | ✅ Shipped |
+| L1 Anchor Network | Ethereum + L2 checkpoint anchoring | ✅ Shipped (mock) |
+
+**Layer 3: Network Coordination**
+| Module | Description | v0.4.44 Status |
+|--------|-------------|----------------|
+| Watcher Economy | Bonded watchers with slashing and reputation | ✅ Shipped |
 | Security layer | Nonces, time locks, attestation scope binding | ✅ Shipped |
 | Production hardening | Validation, thread safety, rate limiting | ✅ Shipped |
+
+**Layer 4: Operations**
+| Module | Description | v0.4.44 Status |
+|--------|-------------|----------------|
+| Health Framework | Kubernetes liveness/readiness probes, metrics | ✅ Shipped |
+| Observability | Structured logging, distributed tracing | ✅ Shipped |
+| Configuration | YAML/environment binding, validation | ✅ Shipped |
+| CLI Framework | Unified command interface, multiple formats | ✅ Shipped |
+
+**Layer 5: Infrastructure Patterns**
+| Module | Description | v0.4.44 Status |
+|--------|-------------|----------------|
+| Resilience | Circuit breaker, retry, bulkhead, timeout, fallback | ✅ Shipped |
+| Events | Event bus, event sourcing, saga pattern | ✅ Shipped |
+| Cache | LRU/TTL caching, tiered cache, compute cache | ✅ Shipped |
 
 ---
 
@@ -303,10 +332,10 @@
 | XI. Governance & Civic | 10 | 10 | 0 | 0 |
 | XII. Arbitration & Dispute | 8 | 7 | 1 | 0 |
 | XIII. Operations & Observability | 9 | 9 | 0 | 0 |
-| XIV. Execution Layer (PHOENIX) | 10 | 10 | 0 | 0 |
+| XIV. Execution Layer (PHOENIX) | 18 | 18 | 0 | 0 |
 | XV. Agentic & Automation | 6 | 6 | 0 | 0 |
 | XVI. Deployment & Infrastructure | 11 | 8 | 3 | 0 |
-| **TOTAL** | **146** | **134 (92%)** | **12 (8%)** | **0 (0%)** |
+| **TOTAL** | **154** | **142 (92%)** | **12 (8%)** | **0 (0%)** |
 
 ---
 

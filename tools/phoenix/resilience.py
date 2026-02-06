@@ -287,21 +287,18 @@ class CircuitBreaker:
                 return False
         return False
 
-    @contextmanager
     def __enter__(self):
         """Context manager entry."""
         if not self._acquire():
             raise CircuitBreakerError(self.name, self._state)
-        try:
-            yield self
-        except Exception as e:
-            self._record_failure(e)
-            raise
-        else:
-            self._record_success()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
+        if exc_type is not None:
+            self._record_failure(exc_val)
+        else:
+            self._record_success()
         return False
 
     def __call__(self, func: Callable[..., T]) -> Callable[..., T]:
@@ -593,20 +590,17 @@ class Bulkhead:
         with self._lock:
             self._metrics.current_concurrent -= 1
 
-    @contextmanager
     def __enter__(self):
         """Context manager entry."""
         if not self._acquire():
             raise BulkheadFullError(self.name, self.max_concurrent)
-        try:
-            yield self
-        finally:
-            self._release()
-            with self._lock:
-                self._metrics.successful_calls += 1
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
+        self._release()
+        with self._lock:
+            self._metrics.successful_calls += 1
         return False
 
     def __call__(self, func: Callable[..., T]) -> Callable[..., T]:

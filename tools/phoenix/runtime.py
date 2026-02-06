@@ -986,7 +986,7 @@ class PhoenixKernel:
         try:
             from tools.phoenix.config import ConfigManager
 
-            self._services.register_factory(ConfigManager, ConfigManager.get_instance)
+            self._services.register_factory(ConfigManager, lambda: ConfigManager())
         except ImportError:
             pass
 

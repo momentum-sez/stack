@@ -1063,9 +1063,12 @@ dependencies = [
  "msez-core",
  "msez-crypto",
  "msez-state",
+ "proptest",
  "serde",
  "serde_json",
  "thiserror",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

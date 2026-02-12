@@ -1149,4 +1149,127 @@ mod tests {
         assert!(!gt.evaluate(&serde_json::json!({"days": 7})));
         assert!(!gt.evaluate(&serde_json::json!({"days": 3})));
     }
+
+    // ── Coverage expansion tests ─────────────────────────────────────
+
+    #[test]
+    fn trigger_type_all_returns_20_variants() {
+        assert_eq!(TriggerType::all().len(), 20);
+    }
+
+    #[test]
+    fn trigger_type_display_all() {
+        for t in TriggerType::all() {
+            let s = format!("{t}");
+            assert!(!s.is_empty());
+            assert_eq!(s, t.as_str());
+        }
+    }
+
+    #[test]
+    fn trigger_type_serde_roundtrip_all() {
+        for t in TriggerType::all() {
+            let json = serde_json::to_string(&t).unwrap();
+            let deserialized: TriggerType = serde_json::from_str(&json).unwrap();
+            assert_eq!(*t, deserialized);
+        }
+    }
+
+    #[test]
+    fn policy_action_as_str_all_variants() {
+        let all_actions = [
+            PolicyAction::Transfer,
+            PolicyAction::Mint,
+            PolicyAction::Burn,
+            PolicyAction::ActivateBinding,
+            PolicyAction::DeactivateBinding,
+            PolicyAction::MigrateBinding,
+            PolicyAction::UpdateManifest,
+            PolicyAction::AmendGovernance,
+            PolicyAction::AddGovernor,
+            PolicyAction::RemoveGovernor,
+            PolicyAction::Dividend,
+            PolicyAction::Split,
+            PolicyAction::Merger,
+            PolicyAction::Halt,
+            PolicyAction::Resume,
+            PolicyAction::ArbitrationEnforce,
+        ];
+        for action in &all_actions {
+            let s = action.as_str();
+            assert!(!s.is_empty());
+            assert_eq!(format!("{action}"), s);
+        }
+    }
+
+    #[test]
+    fn policy_action_serde_roundtrip_all() {
+        let action = PolicyAction::Transfer;
+        let json = serde_json::to_string(&action).unwrap();
+        let deserialized: PolicyAction = serde_json::from_str(&json).unwrap();
+        assert_eq!(action, deserialized);
+    }
+
+    #[test]
+    fn condition_and_evaluation_coverage() {
+        let cond = Condition::And {
+            conditions: vec![
+                Condition::Equals {
+                    field: "a".into(),
+                    value: serde_json::json!(1),
+                },
+                Condition::Equals {
+                    field: "b".into(),
+                    value: serde_json::json!(2),
+                },
+            ],
+        };
+        assert!(cond.evaluate(&serde_json::json!({"a": 1, "b": 2})));
+        assert!(!cond.evaluate(&serde_json::json!({"a": 1, "b": 3})));
+    }
+
+    #[test]
+    fn condition_or_evaluation_coverage() {
+        let cond = Condition::Or {
+            conditions: vec![
+                Condition::Equals {
+                    field: "a".into(),
+                    value: serde_json::json!(1),
+                },
+                Condition::Equals {
+                    field: "b".into(),
+                    value: serde_json::json!(2),
+                },
+            ],
+        };
+        assert!(cond.evaluate(&serde_json::json!({"a": 1, "b": 0})));
+        assert!(!cond.evaluate(&serde_json::json!({"a": 0, "b": 0})));
+    }
+
+    #[test]
+    fn condition_missing_field_returns_false() {
+        let cond = Condition::Equals {
+            field: "missing".into(),
+            value: serde_json::json!("val"),
+        };
+        assert!(!cond.evaluate(&serde_json::json!({"other": "val"})));
+    }
+
+    #[test]
+    fn condition_less_than_missing_field() {
+        let cond = Condition::LessThan {
+            field: "missing".into(),
+            threshold: serde_json::json!(10),
+        };
+        assert!(!cond.evaluate(&serde_json::json!({})));
+    }
+
+    #[test]
+    fn condition_greater_than_missing_field() {
+        let cond = Condition::GreaterThan {
+            field: "missing".into(),
+            threshold: serde_json::json!(10),
+        };
+        assert!(!cond.evaluate(&serde_json::json!({})));
+    }
 }

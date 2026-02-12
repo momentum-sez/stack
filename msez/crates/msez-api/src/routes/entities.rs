@@ -78,7 +78,7 @@ impl Validate for UpdateEntityRequest {
 }
 
 /// Dissolution status response.
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct DissolutionStatusResponse {
     pub entity_id: Uuid,
     pub status: String,
@@ -581,5 +581,455 @@ mod tests {
 
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    // ── Additional handler coverage ───────────────────────────────
+
+    #[tokio::test]
+    async fn handler_update_entity_returns_200() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an entity first.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/entities")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"entity_type":"company","legal_name":"Old Name","jurisdiction_id":"PK-PSEZ"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        assert_eq!(create_resp.status(), StatusCode::CREATED);
+        let created: EntityRecord = body_json(create_resp).await;
+
+        // Update the entity's legal_name and status.
+        let update_req = Request::builder()
+            .method("PUT")
+            .uri(&format!("/v1/entities/{}", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"legal_name":"New Name","status":"ACTIVE"}"#,
+            ))
+            .unwrap();
+        let update_resp = app.oneshot(update_req).await.unwrap();
+        assert_eq!(update_resp.status(), StatusCode::OK);
+
+        let updated: EntityRecord = body_json(update_resp).await;
+        assert_eq!(updated.id, created.id);
+        assert_eq!(updated.legal_name, "New Name");
+        assert_eq!(updated.status, "ACTIVE");
+    }
+
+    #[tokio::test]
+    async fn handler_update_entity_partial_fields() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an entity.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/entities")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"entity_type":"llc","legal_name":"Partial Corp","jurisdiction_id":"AE-DIFC"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: EntityRecord = body_json(create_resp).await;
+
+        // Update only legal_name (no status).
+        let update_req = Request::builder()
+            .method("PUT")
+            .uri(&format!("/v1/entities/{}", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"legal_name":"Updated Partial Corp"}"#))
+            .unwrap();
+        let update_resp = app.clone().oneshot(update_req).await.unwrap();
+        assert_eq!(update_resp.status(), StatusCode::OK);
+
+        let updated: EntityRecord = body_json(update_resp).await;
+        assert_eq!(updated.legal_name, "Updated Partial Corp");
+        assert_eq!(updated.status, "APPLIED"); // status unchanged
+
+        // Update only status (no legal_name).
+        let update_req2 = Request::builder()
+            .method("PUT")
+            .uri(&format!("/v1/entities/{}", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"status":"SUSPENDED"}"#))
+            .unwrap();
+        let update_resp2 = app.oneshot(update_req2).await.unwrap();
+        assert_eq!(update_resp2.status(), StatusCode::OK);
+
+        let updated2: EntityRecord = body_json(update_resp2).await;
+        assert_eq!(updated2.legal_name, "Updated Partial Corp"); // unchanged
+        assert_eq!(updated2.status, "SUSPENDED");
+    }
+
+    #[tokio::test]
+    async fn handler_update_entity_not_found_returns_404() {
+        let app = test_app();
+        let id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("PUT")
+            .uri(&format!("/v1/entities/{id}"))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"legal_name":"Ghost"}"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn handler_update_entity_empty_name_returns_422() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an entity.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/entities")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"entity_type":"company","legal_name":"Test","jurisdiction_id":"PK-PSEZ"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: EntityRecord = body_json(create_resp).await;
+
+        // Update with empty legal_name.
+        let update_req = Request::builder()
+            .method("PUT")
+            .uri(&format!("/v1/entities/{}", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"legal_name":""}"#))
+            .unwrap();
+        let update_resp = app.oneshot(update_req).await.unwrap();
+        assert_eq!(update_resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
+    async fn handler_update_entity_bad_json_returns_400() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an entity.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/entities")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"entity_type":"company","legal_name":"Test","jurisdiction_id":"PK-PSEZ"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: EntityRecord = body_json(create_resp).await;
+
+        // Send malformed JSON.
+        let update_req = Request::builder()
+            .method("PUT")
+            .uri(&format!("/v1/entities/{}", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{broken json"#))
+            .unwrap();
+        let update_resp = app.oneshot(update_req).await.unwrap();
+        assert_eq!(update_resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn handler_get_beneficial_owners_returns_200() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an entity with beneficial owners.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/entities")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"entity_type":"company","legal_name":"BenOwner Corp","jurisdiction_id":"PK-PSEZ","beneficial_owners":[{"name":"Ali Khan","ownership_percentage":"51.0","cnic":"12345-6789012-3"},{"name":"Sara Ahmed","ownership_percentage":"49.0"}]}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        assert_eq!(create_resp.status(), StatusCode::CREATED);
+        let created: EntityRecord = body_json(create_resp).await;
+
+        // Get beneficial owners.
+        let get_req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/entities/{}/beneficial-owners", created.id))
+            .body(Body::empty())
+            .unwrap();
+        let get_resp = app.oneshot(get_req).await.unwrap();
+        assert_eq!(get_resp.status(), StatusCode::OK);
+
+        let owners: Vec<BeneficialOwner> = body_json(get_resp).await;
+        assert_eq!(owners.len(), 2);
+        assert_eq!(owners[0].name, "Ali Khan");
+        assert_eq!(owners[0].ownership_percentage, "51.0");
+        assert_eq!(owners[0].cnic.as_deref(), Some("12345-6789012-3"));
+        assert_eq!(owners[1].name, "Sara Ahmed");
+        assert!(owners[1].cnic.is_none());
+    }
+
+    #[tokio::test]
+    async fn handler_get_beneficial_owners_not_found_returns_404() {
+        let app = test_app();
+        let id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/entities/{id}/beneficial-owners"))
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn handler_initiate_dissolution_returns_200() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an entity.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/entities")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"entity_type":"company","legal_name":"Dissolving Corp","jurisdiction_id":"PK-PSEZ"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: EntityRecord = body_json(create_resp).await;
+
+        // Initiate dissolution.
+        let dissolve_req = Request::builder()
+            .method("POST")
+            .uri(&format!("/v1/entities/{}/dissolution/initiate", created.id))
+            .body(Body::empty())
+            .unwrap();
+        let dissolve_resp = app.oneshot(dissolve_req).await.unwrap();
+        assert_eq!(dissolve_resp.status(), StatusCode::OK);
+
+        let dissolved: EntityRecord = body_json(dissolve_resp).await;
+        assert_eq!(dissolved.status, "DISSOLVING");
+        assert_eq!(dissolved.dissolution_stage, Some(1));
+    }
+
+    #[tokio::test]
+    async fn handler_initiate_dissolution_not_found_returns_404() {
+        let app = test_app();
+        let id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("POST")
+            .uri(&format!("/v1/entities/{id}/dissolution/initiate"))
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn handler_get_dissolution_status_with_active_dissolution() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create and dissolve an entity.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/entities")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"entity_type":"company","legal_name":"Status Corp","jurisdiction_id":"PK-PSEZ"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: EntityRecord = body_json(create_resp).await;
+
+        // Initiate dissolution.
+        let dissolve_req = Request::builder()
+            .method("POST")
+            .uri(&format!("/v1/entities/{}/dissolution/initiate", created.id))
+            .body(Body::empty())
+            .unwrap();
+        app.clone().oneshot(dissolve_req).await.unwrap();
+
+        // Get dissolution status.
+        let status_req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/entities/{}/dissolution/status", created.id))
+            .body(Body::empty())
+            .unwrap();
+        let status_resp = app.oneshot(status_req).await.unwrap();
+        assert_eq!(status_resp.status(), StatusCode::OK);
+
+        let status: DissolutionStatusResponse = body_json(status_resp).await;
+        assert_eq!(status.entity_id, created.id);
+        assert_eq!(status.status, "DISSOLVING");
+        assert_eq!(status.current_stage, Some(1));
+        assert_eq!(status.stage_name.as_deref(), Some("BOARD_RESOLUTION"));
+    }
+
+    #[tokio::test]
+    async fn handler_get_dissolution_status_no_dissolution() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an entity without dissolution.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/entities")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"entity_type":"company","legal_name":"Healthy Corp","jurisdiction_id":"PK-PSEZ"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: EntityRecord = body_json(create_resp).await;
+
+        // Get dissolution status — no dissolution initiated.
+        let status_req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/entities/{}/dissolution/status", created.id))
+            .body(Body::empty())
+            .unwrap();
+        let status_resp = app.oneshot(status_req).await.unwrap();
+        assert_eq!(status_resp.status(), StatusCode::OK);
+
+        let status: DissolutionStatusResponse = body_json(status_resp).await;
+        assert_eq!(status.entity_id, created.id);
+        assert_eq!(status.status, "APPLIED");
+        assert!(status.current_stage.is_none());
+        assert!(status.stage_name.is_none());
+    }
+
+    #[tokio::test]
+    async fn handler_get_dissolution_status_not_found_returns_404() {
+        let app = test_app();
+        let id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/entities/{id}/dissolution/status"))
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn handler_get_dissolution_status_all_stages() {
+        // Verify stage name mapping for all 10 dissolution stages.
+        let state = AppState::new();
+        let now = Utc::now();
+
+        let expected_stages = [
+            (1u8, "BOARD_RESOLUTION"),
+            (2, "SHAREHOLDER_RESOLUTION"),
+            (3, "APPOINT_LIQUIDATOR"),
+            (4, "NOTIFY_CREDITORS"),
+            (5, "REALIZE_ASSETS"),
+            (6, "SETTLE_LIABILITIES"),
+            (7, "FINAL_DISTRIBUTION"),
+            (8, "FINAL_MEETING"),
+            (9, "FILE_FINAL_DOCUMENTS"),
+            (10, "DISSOLUTION"),
+        ];
+
+        for (stage, expected_name) in expected_stages {
+            let id = Uuid::new_v4();
+            let entity = EntityRecord {
+                id,
+                entity_type: "company".to_string(),
+                legal_name: format!("Stage {stage} Corp"),
+                jurisdiction_id: "PK-PSEZ".to_string(),
+                status: "DISSOLVING".to_string(),
+                beneficial_owners: vec![],
+                dissolution_stage: Some(stage),
+                created_at: now,
+                updated_at: now,
+            };
+            state.entities.insert(id, entity);
+
+            let app = router().with_state(state.clone());
+            let req = Request::builder()
+                .method("GET")
+                .uri(&format!("/v1/entities/{id}/dissolution/status"))
+                .body(Body::empty())
+                .unwrap();
+            let resp = app.oneshot(req).await.unwrap();
+            let status: DissolutionStatusResponse = body_json(resp).await;
+            assert_eq!(
+                status.stage_name.as_deref(),
+                Some(expected_name),
+                "stage {stage} should map to {expected_name}"
+            );
+        }
+
+        // Test unknown stage number (e.g., 99).
+        let unknown_id = Uuid::new_v4();
+        let unknown_entity = EntityRecord {
+            id: unknown_id,
+            entity_type: "company".to_string(),
+            legal_name: "Unknown Stage Corp".to_string(),
+            jurisdiction_id: "PK-PSEZ".to_string(),
+            status: "DISSOLVING".to_string(),
+            beneficial_owners: vec![],
+            dissolution_stage: Some(99),
+            created_at: now,
+            updated_at: now,
+        };
+        state.entities.insert(unknown_id, unknown_entity);
+
+        let app = router().with_state(state.clone());
+        let req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/entities/{unknown_id}/dissolution/status"))
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        let status: DissolutionStatusResponse = body_json(resp).await;
+        assert_eq!(status.stage_name.as_deref(), Some("UNKNOWN"));
+    }
+
+    #[tokio::test]
+    async fn handler_create_entity_with_beneficial_owners_returns_201() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/entities")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"entity_type":"corporation","legal_name":"Owned Corp","jurisdiction_id":"PK-RSEZ","beneficial_owners":[{"name":"Owner A","ownership_percentage":"60.0","ntn":"1234567"}]}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::CREATED);
+
+        let record: EntityRecord = body_json(resp).await;
+        assert_eq!(record.beneficial_owners.len(), 1);
+        assert_eq!(record.beneficial_owners[0].name, "Owner A");
+        assert_eq!(record.beneficial_owners[0].ntn.as_deref(), Some("1234567"));
+    }
+
+    #[tokio::test]
+    async fn handler_create_entity_missing_content_type() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/entities")
+            .body(Body::from(
+                r#"{"entity_type":"company","legal_name":"Test","jurisdiction_id":"PK-PSEZ"}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        // Missing content-type should cause a 400 from JSON rejection.
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     }
 }

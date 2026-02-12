@@ -114,4 +114,72 @@ mod tests {
         let cid = CorridorId::from_uuid(uuid);
         assert_eq!(*cid.as_uuid(), uuid);
     }
+
+    #[test]
+    fn jurisdiction_id_display() {
+        let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+        assert_eq!(format!("{jid}"), "PK-RSEZ");
+    }
+
+    #[test]
+    fn jurisdiction_id_serde_roundtrip() {
+        let jid = JurisdictionId::new("US-DE").unwrap();
+        let json = serde_json::to_string(&jid).unwrap();
+        let deser: JurisdictionId = serde_json::from_str(&json).unwrap();
+        assert_eq!(jid, deser);
+    }
+
+    #[test]
+    fn corridor_id_default() {
+        let cid = CorridorId::default();
+        // default() calls new() which generates a UUID
+        assert!(!cid.as_uuid().is_nil());
+    }
+
+    #[test]
+    fn corridor_id_display() {
+        let uuid = Uuid::nil();
+        let cid = CorridorId::from_uuid(uuid);
+        let display = format!("{cid}");
+        assert_eq!(display, "00000000-0000-0000-0000-000000000000");
+    }
+
+    #[test]
+    fn corridor_id_serde_roundtrip() {
+        let cid = CorridorId::new();
+        let json = serde_json::to_string(&cid).unwrap();
+        let deser: CorridorId = serde_json::from_str(&json).unwrap();
+        assert_eq!(cid, deser);
+    }
+
+    #[test]
+    fn corridor_id_hash_works() {
+        use std::collections::HashSet;
+        let cid1 = CorridorId::new();
+        let cid2 = CorridorId::new();
+        let mut set = HashSet::new();
+        set.insert(cid1.clone());
+        set.insert(cid2.clone());
+        assert_eq!(set.len(), 2);
+        assert!(set.contains(&cid1));
+    }
+
+    #[test]
+    fn jurisdiction_id_clone_and_eq() {
+        let jid = JurisdictionId::new("SG").unwrap();
+        let jid2 = jid.clone();
+        assert_eq!(jid, jid2);
+    }
+
+    #[test]
+    fn jurisdiction_id_hash_works() {
+        use std::collections::HashSet;
+        let j1 = JurisdictionId::new("PK").unwrap();
+        let j2 = JurisdictionId::new("SG").unwrap();
+        let mut set = HashSet::new();
+        set.insert(j1.clone());
+        set.insert(j2);
+        assert_eq!(set.len(), 2);
+        assert!(set.contains(&j1));
+    }
 }

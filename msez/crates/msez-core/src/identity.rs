@@ -479,4 +479,240 @@ mod tests {
         assert!(PassportNumber::new("AB12-3456").is_err()); // non-alphanumeric dash
         assert!(PassportNumber::new("A".repeat(21)).is_err()); // too long
     }
+
+    // ── Coverage expansion tests ─────────────────────────────────────
+
+    // -- EntityId --
+
+    #[test]
+    fn entity_id_default() {
+        let id1 = EntityId::default();
+        let id2 = EntityId::default();
+        assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn entity_id_display() {
+        let id = EntityId::new();
+        let display = format!("{id}");
+        assert!(!display.is_empty());
+        // UUID format: 8-4-4-4-12 = 36 chars
+        assert_eq!(display.len(), 36);
+    }
+
+    // -- MigrationId --
+
+    #[test]
+    fn migration_id_unique() {
+        let a = MigrationId::new();
+        let b = MigrationId::new();
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn migration_id_default() {
+        let id1 = MigrationId::default();
+        let id2 = MigrationId::default();
+        assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn migration_id_display() {
+        let id = MigrationId::new();
+        let display = format!("{id}");
+        assert_eq!(display.len(), 36);
+    }
+
+    #[test]
+    fn migration_id_from_uuid_roundtrip() {
+        let uuid = Uuid::new_v4();
+        let id = MigrationId::from_uuid(uuid);
+        assert_eq!(*id.as_uuid(), uuid);
+    }
+
+    // -- WatcherId --
+
+    #[test]
+    fn watcher_id_unique() {
+        let a = WatcherId::new();
+        let b = WatcherId::new();
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn watcher_id_default() {
+        let id1 = WatcherId::default();
+        let id2 = WatcherId::default();
+        assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn watcher_id_display() {
+        let id = WatcherId::new();
+        let display = format!("{id}");
+        assert_eq!(display.len(), 36);
+    }
+
+    #[test]
+    fn watcher_id_from_uuid_roundtrip() {
+        let uuid = Uuid::new_v4();
+        let id = WatcherId::from_uuid(uuid);
+        assert_eq!(*id.as_uuid(), uuid);
+    }
+
+    // -- Did --
+
+    #[test]
+    fn did_display() {
+        let did = Did::new("did:web:example.com").unwrap();
+        assert_eq!(format!("{did}"), "did:web:example.com");
+    }
+
+    #[test]
+    fn did_as_str() {
+        let did = Did::new("did:key:z6MkTestKey").unwrap();
+        assert_eq!(did.as_str(), "did:key:z6MkTestKey");
+    }
+
+    #[test]
+    fn did_method_extraction_multiple() {
+        let did = Did::new("did:ethr:0xabcdef1234567890").unwrap();
+        assert_eq!(did.method(), "ethr");
+        assert_eq!(did.method_specific_id(), "0xabcdef1234567890");
+    }
+
+    #[test]
+    fn did_method_with_colons_in_id() {
+        // Method-specific ID can contain colons
+        let did = Did::new("did:web:example.com:path:to:resource").unwrap();
+        assert_eq!(did.method(), "web");
+        assert_eq!(did.method_specific_id(), "example.com:path:to:resource");
+    }
+
+    // -- Ntn --
+
+    #[test]
+    fn ntn_display() {
+        let ntn = Ntn::new("1234567").unwrap();
+        assert_eq!(format!("{ntn}"), "1234567");
+    }
+
+    // -- Cnic --
+
+    #[test]
+    fn cnic_display_formatted() {
+        let cnic = Cnic::new("1234567890123").unwrap();
+        assert_eq!(format!("{cnic}"), "12345-6789012-3");
+    }
+
+    #[test]
+    fn cnic_formatted_from_digits() {
+        let cnic = Cnic::new("1234567890123").unwrap();
+        assert_eq!(cnic.formatted(), "12345-6789012-3");
+    }
+
+    // -- PassportNumber --
+
+    #[test]
+    fn passport_display() {
+        let pp = PassportNumber::new("ab123456").unwrap();
+        assert_eq!(format!("{pp}"), "AB123456");
+    }
+
+    #[test]
+    fn passport_boundary_lengths() {
+        // Exactly 5 chars (minimum)
+        assert!(PassportNumber::new("ABCDE").is_ok());
+        // Exactly 20 chars (maximum)
+        assert!(PassportNumber::new("A".repeat(20)).is_ok());
+    }
+
+    #[test]
+    fn passport_with_whitespace() {
+        // Leading/trailing whitespace is trimmed
+        let pp = PassportNumber::new("  AB123456  ").unwrap();
+        assert_eq!(pp.as_str(), "AB123456");
+    }
+
+    // -- Serde roundtrips --
+
+    #[test]
+    fn entity_id_serde_roundtrip() {
+        let id = EntityId::new();
+        let json_str = serde_json::to_string(&id).unwrap();
+        let deserialized: EntityId = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(id, deserialized);
+    }
+
+    #[test]
+    fn migration_id_serde_roundtrip() {
+        let id = MigrationId::new();
+        let json_str = serde_json::to_string(&id).unwrap();
+        let deserialized: MigrationId = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(id, deserialized);
+    }
+
+    #[test]
+    fn watcher_id_serde_roundtrip() {
+        let id = WatcherId::new();
+        let json_str = serde_json::to_string(&id).unwrap();
+        let deserialized: WatcherId = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(id, deserialized);
+    }
+
+    #[test]
+    fn did_serde_roundtrip() {
+        let did = Did::new("did:web:example.com").unwrap();
+        let json_str = serde_json::to_string(&did).unwrap();
+        let deserialized: Did = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(did, deserialized);
+    }
+
+    #[test]
+    fn ntn_serde_roundtrip() {
+        let ntn = Ntn::new("1234567").unwrap();
+        let json_str = serde_json::to_string(&ntn).unwrap();
+        let deserialized: Ntn = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(ntn, deserialized);
+    }
+
+    #[test]
+    fn cnic_serde_roundtrip() {
+        let cnic = Cnic::new("1234567890123").unwrap();
+        let json_str = serde_json::to_string(&cnic).unwrap();
+        let deserialized: Cnic = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(cnic, deserialized);
+    }
+
+    #[test]
+    fn passport_serde_roundtrip() {
+        let pp = PassportNumber::new("AB123456").unwrap();
+        let json_str = serde_json::to_string(&pp).unwrap();
+        let deserialized: PassportNumber = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(pp, deserialized);
+    }
+
+    // -- Hash collections --
+
+    #[test]
+    fn entity_id_in_hashset() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        let id1 = EntityId::new();
+        let id2 = EntityId::new();
+        set.insert(id1.clone());
+        set.insert(id2);
+        assert_eq!(set.len(), 2);
+        assert!(set.contains(&id1));
+    }
+
+    #[test]
+    fn did_in_hashset() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(Did::new("did:web:a.com").unwrap());
+        set.insert(Did::new("did:web:b.com").unwrap());
+        set.insert(Did::new("did:web:a.com").unwrap());
+        assert_eq!(set.len(), 2);
+    }
 }

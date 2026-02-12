@@ -71,7 +71,7 @@ impl Validate for ProposeReceiptRequest {
 }
 
 /// Receipt response.
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ReceiptResponse {
     pub id: Uuid,
     pub corridor_id: Uuid,
@@ -536,6 +536,286 @@ mod tests {
             .uri("/v1/corridors")
             .header("content-type", "application/json")
             .body(Body::from(r#"{"malformed"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    // ── Additional handler coverage ───────────────────────────────
+
+    #[tokio::test]
+    async fn handler_get_corridor_found_returns_200() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create a corridor.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"jurisdiction_a":"PK-PSEZ","jurisdiction_b":"AE-DIFC"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        assert_eq!(create_resp.status(), StatusCode::CREATED);
+        let created: CorridorRecord = body_json(create_resp).await;
+
+        // Get the corridor by ID.
+        let get_req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/corridors/{}", created.id))
+            .body(Body::empty())
+            .unwrap();
+        let get_resp = app.oneshot(get_req).await.unwrap();
+        assert_eq!(get_resp.status(), StatusCode::OK);
+
+        let fetched: CorridorRecord = body_json(get_resp).await;
+        assert_eq!(fetched.id, created.id);
+        assert_eq!(fetched.jurisdiction_a, "PK-PSEZ");
+        assert_eq!(fetched.jurisdiction_b, "AE-DIFC");
+        assert_eq!(fetched.state, "DRAFT");
+    }
+
+    #[tokio::test]
+    async fn handler_get_corridor_not_found_returns_404() {
+        let app = test_app();
+        let id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/corridors/{id}"))
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn handler_transition_corridor_returns_200() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create a corridor.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"jurisdiction_a":"PK-PSEZ","jurisdiction_b":"AE-DIFC"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: CorridorRecord = body_json(create_resp).await;
+
+        // Transition to PENDING.
+        let transition_req = Request::builder()
+            .method("PUT")
+            .uri(&format!("/v1/corridors/{}/transition", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"target_state":"PENDING","evidence_digest":"sha256:abc123","reason":"compliance approved"}"#,
+            ))
+            .unwrap();
+        let transition_resp = app.clone().oneshot(transition_req).await.unwrap();
+        assert_eq!(transition_resp.status(), StatusCode::OK);
+
+        let transitioned: CorridorRecord = body_json(transition_resp).await;
+        assert_eq!(transitioned.state, "PENDING");
+        assert_eq!(transitioned.transition_log.len(), 1);
+        assert_eq!(transitioned.transition_log[0].from_state, "DRAFT");
+        assert_eq!(transitioned.transition_log[0].to_state, "PENDING");
+        assert_eq!(
+            transitioned.transition_log[0].evidence_digest.as_deref(),
+            Some("sha256:abc123")
+        );
+
+        // Transition again to ACTIVE.
+        let transition_req2 = Request::builder()
+            .method("PUT")
+            .uri(&format!("/v1/corridors/{}/transition", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"target_state":"ACTIVE"}"#))
+            .unwrap();
+        let transition_resp2 = app.oneshot(transition_req2).await.unwrap();
+        assert_eq!(transition_resp2.status(), StatusCode::OK);
+
+        let transitioned2: CorridorRecord = body_json(transition_resp2).await;
+        assert_eq!(transitioned2.state, "ACTIVE");
+        assert_eq!(transitioned2.transition_log.len(), 2);
+        assert_eq!(transitioned2.transition_log[1].from_state, "PENDING");
+        assert_eq!(transitioned2.transition_log[1].to_state, "ACTIVE");
+        assert!(transitioned2.transition_log[1].evidence_digest.is_none());
+    }
+
+    #[tokio::test]
+    async fn handler_transition_corridor_not_found_returns_404() {
+        let app = test_app();
+        let id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("PUT")
+            .uri(&format!("/v1/corridors/{id}/transition"))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"target_state":"PENDING"}"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn handler_transition_corridor_invalid_state_returns_422() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create a corridor.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"jurisdiction_a":"PK-PSEZ","jurisdiction_b":"AE-DIFC"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: CorridorRecord = body_json(create_resp).await;
+
+        // Transition to an invalid state.
+        let transition_req = Request::builder()
+            .method("PUT")
+            .uri(&format!("/v1/corridors/{}/transition", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"target_state":"INVALID_STATE"}"#))
+            .unwrap();
+        let transition_resp = app.oneshot(transition_req).await.unwrap();
+        assert_eq!(transition_resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
+    async fn handler_transition_corridor_bad_json_returns_400() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create a corridor.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"jurisdiction_a":"PK-PSEZ","jurisdiction_b":"AE-DIFC"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: CorridorRecord = body_json(create_resp).await;
+
+        let transition_req = Request::builder()
+            .method("PUT")
+            .uri(&format!("/v1/corridors/{}/transition", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{broken"#))
+            .unwrap();
+        let transition_resp = app.oneshot(transition_req).await.unwrap();
+        assert_eq!(transition_resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn handler_propose_receipt_returns_200() {
+        let app = test_app();
+        let corridor_id = Uuid::new_v4();
+        let body_str = format!(
+            r#"{{"corridor_id":"{}","payload":{{"transaction":"transfer","amount":"5000"}}}}"#,
+            corridor_id
+        );
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors/state/propose")
+            .header("content-type", "application/json")
+            .body(Body::from(body_str))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let receipt: ReceiptResponse = body_json(resp).await;
+        assert_eq!(receipt.corridor_id, corridor_id);
+        assert_eq!(receipt.status, "PROPOSED");
+        assert_eq!(receipt.payload["transaction"], "transfer");
+    }
+
+    #[tokio::test]
+    async fn handler_propose_receipt_bad_json_returns_400() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors/state/propose")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"not json"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn handler_fork_resolve_returns_200() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors/state/fork-resolve")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body: serde_json::Value = body_json(resp).await;
+        assert_eq!(body["status"], "resolved");
+        assert_eq!(body["strategy"], "longest_chain");
+    }
+
+    #[tokio::test]
+    async fn handler_anchor_commitment_returns_200() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors/state/anchor")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body: serde_json::Value = body_json(resp).await;
+        assert_eq!(body["status"], "anchored");
+    }
+
+    #[tokio::test]
+    async fn handler_finality_status_returns_200() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors/state/finality-status")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body: serde_json::Value = body_json(resp).await;
+        assert_eq!(body["status"], "pending");
+        assert_eq!(body["confirmations"], 0);
+    }
+
+    #[tokio::test]
+    async fn handler_create_corridor_missing_content_type_returns_400() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors")
+            .body(Body::from(
+                r#"{"jurisdiction_a":"PK-PSEZ","jurisdiction_b":"AE-DIFC"}"#,
+            ))
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();

@@ -981,4 +981,268 @@ mod tests {
         assert_eq!(order.successful_action_count(), 0);
         assert_eq!(order.receipt_count(), 1);
     }
+
+    // ── Coverage expansion tests ─────────────────────────────────────
+
+    #[test]
+    fn enforcement_order_id_default() {
+        let id1 = EnforcementOrderId::default();
+        let id2 = EnforcementOrderId::default();
+        assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn enforcement_order_id_display() {
+        let id = EnforcementOrderId::new();
+        let display = format!("{id}");
+        assert!(display.starts_with("enforcement:"));
+    }
+
+    #[test]
+    fn enforcement_receipt_id_default() {
+        let id1 = EnforcementReceiptId::default();
+        let id2 = EnforcementReceiptId::default();
+        assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn enforcement_receipt_id_display() {
+        let id = EnforcementReceiptId::new();
+        let display = format!("{id}");
+        assert!(display.starts_with("enforcement-receipt:"));
+    }
+
+    #[test]
+    fn enforcement_receipt_id_from_uuid_roundtrip() {
+        let uuid = uuid::Uuid::new_v4();
+        let id = EnforcementReceiptId::from_uuid(uuid);
+        assert_eq!(*id.as_uuid(), uuid);
+    }
+
+    #[test]
+    fn enforcement_action_display_all_variants() {
+        let escrow_release = EnforcementAction::EscrowRelease {
+            escrow_id: EscrowId::new(),
+            beneficiary: test_did("Test"),
+            amount: Some("1000".to_string()),
+        };
+        assert!(format!("{escrow_release}").starts_with("escrow_release:"));
+
+        let license_suspension = EnforcementAction::LicenseSuspension {
+            license_id: "LIC-001".to_string(),
+            reason: "test".to_string(),
+        };
+        assert!(format!("{license_suspension}").starts_with("license_suspension:"));
+
+        let corridor_suspension = EnforcementAction::CorridorSuspension {
+            corridor_id: CorridorId::new(),
+            reason: "test".to_string(),
+        };
+        assert!(format!("{corridor_suspension}").starts_with("corridor_suspension:"));
+
+        let corridor_receipt = EnforcementAction::CorridorReceiptGeneration {
+            corridor_id: CorridorId::new(),
+        };
+        assert!(format!("{corridor_receipt}").starts_with("corridor_receipt:"));
+
+        let asset_transfer = EnforcementAction::AssetTransfer {
+            asset_digest: test_digest(),
+            recipient: test_did("Recipient"),
+        };
+        assert!(format!("{asset_transfer}").starts_with("asset_transfer:"));
+
+        let monetary_penalty = EnforcementAction::MonetaryPenalty {
+            party: test_did("Penalized"),
+            amount: "50000".to_string(),
+            currency: "USD".to_string(),
+        };
+        let penalty_display = format!("{monetary_penalty}");
+        assert!(penalty_display.starts_with("monetary_penalty:"));
+        assert!(penalty_display.contains("50000USD"));
+    }
+
+    #[test]
+    fn enforcement_status_display_all_variants() {
+        assert_eq!(format!("{}", EnforcementStatus::Pending), "PENDING");
+        assert_eq!(format!("{}", EnforcementStatus::InProgress), "IN_PROGRESS");
+        assert_eq!(format!("{}", EnforcementStatus::Completed), "COMPLETED");
+        assert_eq!(format!("{}", EnforcementStatus::Blocked), "BLOCKED");
+        assert_eq!(format!("{}", EnforcementStatus::Cancelled), "CANCELLED");
+    }
+
+    #[test]
+    fn enforcement_status_as_str_all_variants() {
+        assert_eq!(EnforcementStatus::Pending.as_str(), "PENDING");
+        assert_eq!(EnforcementStatus::InProgress.as_str(), "IN_PROGRESS");
+        assert_eq!(EnforcementStatus::Completed.as_str(), "COMPLETED");
+        assert_eq!(EnforcementStatus::Blocked.as_str(), "BLOCKED");
+        assert_eq!(EnforcementStatus::Cancelled.as_str(), "CANCELLED");
+    }
+
+    #[test]
+    fn enforcement_status_is_terminal() {
+        assert!(!EnforcementStatus::Pending.is_terminal());
+        assert!(!EnforcementStatus::InProgress.is_terminal());
+        assert!(EnforcementStatus::Completed.is_terminal());
+        assert!(!EnforcementStatus::Blocked.is_terminal());
+        assert!(EnforcementStatus::Cancelled.is_terminal());
+    }
+
+    #[test]
+    fn satisfy_precondition_rejected_when_in_progress() {
+        let mut order = basic_order();
+        order.add_precondition("Test".to_string()).unwrap();
+        order.satisfy_precondition(0, test_digest()).unwrap();
+        order.begin_enforcement().unwrap();
+
+        let result = order.satisfy_precondition(0, test_digest());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn block_from_pending() {
+        let mut order = basic_order();
+        order.block("precondition not met").unwrap();
+        assert_eq!(order.status, EnforcementStatus::Blocked);
+    }
+
+    #[test]
+    fn block_rejected_when_in_progress() {
+        let mut order = basic_order();
+        order.begin_enforcement().unwrap();
+        let result = order.block("should fail");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn block_rejected_when_completed() {
+        let mut order = basic_order();
+        order.begin_enforcement().unwrap();
+        order.complete().unwrap();
+        let result = order.block("should fail");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn cancel_rejected_when_completed() {
+        let mut order = basic_order();
+        order.begin_enforcement().unwrap();
+        order.complete().unwrap();
+        let result = order.cancel();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn add_precondition_rejected_when_in_progress() {
+        let mut order = basic_order();
+        order.begin_enforcement().unwrap();
+        let result = order.add_precondition("Should fail".to_string());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn complete_rejected_when_completed() {
+        let mut order = basic_order();
+        order.begin_enforcement().unwrap();
+        order.complete().unwrap();
+        let result = order.complete();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn record_action_result_rejected_when_completed() {
+        let mut order = basic_order();
+        order.begin_enforcement().unwrap();
+        order.complete().unwrap();
+        let result = order.record_action_result(
+            EnforcementAction::EscrowRelease {
+                escrow_id: EscrowId::new(),
+                beneficiary: test_did("Test"),
+                amount: None,
+            },
+            true,
+            "Should fail".to_string(),
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn multiple_preconditions() {
+        let mut order = basic_order();
+        order.add_precondition("Appeal period must expire".to_string()).unwrap();
+        order.add_precondition("Bond must be posted".to_string()).unwrap();
+
+        // Cannot begin with unsatisfied preconditions
+        assert!(order.begin_enforcement().is_err());
+
+        // Satisfy only first
+        order.satisfy_precondition(0, test_digest()).unwrap();
+        assert!(order.begin_enforcement().is_err());
+
+        // Satisfy second
+        order.satisfy_precondition(1, test_digest()).unwrap();
+        order.begin_enforcement().unwrap();
+        assert_eq!(order.status, EnforcementStatus::InProgress);
+    }
+
+    #[test]
+    fn asset_transfer_action_in_order() {
+        let mut order = EnforcementOrder::new(
+            DisputeId::new(),
+            test_digest(),
+            vec![EnforcementAction::AssetTransfer {
+                asset_digest: test_digest(),
+                recipient: test_did("Recipient"),
+            }],
+            None,
+        );
+        order.begin_enforcement().unwrap();
+        let receipt = order
+            .record_action_result(
+                EnforcementAction::AssetTransfer {
+                    asset_digest: test_digest(),
+                    recipient: test_did("Recipient"),
+                },
+                true,
+                "Asset transferred".to_string(),
+            )
+            .unwrap();
+        assert!(receipt.success);
+    }
+
+    #[test]
+    fn monetary_penalty_action_in_order() {
+        let mut order = EnforcementOrder::new(
+            DisputeId::new(),
+            test_digest(),
+            vec![EnforcementAction::MonetaryPenalty {
+                party: test_did("Penalized"),
+                amount: "50000".to_string(),
+                currency: "USD".to_string(),
+            }],
+            None,
+        );
+        order.begin_enforcement().unwrap();
+        let receipt = order
+            .record_action_result(
+                EnforcementAction::MonetaryPenalty {
+                    party: test_did("Penalized"),
+                    amount: "50000".to_string(),
+                    currency: "USD".to_string(),
+                },
+                true,
+                "Penalty applied".to_string(),
+            )
+            .unwrap();
+        assert!(receipt.success);
+        assert_eq!(order.successful_action_count(), 1);
+    }
+
+    #[test]
+    fn begin_enforcement_rejected_when_blocked() {
+        let mut order = basic_order();
+        order.block("test block").unwrap();
+        let result = order.begin_enforcement();
+        assert!(result.is_err());
+    }
 }

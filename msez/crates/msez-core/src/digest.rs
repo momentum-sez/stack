@@ -194,4 +194,90 @@ mod tests {
         let expected = "43258cff783fe7036d8a43033f830adfc60ec037382473548ac742b888292777";
         assert_eq!(digest.to_hex(), expected);
     }
+
+    #[test]
+    fn digest_algorithm_display_sha256() {
+        assert_eq!(format!("{}", DigestAlgorithm::Sha256), "sha256");
+    }
+
+    #[test]
+    fn digest_algorithm_display_poseidon2() {
+        assert_eq!(format!("{}", DigestAlgorithm::Poseidon2), "poseidon2");
+    }
+
+    #[test]
+    fn content_digest_as_bytes_is_32() {
+        let canonical = CanonicalBytes::new(&json!({"test": true})).unwrap();
+        let digest = sha256_digest(&canonical);
+        assert_eq!(digest.as_bytes().len(), 32);
+    }
+
+    #[test]
+    fn content_digest_serde_roundtrip() {
+        let canonical = CanonicalBytes::new(&json!({"key": "val"})).unwrap();
+        let digest = sha256_digest(&canonical);
+        let serialized = serde_json::to_string(&digest).unwrap();
+        let deserialized: ContentDigest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(digest, deserialized);
+    }
+
+    #[test]
+    fn digest_algorithm_clone_and_eq() {
+        let alg = DigestAlgorithm::Sha256;
+        let alg2 = alg;
+        assert_eq!(alg, alg2);
+
+        let alg3 = DigestAlgorithm::Poseidon2;
+        assert_ne!(alg, alg3);
+    }
+
+    #[test]
+    fn content_digest_hash_works() {
+        use std::collections::HashSet;
+        let c1 = CanonicalBytes::new(&json!({"a": 1})).unwrap();
+        let c2 = CanonicalBytes::new(&json!({"a": 2})).unwrap();
+        let d1 = sha256_digest(&c1);
+        let d2 = sha256_digest(&c2);
+        let mut set = HashSet::new();
+        set.insert(d1.clone());
+        set.insert(d2);
+        assert_eq!(set.len(), 2);
+        assert!(set.contains(&d1));
+    }
+
+    // ── Additional coverage expansion tests ─────────────────────────
+
+    #[test]
+    fn sha256_digest_of_empty_object() {
+        let c = CanonicalBytes::new(&json!({})).unwrap();
+        let d = sha256_digest(&c);
+        assert_eq!(d.algorithm(), DigestAlgorithm::Sha256);
+        assert_eq!(d.to_hex().len(), 64);
+        // Should match: printf '{}' | sha256sum
+        let expected = "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a";
+        assert_eq!(d.to_hex(), expected);
+    }
+
+    #[test]
+    fn sha256_digest_of_null() {
+        let c = CanonicalBytes::new(&json!(null)).unwrap();
+        let d = sha256_digest(&c);
+        assert_eq!(d.to_hex().len(), 64);
+    }
+
+    #[test]
+    fn sha256_digest_of_string() {
+        let c = CanonicalBytes::new(&json!("hello")).unwrap();
+        let d = sha256_digest(&c);
+        assert_eq!(d.to_hex().len(), 64);
+    }
+
+    #[test]
+    fn content_digest_debug_format() {
+        let c = CanonicalBytes::new(&json!({})).unwrap();
+        let d = sha256_digest(&c);
+        let debug = format!("{d:?}");
+        assert!(debug.contains("ContentDigest"));
+        assert!(debug.contains("Sha256"));
+    }
 }

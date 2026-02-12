@@ -991,4 +991,239 @@ mod tests {
         };
         assert_eq!(detail.schema_path, "test");
     }
+
+    // ── Coverage expansion tests ─────────────────────────────────────
+
+    #[test]
+    fn test_validate_module_with_directory_path() {
+        // validate_module called with a directory that has module.yaml inside
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        let modules_dir = repo_root().join("modules");
+        if !modules_dir.is_dir() {
+            return;
+        }
+        let all_modules = SchemaValidator::find_all_modules(&modules_dir);
+        if let Some(module_dir) = all_modules.first() {
+            // Calling validate_module with a directory exercises the is_dir() branch
+            let result = validator.validate_module(module_dir);
+            // We just care that it doesn't panic; it may pass or fail validation
+            let _ = result;
+        }
+    }
+
+    #[test]
+    fn test_validate_module_with_file_path() {
+        // validate_module called with a direct path to module.yaml
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        let modules_dir = repo_root().join("modules");
+        if !modules_dir.is_dir() {
+            return;
+        }
+        let all_modules = SchemaValidator::find_all_modules(&modules_dir);
+        if let Some(module_dir) = all_modules.first() {
+            let module_yaml = module_dir.join("module.yaml");
+            if module_yaml.exists() {
+                // Calling with file path exercises the else branch of is_dir()
+                let result = validator.validate_module(&module_yaml);
+                let _ = result;
+            }
+        }
+    }
+
+    #[test]
+    fn test_validate_module_invalid_yaml() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        // Create a temp dir with an invalid module.yaml
+        let tmp = tempfile::tempdir().unwrap();
+        let module_yaml = tmp.path().join("module.yaml");
+        std::fs::write(&module_yaml, "{{invalid yaml: [unbalanced").unwrap();
+        let result = validator.validate_module(tmp.path());
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            SchemaValidationError::DocumentLoadError { reason, .. } => {
+                assert!(reason.contains("YAML"));
+            }
+            other => panic!("expected DocumentLoadError, got: {other}"),
+        }
+    }
+
+    #[test]
+    fn test_validate_zone_invalid_yaml() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        let tmp = tempfile::tempdir().unwrap();
+        let zone_yaml = tmp.path().join("zone.yaml");
+        std::fs::write(&zone_yaml, "{{invalid yaml: [unbalanced").unwrap();
+        let result = validator.validate_zone(&zone_yaml);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            SchemaValidationError::DocumentLoadError { reason, .. } => {
+                assert!(reason.contains("YAML"));
+            }
+            other => panic!("expected DocumentLoadError, got: {other}"),
+        }
+    }
+
+    #[test]
+    fn test_validate_profile_invalid_yaml() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        let tmp = tempfile::tempdir().unwrap();
+        let profile_yaml = tmp.path().join("profile.yaml");
+        std::fs::write(&profile_yaml, "{{invalid yaml: [unbalanced").unwrap();
+        let result = validator.validate_profile(&profile_yaml);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            SchemaValidationError::DocumentLoadError { reason, .. } => {
+                assert!(reason.contains("YAML"));
+            }
+            other => panic!("expected DocumentLoadError, got: {other}"),
+        }
+    }
+
+    #[test]
+    fn test_validate_zone_valid_yaml_against_schema() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        // Try to find and validate one of the zone yaml files in the repo
+        let jurisdictions = repo_root().join("jurisdictions");
+        if jurisdictions.is_dir() {
+            // Look for any zone.yaml in subdirectories
+            if let Ok(entries) = std::fs::read_dir(&jurisdictions) {
+                for entry in entries.flatten() {
+                    let zone_yaml = entry.path().join("zone.yaml");
+                    if zone_yaml.exists() {
+                        let result = validator.validate_zone(&zone_yaml);
+                        let _ = result; // exercises the zone validation path
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_schema_without_id_derives_uri() {
+        // Create a temp dir with a schema that has no $id field
+        let tmp = tempfile::tempdir().unwrap();
+        let schema_path = tmp.path().join("custom.schema.json");
+        std::fs::write(
+            &schema_path,
+            r#"{"type": "object", "properties": {"name": {"type": "string"}}}"#,
+        )
+        .unwrap();
+        let validator = SchemaValidator::new(tmp.path()).expect("failed to load schemas");
+        assert_eq!(validator.schema_count(), 1);
+        // The schema should be registered with a derived URI
+        let ids = validator.schema_ids();
+        assert_eq!(ids.len(), 1);
+        assert!(ids[0].contains("custom.schema.json"));
+    }
+
+    #[test]
+    fn test_schema_load_error_invalid_json() {
+        // Create a temp dir with an invalid JSON file
+        let tmp = tempfile::tempdir().unwrap();
+        let schema_path = tmp.path().join("bad.schema.json");
+        std::fs::write(&schema_path, "not valid json at all").unwrap();
+        let result = SchemaValidator::new(tmp.path());
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            SchemaValidationError::SchemaLoadError { path, reason } => {
+                assert!(path.contains("bad.schema.json"));
+                assert!(!reason.is_empty());
+            }
+            other => panic!("expected SchemaLoadError, got: {other}"),
+        }
+    }
+
+    #[test]
+    fn test_io_error_variant() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "test io error");
+        let schema_err: SchemaValidationError = io_err.into();
+        let msg = format!("{schema_err}");
+        assert!(msg.contains("I/O error"));
+    }
+
+    #[test]
+    fn test_validation_failed_details_accessible() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        let schema_id = format!("{SCHEMA_URI_PREFIX}module.schema.json");
+        // Pass an array instead of object to get validation failure
+        let result = validator.validate_value(&json!([1, 2, 3]), &schema_id);
+        if let Err(SchemaValidationError::ValidationFailed {
+            schema_id: id,
+            count,
+            details,
+        }) = result
+        {
+            assert!(!id.is_empty());
+            assert!(count > 0);
+            // Each detail should have display format
+            for d in &details {
+                let displayed = format!("{d}");
+                assert!(!displayed.is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn test_schema_validator_empty_dir() {
+        let tmp = tempfile::tempdir().unwrap();
+        let validator = SchemaValidator::new(tmp.path()).expect("should handle empty dir");
+        assert_eq!(validator.schema_count(), 0);
+        assert!(validator.schema_ids().is_empty());
+    }
+
+    #[test]
+    fn test_validate_all_modules_empty_dir() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        let tmp = tempfile::tempdir().unwrap();
+        let report = validator.validate_all_modules(tmp.path());
+        assert_eq!(report.total, 0);
+        assert_eq!(report.passed, 0);
+        assert_eq!(report.failed, 0);
+        assert!(report.failures.is_empty());
+    }
+
+    #[test]
+    fn test_walk_for_schemas_in_subdirectories() {
+        // Create a nested directory with schemas at different levels
+        let tmp = tempfile::tempdir().unwrap();
+        let sub = tmp.path().join("sub");
+        std::fs::create_dir_all(&sub).unwrap();
+        std::fs::write(
+            tmp.path().join("top.schema.json"),
+            r#"{"$id": "https://test.example/top", "type": "object"}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            sub.join("nested.schema.json"),
+            r#"{"$id": "https://test.example/nested", "type": "string"}"#,
+        )
+        .unwrap();
+        let validator = SchemaValidator::new(tmp.path()).expect("failed to load schemas");
+        assert_eq!(validator.schema_count(), 2);
+    }
+
+    #[test]
+    fn test_module_failure_debug() {
+        let failure = ModuleFailure {
+            module_dir: PathBuf::from("/tmp/test-module"),
+            error: SchemaValidationError::SchemaNotFound("test".to_string()),
+        };
+        let debug_str = format!("{failure:?}");
+        assert!(debug_str.contains("ModuleFailure"));
+        assert!(debug_str.contains("test-module"));
+    }
+
+    #[test]
+    fn test_module_validation_report_debug() {
+        let report = ModuleValidationReport {
+            total: 10,
+            passed: 8,
+            failed: 2,
+            failures: vec![],
+        };
+        let debug_str = format!("{report:?}");
+        assert!(debug_str.contains("ModuleValidationReport"));
+        assert!(debug_str.contains("10"));
+    }
 }

@@ -222,4 +222,232 @@ mod tests {
             .join(format!("{}.json", artifact_ref.digest.to_hex()));
         assert!(expected_path.exists());
     }
+
+    // ── Additional coverage tests ────────────────────────────────────
+
+    #[test]
+    fn parse_digest_hex_rejects_short_input() {
+        let result = parse_digest_hex("abc123");
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("64 hex characters"));
+    }
+
+    #[test]
+    fn parse_digest_hex_rejects_non_hex() {
+        let result = parse_digest_hex("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz");
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("64 hex characters") || err_msg.contains("invalid digest"));
+    }
+
+    #[test]
+    fn parse_digest_hex_valid_hex_returns_error_phase1() {
+        // 64 valid hex characters.
+        let valid_hex = "a".repeat(64);
+        let result = parse_digest_hex(&valid_hex);
+        // Phase 1 always bails with "not yet supported".
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("Phase 1") || err_msg.contains("not yet supported"));
+    }
+
+    #[test]
+    fn cmd_store_file_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas = ContentAddressedStore::new(dir.path());
+
+        let result = cmd_store(
+            &cas,
+            "receipt",
+            Path::new("/tmp/msez-no-such-file-xyz.json"),
+            dir.path(),
+        );
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("file not found"));
+    }
+
+    #[test]
+    fn cmd_store_invalid_json() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas_dir = dir.path().join("cas");
+        let cas = ContentAddressedStore::new(&cas_dir);
+
+        let bad_json = dir.path().join("bad.json");
+        std::fs::write(&bad_json, b"not json at all {{{").unwrap();
+
+        let result = cmd_store(&cas, "receipt", &bad_json, dir.path());
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("JSON") || err_msg.contains("parse"));
+    }
+
+    #[test]
+    fn cmd_store_success() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas_dir = dir.path().join("cas");
+        let cas = ContentAddressedStore::new(&cas_dir);
+
+        let json_file = dir.path().join("test.json");
+        std::fs::write(
+            &json_file,
+            serde_json::to_string_pretty(&json!({"key": "value"})).unwrap(),
+        )
+        .unwrap();
+
+        let result = cmd_store(&cas, "vc", &json_file, dir.path());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn cmd_resolve_with_invalid_digest() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas = ContentAddressedStore::new(dir.path());
+
+        let result = cmd_resolve(&cas, "receipt", "tooshort");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn cmd_resolve_valid_hex_returns_phase1_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas = ContentAddressedStore::new(dir.path());
+
+        let valid_hex = "b".repeat(64);
+        let result = cmd_resolve(&cas, "receipt", &valid_hex);
+        // Phase 1 limitation.
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn cmd_verify_with_invalid_digest() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas = ContentAddressedStore::new(dir.path());
+
+        let result = cmd_verify(&cas, "receipt", "not_a_valid_hex");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn cmd_verify_valid_hex_returns_phase1_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas = ContentAddressedStore::new(dir.path());
+
+        let valid_hex = "c".repeat(64);
+        let result = cmd_verify(&cas, "receipt", &valid_hex);
+        // Phase 1 limitation.
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn run_artifact_store_subcommand() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let json_file = dir.path().join("data.json");
+        std::fs::write(
+            &json_file,
+            serde_json::to_string_pretty(&json!({"test": true})).unwrap(),
+        )
+        .unwrap();
+
+        let cas_dir = dir.path().join("dist").join("artifacts");
+        std::fs::create_dir_all(&cas_dir).unwrap();
+
+        let args = ArtifactArgs {
+            command: ArtifactCommand::Store {
+                artifact_type: "receipt".to_string(),
+                file: json_file,
+            },
+        };
+        let result = run_artifact(&args, dir.path());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn run_artifact_resolve_subcommand_with_invalid_digest() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("dist").join("artifacts")).unwrap();
+
+        let args = ArtifactArgs {
+            command: ArtifactCommand::Resolve {
+                artifact_type: "receipt".to_string(),
+                digest: "short".to_string(),
+            },
+        };
+        let result = run_artifact(&args, dir.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn run_artifact_verify_subcommand_with_invalid_digest() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("dist").join("artifacts")).unwrap();
+
+        let args = ArtifactArgs {
+            command: ArtifactCommand::Verify {
+                artifact_type: "receipt".to_string(),
+                digest: "bad".to_string(),
+            },
+        };
+        let result = run_artifact(&args, dir.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn run_artifact_store_file_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("dist").join("artifacts")).unwrap();
+
+        let args = ArtifactArgs {
+            command: ArtifactCommand::Store {
+                artifact_type: "vc".to_string(),
+                file: PathBuf::from("nonexistent.json"),
+            },
+        };
+        let result = run_artifact(&args, dir.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn cmd_store_stores_different_artifact_types() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas_dir = dir.path().join("cas");
+        let cas = ContentAddressedStore::new(&cas_dir);
+
+        let json_file = dir.path().join("data.json");
+        std::fs::write(
+            &json_file,
+            serde_json::to_string(&json!({"item": "value"})).unwrap(),
+        )
+        .unwrap();
+
+        let result1 = cmd_store(&cas, "receipt", &json_file, dir.path());
+        assert!(result1.is_ok());
+
+        let result2 = cmd_store(&cas, "vc", &json_file, dir.path());
+        assert!(result2.is_ok());
+
+        let result3 = cmd_store(&cas, "lawpack", &json_file, dir.path());
+        assert!(result3.is_ok());
+
+        // Verify all three type subdirectories exist.
+        assert!(cas_dir.join("receipt").is_dir());
+        assert!(cas_dir.join("vc").is_dir());
+        assert!(cas_dir.join("lawpack").is_dir());
+    }
+
+    #[test]
+    fn parse_digest_hex_empty_string() {
+        let result = parse_digest_hex("");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_digest_hex_too_long() {
+        let result = parse_digest_hex(&"a".repeat(128));
+        assert!(result.is_err());
+    }
 }

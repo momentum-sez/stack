@@ -52,7 +52,7 @@ impl Validate for ComplianceEvalRequest {
 }
 
 /// Compliance evaluation response.
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ComplianceEvalResponse {
     pub asset_id: Uuid,
     pub overall_status: String,
@@ -469,5 +469,165 @@ mod tests {
         let fetched: SmartAssetRecord = body_json(get_resp).await;
         assert_eq!(fetched.id, created.id);
         assert_eq!(fetched.asset_type, "equity");
+    }
+
+    // ── Additional handler coverage ───────────────────────────────
+
+    #[tokio::test]
+    async fn handler_submit_registry_returns_200() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/assets/registry")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body: serde_json::Value = body_json(resp).await;
+        assert_eq!(body["status"], "submitted");
+    }
+
+    #[tokio::test]
+    async fn handler_evaluate_compliance_returns_200() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an asset first.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/assets/genesis")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"asset_type":"bond","jurisdiction_id":"PK-PSEZ","metadata":{}}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: SmartAssetRecord = body_json(create_resp).await;
+
+        // Evaluate compliance.
+        let eval_req = Request::builder()
+            .method("POST")
+            .uri(&format!("/v1/assets/{}/compliance/evaluate", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"domains":["aml","kyc","sanctions"],"context":{"entity_id":"12345"}}"#,
+            ))
+            .unwrap();
+        let eval_resp = app.oneshot(eval_req).await.unwrap();
+        assert_eq!(eval_resp.status(), StatusCode::OK);
+
+        let result: ComplianceEvalResponse = body_json(eval_resp).await;
+        assert_eq!(result.asset_id, created.id);
+        assert_eq!(result.overall_status, "PERMITTED");
+    }
+
+    #[tokio::test]
+    async fn handler_evaluate_compliance_asset_not_found_returns_404() {
+        let app = test_app();
+        let id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("POST")
+            .uri(&format!("/v1/assets/{id}/compliance/evaluate"))
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"domains":["aml"],"context":{}}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn handler_evaluate_compliance_bad_json_returns_400() {
+        let app = test_app();
+        let id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("POST")
+            .uri(&format!("/v1/assets/{id}/compliance/evaluate"))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"not json"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn handler_verify_anchor_returns_200() {
+        let app = test_app();
+        let id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("POST")
+            .uri(&format!("/v1/assets/{id}/anchors/corridor/verify"))
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"anchor_digest":"sha256:deadbeef","chain":"ethereum"}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body: serde_json::Value = body_json(resp).await;
+        assert_eq!(body["asset_id"], id.to_string());
+        assert_eq!(body["anchor_digest"], "sha256:deadbeef");
+        assert_eq!(body["chain"], "ethereum");
+        assert_eq!(body["verified"], true);
+    }
+
+    #[tokio::test]
+    async fn handler_verify_anchor_empty_digest_returns_422() {
+        let app = test_app();
+        let id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("POST")
+            .uri(&format!("/v1/assets/{id}/anchors/corridor/verify"))
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"anchor_digest":"","chain":"ethereum"}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
+    async fn handler_verify_anchor_bad_json_returns_400() {
+        let app = test_app();
+        let id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("POST")
+            .uri(&format!("/v1/assets/{id}/anchors/corridor/verify"))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"broken"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn handler_create_asset_default_metadata_returns_201() {
+        let app = test_app();
+        // Omit metadata field entirely; serde should use the default.
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/assets/genesis")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"asset_type":"commodity","jurisdiction_id":"PK-RSEZ"}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::CREATED);
+
+        let record: SmartAssetRecord = body_json(resp).await;
+        assert_eq!(record.asset_type, "commodity");
+        assert!(record.metadata.is_null());
     }
 }

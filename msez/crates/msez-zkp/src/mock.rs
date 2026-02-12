@@ -313,4 +313,138 @@ mod tests {
         let proof = sys.prove(&pk, &circuit).unwrap();
         assert_eq!(proof.proof_hex.len(), 64);
     }
+
+    // ── Coverage expansion tests ─────────────────────────────────────
+
+    #[test]
+    fn verify_returns_true_when_proof_matches_public_inputs() {
+        let (sys, pk, vk) = make_system();
+        // The mock verifier recomputes SHA256(public_inputs), not SHA256(circuit + inputs)
+        // So to get verify to return Ok(true), we need to construct a proof
+        // that equals SHA256(public_inputs) directly.
+        use sha2::{Digest, Sha256};
+        let public_inputs = b"test_public_inputs";
+        let mut hasher = Sha256::new();
+        hasher.update(public_inputs);
+        let expected = hasher.finalize();
+        let proof_hex: String = expected.iter().map(|b| format!("{b:02x}")).collect();
+
+        let proof = MockProof { proof_hex };
+        let result = sys.verify(&vk, &proof, public_inputs).unwrap();
+        assert!(result, "verify should return true when proof matches SHA256(public_inputs)");
+    }
+
+    #[test]
+    fn verify_returns_false_when_proof_does_not_match() {
+        let (sys, pk, vk) = make_system();
+        // Create a valid 64-char hex proof that doesn't match
+        let proof = MockProof {
+            proof_hex: "aa".repeat(32),
+        };
+        let result = sys.verify(&vk, &proof, b"some inputs").unwrap();
+        assert!(!result, "verify should return false when proof doesn't match");
+    }
+
+    #[test]
+    fn prove_with_complex_circuit_data() {
+        let (sys, pk, _vk) = make_system();
+        let circuit = MockCircuit {
+            circuit_data: json!({
+                "nested": {
+                    "array": [1, 2, 3],
+                    "bool": true,
+                    "null": null,
+                    "str": "value"
+                },
+                "top_level": 42
+            }),
+            public_inputs: vec![0xde, 0xad, 0xbe, 0xef],
+        };
+        let proof = sys.prove(&pk, &circuit).unwrap();
+        assert_eq!(proof.proof_hex.len(), 64);
+    }
+
+    #[test]
+    fn prove_rejects_float_in_circuit_data() {
+        let (sys, pk, _vk) = make_system();
+        let circuit = MockCircuit {
+            circuit_data: json!({"amount": 3.14}),
+            public_inputs: vec![],
+        };
+        let result = sys.prove(&pk, &circuit);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            ProofError::GenerationFailed(msg) => {
+                assert!(msg.contains("canonicalize"));
+            }
+            other => panic!("expected GenerationFailed, got: {other}"),
+        }
+    }
+
+    #[test]
+    fn mock_proof_clone() {
+        let proof = MockProof {
+            proof_hex: "ab".repeat(32),
+        };
+        let cloned = proof.clone();
+        assert_eq!(proof, cloned);
+    }
+
+    #[test]
+    fn mock_verifying_key_debug() {
+        let vk = MockVerifyingKey;
+        let debug = format!("{vk:?}");
+        assert!(debug.contains("MockVerifyingKey"));
+    }
+
+    #[test]
+    fn mock_proving_key_debug() {
+        let pk = MockProvingKey;
+        let debug = format!("{pk:?}");
+        assert!(debug.contains("MockProvingKey"));
+    }
+
+    #[test]
+    fn mock_circuit_debug() {
+        let circuit = MockCircuit {
+            circuit_data: json!({"test": true}),
+            public_inputs: vec![1, 2, 3],
+        };
+        let debug = format!("{circuit:?}");
+        assert!(debug.contains("MockCircuit"));
+    }
+
+    #[test]
+    fn hex_bytes_roundtrip_empty() {
+        let circuit = MockCircuit {
+            circuit_data: json!({}),
+            public_inputs: vec![],
+        };
+        let json_str = serde_json::to_string(&circuit).unwrap();
+        let deserialized: MockCircuit = serde_json::from_str(&json_str).unwrap();
+        assert!(deserialized.public_inputs.is_empty());
+    }
+
+    #[test]
+    fn hex_bytes_roundtrip_large() {
+        let large_inputs: Vec<u8> = (0..=255).collect();
+        let circuit = MockCircuit {
+            circuit_data: json!({"size": "large"}),
+            public_inputs: large_inputs.clone(),
+        };
+        let json_str = serde_json::to_string(&circuit).unwrap();
+        let deserialized: MockCircuit = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(deserialized.public_inputs, large_inputs);
+    }
+
+    #[test]
+    fn mock_proof_system_struct_clone() {
+        let pk = MockProvingKey;
+        let pk2 = pk.clone();
+        let _ = format!("{pk2:?}");
+
+        let vk = MockVerifyingKey;
+        let vk2 = vk.clone();
+        let _ = format!("{vk2:?}");
+    }
 }

@@ -656,4 +656,162 @@ mod tests {
         assert!(!results[0].ok);
         assert!(results[0].error.contains("unsupported proof type"));
     }
+
+    // ── Coverage expansion tests ─────────────────────────────────────
+
+    #[test]
+    fn context_value_default() {
+        let ctx = ContextValue::default();
+        match ctx {
+            ContextValue::Array(arr) => {
+                assert_eq!(arr.len(), 1);
+                assert_eq!(arr[0], "https://www.w3.org/2018/credentials/v1");
+            }
+            _ => panic!("expected Array"),
+        }
+    }
+
+    #[test]
+    fn proof_value_default_is_empty() {
+        let pv = ProofValue::default();
+        assert!(pv.is_empty());
+        assert!(pv.as_list().is_empty());
+    }
+
+    #[test]
+    fn proof_value_single_not_empty() {
+        let p = Proof::new_ed25519("vm1".into(), "aa".repeat(64), None);
+        let pv = ProofValue::Single(Box::new(p));
+        assert!(!pv.is_empty());
+    }
+
+    #[test]
+    fn proof_value_into_list_single() {
+        let p = Proof::new_ed25519("vm1".into(), "aa".repeat(64), None);
+        let pv = ProofValue::Single(Box::new(p));
+        let list = pv.into_list();
+        assert_eq!(list.len(), 1);
+    }
+
+    #[test]
+    fn proof_value_into_list_array() {
+        let p1 = Proof::new_ed25519("vm1".into(), "aa".repeat(64), None);
+        let p2 = Proof::new_ed25519("vm2".into(), "bb".repeat(64), None);
+        let pv = ProofValue::Array(vec![p1, p2]);
+        let list = pv.into_list();
+        assert_eq!(list.len(), 2);
+    }
+
+    #[test]
+    fn credential_type_single_non_vc() {
+        let ct = CredentialTypeValue::Single("Custom".to_string());
+        assert!(!ct.contains_vc_type());
+    }
+
+    #[test]
+    fn signing_input_deterministic() {
+        let vc = make_test_vc();
+        let si1 = vc.signing_input().unwrap();
+        let si2 = vc.signing_input().unwrap();
+        assert_eq!(si1.as_bytes(), si2.as_bytes());
+    }
+
+    #[test]
+    fn sign_and_verify_roundtrip_full() {
+        let sk = SigningKey::generate(&mut OsRng);
+        let vk = sk.verifying_key();
+
+        let mut vc = make_test_vc();
+        vc.sign_ed25519(
+            &sk,
+            "did:key:z6MkTest#key-1".to_string(),
+            ProofType::Ed25519Signature2020,
+            None,
+        )
+        .unwrap();
+
+        assert!(!vc.proof.is_empty());
+        let results = vc.verify(make_key_resolver(vk));
+        assert_eq!(results.len(), 1);
+        assert!(results[0].ok, "verification should succeed: {}", results[0].error);
+    }
+
+    #[test]
+    fn verify_with_no_proofs() {
+        let sk = SigningKey::generate(&mut OsRng);
+        let vk = sk.verifying_key();
+        let vc = make_test_vc();
+        // No proofs attached
+        let results = vc.verify(make_key_resolver(vk));
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn verify_with_wrong_key() {
+        let sk = SigningKey::generate(&mut OsRng);
+        let sk2 = SigningKey::generate(&mut OsRng);
+        let vk2 = sk2.verifying_key();
+
+        let mut vc = make_test_vc();
+        vc.sign_ed25519(
+            &sk,
+            "did:key:z6MkTest#key-1".to_string(),
+            ProofType::Ed25519Signature2020,
+            None,
+        )
+        .unwrap();
+
+        let results = vc.verify(make_key_resolver(vk2));
+        assert_eq!(results.len(), 1);
+        assert!(!results[0].ok);
+    }
+
+    #[test]
+    fn vc_serde_roundtrip_coverage() {
+        let vc = make_test_vc();
+        let json_str = serde_json::to_string(&vc).unwrap();
+        let deserialized: VerifiableCredential = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(vc.issuer, deserialized.issuer);
+    }
+
+    #[test]
+    fn vc_with_expiration_date() {
+        let vc = VerifiableCredential {
+            context: ContextValue::default(),
+            id: Some("urn:test:expired".to_string()),
+            credential_type: CredentialTypeValue::Array(vec![
+                "VerifiableCredential".to_string(),
+                "TestExpiry".to_string(),
+            ]),
+            issuer: "did:key:z6MkIssuer".to_string(),
+            issuance_date: chrono::Utc::now(),
+            expiration_date: Some(chrono::Utc::now() + chrono::Duration::days(365)),
+            credential_subject: serde_json::json!({"id": "subject-1"}),
+            proof: ProofValue::default(),
+        };
+        let json_str = serde_json::to_string(&vc).unwrap();
+        assert!(json_str.contains("expirationDate"));
+        let deserialized: VerifiableCredential = serde_json::from_str(&json_str).unwrap();
+        assert!(deserialized.expiration_date.is_some());
+    }
+
+    #[test]
+    fn vc_error_display() {
+        let err = VcError::NoProofs;
+        assert_eq!(format!("{err}"), "credential has no proofs");
+
+        let err2 = VcError::UnsupportedProofType("BBS".to_string());
+        assert!(format!("{err2}").contains("BBS"));
+    }
+
+    #[test]
+    fn proof_result_debug() {
+        let pr = ProofResult {
+            verification_method: "did:key:z6Mk#key-1".to_string(),
+            ok: true,
+            error: String::new(),
+        };
+        let debug = format!("{pr:?}");
+        assert!(debug.contains("ProofResult"));
+    }
 }

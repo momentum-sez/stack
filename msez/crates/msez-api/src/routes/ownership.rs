@@ -470,4 +470,189 @@ mod tests {
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }
+
+    // ── Additional handler coverage ───────────────────────────────
+
+    #[tokio::test]
+    async fn handler_get_cap_table_found_returns_200() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        let entity_id = Uuid::new_v4();
+
+        // Create a cap table.
+        let create_body = format!(
+            r#"{{"entity_id":"{}","share_classes":[{{"name":"Class A","authorized_shares":1000000,"issued_shares":500000,"par_value":"1.00","voting_rights":true}},{{"name":"Class B","authorized_shares":500000,"issued_shares":100000,"voting_rights":false}}]}}"#,
+            entity_id
+        );
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/ownership/cap-table")
+            .header("content-type", "application/json")
+            .body(Body::from(create_body))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        assert_eq!(create_resp.status(), StatusCode::CREATED);
+
+        // Get the cap table.
+        let get_req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/ownership/{entity_id}/cap-table"))
+            .body(Body::empty())
+            .unwrap();
+        let get_resp = app.oneshot(get_req).await.unwrap();
+        assert_eq!(get_resp.status(), StatusCode::OK);
+
+        let fetched: CapTableRecord = body_json(get_resp).await;
+        assert_eq!(fetched.entity_id, entity_id);
+        assert_eq!(fetched.share_classes.len(), 2);
+        assert_eq!(fetched.share_classes[0].name, "Class A");
+        assert_eq!(fetched.share_classes[1].name, "Class B");
+    }
+
+    #[tokio::test]
+    async fn handler_get_cap_table_not_found_returns_404() {
+        let app = test_app();
+        let entity_id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/ownership/{entity_id}/cap-table"))
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn handler_get_share_classes_found_returns_200() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        let entity_id = Uuid::new_v4();
+
+        // Create a cap table with share classes.
+        let create_body = format!(
+            r#"{{"entity_id":"{}","share_classes":[{{"name":"Preferred","authorized_shares":100000,"issued_shares":50000,"par_value":"5.00","voting_rights":true}}]}}"#,
+            entity_id
+        );
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/ownership/cap-table")
+            .header("content-type", "application/json")
+            .body(Body::from(create_body))
+            .unwrap();
+        app.clone().oneshot(create_req).await.unwrap();
+
+        // Get share classes.
+        let get_req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/ownership/{entity_id}/share-classes"))
+            .body(Body::empty())
+            .unwrap();
+        let get_resp = app.oneshot(get_req).await.unwrap();
+        assert_eq!(get_resp.status(), StatusCode::OK);
+
+        let classes: Vec<ShareClass> = body_json(get_resp).await;
+        assert_eq!(classes.len(), 1);
+        assert_eq!(classes[0].name, "Preferred");
+        assert_eq!(classes[0].authorized_shares, 100000);
+        assert_eq!(classes[0].issued_shares, 50000);
+        assert_eq!(classes[0].par_value.as_deref(), Some("5.00"));
+        assert!(classes[0].voting_rights);
+    }
+
+    #[tokio::test]
+    async fn handler_get_share_classes_not_found_returns_404() {
+        let app = test_app();
+        let entity_id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/ownership/{entity_id}/share-classes"))
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn handler_create_cap_table_bad_json_returns_400() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/ownership/cap-table")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"not valid json"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn handler_record_transfer_bad_json_returns_400() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        let entity_id = Uuid::new_v4();
+
+        // Create a cap table first.
+        let create_body = format!(r#"{{"entity_id":"{}"}}"#, entity_id);
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/ownership/cap-table")
+            .header("content-type", "application/json")
+            .body(Body::from(create_body))
+            .unwrap();
+        app.clone().oneshot(create_req).await.unwrap();
+
+        // Send bad JSON for transfer.
+        let req = Request::builder()
+            .method("POST")
+            .uri(&format!("/v1/ownership/{entity_id}/transfers"))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{{bad json"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn handler_record_transfer_with_price_per_share() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        let entity_id = Uuid::new_v4();
+
+        // Create a cap table.
+        let create_body = format!(
+            r#"{{"entity_id":"{}","share_classes":[{{"name":"Common","authorized_shares":10000,"issued_shares":5000,"voting_rights":true}}]}}"#,
+            entity_id
+        );
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/ownership/cap-table")
+            .header("content-type", "application/json")
+            .body(Body::from(create_body))
+            .unwrap();
+        app.clone().oneshot(create_req).await.unwrap();
+
+        // Record a transfer without price_per_share.
+        let transfer_body = r#"{"from_holder":"Alice","to_holder":"Bob","share_class":"Common","quantity":50}"#;
+        let transfer_req = Request::builder()
+            .method("POST")
+            .uri(&format!("/v1/ownership/{entity_id}/transfers"))
+            .header("content-type", "application/json")
+            .body(Body::from(transfer_body))
+            .unwrap();
+        let transfer_resp = app.oneshot(transfer_req).await.unwrap();
+        assert_eq!(transfer_resp.status(), StatusCode::OK);
+
+        let updated: CapTableRecord = body_json(transfer_resp).await;
+        assert_eq!(updated.transfers.len(), 1);
+        assert!(updated.transfers[0].price_per_share.is_none());
+        assert_eq!(updated.transfers[0].quantity, 50);
+    }
 }

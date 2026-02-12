@@ -1183,4 +1183,315 @@ mod tests {
         assert!(DisputeState::Settled.valid_transitions().is_empty());
         assert!(DisputeState::Dismissed.valid_transitions().is_empty());
     }
+
+    // ── Coverage expansion tests ─────────────────────────────────────
+
+    #[test]
+    fn dispute_id_default() {
+        let id1 = DisputeId::default();
+        let id2 = DisputeId::default();
+        assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn dispute_id_display() {
+        let id = DisputeId::new();
+        let display = format!("{id}");
+        assert!(display.starts_with("dispute:"));
+    }
+
+    #[test]
+    fn dispute_id_from_uuid_roundtrip() {
+        let uuid = uuid::Uuid::new_v4();
+        let id = DisputeId::from_uuid(uuid);
+        assert_eq!(*id.as_uuid(), uuid);
+    }
+
+    #[test]
+    fn dispute_state_display_all_variants() {
+        assert_eq!(format!("{}", DisputeState::Filed), "FILED");
+        assert_eq!(format!("{}", DisputeState::UnderReview), "UNDER_REVIEW");
+        assert_eq!(format!("{}", DisputeState::EvidenceCollection), "EVIDENCE_COLLECTION");
+        assert_eq!(format!("{}", DisputeState::Hearing), "HEARING");
+        assert_eq!(format!("{}", DisputeState::Decided), "DECIDED");
+        assert_eq!(format!("{}", DisputeState::Enforced), "ENFORCED");
+        assert_eq!(format!("{}", DisputeState::Closed), "CLOSED");
+        assert_eq!(format!("{}", DisputeState::Settled), "SETTLED");
+        assert_eq!(format!("{}", DisputeState::Dismissed), "DISMISSED");
+    }
+
+    #[test]
+    fn dispute_state_as_str_all_variants() {
+        assert_eq!(DisputeState::Filed.as_str(), "FILED");
+        assert_eq!(DisputeState::UnderReview.as_str(), "UNDER_REVIEW");
+        assert_eq!(DisputeState::EvidenceCollection.as_str(), "EVIDENCE_COLLECTION");
+        assert_eq!(DisputeState::Hearing.as_str(), "HEARING");
+        assert_eq!(DisputeState::Decided.as_str(), "DECIDED");
+        assert_eq!(DisputeState::Enforced.as_str(), "ENFORCED");
+        assert_eq!(DisputeState::Closed.as_str(), "CLOSED");
+        assert_eq!(DisputeState::Settled.as_str(), "SETTLED");
+        assert_eq!(DisputeState::Dismissed.as_str(), "DISMISSED");
+    }
+
+    #[test]
+    fn dispute_state_is_terminal_all_variants() {
+        assert!(!DisputeState::Filed.is_terminal());
+        assert!(!DisputeState::UnderReview.is_terminal());
+        assert!(!DisputeState::EvidenceCollection.is_terminal());
+        assert!(!DisputeState::Hearing.is_terminal());
+        assert!(!DisputeState::Decided.is_terminal());
+        assert!(!DisputeState::Enforced.is_terminal());
+        assert!(DisputeState::Closed.is_terminal());
+        assert!(DisputeState::Settled.is_terminal());
+        assert!(DisputeState::Dismissed.is_terminal());
+    }
+
+    #[test]
+    fn dispute_type_display_all_variants() {
+        assert_eq!(format!("{}", DisputeType::BreachOfContract), "breach_of_contract");
+        assert_eq!(format!("{}", DisputeType::NonConformingGoods), "non_conforming_goods");
+        assert_eq!(format!("{}", DisputeType::PaymentDefault), "payment_default");
+        assert_eq!(format!("{}", DisputeType::DeliveryFailure), "delivery_failure");
+        assert_eq!(format!("{}", DisputeType::QualityDefect), "quality_defect");
+        assert_eq!(format!("{}", DisputeType::DocumentaryDiscrepancy), "documentary_discrepancy");
+        assert_eq!(format!("{}", DisputeType::ForceMajeure), "force_majeure");
+        assert_eq!(format!("{}", DisputeType::FraudulentMisrepresentation), "fraudulent_misrepresentation");
+    }
+
+    #[test]
+    fn dispute_type_as_str_all_variants() {
+        for dt in DisputeType::all() {
+            let s = dt.as_str();
+            assert!(!s.is_empty());
+            assert_eq!(format!("{dt}"), s);
+        }
+    }
+
+    #[test]
+    fn valid_transitions_under_review() {
+        let transitions = DisputeState::UnderReview.valid_transitions();
+        assert!(transitions.contains(&DisputeState::EvidenceCollection));
+        assert!(transitions.contains(&DisputeState::Settled));
+        assert!(transitions.contains(&DisputeState::Dismissed));
+    }
+
+    #[test]
+    fn valid_transitions_evidence_collection() {
+        let transitions = DisputeState::EvidenceCollection.valid_transitions();
+        assert!(transitions.contains(&DisputeState::Hearing));
+        assert!(transitions.contains(&DisputeState::Settled));
+    }
+
+    #[test]
+    fn valid_transitions_hearing() {
+        let transitions = DisputeState::Hearing.valid_transitions();
+        assert!(transitions.contains(&DisputeState::Decided));
+        assert!(transitions.contains(&DisputeState::Settled));
+    }
+
+    #[test]
+    fn valid_transitions_decided() {
+        let transitions = DisputeState::Decided.valid_transitions();
+        assert_eq!(transitions.len(), 1);
+        assert!(transitions.contains(&DisputeState::Enforced));
+    }
+
+    #[test]
+    fn valid_transitions_enforced() {
+        let transitions = DisputeState::Enforced.valid_transitions();
+        assert_eq!(transitions.len(), 1);
+        assert!(transitions.contains(&DisputeState::Closed));
+    }
+
+    #[test]
+    fn money_display() {
+        let money = Money::new("1000", "USD").unwrap();
+        assert_eq!(format!("{money}"), "1000 USD");
+    }
+
+    #[test]
+    fn money_negative_display() {
+        let money = Money::new("-500", "EUR").unwrap();
+        assert_eq!(format!("{money}"), "-500 EUR");
+    }
+
+    #[test]
+    fn money_rejects_just_minus() {
+        assert!(Money::new("-", "USD").is_err());
+    }
+
+    #[test]
+    fn money_rejects_just_dot() {
+        assert!(Money::new(".", "USD").is_err());
+    }
+
+    #[test]
+    fn settle_from_under_review() {
+        let mut dispute = file_dispute();
+        dispute
+            .begin_review(ReviewInitiationEvidence {
+                case_reference: "REF-001".to_string(),
+                institution_acknowledgment_digest: test_digest(),
+            })
+            .unwrap();
+        dispute
+            .settle(SettlementEvidence {
+                settlement_agreement_digest: test_digest(),
+                party_consent_digests: vec![test_digest()],
+            })
+            .unwrap();
+        assert_eq!(dispute.state, DisputeState::Settled);
+    }
+
+    #[test]
+    fn settle_from_evidence_collection() {
+        let mut dispute = file_dispute();
+        dispute
+            .begin_review(ReviewInitiationEvidence {
+                case_reference: "REF-001".to_string(),
+                institution_acknowledgment_digest: test_digest(),
+            })
+            .unwrap();
+        dispute
+            .open_evidence_collection(EvidencePhaseEvidence {
+                procedural_order_digest: test_digest(),
+                evidence_deadline: Timestamp::now(),
+            })
+            .unwrap();
+        dispute
+            .settle(SettlementEvidence {
+                settlement_agreement_digest: test_digest(),
+                party_consent_digests: vec![test_digest()],
+            })
+            .unwrap();
+        assert_eq!(dispute.state, DisputeState::Settled);
+    }
+
+    #[test]
+    fn dismiss_from_under_review() {
+        let mut dispute = file_dispute();
+        dispute
+            .begin_review(ReviewInitiationEvidence {
+                case_reference: "REF-001".to_string(),
+                institution_acknowledgment_digest: test_digest(),
+            })
+            .unwrap();
+        dispute
+            .dismiss(DismissalEvidence {
+                reason: "Lack of jurisdiction".to_string(),
+                dismissal_order_digest: test_digest(),
+            })
+            .unwrap();
+        assert_eq!(dispute.state, DisputeState::Dismissed);
+    }
+
+    #[test]
+    fn settle_rejected_from_enforced() {
+        let mut dispute = file_dispute();
+        // Advance to Enforced
+        dispute.begin_review(ReviewInitiationEvidence {
+            case_reference: "REF".to_string(),
+            institution_acknowledgment_digest: test_digest(),
+        }).unwrap();
+        dispute.open_evidence_collection(EvidencePhaseEvidence {
+            procedural_order_digest: test_digest(),
+            evidence_deadline: Timestamp::now(),
+        }).unwrap();
+        dispute.schedule_hearing(HearingScheduleEvidence {
+            hearing_date: Timestamp::now(),
+            tribunal_composition_digest: test_digest(),
+        }).unwrap();
+        dispute.decide(DecisionEvidence { ruling_digest: test_digest() }).unwrap();
+        dispute.enforce(EnforcementInitiationEvidence {
+            enforcement_order_digest: test_digest(),
+        }).unwrap();
+
+        let result = dispute.settle(SettlementEvidence {
+            settlement_agreement_digest: test_digest(),
+            party_consent_digests: vec![],
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn close_rejected_from_filed() {
+        let mut dispute = file_dispute();
+        let result = dispute.close(ClosureEvidence {
+            final_report_digest: test_digest(),
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn enforce_rejected_from_filed() {
+        let mut dispute = file_dispute();
+        let result = dispute.enforce(EnforcementInitiationEvidence {
+            enforcement_order_digest: test_digest(),
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn dismiss_rejected_from_settled() {
+        let mut dispute = file_dispute();
+        dispute.settle(SettlementEvidence {
+            settlement_agreement_digest: test_digest(),
+            party_consent_digests: vec![],
+        }).unwrap();
+
+        let result = dispute.dismiss(DismissalEvidence {
+            reason: "test".to_string(),
+            dismissal_order_digest: test_digest(),
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn institution_registry_all_support_all_types() {
+        let registry = institution_registry();
+        for inst in &registry {
+            assert_eq!(inst.supported_dispute_types.len(), 8);
+            assert!(inst.emergency_arbitrator);
+            assert!(inst.expedited_procedure);
+        }
+    }
+
+    #[test]
+    fn dispute_without_corridor_id() {
+        let dispute = Dispute::file(
+            Party {
+                did: test_did("Claimant"),
+                legal_name: "Claimant Corp".to_string(),
+                jurisdiction_id: None,
+            },
+            Party {
+                did: test_did("Respondent"),
+                legal_name: "Respondent Corp".to_string(),
+                jurisdiction_id: None,
+            },
+            DisputeType::BreachOfContract,
+            test_jurisdiction(),
+            None,
+            "siac".to_string(),
+            vec![],
+            FilingEvidence {
+                filing_document_digest: test_digest(),
+            },
+        );
+        assert!(dispute.corridor_id.is_none());
+        assert!(dispute.claims.is_empty());
+    }
+
+    #[test]
+    fn is_valid_decimal_edge_cases() {
+        assert!(is_valid_decimal("0"));
+        assert!(is_valid_decimal("0.0"));
+        assert!(is_valid_decimal("-0.0"));
+        assert!(is_valid_decimal("999999999"));
+        assert!(!is_valid_decimal(""));
+        assert!(!is_valid_decimal("-"));
+        assert!(!is_valid_decimal("."));
+        assert!(!is_valid_decimal("1.2.3"));
+        assert!(!is_valid_decimal("abc"));
+    }
 }

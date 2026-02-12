@@ -78,7 +78,7 @@ impl Validate for WithholdingCalculateRequest {
 }
 
 /// Withholding calculation response.
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct WithholdingResponse {
     pub gross_amount: String,
     pub withholding_rate: String,
@@ -525,5 +525,217 @@ mod tests {
 
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    // ── Additional handler coverage ───────────────────────────────
+
+    #[tokio::test]
+    async fn handler_calculate_withholding_returns_200() {
+        let app = test_app();
+        let entity_id = Uuid::new_v4();
+        let body_str = format!(
+            r#"{{"entity_id":"{}","amount":"100000","income_type":"dividend"}}"#,
+            entity_id
+        );
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/fiscal/withholding/calculate")
+            .header("content-type", "application/json")
+            .body(Body::from(body_str))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let result: WithholdingResponse = body_json(resp).await;
+        assert_eq!(result.gross_amount, "100000");
+        assert_eq!(result.withholding_rate, "0.15");
+        assert!(result.withholding_amount.contains("0.15"));
+        assert!(result.net_amount.contains("100000"));
+    }
+
+    #[tokio::test]
+    async fn handler_calculate_withholding_bad_json_returns_400() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/fiscal/withholding/calculate")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"broken"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn handler_get_tax_events_empty_returns_200() {
+        let app = test_app();
+        let entity_id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/fiscal/{entity_id}/tax-events"))
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let events: Vec<TaxEventRecord> = body_json(resp).await;
+        assert!(events.is_empty());
+    }
+
+    #[tokio::test]
+    async fn handler_get_tax_events_filters_by_entity() {
+        let state = AppState::new();
+        let entity_a = Uuid::new_v4();
+        let entity_b = Uuid::new_v4();
+
+        // Seed tax events for two different entities.
+        let event_a = TaxEventRecord {
+            id: Uuid::new_v4(),
+            entity_id: entity_a,
+            event_type: "capital_gains".to_string(),
+            amount: "5000".to_string(),
+            currency: "PKR".to_string(),
+            tax_year: "2026".to_string(),
+            details: serde_json::json!({"transaction": "share_sale"}),
+            created_at: Utc::now(),
+        };
+        let event_b = TaxEventRecord {
+            id: Uuid::new_v4(),
+            entity_id: entity_b,
+            event_type: "withholding".to_string(),
+            amount: "1500".to_string(),
+            currency: "PKR".to_string(),
+            tax_year: "2026".to_string(),
+            details: serde_json::json!({}),
+            created_at: Utc::now(),
+        };
+        state.tax_events.insert(event_a.id, event_a);
+        state.tax_events.insert(event_b.id, event_b);
+
+        let app = router().with_state(state.clone());
+
+        // Query tax events for entity_a.
+        let req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/fiscal/{entity_a}/tax-events"))
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let events: Vec<TaxEventRecord> = body_json(resp).await;
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].entity_id, entity_a);
+        assert_eq!(events[0].event_type, "capital_gains");
+
+        // Query tax events for entity_b.
+        let req_b = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/fiscal/{entity_b}/tax-events"))
+            .body(Body::empty())
+            .unwrap();
+        let resp_b = app.oneshot(req_b).await.unwrap();
+        let events_b: Vec<TaxEventRecord> = body_json(resp_b).await;
+        assert_eq!(events_b.len(), 1);
+        assert_eq!(events_b[0].entity_id, entity_b);
+    }
+
+    #[tokio::test]
+    async fn handler_generate_report_returns_200() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/fiscal/reporting/generate")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body: serde_json::Value = body_json(resp).await;
+        assert_eq!(body["status"], "generated");
+    }
+
+    #[tokio::test]
+    async fn handler_create_account_no_ntn_returns_201() {
+        let app = test_app();
+        let entity_id = Uuid::new_v4();
+        let body_str = format!(
+            r#"{{"entity_id":"{}","account_type":"operating","currency":"USD"}}"#,
+            entity_id
+        );
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/fiscal/accounts")
+            .header("content-type", "application/json")
+            .body(Body::from(body_str))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::CREATED);
+
+        let record: FiscalAccountRecord = body_json(resp).await;
+        assert_eq!(record.account_type, "operating");
+        assert_eq!(record.currency, "USD");
+        assert!(record.ntn.is_none());
+    }
+
+    #[tokio::test]
+    async fn handler_create_account_bad_json_returns_400() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/fiscal/accounts")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{{invalid"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn handler_create_account_empty_account_type_returns_422() {
+        let app = test_app();
+        let entity_id = Uuid::new_v4();
+        let body_str = format!(
+            r#"{{"entity_id":"{}","account_type":"","currency":"PKR"}}"#,
+            entity_id
+        );
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/fiscal/accounts")
+            .header("content-type", "application/json")
+            .body(Body::from(body_str))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
+    async fn handler_initiate_payment_without_to_account_returns_201() {
+        let app = test_app();
+        let from_id = Uuid::new_v4();
+        let body_str = format!(
+            r#"{{"from_account_id":"{}","amount":"1000.00","currency":"PKR","reference":"PAY-001"}}"#,
+            from_id
+        );
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/fiscal/payments")
+            .header("content-type", "application/json")
+            .body(Body::from(body_str))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::CREATED);
+
+        let record: PaymentRecord = body_json(resp).await;
+        assert!(record.to_account_id.is_none());
+        assert_eq!(record.reference, "PAY-001");
     }
 }

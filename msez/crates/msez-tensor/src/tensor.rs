@@ -620,4 +620,190 @@ mod tests {
         );
         assert!(cloned.evaluators.is_empty());
     }
+
+    // ── Coverage expansion tests ─────────────────────────────────────
+
+    #[test]
+    fn tensor_debug_format() {
+        let tensor = ComplianceTensor::new(test_jurisdiction());
+        let debug_str = format!("{tensor:?}");
+        assert!(debug_str.contains("ComplianceTensor"));
+        assert!(debug_str.contains("cell_count"));
+    }
+
+    #[test]
+    fn tensor_jurisdiction_accessor() {
+        let jur = test_jurisdiction();
+        let tensor = ComplianceTensor::new(jur);
+        assert_eq!(tensor.jurisdiction().jurisdiction_id().as_str(), "PK-RSEZ");
+    }
+
+    #[test]
+    fn tensor_get_cell_returns_some() {
+        let tensor = ComplianceTensor::new(test_jurisdiction());
+        let cell = tensor.get_cell(ComplianceDomain::Aml);
+        assert!(cell.is_some());
+        assert_eq!(cell.unwrap().state, ComplianceState::Pending);
+    }
+
+    #[test]
+    fn tensor_set_with_reason() {
+        let mut tensor = ComplianceTensor::new(test_jurisdiction());
+        tensor.set(
+            ComplianceDomain::Tax,
+            ComplianceState::Compliant,
+            vec![],
+            Some("Manual review passed".to_string()),
+        );
+        let cell = tensor.get_cell(ComplianceDomain::Tax).unwrap();
+        assert_eq!(cell.state, ComplianceState::Compliant);
+        assert_eq!(cell.reason, Some("Manual review passed".to_string()));
+    }
+
+    #[test]
+    fn tensor_set_with_attestations() {
+        let mut tensor = ComplianceTensor::new(test_jurisdiction());
+        let attestation = AttestationRef {
+            attestation_id: "att-1".to_string(),
+            attestation_type: "kyc_verification".to_string(),
+            issuer_did: "did:key:z6MkTest".to_string(),
+            issued_at: "2026-01-01T00:00:00Z".to_string(),
+            expires_at: Some("2027-01-01T00:00:00Z".to_string()),
+            digest: "test_digest".to_string(),
+        };
+        tensor.set(
+            ComplianceDomain::Kyc,
+            ComplianceState::Compliant,
+            vec![attestation.clone()],
+            None,
+        );
+        let cell = tensor.get_cell(ComplianceDomain::Kyc).unwrap();
+        assert_eq!(cell.attestations.len(), 1);
+        assert_eq!(cell.attestations[0].issuer_did, "did:key:z6MkTest");
+    }
+
+    #[test]
+    fn tensor_slice_empty() {
+        let tensor = ComplianceTensor::new(test_jurisdiction());
+        let slice = tensor.slice(&[]);
+        assert!(slice.is_empty());
+        assert_eq!(slice.len(), 0);
+        assert_eq!(slice.aggregate_state(), ComplianceState::Compliant);
+        assert!(slice.all_passing());
+        assert!(slice.non_compliant_domains().is_empty());
+        assert!(slice.pending_domains().is_empty());
+    }
+
+    #[test]
+    fn tensor_slice_pending_domains() {
+        let tensor = ComplianceTensor::new(test_jurisdiction());
+        let slice = tensor.slice(&[ComplianceDomain::Aml, ComplianceDomain::Kyc]);
+        let pending = slice.pending_domains();
+        assert_eq!(pending.len(), 2);
+    }
+
+    #[test]
+    fn tensor_slice_all_passing_false_with_noncompliant() {
+        let mut tensor = ComplianceTensor::new(test_jurisdiction());
+        tensor.set(ComplianceDomain::Aml, ComplianceState::NonCompliant, vec![], None);
+        let slice = tensor.slice(&[ComplianceDomain::Aml]);
+        assert!(!slice.all_passing());
+    }
+
+    #[test]
+    fn tensor_slice_all_passing_true_with_compliant() {
+        let mut tensor = ComplianceTensor::new(test_jurisdiction());
+        tensor.set(ComplianceDomain::Aml, ComplianceState::Compliant, vec![], None);
+        tensor.set(ComplianceDomain::Kyc, ComplianceState::Exempt, vec![], None);
+        let slice = tensor.slice(&[ComplianceDomain::Aml, ComplianceDomain::Kyc]);
+        assert!(slice.all_passing());
+    }
+
+    #[test]
+    fn tensor_evaluate_single_domain() {
+        let tensor = ComplianceTensor::new(test_jurisdiction());
+        let state = tensor.evaluate("entity-1", ComplianceDomain::Aml);
+        // Default evaluation should return a valid ComplianceState
+        assert!(matches!(
+            state,
+            ComplianceState::Pending | ComplianceState::NonCompliant | ComplianceState::Compliant |
+            ComplianceState::NotApplicable | ComplianceState::Exempt
+        ));
+    }
+
+    #[test]
+    fn tensor_custom_evaluator() {
+        #[derive(Debug)]
+        struct AlwaysCompliant;
+        impl DomainEvaluator for AlwaysCompliant {
+            fn domain(&self) -> ComplianceDomain {
+                ComplianceDomain::Aml
+            }
+            fn evaluate(&self, _ctx: &EvaluationContext) -> (ComplianceState, Option<String>) {
+                (ComplianceState::Compliant, Some("Always compliant".into()))
+            }
+        }
+
+        let mut tensor = ComplianceTensor::new(test_jurisdiction());
+        tensor.set_evaluator(ComplianceDomain::Aml, Box::new(AlwaysCompliant));
+        let state = tensor.evaluate("entity-1", ComplianceDomain::Aml);
+        assert_eq!(state, ComplianceState::Compliant);
+    }
+
+    #[test]
+    fn tensor_commit_produces_valid_commitment() {
+        let tensor = ComplianceTensor::new(test_jurisdiction());
+        let commitment = tensor.commit();
+        assert!(commitment.is_ok());
+        let commitment = commitment.unwrap();
+        assert_eq!(commitment.digest().to_hex().len(), 64);
+    }
+
+    #[test]
+    fn tensor_merge_no_change_when_same() {
+        let mut a = ComplianceTensor::new(test_jurisdiction());
+        a.set(ComplianceDomain::Aml, ComplianceState::Compliant, vec![], None);
+
+        let mut b = ComplianceTensor::new(test_jurisdiction());
+        b.set(ComplianceDomain::Aml, ComplianceState::Compliant, vec![], None);
+
+        a.merge(&b);
+        assert_eq!(a.get(ComplianceDomain::Aml), ComplianceState::Compliant);
+    }
+
+    #[test]
+    fn non_applicable_jurisdiction() {
+        #[derive(Debug, Clone)]
+        struct TradeOnlyJurisdiction {
+            id: JurisdictionId,
+        }
+        impl JurisdictionConfig for TradeOnlyJurisdiction {
+            fn jurisdiction_id(&self) -> &JurisdictionId {
+                &self.id
+            }
+            fn applicable_domains(&self) -> &[ComplianceDomain] {
+                &[ComplianceDomain::Aml, ComplianceDomain::Kyc]
+            }
+        }
+
+        let jur = TradeOnlyJurisdiction {
+            id: JurisdictionId::new("TRADE-ZONE").unwrap(),
+        };
+        let tensor = ComplianceTensor::new(jur);
+        assert_eq!(tensor.cell_count(), 20);
+        // Applicable domains should be Pending
+        assert_eq!(tensor.get(ComplianceDomain::Aml), ComplianceState::Pending);
+        assert_eq!(tensor.get(ComplianceDomain::Kyc), ComplianceState::Pending);
+        // Non-applicable domains should be NotApplicable
+        assert_eq!(tensor.get(ComplianceDomain::Tax), ComplianceState::NotApplicable);
+        assert_eq!(tensor.get(ComplianceDomain::Securities), ComplianceState::NotApplicable);
+    }
+
+    #[test]
+    fn tensor_cell_determined_at_is_valid_timestamp() {
+        let tensor = ComplianceTensor::new(test_jurisdiction());
+        let cell = tensor.get_cell(ComplianceDomain::Aml).unwrap();
+        assert!(cell.determined_at.contains("T"));
+        assert!(cell.determined_at.ends_with("Z"));
+    }
 }

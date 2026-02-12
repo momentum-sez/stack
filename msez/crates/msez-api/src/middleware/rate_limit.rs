@@ -225,4 +225,63 @@ mod tests {
         assert!(!limiter.check("client-a"));
         assert!(!clone.check("client-a"));
     }
+
+    // ── Additional coverage for rate_limit_middleware ─────────────
+
+    #[test]
+    fn check_exactly_at_limit_rejects() {
+        let limiter = RateLimiter::new(RateLimitConfig {
+            max_requests: 1,
+            window_secs: 60,
+        });
+
+        assert!(limiter.check("k")); // count becomes 1, which equals max_requests
+        assert!(!limiter.check("k")); // count 1 >= 1, rejected
+    }
+
+    #[test]
+    fn multiple_keys_interleaved() {
+        let limiter = RateLimiter::new(RateLimitConfig {
+            max_requests: 2,
+            window_secs: 60,
+        });
+
+        assert!(limiter.check("a"));
+        assert!(limiter.check("b"));
+        assert!(limiter.check("a")); // a: 2 out of 2
+        assert!(limiter.check("b")); // b: 2 out of 2
+        assert!(!limiter.check("a")); // a exhausted
+        assert!(!limiter.check("b")); // b exhausted
+        assert!(limiter.check("c")); // c still fresh
+    }
+
+    #[test]
+    fn empty_key_is_valid() {
+        let limiter = RateLimiter::new(RateLimitConfig {
+            max_requests: 1,
+            window_secs: 60,
+        });
+
+        assert!(limiter.check(""));
+        assert!(!limiter.check(""));
+    }
+
+    #[test]
+    fn rate_limit_config_custom_values() {
+        let config = RateLimitConfig {
+            max_requests: 500,
+            window_secs: 120,
+        };
+        assert_eq!(config.max_requests, 500);
+        assert_eq!(config.window_secs, 120);
+    }
+
+    #[test]
+    fn rate_limiter_new_with_default_config() {
+        let limiter = RateLimiter::new(RateLimitConfig::default());
+        // Default allows 1000 requests; should easily accept a few.
+        for _ in 0..10 {
+            assert!(limiter.check("test"));
+        }
+    }
 }

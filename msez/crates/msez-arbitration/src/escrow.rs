@@ -749,4 +749,243 @@ mod tests {
             TransactionType::FullRelease
         );
     }
+
+    // ── Coverage expansion tests ─────────────────────────────────────
+
+    #[test]
+    fn escrow_id_default() {
+        let id1 = EscrowId::default();
+        let id2 = EscrowId::default();
+        assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn escrow_id_display() {
+        let id = EscrowId::new();
+        let display = format!("{id}");
+        assert!(display.starts_with("escrow:"));
+    }
+
+    #[test]
+    fn escrow_id_from_uuid_roundtrip() {
+        let uuid = uuid::Uuid::new_v4();
+        let id = EscrowId::from_uuid(uuid);
+        assert_eq!(*id.as_uuid(), uuid);
+    }
+
+    #[test]
+    fn escrow_type_display() {
+        assert_eq!(format!("{}", EscrowType::FilingFee), "filing_fee");
+        assert_eq!(format!("{}", EscrowType::SecurityDeposit), "security_deposit");
+        assert_eq!(format!("{}", EscrowType::AwardEscrow), "award_escrow");
+        assert_eq!(format!("{}", EscrowType::AppealBond), "appeal_bond");
+    }
+
+    #[test]
+    fn escrow_status_display() {
+        assert_eq!(format!("{}", EscrowStatus::Pending), "PENDING");
+        assert_eq!(format!("{}", EscrowStatus::Funded), "FUNDED");
+        assert_eq!(format!("{}", EscrowStatus::PartiallyReleased), "PARTIALLY_RELEASED");
+        assert_eq!(format!("{}", EscrowStatus::FullyReleased), "FULLY_RELEASED");
+        assert_eq!(format!("{}", EscrowStatus::Forfeited), "FORFEITED");
+    }
+
+    #[test]
+    fn escrow_status_as_str_all_variants() {
+        assert_eq!(EscrowStatus::Pending.as_str(), "PENDING");
+        assert_eq!(EscrowStatus::Funded.as_str(), "FUNDED");
+        assert_eq!(EscrowStatus::PartiallyReleased.as_str(), "PARTIALLY_RELEASED");
+        assert_eq!(EscrowStatus::FullyReleased.as_str(), "FULLY_RELEASED");
+        assert_eq!(EscrowStatus::Forfeited.as_str(), "FORFEITED");
+    }
+
+    #[test]
+    fn escrow_status_is_terminal() {
+        assert!(!EscrowStatus::Pending.is_terminal());
+        assert!(!EscrowStatus::Funded.is_terminal());
+        assert!(!EscrowStatus::PartiallyReleased.is_terminal());
+        assert!(EscrowStatus::FullyReleased.is_terminal());
+        assert!(EscrowStatus::Forfeited.is_terminal());
+    }
+
+    #[test]
+    fn release_condition_type_display() {
+        assert_eq!(format!("{}", ReleaseConditionType::RulingEnforced), "ruling_enforced");
+        assert_eq!(format!("{}", ReleaseConditionType::AppealPeriodExpired), "appeal_period_expired");
+        assert_eq!(format!("{}", ReleaseConditionType::SettlementAgreed), "settlement_agreed");
+        assert_eq!(format!("{}", ReleaseConditionType::DisputeWithdrawn), "dispute_withdrawn");
+        assert_eq!(format!("{}", ReleaseConditionType::InstitutionOrder), "institution_order");
+    }
+
+    #[test]
+    fn forfeit_rejected_when_pending() {
+        let escrow = EscrowAccount::create(
+            test_dispute_id(),
+            EscrowType::FilingFee,
+            "USD".to_string(),
+            None,
+        );
+        let mut escrow = escrow;
+        let result = escrow.forfeit(test_digest());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn forfeit_rejected_when_terminal() {
+        let mut escrow = funded_escrow();
+        escrow.forfeit(test_digest()).unwrap();
+        // Second forfeit should fail (Forfeited is terminal)
+        assert!(escrow.forfeit(test_digest()).is_err());
+    }
+
+    #[test]
+    fn partial_release_from_partially_released() {
+        let mut escrow = funded_escrow();
+        escrow
+            .partial_release(
+                "3000".to_string(),
+                ReleaseCondition {
+                    condition_type: ReleaseConditionType::InstitutionOrder,
+                    evidence_digest: test_digest(),
+                    satisfied_at: Timestamp::now(),
+                },
+            )
+            .unwrap();
+        assert_eq!(escrow.status, EscrowStatus::PartiallyReleased);
+
+        // Second partial release from PartiallyReleased state
+        escrow
+            .partial_release(
+                "4000".to_string(),
+                ReleaseCondition {
+                    condition_type: ReleaseConditionType::SettlementAgreed,
+                    evidence_digest: test_digest(),
+                    satisfied_at: Timestamp::now(),
+                },
+            )
+            .unwrap();
+        assert_eq!(escrow.held_amount, "3000");
+        assert_eq!(escrow.status, EscrowStatus::PartiallyReleased);
+    }
+
+    #[test]
+    fn full_release_from_partially_released() {
+        let mut escrow = funded_escrow();
+        escrow
+            .partial_release(
+                "3000".to_string(),
+                ReleaseCondition {
+                    condition_type: ReleaseConditionType::InstitutionOrder,
+                    evidence_digest: test_digest(),
+                    satisfied_at: Timestamp::now(),
+                },
+            )
+            .unwrap();
+
+        escrow
+            .full_release(ReleaseCondition {
+                condition_type: ReleaseConditionType::RulingEnforced,
+                evidence_digest: test_digest(),
+                satisfied_at: Timestamp::now(),
+            })
+            .unwrap();
+        assert_eq!(escrow.status, EscrowStatus::FullyReleased);
+        assert_eq!(escrow.held_amount, "0");
+    }
+
+    #[test]
+    fn deposit_with_past_deadline_fails() {
+        let past_deadline = Utc::now() - chrono::Duration::hours(1);
+        let mut escrow = EscrowAccount::create(
+            test_dispute_id(),
+            EscrowType::FilingFee,
+            "USD".to_string(),
+            Some(past_deadline),
+        );
+        let result = escrow.deposit("5000".to_string(), test_digest());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn partial_release_rejected_when_pending() {
+        let mut escrow = EscrowAccount::create(
+            test_dispute_id(),
+            EscrowType::FilingFee,
+            "USD".to_string(),
+            None,
+        );
+        let result = escrow.partial_release(
+            "1000".to_string(),
+            ReleaseCondition {
+                condition_type: ReleaseConditionType::SettlementAgreed,
+                evidence_digest: test_digest(),
+                satisfied_at: Timestamp::now(),
+            },
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_amount_invalid_returns_zero() {
+        assert_eq!(parse_amount("abc"), 0);
+        assert_eq!(parse_amount(""), 0);
+    }
+
+    #[test]
+    fn format_amount_roundtrip() {
+        assert_eq!(format_amount(12345), "12345");
+        assert_eq!(format_amount(0), "0");
+        assert_eq!(format_amount(-100), "-100");
+    }
+
+    #[test]
+    fn create_with_each_escrow_type() {
+        for escrow_type in [
+            EscrowType::FilingFee,
+            EscrowType::SecurityDeposit,
+            EscrowType::AwardEscrow,
+            EscrowType::AppealBond,
+        ] {
+            let escrow = EscrowAccount::create(
+                test_dispute_id(),
+                escrow_type,
+                "PKR".to_string(),
+                None,
+            );
+            assert_eq!(escrow.escrow_type, escrow_type);
+            assert_eq!(escrow.status, EscrowStatus::Pending);
+        }
+    }
+
+    #[test]
+    fn forfeit_from_partially_released() {
+        let mut escrow = funded_escrow();
+        escrow
+            .partial_release(
+                "3000".to_string(),
+                ReleaseCondition {
+                    condition_type: ReleaseConditionType::InstitutionOrder,
+                    evidence_digest: test_digest(),
+                    satisfied_at: Timestamp::now(),
+                },
+            )
+            .unwrap();
+        assert_eq!(escrow.status, EscrowStatus::PartiallyReleased);
+
+        escrow.forfeit(test_digest()).unwrap();
+        assert_eq!(escrow.status, EscrowStatus::Forfeited);
+        assert_eq!(escrow.held_amount, "0");
+    }
+
+    #[test]
+    fn full_release_rejected_when_forfeited() {
+        let mut escrow = funded_escrow();
+        escrow.forfeit(test_digest()).unwrap();
+        let result = escrow.full_release(ReleaseCondition {
+            condition_type: ReleaseConditionType::RulingEnforced,
+            evidence_digest: test_digest(),
+            satisfied_at: Timestamp::now(),
+        });
+        assert!(result.is_err());
+    }
 }

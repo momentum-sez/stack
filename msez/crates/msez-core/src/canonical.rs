@@ -298,6 +298,123 @@ mod tests {
         assert_eq!(cb.len(), 2); // "{}"
         assert!(!cb.is_empty());
     }
+
+    #[test]
+    fn canonical_into_bytes() {
+        let value = json!({"key": "val"});
+        let cb = CanonicalBytes::new(&value).unwrap();
+        let expected = cb.as_bytes().to_vec();
+        let bytes = cb.into_bytes();
+        assert_eq!(bytes, expected);
+    }
+
+    #[test]
+    fn canonical_as_ref() {
+        let value = json!({"x": 1});
+        let cb = CanonicalBytes::new(&value).unwrap();
+        let as_ref_bytes: &[u8] = cb.as_ref();
+        assert_eq!(as_ref_bytes, cb.as_bytes());
+    }
+
+    #[test]
+    fn canonical_bool_and_null_passthrough() {
+        // Bool and null pass through the `other => Ok(other)` branch
+        let value_true = json!(true);
+        let cb = CanonicalBytes::new(&value_true).unwrap();
+        assert_eq!(std::str::from_utf8(cb.as_bytes()).unwrap(), "true");
+
+        let value_null = json!(null);
+        let cb = CanonicalBytes::new(&value_null).unwrap();
+        assert_eq!(std::str::from_utf8(cb.as_bytes()).unwrap(), "null");
+    }
+
+    #[test]
+    fn canonical_clone_and_eq() {
+        let value = json!({"a": 1});
+        let cb = CanonicalBytes::new(&value).unwrap();
+        let cb2 = cb.clone();
+        assert_eq!(cb, cb2);
+    }
+
+    #[test]
+    fn canonical_hash_works() {
+        use std::collections::HashSet;
+        let cb1 = CanonicalBytes::new(&json!({"a": 1})).unwrap();
+        let cb2 = CanonicalBytes::new(&json!({"a": 2})).unwrap();
+        let mut set = HashSet::new();
+        set.insert(cb1.clone());
+        set.insert(cb2);
+        assert_eq!(set.len(), 2);
+        assert!(set.contains(&cb1));
+    }
+
+    #[test]
+    fn canonical_array_with_nested_values() {
+        let value = json!([{"b": 2, "a": 1}, null, true, "hello"]);
+        let cb = CanonicalBytes::new(&value).unwrap();
+        let s = std::str::from_utf8(cb.as_bytes()).unwrap();
+        assert_eq!(s, r#"[{"a":1,"b":2},null,true,"hello"]"#);
+    }
+
+    #[test]
+    fn canonical_rejects_float_in_nested_array() {
+        let value = json!({"data": [1, 2, 3.14]});
+        let result = CanonicalBytes::new(&value);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn canonical_rejects_float_in_nested_object() {
+        let value = json!({"outer": {"inner": 1.5}});
+        let result = CanonicalBytes::new(&value);
+        assert!(result.is_err());
+    }
+
+    // ── Coverage expansion tests (agent-added unique tests) ─────────
+
+    #[test]
+    fn canonical_from_value_rejects_float() {
+        let value = json!({"x": 3.14});
+        let result = CanonicalBytes::from_value(value);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn canonical_debug_format() {
+        let cb = CanonicalBytes::new(&json!({"test": true})).unwrap();
+        let debug_str = format!("{cb:?}");
+        assert!(debug_str.contains("CanonicalBytes"));
+    }
+
+    #[test]
+    fn canonical_deeply_nested_object() {
+        let value = json!({"a": {"b": {"c": {"d": 42}}}});
+        let cb = CanonicalBytes::new(&value).unwrap();
+        let s = std::str::from_utf8(cb.as_bytes()).unwrap();
+        assert_eq!(s, r#"{"a":{"b":{"c":{"d":42}}}}"#);
+    }
+
+    #[test]
+    fn canonical_string_with_special_chars() {
+        let value = json!({"msg": "hello \"world\"\nnewline"});
+        let cb = CanonicalBytes::new(&value).unwrap();
+        let s = std::str::from_utf8(cb.as_bytes()).unwrap();
+        assert!(s.contains("hello"));
+    }
+
+    #[test]
+    fn canonical_integer_zero() {
+        let value = json!(0);
+        let cb = CanonicalBytes::new(&value).unwrap();
+        assert_eq!(std::str::from_utf8(cb.as_bytes()).unwrap(), "0");
+    }
+
+    #[test]
+    fn canonical_negative_integer() {
+        let value = json!(-42);
+        let cb = CanonicalBytes::new(&value).unwrap();
+        assert_eq!(std::str::from_utf8(cb.as_bytes()).unwrap(), "-42");
+    }
 }
 
 /// Property-based tests using proptest.

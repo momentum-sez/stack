@@ -116,3 +116,385 @@ fn resolve_repo_root() -> Option<PathBuf> {
         dir = dir.parent()?;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cli_parse_validate_all_modules() {
+        let cli = Cli::try_parse_from(["msez", "validate", "--all-modules"]).unwrap();
+        assert!(matches!(cli.command, Commands::Validate(_)));
+        if let Commands::Validate(args) = cli.command {
+            assert!(args.all_modules);
+            assert!(!args.all_profiles);
+            assert!(!args.all_zones);
+            assert!(args.path.is_none());
+        }
+    }
+
+    #[test]
+    fn cli_parse_validate_all_profiles() {
+        let cli = Cli::try_parse_from(["msez", "validate", "--all-profiles"]).unwrap();
+        if let Commands::Validate(args) = cli.command {
+            assert!(args.all_profiles);
+        }
+    }
+
+    #[test]
+    fn cli_parse_validate_all_zones() {
+        let cli = Cli::try_parse_from(["msez", "validate", "--all-zones"]).unwrap();
+        if let Commands::Validate(args) = cli.command {
+            assert!(args.all_zones);
+        }
+    }
+
+    #[test]
+    fn cli_parse_validate_with_path() {
+        let cli =
+            Cli::try_parse_from(["msez", "validate", "modules/test/module.yaml"]).unwrap();
+        if let Commands::Validate(args) = cli.command {
+            assert!(!args.all_modules);
+            assert_eq!(
+                args.path,
+                Some(PathBuf::from("modules/test/module.yaml"))
+            );
+        }
+    }
+
+    #[test]
+    fn cli_parse_validate_combined_flags() {
+        let cli = Cli::try_parse_from([
+            "msez",
+            "validate",
+            "--all-modules",
+            "--all-profiles",
+            "--all-zones",
+        ])
+        .unwrap();
+        if let Commands::Validate(args) = cli.command {
+            assert!(args.all_modules);
+            assert!(args.all_profiles);
+            assert!(args.all_zones);
+        }
+    }
+
+    #[test]
+    fn cli_parse_lock_basic() {
+        let cli = Cli::try_parse_from(["msez", "lock", "zone.yaml"]).unwrap();
+        if let Commands::Lock(args) = cli.command {
+            assert_eq!(args.zone, PathBuf::from("zone.yaml"));
+            assert!(!args.check);
+            assert!(args.out.is_none());
+            assert!(args.generated_at.is_none());
+            assert!(!args.strict);
+        }
+    }
+
+    #[test]
+    fn cli_parse_lock_with_check() {
+        let cli = Cli::try_parse_from(["msez", "lock", "zone.yaml", "--check"]).unwrap();
+        if let Commands::Lock(args) = cli.command {
+            assert!(args.check);
+        }
+    }
+
+    #[test]
+    fn cli_parse_lock_with_all_options() {
+        let cli = Cli::try_parse_from([
+            "msez",
+            "lock",
+            "zone.yaml",
+            "--check",
+            "--out",
+            "output.lock",
+            "--generated-at",
+            "2026-01-01T00:00:00Z",
+            "--strict",
+        ])
+        .unwrap();
+        if let Commands::Lock(args) = cli.command {
+            assert!(args.check);
+            assert_eq!(args.out, Some(PathBuf::from("output.lock")));
+            assert_eq!(
+                args.generated_at,
+                Some("2026-01-01T00:00:00Z".to_string())
+            );
+            assert!(args.strict);
+        }
+    }
+
+    #[test]
+    fn cli_parse_corridor_create() {
+        let cli = Cli::try_parse_from([
+            "msez",
+            "corridor",
+            "create",
+            "--id",
+            "pk-ae",
+            "--jurisdiction-a",
+            "PK",
+            "--jurisdiction-b",
+            "AE",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Commands::Corridor(_)));
+    }
+
+    #[test]
+    fn cli_parse_corridor_list() {
+        let cli = Cli::try_parse_from(["msez", "corridor", "list"]).unwrap();
+        assert!(matches!(cli.command, Commands::Corridor(_)));
+    }
+
+    #[test]
+    fn cli_parse_corridor_status() {
+        let cli = Cli::try_parse_from(["msez", "corridor", "status", "--id", "test"]).unwrap();
+        assert!(matches!(cli.command, Commands::Corridor(_)));
+    }
+
+    #[test]
+    fn cli_parse_artifact_store() {
+        let cli = Cli::try_parse_from([
+            "msez",
+            "artifact",
+            "store",
+            "--artifact-type",
+            "receipt",
+            "data.json",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Commands::Artifact(_)));
+    }
+
+    #[test]
+    fn cli_parse_artifact_resolve() {
+        let hex = "a".repeat(64);
+        let cli = Cli::try_parse_from([
+            "msez",
+            "artifact",
+            "resolve",
+            "--artifact-type",
+            "vc",
+            "--digest",
+            &hex,
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Commands::Artifact(_)));
+    }
+
+    #[test]
+    fn cli_parse_artifact_verify() {
+        let hex = "b".repeat(64);
+        let cli = Cli::try_parse_from([
+            "msez",
+            "artifact",
+            "verify",
+            "--artifact-type",
+            "receipt",
+            "--digest",
+            &hex,
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Commands::Artifact(_)));
+    }
+
+    #[test]
+    fn cli_parse_vc_keygen() {
+        let cli =
+            Cli::try_parse_from(["msez", "vc", "keygen", "--output", "/tmp", "--prefix", "test"])
+                .unwrap();
+        assert!(matches!(cli.command, Commands::Signing(_)));
+    }
+
+    #[test]
+    fn cli_parse_vc_sign() {
+        let cli = Cli::try_parse_from([
+            "msez",
+            "vc",
+            "sign",
+            "--key",
+            "private.key",
+            "document.json",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Commands::Signing(_)));
+    }
+
+    #[test]
+    fn cli_parse_vc_verify() {
+        let sig_hex = "c".repeat(128);
+        let cli = Cli::try_parse_from([
+            "msez",
+            "vc",
+            "verify",
+            "--pubkey",
+            "public.pub",
+            "document.json",
+            "--signature",
+            &sig_hex,
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Commands::Signing(_)));
+    }
+
+    #[test]
+    fn cli_parse_verbose_levels() {
+        let cli0 = Cli::try_parse_from(["msez", "corridor", "list"]).unwrap();
+        assert_eq!(cli0.verbose, 0);
+
+        let cli1 = Cli::try_parse_from(["msez", "-v", "corridor", "list"]).unwrap();
+        assert_eq!(cli1.verbose, 1);
+
+        let cli2 = Cli::try_parse_from(["msez", "-vv", "corridor", "list"]).unwrap();
+        assert_eq!(cli2.verbose, 2);
+
+        let cli3 = Cli::try_parse_from(["msez", "-vvv", "corridor", "list"]).unwrap();
+        assert_eq!(cli3.verbose, 3);
+    }
+
+    #[test]
+    fn cli_parse_config_option() {
+        let cli = Cli::try_parse_from([
+            "msez",
+            "--config",
+            "msez.yaml",
+            "corridor",
+            "list",
+        ])
+        .unwrap();
+        assert_eq!(cli.config, Some(PathBuf::from("msez.yaml")));
+    }
+
+    #[test]
+    fn cli_parse_output_dir_option() {
+        let cli = Cli::try_parse_from([
+            "msez",
+            "--output-dir",
+            "/tmp/output",
+            "corridor",
+            "list",
+        ])
+        .unwrap();
+        assert_eq!(cli.output_dir, Some(PathBuf::from("/tmp/output")));
+    }
+
+    #[test]
+    fn cli_parse_no_subcommand_errors() {
+        let result = Cli::try_parse_from(["msez"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn cli_parse_invalid_subcommand_errors() {
+        let result = Cli::try_parse_from(["msez", "nonexistent"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn resolve_repo_root_returns_some_when_in_repo() {
+        // The test is running from within the repo, so this should find it.
+        let result = resolve_repo_root();
+        // This may or may not work depending on CWD during testing.
+        // We verify it either finds a root with schemas/ and modules/ or returns None.
+        if let Some(root) = result {
+            assert!(root.join("schemas").is_dir());
+            assert!(root.join("modules").is_dir());
+        }
+    }
+
+    #[test]
+    fn cli_debug_impl() {
+        let cli = Cli::try_parse_from(["msez", "corridor", "list"]).unwrap();
+        let debug = format!("{cli:?}");
+        assert!(debug.contains("Cli"));
+    }
+
+    #[test]
+    fn commands_debug_impl() {
+        let cli = Cli::try_parse_from(["msez", "corridor", "list"]).unwrap();
+        let debug = format!("{:?}", cli.command);
+        assert!(debug.contains("Corridor"));
+    }
+
+    #[test]
+    fn cli_parse_corridor_submit() {
+        let cli = Cli::try_parse_from([
+            "msez",
+            "corridor",
+            "submit",
+            "--id",
+            "test-cor",
+            "--agreement",
+            "agreement.json",
+            "--pack-trilogy",
+            "trilogy.json",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Commands::Corridor(_)));
+    }
+
+    #[test]
+    fn cli_parse_corridor_activate() {
+        let cli = Cli::try_parse_from([
+            "msez",
+            "corridor",
+            "activate",
+            "--id",
+            "test-cor",
+            "--approval-a",
+            "digest_a",
+            "--approval-b",
+            "digest_b",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Commands::Corridor(_)));
+    }
+
+    #[test]
+    fn cli_parse_corridor_halt() {
+        let cli = Cli::try_parse_from([
+            "msez",
+            "corridor",
+            "halt",
+            "--id",
+            "test-cor",
+            "--reason",
+            "emergency",
+            "--authority",
+            "PK",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Commands::Corridor(_)));
+    }
+
+    #[test]
+    fn cli_parse_corridor_suspend() {
+        let cli = Cli::try_parse_from([
+            "msez",
+            "corridor",
+            "suspend",
+            "--id",
+            "test-cor",
+            "--reason",
+            "maintenance",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Commands::Corridor(_)));
+    }
+
+    #[test]
+    fn cli_parse_corridor_resume() {
+        let cli = Cli::try_parse_from([
+            "msez",
+            "corridor",
+            "resume",
+            "--id",
+            "test-cor",
+            "--resolution",
+            "resolved",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Commands::Corridor(_)));
+    }
+}

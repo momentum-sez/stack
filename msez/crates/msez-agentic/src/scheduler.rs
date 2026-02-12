@@ -696,4 +696,294 @@ mod tests {
         assert!(ActionStatus::Failed.is_terminal());
         assert!(ActionStatus::Cancelled.is_terminal());
     }
+
+    // ── Additional coverage tests ──────────────────────────────────
+
+    #[test]
+    fn action_status_display_all_variants() {
+        assert_eq!(ActionStatus::Pending.to_string(), "pending");
+        assert_eq!(ActionStatus::Executing.to_string(), "executing");
+        assert_eq!(ActionStatus::Completed.to_string(), "completed");
+        assert_eq!(ActionStatus::Failed.to_string(), "failed");
+        assert_eq!(ActionStatus::Cancelled.to_string(), "cancelled");
+    }
+
+    #[test]
+    fn action_status_serde_roundtrip() {
+        let statuses = [
+            ActionStatus::Pending,
+            ActionStatus::Executing,
+            ActionStatus::Completed,
+            ActionStatus::Failed,
+            ActionStatus::Cancelled,
+        ];
+        for s in &statuses {
+            let json = serde_json::to_string(s).unwrap();
+            let back: ActionStatus = serde_json::from_str(&json).unwrap();
+            assert_eq!(&back, s);
+        }
+    }
+
+    #[test]
+    fn scheduled_action_with_max_retries() {
+        let action = make_action("test").with_max_retries(5);
+        assert_eq!(action.max_retries, 5);
+        assert_eq!(action.retries_remaining, 5);
+    }
+
+    #[test]
+    fn scheduled_action_can_retry_only_when_failed_with_retries() {
+        let mut action = make_action("test").with_max_retries(1);
+        // Pending: not eligible for retry.
+        assert!(!action.can_retry());
+
+        // Simulate fail with retries remaining.
+        action.status = ActionStatus::Failed;
+        action.retries_remaining = 1;
+        assert!(action.can_retry());
+
+        // Exhausted retries.
+        action.retries_remaining = 0;
+        assert!(!action.can_retry());
+
+        // Completed status: not retryable even with retries remaining.
+        action.status = ActionStatus::Completed;
+        action.retries_remaining = 5;
+        assert!(!action.can_retry());
+    }
+
+    #[test]
+    fn scheduled_action_equality_by_action_id() {
+        let a1 = make_action("policy_a");
+        let mut a2 = make_action("policy_b");
+        // Different policy_id means different action_id (UUID), so not equal.
+        assert_ne!(a1, a2);
+
+        // Same action_id means equal regardless of other fields.
+        a2.action_id = a1.action_id.clone();
+        assert_eq!(a1, a2);
+    }
+
+    #[test]
+    fn scheduled_action_is_ready_not_when_non_pending() {
+        let now = Utc::now();
+        let mut action = make_action("test");
+        action.status = ActionStatus::Executing;
+        assert!(!action.is_ready(now));
+
+        action.status = ActionStatus::Completed;
+        assert!(!action.is_ready(now));
+
+        action.status = ActionStatus::Failed;
+        assert!(!action.is_ready(now));
+
+        action.status = ActionStatus::Cancelled;
+        assert!(!action.is_ready(now));
+    }
+
+    #[test]
+    fn scheduled_action_is_expired_no_deadline() {
+        let action = make_action("test");
+        let now = Utc::now();
+        // No deadline means never expired.
+        assert!(!action.is_expired(now));
+    }
+
+    #[test]
+    fn scheduler_mark_executing_fails_when_not_pending() {
+        let mut scheduler = ActionScheduler::new();
+        let action = make_action("test");
+        let id = action.action_id.clone();
+        scheduler.schedule(action);
+
+        // Move to Executing.
+        assert!(scheduler.mark_executing(&id));
+        // Second call fails (already Executing, not Pending).
+        assert!(!scheduler.mark_executing(&id));
+    }
+
+    #[test]
+    fn scheduler_mark_completed_fails_when_not_executing() {
+        let mut scheduler = ActionScheduler::new();
+        let action = make_action("test");
+        let id = action.action_id.clone();
+        scheduler.schedule(action);
+
+        // Can't complete from Pending.
+        assert!(!scheduler.mark_completed(&id));
+    }
+
+    #[test]
+    fn scheduler_mark_failed_fails_when_not_executing() {
+        let mut scheduler = ActionScheduler::new();
+        let action = make_action("test");
+        let id = action.action_id.clone();
+        scheduler.schedule(action);
+
+        // Can't fail from Pending.
+        assert!(!scheduler.mark_failed(&id, "error".into()));
+    }
+
+    #[test]
+    fn scheduler_cancel_nonexistent_action() {
+        let mut scheduler = ActionScheduler::new();
+        assert!(!scheduler.cancel("nonexistent"));
+    }
+
+    #[test]
+    fn scheduler_get_action_nonexistent() {
+        let scheduler = ActionScheduler::new();
+        assert!(scheduler.get_action("nonexistent").is_none());
+    }
+
+    #[test]
+    fn scheduler_default_is_empty() {
+        let scheduler = ActionScheduler::default();
+        assert_eq!(scheduler.action_count(), 0);
+        assert!(scheduler.schedules().is_empty());
+    }
+
+    #[test]
+    fn cron_schedule_weekly() {
+        let schedule = CronSchedule::new("weekly", "Weekly check", SchedulePattern::Weekly);
+        // Monday at midnight.
+        let monday_midnight = chrono::NaiveDate::from_ymd_opt(2026, 1, 19) // 2026-01-19 is Monday
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            .and_utc();
+        assert!(schedule.should_fire(monday_midnight));
+
+        // Tuesday at midnight.
+        let tuesday = chrono::NaiveDate::from_ymd_opt(2026, 1, 20)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            .and_utc();
+        assert!(!schedule.should_fire(tuesday));
+    }
+
+    #[test]
+    fn cron_schedule_monthly() {
+        let schedule = CronSchedule::new("monthly", "Monthly check", SchedulePattern::Monthly);
+        // First of month at midnight.
+        let first = chrono::NaiveDate::from_ymd_opt(2026, 3, 1)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            .and_utc();
+        assert!(schedule.should_fire(first));
+
+        // Second day.
+        let second = chrono::NaiveDate::from_ymd_opt(2026, 3, 2)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            .and_utc();
+        assert!(!schedule.should_fire(second));
+    }
+
+    #[test]
+    fn cron_schedule_yearly() {
+        let schedule = CronSchedule::new("yearly", "Yearly check", SchedulePattern::Yearly);
+        // Jan 1 at midnight.
+        let jan_first = chrono::NaiveDate::from_ymd_opt(2026, 1, 1)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            .and_utc();
+        assert!(schedule.should_fire(jan_first));
+
+        // Feb 1 at midnight — not yearly.
+        let feb_first = chrono::NaiveDate::from_ymd_opt(2026, 2, 1)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            .and_utc();
+        assert!(!schedule.should_fire(feb_first));
+    }
+
+    #[test]
+    fn cron_schedule_inactive_does_not_fire() {
+        let mut schedule =
+            CronSchedule::new("hourly", "Hourly check", SchedulePattern::Hourly);
+        schedule.active = false;
+        let at_zero = chrono::NaiveDate::from_ymd_opt(2026, 1, 15)
+            .unwrap()
+            .and_hms_opt(10, 0, 0)
+            .unwrap()
+            .and_utc();
+        assert!(!schedule.should_fire(at_zero));
+    }
+
+    #[test]
+    fn scheduler_expired_actions_excludes_terminal() {
+        let mut scheduler = ActionScheduler::new();
+        let now = Utc::now();
+        let action = make_action("test").with_deadline(now - chrono::Duration::hours(1));
+        let id = action.action_id.clone();
+        scheduler.schedule(action);
+
+        // Pending + expired → shows in expired_actions.
+        assert_eq!(scheduler.expired_actions(now).len(), 1);
+
+        // Cancel it (terminal), then it should NOT appear in expired_actions.
+        scheduler.cancel(&id);
+        assert!(scheduler.expired_actions(now).is_empty());
+    }
+
+    #[test]
+    fn scheduler_schedules_accessor() {
+        let mut scheduler = ActionScheduler::new();
+        scheduler.add_schedule(CronSchedule::new(
+            "s1",
+            "Schedule 1",
+            SchedulePattern::Daily,
+        ));
+        scheduler.add_schedule(CronSchedule::new(
+            "s2",
+            "Schedule 2",
+            SchedulePattern::Hourly,
+        ));
+        assert_eq!(scheduler.schedules().len(), 2);
+    }
+
+    #[test]
+    fn scheduled_action_serde_roundtrip() {
+        let action = make_action("policy_serde");
+        let json = serde_json::to_string(&action).unwrap();
+        let back: ScheduledAction = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.action_id, action.action_id);
+        assert_eq!(back.policy_id, "policy_serde");
+        assert_eq!(back.status, ActionStatus::Pending);
+        assert_eq!(back.action, PolicyAction::Halt);
+    }
+
+    #[test]
+    fn cron_schedule_serde_roundtrip() {
+        let schedule = CronSchedule::new("test_sched", "Test schedule", SchedulePattern::Daily);
+        let json = serde_json::to_string(&schedule).unwrap();
+        let back: CronSchedule = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.schedule_id, "test_sched");
+        assert_eq!(back.pattern, SchedulePattern::Daily);
+        assert!(back.active);
+        assert!(back.last_fired.is_none());
+    }
+
+    #[test]
+    fn scheduler_mark_failed_with_retries_resets_to_pending() {
+        let mut scheduler = ActionScheduler::new();
+        let action = make_action("test").with_max_retries(1);
+        let id = action.action_id.clone();
+        scheduler.schedule(action);
+
+        scheduler.mark_executing(&id);
+        scheduler.mark_failed(&id, "err1".into());
+
+        let a = scheduler.get_action(&id).unwrap();
+        // With 1 retry, after first fail it goes back to Pending.
+        assert_eq!(a.status, ActionStatus::Pending);
+        assert_eq!(a.retries_remaining, 0);
+        assert_eq!(a.last_error.as_deref(), Some("err1"));
+    }
 }

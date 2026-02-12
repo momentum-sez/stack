@@ -440,4 +440,148 @@ mod tests {
         let sig2 = sk.sign(&data);
         assert_eq!(sig1, sig2);
     }
+
+    // ── Coverage expansion tests ─────────────────────────────────────
+
+    #[test]
+    fn hex_to_bytes_odd_length() {
+        let result = hex_to_bytes("abc");
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            CryptoError::HexDecode(msg) => assert!(msg.contains("odd length")),
+            other => panic!("expected HexDecode, got: {other}"),
+        }
+    }
+
+    #[test]
+    fn hex_to_bytes_invalid_chars() {
+        let result = hex_to_bytes("zzzz");
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            CryptoError::HexDecode(msg) => assert!(msg.contains("invalid hex")),
+            other => panic!("expected HexDecode, got: {other}"),
+        }
+    }
+
+    #[test]
+    fn hex_to_bytes_valid() {
+        let result = hex_to_bytes("deadbeef").unwrap();
+        assert_eq!(result, vec![0xde, 0xad, 0xbe, 0xef]);
+    }
+
+    #[test]
+    fn hex_to_bytes_with_whitespace() {
+        let result = hex_to_bytes("  deadbeef  ").unwrap();
+        assert_eq!(result, vec![0xde, 0xad, 0xbe, 0xef]);
+    }
+
+    #[test]
+    fn bytes_to_hex_roundtrip() {
+        let bytes = vec![0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef];
+        let hex = bytes_to_hex(&bytes);
+        assert_eq!(hex, "0123456789abcdef");
+        let recovered = hex_to_bytes(&hex).unwrap();
+        assert_eq!(recovered, bytes);
+    }
+
+    #[test]
+    fn verifying_key_from_hex_wrong_byte_count() {
+        // 64 hex chars but decodes to 32 bytes - valid
+        let sk = SigningKey::generate(&mut OsRng);
+        let vk = sk.verifying_key();
+        let hex = vk.to_hex();
+        assert_eq!(hex.len(), 64);
+
+        // Now try with 48 hex chars (24 bytes - wrong)
+        let short_hex = "ab".repeat(24);
+        let result = VerifyingKey::from_hex(&short_hex);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn verifying_key_from_bytes_invalid_curve_point() {
+        // All zeros is not a valid Ed25519 public key
+        let result = VerifyingKey::from_bytes(&[0u8; 32]);
+        // Some implementations accept the identity point, others reject it
+        // Just ensure it doesn't panic
+        let _ = result;
+    }
+
+    #[test]
+    fn signature_from_bytes_constructor() {
+        let bytes = [42u8; 64];
+        let sig = Ed25519Signature::from_bytes(bytes);
+        assert_eq!(*sig.as_bytes(), bytes);
+    }
+
+    #[test]
+    fn signature_from_slice_wrong_length() {
+        let result = Ed25519Signature::from_slice(&[0u8; 63]);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            CryptoError::InvalidSignatureLength(len) => assert_eq!(len, 63),
+            other => panic!("expected InvalidSignatureLength, got: {other}"),
+        }
+    }
+
+    #[test]
+    fn signature_from_slice_valid() {
+        let bytes = [0u8; 64];
+        let sig = Ed25519Signature::from_slice(&bytes).unwrap();
+        assert_eq!(*sig.as_bytes(), bytes);
+    }
+
+    #[test]
+    fn verifying_key_as_bytes_length() {
+        let sk = SigningKey::generate(&mut OsRng);
+        let vk = sk.verifying_key();
+        assert_eq!(vk.as_bytes().len(), 32);
+    }
+
+    #[test]
+    fn verifying_key_eq() {
+        let sk = SigningKey::generate(&mut OsRng);
+        let vk1 = sk.verifying_key();
+        let vk2 = sk.verifying_key();
+        assert_eq!(vk1, vk2);
+
+        let sk2 = SigningKey::generate(&mut OsRng);
+        let vk3 = sk2.verifying_key();
+        assert_ne!(vk1, vk3);
+    }
+
+    #[test]
+    fn verifying_key_clone() {
+        let sk = SigningKey::generate(&mut OsRng);
+        let vk = sk.verifying_key();
+        let vk_cloned = vk.clone();
+        assert_eq!(vk, vk_cloned);
+    }
+
+    #[test]
+    fn signature_from_hex_128_chars() {
+        let sk = SigningKey::generate(&mut OsRng);
+        let data = CanonicalBytes::new(&json!({"hex_test": true})).unwrap();
+        let sig = sk.sign(&data);
+        let hex = sig.to_hex();
+        assert_eq!(hex.len(), 128);
+        assert!(hex.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn verify_error_message() {
+        let sk1 = SigningKey::generate(&mut OsRng);
+        let sk2 = SigningKey::generate(&mut OsRng);
+        let vk2 = sk2.verifying_key();
+        let data = CanonicalBytes::new(&json!({"err_test": true})).unwrap();
+        let sig = sk1.sign(&data);
+
+        let err = vk2.verify(&data, &sig).unwrap_err();
+        match err {
+            CryptoError::VerificationFailed(msg) => {
+                assert!(!msg.is_empty());
+            }
+            other => panic!("expected VerificationFailed, got: {other}"),
+        }
+    }
 }

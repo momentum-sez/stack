@@ -353,4 +353,494 @@ mod tests {
         let result = cmd_list(&state_dir);
         assert!(result.is_ok());
     }
+
+    // ── Additional coverage tests ────────────────────────────────────
+
+    #[test]
+    fn corridor_create_duplicate_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+
+        cmd_create(&state_dir, "dup-cor", "PK", "AE").unwrap();
+        let result = cmd_create(&state_dir, "dup-cor", "PK", "AE");
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("already exists"));
+    }
+
+    #[test]
+    fn corridor_create_with_empty_jurisdiction_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+
+        let result = cmd_create(&state_dir, "bad-cor", "", "AE");
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("jurisdiction_a"));
+    }
+
+    #[test]
+    fn corridor_create_with_whitespace_jurisdiction_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+
+        let result = cmd_create(&state_dir, "bad-cor", "   ", "AE");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn corridor_transition_nonexistent_corridor() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+        std::fs::create_dir_all(&state_dir).unwrap();
+
+        let result = cmd_transition(&state_dir, "nonexistent", DynCorridorState::Pending);
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("corridor not found"));
+    }
+
+    #[test]
+    fn corridor_full_lifecycle_draft_to_halted() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+
+        cmd_create(&state_dir, "lifecycle-cor", "PK", "AE").unwrap();
+        cmd_transition(&state_dir, "lifecycle-cor", DynCorridorState::Pending).unwrap();
+        cmd_transition(&state_dir, "lifecycle-cor", DynCorridorState::Active).unwrap();
+        let result = cmd_transition(&state_dir, "lifecycle-cor", DynCorridorState::Halted);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn corridor_full_lifecycle_to_suspended_and_resume() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+
+        cmd_create(&state_dir, "suspend-cor", "PK", "AE").unwrap();
+        cmd_transition(&state_dir, "suspend-cor", DynCorridorState::Pending).unwrap();
+        cmd_transition(&state_dir, "suspend-cor", DynCorridorState::Active).unwrap();
+        cmd_transition(&state_dir, "suspend-cor", DynCorridorState::Suspended).unwrap();
+        // Resume goes back to Active.
+        let result = cmd_transition(&state_dir, "suspend-cor", DynCorridorState::Active);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn corridor_full_lifecycle_to_deprecated() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+
+        cmd_create(&state_dir, "dep-cor", "PK", "AE").unwrap();
+        cmd_transition(&state_dir, "dep-cor", DynCorridorState::Pending).unwrap();
+        cmd_transition(&state_dir, "dep-cor", DynCorridorState::Active).unwrap();
+        cmd_transition(&state_dir, "dep-cor", DynCorridorState::Halted).unwrap();
+        let result = cmd_transition(&state_dir, "dep-cor", DynCorridorState::Deprecated);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn corridor_deprecated_has_no_transitions() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+
+        cmd_create(&state_dir, "term-cor", "PK", "AE").unwrap();
+        cmd_transition(&state_dir, "term-cor", DynCorridorState::Pending).unwrap();
+        cmd_transition(&state_dir, "term-cor", DynCorridorState::Active).unwrap();
+        cmd_transition(&state_dir, "term-cor", DynCorridorState::Halted).unwrap();
+        cmd_transition(&state_dir, "term-cor", DynCorridorState::Deprecated).unwrap();
+
+        // No valid transitions from Deprecated.
+        let result = cmd_transition(&state_dir, "term-cor", DynCorridorState::Active);
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("invalid transition"));
+    }
+
+    #[test]
+    fn corridor_pending_to_halted_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+
+        cmd_create(&state_dir, "bad-cor", "PK", "AE").unwrap();
+        cmd_transition(&state_dir, "bad-cor", DynCorridorState::Pending).unwrap();
+        // Pending → Halted not valid.
+        let result = cmd_transition(&state_dir, "bad-cor", DynCorridorState::Halted);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn corridor_status_nonexistent() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+        std::fs::create_dir_all(&state_dir).unwrap();
+
+        let result = cmd_status(&state_dir, "ghost");
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("corridor not found"));
+    }
+
+    #[test]
+    fn corridor_status_shows_transition_log() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+
+        cmd_create(&state_dir, "log-cor", "PK", "AE").unwrap();
+        cmd_transition(&state_dir, "log-cor", DynCorridorState::Pending).unwrap();
+        cmd_transition(&state_dir, "log-cor", DynCorridorState::Active).unwrap();
+
+        let result = cmd_status(&state_dir, "log-cor");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+
+        // Read the state file to verify the log.
+        let state_file = state_dir.join("log-cor.json");
+        let content = std::fs::read_to_string(&state_file).unwrap();
+        let data: DynCorridorData = serde_json::from_str(&content).unwrap();
+        assert_eq!(data.transition_log.len(), 2);
+        assert_eq!(data.transition_log[0].from_state, "DRAFT");
+        assert_eq!(data.transition_log[0].to_state, "PENDING");
+        assert_eq!(data.transition_log[1].from_state, "PENDING");
+        assert_eq!(data.transition_log[1].to_state, "ACTIVE");
+    }
+
+    #[test]
+    fn corridor_list_with_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+
+        cmd_create(&state_dir, "alpha", "PK", "AE").unwrap();
+        cmd_create(&state_dir, "beta", "US", "UK").unwrap();
+        cmd_create(&state_dir, "gamma", "CN", "JP").unwrap();
+
+        let result = cmd_list(&state_dir);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn corridor_list_ignores_non_json_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+        std::fs::create_dir_all(&state_dir).unwrap();
+
+        // Create non-JSON files.
+        std::fs::write(state_dir.join("readme.txt"), b"not a corridor").unwrap();
+        std::fs::write(state_dir.join("notes.md"), b"# notes").unwrap();
+
+        let result = cmd_list(&state_dir);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn corridor_list_ignores_invalid_json() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+        std::fs::create_dir_all(&state_dir).unwrap();
+
+        // Create a JSON file with invalid corridor data.
+        std::fs::write(state_dir.join("bad.json"), b"not valid json").unwrap();
+
+        // Should not error, just skip the invalid file.
+        let result = cmd_list(&state_dir);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn corridor_create_writes_valid_json() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+
+        cmd_create(&state_dir, "json-test", "PK-RSEZ", "AE-DIFC").unwrap();
+
+        let state_file = state_dir.join("json-test.json");
+        assert!(state_file.exists());
+
+        let content = std::fs::read_to_string(&state_file).unwrap();
+        let data: DynCorridorData = serde_json::from_str(&content).unwrap();
+        assert_eq!(data.state, DynCorridorState::Draft);
+        assert!(data.transition_log.is_empty());
+    }
+
+    #[test]
+    fn run_corridor_create_subcommand() {
+        let dir = tempfile::tempdir().unwrap();
+        let args = CorridorArgs {
+            command: CorridorCommand::Create {
+                id: "run-test".to_string(),
+                jurisdiction_a: "PK".to_string(),
+                jurisdiction_b: "AE".to_string(),
+            },
+        };
+        let result = run_corridor(&args, dir.path());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn run_corridor_submit_subcommand() {
+        let dir = tempfile::tempdir().unwrap();
+        // First create.
+        let create_args = CorridorArgs {
+            command: CorridorCommand::Create {
+                id: "submit-test".to_string(),
+                jurisdiction_a: "PK".to_string(),
+                jurisdiction_b: "AE".to_string(),
+            },
+        };
+        run_corridor(&create_args, dir.path()).unwrap();
+
+        // Then submit.
+        let submit_args = CorridorArgs {
+            command: CorridorCommand::Submit {
+                id: "submit-test".to_string(),
+                agreement: PathBuf::from("agreement.json"),
+                pack_trilogy: PathBuf::from("trilogy.json"),
+            },
+        };
+        let result = run_corridor(&submit_args, dir.path());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn run_corridor_activate_subcommand() {
+        let dir = tempfile::tempdir().unwrap();
+        let create_args = CorridorArgs {
+            command: CorridorCommand::Create {
+                id: "act-test".to_string(),
+                jurisdiction_a: "PK".to_string(),
+                jurisdiction_b: "AE".to_string(),
+            },
+        };
+        run_corridor(&create_args, dir.path()).unwrap();
+
+        let submit_args = CorridorArgs {
+            command: CorridorCommand::Submit {
+                id: "act-test".to_string(),
+                agreement: PathBuf::from("agreement.json"),
+                pack_trilogy: PathBuf::from("trilogy.json"),
+            },
+        };
+        run_corridor(&submit_args, dir.path()).unwrap();
+
+        let activate_args = CorridorArgs {
+            command: CorridorCommand::Activate {
+                id: "act-test".to_string(),
+                approval_a: "digest_a".to_string(),
+                approval_b: "digest_b".to_string(),
+            },
+        };
+        let result = run_corridor(&activate_args, dir.path());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn run_corridor_halt_subcommand() {
+        let dir = tempfile::tempdir().unwrap();
+        // Build to Active.
+        let steps = [
+            CorridorArgs {
+                command: CorridorCommand::Create {
+                    id: "halt-test".to_string(),
+                    jurisdiction_a: "PK".to_string(),
+                    jurisdiction_b: "AE".to_string(),
+                },
+            },
+            CorridorArgs {
+                command: CorridorCommand::Submit {
+                    id: "halt-test".to_string(),
+                    agreement: PathBuf::from("a.json"),
+                    pack_trilogy: PathBuf::from("t.json"),
+                },
+            },
+            CorridorArgs {
+                command: CorridorCommand::Activate {
+                    id: "halt-test".to_string(),
+                    approval_a: "da".to_string(),
+                    approval_b: "db".to_string(),
+                },
+            },
+        ];
+        for step in &steps {
+            run_corridor(step, dir.path()).unwrap();
+        }
+
+        let halt_args = CorridorArgs {
+            command: CorridorCommand::Halt {
+                id: "halt-test".to_string(),
+                reason: "Fork detected".to_string(),
+                authority: "PK".to_string(),
+            },
+        };
+        let result = run_corridor(&halt_args, dir.path());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn run_corridor_suspend_subcommand() {
+        let dir = tempfile::tempdir().unwrap();
+        let steps = [
+            CorridorArgs {
+                command: CorridorCommand::Create {
+                    id: "susp-test".to_string(),
+                    jurisdiction_a: "PK".to_string(),
+                    jurisdiction_b: "AE".to_string(),
+                },
+            },
+            CorridorArgs {
+                command: CorridorCommand::Submit {
+                    id: "susp-test".to_string(),
+                    agreement: PathBuf::from("a.json"),
+                    pack_trilogy: PathBuf::from("t.json"),
+                },
+            },
+            CorridorArgs {
+                command: CorridorCommand::Activate {
+                    id: "susp-test".to_string(),
+                    approval_a: "da".to_string(),
+                    approval_b: "db".to_string(),
+                },
+            },
+        ];
+        for step in &steps {
+            run_corridor(step, dir.path()).unwrap();
+        }
+
+        let suspend_args = CorridorArgs {
+            command: CorridorCommand::Suspend {
+                id: "susp-test".to_string(),
+                reason: "Maintenance".to_string(),
+            },
+        };
+        let result = run_corridor(&suspend_args, dir.path());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn run_corridor_resume_subcommand() {
+        let dir = tempfile::tempdir().unwrap();
+        let steps = [
+            CorridorArgs {
+                command: CorridorCommand::Create {
+                    id: "res-test".to_string(),
+                    jurisdiction_a: "PK".to_string(),
+                    jurisdiction_b: "AE".to_string(),
+                },
+            },
+            CorridorArgs {
+                command: CorridorCommand::Submit {
+                    id: "res-test".to_string(),
+                    agreement: PathBuf::from("a.json"),
+                    pack_trilogy: PathBuf::from("t.json"),
+                },
+            },
+            CorridorArgs {
+                command: CorridorCommand::Activate {
+                    id: "res-test".to_string(),
+                    approval_a: "da".to_string(),
+                    approval_b: "db".to_string(),
+                },
+            },
+            CorridorArgs {
+                command: CorridorCommand::Suspend {
+                    id: "res-test".to_string(),
+                    reason: "Maintenance".to_string(),
+                },
+            },
+        ];
+        for step in &steps {
+            run_corridor(step, dir.path()).unwrap();
+        }
+
+        let resume_args = CorridorArgs {
+            command: CorridorCommand::Resume {
+                id: "res-test".to_string(),
+                resolution: "resolved".to_string(),
+            },
+        };
+        let result = run_corridor(&resume_args, dir.path());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn run_corridor_status_subcommand() {
+        let dir = tempfile::tempdir().unwrap();
+        let create_args = CorridorArgs {
+            command: CorridorCommand::Create {
+                id: "stat-test".to_string(),
+                jurisdiction_a: "PK".to_string(),
+                jurisdiction_b: "AE".to_string(),
+            },
+        };
+        run_corridor(&create_args, dir.path()).unwrap();
+
+        let status_args = CorridorArgs {
+            command: CorridorCommand::Status {
+                id: "stat-test".to_string(),
+            },
+        };
+        let result = run_corridor(&status_args, dir.path());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn run_corridor_list_subcommand() {
+        let dir = tempfile::tempdir().unwrap();
+        let list_args = CorridorArgs {
+            command: CorridorCommand::List,
+        };
+        let result = run_corridor(&list_args, dir.path());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn corridor_transition_updates_timestamp() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+
+        cmd_create(&state_dir, "ts-cor", "PK", "AE").unwrap();
+
+        let state_file = state_dir.join("ts-cor.json");
+        let content1 = std::fs::read_to_string(&state_file).unwrap();
+        let data1: DynCorridorData = serde_json::from_str(&content1).unwrap();
+        let created_at = data1.created_at;
+
+        // Small sleep to ensure timestamp differs.
+        std::thread::sleep(std::time::Duration::from_millis(10));
+
+        cmd_transition(&state_dir, "ts-cor", DynCorridorState::Pending).unwrap();
+
+        let content2 = std::fs::read_to_string(&state_file).unwrap();
+        let data2: DynCorridorData = serde_json::from_str(&content2).unwrap();
+        assert_eq!(data2.state, DynCorridorState::Pending);
+        // created_at should not change.
+        assert_eq!(data2.created_at, created_at);
+        // updated_at should be >= original.
+        assert!(data2.updated_at >= data1.updated_at);
+    }
+
+    #[test]
+    fn corridor_transition_error_message_includes_states() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_dir = dir.path().join("corridors");
+
+        cmd_create(&state_dir, "err-cor", "PK", "AE").unwrap();
+        let result = cmd_transition(&state_dir, "err-cor", DynCorridorState::Halted);
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("DRAFT"));
+        assert!(err_msg.contains("HALTED"));
+        assert!(err_msg.contains("invalid transition"));
+    }
 }

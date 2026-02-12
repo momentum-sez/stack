@@ -20,6 +20,10 @@ pub enum MsezError {
     #[error("state transition error: {0}")]
     StateTransition(#[from] StateTransitionError),
 
+    /// Domain primitive validation failure.
+    #[error("validation error: {0}")]
+    Validation(#[from] ValidationError),
+
     /// Schema validation failure.
     #[error("schema validation error: {0}")]
     SchemaValidation(String),
@@ -50,7 +54,7 @@ pub enum MsezError {
 pub enum CanonicalizationError {
     /// Float values are not permitted in canonical representations.
     /// Amounts must be strings or integers.
-    #[error("float values are not permitted in canonical representations; use string or integer for amount: {0}")]
+    #[error("float values are not permitted in canonical representations; use string or integer for amounts: {0}")]
     FloatRejected(f64),
 
     /// JSON serialization failed during canonicalization.
@@ -90,5 +94,42 @@ pub enum StateTransitionError {
         to: String,
         /// Description of the missing evidence.
         evidence_type: String,
+    },
+}
+
+/// Validation errors for domain primitive newtypes.
+///
+/// Each identifier type enforces format constraints at construction time.
+/// These errors carry the invalid input and the expected format so that
+/// operators can diagnose misconfiguration without guesswork.
+#[derive(Error, Debug)]
+pub enum ValidationError {
+    /// DID does not conform to W3C DID syntax (did:method:identifier).
+    #[error("invalid DID format: \"{0}\" (expected did:<method>:<identifier>)")]
+    InvalidDid(String),
+
+    /// CNIC does not conform to Pakistan NADRA format (13 digits).
+    #[error("invalid CNIC format: \"{0}\" (expected 13 digits, optionally as XXXXX-XXXXXXX-X)")]
+    InvalidCnic(String),
+
+    /// NTN does not conform to Pakistan FBR format (7-digit number).
+    #[error("invalid NTN format: \"{0}\" (expected 7-digit number)")]
+    InvalidNtn(String),
+
+    /// Passport number fails basic format validation.
+    #[error("invalid passport number: \"{0}\" (expected 5-20 alphanumeric characters)")]
+    InvalidPassportNumber(String),
+
+    /// Jurisdiction identifier is empty.
+    #[error("invalid jurisdiction ID: must be non-empty")]
+    InvalidJurisdictionId,
+
+    /// Timestamp string is not valid UTC ISO 8601.
+    #[error("invalid timestamp: \"{value}\" ({reason})")]
+    InvalidTimestamp {
+        /// The string that failed to parse.
+        value: String,
+        /// Why it was rejected.
+        reason: String,
     },
 }

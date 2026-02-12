@@ -1092,6 +1092,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "msez-integration-tests"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "msez-agentic",
+ "msez-core",
+ "msez-corridor",
+ "msez-crypto",
+ "msez-pack",
+ "msez-state",
+ "msez-tensor",
+ "msez-vc",
+ "rand_core 0.6.4",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "msez-pack"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,24 @@
+[package]
+name = "msez-integration-tests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+# This crate has no library — it exists solely to host cross-crate integration tests.
+
+[dev-dependencies]
+msez-core = { path = "../msez-core" }
+msez-crypto = { path = "../msez-crypto" }
+msez-vc = { path = "../msez-vc" }
+msez-state = { path = "../msez-state" }
+msez-tensor = { path = "../msez-tensor" }
+msez-pack = { path = "../msez-pack" }
+msez-corridor = { path = "../msez-corridor" }
+msez-agentic = { path = "../msez-agentic" }
+
+serde_json = { workspace = true }
+chrono = { workspace = true }
+rand_core = { workspace = true }
+sha2 = { workspace = true }

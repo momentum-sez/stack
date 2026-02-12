@@ -14,6 +14,7 @@ members = [
     "crates/msez-schema",
     "crates/msez-api",
     "crates/msez-cli",
+    "crates/msez-integration-tests",
 ]
 
 [workspace.package]

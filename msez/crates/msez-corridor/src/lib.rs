@@ -11,16 +11,23 @@
 //! - **Fork Resolution** ([`fork`]): Fork detection with three-level
 //!   ordering: timestamp (primary), watcher attestation count (secondary),
 //!   and lexicographic digest tiebreaker (tertiary). Includes 5-minute
-//!   maximum clock skew tolerance.
+//!   maximum clock skew tolerance per audit §3.5.
 //!
 //! - **Anchoring** ([`anchor`]): L1 chain anchoring for corridor checkpoints.
 //!   L1 is optional — the system works without blockchain dependencies.
 //!
 //! - **Netting** ([`netting`]): Settlement netting engine for bilateral
-//!   obligation compression.
+//!   and multilateral obligation compression.
 //!
 //! - **SWIFT** ([`swift`]): SWIFT pacs.008 payment instruction adapter
 //!   for traditional settlement rails.
+//!
+//! ## Spec Reference
+//!
+//! Implements protocols from `spec/40-corridors.md`, including:
+//! - Protocol 16.1: Fork resolution with secondary ordering criteria
+//! - Receipt chain MMR commitment per Part IV
+//! - Dijkstra-weighted corridor routing per bridge protocol
 
 pub mod anchor;
 pub mod bridge;
@@ -30,9 +37,46 @@ pub mod receipt;
 pub mod swift;
 
 // Re-export primary types.
-pub use anchor::AnchorCommitment;
-pub use bridge::CorridorBridge;
-pub use fork::ForkResolution;
-pub use netting::NettingEngine;
-pub use receipt::CorridorReceipt;
-pub use swift::SwiftPacs008;
+pub use anchor::{AnchorCommitment, AnchorError, AnchorReceipt, AnchorTarget, MockAnchorTarget};
+pub use bridge::{BridgeEdge, BridgeRoute, CorridorBridge};
+pub use fork::{ForkBranch, ForkDetector, ForkResolution, ResolutionReason, MAX_CLOCK_SKEW};
+pub use netting::{
+    Currency, NetPosition, NettingEngine, NettingError, Obligation, Party, SettlementLeg,
+    SettlementPlan,
+};
+pub use receipt::{Checkpoint, CorridorReceipt, ReceiptChain, ReceiptError};
+pub use swift::{SettlementRail, SwiftPacs008};
+
+use thiserror::Error;
+
+/// Top-level error type for corridor operations.
+#[derive(Error, Debug)]
+pub enum CorridorError {
+    /// Routing failure in the corridor bridge.
+    #[error("routing error: {0}")]
+    Routing(String),
+
+    /// Receipt chain integrity violation.
+    #[error("receipt error: {0}")]
+    Receipt(#[from] ReceiptError),
+
+    /// Fork resolution failure.
+    #[error("fork resolution error: {0}")]
+    Fork(String),
+
+    /// Anchoring failure.
+    #[error("anchor error: {0}")]
+    Anchor(#[from] AnchorError),
+
+    /// Netting computation failure.
+    #[error("netting error: {0}")]
+    Netting(#[from] NettingError),
+
+    /// Canonicalization failure.
+    #[error("canonicalization error: {0}")]
+    Canonicalization(#[from] msez_core::CanonicalizationError),
+
+    /// Crypto operation failure.
+    #[error("crypto error: {0}")]
+    Crypto(#[from] msez_crypto::CryptoError),
+}

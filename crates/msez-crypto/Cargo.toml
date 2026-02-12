@@ -7,6 +7,15 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = []
+# Phase 4: Poseidon2 ZK-friendly hashing. Contains only type signatures
+# and unimplemented!() bodies until a real Poseidon2 backend is integrated.
+poseidon2 = []
+# Phase 4: BBS+ selective disclosure signatures. Contains only type
+# signatures until a real BBS+ backend is integrated.
+bbs-plus = []
+
 [dependencies]
 msez-core = { workspace = true }
 serde = { workspace = true }

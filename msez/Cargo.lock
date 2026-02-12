@@ -1133,8 +1133,12 @@ dependencies = [
  "chrono",
  "msez-core",
  "msez-crypto",
+ "msez-schema",
+ "proptest",
+ "rand_core 0.6.4",
  "serde",
  "serde_json",
+ "thiserror",
 ]
 
 [[package]]

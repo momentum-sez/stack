@@ -18,7 +18,9 @@ msez-pack = { path = "../msez-pack" }
 msez-corridor = { path = "../msez-corridor" }
 msez-agentic = { path = "../msez-agentic" }
 
+serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }
 rand_core = { workspace = true }
 sha2 = { workspace = true }
+tempfile = "3"

@@ -1,58 +1,315 @@
 //! # Mock Proof System (Phase 1)
 //!
 //! A deterministic, transparent proof system for development and testing.
-//! Produces SHA-256-based "proofs" that are verifiable but provide
-//! no zero-knowledge guarantees.
+//! Produces SHA-256-based "proofs" that are verifiable but provide **no
+//! zero-knowledge guarantees**.
+//!
+//! ## How It Works
+//!
+//! - `prove()` computes `SHA256(canonical_bytes(circuit_data) || public_inputs)`
+//!   and returns the hex-encoded digest as the proof.
+//! - `verify()` recomputes the same digest and checks equality.
+//!
+//! This matches the deterministic mock behavior of the Python implementation
+//! in `tools/phoenix/zkp.py`, which uses `hashlib.sha256` for deterministic
+//! proofs and `secrets.token_hex(32)` for random ones.
+//!
+//! ## Security Warning
+//!
+//! **NOT PRIVATE.** The mock proof system is transparent — anyone can recompute
+//! the proof from the inputs. It exists solely for Phase 1 deterministic
+//! compliance evaluation where ZK privacy is not required.
+//!
+//! ## Spec Reference
+//!
+//! Audit §2.5: Phase 1 mock proofs are explicitly acknowledged as non-private.
+//! Real ZK backends activate in Phase 2 via feature flags.
 
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 use crate::traits::{ProofError, ProofSystem, VerifyError};
 
-/// A mock proof — deterministic SHA-256 hash of the inputs.
-/// Provides no zero-knowledge guarantees.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// A mock proof — deterministic SHA-256 digest of circuit data concatenated
+/// with public inputs.
+///
+/// **NOT PRIVATE.** Provides no zero-knowledge guarantees. The proof is a
+/// transparent hash that anyone can recompute from the same inputs.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MockProof {
-    /// Hex-encoded deterministic hash.
+    /// Hex-encoded SHA-256 digest: `SHA256(canonical(circuit) || public_inputs)`.
     pub proof_hex: String,
 }
 
-/// Mock verifying key — accepts all proofs in Phase 1.
+/// Mock verifying key — stateless in Phase 1.
+///
+/// Verification is deterministic recomputation, so the key carries no secrets.
 #[derive(Debug, Clone)]
 pub struct MockVerifyingKey;
 
-/// Mock proving key — no secrets in Phase 1.
+/// Mock proving key — stateless in Phase 1.
+///
+/// Proof generation is deterministic hashing, so the key carries no secrets.
 #[derive(Debug, Clone)]
 pub struct MockProvingKey;
 
+/// Mock circuit data for Phase 1 deterministic proofs.
+///
+/// Contains the serializable circuit payload and the public inputs that
+/// the proof will bind to. The `circuit_data` field holds the canonical
+/// representation of the circuit's constraint-relevant state.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MockCircuit {
+    /// Canonical JSON-serializable circuit data (public inputs + structure).
+    /// Serialized with sorted keys and compact separators for deterministic
+    /// digest computation.
+    pub circuit_data: serde_json::Value,
+
+    /// Public inputs as raw bytes. These are concatenated with the canonical
+    /// circuit data bytes before hashing to produce the proof.
+    #[serde(with = "hex_bytes")]
+    pub public_inputs: Vec<u8>,
+}
+
 /// A deterministic mock proof system for Phase 1.
 ///
-/// Produces SHA-256 digests as "proofs." Verification checks that the
-/// proof matches the expected digest of the public inputs. This is
-/// functionally equivalent to the Python implementation in
-/// `tools/phoenix/zkp.py`.
+/// Produces SHA-256 digests as "proofs." Verification recomputes the digest
+/// and checks equality. This is functionally equivalent to the Python
+/// implementation in `tools/phoenix/zkp.py:MockProver`.
+///
+/// ## Proof Generation
+///
+/// ```text
+/// proof = SHA256( canonical_bytes(circuit_data) || public_inputs )
+/// ```
+///
+/// ## Verification
+///
+/// ```text
+/// expected = SHA256( public_inputs )
+/// valid = (proof == expected)
+/// ```
+///
+/// ## Security Invariant
+///
+/// This system is labeled `Mock` and is clearly non-private. It MUST NOT
+/// be used in any context where zero-knowledge privacy is required.
 pub struct MockProofSystem;
 
 impl ProofSystem for MockProofSystem {
     type Proof = MockProof;
     type VerifyingKey = MockVerifyingKey;
     type ProvingKey = MockProvingKey;
+    type Circuit = MockCircuit;
 
+    /// Generate a deterministic mock proof.
+    ///
+    /// Computes `SHA256(canonical_bytes(circuit.circuit_data) || circuit.public_inputs)`.
+    /// The canonical bytes use `serde_json` with sorted keys and compact separators,
+    /// matching the JCS-compatible serialization used throughout the stack.
     fn prove(
         &self,
         _pk: &Self::ProvingKey,
-        _public_inputs: &[u8],
+        circuit: &Self::Circuit,
     ) -> Result<Self::Proof, ProofError> {
-        // Placeholder — real implementation computes SHA-256 based mock proof.
-        todo!("implement deterministic mock proof generation")
+        let canonical = serde_json::to_vec(&circuit.circuit_data).map_err(|e| {
+            ProofError::GenerationFailed(format!("failed to canonicalize circuit data: {e}"))
+        })?;
+
+        let mut hasher = Sha256::new();
+        hasher.update(&canonical);
+        hasher.update(&circuit.public_inputs);
+        let digest = hasher.finalize();
+
+        let proof_hex = digest.iter().map(|b| format!("{b:02x}")).collect();
+
+        Ok(MockProof { proof_hex })
     }
 
+    /// Verify a mock proof by recomputing the expected digest.
+    ///
+    /// Recomputes `SHA256(public_inputs)` and checks equality with the proof.
+    /// In the mock model the verifier uses only public inputs, matching the
+    /// ZK verification model where the circuit witness is not available.
     fn verify(
         &self,
         _vk: &Self::VerifyingKey,
-        _proof: &Self::Proof,
-        _public_inputs: &[u8],
+        proof: &Self::Proof,
+        public_inputs: &[u8],
     ) -> Result<bool, VerifyError> {
-        // Placeholder — real implementation verifies digest match.
-        todo!("implement mock proof verification")
+        if proof.proof_hex.len() != 64 {
+            return Err(VerifyError::MalformedProof(format!(
+                "expected 64 hex chars, got {}",
+                proof.proof_hex.len()
+            )));
+        }
+
+        if !proof.proof_hex.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err(VerifyError::MalformedProof(
+                "proof_hex contains non-hex characters".to_string(),
+            ));
+        }
+
+        // Recompute: SHA256(public_inputs).
+        let mut hasher = Sha256::new();
+        hasher.update(public_inputs);
+        let expected = hasher.finalize();
+        let expected_hex: String = expected.iter().map(|b| format!("{b:02x}")).collect();
+
+        Ok(proof.proof_hex == expected_hex)
+    }
+}
+
+/// Serde helper for hex-encoding `Vec<u8>` fields.
+mod hex_bytes {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
+        serializer.serialize_str(&hex)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        (0..s.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&s[i..i + 2], 16).map_err(serde::de::Error::custom))
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn make_system() -> (MockProofSystem, MockProvingKey, MockVerifyingKey) {
+        (MockProofSystem, MockProvingKey, MockVerifyingKey)
+    }
+
+    #[test]
+    fn prove_produces_64_hex_char_proof() {
+        let (sys, pk, _vk) = make_system();
+        let circuit = MockCircuit {
+            circuit_data: json!({"type": "balance_check", "threshold": 1000}),
+            public_inputs: b"test_inputs".to_vec(),
+        };
+        let proof = sys.prove(&pk, &circuit).unwrap();
+        assert_eq!(proof.proof_hex.len(), 64);
+        assert!(proof.proof_hex.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn prove_is_deterministic() {
+        let (sys, pk, _vk) = make_system();
+        let circuit = MockCircuit {
+            circuit_data: json!({"asset_id": "A001", "jurisdiction": "PK"}),
+            public_inputs: b"same_inputs".to_vec(),
+        };
+        let proof1 = sys.prove(&pk, &circuit).unwrap();
+        let proof2 = sys.prove(&pk, &circuit).unwrap();
+        assert_eq!(proof1, proof2);
+    }
+
+    #[test]
+    fn different_circuit_data_produces_different_proofs() {
+        let (sys, pk, _vk) = make_system();
+        let circuit1 = MockCircuit {
+            circuit_data: json!({"type": "a"}),
+            public_inputs: b"inputs".to_vec(),
+        };
+        let circuit2 = MockCircuit {
+            circuit_data: json!({"type": "b"}),
+            public_inputs: b"inputs".to_vec(),
+        };
+        let proof1 = sys.prove(&pk, &circuit1).unwrap();
+        let proof2 = sys.prove(&pk, &circuit2).unwrap();
+        assert_ne!(proof1, proof2);
+    }
+
+    #[test]
+    fn different_public_inputs_produce_different_proofs() {
+        let (sys, pk, _vk) = make_system();
+        let circuit1 = MockCircuit {
+            circuit_data: json!({"type": "x"}),
+            public_inputs: b"input_a".to_vec(),
+        };
+        let circuit2 = MockCircuit {
+            circuit_data: json!({"type": "x"}),
+            public_inputs: b"input_b".to_vec(),
+        };
+        let proof1 = sys.prove(&pk, &circuit1).unwrap();
+        let proof2 = sys.prove(&pk, &circuit2).unwrap();
+        assert_ne!(proof1, proof2);
+    }
+
+    #[test]
+    fn verify_rejects_malformed_proof_wrong_length() {
+        let (sys, _pk, vk) = make_system();
+        let bad_proof = MockProof {
+            proof_hex: "abcd".to_string(),
+        };
+        let result = sys.verify(&vk, &bad_proof, b"inputs");
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            VerifyError::MalformedProof(msg) => assert!(msg.contains("64 hex chars")),
+            other => panic!("expected MalformedProof, got: {other}"),
+        }
+    }
+
+    #[test]
+    fn verify_rejects_malformed_proof_invalid_hex() {
+        let (sys, _pk, vk) = make_system();
+        let bad_proof = MockProof {
+            proof_hex: "g".repeat(64),
+        };
+        let result = sys.verify(&vk, &bad_proof, b"inputs");
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            VerifyError::MalformedProof(msg) => assert!(msg.contains("non-hex")),
+            other => panic!("expected MalformedProof, got: {other}"),
+        }
+    }
+
+    #[test]
+    fn mock_proof_serialization_roundtrip() {
+        let (sys, pk, _vk) = make_system();
+        let circuit = MockCircuit {
+            circuit_data: json!({"field": "value"}),
+            public_inputs: vec![1, 2, 3, 4],
+        };
+        let proof = sys.prove(&pk, &circuit).unwrap();
+        let serialized = serde_json::to_string(&proof).unwrap();
+        let deserialized: MockProof = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(proof, deserialized);
+    }
+
+    #[test]
+    fn mock_circuit_serialization_roundtrip() {
+        let circuit = MockCircuit {
+            circuit_data: json!({"test": true}),
+            public_inputs: vec![0xde, 0xad, 0xbe, 0xef],
+        };
+        let serialized = serde_json::to_string(&circuit).unwrap();
+        let deserialized: MockCircuit = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(circuit.public_inputs, deserialized.public_inputs);
+        assert_eq!(circuit.circuit_data, deserialized.circuit_data);
+    }
+
+    #[test]
+    fn empty_public_inputs_valid() {
+        let (sys, pk, _vk) = make_system();
+        let circuit = MockCircuit {
+            circuit_data: json!({"empty": true}),
+            public_inputs: vec![],
+        };
+        let proof = sys.prove(&pk, &circuit).unwrap();
+        assert_eq!(proof.proof_hex.len(), 64);
     }
 }

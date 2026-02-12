@@ -1,0 +1,54 @@
+# MSEZ API Server — Kubernetes Service + Ingress
+#
+# ClusterIP service for internal routing, plus an Ingress resource
+# for external HTTPS access via an ingress controller (nginx, traefik, etc.)
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: msez-api
+  namespace: msez
+  labels:
+    app: msez-api
+    component: api-server
+spec:
+  type: ClusterIP
+  selector:
+    app: msez-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: msez-api
+  namespace: msez
+  labels:
+    app: msez-api
+  annotations:
+    # TLS termination — adjust annotations for your ingress controller
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.msez.local
+      secretName: msez-api-tls
+  rules:
+    - host: api.msez.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: msez-api
+                port:
+                  name: http

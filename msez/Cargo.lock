@@ -1035,15 +1035,21 @@ name = "msez-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap",
  "msez-core",
  "msez-crypto",
  "msez-pack",
  "msez-schema",
  "msez-state",
+ "rand_core 0.6.4",
  "serde",
  "serde_json",
  "serde_yaml",
+ "sha2",
+ "tempfile",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

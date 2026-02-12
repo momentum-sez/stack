@@ -36,7 +36,7 @@ BASE_SCENARIOS: list[tuple[str, str]] = [
     ("fork/watchers_diverge_same_height", "Watcher quorum flags divergent final_state_root at same receipt_count"),
     ("fork/resolution_selects_canonical", "fork-resolution VC selects canonical head and halts other branches"),
     ("fork/resolution_invalid_authority", "Reject fork-resolution VC signed by non-authorized authority registry"),
-    ("fork/auto_halt_on_alarm", "Lifecycle policy transitions OPERATIONAL->HALTED on fork alarm"),
+    ("fork/auto_halt_on_alarm", "Lifecycle policy transitions ACTIVE->HALTED on fork alarm"),
 
     # Checkpoint Operations
     ("checkpoint/build_from_receipts", "Checkpoint from receipts produces deterministic head_commitment"),

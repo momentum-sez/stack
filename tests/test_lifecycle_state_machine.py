@@ -24,7 +24,7 @@ def _sign_vc(vc: dict) -> None:
     add_ed25519_proof(vc, priv, vm)
 
 
-def test_operational_to_halted_requires_fork_alarm(tmp_path: Path):
+def test_active_to_halted_requires_fork_alarm(tmp_path: Path):
     from tools.msez import REPO_ROOT
     from tools.lifecycle import apply_lifecycle_transition, load_state_machine, default_state_machine_path
 
@@ -33,7 +33,7 @@ def test_operational_to_halted_requires_fork_alarm(tmp_path: Path):
     lifecycle = {
         "type": "MSEZCorridorLifecycle",
         "corridor_id": "test.corridor",
-        "state": "OPERATIONAL",
+        "state": "ACTIVE",
         "since": "2025-01-01T00:00:00Z",
     }
 
@@ -45,7 +45,7 @@ def test_operational_to_halted_requires_fork_alarm(tmp_path: Path):
         "credentialSubject": {
             "type": "MSEZCorridorLifecycleTransition",
             "corridor_id": "test.corridor",
-            "from_state": "OPERATIONAL",
+            "from_state": "ACTIVE",
             "to_state": "HALTED",
             "transitioned_at": _now(),
             "reason": "fork alarm",
@@ -90,7 +90,7 @@ def test_operational_to_halted_requires_fork_alarm(tmp_path: Path):
     assert updated["state"] == "HALTED"
 
 
-def test_halted_to_operational_requires_fork_resolution(tmp_path: Path):
+def test_halted_to_active_requires_fork_resolution(tmp_path: Path):
     from tools.msez import REPO_ROOT
     from tools.lifecycle import apply_lifecycle_transition, load_state_machine, default_state_machine_path
 
@@ -112,7 +112,7 @@ def test_halted_to_operational_requires_fork_resolution(tmp_path: Path):
             "type": "MSEZCorridorLifecycleTransition",
             "corridor_id": "test.corridor",
             "from_state": "HALTED",
-            "to_state": "OPERATIONAL",
+            "to_state": "ACTIVE",
             "transitioned_at": _now(),
             "reason": "fork resolved",
         },
@@ -154,4 +154,4 @@ def test_halted_to_operational_requires_fork_resolution(tmp_path: Path):
         repo_root=REPO_ROOT,
     )
     assert not errs
-    assert updated["state"] == "OPERATIONAL"
+    assert updated["state"] == "ACTIVE"

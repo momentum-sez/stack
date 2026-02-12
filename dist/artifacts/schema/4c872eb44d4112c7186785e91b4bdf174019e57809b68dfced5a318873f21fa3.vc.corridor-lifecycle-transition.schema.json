@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.momentum-sez.org/msez/vc.corridor-lifecycle-transition.schema.json",
   "title": "MSEZ Corridor Lifecycle Transition Verifiable Credential",
-  "description": "A signed lifecycle transition for a corridor instance (e.g., PROPOSED \u2192 OPERATIONAL \u2192 HALTED \u2192 DEPRECATED).",
+  "description": "A signed lifecycle transition for a corridor instance (e.g., DRAFT \u2192 PENDING \u2192 ACTIVE \u2192 HALTED \u2192 DEPRECATED). See also SUSPENDED state for non-emergency pauses.",
   "allOf": [
     {
       "$ref": "https://schemas.momentum-sez.org/msez/vc.schema.json"

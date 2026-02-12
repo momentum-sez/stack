@@ -142,20 +142,43 @@ zone = compose_zone(
 
 ### Prerequisites
 
-Python 3.10+. No external dependencies.
+- **Rust 1.75+** (for the native crate workspace)
+- **Python 3.10+** (for the CLI toolchain and PHOENIX layer)
 
-### Installation
+### Rust Workspace
 
 ```bash
-git clone https://github.com/momentum-inc/msez-stack.git
-cd msez-stack
+git clone https://github.com/momentum-sez/stack.git
+cd stack
 
+# Build all crates
+cd msez
+cargo build --workspace
+
+# Run the full test suite
+cargo test --workspace
+
+# Lint
+cargo clippy --workspace -- -D warnings
+
+# Run the Axum API server (development mode)
+cargo run -p msez-api
+# → listening on 0.0.0.0:3000
+
+# Use the Rust CLI
+cargo run -p msez-cli -- validate --all-modules
+cargo run -p msez-cli -- lock jurisdictions/_starter/zone.yaml --check
+```
+
+### Python Toolchain
+
+```bash
 # Verify installation
 PYTHONPATH=. python -c "from tools.phoenix import __version__; print(f'PHOENIX {__version__}')"
 # → PHOENIX 0.4.44
 
 # Run tests
-pip install pytest
+pip install -r tools/requirements.txt
 PYTHONPATH=. pytest tests/ -v
 # → 294 passed
 ```
@@ -606,10 +629,111 @@ if not valid:
 
 ---
 
+## Rust Crate Architecture
+
+The native Rust workspace (`msez/`) contains 14 crates that implement the core protocol with compile-time safety guarantees: typestate-encoded state machines, sealed trait patterns for proof systems, and a single `CanonicalBytes` path for all digest computation.
+
+```
+msez-core (foundation)
+  |
+  +-- msez-crypto -----> msez-vc -----> msez-schema
+  |                  |
+  |                  +-> msez-zkp
+  |                  |
+  |                  +-> msez-tensor
+  |
+  +-- msez-state -----> msez-corridor
+  |                  |
+  |                  +-> msez-arbitration
+  |
+  +-- msez-pack         msez-agentic
+  |
+  +-- msez-api (Axum HTTP server: 5 primitives + corridors + assets + regulator)
+  |
+  +-- msez-cli (replaces tools/msez.py monolith)
+  |
+  +-- msez-integration-tests (8 cross-crate E2E test suites)
+```
+
+### Crate Summary
+
+| Crate | Purpose | Spec Chapters |
+|---|---|---|
+| `msez-core` | Canonical serialization (JCS), 20 compliance domains, identity newtypes | 00, 02 |
+| `msez-crypto` | Ed25519, MMR, CAS, SHA-256 | 80, 90, 97 |
+| `msez-vc` | W3C Verifiable Credentials with Ed25519 proofs | 12 |
+| `msez-state` | Typestate machines: Corridor (6), Entity (10-stage), Migration (9), License (5), Watcher (4) | 40, 60, 98 |
+| `msez-tensor` | Compliance tensor (20 domains), Dijkstra manifold optimization | 14 |
+| `msez-zkp` | Sealed proof system trait, 12 circuit types (Phase 1: mock) | 80 |
+| `msez-pack` | Pack trilogy: Lawpack, Regpack, Licensepack | 96, 98 |
+| `msez-corridor` | Corridor bridge, receipt chain, fork resolution, netting, SWIFT adapter | 40 |
+| `msez-agentic` | Policy engine: 20 triggers, deterministic evaluation, action scheduling | 17 |
+| `msez-arbitration` | Dispute lifecycle (7 phases), evidence, escrow, enforcement | 21 |
+| `msez-schema` | JSON Schema validation (Draft 2020-12), security policy checks | 07, 20 |
+| `msez-api` | Axum HTTP server: Entities, Ownership, Fiscal, Identity, Consent APIs | 12, 40, 71 |
+| `msez-cli` | Rust CLI with backward-compatible subcommands | 03 |
+
+### API Server
+
+The `msez-api` crate exposes the five programmable primitives as HTTP endpoints:
+
+| Prefix | Primitive | Description |
+|---|---|---|
+| `/v1/entities/*` | ENTITIES | Organization lifecycle, beneficial ownership |
+| `/v1/ownership/*` | OWNERSHIP | Cap table, transfers, share classes |
+| `/v1/fiscal/*` | FISCAL | Treasury, payments, withholding, tax reporting |
+| `/v1/identity/*` | IDENTITY | KYC/KYB, identity linking, attestations |
+| `/v1/consent/*` | CONSENT | Multi-party consent, signing, audit trail |
+| `/v1/corridors/*` | Corridors | State channel, receipts, fork resolution |
+| `/v1/assets/*` | Smart Assets | Registry, compliance eval, anchor verify |
+| `/v1/regulator/*` | Regulator | Query access, compliance reports |
+
+OpenAPI spec auto-generated at `/openapi.json`.
+
+### Development Guide
+
+**Adding a new compliance domain:**
+
+1. Add the variant to `ComplianceDomain` in `msez/crates/msez-core/src/domain.rs`
+2. The Rust compiler will flag every exhaustive `match` that needs updating
+3. Add evaluation logic in `msez-tensor/src/evaluation.rs`
+4. Add tests in `msez-integration-tests`
+
+**Adding a new corridor:**
+
+1. Create corridor module under `modules/corridors/`
+2. Define state machine transitions in `governance/corridor.lifecycle.state-machine.v2.json` format
+3. Typestate transitions are enforced at compile time via `msez-state::corridor`
+4. Add integration test in `msez-integration-tests/tests/test_corridor_lifecycle_e2e.rs`
+
+For the full architectural decision record, see [docs/fortification/sez_stack_audit_v2.md](./docs/fortification/sez_stack_audit_v2.md).
+
+For the spec-to-crate traceability matrix, see [docs/traceability-matrix.md](./docs/traceability-matrix.md).
+
+---
+
 ## Repository Structure
 
 ```
 msez-stack/
+├── msez/                         # Rust workspace (14 crates)
+│   ├── Cargo.toml                # Workspace root
+│   └── crates/
+│       ├── msez-core/            # Foundation: canonicalization, types
+│       ├── msez-crypto/          # Ed25519, MMR, CAS
+│       ├── msez-vc/              # Verifiable Credentials
+│       ├── msez-state/           # Typestate machines
+│       ├── msez-tensor/          # Compliance tensor
+│       ├── msez-zkp/             # ZK proof system
+│       ├── msez-pack/            # Lawpack/Regpack/Licensepack
+│       ├── msez-corridor/        # Cross-border operations
+│       ├── msez-agentic/         # Policy engine
+│       ├── msez-arbitration/     # Dispute resolution
+│       ├── msez-schema/          # Schema validation
+│       ├── msez-api/             # Axum HTTP server
+│       ├── msez-cli/             # Rust CLI
+│       └── msez-integration-tests/
+│
 ├── tools/
 │   ├── msez/                  # Zone composition engine
 │   │   ├── composition.py     # Multi-jurisdiction composer

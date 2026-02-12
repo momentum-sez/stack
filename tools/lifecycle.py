@@ -34,6 +34,9 @@ FINALITY_ORDER = {
 
 
 def default_state_machine_path(repo_root: pathlib.Path = REPO_ROOT) -> pathlib.Path:
+    v2 = repo_root / "governance" / "corridor.lifecycle.state-machine.v2.json"
+    if v2.exists():
+        return v2
     return repo_root / "governance" / "corridor.lifecycle.state-machine.v1.json"
 
 

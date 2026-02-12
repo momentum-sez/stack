@@ -1,0 +1,80 @@
+{
+  "type": "MSEZCorridorStateMachine",
+  "version": "v2",
+  "supersedes": "v1",
+  "states": ["DRAFT", "PENDING", "ACTIVE", "HALTED", "SUSPENDED", "DEPRECATED"],
+  "initial_state": "DRAFT",
+  "terminal_states": ["DEPRECATED"],
+  "allowed_transitions": [
+    {
+      "from": "DRAFT",
+      "to": "PENDING",
+      "kind": "submit",
+      "description": "Corridor definition submitted for review. Requires corridor definition VC and agreement VCs from all participants.",
+      "requires_evidence_vc_types": ["MSEZCorridorDefinitionCredential"]
+    },
+    {
+      "from": "PENDING",
+      "to": "ACTIVE",
+      "kind": "activate",
+      "description": "Corridor activated after all activation thresholds are met (agreement VCs satisfy quorum). State channel begins accepting receipts.",
+      "requires_evidence_vc_types": ["MSEZCorridorAgreementCredential"],
+      "requires_finality_level": "receipt_signed"
+    },
+    {
+      "from": "ACTIVE",
+      "to": "HALTED",
+      "kind": "halt",
+      "description": "Emergency halt triggered by fork detection, safety incident, or regulatory order. All receipt production must stop immediately.",
+      "requires_evidence_vc_types": ["MSEZCorridorForkAlarmCredential"]
+    },
+    {
+      "from": "ACTIVE",
+      "to": "SUSPENDED",
+      "kind": "suspend",
+      "description": "Temporary suspension for non-emergency reasons (e.g., scheduled maintenance, regulatory review, key rotation). Receipt production paused but corridor state preserved.",
+      "authorization": "zone_authority"
+    },
+    {
+      "from": "HALTED",
+      "to": "ACTIVE",
+      "kind": "resume_from_halt",
+      "description": "Resume operations after a fork is resolved and/or incident is mitigated. Requires fork resolution evidence.",
+      "requires_evidence_vc_types": ["MSEZCorridorForkResolutionCredential"]
+    },
+    {
+      "from": "SUSPENDED",
+      "to": "ACTIVE",
+      "kind": "resume_from_suspension",
+      "description": "Resume operations after suspension reason is resolved (e.g., maintenance complete, regulatory review passed, keys rotated).",
+      "authorization": "zone_authority"
+    },
+    {
+      "from": "ACTIVE",
+      "to": "DEPRECATED",
+      "kind": "deprecate",
+      "description": "Corridor deprecation / sunset. Receipts stop and participants should begin migration to successor corridor.",
+      "authorization": "zone_authority"
+    },
+    {
+      "from": "HALTED",
+      "to": "DEPRECATED",
+      "kind": "deprecate_from_halt",
+      "description": "Deprecate a halted corridor after incident resolution / migration decision. Terminal state.",
+      "authorization": "zone_authority"
+    },
+    {
+      "from": "SUSPENDED",
+      "to": "DEPRECATED",
+      "kind": "deprecate_from_suspension",
+      "description": "Deprecate a suspended corridor. Terminal state.",
+      "authorization": "zone_authority"
+    }
+  ],
+  "notes": "v2 state machine aligned with spec/40-corridors.md. Supersedes v1 which used incorrect state names (PROPOSED, OPERATIONAL). See docs/fortification/sez_stack_audit_v2.md finding 2.3.",
+  "meta": {
+    "spec_reference": "spec/40-corridors.md",
+    "audit_reference": "docs/fortification/sez_stack_audit_v2.md#2.3",
+    "rust_implementation": "msez-state::corridor (typestate pattern)"
+  }
+}

@@ -1,7 +1,7 @@
 //! # msez-tensor — Compliance Tensor & Manifold
 //!
 //! The Compliance Tensor is a multi-dimensional evaluation of an entity's
-//! compliance status across all [`ComplianceDomain`](msez_core::ComplianceDomain)
+//! compliance status across all 20 [`ComplianceDomain`](msez_core::ComplianceDomain)
 //! variants for a given jurisdiction. The Compliance Manifold provides
 //! path optimization over the tensor space.
 //!
@@ -14,7 +14,7 @@
 //! ```
 //!
 //! where `ComplianceDomain` has 20 variants (defined in `msez-core`) and
-//! `ComplianceState` encodes {Compliant, NonCompliant, Pending, NotApplicable}.
+//! `ComplianceState` encodes {Compliant, NonCompliant, Pending, Exempt, NotApplicable}.
 //!
 //! The manifold M is the space of all valid compliance tensor configurations
 //! across a corridor, with edges weighted by transition cost (fee, time, risk).
@@ -33,7 +33,14 @@ pub mod manifold;
 pub mod tensor;
 
 // Re-export primary types.
-pub use commitment::TensorCommitment;
-pub use evaluation::ComplianceState;
-pub use manifold::ComplianceManifold;
-pub use tensor::ComplianceTensor;
+pub use commitment::{commitment_digest, merkle_root, TensorCommitment};
+pub use evaluation::{
+    evaluate_domain_default, AttestationRef, ComplianceState, DomainEvaluator, EvaluationContext,
+};
+pub use manifold::{
+    ComplianceDistance, ComplianceManifold, CorridorEdge, JurisdictionNode, MigrationHop,
+    MigrationPath, PathConstraint,
+};
+pub use tensor::{
+    ComplianceTensor, DefaultJurisdiction, JurisdictionConfig, TensorCell, TensorSlice,
+};

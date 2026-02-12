@@ -1125,10 +1125,15 @@ dependencies = [
 name = "msez-tensor"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "msez-core",
  "msez-crypto",
+ "proptest",
  "serde",
  "serde_json",
+ "sha2",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]

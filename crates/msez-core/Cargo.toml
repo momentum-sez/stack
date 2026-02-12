@@ -1,0 +1,15 @@
+[package]
+name = "msez-core"
+description = "Foundational types for the Momentum SEZ Stack: canonical serialization, content digests, compliance domains, jurisdiction primitives, and domain-specific newtypes."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }

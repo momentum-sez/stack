@@ -1,0 +1,87 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/msez-core",
+    "crates/msez-crypto",
+    "crates/msez-vc",
+    "crates/msez-state",
+    "crates/msez-tensor",
+    "crates/msez-zkp",
+    "crates/msez-pack",
+    "crates/msez-corridor",
+    "crates/msez-agentic",
+    "crates/msez-arbitration",
+    "crates/msez-schema",
+    "crates/msez-api",
+    "crates/msez-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/momentum-sez/stack"
+
+[workspace.dependencies]
+# Internal crates
+msez-core = { path = "crates/msez-core" }
+msez-crypto = { path = "crates/msez-crypto" }
+msez-vc = { path = "crates/msez-vc" }
+msez-state = { path = "crates/msez-state" }
+msez-tensor = { path = "crates/msez-tensor" }
+msez-zkp = { path = "crates/msez-zkp" }
+msez-pack = { path = "crates/msez-pack" }
+msez-corridor = { path = "crates/msez-corridor" }
+msez-agentic = { path = "crates/msez-agentic" }
+msez-arbitration = { path = "crates/msez-arbitration" }
+msez-schema = { path = "crates/msez-schema" }
+msez-api = { path = "crates/msez-api" }
+msez-cli = { path = "crates/msez-cli" }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+
+# Cryptography
+sha2 = "0.10"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+rand = "0.8"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Identifiers
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Schema validation
+jsonschema = "0.28"
+
+# Web framework (Axum stack)
+axum = "0.8"
+axum-extra = { version = "0.10", features = ["typed-header"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "cors"] }
+tokio = { version = "1", features = ["full"] }
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "chrono", "uuid"] }
+
+# OpenAPI generation
+utoipa = { version = "5", features = ["axum_extras", "chrono", "uuid"] }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+
+# Metrics
+metrics = "0.24"
+metrics-exporter-prometheus = "0.16"

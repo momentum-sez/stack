@@ -1,0 +1,23 @@
+[package]
+name = "msez-zkp"
+description = "Zero-knowledge proof system for the SEZ Stack: trait-based proof abstraction, Phase 1 mock implementation, and Phase 2 feature-gated real ZK backends (Groth16, PLONK, STARK)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[features]
+default = ["mock"]
+mock = []
+# Phase 2 feature flags for real ZK backends:
+# groth16 = ["dep:ark-groth16"]
+# plonk = ["dep:halo2_proofs"]
+# stark = ["dep:plonky2"]
+# poseidon2 = ["dep:poseidon2-rs"]
+
+[dependencies]
+msez-core = { workspace = true }
+msez-crypto = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }

@@ -11,3 +11,6 @@ msez-core = { workspace = true }
 serde = { workspace = true }
 chrono = { workspace = true }
 thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

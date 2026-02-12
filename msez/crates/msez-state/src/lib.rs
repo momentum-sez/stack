@@ -37,9 +37,10 @@ pub mod watcher;
 
 // Re-export primary types.
 pub use corridor::{
-    Active, Corridor, CorridorState, Deprecated, Draft, Halted, Pending, Suspended,
+    Active, Corridor, CorridorState, Deprecated, DynCorridorData, DynCorridorState, Draft, Halted,
+    Pending, Suspended, TransitionRecord,
 };
-pub use entity::{Entity, EntityLifecycleState};
+pub use entity::{DissolutionStage, Entity, EntityLifecycleState};
 pub use license::{License, LicenseState};
-pub use migration::{MigrationSaga, MigrationState};
-pub use watcher::{Watcher, WatcherState};
+pub use migration::{MigrationBuilder, MigrationSaga, MigrationState, NoDeadline};
+pub use watcher::{SlashingCondition, Watcher, WatcherState};

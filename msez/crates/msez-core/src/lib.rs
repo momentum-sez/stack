@@ -2,7 +2,7 @@
 //!
 //! This crate defines the foundational types that every other crate in the
 //! workspace depends on. It has no internal crate dependencies — only `serde`,
-//! `thiserror`, `chrono`, and `uuid` from the external ecosystem.
+//! `serde_json`, `thiserror`, `chrono`, `uuid`, and `sha2` from the external ecosystem.
 //!
 //! ## Design Principles
 //!
@@ -30,9 +30,9 @@ pub mod temporal;
 
 // Re-export primary types at crate root for ergonomic imports.
 pub use canonical::CanonicalBytes;
-pub use digest::{ContentDigest, DigestAlgorithm};
+pub use digest::{sha256_digest, ContentDigest, DigestAlgorithm};
 pub use domain::ComplianceDomain;
-pub use error::MsezError;
-pub use identity::{Cnic, EntityId, MigrationId, Ntn, WatcherId};
+pub use error::{CanonicalizationError, MsezError, ValidationError};
+pub use identity::{Cnic, Did, EntityId, MigrationId, Ntn, PassportNumber, WatcherId};
 pub use jurisdiction::{CorridorId, JurisdictionId};
 pub use temporal::Timestamp;

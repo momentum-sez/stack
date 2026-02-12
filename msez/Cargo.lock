@@ -1086,10 +1086,15 @@ dependencies = [
 name = "msez-pack"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "msez-core",
  "serde",
  "serde_json",
  "serde_yaml",
+ "sha2",
+ "tempfile",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]

@@ -19,13 +19,26 @@
 //! via [`CanonicalBytes`](msez_core::CanonicalBytes). The parser validates
 //! YAML structure against the pack schema and produces strongly-typed
 //! Rust structs.
+//!
+//! ## Architecture
+//!
+//! - **`error`**: Pack-specific error types with structured context.
+//! - **`parser`**: Shared YAML/JSON parsing with JSON-compatibility enforcement.
+//! - **`lawpack`**: Lawpack descriptors, locks, and digest computation.
+//! - **`regpack`**: Regpack descriptors, sanctions checking, domain validation.
+//! - **`licensepack`**: Licensepack descriptors, license lifecycle, compliance evaluation.
+//! - **`validation`**: Pack validation rules, zone validation, cross-reference integrity.
 
+pub mod error;
 pub mod lawpack;
 pub mod licensepack;
+pub mod parser;
 pub mod regpack;
 pub mod validation;
 
 // Re-export primary types.
+pub use error::{PackError, PackResult};
 pub use lawpack::Lawpack;
 pub use licensepack::Licensepack;
 pub use regpack::Regpack;
+pub use validation::PackValidationResult;

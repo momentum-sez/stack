@@ -10,18 +10,20 @@
 //! - **Corridor** (`corridor.rs`): `Draft → Pending → Active` with `Halted`,
 //!   `Suspended`, and `Deprecated` branches. Implements spec §40.
 //!
-//! - **Migration** (`migration.rs`): 8-phase migration saga with 3 terminal
-//!   states (COMPLETED, COMPENSATED, FAILED). Includes compile-time deadline
-//!   enforcement. Implements spec §42.
+//! - **Migration** (`migration.rs`): 7-phase migration saga with 2 terminal
+//!   states (Completed, Failed). Includes compile-time deadline enforcement
+//!   via `MigrationBuilder<NoDeadline>` / `MigrationBuilder<HasDeadline>`.
+//!   Implements spec §42.
 //!
 //! - **Entity** (`entity.rs`): Entity lifecycle with 10-stage dissolution
 //!   process. Implements spec §5.
 //!
-//! - **License** (`license.rs`): License lifecycle (APPLIED → ISSUED → ACTIVE →
-//!   SUSPENDED → REVOKED/EXPIRED). Implements spec §15.
+//! - **License** (`license.rs`): License lifecycle
+//!   (Application → Review → Issued → Active → Suspended → Revoked/Expired/Rejected).
+//!   Implements spec §15.
 //!
 //! - **Watcher** (`watcher.rs`): Watcher bonding and slashing state machine
-//!   with 4 slashing conditions. Implements spec §17.
+//!   with 6 slashing conditions and collateral tracking. Implements spec §17.
 //!
 //! ## Design
 //!
@@ -37,11 +39,41 @@ pub mod license;
 pub mod migration;
 pub mod watcher;
 
-// Re-export corridor state types for ergonomic imports.
+// ─── Corridor re-exports ────────────────────────────────────────────
+
 pub use corridor::{
-    Active, Corridor, CorridorState, Deprecated, Draft, Halted, Pending, Suspended,
+    Active, Corridor, CorridorError, CorridorState, Deprecated, Draft, DynCorridor,
+    DynCorridorState, Halted, Pending, Suspended, TransitionRecord,
 };
-pub use entity::{Entity, EntityLifecycleState};
-pub use license::{License, LicenseState};
-pub use migration::{MigrationSaga, MigrationPhase, MigrationTimeoutError};
-pub use watcher::{Watcher, WatcherState};
+
+// ─── Corridor evidence re-exports ───────────────────────────────────
+
+pub use corridor::{
+    ActivationEvidence, DeprecationEvidence, HaltReason, ResumeEvidence, SubmissionEvidence,
+    SuspendReason,
+};
+
+// ─── Migration re-exports ───────────────────────────────────────────
+
+pub use migration::{
+    CompensationAction, CompensationRecord, HasDeadline, MigrationBuilder, MigrationError,
+    MigrationPhase, MigrationSaga, MigrationTimeoutError, MigrationTransition, NoDeadline,
+};
+
+// ─── Entity re-exports ──────────────────────────────────────────────
+
+pub use entity::{
+    DissolutionStage, Entity, EntityError, EntityLifecycleState, EntityTransitionEvidence,
+    EntityTransitionRecord,
+};
+
+// ─── License re-exports ─────────────────────────────────────────────
+
+pub use license::{License, LicenseError, LicenseState, LicenseTransitionEvidence, LicenseTransitionRecord};
+
+// ─── Watcher re-exports ─────────────────────────────────────────────
+
+pub use watcher::{
+    BondStatus, SlashingCondition, SlashingEvidence, SlashingRecord, WatcherBond, WatcherError,
+    WatcherTransitionRecord,
+};

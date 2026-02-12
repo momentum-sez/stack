@@ -9,7 +9,7 @@
 //! - `msez lock` — Lockfile generation and deterministic verification.
 //! - `msez corridor` — Corridor lifecycle management.
 //! - `msez artifact` — Content-addressed storage operations.
-//! - `msez signing` — Ed25519 key generation and VC signing.
+//! - `msez vc` — Ed25519 key generation and VC signing.
 //!
 //! ## Backward Compatibility
 //!
@@ -29,3 +29,25 @@ pub mod corridor;
 pub mod lock;
 pub mod signing;
 pub mod validate;
+
+use std::path::{Path, PathBuf};
+
+/// Stack specification version constant, matching the Python implementation.
+pub const STACK_SPEC_VERSION: &str = "0.4.44";
+
+/// Resolve a path that may be relative to the repository root.
+///
+/// If the path is absolute, returns it as-is. If relative and the file
+/// exists relative to `repo_root`, uses that. Otherwise returns the path
+/// relative to the current directory.
+pub fn resolve_path(path: &Path, repo_root: &Path) -> PathBuf {
+    if path.is_absolute() {
+        return path.to_path_buf();
+    }
+    let repo_relative = repo_root.join(path);
+    if repo_relative.exists() {
+        repo_relative
+    } else {
+        path.to_path_buf()
+    }
+}

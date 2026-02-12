@@ -779,4 +779,216 @@ mod tests {
         let result = validator.validate_value_by_filename(&valid_module, "module.schema.json");
         assert!(result.is_ok(), "Should validate by filename: {result:?}");
     }
+
+    // ── Additional coverage tests ────────────────────────────────────
+
+    #[test]
+    fn test_schema_not_found_by_filename() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        let result = validator.validate_value_by_filename(&json!({}), "nonexistent.schema.json");
+        assert!(matches!(
+            result,
+            Err(SchemaValidationError::SchemaNotFound(_))
+        ));
+    }
+
+    #[test]
+    fn test_schema_validator_from_nonexistent_dir() {
+        let validator = SchemaValidator::new("/tmp/definitely-not-a-real-dir-msez-test-12345");
+        assert!(validator.is_ok());
+        let v = validator.unwrap();
+        assert_eq!(v.schema_count(), 0);
+    }
+
+    #[test]
+    fn test_schema_validator_debug_impl() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        let debug_str = format!("{validator:?}");
+        assert!(debug_str.contains("SchemaValidator"));
+        assert!(debug_str.contains("schema_count"));
+    }
+
+    #[test]
+    fn test_schema_validator_schema_dir() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        assert!(validator.schema_dir().ends_with("schemas"));
+    }
+
+    #[test]
+    fn test_schema_validator_schema_ids_non_empty() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        let ids = validator.schema_ids();
+        assert!(!ids.is_empty());
+        for id in &ids {
+            assert!(
+                id.starts_with("https://") || id.contains("schema"),
+                "Unexpected schema ID format: {id}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_get_schema_returns_none_for_unknown() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        assert!(validator.get_schema("https://unknown.example/schema.json").is_none());
+    }
+
+    #[test]
+    fn test_get_schema_by_filename_returns_none_for_unknown() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        assert!(validator.get_schema_by_filename("no-such-file.schema.json").is_none());
+    }
+
+    #[test]
+    fn test_get_schema_returns_some_for_known() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        let schema_id = format!("{SCHEMA_URI_PREFIX}module.schema.json");
+        let schema = validator.get_schema(&schema_id);
+        assert!(schema.is_some(), "module.schema.json should be found");
+    }
+
+    #[test]
+    fn test_get_schema_by_filename_returns_some_for_known() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        let schema = validator.get_schema_by_filename("module.schema.json");
+        assert!(schema.is_some(), "module.schema.json should be found by filename");
+    }
+
+    #[test]
+    fn test_validate_module_nonexistent_path() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        let result = validator.validate_module(Path::new("/tmp/no-such-module-dir-msez-12345"));
+        assert!(matches!(
+            result,
+            Err(SchemaValidationError::DocumentLoadError { .. })
+        ));
+    }
+
+    #[test]
+    fn test_validate_zone_nonexistent_path() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        let result = validator.validate_zone(Path::new("/tmp/no-such-zone-msez-12345.yaml"));
+        assert!(matches!(
+            result,
+            Err(SchemaValidationError::DocumentLoadError { .. })
+        ));
+    }
+
+    #[test]
+    fn test_validate_profile_nonexistent_path() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+        let result = validator.validate_profile(Path::new("/tmp/no-such-profile-msez-12345.yaml"));
+        assert!(matches!(
+            result,
+            Err(SchemaValidationError::DocumentLoadError { .. })
+        ));
+    }
+
+    #[test]
+    fn test_find_all_modules_nonexistent_dir() {
+        let modules = SchemaValidator::find_all_modules(Path::new("/tmp/no-such-modules-dir-12345"));
+        assert!(modules.is_empty());
+    }
+
+    #[test]
+    fn test_validation_error_display() {
+        let detail = SchemaValidationDetail {
+            schema_path: "https://schemas.momentum-sez.org/msez/module.schema.json".to_string(),
+            instance_path: "/version".to_string(),
+            message: "pattern mismatch".to_string(),
+        };
+        let display = format!("{detail}");
+        assert!(display.contains("module.schema.json"));
+        assert!(display.contains("/version"));
+        assert!(display.contains("pattern mismatch"));
+    }
+
+    #[test]
+    fn test_schema_validation_error_display_schema_load() {
+        let err = SchemaValidationError::SchemaLoadError {
+            path: "/schemas/broken.json".to_string(),
+            reason: "invalid JSON".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("broken.json"));
+        assert!(msg.contains("invalid JSON"));
+    }
+
+    #[test]
+    fn test_schema_validation_error_display_document_load() {
+        let err = SchemaValidationError::DocumentLoadError {
+            path: "/modules/test/module.yaml".to_string(),
+            reason: "file does not exist".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("module.yaml"));
+        assert!(msg.contains("file does not exist"));
+    }
+
+    #[test]
+    fn test_schema_validation_error_display_compile() {
+        let err = SchemaValidationError::SchemaCompileError {
+            schema_id: "test-schema".to_string(),
+            reason: "invalid schema".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("test-schema"));
+        assert!(msg.contains("invalid schema"));
+    }
+
+    #[test]
+    fn test_schema_validation_error_display_not_found() {
+        let err = SchemaValidationError::SchemaNotFound("unknown-schema".to_string());
+        let msg = format!("{err}");
+        assert!(msg.contains("unknown-schema"));
+    }
+
+    #[test]
+    fn test_schema_validation_error_display_validation_failed() {
+        let err = SchemaValidationError::ValidationFailed {
+            schema_id: "module.schema.json".to_string(),
+            count: 3,
+            details: vec![],
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("3 validation error(s)"));
+        assert!(msg.contains("module.schema.json"));
+    }
+
+    #[test]
+    fn test_validate_multiple_errors_in_document() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+
+        // Totally empty object should fail multiple required fields
+        let empty = json!({});
+        let schema_id = format!("{SCHEMA_URI_PREFIX}module.schema.json");
+        let result = validator.validate_value(&empty, &schema_id);
+        assert!(result.is_err());
+        if let Err(SchemaValidationError::ValidationFailed { count, details, .. }) = result {
+            assert!(count >= 1, "Should have at least one error for empty object");
+            assert!(!details.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_validate_wrong_type() {
+        let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
+
+        // A number instead of an object should fail validation
+        let wrong_type = json!(42);
+        let schema_id = format!("{SCHEMA_URI_PREFIX}module.schema.json");
+        let result = validator.validate_value(&wrong_type, &schema_id);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validation_type_alias() {
+        // Verify that ValidationError is a type alias for SchemaValidationDetail
+        let detail: ValidationError = SchemaValidationDetail {
+            schema_path: "test".to_string(),
+            instance_path: "/test".to_string(),
+            message: "test error".to_string(),
+        };
+        assert_eq!(detail.schema_path, "test");
+    }
 }

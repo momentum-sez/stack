@@ -221,3 +221,332 @@ async fn get_audit_trail(
         .map(|c| Json(c.audit_trail))
         .ok_or_else(|| AppError::NotFound(format!("consent {id} not found")))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::extractors::Validate;
+
+    // ── CreateConsentRequest validation ───────────────────────────
+
+    #[test]
+    fn test_create_consent_request_valid() {
+        let req = CreateConsentRequest {
+            consent_type: "board_resolution".to_string(),
+            description: "Approve annual budget".to_string(),
+            parties: vec![ConsentPartyInput {
+                entity_id: Uuid::new_v4(),
+                role: "director".to_string(),
+            }],
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_create_consent_request_empty_consent_type() {
+        let req = CreateConsentRequest {
+            consent_type: "".to_string(),
+            description: "Approve annual budget".to_string(),
+            parties: vec![ConsentPartyInput {
+                entity_id: Uuid::new_v4(),
+                role: "director".to_string(),
+            }],
+        };
+        let err = req.validate().unwrap_err();
+        assert!(err.contains("consent_type"), "error should mention consent_type: {err}");
+    }
+
+    #[test]
+    fn test_create_consent_request_whitespace_consent_type() {
+        let req = CreateConsentRequest {
+            consent_type: "   ".to_string(),
+            description: "Something".to_string(),
+            parties: vec![ConsentPartyInput {
+                entity_id: Uuid::new_v4(),
+                role: "director".to_string(),
+            }],
+        };
+        assert!(req.validate().is_err());
+    }
+
+    #[test]
+    fn test_create_consent_request_no_parties() {
+        let req = CreateConsentRequest {
+            consent_type: "board_resolution".to_string(),
+            description: "Approve annual budget".to_string(),
+            parties: vec![],
+        };
+        let err = req.validate().unwrap_err();
+        assert!(err.contains("party") || err.contains("parties"), "error should mention parties: {err}");
+    }
+
+    #[test]
+    fn test_create_consent_request_multiple_parties() {
+        let req = CreateConsentRequest {
+            consent_type: "shareholder_vote".to_string(),
+            description: "Approve merger".to_string(),
+            parties: vec![
+                ConsentPartyInput {
+                    entity_id: Uuid::new_v4(),
+                    role: "shareholder".to_string(),
+                },
+                ConsentPartyInput {
+                    entity_id: Uuid::new_v4(),
+                    role: "shareholder".to_string(),
+                },
+            ],
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    // ── SignConsentRequest validation ─────────────────────────────
+
+    #[test]
+    fn test_sign_consent_request_approve() {
+        let req = SignConsentRequest {
+            entity_id: Uuid::new_v4(),
+            decision: "approve".to_string(),
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_sign_consent_request_reject() {
+        let req = SignConsentRequest {
+            entity_id: Uuid::new_v4(),
+            decision: "reject".to_string(),
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_sign_consent_request_invalid_decision() {
+        let req = SignConsentRequest {
+            entity_id: Uuid::new_v4(),
+            decision: "abstain".to_string(),
+        };
+        let err = req.validate().unwrap_err();
+        assert!(err.contains("decision"), "error should mention decision: {err}");
+    }
+
+    #[test]
+    fn test_sign_consent_request_empty_decision() {
+        let req = SignConsentRequest {
+            entity_id: Uuid::new_v4(),
+            decision: "".to_string(),
+        };
+        assert!(req.validate().is_err());
+    }
+
+    #[test]
+    fn test_sign_consent_request_case_sensitive() {
+        let req = SignConsentRequest {
+            entity_id: Uuid::new_v4(),
+            decision: "Approve".to_string(),
+        };
+        // The validation checks exact match, so uppercase should fail.
+        assert!(req.validate().is_err());
+    }
+
+    // ── Router construction ───────────────────────────────────────
+
+    #[test]
+    fn test_router_builds_successfully() {
+        let _router = router();
+    }
+
+    // ── Handler integration tests ──────────────────────────────────
+
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+
+    /// Helper: build the consent router with a fresh AppState.
+    fn test_app() -> Router<()> {
+        router().with_state(AppState::new())
+    }
+
+    /// Helper: read the response body as bytes and deserialize from JSON.
+    async fn body_json<T: serde::de::DeserializeOwned>(resp: axum::response::Response) -> T {
+        let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    #[tokio::test]
+    async fn handler_create_consent_returns_201() {
+        let app = test_app();
+        let party_id = Uuid::new_v4();
+        let body_str = format!(
+            r#"{{"consent_type":"board_resolution","description":"Approve budget","parties":[{{"entity_id":"{}","role":"director"}}]}}"#,
+            party_id
+        );
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/consent/request")
+            .header("content-type", "application/json")
+            .body(Body::from(body_str))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::CREATED);
+
+        let record: ConsentRecord = body_json(resp).await;
+        assert_eq!(record.consent_type, "board_resolution");
+        assert_eq!(record.status, "PENDING");
+        assert_eq!(record.parties.len(), 1);
+        assert_eq!(record.parties[0].entity_id, party_id);
+        assert!(record.parties[0].decision.is_none());
+        assert_eq!(record.audit_trail.len(), 1);
+        assert_eq!(record.audit_trail[0].action, "CREATED");
+    }
+
+    #[tokio::test]
+    async fn handler_create_consent_empty_type_returns_422() {
+        let app = test_app();
+        let party_id = Uuid::new_v4();
+        let body_str = format!(
+            r#"{{"consent_type":"","description":"Test","parties":[{{"entity_id":"{}","role":"director"}}]}}"#,
+            party_id
+        );
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/consent/request")
+            .header("content-type", "application/json")
+            .body(Body::from(body_str))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
+    async fn handler_create_consent_no_parties_returns_422() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/consent/request")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"consent_type":"board_resolution","description":"Test","parties":[]}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
+    async fn handler_sign_consent_approve_returns_200() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        let party_id = Uuid::new_v4();
+
+        // Create a consent.
+        let create_body = format!(
+            r#"{{"consent_type":"shareholder_vote","description":"Approve merger","parties":[{{"entity_id":"{}","role":"shareholder"}}]}}"#,
+            party_id
+        );
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/consent/request")
+            .header("content-type", "application/json")
+            .body(Body::from(create_body))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        assert_eq!(create_resp.status(), StatusCode::CREATED);
+
+        let created: ConsentRecord = body_json(create_resp).await;
+
+        // Sign the consent.
+        let sign_body = format!(
+            r#"{{"entity_id":"{}","decision":"approve"}}"#,
+            party_id
+        );
+        let sign_req = Request::builder()
+            .method("POST")
+            .uri(&format!("/v1/consent/{}/sign", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(sign_body))
+            .unwrap();
+        let sign_resp = app.oneshot(sign_req).await.unwrap();
+        assert_eq!(sign_resp.status(), StatusCode::OK);
+
+        let signed: ConsentRecord = body_json(sign_resp).await;
+        assert_eq!(signed.status, "APPROVED");
+        assert_eq!(signed.parties[0].decision.as_deref(), Some("approve"));
+        // Audit trail should have 2 entries: CREATED + SIGNED:approve.
+        assert_eq!(signed.audit_trail.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn handler_sign_consent_invalid_decision_returns_422() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        let party_id = Uuid::new_v4();
+
+        // Create a consent first.
+        let create_body = format!(
+            r#"{{"consent_type":"vote","description":"Test","parties":[{{"entity_id":"{}","role":"member"}}]}}"#,
+            party_id
+        );
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/consent/request")
+            .header("content-type", "application/json")
+            .body(Body::from(create_body))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: ConsentRecord = body_json(create_resp).await;
+
+        // Sign with invalid decision.
+        let sign_body = format!(
+            r#"{{"entity_id":"{}","decision":"abstain"}}"#,
+            party_id
+        );
+        let sign_req = Request::builder()
+            .method("POST")
+            .uri(&format!("/v1/consent/{}/sign", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(sign_body))
+            .unwrap();
+        let sign_resp = app.oneshot(sign_req).await.unwrap();
+        assert_eq!(sign_resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
+    async fn handler_sign_consent_not_found_returns_404() {
+        let app = test_app();
+        let consent_id = Uuid::new_v4();
+        let party_id = Uuid::new_v4();
+        let sign_body = format!(
+            r#"{{"entity_id":"{}","decision":"approve"}}"#,
+            party_id
+        );
+        let req = Request::builder()
+            .method("POST")
+            .uri(&format!("/v1/consent/{consent_id}/sign"))
+            .header("content-type", "application/json")
+            .body(Body::from(sign_body))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn handler_get_consent_not_found_returns_404() {
+        let app = test_app();
+        let id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/consent/{id}"))
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+}

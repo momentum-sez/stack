@@ -255,4 +255,146 @@ mod tests {
         assert_eq!(proof.proof_purpose, ProofPurpose::AssertionMethod);
         assert_eq!(proof.proof_value, "deadbeef");
     }
+
+    // ── Additional coverage tests ────────────────────────────────────
+
+    #[test]
+    fn proof_purpose_display_assertion_method() {
+        assert_eq!(format!("{}", ProofPurpose::AssertionMethod), "assertionMethod");
+    }
+
+    #[test]
+    fn proof_purpose_display_authentication() {
+        assert_eq!(format!("{}", ProofPurpose::Authentication), "authentication");
+    }
+
+    #[test]
+    fn proof_type_display_all_variants() {
+        assert_eq!(format!("{}", ProofType::Ed25519Signature2020), "Ed25519Signature2020");
+        assert_eq!(format!("{}", ProofType::MsezEd25519Signature2025), "MsezEd25519Signature2025");
+        assert_eq!(format!("{}", ProofType::BbsBlsSignature2020), "BbsBlsSignature2020");
+    }
+
+    #[test]
+    fn bbs_proof_type_serde_roundtrip() {
+        let bbs = ProofType::BbsBlsSignature2020;
+        let json = serde_json::to_string(&bbs).unwrap();
+        assert_eq!(json, r#""BbsBlsSignature2020""#);
+        let back: ProofType = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, bbs);
+    }
+
+    #[test]
+    fn proof_full_serde_roundtrip() {
+        let proof = Proof::new_ed25519(
+            "did:key:z6MkRoundtrip#key-1".to_string(),
+            "aa".repeat(64),
+            None,
+        );
+
+        let json_str = serde_json::to_string(&proof).unwrap();
+        let deserialized: Proof = serde_json::from_str(&json_str).unwrap();
+
+        assert_eq!(deserialized.proof_type, ProofType::Ed25519Signature2020);
+        assert_eq!(deserialized.verification_method, "did:key:z6MkRoundtrip#key-1");
+        assert_eq!(deserialized.proof_purpose, ProofPurpose::AssertionMethod);
+        assert_eq!(deserialized.proof_value, "aa".repeat(64));
+        assert_eq!(deserialized.created, proof.created);
+    }
+
+    #[test]
+    fn proof_msez_ed25519_serde_roundtrip() {
+        let proof = Proof::new_msez_ed25519(
+            "did:key:z6MkMsez#key-1".to_string(),
+            "bb".repeat(64),
+            None,
+        );
+
+        let json_str = serde_json::to_string(&proof).unwrap();
+        let deserialized: Proof = serde_json::from_str(&json_str).unwrap();
+
+        assert_eq!(deserialized.proof_type, ProofType::MsezEd25519Signature2025);
+        assert_eq!(deserialized.verification_method, "did:key:z6MkMsez#key-1");
+        assert_eq!(deserialized.proof_purpose, ProofPurpose::AssertionMethod);
+        assert_eq!(deserialized.proof_value, "bb".repeat(64));
+    }
+
+    #[test]
+    fn proof_deserializes_authentication_purpose() {
+        let json_str = r#"{
+            "type": "Ed25519Signature2020",
+            "created": "2026-06-01T00:00:00Z",
+            "verificationMethod": "did:key:z6MkAuth#key-1",
+            "proofPurpose": "authentication",
+            "proofValue": "cafebabe"
+        }"#;
+
+        let proof: Proof = serde_json::from_str(json_str).unwrap();
+        assert_eq!(proof.proof_purpose, ProofPurpose::Authentication);
+    }
+
+    #[test]
+    fn proof_new_ed25519_with_explicit_timestamp() {
+        let ts = Timestamp::now();
+        let proof = Proof::new_ed25519(
+            "did:key:z6MkTs#key-1".to_string(),
+            "cc".repeat(64),
+            Some(ts.clone()),
+        );
+        assert_eq!(proof.created, *ts.as_datetime());
+    }
+
+    #[test]
+    fn proof_new_msez_ed25519_with_explicit_timestamp() {
+        let ts = Timestamp::now();
+        let proof = Proof::new_msez_ed25519(
+            "did:key:z6MkTs#key-1".to_string(),
+            "dd".repeat(64),
+            Some(ts.clone()),
+        );
+        assert_eq!(proof.created, *ts.as_datetime());
+        assert_eq!(proof.proof_type, ProofType::MsezEd25519Signature2025);
+    }
+
+    #[test]
+    fn proof_purpose_serde_roundtrip_authentication() {
+        let purpose = ProofPurpose::Authentication;
+        let json = serde_json::to_string(&purpose).unwrap();
+        let back: ProofPurpose = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, purpose);
+    }
+
+    #[test]
+    fn proof_purpose_serde_roundtrip_assertion() {
+        let purpose = ProofPurpose::AssertionMethod;
+        let json = serde_json::to_string(&purpose).unwrap();
+        let back: ProofPurpose = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, purpose);
+    }
+
+    #[test]
+    fn proof_bbs_is_not_ed25519() {
+        assert!(!ProofType::BbsBlsSignature2020.is_ed25519());
+    }
+
+    #[test]
+    fn proof_deserializes_msez_type_from_json() {
+        let json_str = r#"{
+            "type": "MsezEd25519Signature2025",
+            "created": "2026-03-01T10:30:00Z",
+            "verificationMethod": "did:msez:key:001",
+            "proofPurpose": "assertionMethod",
+            "proofValue": "ee".repeat(64)
+        }"#
+        .replace("\"ee\".repeat(64)", &format!("\"{}\"", "ee".repeat(64)));
+
+        // Build the JSON string properly
+        let json_str = format!(
+            r#"{{"type":"MsezEd25519Signature2025","created":"2026-03-01T10:30:00Z","verificationMethod":"did:msez:key:001","proofPurpose":"assertionMethod","proofValue":"{}"}}"#,
+            "ee".repeat(64)
+        );
+
+        let proof: Proof = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(proof.proof_type, ProofType::MsezEd25519Signature2025);
+    }
 }

@@ -398,3 +398,235 @@ impl Default for AppState {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use uuid::Uuid;
+
+    /// Helper: create a minimal EntityRecord for store tests.
+    fn sample_entity(id: Uuid) -> EntityRecord {
+        let now = Utc::now();
+        EntityRecord {
+            id,
+            entity_type: "llc".to_string(),
+            legal_name: "Acme Corp".to_string(),
+            jurisdiction_id: "pk-sez-01".to_string(),
+            status: "active".to_string(),
+            beneficial_owners: vec![],
+            dissolution_stage: None,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    // ── Store tests ───────────────────────────────────────────────
+
+    #[test]
+    fn store_new_creates_empty_store() {
+        let store: Store<EntityRecord> = Store::new();
+        assert!(store.is_empty());
+        assert_eq!(store.len(), 0);
+        assert!(store.list().is_empty());
+    }
+
+    #[test]
+    fn store_insert_and_get_roundtrip() {
+        let store = Store::new();
+        let id = Uuid::new_v4();
+        let entity = sample_entity(id);
+
+        let prev = store.insert(id, entity.clone());
+        assert!(prev.is_none(), "first insert should return None");
+
+        let retrieved = store.get(&id);
+        assert!(retrieved.is_some());
+        let retrieved = retrieved.unwrap();
+        assert_eq!(retrieved.id, id);
+        assert_eq!(retrieved.legal_name, "Acme Corp");
+    }
+
+    #[test]
+    fn store_insert_returns_previous_value() {
+        let store = Store::new();
+        let id = Uuid::new_v4();
+
+        store.insert(id, sample_entity(id));
+        let prev = store.insert(id, sample_entity(id));
+        assert!(prev.is_some(), "second insert should return previous value");
+    }
+
+    #[test]
+    fn store_list_returns_all_items() {
+        let store = Store::new();
+        let id1 = Uuid::new_v4();
+        let id2 = Uuid::new_v4();
+        let id3 = Uuid::new_v4();
+
+        store.insert(id1, sample_entity(id1));
+        store.insert(id2, sample_entity(id2));
+        store.insert(id3, sample_entity(id3));
+
+        let all = store.list();
+        assert_eq!(all.len(), 3);
+
+        let ids: Vec<Uuid> = all.iter().map(|e| e.id).collect();
+        assert!(ids.contains(&id1));
+        assert!(ids.contains(&id2));
+        assert!(ids.contains(&id3));
+    }
+
+    #[test]
+    fn store_update_modifies_existing() {
+        let store = Store::new();
+        let id = Uuid::new_v4();
+        store.insert(id, sample_entity(id));
+
+        let updated = store.update(&id, |e| {
+            e.legal_name = "Updated Corp".to_string();
+            e.status = "suspended".to_string();
+        });
+
+        assert!(updated.is_some());
+        let updated = updated.unwrap();
+        assert_eq!(updated.legal_name, "Updated Corp");
+        assert_eq!(updated.status, "suspended");
+
+        // Confirm the store itself reflects the change.
+        let fetched = store.get(&id).unwrap();
+        assert_eq!(fetched.legal_name, "Updated Corp");
+    }
+
+    #[test]
+    fn store_update_returns_none_for_missing_key() {
+        let store: Store<EntityRecord> = Store::new();
+        let missing = Uuid::new_v4();
+        let result = store.update(&missing, |e| {
+            e.legal_name = "Ghost".to_string();
+        });
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn store_remove_deletes_item() {
+        let store = Store::new();
+        let id = Uuid::new_v4();
+        store.insert(id, sample_entity(id));
+        assert_eq!(store.len(), 1);
+
+        let removed = store.remove(&id);
+        assert!(removed.is_some());
+        assert_eq!(removed.unwrap().id, id);
+
+        assert!(store.is_empty());
+        assert!(store.get(&id).is_none());
+    }
+
+    #[test]
+    fn store_remove_returns_none_for_missing_key() {
+        let store: Store<EntityRecord> = Store::new();
+        let result = store.remove(&Uuid::new_v4());
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn store_contains_checks_existence() {
+        let store = Store::new();
+        let id = Uuid::new_v4();
+        assert!(!store.contains(&id));
+
+        store.insert(id, sample_entity(id));
+        assert!(store.contains(&id));
+
+        store.remove(&id);
+        assert!(!store.contains(&id));
+    }
+
+    #[test]
+    fn store_len_and_is_empty() {
+        let store = Store::new();
+        assert!(store.is_empty());
+        assert_eq!(store.len(), 0);
+
+        let id1 = Uuid::new_v4();
+        let id2 = Uuid::new_v4();
+        store.insert(id1, sample_entity(id1));
+        assert!(!store.is_empty());
+        assert_eq!(store.len(), 1);
+
+        store.insert(id2, sample_entity(id2));
+        assert_eq!(store.len(), 2);
+
+        store.remove(&id1);
+        assert_eq!(store.len(), 1);
+
+        store.remove(&id2);
+        assert!(store.is_empty());
+    }
+
+    #[test]
+    fn store_default_is_empty() {
+        let store: Store<EntityRecord> = Store::default();
+        assert!(store.is_empty());
+    }
+
+    #[test]
+    fn store_clone_shares_underlying_data() {
+        let store = Store::new();
+        let id = Uuid::new_v4();
+        store.insert(id, sample_entity(id));
+
+        let clone = store.clone();
+        assert_eq!(clone.len(), 1);
+        assert!(clone.contains(&id));
+
+        // Mutations through the clone are visible from the original.
+        let id2 = Uuid::new_v4();
+        clone.insert(id2, sample_entity(id2));
+        assert_eq!(store.len(), 2);
+    }
+
+    // ── AppState tests ────────────────────────────────────────────
+
+    #[test]
+    fn app_state_new_creates_empty_stores() {
+        let state = AppState::new();
+        assert!(state.entities.is_empty());
+        assert!(state.cap_tables.is_empty());
+        assert!(state.fiscal_accounts.is_empty());
+        assert!(state.payments.is_empty());
+        assert!(state.tax_events.is_empty());
+        assert!(state.identities.is_empty());
+        assert!(state.consents.is_empty());
+        assert!(state.corridors.is_empty());
+        assert!(state.smart_assets.is_empty());
+        assert!(state.attestations.is_empty());
+    }
+
+    #[test]
+    fn app_state_new_uses_default_config() {
+        let state = AppState::new();
+        assert_eq!(state.config.port, 8080);
+        assert!(state.config.auth_token.is_none());
+    }
+
+    #[test]
+    fn app_state_with_config_applies_custom_config() {
+        let config = AppConfig {
+            port: 3000,
+            auth_token: Some("secret-token".to_string()),
+        };
+        let state = AppState::with_config(config);
+        assert_eq!(state.config.port, 3000);
+        assert_eq!(state.config.auth_token.as_deref(), Some("secret-token"));
+        assert!(state.entities.is_empty());
+    }
+
+    #[test]
+    fn app_state_default_equals_new() {
+        let default_state = AppState::default();
+        let new_state = AppState::new();
+        assert_eq!(default_state.config.port, new_state.config.port);
+        assert_eq!(default_state.config.auth_token, new_state.config.auth_token);
+    }
+}

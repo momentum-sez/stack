@@ -609,4 +609,260 @@ mod tests {
         assert!(saga.destination_jurisdiction.is_some());
         assert_eq!(saga.asset_description, "Manufacturing equipment");
     }
+
+    // ── Additional coverage tests ────────────────────────────────────
+
+    #[test]
+    fn migration_state_display_all_variants() {
+        assert_eq!(format!("{}", MigrationState::Initiated), "INITIATED");
+        assert_eq!(format!("{}", MigrationState::ComplianceCheck), "COMPLIANCE_CHECK");
+        assert_eq!(format!("{}", MigrationState::AttestationGathering), "ATTESTATION_GATHERING");
+        assert_eq!(format!("{}", MigrationState::SourceLocked), "SOURCE_LOCKED");
+        assert_eq!(format!("{}", MigrationState::InTransit), "IN_TRANSIT");
+        assert_eq!(format!("{}", MigrationState::DestinationVerification), "DESTINATION_VERIFICATION");
+        assert_eq!(format!("{}", MigrationState::DestinationUnlock), "DESTINATION_UNLOCK");
+        assert_eq!(format!("{}", MigrationState::Completed), "COMPLETED");
+        assert_eq!(format!("{}", MigrationState::Compensated), "COMPENSATED");
+        assert_eq!(format!("{}", MigrationState::TimedOut), "TIMED_OUT");
+        assert_eq!(format!("{}", MigrationState::Cancelled), "CANCELLED");
+    }
+
+    #[test]
+    fn migration_state_as_str_all_variants() {
+        assert_eq!(MigrationState::AttestationGathering.as_str(), "ATTESTATION_GATHERING");
+        assert_eq!(MigrationState::SourceLocked.as_str(), "SOURCE_LOCKED");
+        assert_eq!(MigrationState::DestinationVerification.as_str(), "DESTINATION_VERIFICATION");
+        assert_eq!(MigrationState::DestinationUnlock.as_str(), "DESTINATION_UNLOCK");
+        assert_eq!(MigrationState::Compensated.as_str(), "COMPENSATED");
+        assert_eq!(MigrationState::Cancelled.as_str(), "CANCELLED");
+    }
+
+    #[test]
+    fn migration_state_is_terminal_all_variants() {
+        // Terminal states
+        assert!(MigrationState::Completed.is_terminal());
+        assert!(MigrationState::Compensated.is_terminal());
+        assert!(MigrationState::TimedOut.is_terminal());
+        assert!(MigrationState::Cancelled.is_terminal());
+
+        // Non-terminal states
+        assert!(!MigrationState::Initiated.is_terminal());
+        assert!(!MigrationState::ComplianceCheck.is_terminal());
+        assert!(!MigrationState::AttestationGathering.is_terminal());
+        assert!(!MigrationState::SourceLocked.is_terminal());
+        assert!(!MigrationState::InTransit.is_terminal());
+        assert!(!MigrationState::DestinationVerification.is_terminal());
+        assert!(!MigrationState::DestinationUnlock.is_terminal());
+    }
+
+    #[test]
+    fn cancel_from_initiated() {
+        let mut saga = test_saga();
+        saga.cancel().unwrap();
+        assert_eq!(saga.state, MigrationState::Cancelled);
+        assert!(saga.state.is_terminal());
+    }
+
+    #[test]
+    fn cancel_from_source_locked() {
+        let mut saga = test_saga();
+        saga.advance().unwrap(); // ComplianceCheck
+        saga.advance().unwrap(); // AttestationGathering
+        saga.advance().unwrap(); // SourceLocked
+        saga.cancel().unwrap();
+        assert_eq!(saga.state, MigrationState::Cancelled);
+    }
+
+    #[test]
+    fn cancel_after_destination_verification_fails() {
+        let mut saga = test_saga();
+        for _ in 0..5 {
+            saga.advance().unwrap();
+        }
+        assert_eq!(saga.state, MigrationState::DestinationVerification);
+        let err = saga.cancel().unwrap_err();
+        assert!(matches!(err, MigrationError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cancel_after_destination_unlock_fails() {
+        let mut saga = test_saga();
+        for _ in 0..6 {
+            saga.advance().unwrap();
+        }
+        assert_eq!(saga.state, MigrationState::DestinationUnlock);
+        let err = saga.cancel().unwrap_err();
+        assert!(matches!(err, MigrationError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cancel_from_completed_fails() {
+        let mut saga = test_saga();
+        for _ in 0..7 {
+            saga.advance().unwrap();
+        }
+        assert_eq!(saga.state, MigrationState::Completed);
+        let err = saga.cancel().unwrap_err();
+        assert!(matches!(err, MigrationError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn compensate_from_initiated() {
+        let mut saga = test_saga();
+        saga.compensate("early_abort").unwrap();
+        assert_eq!(saga.state, MigrationState::Compensated);
+        assert!(saga.state.is_terminal());
+    }
+
+    #[test]
+    fn compensate_from_in_transit() {
+        let mut saga = test_saga();
+        for _ in 0..4 {
+            saga.advance().unwrap();
+        }
+        assert_eq!(saga.state, MigrationState::InTransit);
+        saga.compensate("transit_failure").unwrap();
+        assert_eq!(saga.state, MigrationState::Compensated);
+    }
+
+    #[test]
+    fn compensate_from_compensated_fails() {
+        let mut saga = test_saga();
+        saga.compensate("first").unwrap();
+        let err = saga.compensate("second").unwrap_err();
+        assert!(matches!(err, MigrationError::AlreadyTerminal { .. }));
+    }
+
+    #[test]
+    fn compensate_from_timed_out_fails() {
+        let mut saga = MigrationBuilder::new(MigrationId::new())
+            .deadline(past_deadline())
+            .build();
+        let _ = saga.advance(); // triggers timeout
+        assert_eq!(saga.state, MigrationState::TimedOut);
+        let err = saga.compensate("reason").unwrap_err();
+        assert!(matches!(err, MigrationError::AlreadyTerminal { .. }));
+    }
+
+    #[test]
+    fn record_compensation_failure_multiple() {
+        let mut saga = test_saga();
+        saga.record_compensation_failure("unlock_source", "timeout");
+        saga.record_compensation_failure("refund_fees", "insufficient funds");
+        saga.record_compensation_failure("notify_parties", "email service down");
+        assert_eq!(saga.compensation_log.len(), 3);
+        assert!(!saga.compensation_log[0].succeeded);
+        assert!(!saga.compensation_log[1].succeeded);
+        assert!(!saga.compensation_log[2].succeeded);
+        assert_eq!(saga.compensation_log[1].error_detail.as_deref(), Some("insufficient funds"));
+    }
+
+    #[test]
+    fn builder_without_optional_fields() {
+        let saga = MigrationBuilder::new(MigrationId::new())
+            .deadline(future_deadline())
+            .build();
+
+        assert!(saga.source_jurisdiction.is_none());
+        assert!(saga.destination_jurisdiction.is_none());
+        assert_eq!(saga.asset_description, "");
+    }
+
+    #[test]
+    fn builder_destination_before_deadline() {
+        // Test that builder methods can be called in any order
+        let saga = MigrationBuilder::new(MigrationId::new())
+            .destination(JurisdictionId::new("AE-DIFC").unwrap())
+            .source(JurisdictionId::new("PK-RSEZ").unwrap())
+            .asset_description("Textiles")
+            .deadline(future_deadline())
+            .build();
+
+        assert!(saga.source_jurisdiction.is_some());
+        assert!(saga.destination_jurisdiction.is_some());
+        assert_eq!(saga.asset_description, "Textiles");
+        assert_eq!(saga.state, MigrationState::Initiated);
+    }
+
+    #[test]
+    fn migration_error_timeout_display() {
+        let err = MigrationError::Timeout {
+            id: MigrationId::new(),
+            state: MigrationState::InTransit,
+            deadline: past_deadline(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("exceeded deadline"));
+        assert!(msg.contains("IN_TRANSIT"));
+    }
+
+    #[test]
+    fn migration_error_invalid_transition_display() {
+        let err = MigrationError::InvalidTransition {
+            from: MigrationState::InTransit,
+            to: MigrationState::Cancelled,
+            reason: "cancellation only allowed before IN_TRANSIT".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("IN_TRANSIT"));
+        assert!(msg.contains("CANCELLED"));
+    }
+
+    #[test]
+    fn migration_error_compensation_failed_display() {
+        let err = MigrationError::CompensationFailed {
+            state: MigrationState::SourceLocked,
+            detail: "network error".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("SOURCE_LOCKED"));
+        assert!(msg.contains("network error"));
+    }
+
+    #[test]
+    fn migration_error_already_terminal_display() {
+        let err = MigrationError::AlreadyTerminal {
+            id: MigrationId::new(),
+            state: MigrationState::Completed,
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("terminal state"));
+        assert!(msg.contains("COMPLETED"));
+    }
+
+    #[test]
+    fn compensation_record_serialization_roundtrip() {
+        let record = CompensationRecord {
+            from_state: MigrationState::InTransit,
+            action: "unlock_source".to_string(),
+            succeeded: false,
+            error_detail: Some("connection refused".to_string()),
+            timestamp: Utc::now(),
+        };
+        let json = serde_json::to_string(&record).unwrap();
+        let back: CompensationRecord = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.from_state, MigrationState::InTransit);
+        assert_eq!(back.action, "unlock_source");
+        assert!(!back.succeeded);
+        assert_eq!(back.error_detail.as_deref(), Some("connection refused"));
+    }
+
+    #[test]
+    fn advance_updates_timestamp() {
+        let mut saga = test_saga();
+        let initial_updated = saga.updated_at;
+        // Small sleep to ensure time changes
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        saga.advance().unwrap();
+        assert!(saga.updated_at >= initial_updated);
+    }
+
+    #[test]
+    fn cancel_updates_timestamp() {
+        let mut saga = test_saga();
+        let initial_updated = saga.updated_at;
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        saga.cancel().unwrap();
+        assert!(saga.updated_at >= initial_updated);
+    }
 }

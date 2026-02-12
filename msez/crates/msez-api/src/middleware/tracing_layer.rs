@@ -11,3 +11,13 @@ pub fn layer() -> tower_http::trace::TraceLayer<
 > {
     tower_http::trace::TraceLayer::new_for_http()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn layer_constructs_without_panic() {
+        let _layer = layer();
+    }
+}

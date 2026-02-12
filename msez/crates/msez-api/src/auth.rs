@@ -64,3 +64,135 @@ fn unauthorized_response(message: &str) -> Response {
     };
     (StatusCode::UNAUTHORIZED, Json(body)).into_response()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use axum::middleware::from_fn;
+    use axum::routing::get;
+    use axum::Router;
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+
+    /// Build a minimal router with the auth middleware and a simple handler.
+    fn test_app(token: Option<String>) -> Router {
+        let auth_config = AuthConfig { token };
+        Router::new()
+            .route("/test", get(|| async { "ok" }))
+            .layer(from_fn(auth_middleware))
+            .layer(axum::Extension(auth_config))
+    }
+
+    #[tokio::test]
+    async fn valid_bearer_token_accepted() {
+        let app = test_app(Some("my-secret".to_string()));
+
+        let request = Request::builder()
+            .uri("/test")
+            .header("Authorization", "Bearer my-secret")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = app.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(&body[..], b"ok");
+    }
+
+    #[tokio::test]
+    async fn missing_authorization_header_rejected() {
+        let app = test_app(Some("my-secret".to_string()));
+
+        let request = Request::builder()
+            .uri("/test")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = app.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let err: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(err["error"]["code"], "UNAUTHORIZED");
+        assert!(err["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("missing"));
+    }
+
+    #[tokio::test]
+    async fn invalid_token_rejected() {
+        let app = test_app(Some("my-secret".to_string()));
+
+        let request = Request::builder()
+            .uri("/test")
+            .header("Authorization", "Bearer wrong-token")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = app.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let err: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(err["error"]["code"], "UNAUTHORIZED");
+        assert!(err["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("invalid"));
+    }
+
+    #[tokio::test]
+    async fn non_bearer_scheme_rejected() {
+        let app = test_app(Some("my-secret".to_string()));
+
+        let request = Request::builder()
+            .uri("/test")
+            .header("Authorization", "Basic dXNlcjpwYXNz")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = app.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let err: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert!(err["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("Bearer scheme"));
+    }
+
+    #[tokio::test]
+    async fn auth_disabled_allows_all_requests() {
+        let app = test_app(None);
+
+        let request = Request::builder()
+            .uri("/test")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = app.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(&body[..], b"ok");
+    }
+
+    #[tokio::test]
+    async fn auth_disabled_ignores_provided_token() {
+        let app = test_app(None);
+
+        let request = Request::builder()
+            .uri("/test")
+            .header("Authorization", "Bearer anything")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = app.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+}

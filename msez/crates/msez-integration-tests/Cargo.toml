@@ -17,8 +17,21 @@ msez-tensor = { path = "../msez-tensor" }
 msez-pack = { path = "../msez-pack" }
 msez-corridor = { path = "../msez-corridor" }
 msez-agentic = { path = "../msez-agentic" }
+msez-arbitration = { path = "../msez-arbitration" }
+msez-schema = { path = "../msez-schema" }
+msez-zkp = { path = "../msez-zkp" }
+msez-cli = { path = "../msez-cli" }
+msez-api = { path = "../msez-api" }
 
 serde_json = { workspace = true }
+serde = { workspace = true }
 chrono = { workspace = true }
 rand_core = { workspace = true }
 sha2 = { workspace = true }
+uuid = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+tower = { workspace = true }
+http-body-util = { workspace = true }
+proptest = { workspace = true }
+tempfile = "3"

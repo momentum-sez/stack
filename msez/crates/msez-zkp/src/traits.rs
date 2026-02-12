@@ -146,3 +146,72 @@ impl private::Sealed for crate::groth16::Groth16ProofSystem {}
 
 #[cfg(feature = "plonk")]
 impl private::Sealed for crate::plonk::PlonkProofSystem {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn proof_error_invalid_inputs_display() {
+        let err = ProofError::InvalidInputs("missing witness data".to_string());
+        let msg = format!("{err}");
+        assert!(msg.contains("invalid circuit inputs"));
+        assert!(msg.contains("missing witness data"));
+    }
+
+    #[test]
+    fn proof_error_generation_failed_display() {
+        let err = ProofError::GenerationFailed("out of memory".to_string());
+        let msg = format!("{err}");
+        assert!(msg.contains("proof generation failed"));
+        assert!(msg.contains("out of memory"));
+    }
+
+    #[test]
+    fn verify_error_malformed_proof_display() {
+        let err = VerifyError::MalformedProof("wrong length".to_string());
+        let msg = format!("{err}");
+        assert!(msg.contains("malformed proof"));
+        assert!(msg.contains("wrong length"));
+    }
+
+    #[test]
+    fn verify_error_verification_failed_display() {
+        let err = VerifyError::VerificationFailed("invalid pairing".to_string());
+        let msg = format!("{err}");
+        assert!(msg.contains("proof verification failed"));
+        assert!(msg.contains("invalid pairing"));
+    }
+
+    #[test]
+    fn proof_error_is_debug() {
+        let err = ProofError::InvalidInputs("test".to_string());
+        let debug = format!("{err:?}");
+        assert!(debug.contains("InvalidInputs"));
+    }
+
+    #[test]
+    fn verify_error_is_debug() {
+        let err = VerifyError::MalformedProof("test".to_string());
+        let debug = format!("{err:?}");
+        assert!(debug.contains("MalformedProof"));
+    }
+
+    #[test]
+    fn mock_proof_system_implements_proof_system() {
+        use crate::mock::{MockCircuit, MockProofSystem, MockProvingKey, MockVerifyingKey};
+        use serde_json::json;
+
+        let sys = MockProofSystem;
+        let pk = MockProvingKey;
+        let vk = MockVerifyingKey;
+        let circuit = MockCircuit {
+            circuit_data: json!({"trait": "test"}),
+            public_inputs: b"trait_test".to_vec(),
+        };
+        let proof = sys.prove(&pk, &circuit).unwrap();
+        // Verify returns a bool (may not match since prove uses circuit_data+inputs, verify uses only inputs)
+        let result = sys.verify(&vk, &proof, &circuit.public_inputs);
+        assert!(result.is_ok());
+    }
+}

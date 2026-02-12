@@ -305,3 +305,281 @@ async fn get_dissolution_status(
         stage_name,
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::extractors::Validate;
+
+    // ── CreateEntityRequest validation ─────────────────────────────
+
+    #[test]
+    fn test_create_entity_request_valid() {
+        let req = CreateEntityRequest {
+            entity_type: "company".to_string(),
+            legal_name: "Acme Corp".to_string(),
+            jurisdiction_id: "PK-PSEZ".to_string(),
+            beneficial_owners: vec![],
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_create_entity_request_empty_legal_name() {
+        let req = CreateEntityRequest {
+            entity_type: "company".to_string(),
+            legal_name: "".to_string(),
+            jurisdiction_id: "PK-PSEZ".to_string(),
+            beneficial_owners: vec![],
+        };
+        let err = req.validate().unwrap_err();
+        assert!(err.contains("legal_name"), "error should mention legal_name: {err}");
+    }
+
+    #[test]
+    fn test_create_entity_request_whitespace_legal_name() {
+        let req = CreateEntityRequest {
+            entity_type: "company".to_string(),
+            legal_name: "   ".to_string(),
+            jurisdiction_id: "PK-PSEZ".to_string(),
+            beneficial_owners: vec![],
+        };
+        assert!(req.validate().is_err());
+    }
+
+    #[test]
+    fn test_create_entity_request_empty_jurisdiction_id() {
+        let req = CreateEntityRequest {
+            entity_type: "company".to_string(),
+            legal_name: "Acme Corp".to_string(),
+            jurisdiction_id: "".to_string(),
+            beneficial_owners: vec![],
+        };
+        let err = req.validate().unwrap_err();
+        assert!(err.contains("jurisdiction_id"), "error should mention jurisdiction_id: {err}");
+    }
+
+    #[test]
+    fn test_create_entity_request_empty_entity_type() {
+        let req = CreateEntityRequest {
+            entity_type: "  ".to_string(),
+            legal_name: "Acme Corp".to_string(),
+            jurisdiction_id: "PK-PSEZ".to_string(),
+            beneficial_owners: vec![],
+        };
+        let err = req.validate().unwrap_err();
+        assert!(err.contains("entity_type"), "error should mention entity_type: {err}");
+    }
+
+    // ── UpdateEntityRequest validation ─────────────────────────────
+
+    #[test]
+    fn test_update_entity_request_valid_with_name() {
+        let req = UpdateEntityRequest {
+            legal_name: Some("New Name".to_string()),
+            status: Some("ACTIVE".to_string()),
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_update_entity_request_valid_none_fields() {
+        let req = UpdateEntityRequest {
+            legal_name: None,
+            status: None,
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_update_entity_request_empty_legal_name() {
+        let req = UpdateEntityRequest {
+            legal_name: Some("".to_string()),
+            status: None,
+        };
+        let err = req.validate().unwrap_err();
+        assert!(err.contains("legal_name"), "error should mention legal_name: {err}");
+    }
+
+    #[test]
+    fn test_update_entity_request_whitespace_legal_name() {
+        let req = UpdateEntityRequest {
+            legal_name: Some("   ".to_string()),
+            status: None,
+        };
+        assert!(req.validate().is_err());
+    }
+
+    // ── Router construction ────────────────────────────────────────
+
+    #[test]
+    fn test_router_builds_successfully() {
+        let _router = router();
+        // Router construction should not panic.
+    }
+
+    // ── Handler integration tests ──────────────────────────────────
+
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+
+    /// Helper: build the entities router with a fresh AppState.
+    fn test_app() -> Router<()> {
+        router().with_state(AppState::new())
+    }
+
+    /// Helper: read the response body as bytes and deserialize from JSON.
+    async fn body_json<T: serde::de::DeserializeOwned>(resp: axum::response::Response) -> T {
+        let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    #[tokio::test]
+    async fn handler_create_entity_returns_201() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/entities")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"entity_type":"corporation","legal_name":"Test Corp","jurisdiction_id":"PK-RSEZ"}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::CREATED);
+
+        let record: EntityRecord = body_json(resp).await;
+        assert_eq!(record.legal_name, "Test Corp");
+        assert_eq!(record.entity_type, "corporation");
+        assert_eq!(record.jurisdiction_id, "PK-RSEZ");
+        assert_eq!(record.status, "APPLIED");
+        assert!(record.dissolution_stage.is_none());
+    }
+
+    #[tokio::test]
+    async fn handler_create_entity_validation_error_returns_422() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/entities")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"entity_type":"corporation","legal_name":"","jurisdiction_id":"PK-RSEZ"}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
+    async fn handler_create_entity_bad_json_returns_400() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/entities")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"not valid json"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn handler_list_entities_empty_returns_200() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/entities")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let records: Vec<EntityRecord> = body_json(resp).await;
+        assert!(records.is_empty());
+    }
+
+    #[tokio::test]
+    async fn handler_list_entities_after_create_returns_one() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an entity first.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/entities")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"entity_type":"llc","legal_name":"Alpha LLC","jurisdiction_id":"AE-DIFC"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        assert_eq!(create_resp.status(), StatusCode::CREATED);
+
+        // List entities.
+        let list_req = Request::builder()
+            .method("GET")
+            .uri("/v1/entities")
+            .body(Body::empty())
+            .unwrap();
+        let list_resp = app.oneshot(list_req).await.unwrap();
+        assert_eq!(list_resp.status(), StatusCode::OK);
+
+        let records: Vec<EntityRecord> = body_json(list_resp).await;
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].legal_name, "Alpha LLC");
+    }
+
+    #[tokio::test]
+    async fn handler_get_entity_found_returns_200() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an entity.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/entities")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"entity_type":"trust","legal_name":"Beta Trust","jurisdiction_id":"PK-PSEZ"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        assert_eq!(create_resp.status(), StatusCode::CREATED);
+
+        let created: EntityRecord = body_json(create_resp).await;
+
+        // Get the entity by ID.
+        let get_req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/entities/{}", created.id))
+            .body(Body::empty())
+            .unwrap();
+        let get_resp = app.oneshot(get_req).await.unwrap();
+        assert_eq!(get_resp.status(), StatusCode::OK);
+
+        let fetched: EntityRecord = body_json(get_resp).await;
+        assert_eq!(fetched.id, created.id);
+        assert_eq!(fetched.legal_name, "Beta Trust");
+    }
+
+    #[tokio::test]
+    async fn handler_get_entity_not_found_returns_404() {
+        let app = test_app();
+        let id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("GET")
+            .uri(&format!("/v1/entities/{id}"))
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+}

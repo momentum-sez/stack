@@ -839,4 +839,683 @@ mod tests {
         };
         assert_eq!(deadline.grace_period_days, 14);
     }
+
+    // -----------------------------------------------------------------------
+    // SanctionsChecker — additional edge cases
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_sanctions_case_insensitive_exact_match() {
+        let entries = vec![make_test_entry("E001", "ACME CORP", "entity")];
+        let checker = SanctionsChecker::new(entries, "snap-001".to_string());
+        let result = checker.check_entity("acme corp", None, 0.7);
+        assert!(result.matched);
+        assert_eq!(result.match_score, 1.0);
+    }
+
+    #[test]
+    fn test_sanctions_empty_name() {
+        let entries = vec![make_test_entry("E001", "Acme Corp", "entity")];
+        let checker = SanctionsChecker::new(entries, "snap-001".to_string());
+        let result = checker.check_entity("", None, 0.7);
+        assert!(!result.matched);
+    }
+
+    #[test]
+    fn test_sanctions_multiple_entries_exact() {
+        let entries = vec![
+            make_test_entry("E001", "Alpha Corp", "entity"),
+            make_test_entry("E002", "Beta Corp", "entity"),
+            make_test_entry("E003", "Gamma Corp", "entity"),
+        ];
+        let checker = SanctionsChecker::new(entries, "snap-001".to_string());
+
+        let r1 = checker.check_entity("Alpha Corp", None, 0.7);
+        assert!(r1.matched);
+        assert_eq!(r1.matches.len(), 1);
+        assert_eq!(r1.matches[0].entry.entry_id, "E001");
+
+        let r2 = checker.check_entity("Beta Corp", None, 0.7);
+        assert!(r2.matched);
+        assert_eq!(r2.matches[0].entry.entry_id, "E002");
+    }
+
+    #[test]
+    fn test_sanctions_checker_with_multiple_aliases() {
+        let mut entry = make_test_entry("E001", "Main Name", "individual");
+        let mut alias1 = BTreeMap::new();
+        alias1.insert("name".to_string(), "Alias One".to_string());
+        let mut alias2 = BTreeMap::new();
+        alias2.insert("alias".to_string(), "Alias Two".to_string());
+        entry.aliases = vec![alias1, alias2];
+
+        let checker = SanctionsChecker::new(vec![entry], "snap-001".to_string());
+
+        assert!(checker.check_entity("Alias One", None, 0.7).matched);
+        assert!(checker.check_entity("Alias Two", None, 0.7).matched);
+        assert!(checker.check_entity("Main Name", None, 0.7).matched);
+    }
+
+    #[test]
+    fn test_sanctions_checker_identifier_case_insensitive() {
+        let mut entry = make_test_entry("E001", "Some Entity", "entity");
+        let mut ident = BTreeMap::new();
+        ident.insert("type".to_string(), "passport".to_string());
+        ident.insert("value".to_string(), "AB123456".to_string());
+        entry.identifiers = vec![ident];
+
+        let checker = SanctionsChecker::new(vec![entry], "snap-001".to_string());
+
+        let mut query = BTreeMap::new();
+        query.insert("type".to_string(), "passport".to_string());
+        query.insert("value".to_string(), "ab123456".to_string()); // lowercase
+        let result = checker.check_entity("Unrelated Name", Some(&[query]), 0.7);
+        assert!(result.matched);
+        assert_eq!(result.matches[0].match_type, "identifier");
+    }
+
+    #[test]
+    fn test_sanctions_checker_deduplicates_matches() {
+        // Entry matched by both alias and identifier should appear once
+        let mut entry = make_test_entry("E001", "Acme Corp", "entity");
+        let mut alias = BTreeMap::new();
+        alias.insert("name".to_string(), "Acme Corp".to_string());
+        entry.aliases = vec![alias];
+
+        let mut ident = BTreeMap::new();
+        ident.insert("type".to_string(), "reg".to_string());
+        ident.insert("value".to_string(), "REG001".to_string());
+        entry.identifiers = vec![ident];
+
+        let checker = SanctionsChecker::new(vec![entry], "snap-001".to_string());
+
+        let mut query_ident = BTreeMap::new();
+        query_ident.insert("type".to_string(), "reg".to_string());
+        query_ident.insert("value".to_string(), "REG001".to_string());
+
+        let result = checker.check_entity("Acme Corp", Some(&[query_ident]), 0.7);
+        assert!(result.matched);
+        // Should be deduplicated by entry_id
+        let unique_ids: std::collections::HashSet<_> = result.matches.iter()
+            .map(|m| m.entry.entry_id.clone())
+            .collect();
+        assert_eq!(unique_ids.len(), 1);
+    }
+
+    #[test]
+    fn test_sanctions_fuzzy_score_exact() {
+        assert_eq!(SanctionsChecker::fuzzy_score("hello world", "hello world"), 1.0);
+    }
+
+    #[test]
+    fn test_sanctions_fuzzy_score_empty() {
+        assert_eq!(SanctionsChecker::fuzzy_score("", "something"), 0.0);
+        assert_eq!(SanctionsChecker::fuzzy_score("something", ""), 0.0);
+    }
+
+    #[test]
+    fn test_sanctions_fuzzy_score_substring() {
+        let score = SanctionsChecker::fuzzy_score("Acme Corp", "Acme Corporation");
+        assert!(score >= 0.5); // Substring match should score well
+    }
+
+    #[test]
+    fn test_sanctions_normalize_removes_punctuation() {
+        let normalized = SanctionsChecker::normalize("Hello, World! (Test)");
+        assert_eq!(normalized, "hello world test");
+    }
+
+    #[test]
+    fn test_sanctions_normalize_collapses_whitespace() {
+        let normalized = SanctionsChecker::normalize("  hello   world  ");
+        assert_eq!(normalized, "hello world");
+    }
+
+    #[test]
+    fn test_sanctions_check_result_metadata() {
+        let entries = vec![make_test_entry("E001", "Test", "entity")];
+        let checker = SanctionsChecker::new(entries, "snap-123".to_string());
+        let result = checker.check_entity("Test", None, 0.7);
+        assert_eq!(result.query, "Test");
+        assert_eq!(result.snapshot_id, "snap-123");
+        assert!(!result.checked_at.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // compute_regpack_digest — with components
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_regpack_digest_changes_with_sanctions() {
+        let meta = RegPackMetadata {
+            regpack_id: "test".to_string(),
+            jurisdiction_id: "pk".to_string(),
+            domain: "aml".to_string(),
+            as_of_date: "2026-01-15".to_string(),
+            snapshot_type: "quarterly".to_string(),
+            sources: vec![],
+            includes: BTreeMap::new(),
+            previous_regpack_digest: None,
+            created_at: None,
+            expires_at: None,
+            digest_sha256: None,
+        };
+
+        let d_no_sanctions = compute_regpack_digest(&meta, None, None, None).unwrap();
+
+        let sanctions = SanctionsSnapshot {
+            snapshot_id: "snap-001".to_string(),
+            snapshot_timestamp: "2026-01-15T00:00:00Z".to_string(),
+            sources: BTreeMap::new(),
+            consolidated_counts: BTreeMap::new(),
+            delta_from_previous: None,
+        };
+
+        let d_with_sanctions = compute_regpack_digest(&meta, Some(&sanctions), None, None).unwrap();
+        assert_ne!(d_no_sanctions, d_with_sanctions);
+    }
+
+    #[test]
+    fn test_regpack_digest_changes_with_regulators() {
+        let meta = RegPackMetadata {
+            regpack_id: "test".to_string(),
+            jurisdiction_id: "pk".to_string(),
+            domain: "aml".to_string(),
+            as_of_date: "2026-01-15".to_string(),
+            snapshot_type: "quarterly".to_string(),
+            sources: vec![],
+            includes: BTreeMap::new(),
+            previous_regpack_digest: None,
+            created_at: None,
+            expires_at: None,
+            digest_sha256: None,
+        };
+
+        let d_no_regs = compute_regpack_digest(&meta, None, None, None).unwrap();
+
+        let regulators = vec![RegulatorProfile {
+            regulator_id: "fsra".to_string(),
+            name: "Financial Services Regulatory Authority".to_string(),
+            jurisdiction_id: "pk-kp-rsez".to_string(),
+            parent_authority: None,
+            scope: BTreeMap::new(),
+            contact: BTreeMap::new(),
+            api_capabilities: BTreeMap::new(),
+            timezone: "Asia/Karachi".to_string(),
+            business_days: vec!["monday".to_string()],
+        }];
+
+        let d_with_regs = compute_regpack_digest(&meta, None, Some(&regulators), None).unwrap();
+        assert_ne!(d_no_regs, d_with_regs);
+    }
+
+    #[test]
+    fn test_regpack_digest_changes_with_deadlines() {
+        let meta = RegPackMetadata {
+            regpack_id: "test".to_string(),
+            jurisdiction_id: "pk".to_string(),
+            domain: "aml".to_string(),
+            as_of_date: "2026-01-15".to_string(),
+            snapshot_type: "quarterly".to_string(),
+            sources: vec![],
+            includes: BTreeMap::new(),
+            previous_regpack_digest: None,
+            created_at: None,
+            expires_at: None,
+            digest_sha256: None,
+        };
+
+        let d_no_dl = compute_regpack_digest(&meta, None, None, None).unwrap();
+
+        let deadlines = vec![ComplianceDeadline {
+            deadline_id: "dl-001".to_string(),
+            regulator_id: "fsra".to_string(),
+            deadline_type: "report".to_string(),
+            description: "Q1 report".to_string(),
+            due_date: "2026-04-30".to_string(),
+            grace_period_days: 14,
+            applicable_license_types: vec![],
+        }];
+
+        let d_with_dl = compute_regpack_digest(&meta, None, None, Some(&deadlines)).unwrap();
+        assert_ne!(d_no_dl, d_with_dl);
+    }
+
+    #[test]
+    fn test_regpack_digest_all_components() {
+        let meta = RegPackMetadata {
+            regpack_id: "full-test".to_string(),
+            jurisdiction_id: "pk".to_string(),
+            domain: "aml".to_string(),
+            as_of_date: "2026-01-15".to_string(),
+            snapshot_type: "quarterly".to_string(),
+            sources: vec![],
+            includes: BTreeMap::new(),
+            previous_regpack_digest: None,
+            created_at: None,
+            expires_at: None,
+            digest_sha256: None,
+        };
+
+        let sanctions = SanctionsSnapshot {
+            snapshot_id: "snap-001".to_string(),
+            snapshot_timestamp: "2026-01-15T00:00:00Z".to_string(),
+            sources: BTreeMap::new(),
+            consolidated_counts: BTreeMap::new(),
+            delta_from_previous: None,
+        };
+
+        let regulators = vec![RegulatorProfile {
+            regulator_id: "fsra".to_string(),
+            name: "FSRA".to_string(),
+            jurisdiction_id: "pk-kp-rsez".to_string(),
+            parent_authority: None,
+            scope: BTreeMap::new(),
+            contact: BTreeMap::new(),
+            api_capabilities: BTreeMap::new(),
+            timezone: "UTC".to_string(),
+            business_days: vec![],
+        }];
+
+        let deadlines = vec![ComplianceDeadline {
+            deadline_id: "dl-001".to_string(),
+            regulator_id: "fsra".to_string(),
+            deadline_type: "report".to_string(),
+            description: "Test".to_string(),
+            due_date: "2026-04-30".to_string(),
+            grace_period_days: 0,
+            applicable_license_types: vec![],
+        }];
+
+        let digest = compute_regpack_digest(
+            &meta,
+            Some(&sanctions),
+            Some(&regulators),
+            Some(&deadlines),
+        )
+        .unwrap();
+        assert_eq!(digest.len(), 64);
+
+        // Deterministic
+        let digest2 = compute_regpack_digest(
+            &meta,
+            Some(&sanctions),
+            Some(&regulators),
+            Some(&deadlines),
+        )
+        .unwrap();
+        assert_eq!(digest, digest2);
+    }
+
+    // -----------------------------------------------------------------------
+    // validate_regpack_domains — additional edge cases
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_validate_regpack_domains_known_domain() {
+        let meta = RegPackMetadata {
+            regpack_id: "test".to_string(),
+            jurisdiction_id: "pk".to_string(),
+            domain: "aml".to_string(),
+            as_of_date: "2026-01-15".to_string(),
+            snapshot_type: "quarterly".to_string(),
+            sources: vec![],
+            includes: BTreeMap::new(),
+            previous_regpack_digest: None,
+            created_at: None,
+            expires_at: None,
+            digest_sha256: None,
+        };
+        let errors = validate_regpack_domains(&meta);
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn test_validate_regpack_domains_empty() {
+        let meta = RegPackMetadata {
+            regpack_id: "test".to_string(),
+            jurisdiction_id: "pk".to_string(),
+            domain: "".to_string(),
+            as_of_date: "2026-01-15".to_string(),
+            snapshot_type: "quarterly".to_string(),
+            sources: vec![],
+            includes: BTreeMap::new(),
+            previous_regpack_digest: None,
+            created_at: None,
+            expires_at: None,
+            digest_sha256: None,
+        };
+        let errors = validate_regpack_domains(&meta);
+        assert!(!errors.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // resolve_regpack_refs
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_resolve_regpack_refs_valid() {
+        let zone = serde_json::json!({
+            "zone_id": "test",
+            "regpacks": [
+                {
+                    "jurisdiction_id": "pk",
+                    "domain": "aml",
+                    "regpack_digest_sha256": "a".repeat(64),
+                    "as_of_date": "2026-01-15"
+                }
+            ]
+        });
+        let refs = resolve_regpack_refs(&zone).unwrap();
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].jurisdiction_id, "pk");
+        assert_eq!(refs[0].domain, "aml");
+        assert_eq!(refs[0].as_of_date, Some("2026-01-15".to_string()));
+    }
+
+    #[test]
+    fn test_resolve_regpack_refs_empty() {
+        let zone = serde_json::json!({"zone_id": "test"});
+        let refs = resolve_regpack_refs(&zone).unwrap();
+        assert!(refs.is_empty());
+    }
+
+    #[test]
+    fn test_resolve_regpack_refs_skips_invalid_digest() {
+        let zone = serde_json::json!({
+            "regpacks": [
+                {
+                    "jurisdiction_id": "pk",
+                    "domain": "aml",
+                    "regpack_digest_sha256": "invalid"
+                }
+            ]
+        });
+        let refs = resolve_regpack_refs(&zone).unwrap();
+        assert!(refs.is_empty());
+    }
+
+    #[test]
+    fn test_resolve_regpack_refs_skips_empty_digest() {
+        let zone = serde_json::json!({
+            "regpacks": [
+                {
+                    "jurisdiction_id": "pk",
+                    "domain": "aml",
+                    "regpack_digest_sha256": ""
+                }
+            ]
+        });
+        let refs = resolve_regpack_refs(&zone).unwrap();
+        assert!(refs.is_empty());
+    }
+
+    #[test]
+    fn test_resolve_regpack_refs_multiple() {
+        let zone = serde_json::json!({
+            "regpacks": [
+                {
+                    "jurisdiction_id": "pk",
+                    "domain": "aml",
+                    "regpack_digest_sha256": "a".repeat(64)
+                },
+                {
+                    "jurisdiction_id": "ae",
+                    "domain": "sanctions",
+                    "regpack_digest_sha256": "b".repeat(64)
+                }
+            ]
+        });
+        let refs = resolve_regpack_refs(&zone).unwrap();
+        assert_eq!(refs.len(), 2);
+    }
+
+    // -----------------------------------------------------------------------
+    // RegulatorProfile serialization
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_regulator_profile_serialization() {
+        let mut scope = BTreeMap::new();
+        scope.insert(
+            "financial".to_string(),
+            vec!["banking".to_string(), "insurance".to_string()],
+        );
+
+        let reg = RegulatorProfile {
+            regulator_id: "fsra".to_string(),
+            name: "Financial Services Regulatory Authority".to_string(),
+            jurisdiction_id: "pk-kp-rsez".to_string(),
+            parent_authority: Some("sbp".to_string()),
+            scope,
+            contact: BTreeMap::new(),
+            api_capabilities: BTreeMap::new(),
+            timezone: "Asia/Karachi".to_string(),
+            business_days: vec!["monday".to_string(), "tuesday".to_string()],
+        };
+
+        let json = serde_json::to_value(&reg).unwrap();
+        assert_eq!(json["regulator_id"], "fsra");
+        assert_eq!(json["parent_authority"], "sbp");
+        assert_eq!(json["timezone"], "Asia/Karachi");
+        assert_eq!(json["business_days"].as_array().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_regulator_profile_default_timezone() {
+        let json_str = r#"{"regulator_id":"test","name":"Test","jurisdiction_id":"pk"}"#;
+        let reg: RegulatorProfile = serde_json::from_str(json_str).unwrap();
+        assert_eq!(reg.timezone, "UTC");
+    }
+
+    // -----------------------------------------------------------------------
+    // RegLicenseType serialization
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_reg_license_type_serialization() {
+        let lt = RegLicenseType {
+            license_type_id: "lt-001".to_string(),
+            name: "Banking License".to_string(),
+            regulator_id: "sbp".to_string(),
+            requirements: BTreeMap::new(),
+            application: BTreeMap::new(),
+            ongoing_obligations: BTreeMap::new(),
+            validity_period_years: 5,
+            renewal_lead_time_days: 180,
+        };
+
+        let json = serde_json::to_value(&lt).unwrap();
+        assert_eq!(json["license_type_id"], "lt-001");
+        assert_eq!(json["validity_period_years"], 5);
+        assert_eq!(json["renewal_lead_time_days"], 180);
+    }
+
+    #[test]
+    fn test_reg_license_type_defaults() {
+        let json_str = r#"{"license_type_id":"lt","name":"Test","regulator_id":"reg"}"#;
+        let lt: RegLicenseType = serde_json::from_str(json_str).unwrap();
+        assert_eq!(lt.validity_period_years, 1);
+        assert_eq!(lt.renewal_lead_time_days, 90);
+    }
+
+    // -----------------------------------------------------------------------
+    // Regpack struct
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_regpack_struct_creation() {
+        let rp = Regpack {
+            jurisdiction: JurisdictionId::new("pk".to_string()).unwrap(),
+            name: "Pakistan AML Regpack".to_string(),
+            version: "1.0.0".to_string(),
+            digest: None,
+            metadata: None,
+        };
+        assert_eq!(rp.name, "Pakistan AML Regpack");
+        assert!(rp.digest.is_none());
+    }
+
+    #[test]
+    fn test_regpack_struct_serialization_roundtrip() {
+        let rp = Regpack {
+            jurisdiction: JurisdictionId::new("ae".to_string()).unwrap(),
+            name: "UAE Regpack".to_string(),
+            version: "2.0".to_string(),
+            digest: None,
+            metadata: None,
+        };
+        let json_str = serde_json::to_string(&rp).unwrap();
+        let deserialized: Regpack = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(deserialized.name, "UAE Regpack");
+        assert_eq!(deserialized.version, "2.0");
+    }
+
+    // -----------------------------------------------------------------------
+    // SanctionsSnapshot serialization
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_sanctions_snapshot_serialization() {
+        let mut sources = BTreeMap::new();
+        sources.insert(
+            "ofac".to_string(),
+            serde_json::json!({"url": "https://ofac.treasury.gov"}),
+        );
+
+        let mut counts = BTreeMap::new();
+        counts.insert("individual".to_string(), 150);
+        counts.insert("entity".to_string(), 80);
+
+        let snap = SanctionsSnapshot {
+            snapshot_id: "snap-001".to_string(),
+            snapshot_timestamp: "2026-01-15T00:00:00Z".to_string(),
+            sources,
+            consolidated_counts: counts,
+            delta_from_previous: None,
+        };
+
+        let json = serde_json::to_value(&snap).unwrap();
+        assert_eq!(json["snapshot_id"], "snap-001");
+        assert_eq!(json["consolidated_counts"]["individual"], 150);
+    }
+
+    // -----------------------------------------------------------------------
+    // SanctionsEntry serialization
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_sanctions_entry_full_serialization() {
+        let entry = SanctionsEntry {
+            entry_id: "E001".to_string(),
+            entry_type: "individual".to_string(),
+            source_lists: vec!["ofac_sdn".to_string(), "un_sanctions".to_string()],
+            primary_name: "Test Person".to_string(),
+            aliases: vec![],
+            identifiers: vec![],
+            addresses: vec![],
+            nationalities: vec!["PK".to_string()],
+            date_of_birth: Some("1970-01-01".to_string()),
+            programs: vec!["sdgt".to_string()],
+            listing_date: Some("2020-06-15".to_string()),
+            remarks: Some("Test remark".to_string()),
+        };
+
+        let json = serde_json::to_value(&entry).unwrap();
+        assert_eq!(json["entry_type"], "individual");
+        assert_eq!(json["nationalities"].as_array().unwrap().len(), 1);
+        assert_eq!(json["date_of_birth"], "1970-01-01");
+    }
+
+    // -----------------------------------------------------------------------
+    // SanctionsCheckResult serialization
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_sanctions_check_result_serialization() {
+        let result = SanctionsCheckResult {
+            query: "Test Corp".to_string(),
+            checked_at: "2026-01-15T12:00:00Z".to_string(),
+            snapshot_id: "snap-001".to_string(),
+            matched: false,
+            matches: vec![],
+            match_score: 0.0,
+        };
+
+        let json = serde_json::to_value(&result).unwrap();
+        assert_eq!(json["query"], "Test Corp");
+        assert_eq!(json["matched"], false);
+    }
+
+    // -----------------------------------------------------------------------
+    // RegpackRef
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_regpack_ref_without_date() {
+        let r = RegpackRef {
+            jurisdiction_id: "pk".to_string(),
+            domain: "aml".to_string(),
+            regpack_digest_sha256: "a".repeat(64),
+            as_of_date: None,
+        };
+        let json = serde_json::to_value(&r).unwrap();
+        assert!(json.get("as_of_date").is_none());
+    }
+
+    #[test]
+    fn test_regpack_ref_equality() {
+        let r1 = RegpackRef {
+            jurisdiction_id: "pk".to_string(),
+            domain: "aml".to_string(),
+            regpack_digest_sha256: "a".repeat(64),
+            as_of_date: None,
+        };
+        let r2 = r1.clone();
+        assert_eq!(r1, r2);
+    }
+
+    // -----------------------------------------------------------------------
+    // ComplianceDeadline serialization roundtrip
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_compliance_deadline_roundtrip() {
+        let deadline = ComplianceDeadline {
+            deadline_id: "dl-001".to_string(),
+            regulator_id: "fsra".to_string(),
+            deadline_type: "filing".to_string(),
+            description: "Annual filing".to_string(),
+            due_date: "2026-12-31".to_string(),
+            grace_period_days: 30,
+            applicable_license_types: vec!["banking".to_string(), "emi".to_string()],
+        };
+        let json_str = serde_json::to_string(&deadline).unwrap();
+        let deserialized: ComplianceDeadline = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(deserialized.deadline_id, "dl-001");
+        assert_eq!(deserialized.grace_period_days, 30);
+        assert_eq!(deserialized.applicable_license_types.len(), 2);
+    }
+
+    // -----------------------------------------------------------------------
+    // ReportingRequirement additional
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_reporting_requirement_roundtrip() {
+        let req = ReportingRequirement {
+            report_type_id: "monthly-ctr".to_string(),
+            name: "Monthly CTR".to_string(),
+            regulator_id: "fmu".to_string(),
+            applicable_to: vec!["bank".to_string()],
+            frequency: "monthly".to_string(),
+            deadlines: BTreeMap::new(),
+            submission: BTreeMap::new(),
+            late_penalty: BTreeMap::new(),
+        };
+        let json_str = serde_json::to_string(&req).unwrap();
+        let deserialized: ReportingRequirement = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(deserialized.report_type_id, "monthly-ctr");
+        assert_eq!(deserialized.frequency, "monthly");
+    }
 }

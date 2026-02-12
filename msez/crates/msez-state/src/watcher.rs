@@ -537,4 +537,232 @@ mod tests {
         assert!(!WatcherState::Slashed.is_terminal());
         assert!(!WatcherState::Unbonding.is_terminal());
     }
+
+    // ── Additional coverage tests ────────────────────────────────────
+
+    #[test]
+    fn watcher_state_display_all_variants() {
+        assert_eq!(format!("{}", WatcherState::Registered), "REGISTERED");
+        assert_eq!(format!("{}", WatcherState::Bonded), "BONDED");
+        assert_eq!(format!("{}", WatcherState::Active), "ACTIVE");
+        assert_eq!(format!("{}", WatcherState::Slashed), "SLASHED");
+        assert_eq!(format!("{}", WatcherState::Unbonding), "UNBONDING");
+        assert_eq!(format!("{}", WatcherState::Deactivated), "DEACTIVATED");
+        assert_eq!(format!("{}", WatcherState::Banned), "BANNED");
+    }
+
+    #[test]
+    fn slashing_condition_display_all_variants() {
+        assert_eq!(format!("{}", SlashingCondition::Equivocation), "EQUIVOCATION");
+        assert_eq!(format!("{}", SlashingCondition::AvailabilityFailure), "AVAILABILITY_FAILURE");
+        assert_eq!(format!("{}", SlashingCondition::FalseAttestation), "FALSE_ATTESTATION");
+        assert_eq!(format!("{}", SlashingCondition::Collusion), "COLLUSION");
+    }
+
+    #[test]
+    fn slashing_condition_as_str_all_variants() {
+        assert_eq!(SlashingCondition::Equivocation.as_str(), "EQUIVOCATION");
+        assert_eq!(SlashingCondition::AvailabilityFailure.as_str(), "AVAILABILITY_FAILURE");
+        assert_eq!(SlashingCondition::FalseAttestation.as_str(), "FALSE_ATTESTATION");
+        assert_eq!(SlashingCondition::Collusion.as_str(), "COLLUSION");
+    }
+
+    #[test]
+    fn cannot_slash_from_registered() {
+        let mut w = test_watcher();
+        let err = w.slash(SlashingCondition::Equivocation).unwrap_err();
+        assert!(matches!(err, WatcherError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_slash_from_slashed() {
+        let mut w = test_watcher();
+        w.bond(1_000_000).unwrap();
+        w.activate().unwrap();
+        w.slash(SlashingCondition::AvailabilityFailure).unwrap();
+        assert_eq!(w.state, WatcherState::Slashed);
+        let err = w.slash(SlashingCondition::Equivocation).unwrap_err();
+        assert!(matches!(err, WatcherError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_slash_from_unbonding() {
+        let mut w = test_watcher();
+        w.bond(1_000_000).unwrap();
+        w.activate().unwrap();
+        w.unbond().unwrap();
+        let err = w.slash(SlashingCondition::FalseAttestation).unwrap_err();
+        assert!(matches!(err, WatcherError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_activate_from_active() {
+        let mut w = test_watcher();
+        w.bond(1_000_000).unwrap();
+        w.activate().unwrap();
+        let err = w.activate().unwrap_err();
+        assert!(matches!(err, WatcherError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_activate_from_slashed() {
+        let mut w = test_watcher();
+        w.bond(1_000_000).unwrap();
+        w.activate().unwrap();
+        w.slash(SlashingCondition::AvailabilityFailure).unwrap();
+        let err = w.activate().unwrap_err();
+        assert!(matches!(err, WatcherError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_unbond_from_registered() {
+        let mut w = test_watcher();
+        let err = w.unbond().unwrap_err();
+        assert!(matches!(err, WatcherError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_unbond_from_slashed() {
+        let mut w = test_watcher();
+        w.bond(1_000_000).unwrap();
+        w.activate().unwrap();
+        w.slash(SlashingCondition::AvailabilityFailure).unwrap();
+        let err = w.unbond().unwrap_err();
+        assert!(matches!(err, WatcherError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_complete_unbond_from_active() {
+        let mut w = test_watcher();
+        w.bond(1_000_000).unwrap();
+        w.activate().unwrap();
+        let err = w.complete_unbond().unwrap_err();
+        assert!(matches!(err, WatcherError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_complete_unbond_from_registered() {
+        let mut w = test_watcher();
+        let err = w.complete_unbond().unwrap_err();
+        assert!(matches!(err, WatcherError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_rebond_from_registered() {
+        let mut w = test_watcher();
+        let err = w.rebond(500_000).unwrap_err();
+        assert!(matches!(err, WatcherError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_rebond_from_bonded() {
+        let mut w = test_watcher();
+        w.bond(1_000_000).unwrap();
+        let err = w.rebond(500_000).unwrap_err();
+        assert!(matches!(err, WatcherError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_bond_from_bonded() {
+        let mut w = test_watcher();
+        w.bond(1_000_000).unwrap();
+        let err = w.bond(500_000).unwrap_err();
+        assert!(matches!(err, WatcherError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_operate_after_ban() {
+        let mut w = test_watcher();
+        w.bond(1_000_000).unwrap();
+        w.activate().unwrap();
+        w.slash(SlashingCondition::Collusion).unwrap();
+        assert_eq!(w.state, WatcherState::Banned);
+        assert!(w.state.is_terminal());
+
+        // All transitions should fail from banned state
+        assert!(w.bond(500_000).is_err());
+        assert!(w.activate().is_err());
+        assert!(w.unbond().is_err());
+        assert!(w.rebond(500_000).is_err());
+        assert!(w.slash(SlashingCondition::Equivocation).is_err());
+        assert!(w.complete_unbond().is_err());
+    }
+
+    #[test]
+    fn cannot_operate_after_deactivated() {
+        let mut w = test_watcher();
+        w.bond(1_000_000).unwrap();
+        w.activate().unwrap();
+        w.unbond().unwrap();
+        w.complete_unbond().unwrap();
+        assert_eq!(w.state, WatcherState::Deactivated);
+        assert!(w.state.is_terminal());
+
+        assert!(w.bond(500_000).is_err());
+        assert!(w.activate().is_err());
+        assert!(w.unbond().is_err());
+    }
+
+    #[test]
+    fn available_stake_after_multiple_slashes() {
+        let mut w = test_watcher();
+        w.bond(1_000_000).unwrap();
+        w.activate().unwrap();
+        // First slash: 1% = 10,000
+        w.slash(SlashingCondition::AvailabilityFailure).unwrap();
+        assert_eq!(w.available_stake(), 990_000);
+        assert_eq!(w.slash_count, 1);
+
+        // Rebond and reactivate
+        w.rebond(0).unwrap();
+        w.activate().unwrap();
+        // Second slash: 1% of original bond = 10,000
+        w.slash(SlashingCondition::AvailabilityFailure).unwrap();
+        assert_eq!(w.slash_count, 2);
+    }
+
+    #[test]
+    fn available_stake_saturates_at_zero() {
+        let mut w = test_watcher();
+        w.bond(100).unwrap();
+        w.activate().unwrap();
+        // 100% slash removes all stake
+        w.slash(SlashingCondition::Equivocation).unwrap();
+        assert_eq!(w.available_stake(), 0);
+    }
+
+    #[test]
+    fn watcher_error_invalid_transition_display() {
+        let err = WatcherError::InvalidTransition {
+            from: WatcherState::Registered,
+            to: WatcherState::Active,
+            reason: "must bond first".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("REGISTERED"));
+        assert!(msg.contains("ACTIVE"));
+        assert!(msg.contains("must bond first"));
+    }
+
+    #[test]
+    fn watcher_error_insufficient_stake_display() {
+        let err = WatcherError::InsufficientStake {
+            required: 1000,
+            available: 500,
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("1000"));
+        assert!(msg.contains("500"));
+    }
+
+    #[test]
+    fn watcher_error_already_terminal_display() {
+        let err = WatcherError::AlreadyTerminal {
+            id: WatcherId::new(),
+            state: WatcherState::Banned,
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("terminal state"));
+        assert!(msg.contains("BANNED"));
+    }
 }

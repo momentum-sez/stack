@@ -131,3 +131,112 @@ impl From<msez_state::entity::EntityError> for AppError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn not_found_status_code() {
+        let err = AppError::NotFound("missing entity".to_string());
+        let (status, code) = err.status_and_code();
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        assert_eq!(code, "NOT_FOUND");
+    }
+
+    #[test]
+    fn validation_status_code() {
+        let err = AppError::Validation("bad field".to_string());
+        let (status, code) = err.status_and_code();
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(code, "VALIDATION_ERROR");
+    }
+
+    #[test]
+    fn bad_request_status_code() {
+        let err = AppError::BadRequest("malformed JSON".to_string());
+        let (status, code) = err.status_and_code();
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(code, "BAD_REQUEST");
+    }
+
+    #[test]
+    fn unauthorized_status_code() {
+        let err = AppError::Unauthorized("no token".to_string());
+        let (status, code) = err.status_and_code();
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert_eq!(code, "UNAUTHORIZED");
+    }
+
+    #[test]
+    fn forbidden_status_code() {
+        let err = AppError::Forbidden("insufficient scope".to_string());
+        let (status, code) = err.status_and_code();
+        assert_eq!(status, StatusCode::FORBIDDEN);
+        assert_eq!(code, "FORBIDDEN");
+    }
+
+    #[test]
+    fn conflict_status_code() {
+        let err = AppError::Conflict("entity already exists".to_string());
+        let (status, code) = err.status_and_code();
+        assert_eq!(status, StatusCode::CONFLICT);
+        assert_eq!(code, "CONFLICT");
+    }
+
+    #[test]
+    fn internal_status_code() {
+        let err = AppError::Internal("db connection failed".to_string());
+        let (status, code) = err.status_and_code();
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(code, "INTERNAL_ERROR");
+    }
+
+    #[test]
+    fn error_display_messages() {
+        assert!(format!("{}", AppError::NotFound("x".into())).contains("x"));
+        assert!(format!("{}", AppError::Validation("y".into())).contains("y"));
+        assert!(format!("{}", AppError::BadRequest("z".into())).contains("z"));
+        assert!(format!("{}", AppError::Unauthorized("a".into())).contains("a"));
+        assert!(format!("{}", AppError::Forbidden("b".into())).contains("b"));
+        assert!(format!("{}", AppError::Conflict("c".into())).contains("c"));
+        assert!(format!("{}", AppError::Internal("d".into())).contains("d"));
+    }
+
+    #[test]
+    fn entity_error_converts_to_conflict() {
+        let entity_err = msez_state::entity::EntityError::DissolutionComplete;
+        let app_err = AppError::from(entity_err);
+        let (status, _) = app_err.status_and_code();
+        assert_eq!(status, StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn error_body_serializes() {
+        let body = ErrorBody {
+            error: ErrorDetail {
+                code: "TEST".to_string(),
+                message: "test message".to_string(),
+                details: None,
+            },
+        };
+        let json = serde_json::to_string(&body).unwrap();
+        assert!(json.contains("TEST"));
+        assert!(json.contains("test message"));
+        assert!(!json.contains("details")); // skipped when None
+    }
+
+    #[test]
+    fn error_body_with_details_serializes() {
+        let body = ErrorBody {
+            error: ErrorDetail {
+                code: "VALIDATION_ERROR".to_string(),
+                message: "bad input".to_string(),
+                details: Some(serde_json::json!({"field": "name"})),
+            },
+        };
+        let json = serde_json::to_string(&body).unwrap();
+        assert!(json.contains("details"));
+        assert!(json.contains("name"));
+    }
+}

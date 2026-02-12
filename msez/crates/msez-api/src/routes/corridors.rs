@@ -272,3 +272,273 @@ async fn finality_status(State(_state): State<AppState>) -> Json<serde_json::Val
         "message": "Finality computation is a Phase 2 feature"
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::extractors::Validate;
+
+    // ── CreateCorridorRequest validation ───────────────────────────
+
+    #[test]
+    fn test_create_corridor_request_valid() {
+        let req = CreateCorridorRequest {
+            jurisdiction_a: "PK-PSEZ".to_string(),
+            jurisdiction_b: "AE-DIFC".to_string(),
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_create_corridor_request_empty_jurisdiction_a() {
+        let req = CreateCorridorRequest {
+            jurisdiction_a: "".to_string(),
+            jurisdiction_b: "AE-DIFC".to_string(),
+        };
+        let err = req.validate().unwrap_err();
+        assert!(err.contains("non-empty"), "error should mention non-empty: {err}");
+    }
+
+    #[test]
+    fn test_create_corridor_request_empty_jurisdiction_b() {
+        let req = CreateCorridorRequest {
+            jurisdiction_a: "PK-PSEZ".to_string(),
+            jurisdiction_b: "  ".to_string(),
+        };
+        assert!(req.validate().is_err());
+    }
+
+    #[test]
+    fn test_create_corridor_request_same_jurisdictions() {
+        let req = CreateCorridorRequest {
+            jurisdiction_a: "PK-PSEZ".to_string(),
+            jurisdiction_b: "PK-PSEZ".to_string(),
+        };
+        let err = req.validate().unwrap_err();
+        assert!(err.contains("differ"), "error should mention differ: {err}");
+    }
+
+    // ── TransitionCorridorRequest validation ──────────────────────
+
+    #[test]
+    fn test_transition_corridor_request_valid_pending() {
+        let req = TransitionCorridorRequest {
+            target_state: "PENDING".to_string(),
+            evidence_digest: None,
+            reason: None,
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_transition_corridor_request_valid_active() {
+        let req = TransitionCorridorRequest {
+            target_state: "ACTIVE".to_string(),
+            evidence_digest: Some("abc123".to_string()),
+            reason: Some("compliance approved".to_string()),
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_transition_corridor_request_valid_halted() {
+        let req = TransitionCorridorRequest {
+            target_state: "HALTED".to_string(),
+            evidence_digest: None,
+            reason: None,
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_transition_corridor_request_valid_suspended() {
+        let req = TransitionCorridorRequest {
+            target_state: "SUSPENDED".to_string(),
+            evidence_digest: None,
+            reason: None,
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_transition_corridor_request_valid_deprecated() {
+        let req = TransitionCorridorRequest {
+            target_state: "DEPRECATED".to_string(),
+            evidence_digest: None,
+            reason: None,
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_transition_corridor_request_invalid_state() {
+        let req = TransitionCorridorRequest {
+            target_state: "INVALID_STATE".to_string(),
+            evidence_digest: None,
+            reason: None,
+        };
+        let err = req.validate().unwrap_err();
+        assert!(err.contains("target_state"), "error should mention target_state: {err}");
+    }
+
+    #[test]
+    fn test_transition_corridor_request_empty_state() {
+        let req = TransitionCorridorRequest {
+            target_state: "".to_string(),
+            evidence_digest: None,
+            reason: None,
+        };
+        assert!(req.validate().is_err());
+    }
+
+    // ── ProposeReceiptRequest validation ──────────────────────────
+
+    #[test]
+    fn test_propose_receipt_request_valid() {
+        let req = ProposeReceiptRequest {
+            corridor_id: Uuid::new_v4(),
+            payload: serde_json::json!({"key": "value"}),
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    // ── Router construction ───────────────────────────────────────
+
+    #[test]
+    fn test_router_builds_successfully() {
+        let _router = router();
+    }
+
+    // ── Handler integration tests ──────────────────────────────────
+
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+
+    /// Helper: build the corridors router with a fresh AppState.
+    fn test_app() -> Router<()> {
+        router().with_state(AppState::new())
+    }
+
+    /// Helper: read the response body as bytes and deserialize from JSON.
+    async fn body_json<T: serde::de::DeserializeOwned>(resp: axum::response::Response) -> T {
+        let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    #[tokio::test]
+    async fn handler_create_corridor_returns_201() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"jurisdiction_a":"PK-PSEZ","jurisdiction_b":"AE-DIFC"}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::CREATED);
+
+        let record: CorridorRecord = body_json(resp).await;
+        assert_eq!(record.jurisdiction_a, "PK-PSEZ");
+        assert_eq!(record.jurisdiction_b, "AE-DIFC");
+        assert_eq!(record.state, "DRAFT");
+        assert!(record.transition_log.is_empty());
+    }
+
+    #[tokio::test]
+    async fn handler_create_corridor_same_jurisdictions_returns_422() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"jurisdiction_a":"PK-PSEZ","jurisdiction_b":"PK-PSEZ"}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
+    async fn handler_create_corridor_empty_jurisdiction_returns_422() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"jurisdiction_a":"","jurisdiction_b":"AE-DIFC"}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
+    async fn handler_list_corridors_empty_returns_200() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/corridors")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let records: Vec<CorridorRecord> = body_json(resp).await;
+        assert!(records.is_empty());
+    }
+
+    #[tokio::test]
+    async fn handler_list_corridors_after_create_returns_one() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create a corridor.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"jurisdiction_a":"PK-PSEZ","jurisdiction_b":"AE-DIFC"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        assert_eq!(create_resp.status(), StatusCode::CREATED);
+
+        // List corridors.
+        let list_req = Request::builder()
+            .method("GET")
+            .uri("/v1/corridors")
+            .body(Body::empty())
+            .unwrap();
+        let list_resp = app.oneshot(list_req).await.unwrap();
+        assert_eq!(list_resp.status(), StatusCode::OK);
+
+        let records: Vec<CorridorRecord> = body_json(list_resp).await;
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].jurisdiction_a, "PK-PSEZ");
+    }
+
+    #[tokio::test]
+    async fn handler_create_corridor_bad_json_returns_400() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"malformed"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+}

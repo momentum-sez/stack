@@ -508,4 +508,222 @@ mod tests {
         let stage = DissolutionStage::NotifyCreditors;
         assert_eq!(format!("{stage}"), "Stage 4 (NOTIFY_CREDITORS)");
     }
+
+    // ── Additional coverage tests ────────────────────────────────────
+
+    #[test]
+    fn entity_lifecycle_state_display_all_variants() {
+        assert_eq!(format!("{}", EntityLifecycleState::Applied), "APPLIED");
+        assert_eq!(format!("{}", EntityLifecycleState::Active), "ACTIVE");
+        assert_eq!(format!("{}", EntityLifecycleState::Suspended), "SUSPENDED");
+        assert_eq!(format!("{}", EntityLifecycleState::Dissolving), "DISSOLVING");
+        assert_eq!(format!("{}", EntityLifecycleState::Dissolved), "DISSOLVED");
+        assert_eq!(format!("{}", EntityLifecycleState::Rejected), "REJECTED");
+    }
+
+    #[test]
+    fn entity_lifecycle_state_as_str_all_variants() {
+        assert_eq!(EntityLifecycleState::Suspended.as_str(), "SUSPENDED");
+        assert_eq!(EntityLifecycleState::Rejected.as_str(), "REJECTED");
+    }
+
+    #[test]
+    fn is_terminal_non_terminal_states() {
+        assert!(!EntityLifecycleState::Applied.is_terminal());
+        assert!(!EntityLifecycleState::Active.is_terminal());
+        assert!(!EntityLifecycleState::Suspended.is_terminal());
+        assert!(!EntityLifecycleState::Dissolving.is_terminal());
+    }
+
+    #[test]
+    fn is_terminal_terminal_states() {
+        assert!(EntityLifecycleState::Dissolved.is_terminal());
+        assert!(EntityLifecycleState::Rejected.is_terminal());
+    }
+
+    #[test]
+    fn dissolution_stage_all_stages_returns_ten_ordered() {
+        let stages = DissolutionStage::all_stages();
+        assert_eq!(stages.len(), 10);
+        assert_eq!(stages[0], DissolutionStage::BoardResolution);
+        assert_eq!(stages[1], DissolutionStage::ShareholderResolution);
+        assert_eq!(stages[2], DissolutionStage::AppointLiquidator);
+        assert_eq!(stages[3], DissolutionStage::NotifyCreditors);
+        assert_eq!(stages[4], DissolutionStage::RealizeAssets);
+        assert_eq!(stages[5], DissolutionStage::SettleLiabilities);
+        assert_eq!(stages[6], DissolutionStage::FinalDistribution);
+        assert_eq!(stages[7], DissolutionStage::FinalMeeting);
+        assert_eq!(stages[8], DissolutionStage::FileFinalDocuments);
+        assert_eq!(stages[9], DissolutionStage::Dissolution);
+    }
+
+    #[test]
+    fn dissolution_stage_number_all_variants() {
+        assert_eq!(DissolutionStage::BoardResolution.number(), 1);
+        assert_eq!(DissolutionStage::ShareholderResolution.number(), 2);
+        assert_eq!(DissolutionStage::AppointLiquidator.number(), 3);
+        assert_eq!(DissolutionStage::NotifyCreditors.number(), 4);
+        assert_eq!(DissolutionStage::RealizeAssets.number(), 5);
+        assert_eq!(DissolutionStage::SettleLiabilities.number(), 6);
+        assert_eq!(DissolutionStage::FinalDistribution.number(), 7);
+        assert_eq!(DissolutionStage::FinalMeeting.number(), 8);
+        assert_eq!(DissolutionStage::FileFinalDocuments.number(), 9);
+        assert_eq!(DissolutionStage::Dissolution.number(), 10);
+    }
+
+    #[test]
+    fn dissolution_stage_as_str_all_variants() {
+        assert_eq!(DissolutionStage::BoardResolution.as_str(), "BOARD_RESOLUTION");
+        assert_eq!(DissolutionStage::ShareholderResolution.as_str(), "SHAREHOLDER_RESOLUTION");
+        assert_eq!(DissolutionStage::AppointLiquidator.as_str(), "APPOINT_LIQUIDATOR");
+        assert_eq!(DissolutionStage::NotifyCreditors.as_str(), "NOTIFY_CREDITORS");
+        assert_eq!(DissolutionStage::RealizeAssets.as_str(), "REALIZE_ASSETS");
+        assert_eq!(DissolutionStage::SettleLiabilities.as_str(), "SETTLE_LIABILITIES");
+        assert_eq!(DissolutionStage::FinalDistribution.as_str(), "FINAL_DISTRIBUTION");
+        assert_eq!(DissolutionStage::FinalMeeting.as_str(), "FINAL_MEETING");
+        assert_eq!(DissolutionStage::FileFinalDocuments.as_str(), "FILE_FINAL_DOCUMENTS");
+        assert_eq!(DissolutionStage::Dissolution.as_str(), "DISSOLUTION");
+    }
+
+    #[test]
+    fn dissolution_stage_display_all_variants() {
+        assert_eq!(format!("{}", DissolutionStage::BoardResolution), "Stage 1 (BOARD_RESOLUTION)");
+        assert_eq!(format!("{}", DissolutionStage::ShareholderResolution), "Stage 2 (SHAREHOLDER_RESOLUTION)");
+        assert_eq!(format!("{}", DissolutionStage::AppointLiquidator), "Stage 3 (APPOINT_LIQUIDATOR)");
+        assert_eq!(format!("{}", DissolutionStage::RealizeAssets), "Stage 5 (REALIZE_ASSETS)");
+        assert_eq!(format!("{}", DissolutionStage::SettleLiabilities), "Stage 6 (SETTLE_LIABILITIES)");
+        assert_eq!(format!("{}", DissolutionStage::FinalDistribution), "Stage 7 (FINAL_DISTRIBUTION)");
+        assert_eq!(format!("{}", DissolutionStage::FinalMeeting), "Stage 8 (FINAL_MEETING)");
+        assert_eq!(format!("{}", DissolutionStage::FileFinalDocuments), "Stage 9 (FILE_FINAL_DOCUMENTS)");
+        assert_eq!(format!("{}", DissolutionStage::Dissolution), "Stage 10 (DISSOLUTION)");
+    }
+
+    #[test]
+    fn dissolution_stage_is_final_non_final() {
+        assert!(!DissolutionStage::BoardResolution.is_final());
+        assert!(!DissolutionStage::ShareholderResolution.is_final());
+        assert!(!DissolutionStage::AppointLiquidator.is_final());
+        assert!(!DissolutionStage::NotifyCreditors.is_final());
+        assert!(!DissolutionStage::RealizeAssets.is_final());
+        assert!(!DissolutionStage::SettleLiabilities.is_final());
+        assert!(!DissolutionStage::FinalDistribution.is_final());
+        assert!(!DissolutionStage::FinalMeeting.is_final());
+        assert!(!DissolutionStage::FileFinalDocuments.is_final());
+        assert!(DissolutionStage::Dissolution.is_final());
+    }
+
+    #[test]
+    fn dissolution_stage_next_returns_none_for_final() {
+        assert!(DissolutionStage::Dissolution.next().is_none());
+    }
+
+    #[test]
+    fn cannot_reject_from_active() {
+        let mut entity = test_entity();
+        entity.approve().unwrap();
+        let err = entity.reject().unwrap_err();
+        assert!(matches!(err, EntityError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_reinstate_from_applied() {
+        let mut entity = test_entity();
+        let err = entity.reinstate().unwrap_err();
+        assert!(matches!(err, EntityError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_reinstate_from_active() {
+        let mut entity = test_entity();
+        entity.approve().unwrap();
+        let err = entity.reinstate().unwrap_err();
+        assert!(matches!(err, EntityError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_initiate_dissolution_from_suspended() {
+        let mut entity = test_entity();
+        entity.approve().unwrap();
+        entity.suspend().unwrap();
+        let err = entity.initiate_dissolution().unwrap_err();
+        assert!(matches!(err, EntityError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_approve_from_rejected() {
+        let mut entity = test_entity();
+        entity.reject().unwrap();
+        let err = entity.approve().unwrap_err();
+        assert!(matches!(err, EntityError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_approve_from_dissolved() {
+        let mut entity = test_entity();
+        entity.approve().unwrap();
+        entity.initiate_dissolution().unwrap();
+        // Advance through all 10 stages + final advance to dissolved
+        for _ in 0..10 {
+            entity.advance_dissolution().unwrap();
+        }
+        assert_eq!(entity.state, EntityLifecycleState::Dissolved);
+        let err = entity.approve().unwrap_err();
+        assert!(matches!(err, EntityError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_advance_dissolution_from_rejected() {
+        let mut entity = test_entity();
+        entity.reject().unwrap();
+        let err = entity.advance_dissolution().unwrap_err();
+        assert!(matches!(err, EntityError::InvalidDissolutionAdvance { .. }));
+    }
+
+    #[test]
+    fn entity_default_is_applied() {
+        let entity = Entity::default();
+        assert_eq!(entity.state, EntityLifecycleState::Applied);
+        assert!(entity.dissolution_stage.is_none());
+    }
+
+    #[test]
+    fn entity_error_invalid_transition_display() {
+        let err = EntityError::InvalidTransition {
+            from: EntityLifecycleState::Applied,
+            to: EntityLifecycleState::Suspended,
+            reason: "not allowed".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("APPLIED"));
+        assert!(msg.contains("SUSPENDED"));
+        assert!(msg.contains("not allowed"));
+    }
+
+    #[test]
+    fn entity_error_invalid_dissolution_advance_display() {
+        let err = EntityError::InvalidDissolutionAdvance {
+            from: DissolutionStage::BoardResolution,
+            entity_state: EntityLifecycleState::Active,
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("ACTIVE"));
+    }
+
+    #[test]
+    fn entity_error_already_terminal_display() {
+        let err = EntityError::AlreadyTerminal {
+            id: EntityId::new(),
+            state: EntityLifecycleState::Dissolved,
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("terminal state"));
+        assert!(msg.contains("DISSOLVED"));
+    }
+
+    #[test]
+    fn entity_error_dissolution_complete_display() {
+        let err = EntityError::DissolutionComplete;
+        let msg = format!("{err}");
+        assert!(msg.contains("dissolution already complete"));
+    }
 }

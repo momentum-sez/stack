@@ -133,3 +133,141 @@ pub enum ValidationError {
         reason: String,
     },
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn msez_error_canonicalization_display() {
+        let inner = CanonicalizationError::FloatRejected(1.5);
+        let err = MsezError::Canonicalization(inner);
+        let msg = format!("{err}");
+        assert!(msg.contains("canonicalization error"));
+    }
+
+    #[test]
+    fn msez_error_state_transition_display() {
+        let inner = StateTransitionError::InvalidTransition {
+            from: "DRAFT".to_string(),
+            to: "ACTIVE".to_string(),
+            reason: "missing evidence".to_string(),
+        };
+        let err = MsezError::StateTransition(inner);
+        let msg = format!("{err}");
+        assert!(msg.contains("DRAFT"));
+        assert!(msg.contains("ACTIVE"));
+    }
+
+    #[test]
+    fn msez_error_validation_display() {
+        let inner = ValidationError::InvalidDid("bad:did".to_string());
+        let err = MsezError::Validation(inner);
+        assert!(format!("{err}").contains("bad:did"));
+    }
+
+    #[test]
+    fn msez_error_schema_validation_display() {
+        let err = MsezError::SchemaValidation("missing field".to_string());
+        assert!(format!("{err}").contains("missing field"));
+    }
+
+    #[test]
+    fn msez_error_cryptographic_display() {
+        let err = MsezError::Cryptographic("bad key".to_string());
+        assert!(format!("{err}").contains("bad key"));
+    }
+
+    #[test]
+    fn msez_error_integrity_display() {
+        let err = MsezError::Integrity("digest mismatch".to_string());
+        assert!(format!("{err}").contains("digest mismatch"));
+    }
+
+    #[test]
+    fn msez_error_security_display() {
+        let err = MsezError::Security("injection attempt".to_string());
+        assert!(format!("{err}").contains("injection attempt"));
+    }
+
+    #[test]
+    fn canonicalization_error_float_rejected() {
+        let err = CanonicalizationError::FloatRejected(3.14);
+        let msg = format!("{err}");
+        assert!(msg.contains("float values are not permitted"));
+        assert!(msg.contains("3.14"));
+    }
+
+    #[test]
+    fn state_transition_error_migration_timeout() {
+        let err = StateTransitionError::MigrationTimeout {
+            migration_id: "mig-001".to_string(),
+            state: "IN_TRANSIT".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("mig-001"));
+        assert!(msg.contains("IN_TRANSIT"));
+    }
+
+    #[test]
+    fn state_transition_error_missing_evidence() {
+        let err = StateTransitionError::MissingEvidence {
+            from: "PENDING".to_string(),
+            to: "ACTIVE".to_string(),
+            evidence_type: "regulatory_approval".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("regulatory_approval"));
+    }
+
+    #[test]
+    fn validation_error_invalid_cnic() {
+        let err = ValidationError::InvalidCnic("123".to_string());
+        assert!(format!("{err}").contains("123"));
+        assert!(format!("{err}").contains("13 digits"));
+    }
+
+    #[test]
+    fn validation_error_invalid_ntn() {
+        let err = ValidationError::InvalidNtn("abc".to_string());
+        assert!(format!("{err}").contains("abc"));
+    }
+
+    #[test]
+    fn validation_error_invalid_passport() {
+        let err = ValidationError::InvalidPassportNumber("!".to_string());
+        assert!(format!("{err}").contains("alphanumeric"));
+    }
+
+    #[test]
+    fn validation_error_invalid_jurisdiction_id() {
+        let err = ValidationError::InvalidJurisdictionId;
+        assert!(format!("{err}").contains("non-empty"));
+    }
+
+    #[test]
+    fn validation_error_invalid_timestamp() {
+        let err = ValidationError::InvalidTimestamp {
+            value: "not-a-date".to_string(),
+            reason: "parse failed".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("not-a-date"));
+        assert!(msg.contains("parse failed"));
+    }
+
+    #[test]
+    fn all_error_types_are_debug() {
+        let e1 = MsezError::Security("test".to_string());
+        let e2 = CanonicalizationError::FloatRejected(0.0);
+        let e3 = StateTransitionError::MigrationTimeout {
+            migration_id: "x".to_string(),
+            state: "y".to_string(),
+        };
+        let e4 = ValidationError::InvalidJurisdictionId;
+        assert!(!format!("{e1:?}").is_empty());
+        assert!(!format!("{e2:?}").is_empty());
+        assert!(!format!("{e3:?}").is_empty());
+        assert!(!format!("{e4:?}").is_empty());
+    }
+}

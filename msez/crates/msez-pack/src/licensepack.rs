@@ -1425,4 +1425,835 @@ mod tests {
         assert_eq!(lock.licensepack.jurisdiction_id, "pk");
         assert_eq!(lock.artifact.byte_length, 4096);
     }
+
+    // -----------------------------------------------------------------------
+    // Licensepack with metadata — digest computation
+    // -----------------------------------------------------------------------
+
+    fn make_test_metadata() -> LicensepackMetadata {
+        LicensepackMetadata {
+            licensepack_id: "licensepack:pk:financial:2026-01-15".to_string(),
+            jurisdiction_id: "pk".to_string(),
+            domain: "financial".to_string(),
+            as_of_date: "2026-01-15".to_string(),
+            snapshot_timestamp: "2026-01-15T00:00:00Z".to_string(),
+            snapshot_type: "quarterly".to_string(),
+            regulator: LicensepackRegulator {
+                regulator_id: "fsra".to_string(),
+                name: "FSRA".to_string(),
+                jurisdiction_id: "pk-kp-rsez".to_string(),
+                registry_url: None,
+                did: None,
+                api_capabilities: vec![],
+            },
+            license: "MIT".to_string(),
+            sources: vec![],
+            includes: BTreeMap::new(),
+            normalization: BTreeMap::new(),
+            previous_licensepack_digest: None,
+            delta: None,
+        }
+    }
+
+    #[test]
+    fn test_licensepack_digest_with_metadata() {
+        let mut pack = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Test".to_string(),
+        );
+        pack.metadata = Some(make_test_metadata());
+        pack.add_license(make_test_license("lic-001", LicenseStatus::Active));
+
+        let d1 = pack.compute_digest().unwrap();
+        assert_eq!(d1.len(), 64);
+
+        // Digest differs from same pack without metadata
+        let mut pack_no_meta = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Test".to_string(),
+        );
+        pack_no_meta.add_license(make_test_license("lic-001", LicenseStatus::Active));
+        let d2 = pack_no_meta.compute_digest().unwrap();
+        assert_ne!(d1, d2);
+    }
+
+    // -----------------------------------------------------------------------
+    // Licensepack with holders — digest computation
+    // -----------------------------------------------------------------------
+
+    fn make_test_holder(id: &str) -> LicenseHolder {
+        LicenseHolder {
+            holder_id: id.to_string(),
+            entity_type: "company".to_string(),
+            legal_name: "Test Corporation Ltd".to_string(),
+            trading_names: vec!["TestCo".to_string()],
+            registration_number: Some("REG-001".to_string()),
+            incorporation_date: Some("2020-01-01".to_string()),
+            jurisdiction_of_incorporation: Some("pk".to_string()),
+            did: Some("did:web:test.example".to_string()),
+            registered_address: BTreeMap::new(),
+            contact: BTreeMap::new(),
+            controllers: vec![],
+            beneficial_owners: vec![],
+            group_structure: BTreeMap::new(),
+        }
+    }
+
+    #[test]
+    fn test_licensepack_digest_with_holders() {
+        let mut pack = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Test".to_string(),
+        );
+        let d_empty = pack.compute_digest().unwrap();
+
+        pack.add_holder(make_test_holder("h-001"));
+        let d_with_holder = pack.compute_digest().unwrap();
+        assert_ne!(d_empty, d_with_holder);
+
+        pack.add_holder(make_test_holder("h-002"));
+        let d_two_holders = pack.compute_digest().unwrap();
+        assert_ne!(d_with_holder, d_two_holders);
+    }
+
+    // -----------------------------------------------------------------------
+    // Licensepack with license types — digest computation
+    // -----------------------------------------------------------------------
+
+    fn make_test_license_type(id: &str) -> LicenseTypeDefinition {
+        LicenseTypeDefinition {
+            license_type_id: id.to_string(),
+            name: "Test License Type".to_string(),
+            description: "A test license type".to_string(),
+            regulator_id: "fsra".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec!["trading".to_string()],
+            requirements: BTreeMap::new(),
+            application_fee: BTreeMap::new(),
+            annual_fee: BTreeMap::new(),
+            validity_period_years: Some(3),
+        }
+    }
+
+    #[test]
+    fn test_licensepack_add_license_type() {
+        let mut pack = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Test".to_string(),
+        );
+        assert!(pack.license_types.is_empty());
+
+        pack.add_license_type(make_test_license_type("lt-001"));
+        assert_eq!(pack.license_types.len(), 1);
+        assert!(pack.license_types.contains_key("lt-001"));
+
+        // Digest was invalidated
+        assert!(pack.digest.is_none());
+    }
+
+    #[test]
+    fn test_licensepack_digest_with_license_types() {
+        let mut pack = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Test".to_string(),
+        );
+        let d_empty = pack.compute_digest().unwrap();
+
+        pack.add_license_type(make_test_license_type("lt-001"));
+        let d_with_type = pack.compute_digest().unwrap();
+        assert_ne!(d_empty, d_with_type);
+    }
+
+    // -----------------------------------------------------------------------
+    // Licensepack add_holder
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_licensepack_add_holder_invalidates_digest() {
+        let mut pack = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Test".to_string(),
+        );
+        // Compute digest to cache it
+        let _ = pack.compute_digest().unwrap();
+
+        pack.add_holder(make_test_holder("h-001"));
+        // After mutation, digest should be invalidated
+        assert!(pack.digest.is_none());
+    }
+
+    // -----------------------------------------------------------------------
+    // Licensepack verify_license — suspended and pending paths
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_verify_license_returns_suspended() {
+        let mut pack = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Test".to_string(),
+        );
+        pack.add_license(make_test_license("lic-001", LicenseStatus::Suspended));
+
+        let (valid, state, _) =
+            pack.verify_license("did:web:test.example", "payment_services", "2026-06-15");
+        assert!(!valid);
+        assert_eq!(state, LicenseComplianceState::Suspended);
+    }
+
+    #[test]
+    fn test_verify_license_returns_pending() {
+        let mut pack = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Test".to_string(),
+        );
+        pack.add_license(make_test_license("lic-001", LicenseStatus::Pending));
+
+        let (valid, state, _) =
+            pack.verify_license("did:web:test.example", "payment_services", "2026-06-15");
+        assert!(!valid);
+        assert_eq!(state, LicenseComplianceState::Pending);
+    }
+
+    #[test]
+    fn test_verify_license_prefers_compliant_over_suspended() {
+        let mut pack = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Test".to_string(),
+        );
+        pack.add_license(make_test_license("lic-001", LicenseStatus::Suspended));
+        pack.add_license(make_test_license("lic-002", LicenseStatus::Active));
+
+        let (valid, state, lic_id) =
+            pack.verify_license("did:web:test.example", "payment_services", "2026-06-15");
+        assert!(valid);
+        assert_eq!(state, LicenseComplianceState::Compliant);
+        assert!(lic_id.is_some());
+    }
+
+    // -----------------------------------------------------------------------
+    // LicenseRestriction — specific blocked jurisdictions
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_restriction_specific_blocked_jurisdictions() {
+        let rest = LicenseRestriction {
+            restriction_id: "r-003".to_string(),
+            restriction_type: "geographic".to_string(),
+            description: "Block specific countries".to_string(),
+            blocked_activities: vec![],
+            blocked_jurisdictions: vec!["us".to_string(), "cn".to_string()],
+            allowed_jurisdictions: vec![],
+            blocked_products: vec![],
+            blocked_client_types: vec![],
+            max_leverage: None,
+            effective_date: None,
+            status: "active".to_string(),
+        };
+        assert!(rest.blocks_jurisdiction("us"));
+        assert!(rest.blocks_jurisdiction("cn"));
+        assert!(!rest.blocks_jurisdiction("pk"));
+        assert!(!rest.blocks_jurisdiction("ae"));
+    }
+
+    #[test]
+    fn test_restriction_inactive_does_not_block() {
+        let rest = LicenseRestriction {
+            restriction_id: "r-004".to_string(),
+            restriction_type: "geographic".to_string(),
+            description: "Waived restriction".to_string(),
+            blocked_activities: vec!["crypto_exchange".to_string()],
+            blocked_jurisdictions: vec!["us".to_string()],
+            allowed_jurisdictions: vec![],
+            blocked_products: vec![],
+            blocked_client_types: vec![],
+            max_leverage: None,
+            effective_date: None,
+            status: "waived".to_string(),
+        };
+        assert!(!rest.blocks_activity("crypto_exchange"));
+        assert!(!rest.blocks_jurisdiction("us"));
+    }
+
+    // -----------------------------------------------------------------------
+    // License — has_blocking_restriction
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_license_has_blocking_restriction() {
+        let mut lic = make_test_license("lic-001", LicenseStatus::Active);
+        lic.restrictions = vec![LicenseRestriction {
+            restriction_id: "r-001".to_string(),
+            restriction_type: "activity".to_string(),
+            description: "No crypto".to_string(),
+            blocked_activities: vec!["crypto_exchange".to_string()],
+            blocked_jurisdictions: vec![],
+            allowed_jurisdictions: vec![],
+            blocked_products: vec![],
+            blocked_client_types: vec![],
+            max_leverage: None,
+            effective_date: None,
+            status: "active".to_string(),
+        }];
+
+        assert!(lic.has_blocking_restriction("crypto_exchange"));
+        assert!(!lic.has_blocking_restriction("payment_services"));
+    }
+
+    // -----------------------------------------------------------------------
+    // License — evaluate_compliance with restrictions
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_evaluate_compliance_blocked_by_restriction() {
+        let mut lic = make_test_license("lic-001", LicenseStatus::Active);
+        lic.restrictions = vec![LicenseRestriction {
+            restriction_id: "r-001".to_string(),
+            restriction_type: "activity".to_string(),
+            description: "No payment_services".to_string(),
+            blocked_activities: vec!["payment_services".to_string()],
+            blocked_jurisdictions: vec![],
+            allowed_jurisdictions: vec![],
+            blocked_products: vec![],
+            blocked_client_types: vec![],
+            max_leverage: None,
+            effective_date: None,
+            status: "active".to_string(),
+        }];
+
+        assert_eq!(
+            lic.evaluate_compliance("payment_services", "2026-06-15"),
+            LicenseComplianceState::NonCompliant
+        );
+    }
+
+    #[test]
+    fn test_evaluate_compliance_revoked() {
+        let lic = make_test_license("lic-001", LicenseStatus::Revoked);
+        assert_eq!(
+            lic.evaluate_compliance("payment_services", "2026-06-15"),
+            LicenseComplianceState::NonCompliant
+        );
+    }
+
+    #[test]
+    fn test_evaluate_compliance_surrendered() {
+        let lic = make_test_license("lic-001", LicenseStatus::Surrendered);
+        assert_eq!(
+            lic.evaluate_compliance("payment_services", "2026-06-15"),
+            LicenseComplianceState::NonCompliant
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // License — permits_activity with permissions
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_license_permits_activity_via_permissions() {
+        let mut lic = make_test_license("lic-001", LicenseStatus::Active);
+        lic.permitted_activities = vec![]; // Clear permitted_activities
+        lic.permissions = vec![LicensePermission {
+            permission_id: "p-001".to_string(),
+            activity: "custody_services".to_string(),
+            scope: BTreeMap::new(),
+            limits: BTreeMap::new(),
+            effective_date: None,
+            status: "active".to_string(),
+        }];
+
+        assert!(lic.permits_activity("custody_services"));
+        assert!(!lic.permits_activity("payment_services"));
+    }
+
+    #[test]
+    fn test_license_permits_activity_inactive_permission() {
+        let mut lic = make_test_license("lic-001", LicenseStatus::Active);
+        lic.permitted_activities = vec![];
+        lic.permissions = vec![LicensePermission {
+            permission_id: "p-001".to_string(),
+            activity: "custody_services".to_string(),
+            scope: BTreeMap::new(),
+            limits: BTreeMap::new(),
+            effective_date: None,
+            status: "revoked".to_string(), // inactive permission
+        }];
+
+        assert!(!lic.permits_activity("custody_services"));
+    }
+
+    // -----------------------------------------------------------------------
+    // canonical_json_bytes
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_canonical_json_bytes_sorts_keys() {
+        let val = json!({"z": 1, "a": 2});
+        let bytes = canonical_json_bytes(&val).unwrap();
+        let s = std::str::from_utf8(&bytes).unwrap();
+        assert_eq!(s, r#"{"a":2,"z":1}"#);
+    }
+
+    #[test]
+    fn test_canonical_json_bytes_rejects_float() {
+        let val = json!({"rate": 3.14});
+        assert!(canonical_json_bytes(&val).is_err());
+    }
+
+    // -----------------------------------------------------------------------
+    // LicenseHolder serialization
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_license_holder_serialization() {
+        let holder = make_test_holder("h-001");
+        let json_val = serde_json::to_value(&holder).unwrap();
+        assert_eq!(json_val["holder_id"], "h-001");
+        assert_eq!(json_val["entity_type"], "company");
+        assert_eq!(json_val["legal_name"], "Test Corporation Ltd");
+        assert_eq!(json_val["trading_names"].as_array().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_license_holder_roundtrip() {
+        let holder = make_test_holder("h-001");
+        let json_str = serde_json::to_string(&holder).unwrap();
+        let deserialized: LicenseHolder = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(deserialized.holder_id, "h-001");
+        assert_eq!(deserialized.did, Some("did:web:test.example".to_string()));
+    }
+
+    #[test]
+    fn test_license_holder_minimal() {
+        let json_str = r#"{"holder_id":"h","entity_type":"company","legal_name":"Test"}"#;
+        let holder: LicenseHolder = serde_json::from_str(json_str).unwrap();
+        assert_eq!(holder.holder_id, "h");
+        assert!(holder.trading_names.is_empty());
+        assert!(holder.did.is_none());
+        assert!(holder.controllers.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // LicenseCondition — is_active edge cases
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_condition_is_active_waived() {
+        let cond = LicenseCondition {
+            condition_id: "c-001".to_string(),
+            condition_type: "capital".to_string(),
+            description: "Waived condition".to_string(),
+            metric: None,
+            threshold: None,
+            currency: None,
+            operator: None,
+            frequency: None,
+            reporting_frequency: None,
+            effective_date: None,
+            expiry_date: None,
+            status: "waived".to_string(),
+        };
+        assert!(!cond.is_active("2026-06-15"));
+    }
+
+    #[test]
+    fn test_condition_is_active_no_expiry() {
+        let cond = LicenseCondition {
+            condition_id: "c-002".to_string(),
+            condition_type: "operational".to_string(),
+            description: "No expiry".to_string(),
+            metric: None,
+            threshold: None,
+            currency: None,
+            operator: None,
+            frequency: None,
+            reporting_frequency: None,
+            effective_date: None,
+            expiry_date: None, // No expiry date
+            status: "active".to_string(),
+        };
+        assert!(cond.is_active("2099-12-31")); // Always active
+    }
+
+    // -----------------------------------------------------------------------
+    // License — is_expired edge cases
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_license_no_expiry_date() {
+        let mut lic = make_test_license("lic-001", LicenseStatus::Active);
+        lic.expiry_date = None;
+        assert!(!lic.is_expired("2099-12-31"));
+    }
+
+    #[test]
+    fn test_license_expired_exactly_on_boundary() {
+        let mut lic = make_test_license("lic-001", LicenseStatus::Active);
+        lic.expiry_date = Some("2026-06-15".to_string());
+        // Same day: not expired (< comparison is strict)
+        assert!(!lic.is_expired("2026-06-15"));
+        // Day after: expired
+        assert!(lic.is_expired("2026-06-16"));
+    }
+
+    // -----------------------------------------------------------------------
+    // compute_delta — additional edge cases
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_delta_no_changes() {
+        let mut pack = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Same".to_string(),
+        );
+        pack.add_license(make_test_license("lic-001", LicenseStatus::Active));
+
+        let mut prev = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Same".to_string(),
+        );
+        prev.add_license(make_test_license("lic-001", LicenseStatus::Active));
+
+        let delta = pack.compute_delta(&prev);
+        assert_eq!(delta["licenses_granted"], 0);
+        assert_eq!(delta["licenses_revoked"], 0);
+        assert_eq!(delta["licenses_suspended"], 0);
+        assert_eq!(delta["licenses_reinstated"], 0);
+    }
+
+    #[test]
+    fn test_compute_delta_reinstated() {
+        let mut prev = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Prev".to_string(),
+        );
+        prev.add_license(make_test_license("lic-001", LicenseStatus::Suspended));
+
+        let mut curr = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Curr".to_string(),
+        );
+        curr.add_license(make_test_license("lic-001", LicenseStatus::Active));
+
+        let delta = curr.compute_delta(&prev);
+        assert_eq!(delta["licenses_reinstated"], 1);
+    }
+
+    #[test]
+    fn test_compute_delta_empty_packs() {
+        let prev = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Prev".to_string(),
+        );
+        let curr = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Curr".to_string(),
+        );
+
+        let delta = curr.compute_delta(&prev);
+        assert_eq!(delta["licenses_granted"], 0);
+        assert_eq!(delta["licenses_revoked"], 0);
+    }
+
+    #[test]
+    fn test_compute_delta_all_new() {
+        let prev = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Prev".to_string(),
+        );
+        let mut curr = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Curr".to_string(),
+        );
+        curr.add_license(make_test_license("lic-001", LicenseStatus::Active));
+        curr.add_license(make_test_license("lic-002", LicenseStatus::Active));
+
+        let delta = curr.compute_delta(&prev);
+        assert_eq!(delta["licenses_granted"], 2);
+    }
+
+    #[test]
+    fn test_compute_delta_status_revoked() {
+        let mut prev = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Prev".to_string(),
+        );
+        prev.add_license(make_test_license("lic-001", LicenseStatus::Active));
+
+        let mut curr = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Curr".to_string(),
+        );
+        curr.add_license(make_test_license("lic-001", LicenseStatus::Revoked));
+
+        let delta = curr.compute_delta(&prev);
+        assert_eq!(delta["licenses_revoked"], 1);
+    }
+
+    // -----------------------------------------------------------------------
+    // Licensepack digest with conditions, permissions, restrictions
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_licensepack_digest_with_conditions() {
+        let mut pack1 = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Test".to_string(),
+        );
+        let mut lic = make_test_license("lic-001", LicenseStatus::Active);
+        lic.conditions = vec![LicenseCondition {
+            condition_id: "c-001".to_string(),
+            condition_type: "capital".to_string(),
+            description: "Min capital".to_string(),
+            metric: None,
+            threshold: Some("1000000".to_string()),
+            currency: Some("PKR".to_string()),
+            operator: Some(">=".to_string()),
+            frequency: None,
+            reporting_frequency: None,
+            effective_date: None,
+            expiry_date: None,
+            status: "active".to_string(),
+        }];
+        pack1.add_license(lic);
+
+        let mut pack2 = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Test".to_string(),
+        );
+        pack2.add_license(make_test_license("lic-001", LicenseStatus::Active));
+
+        // Digest should differ: one has conditions, the other does not
+        assert_ne!(
+            pack1.compute_digest().unwrap(),
+            pack2.compute_digest().unwrap()
+        );
+    }
+
+    #[test]
+    fn test_licensepack_digest_with_permissions_and_restrictions() {
+        let mut lic = make_test_license("lic-001", LicenseStatus::Active);
+        lic.permissions = vec![LicensePermission {
+            permission_id: "p-001".to_string(),
+            activity: "payment".to_string(),
+            scope: BTreeMap::new(),
+            limits: BTreeMap::new(),
+            effective_date: None,
+            status: "active".to_string(),
+        }];
+        lic.restrictions = vec![LicenseRestriction {
+            restriction_id: "r-001".to_string(),
+            restriction_type: "geographic".to_string(),
+            description: "Test".to_string(),
+            blocked_activities: vec![],
+            blocked_jurisdictions: vec!["us".to_string()],
+            allowed_jurisdictions: vec![],
+            blocked_products: vec![],
+            blocked_client_types: vec![],
+            max_leverage: None,
+            effective_date: None,
+            status: "active".to_string(),
+        }];
+
+        let mut pack = Licensepack::new(
+            JurisdictionId::new("pk".to_string()).unwrap(),
+            "Test".to_string(),
+        );
+        pack.add_license(lic);
+
+        let digest = pack.compute_digest().unwrap();
+        assert_eq!(digest.len(), 64);
+        // Deterministic
+        let digest2 = pack.compute_digest().unwrap();
+        assert_eq!(digest, digest2);
+    }
+
+    // -----------------------------------------------------------------------
+    // resolve_licensepack_refs — additional edge cases
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_resolve_licensepack_refs_empty() {
+        let zone = json!({"zone_id": "test"});
+        let refs = resolve_licensepack_refs(&zone).unwrap();
+        assert!(refs.is_empty());
+    }
+
+    #[test]
+    fn test_resolve_licensepack_refs_skips_invalid_digest() {
+        let zone = json!({
+            "licensepacks": [
+                {
+                    "jurisdiction_id": "pk",
+                    "domain": "financial",
+                    "licensepack_digest_sha256": "bad"
+                }
+            ]
+        });
+        let refs = resolve_licensepack_refs(&zone).unwrap();
+        assert!(refs.is_empty());
+    }
+
+    #[test]
+    fn test_resolve_licensepack_refs_multiple() {
+        let zone = json!({
+            "licensepacks": [
+                {
+                    "jurisdiction_id": "pk",
+                    "domain": "financial",
+                    "licensepack_digest_sha256": "a".repeat(64)
+                },
+                {
+                    "jurisdiction_id": "ae",
+                    "domain": "trade",
+                    "licensepack_digest_sha256": "b".repeat(64),
+                    "as_of_date": "2026-02-01"
+                }
+            ]
+        });
+        let refs = resolve_licensepack_refs(&zone).unwrap();
+        assert_eq!(refs.len(), 2);
+        assert_eq!(refs[1].as_of_date, Some("2026-02-01".to_string()));
+    }
+
+    // -----------------------------------------------------------------------
+    // LicenseStatus — Display trait
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_license_status_display() {
+        assert_eq!(format!("{}", LicenseStatus::Active), "active");
+        assert_eq!(format!("{}", LicenseStatus::Suspended), "suspended");
+        assert_eq!(format!("{}", LicenseStatus::Revoked), "revoked");
+        assert_eq!(format!("{}", LicenseStatus::Expired), "expired");
+        assert_eq!(format!("{}", LicenseStatus::Pending), "pending");
+        assert_eq!(format!("{}", LicenseStatus::Surrendered), "surrendered");
+    }
+
+    // -----------------------------------------------------------------------
+    // LicenseDomain — Display and as_str
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_license_domain_display() {
+        assert_eq!(format!("{}", LicenseDomain::Financial), "financial");
+        assert_eq!(format!("{}", LicenseDomain::Corporate), "corporate");
+        assert_eq!(format!("{}", LicenseDomain::Professional), "professional");
+        assert_eq!(format!("{}", LicenseDomain::Trade), "trade");
+        assert_eq!(format!("{}", LicenseDomain::Insurance), "insurance");
+        assert_eq!(format!("{}", LicenseDomain::Mixed), "mixed");
+    }
+
+    #[test]
+    fn test_license_domain_serialization_roundtrip() {
+        for domain in [
+            LicenseDomain::Financial,
+            LicenseDomain::Corporate,
+            LicenseDomain::Professional,
+            LicenseDomain::Trade,
+            LicenseDomain::Insurance,
+            LicenseDomain::Mixed,
+        ] {
+            let json = serde_json::to_string(&domain).unwrap();
+            let deserialized: LicenseDomain = serde_json::from_str(&json).unwrap();
+            assert_eq!(domain, deserialized);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // LicenseComplianceState — Display
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_license_compliance_state_display() {
+        assert_eq!(format!("{}", LicenseComplianceState::Compliant), "COMPLIANT");
+        assert_eq!(
+            format!("{}", LicenseComplianceState::NonCompliant),
+            "NON_COMPLIANT"
+        );
+        assert_eq!(format!("{}", LicenseComplianceState::Pending), "PENDING");
+        assert_eq!(format!("{}", LicenseComplianceState::Suspended), "SUSPENDED");
+        assert_eq!(format!("{}", LicenseComplianceState::Unknown), "UNKNOWN");
+    }
+
+    // -----------------------------------------------------------------------
+    // LicensepackRef — equality
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_licensepack_ref_equality() {
+        let r1 = LicensepackRef {
+            jurisdiction_id: "pk".to_string(),
+            domain: "financial".to_string(),
+            licensepack_digest_sha256: "a".repeat(64),
+            as_of_date: None,
+        };
+        let r2 = r1.clone();
+        assert_eq!(r1, r2);
+    }
+
+    // -----------------------------------------------------------------------
+    // LicensepackRegulator
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_licensepack_regulator_serialization() {
+        let reg = LicensepackRegulator {
+            regulator_id: "fsra".to_string(),
+            name: "FSRA".to_string(),
+            jurisdiction_id: "pk-kp-rsez".to_string(),
+            registry_url: Some("https://registry.example.com".to_string()),
+            did: Some("did:web:fsra.gov.pk".to_string()),
+            api_capabilities: vec!["realtime_query".to_string()],
+        };
+        let json = serde_json::to_value(&reg).unwrap();
+        assert_eq!(json["regulator_id"], "fsra");
+        assert_eq!(json["registry_url"], "https://registry.example.com");
+        assert_eq!(json["api_capabilities"].as_array().unwrap().len(), 1);
+    }
+
+    // -----------------------------------------------------------------------
+    // LicensepackMetadata
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_licensepack_metadata_serialization() {
+        let meta = make_test_metadata();
+        let json = serde_json::to_value(&meta).unwrap();
+        assert_eq!(json["licensepack_id"], "licensepack:pk:financial:2026-01-15");
+        assert_eq!(json["domain"], "financial");
+        assert_eq!(json["snapshot_type"], "quarterly");
+    }
+
+    #[test]
+    fn test_licensepack_metadata_with_delta() {
+        let mut meta = make_test_metadata();
+        let mut delta = BTreeMap::new();
+        delta.insert(
+            "licenses_granted".to_string(),
+            json!(5),
+        );
+        meta.delta = Some(delta);
+
+        let json = serde_json::to_value(&meta).unwrap();
+        assert_eq!(json["delta"]["licenses_granted"], 5);
+    }
+
+    // -----------------------------------------------------------------------
+    // LicensepackArtifactInfo
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_licensepack_artifact_info_roundtrip() {
+        let info = LicensepackArtifactInfo {
+            artifact_type: "licensepack".to_string(),
+            digest_sha256: "a".repeat(64),
+            uri: "dist/licensepacks/pk/financial/test.zip".to_string(),
+            media_type: "application/zip".to_string(),
+            byte_length: 8192,
+        };
+        let json_str = serde_json::to_string(&info).unwrap();
+        let deserialized: LicensepackArtifactInfo = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(deserialized.byte_length, 8192);
+        assert_eq!(deserialized.media_type, "application/zip");
+    }
 }

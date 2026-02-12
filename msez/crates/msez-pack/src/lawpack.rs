@@ -779,4 +779,724 @@ mod tests {
         assert_eq!(lock.domain, "civil");
         assert_eq!(lock.components.akn_sha256.len(), 1);
     }
+
+    // -----------------------------------------------------------------------
+    // LawpackRef — Display trait and edge cases
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_lawpack_ref_display() {
+        let r = LawpackRef {
+            jurisdiction_id: "pk".to_string(),
+            domain: "civil".to_string(),
+            lawpack_digest_sha256: "a".repeat(64),
+        };
+        let display = format!("{r}");
+        assert_eq!(display, format!("pk:civil:{}", "a".repeat(64)));
+    }
+
+    #[test]
+    fn test_lawpack_ref_parse_extra_colons() {
+        // More than 3 parts should fail
+        let result = LawpackRef::parse(&format!("pk:civil:{}:extra", "a".repeat(64)));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_lawpack_ref_parse_trims_whitespace() {
+        let result = LawpackRef::parse(&format!(" pk : civil : {} ", "a".repeat(64)));
+        assert!(result.is_ok());
+        let r = result.unwrap();
+        assert_eq!(r.jurisdiction_id, "pk");
+        assert_eq!(r.domain, "civil");
+    }
+
+    // -----------------------------------------------------------------------
+    // verify_lock — file-based lock verification
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_verify_lock_valid() {
+        let dir = tempfile::tempdir().unwrap();
+        let lock_path = dir.path().join("lawpack.lock.json");
+        let lock_data = json!({
+            "lawpack_digest_sha256": "a".repeat(64),
+            "jurisdiction_id": "pk",
+            "domain": "civil",
+            "as_of_date": "2026-01-15",
+            "artifact_path": "dist/lawpacks/pk/civil/test.lawpack.zip",
+            "artifact_sha256": "b".repeat(64),
+            "components": {
+                "lawpack_yaml_sha256": "c".repeat(64),
+                "index_json_sha256": "d".repeat(64),
+                "akn_sha256": {},
+                "sources_sha256": "e".repeat(64)
+            },
+            "provenance": {
+                "module_manifest_path": "module.yaml",
+                "sources_manifest_path": "sources.yaml",
+                "raw_sources": {},
+                "normalization": null
+            }
+        });
+        std::fs::write(&lock_path, serde_json::to_string_pretty(&lock_data).unwrap()).unwrap();
+
+        let lock = verify_lock(&lock_path).unwrap();
+        assert_eq!(lock.jurisdiction_id, "pk");
+        assert_eq!(lock.domain, "civil");
+    }
+
+    #[test]
+    fn test_verify_lock_invalid_lawpack_digest() {
+        let dir = tempfile::tempdir().unwrap();
+        let lock_path = dir.path().join("bad_lock.json");
+        let lock_data = json!({
+            "lawpack_digest_sha256": "invalid-digest",
+            "jurisdiction_id": "pk",
+            "domain": "civil",
+            "as_of_date": "2026-01-15",
+            "artifact_path": "artifact.zip",
+            "artifact_sha256": "b".repeat(64),
+            "components": {
+                "lawpack_yaml_sha256": "c".repeat(64),
+                "index_json_sha256": "d".repeat(64),
+                "akn_sha256": {},
+                "sources_sha256": "e".repeat(64)
+            },
+            "provenance": {
+                "module_manifest_path": "module.yaml",
+                "sources_manifest_path": "sources.yaml"
+            }
+        });
+        std::fs::write(&lock_path, serde_json::to_string(&lock_data).unwrap()).unwrap();
+
+        let result = verify_lock(&lock_path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_verify_lock_invalid_artifact_digest() {
+        let dir = tempfile::tempdir().unwrap();
+        let lock_path = dir.path().join("bad_artifact.json");
+        let lock_data = json!({
+            "lawpack_digest_sha256": "a".repeat(64),
+            "jurisdiction_id": "pk",
+            "domain": "civil",
+            "as_of_date": "2026-01-15",
+            "artifact_path": "artifact.zip",
+            "artifact_sha256": "short",
+            "components": {
+                "lawpack_yaml_sha256": "c".repeat(64),
+                "index_json_sha256": "d".repeat(64),
+                "akn_sha256": {},
+                "sources_sha256": "e".repeat(64)
+            },
+            "provenance": {
+                "module_manifest_path": "module.yaml",
+                "sources_manifest_path": "sources.yaml"
+            }
+        });
+        std::fs::write(&lock_path, serde_json::to_string(&lock_data).unwrap()).unwrap();
+
+        let result = verify_lock(&lock_path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_verify_lock_invalid_component_digests() {
+        let dir = tempfile::tempdir().unwrap();
+        let lock_path = dir.path().join("bad_comp.json");
+        let lock_data = json!({
+            "lawpack_digest_sha256": "a".repeat(64),
+            "jurisdiction_id": "pk",
+            "domain": "civil",
+            "as_of_date": "2026-01-15",
+            "artifact_path": "artifact.zip",
+            "artifact_sha256": "b".repeat(64),
+            "components": {
+                "lawpack_yaml_sha256": "BAD",
+                "index_json_sha256": "d".repeat(64),
+                "akn_sha256": {},
+                "sources_sha256": "e".repeat(64)
+            },
+            "provenance": {
+                "module_manifest_path": "module.yaml",
+                "sources_manifest_path": "sources.yaml"
+            }
+        });
+        std::fs::write(&lock_path, serde_json::to_string(&lock_data).unwrap()).unwrap();
+
+        let result = verify_lock(&lock_path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_verify_lock_file_not_found() {
+        let result = verify_lock(Path::new("/tmp/nonexistent_lock_file_xyz.json"));
+        assert!(result.is_err());
+    }
+
+    // -----------------------------------------------------------------------
+    // load_lock — simple pass-through
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_load_lock_valid() {
+        let dir = tempfile::tempdir().unwrap();
+        let lock_path = dir.path().join("lawpack.lock.json");
+        let lock_data = json!({
+            "lawpack_digest_sha256": "a".repeat(64),
+            "jurisdiction_id": "ae",
+            "domain": "financial",
+            "as_of_date": "2026-03-01",
+            "artifact_path": "artifact.zip",
+            "artifact_sha256": "b".repeat(64),
+            "components": {
+                "lawpack_yaml_sha256": "c".repeat(64),
+                "index_json_sha256": "d".repeat(64),
+                "akn_sha256": {},
+                "sources_sha256": "e".repeat(64)
+            },
+            "provenance": {
+                "module_manifest_path": "module.yaml",
+                "sources_manifest_path": "sources.yaml"
+            }
+        });
+        std::fs::write(&lock_path, serde_json::to_string_pretty(&lock_data).unwrap()).unwrap();
+
+        let lock = load_lock(&lock_path).unwrap();
+        assert_eq!(lock.jurisdiction_id, "ae");
+        assert_eq!(lock.domain, "financial");
+    }
+
+    // -----------------------------------------------------------------------
+    // canonical_sha256
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_canonical_sha256_deterministic() {
+        let val = json!({"x": 1, "y": 2});
+        let d1 = canonical_sha256(&val).unwrap();
+        let d2 = canonical_sha256(&val).unwrap();
+        assert_eq!(d1, d2);
+        assert_eq!(d1.len(), 64);
+    }
+
+    #[test]
+    fn test_canonical_sha256_key_order_independent() {
+        let val1 = json!({"z": 3, "a": 1});
+        let val2 = json!({"a": 1, "z": 3});
+        assert_eq!(
+            canonical_sha256(&val1).unwrap(),
+            canonical_sha256(&val2).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_canonical_sha256_rejects_float() {
+        let val = json!({"pi": 3.14});
+        assert!(canonical_sha256(&val).is_err());
+    }
+
+    // -----------------------------------------------------------------------
+    // jcs_canonicalize — additional edge cases
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_jcs_canonicalize_nested_objects() {
+        let value = json!({"b": {"d": 4, "c": 3}, "a": 1});
+        let bytes = jcs_canonicalize(&value).unwrap();
+        let s = std::str::from_utf8(&bytes).unwrap();
+        assert_eq!(s, r#"{"a":1,"b":{"c":3,"d":4}}"#);
+    }
+
+    #[test]
+    fn test_jcs_canonicalize_empty_object() {
+        let value = json!({});
+        let bytes = jcs_canonicalize(&value).unwrap();
+        let s = std::str::from_utf8(&bytes).unwrap();
+        assert_eq!(s, "{}");
+    }
+
+    #[test]
+    fn test_jcs_canonicalize_array() {
+        let value = json!({"items": [3, 1, 2]});
+        let bytes = jcs_canonicalize(&value).unwrap();
+        let s = std::str::from_utf8(&bytes).unwrap();
+        // Array order preserved, keys sorted
+        assert_eq!(s, r#"{"items":[3,1,2]}"#);
+    }
+
+    #[test]
+    fn test_jcs_canonicalize_strings_with_special_chars() {
+        let value = json!({"msg": "hello \"world\""});
+        let bytes = jcs_canonicalize(&value).unwrap();
+        let s = std::str::from_utf8(&bytes).unwrap();
+        assert!(s.contains("hello \\\"world\\\""));
+    }
+
+    // -----------------------------------------------------------------------
+    // resolve_lawpack_refs — edge cases
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_resolve_lawpack_refs_empty_zone() {
+        let zone = json!({"zone_id": "test"});
+        let refs = resolve_lawpack_refs(&zone).unwrap();
+        assert!(refs.is_empty());
+    }
+
+    #[test]
+    fn test_resolve_lawpack_refs_skips_invalid_digest() {
+        let zone = json!({
+            "zone_id": "test",
+            "lawpacks": [
+                {
+                    "jurisdiction_id": "pk",
+                    "domain": "civil",
+                    "lawpack_digest_sha256": "not-valid"
+                },
+                {
+                    "jurisdiction_id": "ae",
+                    "domain": "financial",
+                    "lawpack_digest_sha256": "b".repeat(64)
+                }
+            ]
+        });
+        let refs = resolve_lawpack_refs(&zone).unwrap();
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].jurisdiction_id, "ae");
+    }
+
+    #[test]
+    fn test_resolve_lawpack_refs_skips_empty_digest() {
+        let zone = json!({
+            "zone_id": "test",
+            "lawpacks": [
+                {
+                    "jurisdiction_id": "pk",
+                    "domain": "civil",
+                    "lawpack_digest_sha256": ""
+                }
+            ]
+        });
+        let refs = resolve_lawpack_refs(&zone).unwrap();
+        assert!(refs.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // compute_lawpack_digest — edge cases
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_compute_lawpack_digest_empty_files() {
+        let files = BTreeMap::new();
+        let digest = compute_lawpack_digest(&files);
+        assert_eq!(digest.len(), 64);
+        // Deterministic even with no files
+        let d2 = compute_lawpack_digest(&files);
+        assert_eq!(digest, d2);
+    }
+
+    #[test]
+    fn test_compute_lawpack_digest_content_sensitive() {
+        let mut files1 = BTreeMap::new();
+        files1.insert("a.txt".to_string(), b"content_a".to_vec());
+
+        let mut files2 = BTreeMap::new();
+        files2.insert("a.txt".to_string(), b"content_b".to_vec());
+
+        assert_ne!(
+            compute_lawpack_digest(&files1),
+            compute_lawpack_digest(&files2)
+        );
+    }
+
+    #[test]
+    fn test_compute_lawpack_digest_path_sensitive() {
+        let mut files1 = BTreeMap::new();
+        files1.insert("file_a.txt".to_string(), b"same".to_vec());
+
+        let mut files2 = BTreeMap::new();
+        files2.insert("file_b.txt".to_string(), b"same".to_vec());
+
+        assert_ne!(
+            compute_lawpack_digest(&files1),
+            compute_lawpack_digest(&files2)
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // generate_zone_lock — file-based
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_generate_zone_lock_basic() {
+        let dir = tempfile::tempdir().unwrap();
+        let zone_path = dir.path().join("zone.yaml");
+        std::fs::write(
+            &zone_path,
+            concat!(
+                "zone_id: test-zone\n",
+                "jurisdiction_id: pk\n",
+                "lawpacks:\n",
+                "  - jurisdiction_id: pk\n",
+                "    domain: civil\n",
+                "    lawpack_digest_sha256: ",
+            ),
+        )
+        .unwrap();
+        // Append the 64-char digest
+        let content = format!(
+            "zone_id: test-zone\njurisdiction_id: pk\nlawpacks:\n  - jurisdiction_id: pk\n    domain: civil\n    lawpack_digest_sha256: {}\n",
+            "a".repeat(64)
+        );
+        std::fs::write(&zone_path, &content).unwrap();
+
+        let lock = generate_zone_lock(&zone_path, dir.path()).unwrap();
+        assert_eq!(lock["zone_id"], "test-zone");
+        assert_eq!(lock["jurisdiction_id"], "pk");
+        assert_eq!(lock["lock_version"], "1");
+        assert_eq!(lock["spec_version"], "0.4.44");
+        assert!(lock["zone_manifest_sha256"].is_string());
+        assert_eq!(lock["zone_manifest_sha256"].as_str().unwrap().len(), 64);
+
+        let lp_refs = lock["lawpacks"].as_array().unwrap();
+        assert_eq!(lp_refs.len(), 1);
+    }
+
+    #[test]
+    fn test_generate_zone_lock_no_lawpacks() {
+        let dir = tempfile::tempdir().unwrap();
+        let zone_path = dir.path().join("zone.yaml");
+        std::fs::write(
+            &zone_path,
+            "zone_id: empty-zone\njurisdiction_id: ae\n",
+        )
+        .unwrap();
+
+        let lock = generate_zone_lock(&zone_path, dir.path()).unwrap();
+        assert_eq!(lock["zone_id"], "empty-zone");
+        assert_eq!(lock["jurisdiction_id"], "ae");
+        let lp_refs = lock["lawpacks"].as_array().unwrap();
+        assert!(lp_refs.is_empty());
+    }
+
+    #[test]
+    fn test_generate_zone_lock_file_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let result = generate_zone_lock(
+            &dir.path().join("nonexistent.yaml"),
+            dir.path(),
+        );
+        assert!(result.is_err());
+    }
+
+    // -----------------------------------------------------------------------
+    // load_module_descriptor — file-based
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_load_module_descriptor_valid() {
+        let dir = tempfile::tempdir().unwrap();
+        let module_dir = dir.path().join("test_module");
+        std::fs::create_dir(&module_dir).unwrap();
+        std::fs::write(
+            module_dir.join("module.yaml"),
+            "module_id: test-mod\nversion: '1.0'\nkind: legal\nname: Test Module\n",
+        )
+        .unwrap();
+
+        let desc = load_module_descriptor(&module_dir).unwrap();
+        assert_eq!(desc.module_id, "test-mod");
+        assert_eq!(desc.version, "1.0");
+        assert_eq!(desc.kind, "legal");
+        assert_eq!(desc.name, "Test Module");
+    }
+
+    #[test]
+    fn test_load_module_descriptor_missing_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let result = load_module_descriptor(dir.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_module_descriptor_with_extra_fields() {
+        let dir = tempfile::tempdir().unwrap();
+        let module_dir = dir.path().join("mod_extra");
+        std::fs::create_dir(&module_dir).unwrap();
+        std::fs::write(
+            module_dir.join("module.yaml"),
+            "module_id: mod-x\nversion: '2.0'\nkind: fiscal\ncustom_field: custom_value\n",
+        )
+        .unwrap();
+
+        let desc = load_module_descriptor(&module_dir).unwrap();
+        assert_eq!(desc.module_id, "mod-x");
+        assert!(desc.extra.contains_key("custom_field"));
+    }
+
+    // -----------------------------------------------------------------------
+    // load_sources_descriptor — file-based
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_load_sources_descriptor_present() {
+        let dir = tempfile::tempdir().unwrap();
+        let module_dir = dir.path().join("with_sources");
+        std::fs::create_dir(&module_dir).unwrap();
+        std::fs::write(
+            module_dir.join("sources.yaml"),
+            "jurisdiction_id: pk\ndomain: civil\nlicense: MIT\n",
+        )
+        .unwrap();
+
+        let result = load_sources_descriptor(&module_dir).unwrap();
+        assert!(result.is_some());
+        let sources = result.unwrap();
+        assert_eq!(sources.jurisdiction_id, "pk");
+        assert_eq!(sources.domain, "civil");
+    }
+
+    #[test]
+    fn test_load_sources_descriptor_absent() {
+        let dir = tempfile::tempdir().unwrap();
+        let module_dir = dir.path().join("no_sources");
+        std::fs::create_dir(&module_dir).unwrap();
+        // No sources.yaml file
+
+        let result = load_sources_descriptor(&module_dir).unwrap();
+        assert!(result.is_none());
+    }
+
+    // -----------------------------------------------------------------------
+    // infer_jurisdiction_and_domain — edge cases
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_infer_jurisdiction_from_path_no_sources() {
+        let path = Path::new("modules/legal/jurisdictions/ae/financial");
+        let (jid, domain) = infer_jurisdiction_and_domain(path, None);
+        assert_eq!(jid, "ae");
+        assert_eq!(domain, "financial");
+    }
+
+    #[test]
+    fn test_infer_jurisdiction_partial_sources() {
+        // Sources has jurisdiction but not domain
+        let sources = SourcesDescriptor {
+            jurisdiction_id: "pk".to_string(),
+            domain: "".to_string(), // empty
+            sources: vec![],
+            normalization: None,
+            license: String::new(),
+            extra: BTreeMap::new(),
+        };
+        let path = Path::new("modules/legal/jurisdictions/pk/civil");
+        let (jid, domain) = infer_jurisdiction_and_domain(path, Some(&sources));
+        assert_eq!(jid, "pk");
+        // domain should be derived from path
+        assert_eq!(domain, "civil");
+    }
+
+    #[test]
+    fn test_infer_jurisdiction_no_sources_no_jurisdiction_in_path() {
+        // Path without "jurisdictions" segment
+        let path = Path::new("modules/random/stuff");
+        let (jid, domain) = infer_jurisdiction_and_domain(path, None);
+        assert_eq!(jid, "unknown");
+        assert_eq!(domain, "stuff");
+    }
+
+    #[test]
+    fn test_infer_jurisdiction_empty_sources() {
+        let sources = SourcesDescriptor {
+            jurisdiction_id: "  ".to_string(), // whitespace only
+            domain: "  ".to_string(),
+            sources: vec![],
+            normalization: None,
+            license: String::new(),
+            extra: BTreeMap::new(),
+        };
+        let path = Path::new("modules/legal/jurisdictions/pk/civil");
+        let (jid, domain) = infer_jurisdiction_and_domain(path, Some(&sources));
+        // Whitespace-only strings should be treated as empty
+        assert_eq!(jid, "pk");
+        assert_eq!(domain, "civil");
+    }
+
+    // -----------------------------------------------------------------------
+    // Lawpack struct
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_lawpack_struct_creation() {
+        let lp = Lawpack {
+            jurisdiction: JurisdictionId::new("pk".to_string()).unwrap(),
+            name: "Test Lawpack".to_string(),
+            domain: "civil".to_string(),
+            version: "1.0.0".to_string(),
+            digest: None,
+            as_of_date: Some("2026-01-15".to_string()),
+            effective_date: Some("2025-07-01".to_string()),
+            section_mappings: BTreeMap::new(),
+        };
+        assert_eq!(lp.name, "Test Lawpack");
+        assert_eq!(lp.domain, "civil");
+        assert!(lp.digest.is_none());
+    }
+
+    #[test]
+    fn test_lawpack_struct_serialization() {
+        let mut mappings = BTreeMap::new();
+        mappings.insert("section-1".to_string(), "rule-1".to_string());
+
+        let lp = Lawpack {
+            jurisdiction: JurisdictionId::new("ae".to_string()).unwrap(),
+            name: "Financial Pack".to_string(),
+            domain: "financial".to_string(),
+            version: "2.0.0".to_string(),
+            digest: None,
+            as_of_date: Some("2026-02-01".to_string()),
+            effective_date: None,
+            section_mappings: mappings,
+        };
+
+        let json_val = serde_json::to_value(&lp).unwrap();
+        assert_eq!(json_val["name"], "Financial Pack");
+        assert_eq!(json_val["domain"], "financial");
+        assert!(json_val["section_mappings"]["section-1"].is_string());
+    }
+
+    #[test]
+    fn test_lawpack_struct_roundtrip() {
+        let lp = Lawpack {
+            jurisdiction: JurisdictionId::new("pk".to_string()).unwrap(),
+            name: "Roundtrip".to_string(),
+            domain: "civil".to_string(),
+            version: "1.0".to_string(),
+            digest: None,
+            as_of_date: None,
+            effective_date: None,
+            section_mappings: BTreeMap::new(),
+        };
+        let json_str = serde_json::to_string(&lp).unwrap();
+        let deserialized: Lawpack = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(deserialized.name, "Roundtrip");
+    }
+
+    // -----------------------------------------------------------------------
+    // LawpackManifest
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_lawpack_manifest_deserialization() {
+        let manifest_json = json!({
+            "lawpack_format_version": "1",
+            "jurisdiction_id": "pk",
+            "domain": "civil",
+            "as_of_date": "2026-01-15",
+            "sources": [],
+            "license": "MIT"
+        });
+        let manifest: LawpackManifest = serde_json::from_value(manifest_json).unwrap();
+        assert_eq!(manifest.lawpack_format_version, "1");
+        assert_eq!(manifest.jurisdiction_id, "pk");
+        assert!(manifest.normalization.is_none());
+    }
+
+    #[test]
+    fn test_lawpack_manifest_with_normalization() {
+        let manifest_json = json!({
+            "lawpack_format_version": "1",
+            "jurisdiction_id": "pk",
+            "domain": "civil",
+            "as_of_date": "2026-01-15",
+            "normalization": {
+                "recipe_id": "norm-001",
+                "tool": "msez",
+                "tool_version": "0.4.44",
+                "inputs": [
+                    {
+                        "module_id": "mod-001",
+                        "module_version": "1.0",
+                        "sources_manifest_sha256": "a".repeat(64)
+                    }
+                ],
+                "notes": "test normalization"
+            }
+        });
+        let manifest: LawpackManifest = serde_json::from_value(manifest_json).unwrap();
+        assert!(manifest.normalization.is_some());
+        let norm = manifest.normalization.unwrap();
+        assert_eq!(norm.recipe_id, "norm-001");
+        assert_eq!(norm.inputs.len(), 1);
+    }
+
+    // -----------------------------------------------------------------------
+    // LawpackLockComponents and LawpackLockProvenance
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_lawpack_lock_components_with_multiple_akn() {
+        let lock_json = json!({
+            "lawpack_digest_sha256": "a".repeat(64),
+            "jurisdiction_id": "pk",
+            "domain": "civil",
+            "as_of_date": "2026-01-15",
+            "artifact_path": "artifact.zip",
+            "artifact_sha256": "b".repeat(64),
+            "components": {
+                "lawpack_yaml_sha256": "c".repeat(64),
+                "index_json_sha256": "d".repeat(64),
+                "akn_sha256": {
+                    "akn/doc1.xml": "e".repeat(64),
+                    "akn/doc2.xml": "f".repeat(64),
+                    "akn/doc3.xml": "1".repeat(64)
+                },
+                "sources_sha256": "2".repeat(64)
+            },
+            "provenance": {
+                "module_manifest_path": "module.yaml",
+                "sources_manifest_path": "sources.yaml",
+                "raw_sources": {
+                    "src-001": "3".repeat(64)
+                },
+                "normalization": null
+            }
+        });
+        let lock: LawpackLock = serde_json::from_value(lock_json).unwrap();
+        assert_eq!(lock.components.akn_sha256.len(), 3);
+        assert_eq!(lock.provenance.raw_sources.len(), 1);
+    }
+
+    #[test]
+    fn test_lawpack_lock_with_module_manifest_sha256() {
+        let lock_json = json!({
+            "lawpack_digest_sha256": "a".repeat(64),
+            "jurisdiction_id": "pk",
+            "domain": "civil",
+            "as_of_date": "2026-01-15",
+            "artifact_path": "artifact.zip",
+            "artifact_sha256": "b".repeat(64),
+            "components": {
+                "lawpack_yaml_sha256": "c".repeat(64),
+                "index_json_sha256": "d".repeat(64),
+                "akn_sha256": {},
+                "sources_sha256": "e".repeat(64),
+                "module_manifest_sha256": "f".repeat(64)
+            },
+            "provenance": {
+                "module_manifest_path": "module.yaml",
+                "sources_manifest_path": "sources.yaml"
+            }
+        });
+        let lock: LawpackLock = serde_json::from_value(lock_json).unwrap();
+        assert!(lock.components.module_manifest_sha256.is_some());
+        assert_eq!(
+            lock.components.module_manifest_sha256.unwrap(),
+            "f".repeat(64)
+        );
+    }
 }

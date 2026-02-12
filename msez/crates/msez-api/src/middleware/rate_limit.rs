@@ -109,3 +109,120 @@ pub async fn rate_limit_middleware(request: Request, next: Next) -> Response {
 
     next.run(request).await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rate_limiter_new_creates_limiter() {
+        let config = RateLimitConfig {
+            max_requests: 10,
+            window_secs: 60,
+        };
+        let limiter = RateLimiter::new(config);
+        // Freshly created limiter should allow requests.
+        assert!(limiter.check("test-key"));
+    }
+
+    #[test]
+    fn check_under_limit_returns_true() {
+        let limiter = RateLimiter::new(RateLimitConfig {
+            max_requests: 5,
+            window_secs: 60,
+        });
+
+        for i in 0..5 {
+            assert!(
+                limiter.check("client-a"),
+                "request {i} should be allowed (under limit)"
+            );
+        }
+    }
+
+    #[test]
+    fn check_over_limit_returns_false() {
+        let limiter = RateLimiter::new(RateLimitConfig {
+            max_requests: 3,
+            window_secs: 60,
+        });
+
+        // Exhaust the budget.
+        assert!(limiter.check("client-a"));
+        assert!(limiter.check("client-a"));
+        assert!(limiter.check("client-a"));
+
+        // Next request should be rejected.
+        assert!(
+            !limiter.check("client-a"),
+            "request beyond limit should be rejected"
+        );
+        assert!(
+            !limiter.check("client-a"),
+            "subsequent requests should also be rejected"
+        );
+    }
+
+    #[test]
+    fn different_keys_have_independent_buckets() {
+        let limiter = RateLimiter::new(RateLimitConfig {
+            max_requests: 2,
+            window_secs: 60,
+        });
+
+        assert!(limiter.check("client-a"));
+        assert!(limiter.check("client-a"));
+        assert!(!limiter.check("client-a"), "client-a should be exhausted");
+
+        // client-b should still have its full budget.
+        assert!(limiter.check("client-b"));
+        assert!(limiter.check("client-b"));
+        assert!(!limiter.check("client-b"), "client-b should be exhausted");
+    }
+
+    #[test]
+    fn window_reset_allows_new_requests() {
+        // Use a 0-second window so it resets immediately on the next check.
+        let limiter = RateLimiter::new(RateLimitConfig {
+            max_requests: 1,
+            window_secs: 0,
+        });
+
+        assert!(limiter.check("client-a"));
+        // With window_secs=0, the elapsed time (even if 0ns) will NOT be >= 0 secs
+        // unless real time passes. But Instant math: duration_since returns Duration,
+        // and as_secs() truncates sub-second. A 0-second window means that once any
+        // full second elapses the bucket resets. We can force this by sleeping briefly.
+        // However, the implementation checks `>= window_secs` where window_secs is 0.
+        // Since duration_since for the same Instant is 0, and 0 >= 0 is true, the
+        // bucket WILL reset on every call.
+        assert!(
+            limiter.check("client-a"),
+            "zero-second window should reset on every check"
+        );
+    }
+
+    #[test]
+    fn default_config_values() {
+        let config = RateLimitConfig::default();
+        assert_eq!(config.max_requests, 1000);
+        assert_eq!(config.window_secs, 60);
+    }
+
+    #[test]
+    fn clone_shares_underlying_state() {
+        let limiter = RateLimiter::new(RateLimitConfig {
+            max_requests: 2,
+            window_secs: 60,
+        });
+        let clone = limiter.clone();
+
+        // Consume one request through the original.
+        assert!(limiter.check("client-a"));
+        // The clone sees the same bucket state.
+        assert!(clone.check("client-a"));
+        // Both should now be exhausted.
+        assert!(!limiter.check("client-a"));
+        assert!(!clone.check("client-a"));
+    }
+}

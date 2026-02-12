@@ -1,7 +1,7 @@
 //! # msez-tensor — Compliance Tensor & Manifold
 //!
 //! The Compliance Tensor is a multi-dimensional evaluation of an entity's
-//! compliance status across all 20 [`ComplianceDomain`](msez_core::ComplianceDomain)
+//! compliance status across all 20 `ComplianceDomain`
 //! variants for a given jurisdiction. The Compliance Manifold provides
 //! path optimization over the tensor space.
 //!
@@ -23,7 +23,7 @@
 //! ## Audit Reference
 //!
 //! Finding §2.4: The Python codebase had two independent domain enums (8 vs 20).
-//! This crate uses the single [`ComplianceDomain`](msez_core::ComplianceDomain)
+//! This crate uses the single `ComplianceDomain`
 //! enum from `msez-core`. Every `match` is exhaustive — the compiler prevents
 //! missing domains.
 

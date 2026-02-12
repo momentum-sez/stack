@@ -170,7 +170,11 @@ impl AnchorTarget for MockAnchorTarget {
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let tx_id = format!(
             "mock-tx-{}",
-            commitment.checkpoint_digest.to_hex().get(..16).unwrap_or("unknown")
+            commitment
+                .checkpoint_digest
+                .to_hex()
+                .get(..16)
+                .unwrap_or("unknown")
         );
 
         Ok(AnchorReceipt {
@@ -197,8 +201,7 @@ mod tests {
     use msez_core::{sha256_digest, CanonicalBytes};
 
     fn test_digest() -> ContentDigest {
-        let canonical =
-            CanonicalBytes::new(&serde_json::json!({"checkpoint": "test"})).unwrap();
+        let canonical = CanonicalBytes::new(&serde_json::json!({"checkpoint": "test"})).unwrap();
         sha256_digest(&canonical)
     }
 

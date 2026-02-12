@@ -120,7 +120,7 @@ impl PartialOrd for DijkstraNode {
 /// deprecated corridors must not be added to the graph.
 #[derive(Debug, Default)]
 pub struct CorridorBridge {
-    /// Adjacency list: from_jurisdiction_key -> Vec<edge>.
+    /// Adjacency list: from_jurisdiction_key -> `Vec<edge>`.
     adjacency: HashMap<String, Vec<BridgeEdge>>,
 }
 
@@ -328,9 +328,7 @@ mod tests {
     #[test]
     fn direct_route() {
         let bridge = sample_bridge();
-        let route = bridge
-            .find_route(&jid("PK-RSEZ"), &jid("AE-DIFC"))
-            .unwrap();
+        let route = bridge.find_route(&jid("PK-RSEZ"), &jid("AE-DIFC")).unwrap();
         assert_eq!(route.hop_count(), 1);
         assert_eq!(route.total_fee_bps, 50);
         assert_eq!(route.total_settlement_time_secs, 86400);
@@ -339,17 +337,14 @@ mod tests {
     #[test]
     fn multi_hop_cheaper_than_direct() {
         let bridge = sample_bridge();
-        let route = bridge
-            .find_route(&jid("PK-RSEZ"), &jid("US-NYFC"))
-            .unwrap();
+        let route = bridge.find_route(&jid("PK-RSEZ"), &jid("US-NYFC")).unwrap();
         // Multi-hop: PK-RSEZ -> AE-DIFC (50) -> GB-LNDN (30) -> US-NYFC (25) = 105 bps
         // Direct: PK-RSEZ -> US-NYFC = 200 bps
         assert_eq!(route.hop_count(), 3);
         assert_eq!(route.total_fee_bps, 105);
         assert_eq!(route.total_settlement_time_secs, 86400 + 172800 + 86400);
 
-        let jurisdictions: Vec<&str> =
-            route.jurisdictions().iter().map(|j| j.as_str()).collect();
+        let jurisdictions: Vec<&str> = route.jurisdictions().iter().map(|j| j.as_str()).collect();
         assert_eq!(
             jurisdictions,
             vec!["PK-RSEZ", "AE-DIFC", "GB-LNDN", "US-NYFC"]
@@ -406,14 +401,10 @@ mod tests {
     #[test]
     fn bidirectional_routing() {
         let bridge = sample_bridge();
-        let forward = bridge
-            .find_route(&jid("PK-RSEZ"), &jid("AE-DIFC"))
-            .unwrap();
+        let forward = bridge.find_route(&jid("PK-RSEZ"), &jid("AE-DIFC")).unwrap();
         assert_eq!(forward.total_fee_bps, 50);
 
-        let reverse = bridge
-            .find_route(&jid("AE-DIFC"), &jid("PK-RSEZ"))
-            .unwrap();
+        let reverse = bridge.find_route(&jid("AE-DIFC"), &jid("PK-RSEZ")).unwrap();
         assert_eq!(reverse.total_fee_bps, 55);
     }
 
@@ -435,8 +426,7 @@ mod tests {
         let route = bridge.find_route(&jid("A"), &jid("B")).unwrap();
         assert_eq!(route.total_fee_bps, 10);
         assert_eq!(route.hop_count(), 2);
-        let jurisdictions: Vec<&str> =
-            route.jurisdictions().iter().map(|j| j.as_str()).collect();
+        let jurisdictions: Vec<&str> = route.jurisdictions().iter().map(|j| j.as_str()).collect();
         assert_eq!(jurisdictions, vec!["A", "D", "B"]);
     }
 }

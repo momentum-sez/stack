@@ -314,10 +314,7 @@ impl EscrowAccount {
     ///
     /// Returns [`ArbitrationError::InvalidEscrowOperation`] if the escrow
     /// is not in a releasable status.
-    pub fn full_release(
-        &mut self,
-        condition: ReleaseCondition,
-    ) -> Result<(), ArbitrationError> {
+    pub fn full_release(&mut self, condition: ReleaseCondition) -> Result<(), ArbitrationError> {
         self.check_timeout()?;
         if !matches!(
             self.status,
@@ -406,10 +403,7 @@ impl EscrowAccount {
     ///
     /// Returns [`ArbitrationError::InvalidEscrowOperation`] if not in a
     /// forfeitable status.
-    pub fn forfeit(
-        &mut self,
-        evidence_digest: ContentDigest,
-    ) -> Result<(), ArbitrationError> {
+    pub fn forfeit(&mut self, evidence_digest: ContentDigest) -> Result<(), ArbitrationError> {
         if !matches!(
             self.status,
             EscrowStatus::Funded | EscrowStatus::PartiallyReleased
@@ -742,7 +736,10 @@ mod tests {
             .unwrap();
 
         assert_eq!(escrow.transactions.len(), 3); // deposit + partial + full
-        assert_eq!(escrow.transactions[0].transaction_type, TransactionType::Deposit);
+        assert_eq!(
+            escrow.transactions[0].transaction_type,
+            TransactionType::Deposit
+        );
         assert_eq!(
             escrow.transactions[1].transaction_type,
             TransactionType::PartialRelease

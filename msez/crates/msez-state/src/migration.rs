@@ -366,13 +366,14 @@ impl MigrationSaga {
             });
         }
 
-        let next = self.state.next_forward_phase().ok_or_else(|| {
-            MigrationError::InvalidTransition {
-                from: self.state,
-                to: self.state,
-                reason: "no forward phase from current state".to_string(),
-            }
-        })?;
+        let next =
+            self.state
+                .next_forward_phase()
+                .ok_or_else(|| MigrationError::InvalidTransition {
+                    from: self.state,
+                    to: self.state,
+                    reason: "no forward phase from current state".to_string(),
+                })?;
 
         self.state = next;
         self.updated_at = Utc::now();
@@ -474,10 +475,16 @@ mod tests {
         assert_eq!(saga.state, MigrationState::Initiated);
 
         assert_eq!(saga.advance().unwrap(), MigrationState::ComplianceCheck);
-        assert_eq!(saga.advance().unwrap(), MigrationState::AttestationGathering);
+        assert_eq!(
+            saga.advance().unwrap(),
+            MigrationState::AttestationGathering
+        );
         assert_eq!(saga.advance().unwrap(), MigrationState::SourceLocked);
         assert_eq!(saga.advance().unwrap(), MigrationState::InTransit);
-        assert_eq!(saga.advance().unwrap(), MigrationState::DestinationVerification);
+        assert_eq!(
+            saga.advance().unwrap(),
+            MigrationState::DestinationVerification
+        );
         assert_eq!(saga.advance().unwrap(), MigrationState::DestinationUnlock);
         assert_eq!(saga.advance().unwrap(), MigrationState::Completed);
 
@@ -541,7 +548,9 @@ mod tests {
         assert_eq!(saga.state, MigrationState::Compensated);
         assert_eq!(saga.compensation_log.len(), 1);
         assert!(saga.compensation_log[0].succeeded);
-        assert!(saga.compensation_log[0].action.contains("compliance_failure"));
+        assert!(saga.compensation_log[0]
+            .action
+            .contains("compliance_failure"));
     }
 
     #[test]

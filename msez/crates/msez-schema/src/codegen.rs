@@ -109,12 +109,7 @@ pub fn check_additional_properties_policy(
     schema: &Value,
 ) -> Vec<AdditionalPropertiesViolation> {
     let mut violations = Vec::new();
-    check_object_node(
-        schema_filename,
-        schema,
-        "",
-        &mut violations,
-    );
+    check_object_node(schema_filename, schema, "", &mut violations);
     violations
 }
 
@@ -228,8 +223,7 @@ mod tests {
         let path = repo_root().join("schemas").join(filename);
         let content = std::fs::read_to_string(&path)
             .unwrap_or_else(|e| panic!("Failed to read {filename}: {e}"));
-        serde_json::from_str(&content)
-            .unwrap_or_else(|e| panic!("Failed to parse {filename}: {e}"))
+        serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {filename}: {e}"))
     }
 
     #[test]
@@ -320,7 +314,10 @@ mod tests {
             let schema = load_schema(filename);
             let violations = check_additional_properties_policy(filename, &schema);
             if !violations.is_empty() {
-                eprintln!("Schema {filename} has {} policy violations:", violations.len());
+                eprintln!(
+                    "Schema {filename} has {} policy violations:",
+                    violations.len()
+                );
                 for v in &violations {
                     eprintln!("  {v}");
                 }
@@ -329,9 +326,7 @@ mod tests {
         }
 
         if total_violations > 0 {
-            eprintln!(
-                "\nTotal additionalProperties policy violations: {total_violations}"
-            );
+            eprintln!("\nTotal additionalProperties policy violations: {total_violations}");
             eprintln!("These are documented findings per audit §3.1.");
         }
     }

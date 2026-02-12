@@ -66,10 +66,11 @@ impl Timestamp {
     /// Returns [`ValidationError::InvalidTimestamp`] if the string cannot be
     /// parsed as RFC 3339.
     pub fn from_rfc3339(s: &str) -> Result<Self, ValidationError> {
-        let dt = DateTime::parse_from_rfc3339(s).map_err(|e| ValidationError::InvalidTimestamp {
-            value: s.to_string(),
-            reason: format!("not valid RFC 3339: {e}"),
-        })?;
+        let dt =
+            DateTime::parse_from_rfc3339(s).map_err(|e| ValidationError::InvalidTimestamp {
+                value: s.to_string(),
+                reason: format!("not valid RFC 3339: {e}"),
+            })?;
         let utc = dt.with_timezone(&Utc);
         Ok(Self(truncate_to_seconds(utc)))
     }
@@ -83,14 +84,11 @@ impl Timestamp {
     /// Returns [`ValidationError::InvalidTimestamp`] if the string is not
     /// a valid `YYYY-MM-DD` date.
     pub fn from_date_str(s: &str) -> Result<Self, ValidationError> {
-        let nd = NaiveDateTime::parse_from_str(
-            &format!("{s}T00:00:00"),
-            "%Y-%m-%dT%H:%M:%S",
-        )
-        .map_err(|e| ValidationError::InvalidTimestamp {
-            value: s.to_string(),
-            reason: format!("not valid YYYY-MM-DD: {e}"),
-        })?;
+        let nd = NaiveDateTime::parse_from_str(&format!("{s}T00:00:00"), "%Y-%m-%dT%H:%M:%S")
+            .map_err(|e| ValidationError::InvalidTimestamp {
+                value: s.to_string(),
+                reason: format!("not valid YYYY-MM-DD: {e}"),
+            })?;
         let utc = Utc.from_utc_datetime(&nd);
         Ok(Self(utc))
     }
@@ -115,8 +113,7 @@ impl Timestamp {
 
 /// Truncate a `DateTime<Utc>` to second precision (zero out nanoseconds).
 fn truncate_to_seconds(dt: DateTime<Utc>) -> DateTime<Utc> {
-    dt.with_nanosecond(0)
-        .expect("nanosecond=0 is always valid")
+    dt.with_nanosecond(0).expect("nanosecond=0 is always valid")
 }
 
 impl std::fmt::Display for Timestamp {

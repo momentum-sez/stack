@@ -146,7 +146,7 @@ impl FromStr for ComplianceDomain {
     /// Parse a compliance domain from its snake_case string representation.
     ///
     /// Accepts the same strings produced by [`ComplianceDomain::as_str()`]
-    /// and [`Display`].
+    /// and the [`Display`](std::fmt::Display) implementation.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "aml" => Ok(Self::Aml),

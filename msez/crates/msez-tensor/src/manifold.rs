@@ -20,8 +20,8 @@
 //! Ports the manifold logic from `tools/phoenix/manifold.py`.
 //! Manifold operations work over all 20 [`ComplianceDomain`] variants.
 
-use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
@@ -338,9 +338,7 @@ impl ComplianceManifold {
         let default_constraints = PathConstraint::default();
         let constraints = constraints.unwrap_or(&default_constraints);
 
-        if !self.jurisdictions.contains_key(source)
-            || !self.jurisdictions.contains_key(target)
-        {
+        if !self.jurisdictions.contains_key(source) || !self.jurisdictions.contains_key(target) {
             return None;
         }
 
@@ -518,7 +516,9 @@ impl ComplianceManifold {
                 break;
             }
 
-            let last = paths.last().unwrap();
+            let Some(last) = paths.last() else {
+                break;
+            };
             if last.hops.is_empty() {
                 break;
             }

@@ -162,9 +162,7 @@ fn coerce_json_value(value: Value) -> Result<Value, CanonicalizationError> {
             // truncates subsecond precision.
             if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
                 let utc = dt.with_timezone(&chrono::Utc);
-                Ok(Value::String(
-                    utc.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
-                ))
+                Ok(Value::String(utc.format("%Y-%m-%dT%H:%M:%SZ").to_string()))
             } else {
                 Ok(value)
             }
@@ -335,9 +333,8 @@ mod proptests {
                     // Arrays
                     prop::collection::vec(inner.clone(), 0..5).prop_map(Value::Array),
                     // Objects with string keys
-                    prop::collection::btree_map("[a-z_]{1,8}", inner, 0..5).prop_map(|m| {
-                        Value::Object(m.into_iter().collect())
-                    }),
+                    prop::collection::btree_map("[a-z_]{1,8}", inner, 0..5)
+                        .prop_map(|m| { Value::Object(m.into_iter().collect()) }),
                 ]
             },
         )

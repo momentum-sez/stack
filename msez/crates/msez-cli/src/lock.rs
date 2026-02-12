@@ -163,8 +163,7 @@ pub fn run_lock(args: &LockArgs, repo_root: &Path) -> Result<u8> {
     });
 
     // Serialize with canonical JSON.
-    let canonical = CanonicalBytes::new(&lock)
-        .context("failed to canonicalize lockfile")?;
+    let canonical = CanonicalBytes::new(&lock).context("failed to canonicalize lockfile")?;
     let canonical_bytes = canonical.as_bytes();
 
     if args.check {
@@ -178,8 +177,8 @@ pub fn run_lock(args: &LockArgs, repo_root: &Path) -> Result<u8> {
             .with_context(|| format!("failed to read lockfile: {}", out_path.display()))?;
 
         // Allow trailing newline.
-        let matches = existing == canonical_bytes
-            || existing == [canonical_bytes, b"\n".as_slice()].concat();
+        let matches =
+            existing == canonical_bytes || existing == [canonical_bytes, b"\n".as_slice()].concat();
 
         if matches {
             println!("OK: lockfile is up to date");
@@ -268,10 +267,7 @@ fn find_profile(profiles_dir: &Path, profile_id: &str) -> Result<serde_json::Val
 }
 
 /// Find a module by its module_id in the modules directory.
-fn find_module_by_id(
-    modules_dir: &Path,
-    module_id: &str,
-) -> Option<(PathBuf, serde_json::Value)> {
+fn find_module_by_id(modules_dir: &Path, module_id: &str) -> Option<(PathBuf, serde_json::Value)> {
     for entry in walkdir_recursive(modules_dir) {
         if entry.file_name().and_then(|f| f.to_str()) == Some("module.yaml") {
             let content = std::fs::read_to_string(&entry).ok()?;
@@ -286,8 +282,8 @@ fn find_module_by_id(
 
 /// Compute SHA-256 hex digest of a file's contents.
 fn sha256_file(path: &Path) -> Result<String> {
-    let bytes = std::fs::read(path)
-        .with_context(|| format!("failed to read file: {}", path.display()))?;
+    let bytes =
+        std::fs::read(path).with_context(|| format!("failed to read file: {}", path.display()))?;
     Ok(sha256_of_bytes(&bytes))
 }
 

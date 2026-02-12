@@ -6,7 +6,7 @@
 //! - **Credential structure** ([`VerifiableCredential`]) with typed envelope,
 //!   credential subject, and proof array.
 //! - **Ed25519 proof generation and verification** using the cryptographic
-//!   primitives from [`msez-crypto`].
+//!   primitives from `msez-crypto`.
 //! - **Smart Asset Registry credentials** ([`SmartAssetRegistryVc`]) for
 //!   registering and transferring compliance-evaluated smart assets.
 //!

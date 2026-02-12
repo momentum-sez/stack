@@ -197,7 +197,13 @@ impl SanctionsChecker {
         let lower = s.to_lowercase();
         let cleaned: String = lower
             .chars()
-            .map(|c| if c.is_alphanumeric() || c.is_whitespace() { c } else { ' ' })
+            .map(|c| {
+                if c.is_alphanumeric() || c.is_whitespace() {
+                    c
+                } else {
+                    ' '
+                }
+            })
             .collect();
         cleaned.split_whitespace().collect::<Vec<_>>().join(" ")
     }
@@ -578,9 +584,11 @@ pub fn compute_regpack_digest(
 /// Ensures exhaustive coverage between regpack domain references and
 /// the canonical domain enum in msez-core.
 pub fn validate_compliance_domain(domain: &str) -> PackResult<ComplianceDomain> {
-    domain.parse::<ComplianceDomain>().map_err(|_| PackError::UnknownDomain {
-        domain: domain.to_string(),
-    })
+    domain
+        .parse::<ComplianceDomain>()
+        .map_err(|_| PackError::UnknownDomain {
+            domain: domain.to_string(),
+        })
 }
 
 /// Validate all domain references in a regpack metadata.
@@ -625,7 +633,10 @@ pub fn resolve_regpack_refs(zone: &serde_json::Value) -> PackResult<Vec<RegpackR
                     jurisdiction_id: jid,
                     domain,
                     regpack_digest_sha256: digest,
-                    as_of_date: rp.get("as_of_date").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                    as_of_date: rp
+                        .get("as_of_date")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
                 });
             }
         }
@@ -704,7 +715,11 @@ mod tests {
 
     #[test]
     fn test_sanctions_fuzzy_match() {
-        let entries = vec![make_test_entry("E001", "International Trading Company", "entity")];
+        let entries = vec![make_test_entry(
+            "E001",
+            "International Trading Company",
+            "entity",
+        )];
         let checker = SanctionsChecker::new(entries, "snap-001".to_string());
         let result = checker.check_entity("International Trading", None, 0.5);
         // Token overlap should give partial match

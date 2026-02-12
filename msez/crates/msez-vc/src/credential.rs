@@ -354,9 +354,7 @@ where
     F: Fn(&str) -> Result<VerifyingKey, String>,
 {
     if !proof.proof_type.is_ed25519() {
-        return Err(VcError::UnsupportedProofType(
-            proof.proof_type.to_string(),
-        ));
+        return Err(VcError::UnsupportedProofType(proof.proof_type.to_string()));
     }
 
     let vk = resolve_key(&proof.verification_method).map_err(VcError::VerificationFailed)?;
@@ -378,9 +376,7 @@ mod tests {
 
     fn make_test_vc() -> VerifiableCredential {
         VerifiableCredential {
-            context: ContextValue::Array(vec![json!(
-                "https://www.w3.org/2018/credentials/v1"
-            )]),
+            context: ContextValue::Array(vec![json!("https://www.w3.org/2018/credentials/v1")]),
             id: Some("urn:msez:vc:test:001".to_string()),
             credential_type: CredentialTypeValue::Array(vec![
                 "VerifiableCredential".to_string(),
@@ -397,9 +393,7 @@ mod tests {
         }
     }
 
-    fn make_key_resolver(
-        vk: VerifyingKey,
-    ) -> impl Fn(&str) -> Result<VerifyingKey, String> {
+    fn make_key_resolver(vk: VerifyingKey) -> impl Fn(&str) -> Result<VerifyingKey, String> {
         move |_vm: &str| Ok(vk.clone())
     }
 

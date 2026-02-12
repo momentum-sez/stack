@@ -29,7 +29,11 @@ fn tensor_has_20_cells() {
 fn evaluate_all_20_domains() {
     let tensor = ComplianceTensor::new(test_jurisdiction());
     let results = tensor.evaluate_all("entity-test-001");
-    assert_eq!(results.len(), 20, "evaluate_all must return exactly 20 entries");
+    assert_eq!(
+        results.len(),
+        20,
+        "evaluate_all must return exactly 20 entries"
+    );
 
     for &domain in ComplianceDomain::all() {
         assert!(
@@ -68,7 +72,11 @@ fn tensor_commitment_changes_with_state() {
 
     let c1 = t1.commit().unwrap();
     let c2 = t2.commit().unwrap();
-    assert_ne!(c1.to_hex(), c2.to_hex(), "different states must produce different commitments");
+    assert_ne!(
+        c1.to_hex(),
+        c2.to_hex(),
+        "different states must produce different commitments"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -96,10 +104,19 @@ fn set_all_domains_and_commit() {
         (ComplianceDomain::Settlement, ComplianceState::NotApplicable),
         (ComplianceDomain::DigitalAssets, ComplianceState::Pending),
         (ComplianceDomain::Employment, ComplianceState::NotApplicable),
-        (ComplianceDomain::Immigration, ComplianceState::NotApplicable),
+        (
+            ComplianceDomain::Immigration,
+            ComplianceState::NotApplicable,
+        ),
         (ComplianceDomain::Ip, ComplianceState::NotApplicable),
-        (ComplianceDomain::ConsumerProtection, ComplianceState::NotApplicable),
-        (ComplianceDomain::Arbitration, ComplianceState::NotApplicable),
+        (
+            ComplianceDomain::ConsumerProtection,
+            ComplianceState::NotApplicable,
+        ),
+        (
+            ComplianceDomain::Arbitration,
+            ComplianceState::NotApplicable,
+        ),
         (ComplianceDomain::Trade, ComplianceState::Compliant),
     ];
 
@@ -138,9 +155,24 @@ fn full_slice_contains_all_20_domains() {
 #[test]
 fn partial_slice_and_aggregation() {
     let mut tensor = ComplianceTensor::new(test_jurisdiction());
-    tensor.set(ComplianceDomain::Aml, ComplianceState::Compliant, vec![], None);
-    tensor.set(ComplianceDomain::Kyc, ComplianceState::Pending, vec![], None);
-    tensor.set(ComplianceDomain::Sanctions, ComplianceState::NonCompliant, vec![], None);
+    tensor.set(
+        ComplianceDomain::Aml,
+        ComplianceState::Compliant,
+        vec![],
+        None,
+    );
+    tensor.set(
+        ComplianceDomain::Kyc,
+        ComplianceState::Pending,
+        vec![],
+        None,
+    );
+    tensor.set(
+        ComplianceDomain::Sanctions,
+        ComplianceState::NonCompliant,
+        vec![],
+        None,
+    );
 
     let slice = tensor.slice(&[
         ComplianceDomain::Aml,
@@ -169,12 +201,32 @@ fn partial_slice_and_aggregation() {
 #[test]
 fn tensor_merge_takes_more_restrictive() {
     let mut a = ComplianceTensor::new(test_jurisdiction());
-    a.set(ComplianceDomain::Aml, ComplianceState::Compliant, vec![], None);
-    a.set(ComplianceDomain::Kyc, ComplianceState::Compliant, vec![], None);
+    a.set(
+        ComplianceDomain::Aml,
+        ComplianceState::Compliant,
+        vec![],
+        None,
+    );
+    a.set(
+        ComplianceDomain::Kyc,
+        ComplianceState::Compliant,
+        vec![],
+        None,
+    );
 
     let mut b = ComplianceTensor::new(test_jurisdiction());
-    b.set(ComplianceDomain::Aml, ComplianceState::NonCompliant, vec![], None);
-    b.set(ComplianceDomain::Kyc, ComplianceState::Compliant, vec![], None);
+    b.set(
+        ComplianceDomain::Aml,
+        ComplianceState::NonCompliant,
+        vec![],
+        None,
+    );
+    b.set(
+        ComplianceDomain::Kyc,
+        ComplianceState::Compliant,
+        vec![],
+        None,
+    );
 
     a.merge(&b);
     assert_eq!(a.get(ComplianceDomain::Aml), ComplianceState::NonCompliant);
@@ -218,7 +270,12 @@ fn commitment_digest_different_jurisdictions_differ() {
 fn merkle_root_deterministic() {
     let t1 = ComplianceTensor::new(test_jurisdiction());
     let mut t2 = ComplianceTensor::new(test_jurisdiction());
-    t2.set(ComplianceDomain::Aml, ComplianceState::Compliant, vec![], None);
+    t2.set(
+        ComplianceDomain::Aml,
+        ComplianceState::Compliant,
+        vec![],
+        None,
+    );
 
     let c1 = t1.commit().unwrap();
     let c2 = t2.commit().unwrap();
@@ -267,15 +324,39 @@ fn commitment_proves_cells_are_sorted_internally() {
     let mut t2 = ComplianceTensor::new(test_jurisdiction());
 
     // Set domains in different order
-    t1.set(ComplianceDomain::Trade, ComplianceState::Compliant, vec![], None);
-    t1.set(ComplianceDomain::Aml, ComplianceState::Compliant, vec![], None);
+    t1.set(
+        ComplianceDomain::Trade,
+        ComplianceState::Compliant,
+        vec![],
+        None,
+    );
+    t1.set(
+        ComplianceDomain::Aml,
+        ComplianceState::Compliant,
+        vec![],
+        None,
+    );
 
-    t2.set(ComplianceDomain::Aml, ComplianceState::Compliant, vec![], None);
-    t2.set(ComplianceDomain::Trade, ComplianceState::Compliant, vec![], None);
+    t2.set(
+        ComplianceDomain::Aml,
+        ComplianceState::Compliant,
+        vec![],
+        None,
+    );
+    t2.set(
+        ComplianceDomain::Trade,
+        ComplianceState::Compliant,
+        vec![],
+        None,
+    );
 
     let c1 = t1.commit().unwrap();
     let c2 = t2.commit().unwrap();
-    assert_eq!(c1.to_hex(), c2.to_hex(), "order of set() calls must not affect commitment");
+    assert_eq!(
+        c1.to_hex(),
+        c2.to_hex(),
+        "order of set() calls must not affect commitment"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -285,10 +366,18 @@ fn commitment_proves_cells_are_sorted_internally() {
 #[test]
 fn clone_preserves_tensor_state() {
     let mut tensor = ComplianceTensor::new(test_jurisdiction());
-    tensor.set(ComplianceDomain::Trade, ComplianceState::Compliant, vec![], None);
+    tensor.set(
+        ComplianceDomain::Trade,
+        ComplianceState::Compliant,
+        vec![],
+        None,
+    );
 
     let cloned = tensor.clone();
-    assert_eq!(cloned.get(ComplianceDomain::Trade), ComplianceState::Compliant);
+    assert_eq!(
+        cloned.get(ComplianceDomain::Trade),
+        ComplianceState::Compliant
+    );
     assert_eq!(cloned.cell_count(), 20);
 
     // Commitments should match since state is preserved

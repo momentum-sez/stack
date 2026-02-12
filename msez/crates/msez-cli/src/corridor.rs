@@ -152,10 +152,9 @@ pub fn run_corridor(args: &CorridorArgs, repo_root: &Path) -> Result<u8> {
             cmd_transition(&state_dir, id, DynCorridorState::Suspended)
         }
 
-        CorridorCommand::Resume {
-            id,
-            resolution: _,
-        } => cmd_transition(&state_dir, id, DynCorridorState::Active),
+        CorridorCommand::Resume { id, resolution: _ } => {
+            cmd_transition(&state_dir, id, DynCorridorState::Active)
+        }
 
         CorridorCommand::Status { id } => cmd_status(&state_dir, id),
 
@@ -170,8 +169,7 @@ fn cmd_create(
     jurisdiction_a: &str,
     jurisdiction_b: &str,
 ) -> Result<u8> {
-    std::fs::create_dir_all(state_dir)
-        .context("failed to create corridor state directory")?;
+    std::fs::create_dir_all(state_dir).context("failed to create corridor state directory")?;
 
     let state_file = state_dir.join(format!("{id}.json"));
     if state_file.exists() {

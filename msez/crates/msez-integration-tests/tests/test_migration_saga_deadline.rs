@@ -82,7 +82,13 @@ fn past_deadline_at_in_transit_triggers_timeout() {
 
     let err = saga.advance().unwrap_err();
     assert!(
-        matches!(err, MigrationError::Timeout { state: MigrationState::Initiated, .. }),
+        matches!(
+            err,
+            MigrationError::Timeout {
+                state: MigrationState::Initiated,
+                ..
+            }
+        ),
         "should timeout at Initiated state"
     );
     assert_eq!(saga.state, MigrationState::TimedOut);
@@ -138,7 +144,11 @@ fn cancel_allowed_before_transit() {
         for _ in 0..advance_count {
             saga.advance().unwrap();
         }
-        assert!(saga.cancel().is_ok(), "cancel should be allowed at state {:?}", saga.state);
+        assert!(
+            saga.cancel().is_ok(),
+            "cancel should be allowed at state {:?}",
+            saga.state
+        );
         assert_eq!(saga.state, MigrationState::Cancelled);
     }
 }
@@ -166,7 +176,8 @@ fn compensation_records_context() {
     saga.advance().unwrap(); // ComplianceCheck
     saga.advance().unwrap(); // AttestationGathering
 
-    saga.compensate("compliance_failure: sanctions hit").unwrap();
+    saga.compensate("compliance_failure: sanctions hit")
+        .unwrap();
     assert_eq!(saga.state, MigrationState::Compensated);
     assert_eq!(saga.compensation_log.len(), 1);
     assert!(saga.compensation_log[0].succeeded);
@@ -215,7 +226,10 @@ fn builder_with_all_fields() {
 
     assert!(saga.source_jurisdiction.is_some());
     assert!(saga.destination_jurisdiction.is_some());
-    assert_eq!(saga.asset_description, "Heavy manufacturing equipment line A-7");
+    assert_eq!(
+        saga.asset_description,
+        "Heavy manufacturing equipment line A-7"
+    );
     assert_eq!(saga.state, MigrationState::Initiated);
 }
 
@@ -239,11 +253,20 @@ fn builder_minimal_fields() {
 fn state_display_names_match_spec() {
     assert_eq!(MigrationState::Initiated.as_str(), "INITIATED");
     assert_eq!(MigrationState::ComplianceCheck.as_str(), "COMPLIANCE_CHECK");
-    assert_eq!(MigrationState::AttestationGathering.as_str(), "ATTESTATION_GATHERING");
+    assert_eq!(
+        MigrationState::AttestationGathering.as_str(),
+        "ATTESTATION_GATHERING"
+    );
     assert_eq!(MigrationState::SourceLocked.as_str(), "SOURCE_LOCKED");
     assert_eq!(MigrationState::InTransit.as_str(), "IN_TRANSIT");
-    assert_eq!(MigrationState::DestinationVerification.as_str(), "DESTINATION_VERIFICATION");
-    assert_eq!(MigrationState::DestinationUnlock.as_str(), "DESTINATION_UNLOCK");
+    assert_eq!(
+        MigrationState::DestinationVerification.as_str(),
+        "DESTINATION_VERIFICATION"
+    );
+    assert_eq!(
+        MigrationState::DestinationUnlock.as_str(),
+        "DESTINATION_UNLOCK"
+    );
     assert_eq!(MigrationState::Completed.as_str(), "COMPLETED");
     assert_eq!(MigrationState::Compensated.as_str(), "COMPENSATED");
     assert_eq!(MigrationState::TimedOut.as_str(), "TIMED_OUT");

@@ -43,8 +43,7 @@ pub struct ValidateArgs {
 /// Returns exit code: 0 on success, 1 on validation failure, 2 on operational error.
 pub fn run_validate(args: &ValidateArgs, repo_root: &Path) -> Result<u8> {
     let schema_dir = repo_root.join("schemas");
-    let validator = SchemaValidator::new(&schema_dir)
-        .context("failed to load JSON schemas")?;
+    let validator = SchemaValidator::new(&schema_dir).context("failed to load JSON schemas")?;
 
     tracing::info!(
         schema_count = validator.schema_count(),
@@ -90,16 +89,16 @@ pub fn run_validate(args: &ValidateArgs, repo_root: &Path) -> Result<u8> {
 fn validate_all_modules(validator: &SchemaValidator, repo_root: &Path) -> Result<bool> {
     let modules_dir = repo_root.join("modules");
     if !modules_dir.is_dir() {
-        println!("WARN: modules/ directory not found at {}", modules_dir.display());
+        println!(
+            "WARN: modules/ directory not found at {}",
+            modules_dir.display()
+        );
         return Ok(false);
     }
 
     let report = validator.validate_all_modules(&modules_dir);
 
-    println!(
-        "Modules: {}/{} passed",
-        report.passed, report.total
-    );
+    println!("Modules: {}/{} passed", report.passed, report.total);
 
     for failure in &report.failures {
         let rel = failure
@@ -126,7 +125,10 @@ fn validate_all_modules(validator: &SchemaValidator, repo_root: &Path) -> Result
 fn validate_all_profiles(validator: &SchemaValidator, repo_root: &Path) -> Result<bool> {
     let profiles_dir = repo_root.join("profiles");
     if !profiles_dir.is_dir() {
-        println!("WARN: profiles/ directory not found at {}", profiles_dir.display());
+        println!(
+            "WARN: profiles/ directory not found at {}",
+            profiles_dir.display()
+        );
         return Ok(false);
     }
 
@@ -216,10 +218,7 @@ fn validate_single_path(validator: &SchemaValidator, path: &Path) -> Result<bool
     }
 
     // Determine file type based on filename.
-    let filename = path
-        .file_name()
-        .and_then(|f| f.to_str())
-        .unwrap_or("");
+    let filename = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
 
     let result = match filename {
         "module.yaml" => validator.validate_module(path),
@@ -230,7 +229,10 @@ fn validate_single_path(validator: &SchemaValidator, path: &Path) -> Result<bool
             if path.is_dir() && path.join("module.yaml").exists() {
                 validator.validate_module(path)
             } else {
-                println!("ERROR: cannot determine validation type for {}", path.display());
+                println!(
+                    "ERROR: cannot determine validation type for {}",
+                    path.display()
+                );
                 return Ok(true);
             }
         }
@@ -309,10 +311,7 @@ mod tests {
         let jurisdictions_dir = root.join("jurisdictions");
         if jurisdictions_dir.is_dir() {
             let files = find_yaml_files(&jurisdictions_dir, "zone.yaml");
-            assert!(
-                !files.is_empty(),
-                "Expected at least one zone.yaml file"
-            );
+            assert!(!files.is_empty(), "Expected at least one zone.yaml file");
         }
     }
 
@@ -322,10 +321,7 @@ mod tests {
         let profiles_dir = root.join("profiles");
         if profiles_dir.is_dir() {
             let files = find_yaml_files(&profiles_dir, "profile.yaml");
-            assert!(
-                !files.is_empty(),
-                "Expected at least one profile.yaml file"
-            );
+            assert!(!files.is_empty(), "Expected at least one profile.yaml file");
         }
     }
 }

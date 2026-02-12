@@ -12,9 +12,9 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::AppError;
-use axum::extract::rejection::JsonRejection;
-use crate::extractors::{Validate, extract_validated_json};
+use crate::extractors::{extract_validated_json, Validate};
 use crate::state::{AppState, ConsentAuditEntry, ConsentParty, ConsentRecord};
+use axum::extract::rejection::JsonRejection;
 
 /// Request to create a multi-party consent.
 #[derive(Debug, Deserialize, ToSchema)]
@@ -183,10 +183,15 @@ async fn sign_consent(
             // Check if all parties have decided.
             let all_decided = consent.parties.iter().all(|p| p.decision.is_some());
             if all_decided {
-                let all_approved = consent.parties.iter().all(|p| {
-                    p.decision.as_deref() == Some("approve")
-                });
-                consent.status = if all_approved { "APPROVED".to_string() } else { "REJECTED".to_string() };
+                let all_approved = consent
+                    .parties
+                    .iter()
+                    .all(|p| p.decision.as_deref() == Some("approve"));
+                consent.status = if all_approved {
+                    "APPROVED".to_string()
+                } else {
+                    "REJECTED".to_string()
+                };
             }
 
             consent.updated_at = now;

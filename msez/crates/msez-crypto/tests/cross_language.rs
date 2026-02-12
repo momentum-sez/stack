@@ -151,10 +151,7 @@ fn canonical_bytes_match_python_case_6_strings() {
     let value = json!({"unicode": "hello world", "id": "abc-123"});
     let cb = CanonicalBytes::new(&value).unwrap();
     let canonical_str = std::str::from_utf8(cb.as_bytes()).unwrap();
-    assert_eq!(
-        canonical_str,
-        r#"{"id":"abc-123","unicode":"hello world"}"#
-    );
+    assert_eq!(canonical_str, r#"{"id":"abc-123","unicode":"hello world"}"#);
     let digest = sha256_digest(&cb);
     assert_eq!(
         digest.to_hex(),
@@ -419,8 +416,7 @@ fn mmr_incremental_append_matches_full_rebuild() {
     let first5: Vec<String> = all_leaf_hashes[..5].to_vec();
     let rest5: Vec<String> = all_leaf_hashes[5..].to_vec();
     let peaks5 = build_peaks(&first5).unwrap();
-    let inc_peaks =
-        msez_crypto::mmr::append_peaks(&peaks5, &rest5).unwrap();
+    let inc_peaks = msez_crypto::mmr::append_peaks(&peaks5, &rest5).unwrap();
     let inc_root = bag_peaks(&inc_peaks).unwrap();
 
     assert_eq!(full_peaks, inc_peaks);
@@ -621,22 +617,43 @@ fn node_hash_domain_separation_matches_python() {
 #[test]
 fn receipt_next_root_hashes_match_python() {
     let expected = [
-        (1, "fea5396a7f4325c408b1b65b33a4d77ba5486ceba941804d8889a8546cfbab96"),
-        (2, "774ad7ab1a3d41b114b5f4a34e2d8fc19c2ee8d83dfc133f1d80068ed205597f"),
-        (3, "de84f16f82e8cf8c184f7883460865481ba6f1fa5b48c3ae4e75b9e9786a6b03"),
-        (4, "9bf922d8ee39a15df6c2b0081aa0f508601a13287fc31a902aa34eccbf835def"),
-        (5, "9f11d91831441bd7245531a84f92a4e1a7a2e2ab7b67786351f077a4fd10efea"),
-        (9, "e6fdb34dc858fdc85c667742163c42a257b8eaefab62c6c7138d2da4aa4344d2"),
-        (16, "4ce306d785e156ecce175d1c1693c2c72599eed1ce7e90dfcca7214e65ef2446"),
-        (17, "3d9b849244959f3c63eab896d824a077a145676a6205fb17b3d23df3a3f560b6"),
+        (
+            1,
+            "fea5396a7f4325c408b1b65b33a4d77ba5486ceba941804d8889a8546cfbab96",
+        ),
+        (
+            2,
+            "774ad7ab1a3d41b114b5f4a34e2d8fc19c2ee8d83dfc133f1d80068ed205597f",
+        ),
+        (
+            3,
+            "de84f16f82e8cf8c184f7883460865481ba6f1fa5b48c3ae4e75b9e9786a6b03",
+        ),
+        (
+            4,
+            "9bf922d8ee39a15df6c2b0081aa0f508601a13287fc31a902aa34eccbf835def",
+        ),
+        (
+            5,
+            "9f11d91831441bd7245531a84f92a4e1a7a2e2ab7b67786351f077a4fd10efea",
+        ),
+        (
+            9,
+            "e6fdb34dc858fdc85c667742163c42a257b8eaefab62c6c7138d2da4aa4344d2",
+        ),
+        (
+            16,
+            "4ce306d785e156ecce175d1c1693c2c72599eed1ce7e90dfcca7214e65ef2446",
+        ),
+        (
+            17,
+            "3d9b849244959f3c63eab896d824a077a145676a6205fb17b3d23df3a3f560b6",
+        ),
     ];
 
     for (i, expected_hex) in expected {
         let actual = receipt_hash(i);
-        assert_eq!(
-            actual, expected_hex,
-            "SHA256(\"receipt-{i}\") mismatch"
-        );
+        assert_eq!(actual, expected_hex, "SHA256(\"receipt-{i}\") mismatch");
     }
 }
 
@@ -673,10 +690,6 @@ fn all_17_next_roots_match_python() {
         .zip(rust_next_roots.iter())
         .enumerate()
     {
-        assert_eq!(
-            expected, actual,
-            "next_root mismatch at receipt-{}",
-            i + 1
-        );
+        assert_eq!(expected, actual, "next_root mismatch at receipt-{}", i + 1);
     }
 }

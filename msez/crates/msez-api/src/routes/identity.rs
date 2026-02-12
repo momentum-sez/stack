@@ -17,9 +17,9 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::AppError;
-use axum::extract::rejection::JsonRejection;
-use crate::extractors::{Validate, extract_validated_json};
+use crate::extractors::{extract_validated_json, Validate};
 use crate::state::{AppState, IdentityAttestation, IdentityRecord, LinkedExternalId};
+use axum::extract::rejection::JsonRejection;
 
 /// KYC/KYB verification request.
 #[derive(Debug, Deserialize, ToSchema)]

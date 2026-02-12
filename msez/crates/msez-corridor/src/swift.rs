@@ -150,9 +150,7 @@ impl SettlementRail for SwiftPacs008 {
         }
 
         if instruction.message_id.is_empty() {
-            return Err(SettlementRailError::MissingField(
-                "message_id".to_string(),
-            ));
+            return Err(SettlementRailError::MissingField("message_id".to_string()));
         }
 
         // Format amount with decimal point based on currency convention.
@@ -292,10 +290,7 @@ mod tests {
         let mut instr = sample_instruction();
         instr.debtor_bic = "ABC".to_string();
         let result = adapter.generate_instruction(&instr);
-        assert!(matches!(
-            result,
-            Err(SettlementRailError::InvalidBic(_))
-        ));
+        assert!(matches!(result, Err(SettlementRailError::InvalidBic(_))));
     }
 
     #[test]
@@ -304,10 +299,7 @@ mod tests {
         let mut instr = sample_instruction();
         instr.creditor_bic = "EMIR@#$A".to_string();
         let result = adapter.generate_instruction(&instr);
-        assert!(matches!(
-            result,
-            Err(SettlementRailError::InvalidBic(_))
-        ));
+        assert!(matches!(result, Err(SettlementRailError::InvalidBic(_))));
     }
 
     #[test]
@@ -316,17 +308,11 @@ mod tests {
         let mut instr = sample_instruction();
         instr.amount = 0;
         let result = adapter.generate_instruction(&instr);
-        assert!(matches!(
-            result,
-            Err(SettlementRailError::InvalidAmount(_))
-        ));
+        assert!(matches!(result, Err(SettlementRailError::InvalidAmount(_))));
 
         instr.amount = -100;
         let result = adapter.generate_instruction(&instr);
-        assert!(matches!(
-            result,
-            Err(SettlementRailError::InvalidAmount(_))
-        ));
+        assert!(matches!(result, Err(SettlementRailError::InvalidAmount(_))));
     }
 
     #[test]
@@ -335,10 +321,7 @@ mod tests {
         let mut instr = sample_instruction();
         instr.message_id = String::new();
         let result = adapter.generate_instruction(&instr);
-        assert!(matches!(
-            result,
-            Err(SettlementRailError::MissingField(_))
-        ));
+        assert!(matches!(result, Err(SettlementRailError::MissingField(_))));
     }
 
     #[test]

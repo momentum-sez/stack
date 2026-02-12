@@ -8,7 +8,7 @@
 //!
 //! Finding §2.4: The Python `tensor.py` defined 8 domains; `composition.py`
 //! defined 20. This module evaluates all 20 domains from the single
-//! [`ComplianceDomain`](msez_core::ComplianceDomain) enum in `msez-core`.
+//! [`ComplianceDomain`] enum in `msez-core`.
 //! Every `match` on `ComplianceDomain` is exhaustive — adding a 21st domain
 //! is a compile error until every evaluation path is updated.
 //!

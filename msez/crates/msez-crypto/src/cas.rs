@@ -179,9 +179,8 @@ impl ContentAddressedStore {
         data: &impl Serialize,
     ) -> Result<ArtifactRef, CryptoError> {
         let t = validate_artifact_type(artifact_type)?;
-        let canonical = CanonicalBytes::new(data).map_err(|e| {
-            CryptoError::Cas(format!("canonicalization failed: {e}"))
-        })?;
+        let canonical = CanonicalBytes::new(data)
+            .map_err(|e| CryptoError::Cas(format!("canonicalization failed: {e}")))?;
         let digest = sha256_digest(&canonical);
         let artifact_ref = ArtifactRef {
             artifact_type: t.clone(),
@@ -285,10 +284,7 @@ impl ContentAddressedStore {
     /// Resolve an artifact by its [`ArtifactRef`].
     ///
     /// Convenience wrapper around [`resolve()`](ContentAddressedStore::resolve).
-    pub fn resolve_ref(
-        &self,
-        artifact_ref: &ArtifactRef,
-    ) -> Result<Option<Vec<u8>>, CryptoError> {
+    pub fn resolve_ref(&self, artifact_ref: &ArtifactRef) -> Result<Option<Vec<u8>>, CryptoError> {
         self.resolve(&artifact_ref.artifact_type, &artifact_ref.digest)
     }
 
@@ -299,7 +295,10 @@ impl ContentAddressedStore {
         digest: &ContentDigest,
     ) -> Result<bool, CryptoError> {
         let t = validate_artifact_type(artifact_type)?;
-        let path = self.base_dir.join(&t).join(format!("{}.json", digest.to_hex()));
+        let path = self
+            .base_dir
+            .join(&t)
+            .join(format!("{}.json", digest.to_hex()));
         Ok(path.exists())
     }
 
@@ -307,10 +306,7 @@ impl ContentAddressedStore {
     ///
     /// Returns hex digest strings extracted from filenames matching
     /// `{artifact_type}/*.json`.
-    pub fn list_digests(
-        &self,
-        artifact_type: &str,
-    ) -> Result<Vec<String>, CryptoError> {
+    pub fn list_digests(&self, artifact_type: &str) -> Result<Vec<String>, CryptoError> {
         let t = validate_artifact_type(artifact_type)?;
         let dir = self.base_dir.join(&t);
 
@@ -346,34 +342,19 @@ mod tests {
 
     #[test]
     fn validate_artifact_type_accepts_valid() {
-        assert_eq!(
-            validate_artifact_type("lawpack").unwrap(),
-            "lawpack"
-        );
-        assert_eq!(
-            validate_artifact_type("receipt").unwrap(),
-            "receipt"
-        );
+        assert_eq!(validate_artifact_type("lawpack").unwrap(), "lawpack");
+        assert_eq!(validate_artifact_type("receipt").unwrap(), "receipt");
         assert_eq!(
             validate_artifact_type("transition-types").unwrap(),
             "transition-types"
         );
-        assert_eq!(
-            validate_artifact_type("vc").unwrap(),
-            "vc"
-        );
-        assert_eq!(
-            validate_artifact_type("abc123").unwrap(),
-            "abc123"
-        );
+        assert_eq!(validate_artifact_type("vc").unwrap(), "vc");
+        assert_eq!(validate_artifact_type("abc123").unwrap(), "abc123");
     }
 
     #[test]
     fn validate_artifact_type_normalizes_case() {
-        assert_eq!(
-            validate_artifact_type("LawPack").unwrap(),
-            "lawpack"
-        );
+        assert_eq!(validate_artifact_type("LawPack").unwrap(), "lawpack");
     }
 
     #[test]
@@ -422,8 +403,7 @@ mod tests {
         assert!(resolved.is_some());
 
         // The resolved bytes should parse to the same canonical form.
-        let resolved_value: serde_json::Value =
-            serde_json::from_slice(&resolved.unwrap()).unwrap();
+        let resolved_value: serde_json::Value = serde_json::from_slice(&resolved.unwrap()).unwrap();
         let original_canonical = CanonicalBytes::new(&data).unwrap();
         let resolved_canonical = CanonicalBytes::new(&resolved_value).unwrap();
         assert_eq!(original_canonical, resolved_canonical);

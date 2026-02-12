@@ -150,7 +150,9 @@ pub fn build_peaks(leaf_hashes: &[String]) -> Result<Vec<Peak>, CryptoError> {
             if top.0 != cur_h {
                 break;
             }
-            let (_, left) = peaks.pop().unwrap();
+            let (_, left) = peaks
+                .pop()
+                .ok_or_else(|| CryptoError::Mmr("peaks unexpectedly empty during merge".into()))?;
             cur = mmr_node_hash(&left, &cur)?;
             cur_h += 1;
         }
@@ -177,7 +179,12 @@ pub fn bag_peaks(peaks: &[Peak]) -> Result<String, CryptoError> {
     if peaks.is_empty() {
         return Ok(String::new());
     }
-    let mut bag = peaks.last().unwrap().hash.clone();
+    // Safe: is_empty() check above guarantees last() returns Some.
+    let mut bag = peaks
+        .last()
+        .ok_or_else(|| CryptoError::Mmr("peaks unexpectedly empty after is_empty check".into()))?
+        .hash
+        .clone();
     for p in peaks[..peaks.len() - 1].iter().rev() {
         bag = mmr_node_hash(&p.hash, &bag)?;
     }
@@ -394,9 +401,7 @@ pub fn build_inclusion_proof(
 ) -> Result<MmrInclusionProof, CryptoError> {
     let size = next_roots_hex.len();
     if size == 0 {
-        return Err(CryptoError::Mmr(
-            "cannot build proof for empty MMR".into(),
-        ));
+        return Err(CryptoError::Mmr("cannot build proof for empty MMR".into()));
     }
     if leaf_index >= size {
         return Err(CryptoError::Mmr("leaf_index out of range".into()));
@@ -535,7 +540,9 @@ pub fn append_peaks(
             if top.0 != cur_h {
                 break;
             }
-            let (_, left) = stack.pop().unwrap();
+            let (_, left) = stack
+                .pop()
+                .ok_or_else(|| CryptoError::Mmr("stack unexpectedly empty during merge".into()))?;
             cur = mmr_node_hash(&left, &cur)?;
             cur_h += 1;
         }
@@ -930,8 +937,7 @@ mod tests {
 
         let info = mmr_root_from_next_roots(&rust_next_roots).unwrap();
         assert_eq!(
-            info.root,
-            "338734a36416c5153c1a46812c5b3c2bfc3a4fa688beae56eb6ae8447143db2e",
+            info.root, "338734a36416c5153c1a46812c5b3c2bfc3a4fa688beae56eb6ae8447143db2e",
             "17-receipt MMR root does not match Python fixture"
         );
     }
@@ -941,8 +947,7 @@ mod tests {
         let next_roots: Vec<String> = (1..=9).map(receipt_hash).collect();
         let info = mmr_root_from_next_roots(&next_roots).unwrap();
         assert_eq!(
-            info.root,
-            "2cbf59819f3070f62601d1e0c47af000896f1c7bcb3f1e421c9bcdbf6c20ef09",
+            info.root, "2cbf59819f3070f62601d1e0c47af000896f1c7bcb3f1e421c9bcdbf6c20ef09",
             "9-receipt MMR root does not match Python fixture"
         );
     }

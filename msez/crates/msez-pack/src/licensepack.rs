@@ -31,7 +31,7 @@
 //!           "holders/{holder_id}\0" + canonical(holder_data) + b"\0" )
 //! ```
 //!
-//! All canonicalization goes through [`CanonicalBytes`](msez_core::CanonicalBytes)
+//! All canonicalization goes through [`CanonicalBytes`]
 //! for cross-language digest equality with the Python implementation.
 //!
 //! ## Spec Reference
@@ -319,9 +319,12 @@ impl LicenseRestriction {
             return false;
         }
         if self.blocked_jurisdictions.contains(&"*".to_string()) {
-            return !self.allowed_jurisdictions.contains(&jurisdiction.to_string());
+            return !self
+                .allowed_jurisdictions
+                .contains(&jurisdiction.to_string());
         }
-        self.blocked_jurisdictions.contains(&jurisdiction.to_string())
+        self.blocked_jurisdictions
+            .contains(&jurisdiction.to_string())
     }
 }
 
@@ -456,7 +459,9 @@ impl License {
 
     /// Whether any active restriction blocks the given activity.
     pub fn has_blocking_restriction(&self, activity: &str) -> bool {
-        self.restrictions.iter().any(|r| r.blocks_activity(activity))
+        self.restrictions
+            .iter()
+            .any(|r| r.blocks_activity(activity))
     }
 
     /// Whether the license permits the specified activity.
@@ -685,7 +690,10 @@ impl Licensepack {
 
     /// Get all active licenses.
     pub fn get_active_licenses(&self) -> Vec<&License> {
-        self.licenses.values().filter(|lic| lic.is_active()).collect()
+        self.licenses
+            .values()
+            .filter(|lic| lic.is_active())
+            .collect()
     }
 
     /// Verify if a holder has a valid license for an activity.
@@ -705,7 +713,11 @@ impl Licensepack {
         for lic in &licenses {
             let state = lic.evaluate_compliance(activity, today);
             if state == LicenseComplianceState::Compliant {
-                return (true, LicenseComplianceState::Compliant, Some(lic.license_id.clone()));
+                return (
+                    true,
+                    LicenseComplianceState::Compliant,
+                    Some(lic.license_id.clone()),
+                );
             }
         }
 
@@ -850,9 +862,7 @@ impl Licensepack {
 
         // Status changes in existing licenses
         for id in curr_ids.intersection(&prev_ids) {
-            if let (Some(curr), Some(prev)) =
-                (self.licenses.get(*id), previous.licenses.get(*id))
-            {
+            if let (Some(curr), Some(prev)) = (self.licenses.get(*id), previous.licenses.get(*id)) {
                 if curr.status != prev.status {
                     match (prev.status, curr.status) {
                         (LicenseStatus::Suspended, LicenseStatus::Active) => {
@@ -1070,7 +1080,10 @@ mod tests {
     #[test]
     fn test_compliance_state_values() {
         assert_eq!(LicenseComplianceState::Compliant.as_str(), "COMPLIANT");
-        assert_eq!(LicenseComplianceState::NonCompliant.as_str(), "NON_COMPLIANT");
+        assert_eq!(
+            LicenseComplianceState::NonCompliant.as_str(),
+            "NON_COMPLIANT"
+        );
         assert_eq!(LicenseComplianceState::Pending.as_str(), "PENDING");
         assert_eq!(LicenseComplianceState::Suspended.as_str(), "SUSPENDED");
         assert_eq!(LicenseComplianceState::Unknown.as_str(), "UNKNOWN");

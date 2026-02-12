@@ -299,9 +299,7 @@ mod tests {
             2
         );
         assert_eq!(
-            trail
-                .entries_by_type(AuditEntryType::TriggerReceived)
-                .len(),
+            trail.entries_by_type(AuditEntryType::TriggerReceived).len(),
             1
         );
     }
@@ -363,10 +361,22 @@ mod tests {
 
     #[test]
     fn audit_entry_type_display() {
-        assert_eq!(AuditEntryType::TriggerReceived.to_string(), "trigger_received");
-        assert_eq!(AuditEntryType::PolicyEvaluated.to_string(), "policy_evaluated");
-        assert_eq!(AuditEntryType::ActionScheduled.to_string(), "action_scheduled");
-        assert_eq!(AuditEntryType::ActionExecuted.to_string(), "action_executed");
+        assert_eq!(
+            AuditEntryType::TriggerReceived.to_string(),
+            "trigger_received"
+        );
+        assert_eq!(
+            AuditEntryType::PolicyEvaluated.to_string(),
+            "policy_evaluated"
+        );
+        assert_eq!(
+            AuditEntryType::ActionScheduled.to_string(),
+            "action_scheduled"
+        );
+        assert_eq!(
+            AuditEntryType::ActionExecuted.to_string(),
+            "action_executed"
+        );
     }
 
     #[test]

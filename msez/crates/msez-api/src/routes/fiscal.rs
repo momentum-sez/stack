@@ -13,9 +13,9 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::AppError;
-use axum::extract::rejection::JsonRejection;
-use crate::extractors::{Validate, extract_validated_json};
+use crate::extractors::{extract_validated_json, Validate};
 use crate::state::{AppState, FiscalAccountRecord, PaymentRecord, TaxEventRecord};
+use axum::extract::rejection::JsonRejection;
 
 /// Request to create a fiscal/treasury account.
 #[derive(Debug, Deserialize, ToSchema)]
@@ -91,7 +91,10 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/v1/fiscal/accounts", post(create_account))
         .route("/v1/fiscal/payments", post(initiate_payment))
-        .route("/v1/fiscal/withholding/calculate", post(calculate_withholding))
+        .route(
+            "/v1/fiscal/withholding/calculate",
+            post(calculate_withholding),
+        )
         .route("/v1/fiscal/:entity_id/tax-events", get(get_tax_events))
         .route("/v1/fiscal/reporting/generate", post(generate_report))
 }
@@ -218,9 +221,7 @@ async fn get_tax_events(
     ),
     tag = "fiscal"
 )]
-async fn generate_report(
-    State(_state): State<AppState>,
-) -> Json<serde_json::Value> {
+async fn generate_report(State(_state): State<AppState>) -> Json<serde_json::Value> {
     // Phase 1 stub.
     Json(serde_json::json!({
         "status": "generated",

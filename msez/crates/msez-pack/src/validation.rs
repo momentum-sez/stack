@@ -287,7 +287,10 @@ pub fn validate_zone_cross_references(
                 let module_pattern = repo_root.join("modules").join("legal");
                 if module_pattern.exists() {
                     // Just warn if the domain directory doesn't exist
-                    let domain_dir = module_pattern.join("jurisdictions").join(jurisdiction_id).join(domain_str);
+                    let domain_dir = module_pattern
+                        .join("jurisdictions")
+                        .join(jurisdiction_id)
+                        .join(domain_str);
                     if !domain_dir.exists() {
                         result.add_warning(format!(
                             "lawpack_domain \"{domain_str}\" for jurisdiction \"{jurisdiction_id}\" has no module directory at {}",

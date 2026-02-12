@@ -4,6 +4,40 @@ on:
   pull_request:
 
 jobs:
+  rust:
+    name: Rust workspace checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: msez
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: msez
+
+      - name: Check formatting
+        run: cargo fmt --check --all
+
+      - name: Clippy (warnings as errors)
+        run: cargo clippy --workspace -- -D warnings
+
+      - name: Run tests
+        run: cargo test --workspace
+
+      - name: Security audit
+        run: |
+          cargo install cargo-audit --locked
+          cargo audit
+
+      - name: Build docs
+        run: cargo doc --workspace --no-deps
+
   validate-and-test:
     runs-on: ubuntu-latest
     steps:

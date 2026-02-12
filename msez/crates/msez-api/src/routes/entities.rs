@@ -22,9 +22,9 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::AppError;
-use axum::extract::rejection::JsonRejection;
-use crate::extractors::{Validate, extract_validated_json};
+use crate::extractors::{extract_validated_json, Validate};
 use crate::state::{AppState, BeneficialOwner, EntityRecord};
+use axum::extract::rejection::JsonRejection;
 
 // ── Request/Response DTOs ───────────────────────────────────────────
 
@@ -93,9 +93,18 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/v1/entities", get(list_entities).post(create_entity))
         .route("/v1/entities/:id", get(get_entity).put(update_entity))
-        .route("/v1/entities/:id/beneficial-owners", get(get_beneficial_owners))
-        .route("/v1/entities/:id/dissolution/initiate", post(initiate_dissolution))
-        .route("/v1/entities/:id/dissolution/status", get(get_dissolution_status))
+        .route(
+            "/v1/entities/:id/beneficial-owners",
+            get(get_beneficial_owners),
+        )
+        .route(
+            "/v1/entities/:id/dissolution/initiate",
+            post(initiate_dissolution),
+        )
+        .route(
+            "/v1/entities/:id/dissolution/status",
+            get(get_dissolution_status),
+        )
 }
 
 // ── Handlers ────────────────────────────────────────────────────────
@@ -144,9 +153,7 @@ async fn create_entity(
     ),
     tag = "entities"
 )]
-async fn list_entities(
-    State(state): State<AppState>,
-) -> Json<Vec<EntityRecord>> {
+async fn list_entities(State(state): State<AppState>) -> Json<Vec<EntityRecord>> {
     Json(state.entities.list())
 }
 
@@ -274,19 +281,22 @@ async fn get_dissolution_status(
         .get(&id)
         .ok_or_else(|| AppError::NotFound(format!("entity {id} not found")))?;
 
-    let stage_name = entity.dissolution_stage.map(|s| match s {
-        1 => "BOARD_RESOLUTION",
-        2 => "SHAREHOLDER_RESOLUTION",
-        3 => "APPOINT_LIQUIDATOR",
-        4 => "NOTIFY_CREDITORS",
-        5 => "REALIZE_ASSETS",
-        6 => "SETTLE_LIABILITIES",
-        7 => "FINAL_DISTRIBUTION",
-        8 => "FINAL_MEETING",
-        9 => "FILE_FINAL_DOCUMENTS",
-        10 => "DISSOLUTION",
-        _ => "UNKNOWN",
-    }.to_string());
+    let stage_name = entity.dissolution_stage.map(|s| {
+        match s {
+            1 => "BOARD_RESOLUTION",
+            2 => "SHAREHOLDER_RESOLUTION",
+            3 => "APPOINT_LIQUIDATOR",
+            4 => "NOTIFY_CREDITORS",
+            5 => "REALIZE_ASSETS",
+            6 => "SETTLE_LIABILITIES",
+            7 => "FINAL_DISTRIBUTION",
+            8 => "FINAL_MEETING",
+            9 => "FILE_FINAL_DOCUMENTS",
+            10 => "DISSOLUTION",
+            _ => "UNKNOWN",
+        }
+        .to_string()
+    });
 
     Ok(Json(DissolutionStatusResponse {
         entity_id: id,

@@ -25,7 +25,9 @@ use crate::error::{PackError, PackResult};
 
 /// SHA-256 hex digest pattern: exactly 64 lowercase hex characters.
 pub fn is_valid_sha256(s: &str) -> bool {
-    s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+    s.len() == 64
+        && s.chars()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
 }
 
 /// Load a YAML file and return it as a `serde_json::Value`.
@@ -131,13 +133,15 @@ fn yaml_to_json_value(yaml: serde_yaml::Value) -> PackResult<Value> {
                         Ok(Value::Number(serde_json::Number::from(f as i64)))
                     } else {
                         Ok(Value::Number(
-                            serde_json::Number::from_f64(f).unwrap_or_else(|| serde_json::Number::from(0)),
+                            serde_json::Number::from_f64(f)
+                                .unwrap_or_else(|| serde_json::Number::from(0)),
                         ))
                     }
                 } else {
                     // True float — pass through, canonicalization will reject if used for digest
                     Ok(Value::Number(
-                        serde_json::Number::from_f64(f).unwrap_or_else(|| serde_json::Number::from(0)),
+                        serde_json::Number::from_f64(f)
+                            .unwrap_or_else(|| serde_json::Number::from(0)),
                     ))
                 }
             } else {

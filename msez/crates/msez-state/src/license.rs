@@ -162,7 +162,10 @@ impl License {
     ///
     /// Transitions: Applied | UnderReview → Rejected.
     pub fn reject(&mut self, reason: impl Into<String>) -> Result<(), LicenseError> {
-        if !matches!(self.state, LicenseState::Applied | LicenseState::UnderReview) {
+        if !matches!(
+            self.state,
+            LicenseState::Applied | LicenseState::UnderReview
+        ) {
             return Err(LicenseError::InvalidTransition {
                 from: self.state,
                 to: LicenseState::Rejected,
@@ -285,7 +288,10 @@ mod tests {
         lic.reject("Incomplete documentation").unwrap();
         assert_eq!(lic.state, LicenseState::Rejected);
         assert!(lic.state.is_terminal());
-        assert_eq!(lic.state_reason.as_deref(), Some("Incomplete documentation"));
+        assert_eq!(
+            lic.state_reason.as_deref(),
+            Some("Incomplete documentation")
+        );
     }
 
     #[test]

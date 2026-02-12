@@ -47,17 +47,29 @@ impl<T: Clone + Send + Sync> Store<T> {
 
     /// Insert a record, returning the previous value if the key existed.
     pub fn insert(&self, id: Uuid, value: T) -> Option<T> {
-        self.data.write().expect("store lock poisoned").insert(id, value)
+        self.data
+            .write()
+            .expect("store lock poisoned")
+            .insert(id, value)
     }
 
     /// Retrieve a record by ID.
     pub fn get(&self, id: &Uuid) -> Option<T> {
-        self.data.read().expect("store lock poisoned").get(id).cloned()
+        self.data
+            .read()
+            .expect("store lock poisoned")
+            .get(id)
+            .cloned()
     }
 
     /// List all records.
     pub fn list(&self) -> Vec<T> {
-        self.data.read().expect("store lock poisoned").values().cloned().collect()
+        self.data
+            .read()
+            .expect("store lock poisoned")
+            .values()
+            .cloned()
+            .collect()
     }
 
     /// Update a record in place. Returns the updated record, or `None` if not found.
@@ -80,7 +92,10 @@ impl<T: Clone + Send + Sync> Store<T> {
     /// Check if a record exists.
     #[allow(dead_code)]
     pub fn contains(&self, id: &Uuid) -> bool {
-        self.data.read().expect("store lock poisoned").contains_key(id)
+        self.data
+            .read()
+            .expect("store lock poisoned")
+            .contains_key(id)
     }
 
     /// Return the number of records.

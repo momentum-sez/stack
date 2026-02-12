@@ -21,7 +21,7 @@
 //!     path.encode("utf-8") + b"\0" + canonical_bytes + b"\0" )
 //! ```
 //!
-//! All canonicalization goes through [`CanonicalBytes`](msez_core::CanonicalBytes)
+//! All canonicalization goes through [`CanonicalBytes`]
 //! to ensure cross-language digest equality with the Python implementation.
 //!
 //! ## Spec Reference
@@ -439,10 +439,7 @@ pub fn resolve_lawpack_refs(zone: &serde_json::Value) -> PackResult<Vec<LawpackR
 ///
 /// A JSON value representing the stack.lock content, or an error
 /// if any referenced lawpacks cannot be resolved.
-pub fn generate_zone_lock(
-    zone_path: &Path,
-    repo_root: &Path,
-) -> PackResult<serde_json::Value> {
+pub fn generate_zone_lock(zone_path: &Path, repo_root: &Path) -> PackResult<serde_json::Value> {
     let zone = parser::load_yaml_as_value(zone_path)?;
     let zone_id = zone
         .get("zone_id")
@@ -588,7 +585,10 @@ pub fn infer_jurisdiction_and_domain(
     let jur_idx = parts.iter().position(|&p| p == "jurisdictions");
 
     let derived_domain = domain.unwrap_or_else(|| {
-        parts.last().map(|s| s.to_string()).unwrap_or_else(|| "unknown".to_string())
+        parts
+            .last()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "unknown".to_string())
     });
     let derived_jid = jid.unwrap_or_else(|| {
         if let Some(idx) = jur_idx {
@@ -603,8 +603,16 @@ pub fn infer_jurisdiction_and_domain(
     });
 
     (
-        if derived_jid.is_empty() { "unknown".to_string() } else { derived_jid },
-        if derived_domain.is_empty() { "unknown".to_string() } else { derived_domain },
+        if derived_jid.is_empty() {
+            "unknown".to_string()
+        } else {
+            derived_jid
+        },
+        if derived_domain.is_empty() {
+            "unknown".to_string()
+        } else {
+            derived_domain
+        },
     )
 }
 
@@ -672,7 +680,10 @@ mod tests {
         files2.insert("b.txt".to_string(), b"bbb".to_vec());
         files2.insert("a.txt".to_string(), b"aaa".to_vec());
 
-        assert_eq!(compute_lawpack_digest(&files1), compute_lawpack_digest(&files2));
+        assert_eq!(
+            compute_lawpack_digest(&files1),
+            compute_lawpack_digest(&files2)
+        );
     }
 
     #[test]

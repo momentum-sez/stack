@@ -233,7 +233,10 @@ fn defective_state_names_are_rejected() {
     assert!(proposed.is_err(), "PROPOSED must not be a valid state");
 
     let operational: Result<DynCorridorState, _> = serde_json::from_str("\"OPERATIONAL\"");
-    assert!(operational.is_err(), "OPERATIONAL must not be a valid state");
+    assert!(
+        operational.is_err(),
+        "OPERATIONAL must not be a valid state"
+    );
 }
 
 #[test]

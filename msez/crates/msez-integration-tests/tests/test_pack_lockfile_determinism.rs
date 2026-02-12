@@ -61,11 +61,7 @@ fn lawpack_digest_is_deterministic() {
 /// Hex encoding helper (avoiding external `hex` crate)
 mod hex {
     pub fn encode(bytes: impl AsRef<[u8]>) -> String {
-        bytes
-            .as_ref()
-            .iter()
-            .map(|b| format!("{b:02x}"))
-            .collect()
+        bytes.as_ref().iter().map(|b| format!("{b:02x}")).collect()
     }
 }
 
@@ -87,11 +83,7 @@ fn lawpack_ref_parse_rejects_invalid() {
     // Too few parts
     assert!(LawpackRef::parse("PK-RSEZ:financial").is_err());
     // Too many parts
-    assert!(LawpackRef::parse(&format!(
-        "PK-RSEZ:financial:{}:extra",
-        "ab".repeat(32)
-    ))
-    .is_err());
+    assert!(LawpackRef::parse(&format!("PK-RSEZ:financial:{}:extra", "ab".repeat(32))).is_err());
     // Invalid digest length
     assert!(LawpackRef::parse("PK-RSEZ:financial:tooshort").is_err());
 }
@@ -227,7 +219,10 @@ fn btree_map_ensures_path_ordering() {
     paths.insert("m/module.yaml", json!({"m": true}));
 
     let keys: Vec<_> = paths.keys().copied().collect();
-    assert_eq!(keys, vec!["a/module.yaml", "m/module.yaml", "z/module.yaml"]);
+    assert_eq!(
+        keys,
+        vec!["a/module.yaml", "m/module.yaml", "z/module.yaml"]
+    );
 
     // Serialized via CanonicalBytes, keys should also be sorted
     let data = json!(paths);

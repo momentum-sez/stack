@@ -519,7 +519,9 @@ async fn test_openapi_contains_all_routes() {
 
     for expected in &expected_paths {
         assert!(
-            paths.keys().any(|k| k.starts_with(expected) || k == expected),
+            paths
+                .keys()
+                .any(|k| k.starts_with(expected) || k == expected),
             "OpenAPI spec missing path: {expected}"
         );
     }

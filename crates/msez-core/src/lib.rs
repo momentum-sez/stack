@@ -8,7 +8,8 @@
 //! ## Key Design Principles
 //!
 //! 1. **Newtype wrappers for domain primitives.** `JurisdictionId`, `EntityId`,
-//!    `CorridorId`, `NTN`, `CNIC` — all newtypes. No bare strings for identifiers.
+//!    `CorridorId`, `DID`, `NTN`, `CNIC` — all newtypes with validated constructors.
+//!    No bare strings for identifiers.
 //!
 //! 2. **`CanonicalBytes` newtype.** ALL digest computation flows through
 //!    `CanonicalBytes::new()`. No raw `serde_json::to_vec()` for digests. Ever.
@@ -19,6 +20,9 @@
 //!
 //! 4. **UTC-only timestamps.** The `Timestamp` type enforces UTC with Z suffix
 //!    and seconds precision — matching the JCS canonicalization rules.
+//!
+//! 5. **`sha256_digest()` accepts only `&CanonicalBytes`.** Compile-time enforcement
+//!    that all digest paths flow through canonicalization. Poseidon2 behind feature flag.
 //!
 //! ## Crate Policy
 //!
@@ -37,9 +41,10 @@ pub mod temporal;
 
 // Re-export primary types for ergonomic imports.
 pub use canonical::CanonicalBytes;
-pub use digest::{ContentDigest, DigestAlgorithm};
-pub use domain::ComplianceDomain;
+pub use digest::{sha256_digest, sha256_hex, ContentDigest, DigestAlgorithm};
+pub use domain::{ComplianceDomain, COMPLIANCE_DOMAIN_COUNT};
 pub use error::MsezError;
-pub use identity::{EntityId, CorridorId, MigrationId, WatcherId, CNIC, NTN, PassportNumber};
-pub use jurisdiction::JurisdictionId;
+pub use identity::{
+    CorridorId, DID, EntityId, JurisdictionId, MigrationId, PassportNumber, WatcherId, CNIC, NTN,
+};
 pub use temporal::Timestamp;

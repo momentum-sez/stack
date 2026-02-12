@@ -23,6 +23,12 @@ pub mod proof;
 pub mod registry;
 
 // Re-export primary types.
-pub use credential::VerifiableCredential;
+pub use credential::{
+    ContextValue, CredentialTypeValue, ProofResult, ProofValue, VcError, VerifiableCredential,
+};
 pub use proof::{Proof, ProofPurpose, ProofType};
-pub use registry::SmartAssetRegistryVc;
+pub use registry::{
+    ArtifactRef, BindingComplianceResult, ComplianceProfile, EnforcementProfile,
+    JurisdictionBinding, LawpackRef, SmartAssetRegistrySubject, SmartAssetRegistryVc,
+    REGISTRY_SCHEMA_ID,
+};

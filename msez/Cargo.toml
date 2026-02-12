@@ -60,7 +60,7 @@ uuid = { version = "1", features = ["v4", "serde"] }
 # Web framework
 axum = "0.7"
 tokio = { version = "1", features = ["full"] }
-tower = "0.5"
+tower = { version = "0.5", features = ["util"] }
 tower-http = { version = "0.6", features = ["trace"] }
 
 # Database
@@ -73,5 +73,9 @@ clap = { version = "4", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 
+# OpenAPI
+utoipa = { version = "4", features = ["axum_extras", "chrono", "uuid"] }
+
 # Testing
 proptest = "1"
+http-body-util = "0.1"

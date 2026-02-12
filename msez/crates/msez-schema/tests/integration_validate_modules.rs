@@ -12,7 +12,7 @@
 //!    task instructions, failures due to schema strictness are documented
 //!    rather than suppressed.
 
-use msez_schema::{SchemaValidator, SchemaValidationError};
+use msez_schema::{SchemaValidationError, SchemaValidator};
 use std::path::PathBuf;
 
 /// Compute the repo root from the crate manifest directory.
@@ -49,7 +49,10 @@ fn test_module_index_exists_and_parses() {
 
     // Check the version and total_modules fields.
     if let Some(total) = index.get("total_modules").and_then(|v| v.as_u64()) {
-        assert!(total >= 100, "Expected at least 100 declared modules, got {total}");
+        assert!(
+            total >= 100,
+            "Expected at least 100 declared modules, got {total}"
+        );
     }
 }
 
@@ -274,10 +277,7 @@ fn test_attestation_schema_validation() {
 
     let schema_id = "https://schemas.momentum-sez.org/msez/attestation.schema.json";
     let result = validator.validate_value(&attestation, schema_id);
-    assert!(
-        result.is_ok(),
-        "Valid attestation should pass: {result:?}"
-    );
+    assert!(result.is_ok(), "Valid attestation should pass: {result:?}");
 }
 
 #[test]
@@ -305,8 +305,7 @@ fn test_codegen_additional_properties_audit() {
     let mut total_violations = 0;
     for filename in msez_schema::SECURITY_CRITICAL_SCHEMAS {
         if let Some(schema) = validator.get_schema_by_filename(filename) {
-            let violations =
-                msez_schema::check_additional_properties_policy(filename, schema);
+            let violations = msez_schema::check_additional_properties_policy(filename, schema);
             if !violations.is_empty() {
                 eprintln!(
                     "{filename}: {} additionalProperties violation(s)",

@@ -29,14 +29,25 @@ use msez_core::digest::sha256_digest;
 /// identical results.
 const TEST_VECTORS: &[(&str, &str)] = &[
     // (JSON input, expected canonical bytes as string)
-    (r#"{"b":2,"a":1,"c":"hello"}"#, r#"{"a":1,"b":2,"c":"hello"}"#),
+    (
+        r#"{"b":2,"a":1,"c":"hello"}"#,
+        r#"{"a":1,"b":2,"c":"hello"}"#,
+    ),
     (r#"{"z":26,"a":1}"#, r#"{"a":1,"z":26}"#),
     (r#"{}"#, r#"{}"#),
     (r#"[]"#, r#"[]"#),
-    (r#"{"nested":{"z":1,"a":2},"top":true}"#, r#"{"nested":{"a":2,"z":1},"top":true}"#),
-    (r#"{"arr":[3,2,1],"key":"value"}"#, r#"{"arr":[3,2,1],"key":"value"}"#),
-    (r#"{"n":null,"b":false,"t":true,"i":42,"s":"text"}"#,
-     r#"{"b":false,"i":42,"n":null,"s":"text","t":true}"#),
+    (
+        r#"{"nested":{"z":1,"a":2},"top":true}"#,
+        r#"{"nested":{"a":2,"z":1},"top":true}"#,
+    ),
+    (
+        r#"{"arr":[3,2,1],"key":"value"}"#,
+        r#"{"arr":[3,2,1],"key":"value"}"#,
+    ),
+    (
+        r#"{"n":null,"b":false,"t":true,"i":42,"s":"text"}"#,
+        r#"{"b":false,"i":42,"n":null,"s":"text","t":true}"#,
+    ),
     // Large integer
     (r#"{"big":999999999999}"#, r#"{"big":999999999999}"#),
     // Negative integer

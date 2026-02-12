@@ -50,7 +50,10 @@ fn earlier_timestamp_wins_beyond_skew() {
 
     let resolution = msez_corridor::fork::resolve_fork(&a, &b);
     assert_eq!(resolution.winning_branch, a.receipt_digest);
-    assert_eq!(resolution.resolution_reason, ResolutionReason::EarlierTimestamp);
+    assert_eq!(
+        resolution.resolution_reason,
+        ResolutionReason::EarlierTimestamp
+    );
 }
 
 #[test]
@@ -63,7 +66,10 @@ fn earlier_timestamp_wins_reversed() {
 
     let resolution = msez_corridor::fork::resolve_fork(&a, &b);
     assert_eq!(resolution.winning_branch, b.receipt_digest);
-    assert_eq!(resolution.resolution_reason, ResolutionReason::EarlierTimestamp);
+    assert_eq!(
+        resolution.resolution_reason,
+        ResolutionReason::EarlierTimestamp
+    );
 }
 
 #[test]
@@ -76,7 +82,10 @@ fn large_time_difference_uses_timestamp() {
 
     let resolution = msez_corridor::fork::resolve_fork(&a, &b);
     assert_eq!(resolution.winning_branch, a.receipt_digest);
-    assert_eq!(resolution.resolution_reason, ResolutionReason::EarlierTimestamp);
+    assert_eq!(
+        resolution.resolution_reason,
+        ResolutionReason::EarlierTimestamp
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -93,7 +102,10 @@ fn more_attestations_wins_within_skew() {
 
     let resolution = msez_corridor::fork::resolve_fork(&a, &b);
     assert_eq!(resolution.winning_branch, b.receipt_digest);
-    assert_eq!(resolution.resolution_reason, ResolutionReason::MoreAttestations);
+    assert_eq!(
+        resolution.resolution_reason,
+        ResolutionReason::MoreAttestations
+    );
 }
 
 #[test]
@@ -105,7 +117,10 @@ fn more_attestations_wins_same_timestamp() {
 
     let resolution = msez_corridor::fork::resolve_fork(&a, &b);
     assert_eq!(resolution.winning_branch, a.receipt_digest);
-    assert_eq!(resolution.resolution_reason, ResolutionReason::MoreAttestations);
+    assert_eq!(
+        resolution.resolution_reason,
+        ResolutionReason::MoreAttestations
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -121,7 +136,10 @@ fn lexicographic_tiebreak_when_all_equal() {
 
     let resolution = msez_corridor::fork::resolve_fork(&a, &b);
     assert_eq!(resolution.winning_branch, a.receipt_digest);
-    assert_eq!(resolution.resolution_reason, ResolutionReason::LexicographicTiebreak);
+    assert_eq!(
+        resolution.resolution_reason,
+        ResolutionReason::LexicographicTiebreak
+    );
 }
 
 #[test]
@@ -134,7 +152,10 @@ fn lexicographic_tiebreak_reversed() {
     let resolution = msez_corridor::fork::resolve_fork(&a, &b);
     // "11...11" < "ff...ff" lexicographically, so B wins
     assert_eq!(resolution.winning_branch, b.receipt_digest);
-    assert_eq!(resolution.resolution_reason, ResolutionReason::LexicographicTiebreak);
+    assert_eq!(
+        resolution.resolution_reason,
+        ResolutionReason::LexicographicTiebreak
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -151,7 +172,10 @@ fn exactly_at_skew_boundary_falls_to_secondary() {
 
     let resolution = msez_corridor::fork::resolve_fork(&a, &b);
     // Exactly at boundary: time_diff == skew (not strictly greater)
-    assert_eq!(resolution.resolution_reason, ResolutionReason::MoreAttestations);
+    assert_eq!(
+        resolution.resolution_reason,
+        ResolutionReason::MoreAttestations
+    );
 }
 
 #[test]
@@ -164,7 +188,10 @@ fn one_second_beyond_skew_uses_timestamp() {
 
     let resolution = msez_corridor::fork::resolve_fork(&a, &b);
     assert_eq!(resolution.winning_branch, a.receipt_digest);
-    assert_eq!(resolution.resolution_reason, ResolutionReason::EarlierTimestamp);
+    assert_eq!(
+        resolution.resolution_reason,
+        ResolutionReason::EarlierTimestamp
+    );
 }
 
 #[test]
@@ -176,7 +203,10 @@ fn one_second_within_skew_falls_to_secondary() {
     let b = make_branch("B", t2, 3, &"bb".repeat(32));
 
     let resolution = msez_corridor::fork::resolve_fork(&a, &b);
-    assert_eq!(resolution.resolution_reason, ResolutionReason::MoreAttestations);
+    assert_eq!(
+        resolution.resolution_reason,
+        ResolutionReason::MoreAttestations
+    );
     assert_eq!(resolution.winning_branch, b.receipt_digest);
 }
 
@@ -195,7 +225,10 @@ fn attacker_backdate_within_skew_loses_to_attestations() {
     let resolution = msez_corridor::fork::resolve_fork(&honest, &attacker);
     // Within skew → attestation count → honest wins (5 > 1)
     assert_eq!(resolution.winning_branch, honest.receipt_digest);
-    assert_eq!(resolution.resolution_reason, ResolutionReason::MoreAttestations);
+    assert_eq!(
+        resolution.resolution_reason,
+        ResolutionReason::MoreAttestations
+    );
 }
 
 #[test]
@@ -209,7 +242,10 @@ fn attacker_backdate_beyond_skew_wins_timestamp() {
     let resolution = msez_corridor::fork::resolve_fork(&honest, &attacker);
     // Beyond skew → timestamp ordering → attacker wins (earlier timestamp)
     assert_eq!(resolution.winning_branch, attacker.receipt_digest);
-    assert_eq!(resolution.resolution_reason, ResolutionReason::EarlierTimestamp);
+    assert_eq!(
+        resolution.resolution_reason,
+        ResolutionReason::EarlierTimestamp
+    );
 }
 
 #[test]
@@ -224,7 +260,10 @@ fn two_honest_nodes_with_similar_timestamps() {
     let resolution = msez_corridor::fork::resolve_fork(&node_a, &node_b);
     // Well within skew → attestation count wins
     assert_eq!(resolution.winning_branch, node_b.receipt_digest);
-    assert_eq!(resolution.resolution_reason, ResolutionReason::MoreAttestations);
+    assert_eq!(
+        resolution.resolution_reason,
+        ResolutionReason::MoreAttestations
+    );
 }
 
 #[test]
@@ -268,12 +307,7 @@ fn fork_detector_multiple_forks() {
     let t = now();
 
     for i in 0..10 {
-        let a = make_branch(
-            &format!("A{i}"),
-            t,
-            i,
-            &format!("{:02x}", i).repeat(32),
-        );
+        let a = make_branch(&format!("A{i}"), t, i, &format!("{:02x}", i).repeat(32));
         let b = make_branch(
             &format!("B{i}"),
             t,

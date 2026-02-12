@@ -5,7 +5,7 @@
 //!
 //! ## Security Invariant
 //!
-//! Signing operations take [`CanonicalBytes`](msez_core::CanonicalBytes) to
+//! Signing operations take [`CanonicalBytes`] to
 //! ensure the signed payload was properly canonicalized. This prevents
 //! signature malleability from non-canonical serialization. You **cannot**
 //! sign raw bytes — the type system enforces this.
@@ -46,9 +46,8 @@ pub(crate) fn hex_to_bytes(s: &str) -> Result<Vec<u8>, CryptoError> {
     (0..s.len())
         .step_by(2)
         .map(|i| {
-            u8::from_str_radix(&s[i..i + 2], 16).map_err(|e| {
-                CryptoError::HexDecode(format!("invalid hex at position {i}: {e}"))
-            })
+            u8::from_str_radix(&s[i..i + 2], 16)
+                .map_err(|e| CryptoError::HexDecode(format!("invalid hex at position {i}: {e}")))
         })
         .collect()
 }
@@ -72,9 +71,9 @@ impl Ed25519Signature {
 
     /// Construct from a byte slice, validating length.
     pub fn from_slice(bytes: &[u8]) -> Result<Self, CryptoError> {
-        let arr: [u8; 64] = bytes.try_into().map_err(|_| {
-            CryptoError::InvalidSignatureLength(bytes.len())
-        })?;
+        let arr: [u8; 64] = bytes
+            .try_into()
+            .map_err(|_| CryptoError::InvalidSignatureLength(bytes.len()))?;
         Ok(Self(arr))
     }
 

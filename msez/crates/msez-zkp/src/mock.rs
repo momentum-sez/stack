@@ -25,6 +25,7 @@
 //! Audit §2.5: Phase 1 mock proofs are explicitly acknowledged as non-private.
 //! Real ZK backends activate in Phase 2 via feature flags.
 
+use msez_core::CanonicalBytes;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -105,19 +106,19 @@ impl ProofSystem for MockProofSystem {
     /// Generate a deterministic mock proof.
     ///
     /// Computes `SHA256(canonical_bytes(circuit.circuit_data) || circuit.public_inputs)`.
-    /// The canonical bytes use `serde_json` with sorted keys and compact separators,
-    /// matching the JCS-compatible serialization used throughout the stack.
+    /// Uses [`CanonicalBytes::from_value`] for JCS-compatible canonicalization,
+    /// ensuring digest agreement with all other crates in the stack.
     fn prove(
         &self,
         _pk: &Self::ProvingKey,
         circuit: &Self::Circuit,
     ) -> Result<Self::Proof, ProofError> {
-        let canonical = serde_json::to_vec(&circuit.circuit_data).map_err(|e| {
+        let canonical = CanonicalBytes::from_value(circuit.circuit_data.clone()).map_err(|e| {
             ProofError::GenerationFailed(format!("failed to canonicalize circuit data: {e}"))
         })?;
 
         let mut hasher = Sha256::new();
-        hasher.update(&canonical);
+        hasher.update(canonical.as_bytes());
         hasher.update(&circuit.public_inputs);
         let digest = hasher.finalize();
 

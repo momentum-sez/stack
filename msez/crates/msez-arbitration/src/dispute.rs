@@ -510,10 +510,7 @@ pub fn institution_registry() -> Vec<ArbitrationInstitution> {
             supported_dispute_types: DisputeType::all().to_vec(),
             emergency_arbitrator: true,
             expedited_procedure: true,
-            enforcement_jurisdictions: vec![
-                "sg".to_string(),
-                "new_york_convention".to_string(),
-            ],
+            enforcement_jurisdictions: vec!["sg".to_string(), "new_york_convention".to_string()],
         },
         ArbitrationInstitution {
             id: "icc".to_string(),
@@ -768,7 +765,11 @@ impl Dispute {
             });
         }
         let from = self.state;
-        self.record_transition(from, DisputeState::Settled, evidence.settlement_agreement_digest);
+        self.record_transition(
+            from,
+            DisputeState::Settled,
+            evidence.settlement_agreement_digest,
+        );
         self.state = DisputeState::Settled;
         Ok(())
     }
@@ -783,10 +784,7 @@ impl Dispute {
     /// Returns [`ArbitrationError::InvalidTransition`] if the current state
     /// does not allow dismissal.
     pub fn dismiss(&mut self, evidence: DismissalEvidence) -> Result<(), ArbitrationError> {
-        let allowed = matches!(
-            self.state,
-            DisputeState::Filed | DisputeState::UnderReview
-        );
+        let allowed = matches!(self.state, DisputeState::Filed | DisputeState::UnderReview);
         if !allowed {
             return Err(ArbitrationError::InvalidTransition {
                 from: self.state.as_str().to_string(),
@@ -795,7 +793,11 @@ impl Dispute {
             });
         }
         let from = self.state;
-        self.record_transition(from, DisputeState::Dismissed, evidence.dismissal_order_digest);
+        self.record_transition(
+            from,
+            DisputeState::Dismissed,
+            evidence.dismissal_order_digest,
+        );
         self.state = DisputeState::Dismissed;
         Ok(())
     }

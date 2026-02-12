@@ -312,10 +312,7 @@ impl SmartAssetRegistryVc {
     /// Validate the VC against the smart asset registry JSON schema.
     ///
     /// Requires a [`SchemaValidator`](msez_schema::SchemaValidator).
-    pub fn validate_schema(
-        &self,
-        validator: &msez_schema::SchemaValidator,
-    ) -> Result<(), VcError> {
+    pub fn validate_schema(&self, validator: &msez_schema::SchemaValidator) -> Result<(), VcError> {
         let vc_value = serde_json::to_value(&self.vc).map_err(VcError::Json)?;
         validator
             .validate_value(&vc_value, REGISTRY_SCHEMA_ID)
@@ -385,12 +382,8 @@ mod tests {
     #[test]
     fn registry_vc_creation() {
         let subject = make_test_subject();
-        let vc = SmartAssetRegistryVc::new(
-            "did:key:z6MkTestIssuer".to_string(),
-            subject,
-            None,
-        )
-        .unwrap();
+        let vc =
+            SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject, None).unwrap();
 
         assert_eq!(vc.as_vc().issuer, "did:key:z6MkTestIssuer");
         assert!(vc.as_vc().credential_type.contains_vc_type());
@@ -403,12 +396,8 @@ mod tests {
         let vk = sk.verifying_key();
 
         let subject = make_test_subject();
-        let mut vc = SmartAssetRegistryVc::new(
-            "did:key:z6MkTestIssuer".to_string(),
-            subject,
-            None,
-        )
-        .unwrap();
+        let mut vc =
+            SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject, None).unwrap();
 
         vc.sign_ed25519(
             &sk,
@@ -427,12 +416,8 @@ mod tests {
     fn registry_vc_from_vc_validates_subject() {
         let sk = SigningKey::generate(&mut OsRng);
         let subject = make_test_subject();
-        let mut registry = SmartAssetRegistryVc::new(
-            "did:key:z6MkTestIssuer".to_string(),
-            subject,
-            None,
-        )
-        .unwrap();
+        let mut registry =
+            SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject, None).unwrap();
 
         registry
             .sign_ed25519(
@@ -523,12 +508,9 @@ mod tests {
     #[test]
     fn subject_extraction_roundtrip() {
         let subject = make_test_subject();
-        let vc = SmartAssetRegistryVc::new(
-            "did:key:z6MkTestIssuer".to_string(),
-            subject.clone(),
-            None,
-        )
-        .unwrap();
+        let vc =
+            SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject.clone(), None)
+                .unwrap();
 
         let extracted = vc.subject().unwrap();
         assert_eq!(extracted.asset_id, subject.asset_id);
@@ -546,12 +528,8 @@ mod tests {
     #[test]
     fn registry_vc_json_matches_python_structure() {
         let subject = make_test_subject();
-        let vc = SmartAssetRegistryVc::new(
-            "did:key:z6MkTestIssuer".to_string(),
-            subject,
-            None,
-        )
-        .unwrap();
+        let vc =
+            SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject, None).unwrap();
 
         let val = serde_json::to_value(vc.as_vc()).unwrap();
         assert_eq!(
@@ -600,9 +578,6 @@ mod tests {
                 .len(),
             1
         );
-        assert_eq!(
-            back.enforcement_profile.unwrap().intensity.unwrap(),
-            "high"
-        );
+        assert_eq!(back.enforcement_profile.unwrap().intensity.unwrap(), "high");
     }
 }

@@ -97,9 +97,9 @@ fn cmd_store(
     let value: serde_json::Value = serde_json::from_str(&content)
         .with_context(|| format!("failed to parse JSON: {}", resolved.display()))?;
 
-    let artifact_ref = cas.store(artifact_type, &value).map_err(|e| {
-        anyhow::anyhow!("CAS store failed: {e}")
-    })?;
+    let artifact_ref = cas
+        .store(artifact_type, &value)
+        .map_err(|e| anyhow::anyhow!("CAS store failed: {e}"))?;
 
     println!(
         "OK: stored artifact type={} digest={}",
@@ -163,7 +163,10 @@ fn cmd_verify(cas: &ContentAddressedStore, artifact_type: &str, digest_hex: &str
 /// as a filename lookup.
 fn parse_digest_hex(hex: &str) -> Result<ContentDigest> {
     if hex.len() != 64 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
-        bail!("invalid digest: must be 64 hex characters, got {}", hex.len());
+        bail!(
+            "invalid digest: must be 64 hex characters, got {}",
+            hex.len()
+        );
     }
 
     // The CAS resolves by constructing the path from the hex string directly.

@@ -23,10 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let auth_token = std::env::var("AUTH_TOKEN").ok();
 
-    let config = AppConfig {
-        port,
-        auth_token,
-    };
+    let config = AppConfig { port, auth_token };
 
     let state = AppState::with_config(config);
     let app = msez_api::app(state);

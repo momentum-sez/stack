@@ -116,18 +116,12 @@ fn condition_threshold() {
     engine.register_policy(policy);
 
     // Above threshold
-    let trigger_high = Trigger::new(
-        TriggerType::CorridorStateChange,
-        json!({"risk_score": 95}),
-    );
+    let trigger_high = Trigger::new(TriggerType::CorridorStateChange, json!({"risk_score": 95}));
     let results = engine.evaluate(&trigger_high, Some("asset:test"), None);
     assert!(results.iter().any(|r| r.matched));
 
     // Below threshold
-    let trigger_low = Trigger::new(
-        TriggerType::CorridorStateChange,
-        json!({"risk_score": 50}),
-    );
+    let trigger_low = Trigger::new(TriggerType::CorridorStateChange, json!({"risk_score": 50}));
     let results = engine.evaluate(&trigger_low, Some("asset:test"), None);
     assert!(!results.iter().any(|r| r.matched));
 }
@@ -209,10 +203,10 @@ fn condition_and_or_composition() {
 fn higher_priority_wins_conflict() {
     let mut engine = PolicyEngine::new();
 
-    let low = Policy::new("low-pri", TriggerType::CheckpointDue, PolicyAction::Resume)
-        .with_priority(1);
-    let high = Policy::new("high-pri", TriggerType::CheckpointDue, PolicyAction::Halt)
-        .with_priority(100);
+    let low =
+        Policy::new("low-pri", TriggerType::CheckpointDue, PolicyAction::Resume).with_priority(1);
+    let high =
+        Policy::new("high-pri", TriggerType::CheckpointDue, PolicyAction::Halt).with_priority(100);
 
     engine.register_policy(low);
     engine.register_policy(high);
@@ -256,18 +250,10 @@ fn same_action_deduplicated_by_priority() {
 fn jurisdiction_scope_filters_correctly() {
     let mut engine = PolicyEngine::new();
 
-    let pk_policy = Policy::new(
-        "pk-only",
-        TriggerType::TaxYearEnd,
-        PolicyAction::Halt,
-    )
-    .with_jurisdiction_scope(vec!["PK-RSEZ".to_string()]);
+    let pk_policy = Policy::new("pk-only", TriggerType::TaxYearEnd, PolicyAction::Halt)
+        .with_jurisdiction_scope(vec!["PK-RSEZ".to_string()]);
 
-    let global_policy = Policy::new(
-        "global",
-        TriggerType::TaxYearEnd,
-        PolicyAction::Resume,
-    );
+    let global_policy = Policy::new("global", TriggerType::TaxYearEnd, PolicyAction::Resume);
 
     engine.register_policy(pk_policy);
     engine.register_policy(global_policy);
@@ -349,7 +335,10 @@ fn process_trigger_produces_scheduled_actions() {
     );
 
     let actions = engine.process_trigger(&trigger, "asset:mining-license-001", None);
-    assert!(!actions.is_empty(), "sanctions update should produce actions");
+    assert!(
+        !actions.is_empty(),
+        "sanctions update should produce actions"
+    );
 
     for action in &actions {
         assert_eq!(action.asset_id, "asset:mining-license-001");
@@ -363,8 +352,8 @@ fn process_trigger_produces_scheduled_actions() {
 #[test]
 fn disabled_policy_not_matched() {
     let mut engine = PolicyEngine::new();
-    let policy = Policy::new("disabled", TriggerType::CheckpointDue, PolicyAction::Halt)
-        .with_enabled(false);
+    let policy =
+        Policy::new("disabled", TriggerType::CheckpointDue, PolicyAction::Halt).with_enabled(false);
     engine.register_policy(policy);
 
     let trigger = Trigger::new(TriggerType::CheckpointDue, json!({}));

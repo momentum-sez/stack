@@ -255,7 +255,10 @@ mod tests {
 
         let resolution = resolve_fork(&branch_a, &branch_b);
         assert_eq!(resolution.winning_branch, branch_a.receipt_digest);
-        assert_eq!(resolution.resolution_reason, ResolutionReason::EarlierTimestamp);
+        assert_eq!(
+            resolution.resolution_reason,
+            ResolutionReason::EarlierTimestamp
+        );
     }
 
     #[test]
@@ -268,7 +271,10 @@ mod tests {
 
         let resolution = resolve_fork(&branch_a, &branch_b);
         assert_eq!(resolution.winning_branch, branch_b.receipt_digest);
-        assert_eq!(resolution.resolution_reason, ResolutionReason::EarlierTimestamp);
+        assert_eq!(
+            resolution.resolution_reason,
+            ResolutionReason::EarlierTimestamp
+        );
     }
 
     // -- Level 2: Watcher attestation count within skew tolerance --
@@ -283,7 +289,10 @@ mod tests {
 
         let resolution = resolve_fork(&branch_a, &branch_b);
         assert_eq!(resolution.winning_branch, branch_b.receipt_digest);
-        assert_eq!(resolution.resolution_reason, ResolutionReason::MoreAttestations);
+        assert_eq!(
+            resolution.resolution_reason,
+            ResolutionReason::MoreAttestations
+        );
     }
 
     #[test]
@@ -295,7 +304,10 @@ mod tests {
 
         let resolution = resolve_fork(&branch_a, &branch_b);
         assert_eq!(resolution.winning_branch, branch_a.receipt_digest);
-        assert_eq!(resolution.resolution_reason, ResolutionReason::MoreAttestations);
+        assert_eq!(
+            resolution.resolution_reason,
+            ResolutionReason::MoreAttestations
+        );
     }
 
     // -- Level 3: Lexicographic digest tiebreaker --
@@ -344,7 +356,10 @@ mod tests {
 
         let resolution = resolve_fork(&branch_a, &branch_b);
         // Exactly at boundary: not strictly greater, falls to secondary
-        assert_eq!(resolution.resolution_reason, ResolutionReason::MoreAttestations);
+        assert_eq!(
+            resolution.resolution_reason,
+            ResolutionReason::MoreAttestations
+        );
     }
 
     #[test]
@@ -358,7 +373,10 @@ mod tests {
         let resolution = resolve_fork(&branch_a, &branch_b);
         // Beyond boundary: timestamp ordering kicks in
         assert_eq!(resolution.winning_branch, branch_a.receipt_digest);
-        assert_eq!(resolution.resolution_reason, ResolutionReason::EarlierTimestamp);
+        assert_eq!(
+            resolution.resolution_reason,
+            ResolutionReason::EarlierTimestamp
+        );
     }
 
     // -- Attacker backdating scenario (audit §3.5) --
@@ -375,7 +393,10 @@ mod tests {
         let resolution = resolve_fork(&honest_branch, &attacker_branch);
         // Within skew → falls to attestation count → honest wins (5 > 1)
         assert_eq!(resolution.winning_branch, honest_branch.receipt_digest);
-        assert_eq!(resolution.resolution_reason, ResolutionReason::MoreAttestations);
+        assert_eq!(
+            resolution.resolution_reason,
+            ResolutionReason::MoreAttestations
+        );
     }
 
     #[test]
@@ -391,7 +412,10 @@ mod tests {
         // Beyond skew → timestamp ordering → attacker wins
         // This is detectable because the receipt timestamp is far in the past
         assert_eq!(resolution.winning_branch, attacker_branch.receipt_digest);
-        assert_eq!(resolution.resolution_reason, ResolutionReason::EarlierTimestamp);
+        assert_eq!(
+            resolution.resolution_reason,
+            ResolutionReason::EarlierTimestamp
+        );
     }
 
     // -- ForkDetector integration --
@@ -420,7 +444,12 @@ mod tests {
         let t = now();
 
         for i in 0..5 {
-            let a = make_branch(&format!("A{i}"), t, i as u32, &format!("{:02x}", i).repeat(32));
+            let a = make_branch(
+                &format!("A{i}"),
+                t,
+                i as u32,
+                &format!("{:02x}", i).repeat(32),
+            );
             let b = make_branch(
                 &format!("B{i}"),
                 t,

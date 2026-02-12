@@ -11,9 +11,9 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::error::AppError;
-use axum::extract::rejection::JsonRejection;
-use crate::extractors::{Validate, extract_validated_json};
+use crate::extractors::{extract_validated_json, Validate};
 use crate::state::{AppState, AttestationRecord};
+use axum::extract::rejection::JsonRejection;
 
 /// Query attestations request.
 #[derive(Debug, Deserialize, ToSchema)]
@@ -116,9 +116,7 @@ async fn query_attestations(
     ),
     tag = "regulator"
 )]
-async fn compliance_summary(
-    State(state): State<AppState>,
-) -> Json<ComplianceSummary> {
+async fn compliance_summary(State(state): State<AppState>) -> Json<ComplianceSummary> {
     Json(ComplianceSummary {
         total_entities: state.entities.list().len(),
         total_corridors: state.corridors.list().len(),

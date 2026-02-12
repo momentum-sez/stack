@@ -29,7 +29,9 @@ pub async fn auth_middleware(request: Request, next: Next) -> Response {
     let expected_token = request.extensions().get::<AuthConfig>().cloned();
 
     match expected_token {
-        Some(AuthConfig { token: Some(ref expected) }) => {
+        Some(AuthConfig {
+            token: Some(ref expected),
+        }) => {
             let auth_header = request
                 .headers()
                 .get(header::AUTHORIZATION)

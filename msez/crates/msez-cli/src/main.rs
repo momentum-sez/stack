@@ -10,11 +10,11 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand};
 use tracing_subscriber::EnvFilter;
 
-use msez_cli::artifact::{ArtifactArgs, run_artifact};
-use msez_cli::corridor::{CorridorArgs, run_corridor};
-use msez_cli::lock::{LockArgs, run_lock};
-use msez_cli::signing::{SigningArgs, run_signing};
-use msez_cli::validate::{ValidateArgs, run_validate};
+use msez_cli::artifact::{run_artifact, ArtifactArgs};
+use msez_cli::corridor::{run_corridor, CorridorArgs};
+use msez_cli::lock::{run_lock, LockArgs};
+use msez_cli::signing::{run_signing, SigningArgs};
+use msez_cli::validate::{run_validate, ValidateArgs};
 
 /// MSEZ Stack CLI — v0.4.44 GENESIS
 ///
@@ -97,7 +97,6 @@ fn main() -> ExitCode {
         Ok(code) => ExitCode::from(code),
         Err(e) => {
             tracing::error!("{e:#}");
-            eprintln!("ERROR: {e:#}");
             ExitCode::from(1)
         }
     }

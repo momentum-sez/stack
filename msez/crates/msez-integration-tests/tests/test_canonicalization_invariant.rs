@@ -38,7 +38,11 @@ fn entity_like_data_digest_is_deterministic() {
 
     let cb1 = CanonicalBytes::new(&entity).unwrap();
     let cb2 = CanonicalBytes::new(&entity).unwrap();
-    assert_eq!(cb1.as_bytes(), cb2.as_bytes(), "entity canonical bytes must be deterministic");
+    assert_eq!(
+        cb1.as_bytes(),
+        cb2.as_bytes(),
+        "entity canonical bytes must be deterministic"
+    );
 
     let d1 = sha256_digest(&cb1);
     let d2 = sha256_digest(&cb2);

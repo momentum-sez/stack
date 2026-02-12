@@ -11,7 +11,7 @@
 //!
 //! Finding §2.4: The Python `tensor.py` had only 8 domains while
 //! `composition.py` had 20. This implementation uses the single
-//! [`ComplianceDomain`](msez_core::ComplianceDomain) enum from `msez-core`
+//! [`ComplianceDomain`] enum from `msez-core`
 //! with all 20 variants, and every `match` is exhaustive.
 //!
 //! ## Generic Parameter
@@ -108,9 +108,7 @@ impl TensorCell {
         Self {
             state,
             attestations: Vec::new(),
-            determined_at: chrono::Utc::now()
-                .format("%Y-%m-%dT%H:%M:%SZ")
-                .to_string(),
+            determined_at: chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
             reason: None,
         }
     }
@@ -276,9 +274,7 @@ impl<J: JurisdictionConfig> ComplianceTensor<J> {
         cell.state = state;
         cell.attestations = attestations;
         cell.reason = reason;
-        cell.determined_at = chrono::Utc::now()
-            .format("%Y-%m-%dT%H:%M:%SZ")
-            .to_string();
+        cell.determined_at = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
     }
 
     /// Get the stored compliance state for a domain.

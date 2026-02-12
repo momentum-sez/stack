@@ -38,8 +38,8 @@ pub use dispute::{
 
 // Evidence management
 pub use evidence::{
-    AuthenticityAttestation, AuthenticityType, ChainOfCustodyEntry, EvidenceItem,
-    EvidenceItemId, EvidencePackage, EvidencePackageId, EvidenceType,
+    AuthenticityAttestation, AuthenticityType, ChainOfCustodyEntry, EvidenceItem, EvidenceItemId,
+    EvidencePackage, EvidencePackageId, EvidenceType,
 };
 
 // Escrow operations

@@ -139,7 +139,10 @@ mod tests {
             merkle_proof: vec![[0x01; 32], [0x02; 32]],
             merkle_path_indices: vec![false, true],
         };
-        assert_eq!(circuit.merkle_proof.len(), circuit.merkle_path_indices.len());
+        assert_eq!(
+            circuit.merkle_proof.len(),
+            circuit.merkle_path_indices.len()
+        );
     }
 
     #[test]

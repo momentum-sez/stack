@@ -202,22 +202,19 @@ impl SchemaValidator {
                 }
             })?;
 
-            let schema: Value =
-                serde_json::from_str(&content).map_err(|e| {
-                    SchemaValidationError::SchemaLoadError {
-                        path: path.display().to_string(),
-                        reason: e.to_string(),
-                    }
-                })?;
+            let schema: Value = serde_json::from_str(&content).map_err(|e| {
+                SchemaValidationError::SchemaLoadError {
+                    path: path.display().to_string(),
+                    reason: e.to_string(),
+                }
+            })?;
 
             // Determine the schema $id.
             let schema_id = if let Some(id) = schema.get("$id").and_then(|v| v.as_str()) {
                 id.to_string()
             } else {
                 // Derive URI from filename.
-                let rel = path
-                    .strip_prefix(&schema_dir)
-                    .unwrap_or(&path);
+                let rel = path.strip_prefix(&schema_dir).unwrap_or(&path);
                 format!("{SCHEMA_URI_PREFIX}{}", rel.display())
             };
 
@@ -346,13 +343,12 @@ impl SchemaValidator {
             });
         }
 
-        let content =
-            std::fs::read_to_string(&module_yaml).map_err(|e| {
-                SchemaValidationError::DocumentLoadError {
-                    path: module_yaml.display().to_string(),
-                    reason: e.to_string(),
-                }
-            })?;
+        let content = std::fs::read_to_string(&module_yaml).map_err(|e| {
+            SchemaValidationError::DocumentLoadError {
+                path: module_yaml.display().to_string(),
+                reason: e.to_string(),
+            }
+        })?;
 
         let value: Value = serde_yaml::from_str(&content).map_err(|e| {
             SchemaValidationError::DocumentLoadError {
@@ -369,13 +365,12 @@ impl SchemaValidator {
     ///
     /// Loads the YAML file and validates against `zone.schema.json`.
     pub fn validate_zone(&self, path: &Path) -> Result<(), SchemaValidationError> {
-        let content =
-            std::fs::read_to_string(path).map_err(|e| {
-                SchemaValidationError::DocumentLoadError {
-                    path: path.display().to_string(),
-                    reason: e.to_string(),
-                }
-            })?;
+        let content = std::fs::read_to_string(path).map_err(|e| {
+            SchemaValidationError::DocumentLoadError {
+                path: path.display().to_string(),
+                reason: e.to_string(),
+            }
+        })?;
 
         let value: Value = serde_yaml::from_str(&content).map_err(|e| {
             SchemaValidationError::DocumentLoadError {
@@ -392,13 +387,12 @@ impl SchemaValidator {
     ///
     /// Loads the YAML file and validates against `profile.schema.json`.
     pub fn validate_profile(&self, path: &Path) -> Result<(), SchemaValidationError> {
-        let content =
-            std::fs::read_to_string(path).map_err(|e| {
-                SchemaValidationError::DocumentLoadError {
-                    path: path.display().to_string(),
-                    reason: e.to_string(),
-                }
-            })?;
+        let content = std::fs::read_to_string(path).map_err(|e| {
+            SchemaValidationError::DocumentLoadError {
+                path: path.display().to_string(),
+                reason: e.to_string(),
+            }
+        })?;
 
         let value: Value = serde_yaml::from_str(&content).map_err(|e| {
             SchemaValidationError::DocumentLoadError {
@@ -432,10 +426,7 @@ impl SchemaValidator {
     ///
     /// This matches the behavior of `msez validate --all-modules` from the
     /// Python CLI.
-    pub fn validate_all_modules(
-        &self,
-        modules_dir: &Path,
-    ) -> ModuleValidationReport {
+    pub fn validate_all_modules(&self, modules_dir: &Path) -> ModuleValidationReport {
         let module_dirs = Self::find_all_modules(modules_dir);
         let total = module_dirs.len();
         let mut passed = 0usize;
@@ -473,10 +464,7 @@ impl SchemaValidator {
         Ok(results)
     }
 
-    fn walk_for_schemas(
-        dir: &Path,
-        acc: &mut Vec<PathBuf>,
-    ) -> Result<(), SchemaValidationError> {
+    fn walk_for_schemas(dir: &Path, acc: &mut Vec<PathBuf>) -> Result<(), SchemaValidationError> {
         for entry in std::fs::read_dir(dir)? {
             let entry = entry?;
             let path = entry.path();
@@ -621,14 +609,15 @@ mod tests {
 
         let schema_id = format!("{SCHEMA_URI_PREFIX}module.schema.json");
         let result = validator.validate_value(&invalid_module, &schema_id);
-        assert!(result.is_err(), "Module missing required fields should fail");
+        assert!(
+            result.is_err(),
+            "Module missing required fields should fail"
+        );
 
         if let Err(SchemaValidationError::ValidationFailed { count, details, .. }) = result {
             assert!(count > 0, "Should have at least one error");
             // Check that at least one error mentions a required field.
-            let has_required_error = details
-                .iter()
-                .any(|d| d.message.contains("required"));
+            let has_required_error = details.iter().any(|d| d.message.contains("required"));
             assert!(
                 has_required_error,
                 "Should mention missing required field, got: {:?}",
@@ -665,8 +654,12 @@ mod tests {
     #[test]
     fn test_schema_not_found() {
         let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
-        let result = validator.validate_value(&json!({}), "https://nonexistent.example/schema.json");
-        assert!(matches!(result, Err(SchemaValidationError::SchemaNotFound(_))));
+        let result =
+            validator.validate_value(&json!({}), "https://nonexistent.example/schema.json");
+        assert!(matches!(
+            result,
+            Err(SchemaValidationError::SchemaNotFound(_))
+        ));
     }
 
     #[test]
@@ -709,13 +702,9 @@ mod tests {
             }
         });
 
-        let schema_id =
-            format!("{SCHEMA_URI_PREFIX}vc.smart-asset-registry.schema.json");
+        let schema_id = format!("{SCHEMA_URI_PREFIX}vc.smart-asset-registry.schema.json");
         let result = validator.validate_value(&vc, &schema_id);
-        assert!(
-            result.is_ok(),
-            "Valid VC should pass: {result:?}"
-        );
+        assert!(result.is_ok(), "Valid VC should pass: {result:?}");
     }
 
     #[test]

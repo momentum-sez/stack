@@ -377,7 +377,10 @@ impl Condition {
 }
 
 /// Get a nested field value using dot notation (e.g., `"match.score"`).
-fn get_nested_field<'a>(data: &'a serde_json::Value, field_path: &str) -> Option<&'a serde_json::Value> {
+fn get_nested_field<'a>(
+    data: &'a serde_json::Value,
+    field_path: &str,
+) -> Option<&'a serde_json::Value> {
     let mut current = data;
     for part in field_path.split('.') {
         match current {
@@ -648,42 +651,58 @@ pub fn standard_policies() -> BTreeMap<String, Policy> {
 
     policies.insert(
         "sanctions_auto_halt".into(),
-        Policy::new("sanctions_auto_halt", TriggerType::SanctionsListUpdate, PolicyAction::Halt)
-            .with_description("Automatically halt asset when self is on sanctions list")
-            .with_condition(Condition::Contains {
-                field: "affected_parties".into(),
-                item: serde_json::Value::String("self".into()),
-            })
-            .with_priority(100),
+        Policy::new(
+            "sanctions_auto_halt",
+            TriggerType::SanctionsListUpdate,
+            PolicyAction::Halt,
+        )
+        .with_description("Automatically halt asset when self is on sanctions list")
+        .with_condition(Condition::Contains {
+            field: "affected_parties".into(),
+            item: serde_json::Value::String("self".into()),
+        })
+        .with_priority(100),
     );
 
     policies.insert(
         "license_expiry_alert".into(),
-        Policy::new("license_expiry_alert", TriggerType::LicenseStatusChange, PolicyAction::Halt)
-            .with_description("Halt asset on license expiry")
-            .with_condition(Condition::Equals {
-                field: "new_status".into(),
-                value: serde_json::Value::String("expired".into()),
-            })
-            .with_priority(90),
+        Policy::new(
+            "license_expiry_alert",
+            TriggerType::LicenseStatusChange,
+            PolicyAction::Halt,
+        )
+        .with_description("Halt asset on license expiry")
+        .with_condition(Condition::Equals {
+            field: "new_status".into(),
+            value: serde_json::Value::String("expired".into()),
+        })
+        .with_priority(90),
     );
 
     policies.insert(
         "ruling_enforcement".into(),
-        Policy::new("ruling_enforcement", TriggerType::RulingReceived, PolicyAction::ArbitrationEnforce)
-            .with_description("Auto-enforce arbitration rulings")
-            .with_priority(80),
+        Policy::new(
+            "ruling_enforcement",
+            TriggerType::RulingReceived,
+            PolicyAction::ArbitrationEnforce,
+        )
+        .with_description("Auto-enforce arbitration rulings")
+        .with_priority(80),
     );
 
     policies.insert(
         "checkpoint_auto".into(),
-        Policy::new("checkpoint_auto", TriggerType::CheckpointDue, PolicyAction::UpdateManifest)
-            .with_description("Auto-checkpoint when receipt threshold exceeded")
-            .with_condition(Condition::Threshold {
-                field: "receipts_since_last".into(),
-                threshold: serde_json::json!(100),
-            })
-            .with_priority(50),
+        Policy::new(
+            "checkpoint_auto",
+            TriggerType::CheckpointDue,
+            PolicyAction::UpdateManifest,
+        )
+        .with_description("Auto-checkpoint when receipt threshold exceeded")
+        .with_condition(Condition::Threshold {
+            field: "receipts_since_last".into(),
+            threshold: serde_json::json!(100),
+        })
+        .with_priority(50),
     );
 
     policies
@@ -697,151 +716,211 @@ pub fn extended_policies() -> BTreeMap<String, Policy> {
 
     policies.insert(
         "sanctions_freeze".into(),
-        Policy::new("sanctions_freeze", TriggerType::SanctionsListUpdate, PolicyAction::Halt)
-            .with_description("Freeze asset when entity newly sanctioned")
-            .with_condition(Condition::Equals {
-                field: "new_sanctioned".into(),
-                value: serde_json::Value::Bool(true),
-            })
-            .with_priority(100),
+        Policy::new(
+            "sanctions_freeze",
+            TriggerType::SanctionsListUpdate,
+            PolicyAction::Halt,
+        )
+        .with_description("Freeze asset when entity newly sanctioned")
+        .with_condition(Condition::Equals {
+            field: "new_sanctioned".into(),
+            value: serde_json::Value::Bool(true),
+        })
+        .with_priority(100),
     );
 
     policies.insert(
         "sanctions_notify".into(),
-        Policy::new("sanctions_notify", TriggerType::SanctionsListUpdate, PolicyAction::UpdateManifest)
-            .with_description("Notify on sanctions list version change")
-            .with_condition(Condition::Equals {
-                field: "update_type".into(),
-                value: serde_json::Value::String("list_version_change".into()),
-            })
-            .with_priority(40),
+        Policy::new(
+            "sanctions_notify",
+            TriggerType::SanctionsListUpdate,
+            PolicyAction::UpdateManifest,
+        )
+        .with_description("Notify on sanctions list version change")
+        .with_condition(Condition::Equals {
+            field: "update_type".into(),
+            value: serde_json::Value::String("list_version_change".into()),
+        })
+        .with_priority(40),
     );
 
     policies.insert(
         "license_suspend".into(),
-        Policy::new("license_suspend", TriggerType::LicenseStatusChange, PolicyAction::Halt)
-            .with_description("Halt asset on license suspension")
-            .with_condition(Condition::Equals {
-                field: "new_status".into(),
-                value: serde_json::Value::String("suspended".into()),
-            })
-            .with_priority(90),
+        Policy::new(
+            "license_suspend",
+            TriggerType::LicenseStatusChange,
+            PolicyAction::Halt,
+        )
+        .with_description("Halt asset on license suspension")
+        .with_condition(Condition::Equals {
+            field: "new_status".into(),
+            value: serde_json::Value::String("suspended".into()),
+        })
+        .with_priority(90),
     );
 
     policies.insert(
         "license_renew_reminder".into(),
-        Policy::new("license_renew_reminder", TriggerType::LicenseStatusChange, PolicyAction::UpdateManifest)
-            .with_description("Reminder when license expiry approaching")
-            .with_condition(Condition::Equals {
-                field: "warning_type".into(),
-                value: serde_json::Value::String("expiry_approaching".into()),
-            })
-            .with_authorization(AuthorizationRequirement::Quorum)
-            .with_priority(30),
+        Policy::new(
+            "license_renew_reminder",
+            TriggerType::LicenseStatusChange,
+            PolicyAction::UpdateManifest,
+        )
+        .with_description("Reminder when license expiry approaching")
+        .with_condition(Condition::Equals {
+            field: "warning_type".into(),
+            value: serde_json::Value::String("expiry_approaching".into()),
+        })
+        .with_authorization(AuthorizationRequirement::Quorum)
+        .with_priority(30),
     );
 
     policies.insert(
         "corridor_failover".into(),
-        Policy::new("corridor_failover", TriggerType::CorridorStateChange, PolicyAction::Halt)
-            .with_description("Halt on corridor fork detection")
-            .with_condition(Condition::Equals {
-                field: "change_type".into(),
-                value: serde_json::Value::String("fork_detected".into()),
-            })
-            .with_authorization(AuthorizationRequirement::Quorum)
-            .with_priority(95),
+        Policy::new(
+            "corridor_failover",
+            TriggerType::CorridorStateChange,
+            PolicyAction::Halt,
+        )
+        .with_description("Halt on corridor fork detection")
+        .with_condition(Condition::Equals {
+            field: "change_type".into(),
+            value: serde_json::Value::String("fork_detected".into()),
+        })
+        .with_authorization(AuthorizationRequirement::Quorum)
+        .with_priority(95),
     );
 
     policies.insert(
         "checkpoint_auto_receipt".into(),
-        Policy::new("checkpoint_auto_receipt", TriggerType::CheckpointDue, PolicyAction::UpdateManifest)
-            .with_description("Auto-checkpoint on receipt threshold")
-            .with_condition(Condition::Equals {
-                field: "reason".into(),
-                value: serde_json::Value::String("receipt_threshold_exceeded".into()),
-            })
-            .with_priority(50),
+        Policy::new(
+            "checkpoint_auto_receipt",
+            TriggerType::CheckpointDue,
+            PolicyAction::UpdateManifest,
+        )
+        .with_description("Auto-checkpoint on receipt threshold")
+        .with_condition(Condition::Equals {
+            field: "reason".into(),
+            value: serde_json::Value::String("receipt_threshold_exceeded".into()),
+        })
+        .with_priority(50),
     );
 
     policies.insert(
         "checkpoint_auto_time".into(),
-        Policy::new("checkpoint_auto_time", TriggerType::CheckpointDue, PolicyAction::UpdateManifest)
-            .with_description("Auto-checkpoint on time threshold")
-            .with_condition(Condition::Equals {
-                field: "reason".into(),
-                value: serde_json::Value::String("time_threshold_exceeded".into()),
-            })
-            .with_priority(40),
+        Policy::new(
+            "checkpoint_auto_time",
+            TriggerType::CheckpointDue,
+            PolicyAction::UpdateManifest,
+        )
+        .with_description("Auto-checkpoint on time threshold")
+        .with_condition(Condition::Equals {
+            field: "reason".into(),
+            value: serde_json::Value::String("time_threshold_exceeded".into()),
+        })
+        .with_priority(40),
     );
 
     policies.insert(
         "key_rotation_enforce".into(),
-        Policy::new("key_rotation_enforce", TriggerType::KeyRotationDue, PolicyAction::UpdateManifest)
-            .with_description("Enforce key rotation when due")
-            .with_authorization(AuthorizationRequirement::Quorum)
-            .with_priority(70),
+        Policy::new(
+            "key_rotation_enforce",
+            TriggerType::KeyRotationDue,
+            PolicyAction::UpdateManifest,
+        )
+        .with_description("Enforce key rotation when due")
+        .with_authorization(AuthorizationRequirement::Quorum)
+        .with_priority(70),
     );
 
     policies.insert(
         "dispute_filed_halt".into(),
-        Policy::new("dispute_filed_halt", TriggerType::DisputeFiled, PolicyAction::Halt)
-            .with_description("Halt asset when dispute filed")
-            .with_priority(85),
+        Policy::new(
+            "dispute_filed_halt",
+            TriggerType::DisputeFiled,
+            PolicyAction::Halt,
+        )
+        .with_description("Halt asset when dispute filed")
+        .with_priority(85),
     );
 
     policies.insert(
         "ruling_auto_enforce".into(),
-        Policy::new("ruling_auto_enforce", TriggerType::RulingReceived, PolicyAction::ArbitrationEnforce)
-            .with_description("Auto-enforce rulings marked for automatic enforcement")
-            .with_condition(Condition::Equals {
-                field: "auto_enforce".into(),
-                value: serde_json::Value::Bool(true),
-            })
-            .with_priority(80),
+        Policy::new(
+            "ruling_auto_enforce",
+            TriggerType::RulingReceived,
+            PolicyAction::ArbitrationEnforce,
+        )
+        .with_description("Auto-enforce rulings marked for automatic enforcement")
+        .with_condition(Condition::Equals {
+            field: "auto_enforce".into(),
+            value: serde_json::Value::Bool(true),
+        })
+        .with_priority(80),
     );
 
     policies.insert(
         "appeal_period_expired".into(),
-        Policy::new("appeal_period_expired", TriggerType::AppealPeriodExpired, PolicyAction::ArbitrationEnforce)
-            .with_description("Enforce ruling when appeal period expires")
-            .with_priority(80),
+        Policy::new(
+            "appeal_period_expired",
+            TriggerType::AppealPeriodExpired,
+            PolicyAction::ArbitrationEnforce,
+        )
+        .with_description("Enforce ruling when appeal period expires")
+        .with_priority(80),
     );
 
     policies.insert(
         "settlement_anchor_notify".into(),
-        Policy::new("settlement_anchor_notify", TriggerType::SettlementAnchorAvailable, PolicyAction::UpdateManifest)
-            .with_description("Update manifest when settlement anchor available")
-            .with_priority(40),
+        Policy::new(
+            "settlement_anchor_notify",
+            TriggerType::SettlementAnchorAvailable,
+            PolicyAction::UpdateManifest,
+        )
+        .with_description("Update manifest when settlement anchor available")
+        .with_priority(40),
     );
 
     policies.insert(
         "watcher_quorum_checkpoint".into(),
-        Policy::new("watcher_quorum_checkpoint", TriggerType::WatcherQuorumReached, PolicyAction::UpdateManifest)
-            .with_description("Update manifest when watcher quorum reached")
-            .with_priority(50),
+        Policy::new(
+            "watcher_quorum_checkpoint",
+            TriggerType::WatcherQuorumReached,
+            PolicyAction::UpdateManifest,
+        )
+        .with_description("Update manifest when watcher quorum reached")
+        .with_priority(50),
     );
 
     policies.insert(
         "compliance_deadline_warn".into(),
-        Policy::new("compliance_deadline_warn", TriggerType::ComplianceDeadline, PolicyAction::UpdateManifest)
-            .with_description("Warn when compliance deadline approaching")
-            .with_condition(Condition::Threshold {
-                field: "days_until_deadline".into(),
-                threshold: serde_json::json!(0),
-            })
-            .with_authorization(AuthorizationRequirement::Quorum)
-            .with_priority(60),
+        Policy::new(
+            "compliance_deadline_warn",
+            TriggerType::ComplianceDeadline,
+            PolicyAction::UpdateManifest,
+        )
+        .with_description("Warn when compliance deadline approaching")
+        .with_condition(Condition::Threshold {
+            field: "days_until_deadline".into(),
+            threshold: serde_json::json!(0),
+        })
+        .with_authorization(AuthorizationRequirement::Quorum)
+        .with_priority(60),
     );
 
     policies.insert(
         "guidance_effective_update".into(),
-        Policy::new("guidance_effective_update", TriggerType::GuidanceUpdate, PolicyAction::UpdateManifest)
-            .with_description("Update manifest when regulatory guidance becomes effective")
-            .with_condition(Condition::Equals {
-                field: "change_type".into(),
-                value: serde_json::Value::String("became_effective".into()),
-            })
-            .with_priority(55),
+        Policy::new(
+            "guidance_effective_update",
+            TriggerType::GuidanceUpdate,
+            PolicyAction::UpdateManifest,
+        )
+        .with_description("Update manifest when regulatory guidance becomes effective")
+        .with_condition(Condition::Equals {
+            field: "change_type".into(),
+            value: serde_json::Value::String("became_effective".into()),
+        })
+        .with_priority(55),
     );
 
     policies
@@ -975,7 +1054,11 @@ mod tests {
 
     #[test]
     fn policy_matches_basic() {
-        let policy = Policy::new("test", TriggerType::CheckpointDue, PolicyAction::UpdateManifest);
+        let policy = Policy::new(
+            "test",
+            TriggerType::CheckpointDue,
+            PolicyAction::UpdateManifest,
+        );
         let trigger = Trigger::new(TriggerType::CheckpointDue, serde_json::json!({}));
         assert!(policy.matches(&trigger, None));
 
@@ -985,8 +1068,8 @@ mod tests {
 
     #[test]
     fn policy_disabled_never_matches() {
-        let policy = Policy::new("test", TriggerType::CheckpointDue, PolicyAction::Halt)
-            .with_enabled(false);
+        let policy =
+            Policy::new("test", TriggerType::CheckpointDue, PolicyAction::Halt).with_enabled(false);
         let trigger = Trigger::new(TriggerType::CheckpointDue, serde_json::json!({}));
         assert!(!policy.matches(&trigger, None));
     }
@@ -1031,10 +1114,7 @@ mod tests {
     fn condition_in_evaluation() {
         let cond = Condition::In {
             field: "status".into(),
-            values: vec![
-                serde_json::json!("expired"),
-                serde_json::json!("revoked"),
-            ],
+            values: vec![serde_json::json!("expired"), serde_json::json!("revoked")],
         };
         assert!(cond.evaluate(&serde_json::json!({"status": "expired"})));
         assert!(cond.evaluate(&serde_json::json!({"status": "revoked"})));

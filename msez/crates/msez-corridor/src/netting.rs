@@ -203,13 +203,15 @@ impl NettingEngine {
         let gross = self.compute_gross_positions();
         gross
             .into_iter()
-            .map(|((party_id, currency), (receivable, payable))| NetPosition {
-                party_id,
-                currency,
-                receivable,
-                payable,
-                net: receivable - payable,
-            })
+            .map(
+                |((party_id, currency), (receivable, payable))| NetPosition {
+                    party_id,
+                    currency,
+                    receivable,
+                    payable,
+                    net: receivable - payable,
+                },
+            )
             .collect()
     }
 

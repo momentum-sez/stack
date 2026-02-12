@@ -90,8 +90,12 @@ pub fn run_signing(args: &SigningArgs, repo_root: &Path) -> Result<u8> {
 
 /// Generate a new Ed25519 keypair and write to files.
 fn cmd_keygen(output_dir: &Path, prefix: &str) -> Result<u8> {
-    std::fs::create_dir_all(output_dir)
-        .with_context(|| format!("failed to create output directory: {}", output_dir.display()))?;
+    std::fs::create_dir_all(output_dir).with_context(|| {
+        format!(
+            "failed to create output directory: {}",
+            output_dir.display()
+        )
+    })?;
 
     let sk = SigningKey::generate(&mut OsRng);
     let vk = sk.verifying_key();
@@ -134,8 +138,7 @@ fn cmd_sign(key_path: &Path, file_path: &Path) -> Result<u8> {
         .with_context(|| format!("failed to read private key: {}", key_path.display()))?;
     let sk_hex = sk_hex.trim();
 
-    let sk_bytes = hex_to_bytes(sk_hex)
-        .context("invalid private key hex")?;
+    let sk_bytes = hex_to_bytes(sk_hex).context("invalid private key hex")?;
     if sk_bytes.len() != 32 {
         bail!(
             "private key must be 32 bytes (64 hex chars), got {} bytes",
@@ -151,8 +154,7 @@ fn cmd_sign(key_path: &Path, file_path: &Path) -> Result<u8> {
         .with_context(|| format!("failed to read document: {}", file_path.display()))?;
     let value: serde_json::Value = serde_json::from_str(&content)
         .with_context(|| format!("failed to parse JSON: {}", file_path.display()))?;
-    let canonical = CanonicalBytes::new(&value)
-        .context("failed to canonicalize document")?;
+    let canonical = CanonicalBytes::new(&value).context("failed to canonicalize document")?;
 
     // Sign.
     let signature = sk.sign(&canonical);
@@ -177,22 +179,19 @@ fn cmd_verify(pubkey_path: &Path, file_path: &Path, sig_hex: &str) -> Result<u8>
         .with_context(|| format!("failed to read public key: {}", pubkey_path.display()))?;
     let vk_hex = vk_hex.trim();
 
-    let vk = VerifyingKey::from_hex(vk_hex).map_err(|e| {
-        anyhow::anyhow!("invalid public key: {e}")
-    })?;
+    let vk =
+        VerifyingKey::from_hex(vk_hex).map_err(|e| anyhow::anyhow!("invalid public key: {e}"))?;
 
     // Read and canonicalize the document.
     let content = std::fs::read_to_string(file_path)
         .with_context(|| format!("failed to read document: {}", file_path.display()))?;
     let value: serde_json::Value = serde_json::from_str(&content)
         .with_context(|| format!("failed to parse JSON: {}", file_path.display()))?;
-    let canonical = CanonicalBytes::new(&value)
-        .context("failed to canonicalize document")?;
+    let canonical = CanonicalBytes::new(&value).context("failed to canonicalize document")?;
 
     // Parse signature.
-    let signature = Ed25519Signature::from_hex(sig_hex.trim()).map_err(|e| {
-        anyhow::anyhow!("invalid signature: {e}")
-    })?;
+    let signature = Ed25519Signature::from_hex(sig_hex.trim())
+        .map_err(|e| anyhow::anyhow!("invalid signature: {e}"))?;
 
     // Verify.
     match vk.verify(&canonical, &signature) {

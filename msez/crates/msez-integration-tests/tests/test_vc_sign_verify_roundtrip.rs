@@ -17,9 +17,7 @@ use serde_json::json;
 
 fn make_test_vc() -> VerifiableCredential {
     VerifiableCredential {
-        context: ContextValue::Array(vec![json!(
-            "https://www.w3.org/2018/credentials/v1"
-        )]),
+        context: ContextValue::Array(vec![json!("https://www.w3.org/2018/credentials/v1")]),
         id: Some("urn:msez:vc:smart-asset:001".to_string()),
         credential_type: CredentialTypeValue::Array(vec![
             "VerifiableCredential".to_string(),
@@ -188,11 +186,13 @@ fn signing_input_uses_canonical_bytes() {
 
     // The signing input should NOT contain the proof field
     let input_str = std::str::from_utf8(signing_input.as_bytes()).unwrap();
-    assert!(!input_str.contains("proofValue"), "signing input must exclude proof");
+    assert!(
+        !input_str.contains("proofValue"),
+        "signing input must exclude proof"
+    );
 
     // Keys should be sorted (canonical)
-    let parsed: serde_json::Value =
-        serde_json::from_slice(signing_input.as_bytes()).unwrap();
+    let parsed: serde_json::Value = serde_json::from_slice(signing_input.as_bytes()).unwrap();
     if let serde_json::Value::Object(map) = parsed {
         let keys: Vec<_> = map.keys().collect();
         let mut sorted_keys = keys.clone();

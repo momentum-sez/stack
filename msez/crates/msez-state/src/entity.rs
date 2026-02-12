@@ -323,18 +323,22 @@ impl Entity {
     /// After stage 10 completes, transitions to `Dissolved` (terminal).
     pub fn advance_dissolution(&mut self) -> Result<(), EntityError> {
         if self.state != EntityLifecycleState::Dissolving {
-            let stage = self.dissolution_stage.unwrap_or(DissolutionStage::BoardResolution);
+            let stage = self
+                .dissolution_stage
+                .unwrap_or(DissolutionStage::BoardResolution);
             return Err(EntityError::InvalidDissolutionAdvance {
                 from: stage,
                 entity_state: self.state,
             });
         }
 
-        let current = self.dissolution_stage.ok_or(EntityError::InvalidTransition {
-            from: self.state,
-            to: EntityLifecycleState::Dissolving,
-            reason: "dissolving entity has no dissolution stage set".to_string(),
-        })?;
+        let current = self
+            .dissolution_stage
+            .ok_or(EntityError::InvalidTransition {
+                from: self.state,
+                to: EntityLifecycleState::Dissolving,
+                reason: "dissolving entity has no dissolution stage set".to_string(),
+            })?;
 
         match current.next() {
             Some(next_stage) => {
@@ -419,7 +423,10 @@ mod tests {
         entity.initiate_dissolution().unwrap();
 
         assert_eq!(entity.state, EntityLifecycleState::Dissolving);
-        assert_eq!(entity.dissolution_stage, Some(DissolutionStage::BoardResolution));
+        assert_eq!(
+            entity.dissolution_stage,
+            Some(DissolutionStage::BoardResolution)
+        );
 
         // Advance through all 10 stages.
         let expected_stages = [

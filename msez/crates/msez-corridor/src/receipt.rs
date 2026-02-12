@@ -36,9 +36,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum ReceiptError {
     /// Receipt sequence number does not follow the chain.
-    #[error(
-        "sequence mismatch: expected {expected}, got {actual} for corridor {corridor_id}"
-    )]
+    #[error("sequence mismatch: expected {expected}, got {actual} for corridor {corridor_id}")]
     SequenceMismatch {
         /// The expected next sequence number.
         expected: u64,
@@ -367,7 +365,11 @@ mod tests {
         assert!(result.is_err());
         assert!(matches!(
             result.unwrap_err(),
-            ReceiptError::SequenceMismatch { expected: 1, actual: 5, .. }
+            ReceiptError::SequenceMismatch {
+                expected: 1,
+                actual: 5,
+                ..
+            }
         ));
     }
 

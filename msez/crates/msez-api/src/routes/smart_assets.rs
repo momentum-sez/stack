@@ -13,9 +13,9 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::AppError;
-use axum::extract::rejection::JsonRejection;
-use crate::extractors::{Validate, extract_validated_json};
+use crate::extractors::{extract_validated_json, Validate};
 use crate::state::{AppState, SmartAssetRecord};
+use axum::extract::rejection::JsonRejection;
 
 /// Request to create a smart asset genesis.
 #[derive(Debug, Deserialize, ToSchema)]
@@ -82,8 +82,14 @@ pub fn router() -> Router<AppState> {
         .route("/v1/assets/genesis", post(create_asset))
         .route("/v1/assets/registry", post(submit_registry))
         .route("/v1/assets/:id", get(get_asset))
-        .route("/v1/assets/:id/compliance/evaluate", post(evaluate_compliance))
-        .route("/v1/assets/:id/anchors/corridor/verify", post(verify_anchor))
+        .route(
+            "/v1/assets/:id/compliance/evaluate",
+            post(evaluate_compliance),
+        )
+        .route(
+            "/v1/assets/:id/anchors/corridor/verify",
+            post(verify_anchor),
+        )
 }
 
 /// POST /v1/assets/genesis — Create smart asset genesis.

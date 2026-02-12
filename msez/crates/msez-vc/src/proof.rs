@@ -224,11 +224,7 @@ mod tests {
 
     #[test]
     fn proof_json_field_names_match_w3c_spec() {
-        let proof = Proof::new_ed25519(
-            "did:key:z6Mk123#key-1".to_string(),
-            "00".repeat(64),
-            None,
-        );
+        let proof = Proof::new_ed25519("did:key:z6Mk123#key-1".to_string(), "00".repeat(64), None);
 
         let val = serde_json::to_value(&proof).unwrap();
         assert!(val.get("type").is_some());

@@ -1,3 +1,5 @@
+#![deny(missing_docs)]
+
 //! # msez-core — Foundational Types for the Momentum SEZ Stack
 //!
 //! This crate defines the foundational types that every other crate in the

@@ -1,7 +1,7 @@
 //! # Tensor Commitment
 //!
 //! Content-addressed commitment to a compliance tensor state, computed
-//! via [`CanonicalBytes`](msez_core::CanonicalBytes) → SHA-256 digest.
+//! via [`CanonicalBytes`] → SHA-256 digest.
 //!
 //! ## Security Invariant
 //!
@@ -76,9 +76,7 @@ impl TensorCommitment {
     ///
     /// `sha256_digest()` accepts only `&CanonicalBytes`, not `&[u8]`.
     /// This type-level constraint guarantees the input was canonicalized.
-    pub fn compute<J: JurisdictionConfig>(
-        tensor: &ComplianceTensor<J>,
-    ) -> Result<Self, MsezError> {
+    pub fn compute<J: JurisdictionConfig>(tensor: &ComplianceTensor<J>) -> Result<Self, MsezError> {
         let cells = tensor.to_serializable_cells();
         let cell_count = cells.len();
         let jurisdiction_id = tensor.jurisdiction().jurisdiction_id().as_str().to_string();
@@ -171,7 +169,7 @@ pub fn merkle_root(commitments: &[TensorCommitment]) -> Option<String> {
         let mut next_level = Vec::with_capacity(leaves.len() / 2);
         for chunk in leaves.chunks(2) {
             let combined = format!("{}{}", chunk[0], chunk[1]);
-            let canonical = CanonicalBytes::new(&combined).unwrap();
+            let canonical = CanonicalBytes::new(&combined).ok()?;
             let digest = sha256_digest(&canonical);
             next_level.push(digest.to_hex());
         }
@@ -326,26 +324,126 @@ mod tests {
 
         // Set all 20 domains to specific states using exhaustive assignment.
         // This ensures every domain is explicitly handled.
-        tensor.set(ComplianceDomain::Aml, ComplianceState::Compliant, vec![], None);
-        tensor.set(ComplianceDomain::Kyc, ComplianceState::Compliant, vec![], None);
-        tensor.set(ComplianceDomain::Sanctions, ComplianceState::Compliant, vec![], None);
-        tensor.set(ComplianceDomain::Tax, ComplianceState::Pending, vec![], None);
-        tensor.set(ComplianceDomain::Securities, ComplianceState::NotApplicable, vec![], None);
-        tensor.set(ComplianceDomain::Corporate, ComplianceState::Compliant, vec![], None);
-        tensor.set(ComplianceDomain::Custody, ComplianceState::Exempt, vec![], None);
-        tensor.set(ComplianceDomain::DataPrivacy, ComplianceState::Compliant, vec![], None);
-        tensor.set(ComplianceDomain::Licensing, ComplianceState::NotApplicable, vec![], None);
-        tensor.set(ComplianceDomain::Banking, ComplianceState::NotApplicable, vec![], None);
-        tensor.set(ComplianceDomain::Payments, ComplianceState::NotApplicable, vec![], None);
-        tensor.set(ComplianceDomain::Clearing, ComplianceState::NotApplicable, vec![], None);
-        tensor.set(ComplianceDomain::Settlement, ComplianceState::NotApplicable, vec![], None);
-        tensor.set(ComplianceDomain::DigitalAssets, ComplianceState::Pending, vec![], None);
-        tensor.set(ComplianceDomain::Employment, ComplianceState::NotApplicable, vec![], None);
-        tensor.set(ComplianceDomain::Immigration, ComplianceState::NotApplicable, vec![], None);
-        tensor.set(ComplianceDomain::Ip, ComplianceState::NotApplicable, vec![], None);
-        tensor.set(ComplianceDomain::ConsumerProtection, ComplianceState::NotApplicable, vec![], None);
-        tensor.set(ComplianceDomain::Arbitration, ComplianceState::NotApplicable, vec![], None);
-        tensor.set(ComplianceDomain::Trade, ComplianceState::Compliant, vec![], None);
+        tensor.set(
+            ComplianceDomain::Aml,
+            ComplianceState::Compliant,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::Kyc,
+            ComplianceState::Compliant,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::Sanctions,
+            ComplianceState::Compliant,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::Tax,
+            ComplianceState::Pending,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::Securities,
+            ComplianceState::NotApplicable,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::Corporate,
+            ComplianceState::Compliant,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::Custody,
+            ComplianceState::Exempt,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::DataPrivacy,
+            ComplianceState::Compliant,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::Licensing,
+            ComplianceState::NotApplicable,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::Banking,
+            ComplianceState::NotApplicable,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::Payments,
+            ComplianceState::NotApplicable,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::Clearing,
+            ComplianceState::NotApplicable,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::Settlement,
+            ComplianceState::NotApplicable,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::DigitalAssets,
+            ComplianceState::Pending,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::Employment,
+            ComplianceState::NotApplicable,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::Immigration,
+            ComplianceState::NotApplicable,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::Ip,
+            ComplianceState::NotApplicable,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::ConsumerProtection,
+            ComplianceState::NotApplicable,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::Arbitration,
+            ComplianceState::NotApplicable,
+            vec![],
+            None,
+        );
+        tensor.set(
+            ComplianceDomain::Trade,
+            ComplianceState::Compliant,
+            vec![],
+            None,
+        );
 
         let commitment = tensor.commit().unwrap();
         let hex = commitment.to_hex();

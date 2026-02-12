@@ -12,9 +12,9 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::AppError;
-use axum::extract::rejection::JsonRejection;
-use crate::extractors::{Validate, extract_validated_json};
+use crate::extractors::{extract_validated_json, Validate};
 use crate::state::{AppState, CapTableRecord, OwnershipTransfer, ShareClass};
+use axum::extract::rejection::JsonRejection;
 
 /// Request to create/initialize a cap table.
 #[derive(Debug, Deserialize, ToSchema)]
@@ -58,7 +58,10 @@ pub fn router() -> Router<AppState> {
         .route("/v1/ownership/cap-table", post(create_cap_table))
         .route("/v1/ownership/:entity_id/cap-table", get(get_cap_table))
         .route("/v1/ownership/:entity_id/transfers", post(record_transfer))
-        .route("/v1/ownership/:entity_id/share-classes", get(get_share_classes))
+        .route(
+            "/v1/ownership/:entity_id/share-classes",
+            get(get_share_classes),
+        )
 }
 
 /// POST /v1/ownership/cap-table — Initialize a cap table.

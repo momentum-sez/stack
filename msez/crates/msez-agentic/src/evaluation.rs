@@ -222,10 +222,8 @@ impl PolicyEngine {
         let all_results = self.evaluate(trigger, asset_id, jurisdiction);
 
         // Filter to matches only and sort by priority descending, then policy_id.
-        let mut matched: Vec<EvaluationResult> = all_results
-            .into_iter()
-            .filter(|r| r.matched)
-            .collect();
+        let mut matched: Vec<EvaluationResult> =
+            all_results.into_iter().filter(|r| r.matched).collect();
 
         // Sort: highest priority first, then by policy_id for determinism.
         matched.sort_by(|a, b| {
@@ -369,12 +367,20 @@ mod tests {
 
         // Two policies for same trigger with different priorities.
         engine.register_policy(
-            Policy::new("low_priority", TriggerType::DisputeFiled, PolicyAction::UpdateManifest)
-                .with_priority(10),
+            Policy::new(
+                "low_priority",
+                TriggerType::DisputeFiled,
+                PolicyAction::UpdateManifest,
+            )
+            .with_priority(10),
         );
         engine.register_policy(
-            Policy::new("high_priority", TriggerType::DisputeFiled, PolicyAction::Halt)
-                .with_priority(90),
+            Policy::new(
+                "high_priority",
+                TriggerType::DisputeFiled,
+                PolicyAction::Halt,
+            )
+            .with_priority(90),
         );
 
         let trigger = Trigger::new(TriggerType::DisputeFiled, serde_json::json!({}));
@@ -451,18 +457,20 @@ mod tests {
     fn evaluate_with_condition_matching() {
         let mut engine = PolicyEngine::new();
         engine.register_policy(
-            Policy::new("threshold_test", TriggerType::CheckpointDue, PolicyAction::UpdateManifest)
-                .with_condition(Condition::Threshold {
-                    field: "count".into(),
-                    threshold: serde_json::json!(100),
-                }),
+            Policy::new(
+                "threshold_test",
+                TriggerType::CheckpointDue,
+                PolicyAction::UpdateManifest,
+            )
+            .with_condition(Condition::Threshold {
+                field: "count".into(),
+                threshold: serde_json::json!(100),
+            }),
         );
 
         // Below threshold.
-        let trigger_low = Trigger::new(
-            TriggerType::CheckpointDue,
-            serde_json::json!({"count": 50}),
-        );
+        let trigger_low =
+            Trigger::new(TriggerType::CheckpointDue, serde_json::json!({"count": 50}));
         let results = engine.evaluate(&trigger_low, None, None);
         let matched: Vec<_> = results.iter().filter(|r| r.matched).collect();
         assert!(matched.is_empty());

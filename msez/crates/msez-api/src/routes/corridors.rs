@@ -13,9 +13,9 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::AppError;
-use axum::extract::rejection::JsonRejection;
-use crate::extractors::{Validate, extract_validated_json};
+use crate::extractors::{extract_validated_json, Validate};
 use crate::state::{AppState, CorridorRecord, CorridorTransitionEntry};
+use axum::extract::rejection::JsonRejection;
 
 /// Request to create a corridor.
 #[derive(Debug, Deserialize, ToSchema)]

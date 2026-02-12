@@ -261,9 +261,7 @@ impl CronSchedule {
             SchedulePattern::Weekly => {
                 now.weekday() == chrono::Weekday::Mon && now.hour() == 0 && now.minute() == 0
             }
-            SchedulePattern::Monthly => {
-                now.day() == 1 && now.hour() == 0 && now.minute() == 0
-            }
+            SchedulePattern::Monthly => now.day() == 1 && now.hour() == 0 && now.minute() == 0,
             SchedulePattern::Yearly => {
                 now.month() == 1 && now.day() == 1 && now.hour() == 0 && now.minute() == 0
             }
@@ -468,26 +466,22 @@ mod tests {
         assert!(action.is_ready(now));
 
         // With future execute_at — not ready yet.
-        let future_action = make_action("test")
-            .with_execute_at(now + chrono::Duration::hours(1));
+        let future_action = make_action("test").with_execute_at(now + chrono::Duration::hours(1));
         assert!(!future_action.is_ready(now));
 
         // With past execute_at — ready.
-        let past_action = make_action("test")
-            .with_execute_at(now - chrono::Duration::hours(1));
+        let past_action = make_action("test").with_execute_at(now - chrono::Duration::hours(1));
         assert!(past_action.is_ready(now));
     }
 
     #[test]
     fn scheduled_action_deadline_expiry() {
         let now = Utc::now();
-        let expired = make_action("test")
-            .with_deadline(now - chrono::Duration::hours(1));
+        let expired = make_action("test").with_deadline(now - chrono::Duration::hours(1));
         assert!(expired.is_expired(now));
         assert!(!expired.is_ready(now));
 
-        let not_expired = make_action("test")
-            .with_deadline(now + chrono::Duration::hours(1));
+        let not_expired = make_action("test").with_deadline(now + chrono::Duration::hours(1));
         assert!(!not_expired.is_expired(now));
     }
 
@@ -572,13 +566,11 @@ mod tests {
         scheduler.schedule(a1);
 
         // Future action (not ready yet)
-        let a2 = make_action("future")
-            .with_execute_at(now + chrono::Duration::hours(1));
+        let a2 = make_action("future").with_execute_at(now + chrono::Duration::hours(1));
         scheduler.schedule(a2);
 
         // Expired action
-        let a3 = make_action("expired")
-            .with_deadline(now - chrono::Duration::hours(1));
+        let a3 = make_action("expired").with_deadline(now - chrono::Duration::hours(1));
         scheduler.schedule(a3);
 
         let ready = scheduler.ready_actions(now);
@@ -645,8 +637,7 @@ mod tests {
 
     #[test]
     fn cron_schedule_no_double_fire() {
-        let mut schedule =
-            CronSchedule::new("hourly", "Hourly check", SchedulePattern::Hourly);
+        let mut schedule = CronSchedule::new("hourly", "Hourly check", SchedulePattern::Hourly);
         let at_zero = chrono::NaiveDate::from_ymd_opt(2026, 1, 15)
             .unwrap()
             .and_hms_opt(10, 0, 0)

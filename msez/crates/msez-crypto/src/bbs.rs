@@ -91,10 +91,7 @@ pub struct BbsVerifyingKey {
 ///
 /// Each message must be [`CanonicalBytes`] to maintain the
 /// canonicalization invariant across the entire stack.
-pub fn bbs_sign(
-    _key: &BbsSigningKey,
-    _messages: &[CanonicalBytes],
-) -> BbsSignature {
+pub fn bbs_sign(_key: &BbsSigningKey, _messages: &[CanonicalBytes]) -> BbsSignature {
     unimplemented!(
         "BBS+ signing is Phase 4. Enable with `bbs-plus` feature flag \
          once the concrete implementation is available."

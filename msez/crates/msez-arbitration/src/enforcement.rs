@@ -12,7 +12,7 @@
 //! for inclusion in the corridor receipt chain.
 //!
 //! Corridor-level enforcement can suspend corridor operations pending
-//! resolution via the [`CorridorSuspension`] action type.
+//! resolution via the `CorridorSuspension` action type.
 //!
 //! ## Security Invariant
 //!
@@ -189,7 +189,12 @@ impl std::fmt::Display for EnforcementAction {
             Self::AssetTransfer { recipient, .. } => {
                 write!(f, "asset_transfer:{recipient}")
             }
-            Self::MonetaryPenalty { party, amount, currency, .. } => {
+            Self::MonetaryPenalty {
+                party,
+                amount,
+                currency,
+                ..
+            } => {
                 write!(f, "monetary_penalty:{party}:{amount}{currency}")
             }
         }
@@ -368,17 +373,11 @@ impl EnforcementOrder {
     ///
     /// Returns [`ArbitrationError::EnforcementPreconditionFailed`] if the
     /// order is not in Pending status.
-    pub fn add_precondition(
-        &mut self,
-        description: String,
-    ) -> Result<(), ArbitrationError> {
+    pub fn add_precondition(&mut self, description: String) -> Result<(), ArbitrationError> {
         if self.status != EnforcementStatus::Pending {
             return Err(ArbitrationError::EnforcementPreconditionFailed {
                 order_id: self.id.to_string(),
-                reason: format!(
-                    "cannot add preconditions in {} status",
-                    self.status
-                ),
+                reason: format!("cannot add preconditions in {} status", self.status),
             });
         }
         self.preconditions.push(EnforcementPrecondition {
@@ -404,10 +403,7 @@ impl EnforcementOrder {
         if self.status != EnforcementStatus::Pending {
             return Err(ArbitrationError::EnforcementPreconditionFailed {
                 order_id: self.id.to_string(),
-                reason: format!(
-                    "cannot satisfy preconditions in {} status",
-                    self.status
-                ),
+                reason: format!("cannot satisfy preconditions in {} status", self.status),
             });
         }
         let precondition = self.preconditions.get_mut(index).ok_or_else(|| {
@@ -474,10 +470,7 @@ impl EnforcementOrder {
         if self.status != EnforcementStatus::Pending {
             return Err(ArbitrationError::EnforcementPreconditionFailed {
                 order_id: self.id.to_string(),
-                reason: format!(
-                    "cannot begin enforcement in {} status",
-                    self.status
-                ),
+                reason: format!("cannot begin enforcement in {} status", self.status),
             });
         }
 
@@ -510,10 +503,7 @@ impl EnforcementOrder {
         if self.status != EnforcementStatus::InProgress {
             return Err(ArbitrationError::EnforcementPreconditionFailed {
                 order_id: self.id.to_string(),
-                reason: format!(
-                    "cannot record action results in {} status",
-                    self.status
-                ),
+                reason: format!("cannot record action results in {} status", self.status),
             });
         }
 
@@ -559,10 +549,7 @@ impl EnforcementOrder {
         if self.status != EnforcementStatus::InProgress {
             return Err(ArbitrationError::EnforcementPreconditionFailed {
                 order_id: self.id.to_string(),
-                reason: format!(
-                    "cannot complete enforcement in {} status",
-                    self.status
-                ),
+                reason: format!("cannot complete enforcement in {} status", self.status),
             });
         }
         self.status = EnforcementStatus::Completed;
@@ -586,10 +573,7 @@ impl EnforcementOrder {
         ) {
             return Err(ArbitrationError::EnforcementPreconditionFailed {
                 order_id: self.id.to_string(),
-                reason: format!(
-                    "cannot cancel enforcement in {} status",
-                    self.status
-                ),
+                reason: format!("cannot cancel enforcement in {} status", self.status),
             });
         }
         self.status = EnforcementStatus::Cancelled;
@@ -964,9 +948,7 @@ mod tests {
         assert!(order.status.is_terminal());
 
         assert!(order.begin_enforcement().is_err());
-        assert!(order
-            .add_precondition("Test".to_string())
-            .is_err());
+        assert!(order.add_precondition("Test".to_string()).is_err());
     }
 
     #[test]

@@ -1,6 +1,6 @@
 [package]
 name = "msez-agentic"
-description = "Agentic policy engine for the SEZ Stack: 20 trigger types, 7 standard policies, automated compliance action scheduling, and policy audit trails."
+description = "Agentic policy engine for the SEZ Stack: 20 trigger types, policy evaluation with priority-based conflict resolution, automated compliance action scheduling, and tamper-evident policy audit trails."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,7 +8,12 @@ license.workspace = true
 
 [dependencies]
 msez-core = { workspace = true }
-msez-tensor = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+sha2 = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

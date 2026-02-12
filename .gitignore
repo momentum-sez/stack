@@ -8,6 +8,9 @@ dist/*
 !dist/artifacts/
 !dist/artifacts/**
 
+# Rust
+target/
+
 # Python
 __pycache__/
 *.pyc

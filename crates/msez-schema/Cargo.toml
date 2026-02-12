@@ -11,5 +11,9 @@ repository.workspace = true
 msez-core = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_yaml = { workspace = true }
 jsonschema = { workspace = true }
 thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_yaml = { workspace = true }

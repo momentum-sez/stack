@@ -1,0 +1,17 @@
+[package]
+name = "msez-crypto"
+description = "Cryptographic primitives for the SEZ Stack: Ed25519 signing, SHA-256 digest computation, Merkle Mountain Range, and content-addressed storage."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+msez-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+ed25519-dalek = { workspace = true }
+rand = { workspace = true }
+thiserror = { workspace = true }

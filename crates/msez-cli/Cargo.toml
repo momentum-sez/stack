@@ -1,0 +1,37 @@
+[package]
+name = "msez-cli"
+description = "CLI tool for the SEZ Stack: zone/module/profile validation, lockfile generation, corridor management, CAS operations, and Ed25519/VC signing. Replaces tools/msez.py."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Internal crates
+msez-core = { workspace = true }
+msez-crypto = { workspace = true }
+msez-pack = { workspace = true }
+msez-schema = { workspace = true }
+msez-state = { workspace = true }
+msez-corridor = { workspace = true }
+msez-vc = { workspace = true }
+
+# CLI framework
+clap = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+
+# Observability
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+
+[[bin]]
+name = "msez"
+path = "src/main.rs"

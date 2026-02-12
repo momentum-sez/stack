@@ -1,0 +1,16 @@
+[package]
+name = "msez-vc"
+description = "Verifiable Credentials for the SEZ Stack: W3C VC structure, Ed25519 proof signing/verification, and Smart Asset Registry VCs."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+msez-core = { workspace = true }
+msez-crypto = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }

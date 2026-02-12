@@ -1,0 +1,24 @@
+[package]
+name = "msez-zkp"
+description = "Zero-knowledge proof system for the SEZ Stack: trait-based proof abstraction, mock implementation (Phase 1), and Canonical Digest Bridge (CDB)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = ["mock"]
+mock = []
+# Phase 2: Real proof system implementations (feature-gated)
+# groth16 = ["dep:ark-groth16"]
+# plonk = ["dep:halo2_proofs"]
+# stark = ["dep:plonky2"]
+# poseidon2 = ["dep:poseidon2-rs"]
+
+[dependencies]
+msez-core = { workspace = true }
+msez-crypto = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }

@@ -1,0 +1,15 @@
+[package]
+name = "msez-tensor"
+description = "Compliance Tensor and Manifold for the SEZ Stack: multi-domain compliance state representation, path optimization, and tensor commitment generation."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+msez-core = { workspace = true }
+msez-crypto = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }

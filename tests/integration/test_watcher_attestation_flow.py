@@ -33,7 +33,7 @@ class TestTensorWithAttestations:
         """Test tensor cell stores attestation references."""
         tensor = ComplianceTensorV2()
 
-        coord = tensor.set(
+        tensor.set(
             asset_id="asset-001",
             jurisdiction_id="us",
             domain=ComplianceDomain.KYC,
@@ -41,7 +41,7 @@ class TestTensorWithAttestations:
             reason_code="verified",
         )
 
-        cell = tensor.get(coord)
+        cell = tensor.get("asset-001", "us", ComplianceDomain.KYC)
         assert cell.state == ComplianceState.COMPLIANT
 
     def test_tensor_state_lattice(self):

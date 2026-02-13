@@ -668,7 +668,7 @@ class TestSchemaFileIntegrity:
     def test_schema_count_matches_readme(self, schemas_dir):
         """Schema count should match README claim."""
         schema_count = len(list(schemas_dir.glob("*.schema.json")))
-        assert schema_count == 110, f"Schema count {schema_count} != 110"
+        assert schema_count == 116, f"Schema count {schema_count} != 116"
 
 
 # =============================================================================

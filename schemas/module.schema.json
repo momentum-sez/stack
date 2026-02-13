@@ -7,12 +7,7 @@
     "module_id",
     "version",
     "kind",
-    "license",
-    "description",
-    "variants",
-    "depends_on",
-    "provides",
-    "parameters"
+    "description"
   ],
   "properties": {
     "module_id": {
@@ -32,12 +27,30 @@
         "regulatory",
         "licensing",
         "financial",
+        "financial-infrastructure",
         "corridor",
         "operational",
+        "operational-infrastructure",
         "governance",
         "data",
-        "api"
+        "api",
+        "arbitration",
+        "capital-markets",
+        "corporate",
+        "identity",
+        "tax",
+        "tax-infrastructure",
+        "trade",
+        "protocol"
       ]
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable module name."
+    },
+    "spec_version": {
+      "type": "string",
+      "description": "Specification version this module conforms to."
     },
     "license": {
       "type": "string",
@@ -50,8 +63,23 @@
       "type": "array",
       "minItems": 1,
       "items": {
-        "type": "string",
-        "pattern": "^[a-z0-9][a-z0-9_.-]*$"
+        "oneOf": [
+          {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_.-]*$"
+          },
+          {
+            "type": "object",
+            "required": ["variant_id"],
+            "properties": {
+              "variant_id": { "type": "string" },
+              "name": { "type": "string" },
+              "description": { "type": "string" },
+              "features": { "type": "array", "items": { "type": "string" } }
+            },
+            "additionalProperties": true
+          }
+        ]
       }
     },
     "depends_on": {
@@ -93,14 +121,11 @@
       "items": {
         "type": "object",
         "required": [
-          "interface",
-          "path",
-          "media_type"
+          "interface"
         ],
         "properties": {
           "interface": {
             "type": "string",
-            "pattern": "^[a-z0-9_.-]+\\.v[0-9]+$",
             "description": "Interface identifier. Convention: dot-separated + version suffix (e.g., msez.api.regulator-console.v1)."
           },
           "path": {
@@ -110,6 +135,10 @@
           "media_type": {
             "type": "string",
             "description": "IANA media type (e.g., application/yaml, application/json, text/markdown)."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of this provided interface."
           }
         },
         "additionalProperties": true
@@ -123,7 +152,7 @@
       }
     }
   },
-  "additionalProperties": false,
+  "additionalProperties": true,
   "definitions": {
     "parameter": {
       "type": "object",
@@ -140,6 +169,7 @@
             "boolean",
             "enum",
             "object",
+            "array",
             "duration",
             "money",
             "jurisdiction_ref"

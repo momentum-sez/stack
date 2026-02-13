@@ -48,6 +48,7 @@ thiserror = "1"
 anyhow = "1"
 
 # Cryptography
+subtle = "2"
 sha2 = "0.10"
 ed25519-dalek = { version = "2", features = ["serde", "rand_core", "zeroize"] }
 zeroize = { version = "1", features = ["derive"] }

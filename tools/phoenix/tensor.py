@@ -12,7 +12,7 @@ Mathematical Definition:
 Where:
     - AssetID: SHA256 of genesis document (canonical identity)
     - JurisdictionID: Harbor identifier from jurisdictional binding
-    - ComplianceDomain: {AML, KYC, SANCTIONS, TAX, SECURITIES, CORPORATE, CUSTODY}
+    - ComplianceDomain: {AML, KYC, SANCTIONS, TAX, SECURITIES, CORPORATE, CUSTODY, DATA_PRIVACY, LICENSING}
     - TimeQuantum: Discrete time bucket (block height or timestamp modulo period)
     - ComplianceState: {COMPLIANT, NON_COMPLIANT, PENDING, UNKNOWN, EXEMPT, EXPIRED}
 
@@ -66,6 +66,7 @@ class ComplianceDomain(Enum):
         CORPORATE: Corporate governance (director duties, filings)
         CUSTODY: Custody requirements (segregation, insurance)
         DATA_PRIVACY: Data protection (GDPR, local privacy laws)
+        LICENSING: License status (business license validity, professional certifications)
     """
     AML = "aml"
     KYC = "kyc"
@@ -75,6 +76,7 @@ class ComplianceDomain(Enum):
     CORPORATE = "corporate"
     CUSTODY = "custody"
     DATA_PRIVACY = "data_privacy"
+    LICENSING = "licensing"
     
     @classmethod
     def all_domains(cls) -> FrozenSet['ComplianceDomain']:
@@ -713,8 +715,8 @@ class ComplianceTensorV2:
                 "attestation_digests": sorted([a.digest for a in cell.attestations]),
                 "reason_code": cell.reason_code,
             }
-            cell_data = json.dumps(deterministic_data, sort_keys=True, separators=(",", ":"))
-            leaf = hashlib.sha256(cell_data.encode()).hexdigest()
+            from tools.lawpack import jcs_canonicalize
+            leaf = hashlib.sha256(jcs_canonicalize(deterministic_data)).hexdigest()
             leaves.append(leaf)
         
         # Compute Merkle root
@@ -815,8 +817,8 @@ class ComplianceTensorV2:
                 "attestation_digests": sorted([a.digest for a in cell.attestations]),
                 "reason_code": cell.reason_code,
             }
-            leaf_content = json.dumps(deterministic_data, sort_keys=True, separators=(",", ":"))
-            leaf_hash = hashlib.sha256(leaf_content.encode()).hexdigest()
+            from tools.lawpack import jcs_canonicalize
+            leaf_hash = hashlib.sha256(jcs_canonicalize(deterministic_data)).hexdigest()
             leaves.append(leaf_hash)
             coord_indices[coord] = i
 

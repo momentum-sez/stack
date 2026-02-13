@@ -65,7 +65,11 @@ async fn test_readiness_probe() {
         .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
     let body = body_string(response).await;
-    assert_eq!(body, "ready");
+    let json: serde_json::Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(json["status"], "ready");
+    assert!(json["checks"].is_object());
+    assert_eq!(json["checks"]["entity_store"], "ok");
+    assert_eq!(json["checks"]["corridor_store"], "ok");
 }
 
 // ── Entities CRUD ───────────────────────────────────────────────────

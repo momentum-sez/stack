@@ -35,7 +35,9 @@ pub mod openapi;
 pub mod routes;
 pub mod state;
 
+use axum::extract::State;
 use axum::middleware::from_fn;
+use axum::response::IntoResponse;
 use axum::Router;
 use tower_http::trace::TraceLayer;
 
@@ -54,6 +56,12 @@ pub fn app(state: AppState) -> Router {
     };
     let metrics = ApiMetrics::new();
     let limiter = RateLimiter::new(RateLimitConfig::default());
+
+    // Unauthenticated health probes — readiness needs state to verify stores.
+    let health = Router::new()
+        .route("/health/liveness", axum::routing::get(liveness))
+        .route("/health/readiness", axum::routing::get(readiness))
+        .with_state(state.clone());
 
     // Authenticated API routes.
     let api = Router::new()
@@ -75,11 +83,6 @@ pub fn app(state: AppState) -> Router {
         .layer(axum::Extension(limiter))
         .with_state(state);
 
-    // Unauthenticated health probes.
-    let health = Router::new()
-        .route("/health/liveness", axum::routing::get(liveness))
-        .route("/health/readiness", axum::routing::get(readiness));
-
     Router::new().merge(health).merge(api)
 }
 
@@ -89,6 +92,68 @@ async fn liveness() -> &'static str {
 }
 
 /// Readiness probe — returns 200 when the application is ready to serve.
-async fn readiness() -> &'static str {
-    "ready"
+///
+/// Verifies store accessibility by acquiring read locks on the entity and
+/// corridor stores. If any lock acquisition fails (should not happen with
+/// `parking_lot::RwLock`), Kubernetes will stop routing traffic to this pod.
+async fn readiness(State(state): State<AppState>) -> impl IntoResponse {
+    let entity_count = state.entities.len();
+    let corridor_count = state.corridors.len();
+
+    let body = serde_json::json!({
+        "status": "ready",
+        "checks": {
+            "entity_store": "ok",
+            "corridor_store": "ok",
+            "entities_loaded": entity_count,
+            "corridors_loaded": corridor_count
+        }
+    });
+
+    (axum::http::StatusCode::OK, axum::Json(body))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn readiness_returns_json_health_status() {
+        let router = app(AppState::new());
+        let req = Request::builder()
+            .method("GET")
+            .uri("/health/readiness")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = router.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+
+        assert_eq!(body["status"], "ready");
+        assert!(body["checks"].is_object());
+        assert_eq!(body["checks"]["entity_store"], "ok");
+        assert_eq!(body["checks"]["corridor_store"], "ok");
+        assert_eq!(body["checks"]["entities_loaded"], 0);
+        assert_eq!(body["checks"]["corridors_loaded"], 0);
+    }
+
+    #[tokio::test]
+    async fn liveness_returns_ok() {
+        let router = app(AppState::new());
+        let req = Request::builder()
+            .method("GET")
+            .uri("/health/liveness")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = router.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
 }

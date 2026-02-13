@@ -23,7 +23,7 @@ use uuid::Uuid;
 
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
-use crate::state::{AppState, BeneficialOwner, EntityRecord};
+use crate::state::{AppState, BeneficialOwner, EntityRecord, PaginatedResponse, PaginationParams};
 use axum::extract::rejection::JsonRejection;
 
 // ── Request/Response DTOs ───────────────────────────────────────────
@@ -144,17 +144,29 @@ async fn create_entity(
     Ok((axum::http::StatusCode::CREATED, Json(record)))
 }
 
-/// GET /v1/entities — List all entities.
+/// GET /v1/entities — List entities with pagination.
 #[utoipa::path(
     get,
     path = "/v1/entities",
+    params(PaginationParams),
     responses(
-        (status = 200, description = "List of entities", body = Vec<EntityRecord>),
+        (status = 200, description = "Paginated list of entities", body = PaginatedResponse<EntityRecord>),
     ),
     tag = "entities"
 )]
-async fn list_entities(State(state): State<AppState>) -> Json<Vec<EntityRecord>> {
-    Json(state.entities.list())
+async fn list_entities(
+    State(state): State<AppState>,
+    axum::extract::Query(params): axum::extract::Query<PaginationParams>,
+) -> Json<PaginatedResponse<EntityRecord>> {
+    let limit = params.clamped_limit();
+    let total = state.entities.count();
+    let data = state.entities.list_paginated(params.offset, limit);
+    Json(PaginatedResponse {
+        data,
+        total,
+        offset: params.offset,
+        limit,
+    })
 }
 
 /// GET /v1/entities/:id — Get a single entity.
@@ -513,8 +525,11 @@ mod tests {
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
 
-        let records: Vec<EntityRecord> = body_json(resp).await;
-        assert!(records.is_empty());
+        let page: PaginatedResponse<EntityRecord> = body_json(resp).await;
+        assert!(page.data.is_empty());
+        assert_eq!(page.total, 0);
+        assert_eq!(page.offset, 0);
+        assert_eq!(page.limit, 50);
     }
 
     #[tokio::test]
@@ -543,9 +558,103 @@ mod tests {
         let list_resp = app.oneshot(list_req).await.unwrap();
         assert_eq!(list_resp.status(), StatusCode::OK);
 
-        let records: Vec<EntityRecord> = body_json(list_resp).await;
-        assert_eq!(records.len(), 1);
-        assert_eq!(records[0].legal_name, "Alpha LLC");
+        let page: PaginatedResponse<EntityRecord> = body_json(list_resp).await;
+        assert_eq!(page.data.len(), 1);
+        assert_eq!(page.total, 1);
+        assert_eq!(page.data[0].legal_name, "Alpha LLC");
+    }
+
+    #[tokio::test]
+    async fn handler_list_entities_pagination() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Insert 5 entities.
+        for i in 0..5 {
+            let body = format!(
+                r#"{{"entity_type":"llc","legal_name":"Entity {}","jurisdiction_id":"PK-PSEZ"}}"#,
+                i
+            );
+            let req = Request::builder()
+                .method("POST")
+                .uri("/v1/entities")
+                .header("content-type", "application/json")
+                .body(Body::from(body))
+                .unwrap();
+            let resp = app.clone().oneshot(req).await.unwrap();
+            assert_eq!(resp.status(), StatusCode::CREATED);
+        }
+
+        // offset=0 limit=2 → 2 records, total=5
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/entities?offset=0&limit=2")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let page: PaginatedResponse<EntityRecord> = body_json(resp).await;
+        assert_eq!(page.data.len(), 2);
+        assert_eq!(page.total, 5);
+        assert_eq!(page.offset, 0);
+        assert_eq!(page.limit, 2);
+
+        // offset=2 limit=2 → 2 different records, total=5
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/entities?offset=2&limit=2")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        let page2: PaginatedResponse<EntityRecord> = body_json(resp).await;
+        assert_eq!(page2.data.len(), 2);
+        assert_eq!(page2.total, 5);
+        assert_eq!(page2.offset, 2);
+        assert_eq!(page2.limit, 2);
+        // Records should differ from the first page.
+        let ids1: Vec<_> = page.data.iter().map(|e| e.id).collect();
+        let ids2: Vec<_> = page2.data.iter().map(|e| e.id).collect();
+        for id in &ids2 {
+            assert!(!ids1.contains(id), "pages should not overlap");
+        }
+
+        // offset=4 limit=2 → 1 record, total=5
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/entities?offset=4&limit=2")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        let page3: PaginatedResponse<EntityRecord> = body_json(resp).await;
+        assert_eq!(page3.data.len(), 1);
+        assert_eq!(page3.total, 5);
+
+        // offset=10 limit=2 → 0 records, total=5
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/entities?offset=10&limit=2")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        let page4: PaginatedResponse<EntityRecord> = body_json(resp).await;
+        assert_eq!(page4.data.len(), 0);
+        assert_eq!(page4.total, 5);
+    }
+
+    #[tokio::test]
+    async fn handler_list_entities_limit_clamped_to_500() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/entities?limit=9999")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let page: PaginatedResponse<EntityRecord> = body_json(resp).await;
+        assert_eq!(page.limit, 500);
     }
 
     #[tokio::test]

@@ -12,7 +12,7 @@ use utoipa::ToSchema;
 
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
-use crate::state::{AppState, AttestationRecord};
+use crate::state::{AppState, AttestationRecord, PaginationParams};
 use axum::extract::rejection::JsonRejection;
 
 /// Query attestations request.
@@ -34,11 +34,17 @@ impl Validate for QueryAttestationsRequest {
     }
 }
 
-/// Query results response.
+/// Query results response with pagination metadata.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct QueryResultsResponse {
     pub count: usize,
     pub results: Vec<AttestationRecord>,
+    /// The offset that was applied.
+    #[serde(default)]
+    pub offset: usize,
+    /// The limit that was applied.
+    #[serde(default)]
+    pub limit: usize,
 }
 
 /// Compliance summary for regulator dashboard.
@@ -57,10 +63,11 @@ pub fn router() -> Router<AppState> {
         .route("/v1/regulator/summary", get(compliance_summary))
 }
 
-/// POST /v1/regulator/query/attestations — Query attestations.
+/// POST /v1/regulator/query/attestations — Query attestations with pagination.
 #[utoipa::path(
     post,
     path = "/v1/regulator/query/attestations",
+    params(PaginationParams),
     request_body = QueryAttestationsRequest,
     responses(
         (status = 200, description = "Query results", body = QueryResultsResponse),
@@ -69,9 +76,11 @@ pub fn router() -> Router<AppState> {
 )]
 async fn query_attestations(
     State(state): State<AppState>,
+    axum::extract::Query(params): axum::extract::Query<PaginationParams>,
     body: Result<Json<QueryAttestationsRequest>, JsonRejection>,
 ) -> Result<Json<QueryResultsResponse>, AppError> {
     let req = extract_validated_json(body)?;
+    let limit = params.clamped_limit();
     let all = state.attestations.list();
     let filtered: Vec<_> = all
         .into_iter()
@@ -101,9 +110,16 @@ async fn query_attestations(
         .collect();
 
     let count = filtered.len();
+    let results: Vec<_> = filtered
+        .into_iter()
+        .skip(params.offset)
+        .take(limit)
+        .collect();
     Ok(Json(QueryResultsResponse {
         count,
-        results: filtered,
+        results,
+        offset: params.offset,
+        limit,
     }))
 }
 
@@ -118,10 +134,10 @@ async fn query_attestations(
 )]
 async fn compliance_summary(State(state): State<AppState>) -> Json<ComplianceSummary> {
     Json(ComplianceSummary {
-        total_entities: state.entities.list().len(),
-        total_corridors: state.corridors.list().len(),
-        total_assets: state.smart_assets.list().len(),
-        total_attestations: state.attestations.list().len(),
+        total_entities: state.entities.count(),
+        total_corridors: state.corridors.count(),
+        total_assets: state.smart_assets.count(),
+        total_attestations: state.attestations.count(),
     })
 }
 
@@ -563,10 +579,14 @@ mod tests {
         let resp = QueryResultsResponse {
             count: 0,
             results: vec![],
+            offset: 0,
+            limit: 50,
         };
         let json = serde_json::to_string(&resp).unwrap();
         let deserialized: QueryResultsResponse = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.count, 0);
         assert!(deserialized.results.is_empty());
+        assert_eq!(deserialized.offset, 0);
+        assert_eq!(deserialized.limit, 50);
     }
 }

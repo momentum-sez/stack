@@ -117,8 +117,11 @@ async fn test_list_entities_empty() {
         .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
     let body = body_string(response).await;
-    let entities: Vec<serde_json::Value> = serde_json::from_str(&body).unwrap();
-    assert!(entities.is_empty());
+    let page: serde_json::Value = serde_json::from_str(&body).unwrap();
+    assert!(page["data"].as_array().unwrap().is_empty());
+    assert_eq!(page["total"], 0);
+    assert_eq!(page["offset"], 0);
+    assert_eq!(page["limit"], 50);
 }
 
 #[tokio::test]

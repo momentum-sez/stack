@@ -15,7 +15,7 @@ use serde_json::json;
 
 #[test]
 fn canonicalization_rejects_floats() {
-    let data = json!({"amount": 3.14});
+    let data = json!({"amount": 3.15});
     let result = CanonicalBytes::new(&data);
     assert!(
         result.is_err(),

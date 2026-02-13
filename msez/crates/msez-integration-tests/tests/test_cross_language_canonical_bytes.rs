@@ -81,9 +81,8 @@ fn canonical_bytes_match_python_fixtures() {
             continue; // Tested separately below.
         }
 
-        let canonical = CanonicalBytes::new(&tc.input).unwrap_or_else(|e| {
-            panic!("CanonicalBytes::new() failed for case '{}': {e}", tc.name)
-        });
+        let canonical = CanonicalBytes::new(&tc.input)
+            .unwrap_or_else(|e| panic!("CanonicalBytes::new() failed for case '{}': {e}", tc.name));
 
         // Verify canonical UTF-8 matches Python output.
         let rust_utf8 = std::str::from_utf8(canonical.as_bytes()).unwrap_or_else(|e| {
@@ -148,9 +147,8 @@ fn canonical_bytes_timestamp_divergence_documented() {
             continue;
         }
 
-        let canonical = CanonicalBytes::new(&tc.input).unwrap_or_else(|e| {
-            panic!("CanonicalBytes::new() failed for case '{}': {e}", tc.name)
-        });
+        let canonical = CanonicalBytes::new(&tc.input)
+            .unwrap_or_else(|e| panic!("CanonicalBytes::new() failed for case '{}': {e}", tc.name));
 
         let rust_utf8 = std::str::from_utf8(canonical.as_bytes()).unwrap();
 

@@ -10,7 +10,9 @@
 //! - Trigger type count is 20
 
 use msez_agentic::evaluation::PolicyEngine;
-use msez_agentic::policy::{standard_policies, extended_policies, PolicyAction, Trigger, TriggerType};
+use msez_agentic::policy::{
+    extended_policies, standard_policies, PolicyAction, Trigger, TriggerType,
+};
 use serde_json::json;
 
 // ---------------------------------------------------------------------------

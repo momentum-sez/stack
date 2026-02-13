@@ -6,9 +6,7 @@
 //! corridor-specific credential subjects and proof types.
 
 use msez_crypto::SigningKey;
-use msez_vc::{
-    ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential,
-};
+use msez_vc::{ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential};
 use rand_core::OsRng;
 use serde_json::json;
 
@@ -19,7 +17,9 @@ fn make_corridor_lifecycle_vc(
 ) -> VerifiableCredential {
     VerifiableCredential {
         context: ContextValue::Array(vec![json!("https://www.w3.org/2018/credentials/v1")]),
-        id: Some(format!("urn:msez:vc:corridor-transition:{corridor_id}:{from_state}-{to_state}")),
+        id: Some(format!(
+            "urn:msez:vc:corridor-transition:{corridor_id}:{from_state}-{to_state}"
+        )),
         credential_type: CredentialTypeValue::Array(vec![
             "VerifiableCredential".to_string(),
             "CorridorLifecycleTransition".to_string(),
@@ -60,7 +60,11 @@ fn corridor_vc_lifecycle_transition() {
 
     let results = vc.verify(|_vm| Ok(vk.clone()));
     assert_eq!(results.len(), 1);
-    assert!(results[0].ok, "transition VC verification failed: {}", results[0].error);
+    assert!(
+        results[0].ok,
+        "transition VC verification failed: {}",
+        results[0].error
+    );
 }
 
 #[test]
@@ -99,7 +103,11 @@ fn corridor_vc_anchor_proof() {
 
     let results = vc.verify(|_vm| Ok(vk.clone()));
     assert_eq!(results.len(), 1);
-    assert!(results[0].ok, "anchor proof VC verification failed: {}", results[0].error);
+    assert!(
+        results[0].ok,
+        "anchor proof VC verification failed: {}",
+        results[0].error
+    );
 
     // Verify credential subject fields
     assert_eq!(vc.credential_subject["anchor_target"], "ethereum-sepolia");
@@ -209,10 +217,7 @@ fn corridor_vc_tamper_detection() {
 
     // Verification must fail after tampering
     let results_after = vc.verify(|_vm| Ok(vk.clone()));
-    assert!(
-        !results_after[0].ok,
-        "tampered VC must fail verification"
-    );
+    assert!(!results_after[0].ok, "tampered VC must fail verification");
 }
 
 #[test]

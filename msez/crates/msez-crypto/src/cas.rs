@@ -625,8 +625,10 @@ mod tests {
         let digest = sha256_digest(&canonical);
 
         // Store twice
-        cas.store_raw("receipt", &digest, canonical.as_bytes()).unwrap();
-        cas.store_raw("receipt", &digest, canonical.as_bytes()).unwrap();
+        cas.store_raw("receipt", &digest, canonical.as_bytes())
+            .unwrap();
+        cas.store_raw("receipt", &digest, canonical.as_bytes())
+            .unwrap();
 
         // Should still resolve correctly
         let resolved = cas.resolve("receipt", &digest).unwrap();
@@ -775,7 +777,7 @@ mod tests {
     fn store_with_float_fails() {
         let dir = tempfile::tempdir().unwrap();
         let cas = ContentAddressedStore::new(dir.path());
-        let result = cas.store("receipt", &json!({"amount": 3.14}));
+        let result = cas.store("receipt", &json!({"amount": 3.15}));
         assert!(result.is_err());
     }
 

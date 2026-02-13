@@ -5,9 +5,7 @@
 //! the specification, and float rejection in canonical serialization.
 
 use msez_core::{CanonicalBytes, ComplianceDomain, JurisdictionId};
-use msez_tensor::{
-    commitment_digest, ComplianceState, ComplianceTensor, DefaultJurisdiction,
-};
+use msez_tensor::{commitment_digest, ComplianceState, ComplianceTensor, DefaultJurisdiction};
 
 fn test_jurisdiction() -> DefaultJurisdiction {
     DefaultJurisdiction::new(JurisdictionId::new("PK-RSEZ").unwrap())
@@ -97,11 +95,11 @@ fn domain_count_is_20() {
 #[test]
 fn canonical_bytes_float_rejection() {
     // Floats must be rejected to prevent canonicalization divergence
-    let float_data = serde_json::json!({"amount": 3.14});
+    let float_data = serde_json::json!({"amount": 3.15});
     assert!(CanonicalBytes::new(&float_data).is_err());
 
     // Nested floats also rejected
-    let nested_float = serde_json::json!({"outer": {"inner": 2.718}});
+    let nested_float = serde_json::json!({"outer": {"inner": 2.719}});
     assert!(CanonicalBytes::new(&nested_float).is_err());
 
     // Integer amounts work fine

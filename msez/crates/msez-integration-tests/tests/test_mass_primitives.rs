@@ -9,9 +9,7 @@
 //! - Identity type validation (DID, CNIC, NTN, PassportNumber)
 
 use msez_core::{Cnic, Did, EntityId, Ntn, PassportNumber};
-use msez_state::{
-    DissolutionStage, Entity, EntityLifecycleState, License, LicenseState,
-};
+use msez_state::{DissolutionStage, Entity, EntityLifecycleState, License, LicenseState};
 
 // ---------------------------------------------------------------------------
 // 1. Entity creation and activation
@@ -68,11 +66,11 @@ fn entity_dissolution_10_stages() {
     assert_eq!(expected_stages.len(), 10);
 
     // Advance through stages 2-10
-    for i in 1..10 {
+    for (i, expected_stage) in expected_stages.iter().enumerate().skip(1) {
         entity.advance_dissolution().unwrap();
         assert_eq!(
             entity.dissolution_stage,
-            Some(expected_stages[i]),
+            Some(*expected_stage),
             "mismatch at dissolution stage {}",
             i + 1
         );

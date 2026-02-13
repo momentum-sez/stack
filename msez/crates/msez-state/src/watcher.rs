@@ -553,17 +553,32 @@ mod tests {
 
     #[test]
     fn slashing_condition_display_all_variants() {
-        assert_eq!(format!("{}", SlashingCondition::Equivocation), "EQUIVOCATION");
-        assert_eq!(format!("{}", SlashingCondition::AvailabilityFailure), "AVAILABILITY_FAILURE");
-        assert_eq!(format!("{}", SlashingCondition::FalseAttestation), "FALSE_ATTESTATION");
+        assert_eq!(
+            format!("{}", SlashingCondition::Equivocation),
+            "EQUIVOCATION"
+        );
+        assert_eq!(
+            format!("{}", SlashingCondition::AvailabilityFailure),
+            "AVAILABILITY_FAILURE"
+        );
+        assert_eq!(
+            format!("{}", SlashingCondition::FalseAttestation),
+            "FALSE_ATTESTATION"
+        );
         assert_eq!(format!("{}", SlashingCondition::Collusion), "COLLUSION");
     }
 
     #[test]
     fn slashing_condition_as_str_all_variants() {
         assert_eq!(SlashingCondition::Equivocation.as_str(), "EQUIVOCATION");
-        assert_eq!(SlashingCondition::AvailabilityFailure.as_str(), "AVAILABILITY_FAILURE");
-        assert_eq!(SlashingCondition::FalseAttestation.as_str(), "FALSE_ATTESTATION");
+        assert_eq!(
+            SlashingCondition::AvailabilityFailure.as_str(),
+            "AVAILABILITY_FAILURE"
+        );
+        assert_eq!(
+            SlashingCondition::FalseAttestation.as_str(),
+            "FALSE_ATTESTATION"
+        );
         assert_eq!(SlashingCondition::Collusion.as_str(), "COLLUSION");
     }
 

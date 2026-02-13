@@ -627,7 +627,10 @@ mod tests {
         lic.review().unwrap();
         lic.issue().unwrap();
         lic.suspend("regulatory investigation").unwrap();
-        assert_eq!(lic.state_reason.as_deref(), Some("regulatory investigation"));
+        assert_eq!(
+            lic.state_reason.as_deref(),
+            Some("regulatory investigation")
+        );
     }
 
     #[test]

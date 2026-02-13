@@ -5,10 +5,8 @@
 //! proof verification methods correctly include the DID identifier.
 
 use msez_core::Did;
-use msez_crypto::{SigningKey, VerifyingKey};
-use msez_vc::{
-    ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential,
-};
+use msez_crypto::SigningKey;
+use msez_vc::{ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential};
 use rand_core::OsRng;
 use serde_json::json;
 
@@ -57,7 +55,11 @@ fn did_key_proof_sign_verify() {
 
     let results = vc.verify(move |_vm: &str| Ok(vk.clone()));
     assert_eq!(results.len(), 1);
-    assert!(results[0].ok, "DID key proof should verify: {}", results[0].error);
+    assert!(
+        results[0].ok,
+        "DID key proof should verify: {}",
+        results[0].error
+    );
 }
 
 #[test]

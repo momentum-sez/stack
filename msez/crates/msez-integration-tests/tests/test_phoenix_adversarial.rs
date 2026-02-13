@@ -5,7 +5,7 @@
 //! Covers canonicalization edge cases, ZKP determinism under adversarial data,
 //! and CDB pipeline consistency.
 
-use msez_core::{CanonicalBytes, sha256_digest};
+use msez_core::{sha256_digest, CanonicalBytes};
 use msez_zkp::mock::{MockCircuit, MockProvingKey};
 use msez_zkp::{Cdb, MockProofSystem, ProofSystem};
 use serde_json::json;
@@ -31,7 +31,7 @@ fn canonicalization_rejects_nested_float() {
     let data = json!({
         "outer": {
             "inner": {
-                "value": 3.14
+                "value": 3.15
             }
         }
     });
@@ -146,11 +146,17 @@ fn malformed_json_in_canonicalization() {
     // CanonicalBytes::new expects a valid serde_json::Value.
     // An empty object should succeed.
     let result = CanonicalBytes::new(&json!({}));
-    assert!(result.is_ok(), "Empty object should canonicalize successfully");
+    assert!(
+        result.is_ok(),
+        "Empty object should canonicalize successfully"
+    );
 
     // A null value should also succeed (it's valid JSON).
     let result_null = CanonicalBytes::new(&json!(null));
-    assert!(result_null.is_ok(), "JSON null should canonicalize successfully");
+    assert!(
+        result_null.is_ok(),
+        "JSON null should canonicalize successfully"
+    );
 }
 
 #[test]

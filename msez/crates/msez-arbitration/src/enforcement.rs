@@ -1169,8 +1169,12 @@ mod tests {
     #[test]
     fn multiple_preconditions() {
         let mut order = basic_order();
-        order.add_precondition("Appeal period must expire".to_string()).unwrap();
-        order.add_precondition("Bond must be posted".to_string()).unwrap();
+        order
+            .add_precondition("Appeal period must expire".to_string())
+            .unwrap();
+        order
+            .add_precondition("Bond must be posted".to_string())
+            .unwrap();
 
         // Cannot begin with unsatisfied preconditions
         assert!(order.begin_enforcement().is_err());

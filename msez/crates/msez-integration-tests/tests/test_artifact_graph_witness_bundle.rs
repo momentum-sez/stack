@@ -42,7 +42,9 @@ fn witness_bundle_stores_correctly() {
     let artifact_ref = store.store("witness-bundle", &bundle).unwrap();
     assert_eq!(artifact_ref.artifact_type, "witness-bundle");
 
-    let resolved = store.resolve("witness-bundle", &artifact_ref.digest).unwrap();
+    let resolved = store
+        .resolve("witness-bundle", &artifact_ref.digest)
+        .unwrap();
     assert!(resolved.is_some());
 
     let parsed: serde_json::Value = serde_json::from_slice(&resolved.unwrap()).unwrap();

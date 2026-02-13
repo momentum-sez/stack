@@ -115,7 +115,10 @@ fn different_profiles_different_digests() {
 
     let d_a = sha256_digest(&CanonicalBytes::new(&profile_a).unwrap());
     let d_b = sha256_digest(&CanonicalBytes::new(&profile_b).unwrap());
-    assert_ne!(d_a, d_b, "different profiles must produce different digests");
+    assert_ne!(
+        d_a, d_b,
+        "different profiles must produce different digests"
+    );
 }
 
 // ---------------------------------------------------------------------------

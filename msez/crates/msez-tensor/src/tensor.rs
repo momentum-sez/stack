@@ -705,7 +705,12 @@ mod tests {
     #[test]
     fn tensor_slice_all_passing_false_with_noncompliant() {
         let mut tensor = ComplianceTensor::new(test_jurisdiction());
-        tensor.set(ComplianceDomain::Aml, ComplianceState::NonCompliant, vec![], None);
+        tensor.set(
+            ComplianceDomain::Aml,
+            ComplianceState::NonCompliant,
+            vec![],
+            None,
+        );
         let slice = tensor.slice(&[ComplianceDomain::Aml]);
         assert!(!slice.all_passing());
     }
@@ -713,7 +718,12 @@ mod tests {
     #[test]
     fn tensor_slice_all_passing_true_with_compliant() {
         let mut tensor = ComplianceTensor::new(test_jurisdiction());
-        tensor.set(ComplianceDomain::Aml, ComplianceState::Compliant, vec![], None);
+        tensor.set(
+            ComplianceDomain::Aml,
+            ComplianceState::Compliant,
+            vec![],
+            None,
+        );
         tensor.set(ComplianceDomain::Kyc, ComplianceState::Exempt, vec![], None);
         let slice = tensor.slice(&[ComplianceDomain::Aml, ComplianceDomain::Kyc]);
         assert!(slice.all_passing());
@@ -726,8 +736,11 @@ mod tests {
         // Default evaluation should return a valid ComplianceState
         assert!(matches!(
             state,
-            ComplianceState::Pending | ComplianceState::NonCompliant | ComplianceState::Compliant |
-            ComplianceState::NotApplicable | ComplianceState::Exempt
+            ComplianceState::Pending
+                | ComplianceState::NonCompliant
+                | ComplianceState::Compliant
+                | ComplianceState::NotApplicable
+                | ComplianceState::Exempt
         ));
     }
 
@@ -762,10 +775,20 @@ mod tests {
     #[test]
     fn tensor_merge_no_change_when_same() {
         let mut a = ComplianceTensor::new(test_jurisdiction());
-        a.set(ComplianceDomain::Aml, ComplianceState::Compliant, vec![], None);
+        a.set(
+            ComplianceDomain::Aml,
+            ComplianceState::Compliant,
+            vec![],
+            None,
+        );
 
         let mut b = ComplianceTensor::new(test_jurisdiction());
-        b.set(ComplianceDomain::Aml, ComplianceState::Compliant, vec![], None);
+        b.set(
+            ComplianceDomain::Aml,
+            ComplianceState::Compliant,
+            vec![],
+            None,
+        );
 
         a.merge(&b);
         assert_eq!(a.get(ComplianceDomain::Aml), ComplianceState::Compliant);
@@ -795,8 +818,14 @@ mod tests {
         assert_eq!(tensor.get(ComplianceDomain::Aml), ComplianceState::Pending);
         assert_eq!(tensor.get(ComplianceDomain::Kyc), ComplianceState::Pending);
         // Non-applicable domains should be NotApplicable
-        assert_eq!(tensor.get(ComplianceDomain::Tax), ComplianceState::NotApplicable);
-        assert_eq!(tensor.get(ComplianceDomain::Securities), ComplianceState::NotApplicable);
+        assert_eq!(
+            tensor.get(ComplianceDomain::Tax),
+            ComplianceState::NotApplicable
+        );
+        assert_eq!(
+            tensor.get(ComplianceDomain::Securities),
+            ComplianceState::NotApplicable
+        );
     }
 
     #[test]

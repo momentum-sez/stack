@@ -615,12 +615,24 @@ mod tests {
     #[test]
     fn migration_state_display_all_variants() {
         assert_eq!(format!("{}", MigrationState::Initiated), "INITIATED");
-        assert_eq!(format!("{}", MigrationState::ComplianceCheck), "COMPLIANCE_CHECK");
-        assert_eq!(format!("{}", MigrationState::AttestationGathering), "ATTESTATION_GATHERING");
+        assert_eq!(
+            format!("{}", MigrationState::ComplianceCheck),
+            "COMPLIANCE_CHECK"
+        );
+        assert_eq!(
+            format!("{}", MigrationState::AttestationGathering),
+            "ATTESTATION_GATHERING"
+        );
         assert_eq!(format!("{}", MigrationState::SourceLocked), "SOURCE_LOCKED");
         assert_eq!(format!("{}", MigrationState::InTransit), "IN_TRANSIT");
-        assert_eq!(format!("{}", MigrationState::DestinationVerification), "DESTINATION_VERIFICATION");
-        assert_eq!(format!("{}", MigrationState::DestinationUnlock), "DESTINATION_UNLOCK");
+        assert_eq!(
+            format!("{}", MigrationState::DestinationVerification),
+            "DESTINATION_VERIFICATION"
+        );
+        assert_eq!(
+            format!("{}", MigrationState::DestinationUnlock),
+            "DESTINATION_UNLOCK"
+        );
         assert_eq!(format!("{}", MigrationState::Completed), "COMPLETED");
         assert_eq!(format!("{}", MigrationState::Compensated), "COMPENSATED");
         assert_eq!(format!("{}", MigrationState::TimedOut), "TIMED_OUT");
@@ -629,10 +641,19 @@ mod tests {
 
     #[test]
     fn migration_state_as_str_all_variants() {
-        assert_eq!(MigrationState::AttestationGathering.as_str(), "ATTESTATION_GATHERING");
+        assert_eq!(
+            MigrationState::AttestationGathering.as_str(),
+            "ATTESTATION_GATHERING"
+        );
         assert_eq!(MigrationState::SourceLocked.as_str(), "SOURCE_LOCKED");
-        assert_eq!(MigrationState::DestinationVerification.as_str(), "DESTINATION_VERIFICATION");
-        assert_eq!(MigrationState::DestinationUnlock.as_str(), "DESTINATION_UNLOCK");
+        assert_eq!(
+            MigrationState::DestinationVerification.as_str(),
+            "DESTINATION_VERIFICATION"
+        );
+        assert_eq!(
+            MigrationState::DestinationUnlock.as_str(),
+            "DESTINATION_UNLOCK"
+        );
         assert_eq!(MigrationState::Compensated.as_str(), "COMPENSATED");
         assert_eq!(MigrationState::Cancelled.as_str(), "CANCELLED");
     }
@@ -754,7 +775,10 @@ mod tests {
         assert!(!saga.compensation_log[0].succeeded);
         assert!(!saga.compensation_log[1].succeeded);
         assert!(!saga.compensation_log[2].succeeded);
-        assert_eq!(saga.compensation_log[1].error_detail.as_deref(), Some("insufficient funds"));
+        assert_eq!(
+            saga.compensation_log[1].error_detail.as_deref(),
+            Some("insufficient funds")
+        );
     }
 
     #[test]

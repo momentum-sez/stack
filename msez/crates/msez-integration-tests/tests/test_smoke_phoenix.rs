@@ -4,7 +4,7 @@
 //! tensor commitment, mock proof system, CDB bridge, and canonical bytes)
 //! can be instantiated and produce valid outputs.
 
-use msez_core::{sha256_digest, CanonicalBytes, ComplianceDomain, EntityId, JurisdictionId};
+use msez_core::{sha256_digest, CanonicalBytes, ComplianceDomain, JurisdictionId};
 use msez_tensor::{
     commitment::{commitment_digest, merkle_root, TensorCommitment},
     evaluation::ComplianceState,
@@ -47,7 +47,10 @@ fn smoke_tensor_set_and_get() {
         vec![],
         None,
     );
-    assert_eq!(tensor.get(ComplianceDomain::Aml), ComplianceState::Compliant);
+    assert_eq!(
+        tensor.get(ComplianceDomain::Aml),
+        ComplianceState::Compliant
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -95,7 +98,7 @@ fn smoke_mock_proof_system() {
 
     let system = MockProofSystem;
     let pk = MockProvingKey;
-    let vk = MockVerifyingKey;
+    let _vk = MockVerifyingKey;
 
     let circuit = MockCircuit {
         circuit_data: json!({"type": "balance_check", "threshold": 1000}),
@@ -130,7 +133,10 @@ fn smoke_mock_proof_different_inputs() {
 
     let proof1 = system.prove(&pk, &circuit1).unwrap();
     let proof2 = system.prove(&pk, &circuit2).unwrap();
-    assert_ne!(proof1, proof2, "different circuit data must produce different proofs");
+    assert_ne!(
+        proof1, proof2,
+        "different circuit data must produce different proofs"
+    );
 }
 
 // ---------------------------------------------------------------------------

@@ -22,7 +22,14 @@ fn test_digest(label: &str) -> ContentDigest {
 #[test]
 fn corridor_schema_states_are_spec_aligned() {
     // All six spec-defined states must deserialize correctly
-    let states = ["DRAFT", "PENDING", "ACTIVE", "HALTED", "SUSPENDED", "DEPRECATED"];
+    let states = [
+        "DRAFT",
+        "PENDING",
+        "ACTIVE",
+        "HALTED",
+        "SUSPENDED",
+        "DEPRECATED",
+    ];
     for state_name in &states {
         let json_str = format!("\"{state_name}\"");
         let result: Result<DynCorridorState, _> = serde_json::from_str(&json_str);

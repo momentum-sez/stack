@@ -133,12 +133,14 @@ fn cas_store_resolve_roundtrip_with_fixture_data() {
 
     for art in &fixtures.artifacts {
         // Store via the Rust CAS.
-        let artifact_ref = cas.store(&art.artifact_type, &art.input).unwrap_or_else(|e| {
-            panic!(
-                "CAS store failed for artifact type '{}': {e}",
-                art.artifact_type
-            )
-        });
+        let artifact_ref = cas
+            .store(&art.artifact_type, &art.input)
+            .unwrap_or_else(|e| {
+                panic!(
+                    "CAS store failed for artifact type '{}': {e}",
+                    art.artifact_type
+                )
+            });
 
         // Verify the stored digest matches the Python fixture.
         assert_eq!(

@@ -594,7 +594,10 @@ mod tests {
 
     #[test]
     fn find_profile_missing_dir_errors() {
-        let result = find_profile(Path::new("/tmp/msez-no-profiles-dir-xyz123"), "test_profile");
+        let result = find_profile(
+            Path::new("/tmp/msez-no-profiles-dir-xyz123"),
+            "test_profile",
+        );
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("profiles directory not found"));
@@ -702,7 +705,8 @@ mod tests {
     fn run_lock_generates_lockfile() {
         let dir = tempfile::tempdir().unwrap();
         // Create a minimal zone.yaml.
-        let zone_content = "zone_id: test-zone\nprofile:\n  profile_id: test-profile\n  version: '1.0.0'\n";
+        let zone_content =
+            "zone_id: test-zone\nprofile:\n  profile_id: test-profile\n  version: '1.0.0'\n";
         let zone_path = dir.path().join("zone.yaml");
         std::fs::write(&zone_path, zone_content).unwrap();
 
@@ -741,7 +745,8 @@ mod tests {
     #[test]
     fn run_lock_check_mode_passes_when_matches() {
         let dir = tempfile::tempdir().unwrap();
-        let zone_content = "zone_id: test-zone\nprofile:\n  profile_id: test-profile\n  version: '1.0.0'\n";
+        let zone_content =
+            "zone_id: test-zone\nprofile:\n  profile_id: test-profile\n  version: '1.0.0'\n";
         let zone_path = dir.path().join("zone.yaml");
         std::fs::write(&zone_path, zone_content).unwrap();
 
@@ -785,7 +790,8 @@ mod tests {
     #[test]
     fn run_lock_check_mode_fails_when_lockfile_missing() {
         let dir = tempfile::tempdir().unwrap();
-        let zone_content = "zone_id: test-zone\nprofile:\n  profile_id: test-profile\n  version: '1.0.0'\n";
+        let zone_content =
+            "zone_id: test-zone\nprofile:\n  profile_id: test-profile\n  version: '1.0.0'\n";
         let zone_path = dir.path().join("zone.yaml");
         std::fs::write(&zone_path, zone_content).unwrap();
 
@@ -818,7 +824,8 @@ mod tests {
     #[test]
     fn run_lock_check_mode_fails_when_lockfile_differs() {
         let dir = tempfile::tempdir().unwrap();
-        let zone_content = "zone_id: test-zone\nprofile:\n  profile_id: test-profile\n  version: '1.0.0'\n";
+        let zone_content =
+            "zone_id: test-zone\nprofile:\n  profile_id: test-profile\n  version: '1.0.0'\n";
         let zone_path = dir.path().join("zone.yaml");
         std::fs::write(&zone_path, zone_content).unwrap();
 
@@ -852,7 +859,8 @@ mod tests {
     #[test]
     fn run_lock_with_modules_in_profile() {
         let dir = tempfile::tempdir().unwrap();
-        let zone_content = "zone_id: test-zone\nprofile:\n  profile_id: test-profile\n  version: '1.0.0'\n";
+        let zone_content =
+            "zone_id: test-zone\nprofile:\n  profile_id: test-profile\n  version: '1.0.0'\n";
         let zone_path = dir.path().join("zone.yaml");
         std::fs::write(&zone_path, zone_content).unwrap();
 
@@ -895,7 +903,8 @@ mod tests {
     #[test]
     fn run_lock_uses_default_out_path() {
         let dir = tempfile::tempdir().unwrap();
-        let zone_content = "zone_id: test-zone\nprofile:\n  profile_id: test-profile\n  version: '1.0.0'\n";
+        let zone_content =
+            "zone_id: test-zone\nprofile:\n  profile_id: test-profile\n  version: '1.0.0'\n";
         let zone_path = dir.path().join("zone.yaml");
         std::fs::write(&zone_path, zone_content).unwrap();
 
@@ -961,7 +970,8 @@ mod tests {
     #[test]
     fn run_lock_missing_profile_errors() {
         let dir = tempfile::tempdir().unwrap();
-        let zone_content = "zone_id: test-zone\nprofile:\n  profile_id: nonexistent-profile\n  version: '1.0.0'\n";
+        let zone_content =
+            "zone_id: test-zone\nprofile:\n  profile_id: nonexistent-profile\n  version: '1.0.0'\n";
         let zone_path = dir.path().join("zone.yaml");
         std::fs::write(&zone_path, zone_content).unwrap();
 
@@ -986,7 +996,8 @@ mod tests {
     #[test]
     fn run_lock_module_not_found_is_skipped() {
         let dir = tempfile::tempdir().unwrap();
-        let zone_content = "zone_id: test-zone\nprofile:\n  profile_id: test-profile\n  version: '1.0.0'\n";
+        let zone_content =
+            "zone_id: test-zone\nprofile:\n  profile_id: test-profile\n  version: '1.0.0'\n";
         let zone_path = dir.path().join("zone.yaml");
         std::fs::write(&zone_path, zone_content).unwrap();
 

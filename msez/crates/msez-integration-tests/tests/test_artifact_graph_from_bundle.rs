@@ -61,7 +61,10 @@ fn two_level_dependency_graph() {
     assert!(store.contains("bundle", &ref_parent.digest).unwrap());
 
     // Verify the parent's stored content references the correct digests
-    let resolved = store.resolve("bundle", &ref_parent.digest).unwrap().unwrap();
+    let resolved = store
+        .resolve("bundle", &ref_parent.digest)
+        .unwrap()
+        .unwrap();
     let parsed: serde_json::Value = serde_json::from_slice(&resolved).unwrap();
     let deps = parsed["dependencies"].as_array().unwrap();
     assert_eq!(deps.len(), 2);

@@ -21,7 +21,10 @@ use std::collections::HashSet;
 fn all_trigger_types_have_string_representation() {
     for tt in TriggerType::all() {
         let s = tt.as_str();
-        assert!(!s.is_empty(), "trigger type {tt:?} has empty string representation");
+        assert!(
+            !s.is_empty(),
+            "trigger type {tt:?} has empty string representation"
+        );
         assert!(
             s.chars().all(|c| c.is_ascii_lowercase() || c == '_'),
             "trigger type string '{}' should be snake_case",
@@ -113,10 +116,7 @@ fn every_policy_action_variant_exists() {
     for action in &actions {
         let s = action.as_str();
         assert!(!s.is_empty(), "action {action:?} has empty string");
-        assert!(
-            seen_strings.insert(s),
-            "duplicate action string: '{s}'"
-        );
+        assert!(seen_strings.insert(s), "duplicate action string: '{s}'");
     }
     assert_eq!(actions.len(), 16, "expecting 16 PolicyAction variants");
 }

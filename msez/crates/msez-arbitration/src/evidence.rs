@@ -775,16 +775,40 @@ mod tests {
 
     #[test]
     fn evidence_type_display_all_variants() {
-        assert_eq!(format!("{}", EvidenceType::SmartAssetReceipt), "smart_asset_receipt");
-        assert_eq!(format!("{}", EvidenceType::CorridorReceipt), "corridor_receipt");
-        assert_eq!(format!("{}", EvidenceType::ComplianceEvidence), "compliance_evidence");
+        assert_eq!(
+            format!("{}", EvidenceType::SmartAssetReceipt),
+            "smart_asset_receipt"
+        );
+        assert_eq!(
+            format!("{}", EvidenceType::CorridorReceipt),
+            "corridor_receipt"
+        );
+        assert_eq!(
+            format!("{}", EvidenceType::ComplianceEvidence),
+            "compliance_evidence"
+        );
         assert_eq!(format!("{}", EvidenceType::ExpertReport), "expert_report");
-        assert_eq!(format!("{}", EvidenceType::WitnessStatement), "witness_statement");
-        assert_eq!(format!("{}", EvidenceType::ContractDocument), "contract_document");
-        assert_eq!(format!("{}", EvidenceType::CommunicationRecord), "communication_record");
+        assert_eq!(
+            format!("{}", EvidenceType::WitnessStatement),
+            "witness_statement"
+        );
+        assert_eq!(
+            format!("{}", EvidenceType::ContractDocument),
+            "contract_document"
+        );
+        assert_eq!(
+            format!("{}", EvidenceType::CommunicationRecord),
+            "communication_record"
+        );
         assert_eq!(format!("{}", EvidenceType::PaymentRecord), "payment_record");
-        assert_eq!(format!("{}", EvidenceType::ShippingDocument), "shipping_document");
-        assert_eq!(format!("{}", EvidenceType::InspectionReport), "inspection_report");
+        assert_eq!(
+            format!("{}", EvidenceType::ShippingDocument),
+            "shipping_document"
+        );
+        assert_eq!(
+            format!("{}", EvidenceType::InspectionReport),
+            "inspection_report"
+        );
     }
 
     #[test]
@@ -892,8 +916,7 @@ mod tests {
     #[test]
     fn evidence_empty_package() {
         let dispute_id = crate::dispute::DisputeId::new();
-        let package =
-            EvidencePackage::new(dispute_id, test_did("Party1"), vec![]).unwrap();
+        let package = EvidencePackage::new(dispute_id, test_did("Party1"), vec![]).unwrap();
         assert_eq!(package.item_count(), 0);
         assert!(package.verify_package_integrity().is_ok());
     }
@@ -947,9 +970,18 @@ mod tests {
         });
 
         assert_eq!(item.authenticity.len(), 3);
-        assert_eq!(item.authenticity[0].attestation_type, AuthenticityType::NotarizedDocument);
-        assert_eq!(item.authenticity[1].attestation_type, AuthenticityType::ExpertCertification);
-        assert_eq!(item.authenticity[2].attestation_type, AuthenticityType::ChainOfCustody);
+        assert_eq!(
+            item.authenticity[0].attestation_type,
+            AuthenticityType::NotarizedDocument
+        );
+        assert_eq!(
+            item.authenticity[1].attestation_type,
+            AuthenticityType::ExpertCertification
+        );
+        assert_eq!(
+            item.authenticity[2].attestation_type,
+            AuthenticityType::ChainOfCustody
+        );
     }
 
     #[test]
@@ -985,7 +1017,13 @@ mod tests {
         });
 
         assert_eq!(item.chain_of_custody.len(), 3);
-        assert_eq!(item.chain_of_custody[1].description, "Transfer to customs authority");
-        assert_eq!(item.chain_of_custody[2].description, "Transfer to legal counsel");
+        assert_eq!(
+            item.chain_of_custody[1].description,
+            "Transfer to customs authority"
+        );
+        assert_eq!(
+            item.chain_of_custody[2].description,
+            "Transfer to legal counsel"
+        );
     }
 }

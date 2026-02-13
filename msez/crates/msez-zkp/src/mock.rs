@@ -318,7 +318,7 @@ mod tests {
 
     #[test]
     fn verify_returns_true_when_proof_matches_public_inputs() {
-        let (sys, pk, vk) = make_system();
+        let (sys, _pk, vk) = make_system();
         // The mock verifier recomputes SHA256(public_inputs), not SHA256(circuit + inputs)
         // So to get verify to return Ok(true), we need to construct a proof
         // that equals SHA256(public_inputs) directly.
@@ -331,18 +331,24 @@ mod tests {
 
         let proof = MockProof { proof_hex };
         let result = sys.verify(&vk, &proof, public_inputs).unwrap();
-        assert!(result, "verify should return true when proof matches SHA256(public_inputs)");
+        assert!(
+            result,
+            "verify should return true when proof matches SHA256(public_inputs)"
+        );
     }
 
     #[test]
     fn verify_returns_false_when_proof_does_not_match() {
-        let (sys, pk, vk) = make_system();
+        let (sys, _pk, vk) = make_system();
         // Create a valid 64-char hex proof that doesn't match
         let proof = MockProof {
             proof_hex: "aa".repeat(32),
         };
         let result = sys.verify(&vk, &proof, b"some inputs").unwrap();
-        assert!(!result, "verify should return false when proof doesn't match");
+        assert!(
+            !result,
+            "verify should return false when proof doesn't match"
+        );
     }
 
     #[test]
@@ -368,7 +374,7 @@ mod tests {
     fn prove_rejects_float_in_circuit_data() {
         let (sys, pk, _vk) = make_system();
         let circuit = MockCircuit {
-            circuit_data: json!({"amount": 3.14}),
+            circuit_data: json!({"amount": 3.15}),
             public_inputs: vec![],
         };
         let result = sys.prove(&pk, &circuit);

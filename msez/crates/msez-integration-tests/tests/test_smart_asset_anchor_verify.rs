@@ -5,8 +5,8 @@
 //! chain IDs, block numbers, and deterministic transaction IDs derived
 //! from the checkpoint digest.
 
-use msez_corridor::{AnchorCommitment, AnchorTarget, MockAnchorTarget};
 use msez_core::{sha256_digest, CanonicalBytes, ContentDigest};
+use msez_corridor::{AnchorCommitment, AnchorTarget, MockAnchorTarget};
 use serde_json::json;
 
 fn test_digest(label: &str) -> ContentDigest {

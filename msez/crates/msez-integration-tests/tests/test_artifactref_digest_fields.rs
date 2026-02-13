@@ -66,8 +66,7 @@ fn artifact_ref_roundtrip_through_store() {
     assert!(resolved.is_some(), "stored artifact must be resolvable");
 
     // Parse the resolved bytes and verify semantic equivalence
-    let resolved_value: serde_json::Value =
-        serde_json::from_slice(&resolved.unwrap()).unwrap();
+    let resolved_value: serde_json::Value = serde_json::from_slice(&resolved.unwrap()).unwrap();
     let resolved_canonical = CanonicalBytes::new(&resolved_value).unwrap();
     let original_canonical = CanonicalBytes::new(&data).unwrap();
 

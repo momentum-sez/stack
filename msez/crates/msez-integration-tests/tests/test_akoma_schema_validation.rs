@@ -114,14 +114,20 @@ fn akoma_nested_structure_deterministic() {
 
     let d1 = sha256_digest(&CanonicalBytes::new(&nested).unwrap());
     let d2 = sha256_digest(&CanonicalBytes::new(&nested).unwrap());
-    assert_eq!(d1, d2, "nested Akoma structure digest must be deterministic");
+    assert_eq!(
+        d1, d2,
+        "nested Akoma structure digest must be deterministic"
+    );
 
     // Verify nested key ordering
     let cb = CanonicalBytes::new(&nested).unwrap();
     let s = std::str::from_utf8(cb.as_bytes()).unwrap();
     let body_pos = s.find("\"body\"").unwrap();
     let meta_pos = s.find("\"meta\"").unwrap();
-    assert!(body_pos < meta_pos, "body must come before meta in sorted keys");
+    assert!(
+        body_pos < meta_pos,
+        "body must come before meta in sorted keys"
+    );
 }
 
 #[test]
@@ -204,5 +210,8 @@ fn different_references_produce_different_digests() {
 
     let d1 = sha256_digest(&CanonicalBytes::new(&ref1).unwrap());
     let d2 = sha256_digest(&CanonicalBytes::new(&ref2).unwrap());
-    assert_ne!(d1, d2, "different references must produce different digests");
+    assert_ne!(
+        d1, d2,
+        "different references must produce different digests"
+    );
 }

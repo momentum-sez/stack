@@ -296,7 +296,10 @@ mod tests {
             jurisdiction_b: "AE-DIFC".to_string(),
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("non-empty"), "error should mention non-empty: {err}");
+        assert!(
+            err.contains("non-empty"),
+            "error should mention non-empty: {err}"
+        );
     }
 
     #[test]
@@ -378,7 +381,10 @@ mod tests {
             reason: None,
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("target_state"), "error should mention target_state: {err}");
+        assert!(
+            err.contains("target_state"),
+            "error should mention target_state: {err}"
+        );
     }
 
     #[test]
@@ -565,7 +571,7 @@ mod tests {
         // Get the corridor by ID.
         let get_req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/corridors/{}", created.id))
+            .uri(format!("/v1/corridors/{}", created.id))
             .body(Body::empty())
             .unwrap();
         let get_resp = app.oneshot(get_req).await.unwrap();
@@ -584,7 +590,7 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/corridors/{id}"))
+            .uri(format!("/v1/corridors/{id}"))
             .body(Body::empty())
             .unwrap();
 
@@ -612,7 +618,7 @@ mod tests {
         // Transition to PENDING.
         let transition_req = Request::builder()
             .method("PUT")
-            .uri(&format!("/v1/corridors/{}/transition", created.id))
+            .uri(format!("/v1/corridors/{}/transition", created.id))
             .header("content-type", "application/json")
             .body(Body::from(
                 r#"{"target_state":"PENDING","evidence_digest":"sha256:abc123","reason":"compliance approved"}"#,
@@ -634,7 +640,7 @@ mod tests {
         // Transition again to ACTIVE.
         let transition_req2 = Request::builder()
             .method("PUT")
-            .uri(&format!("/v1/corridors/{}/transition", created.id))
+            .uri(format!("/v1/corridors/{}/transition", created.id))
             .header("content-type", "application/json")
             .body(Body::from(r#"{"target_state":"ACTIVE"}"#))
             .unwrap();
@@ -655,7 +661,7 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("PUT")
-            .uri(&format!("/v1/corridors/{id}/transition"))
+            .uri(format!("/v1/corridors/{id}/transition"))
             .header("content-type", "application/json")
             .body(Body::from(r#"{"target_state":"PENDING"}"#))
             .unwrap();
@@ -684,7 +690,7 @@ mod tests {
         // Transition to an invalid state.
         let transition_req = Request::builder()
             .method("PUT")
-            .uri(&format!("/v1/corridors/{}/transition", created.id))
+            .uri(format!("/v1/corridors/{}/transition", created.id))
             .header("content-type", "application/json")
             .body(Body::from(r#"{"target_state":"INVALID_STATE"}"#))
             .unwrap();
@@ -711,7 +717,7 @@ mod tests {
 
         let transition_req = Request::builder()
             .method("PUT")
-            .uri(&format!("/v1/corridors/{}/transition", created.id))
+            .uri(format!("/v1/corridors/{}/transition", created.id))
             .header("content-type", "application/json")
             .body(Body::from(r#"{broken"#))
             .unwrap();

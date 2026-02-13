@@ -4,8 +4,8 @@
 //! digests and that deployment field ordering does not affect canonical
 //! representations.
 
-use msez_core::{CanonicalBytes, sha256_digest, JurisdictionId, CorridorId};
-use msez_corridor::{CorridorBridge, BridgeEdge};
+use msez_core::{sha256_digest, CanonicalBytes, CorridorId, JurisdictionId};
+use msez_corridor::{BridgeEdge, CorridorBridge};
 use serde_json::json;
 
 // ---------------------------------------------------------------------------
@@ -45,7 +45,11 @@ fn hybrid_zone_with_multiple_corridors() {
     });
 
     assert_eq!(bridge.edge_count(), 3, "Three directed edges expected");
-    assert_eq!(bridge.node_count(), 3, "Three unique jurisdictions expected");
+    assert_eq!(
+        bridge.node_count(),
+        3,
+        "Three unique jurisdictions expected"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -118,9 +122,16 @@ fn bridge_routing_basic() {
     });
 
     let route = bridge.find_route(&ja, &jb);
-    assert!(route.is_some(), "Route from PK-RSEZ to AE-DIFC should exist");
+    assert!(
+        route.is_some(),
+        "Route from PK-RSEZ to AE-DIFC should exist"
+    );
 
     let route = route.unwrap();
-    assert_eq!(route.hops.len(), 1, "Direct route should have exactly 1 hop");
+    assert_eq!(
+        route.hops.len(),
+        1,
+        "Direct route should have exactly 1 hop"
+    );
     assert_eq!(route.total_fee_bps, 10);
 }

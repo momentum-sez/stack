@@ -3,9 +3,9 @@
 //! Ensures that lawpack digests are stable across construction,
 //! lock computation, and key reordering.
 
-use msez_core::{CanonicalBytes, sha256_digest};
-use sha2::{Digest as _, Sha256};
+use msez_core::{sha256_digest, CanonicalBytes};
 use serde_json::json;
+use sha2::{Digest as _, Sha256};
 use std::collections::BTreeMap;
 
 mod hex_enc {
@@ -130,10 +130,7 @@ fn lawpack_nested_key_ordering_invariant() {
     let ca = CanonicalBytes::new(&a).unwrap();
     let cb = CanonicalBytes::new(&b).unwrap();
 
-    assert_eq!(
-        sha256_digest(&ca).to_hex(),
-        sha256_digest(&cb).to_hex(),
-    );
+    assert_eq!(sha256_digest(&ca).to_hex(), sha256_digest(&cb).to_hex(),);
 }
 
 #[test]
@@ -154,5 +151,8 @@ fn lawpack_different_jurisdictions_different_digest() {
     let d1 = compute_lawpack_digest(&paths_a);
     let d2 = compute_lawpack_digest(&paths_b);
 
-    assert_ne!(d1, d2, "Different jurisdictions must produce different digests");
+    assert_ne!(
+        d1, d2,
+        "Different jurisdictions must produce different digests"
+    );
 }

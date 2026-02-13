@@ -6,9 +6,7 @@
 
 use msez_core::Did;
 use msez_crypto::SigningKey;
-use msez_vc::{
-    ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential,
-};
+use msez_vc::{ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential};
 use rand_core::OsRng;
 use serde_json::json;
 

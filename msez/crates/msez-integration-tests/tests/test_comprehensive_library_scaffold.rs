@@ -1,20 +1,15 @@
 //! Rust counterpart of tests/scenarios/test_comprehensive_library_scaffold.py
 //! Tests that all library modules are importable and functional.
 
-use msez_core::{
-    CanonicalBytes, sha256_digest, ComplianceDomain, EntityId, JurisdictionId, CorridorId,
-    MigrationId, WatcherId, Did, Cnic, Ntn, PassportNumber, Timestamp, ContentDigest,
-};
-use msez_crypto::{SigningKey, MerkleMountainRange, ContentAddressedStore};
-use msez_state::{
-    Corridor, Draft, Entity, EntityLifecycleState, License, LicenseState, MigrationBuilder,
-    Watcher, WatcherState,
-};
-use msez_corridor::{ReceiptChain, CorridorBridge, ForkDetector, NettingEngine, MockAnchorTarget};
-use msez_tensor::{ComplianceTensor, DefaultJurisdiction, ComplianceState, ComplianceManifold};
-use msez_agentic::{PolicyEngine, TriggerType};
 use msez_agentic::policy::standard_policies;
-use msez_zkp::{MockProofSystem, Cdb};
+use msez_agentic::{PolicyEngine, TriggerType};
+use msez_core::{
+    sha256_digest, CanonicalBytes, Cnic, ComplianceDomain, CorridorId, Did, EntityId,
+    JurisdictionId, MigrationId, Ntn, PassportNumber, Timestamp, WatcherId,
+};
+use msez_crypto::{ContentAddressedStore, MerkleMountainRange, SigningKey};
+use msez_state::{Corridor, Draft, Entity, EntityLifecycleState, License, LicenseState};
+use msez_zkp::{Cdb, MockProofSystem};
 use rand_core::OsRng;
 use serde_json::json;
 

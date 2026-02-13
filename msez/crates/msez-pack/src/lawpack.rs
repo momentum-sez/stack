@@ -696,7 +696,7 @@ mod tests {
 
     #[test]
     fn test_jcs_canonicalize_rejects_floats() {
-        let value = json!({"amount": 3.14});
+        let value = json!({"amount": 3.15});
         assert!(jcs_canonicalize(&value).is_err());
     }
 
@@ -839,7 +839,11 @@ mod tests {
                 "normalization": null
             }
         });
-        std::fs::write(&lock_path, serde_json::to_string_pretty(&lock_data).unwrap()).unwrap();
+        std::fs::write(
+            &lock_path,
+            serde_json::to_string_pretty(&lock_data).unwrap(),
+        )
+        .unwrap();
 
         let lock = verify_lock(&lock_path).unwrap();
         assert_eq!(lock.jurisdiction_id, "pk");
@@ -962,7 +966,11 @@ mod tests {
                 "sources_manifest_path": "sources.yaml"
             }
         });
-        std::fs::write(&lock_path, serde_json::to_string_pretty(&lock_data).unwrap()).unwrap();
+        std::fs::write(
+            &lock_path,
+            serde_json::to_string_pretty(&lock_data).unwrap(),
+        )
+        .unwrap();
 
         let lock = load_lock(&lock_path).unwrap();
         assert_eq!(lock.jurisdiction_id, "ae");
@@ -994,7 +1002,7 @@ mod tests {
 
     #[test]
     fn test_canonical_sha256_rejects_float() {
-        let val = json!({"pi": 3.14});
+        let val = json!({"pi": 3.15});
         assert!(canonical_sha256(&val).is_err());
     }
 
@@ -1169,11 +1177,7 @@ mod tests {
     fn test_generate_zone_lock_no_lawpacks() {
         let dir = tempfile::tempdir().unwrap();
         let zone_path = dir.path().join("zone.yaml");
-        std::fs::write(
-            &zone_path,
-            "zone_id: empty-zone\njurisdiction_id: ae\n",
-        )
-        .unwrap();
+        std::fs::write(&zone_path, "zone_id: empty-zone\njurisdiction_id: ae\n").unwrap();
 
         let lock = generate_zone_lock(&zone_path, dir.path()).unwrap();
         assert_eq!(lock["zone_id"], "empty-zone");
@@ -1185,10 +1189,7 @@ mod tests {
     #[test]
     fn test_generate_zone_lock_file_not_found() {
         let dir = tempfile::tempdir().unwrap();
-        let result = generate_zone_lock(
-            &dir.path().join("nonexistent.yaml"),
-            dir.path(),
-        );
+        let result = generate_zone_lock(&dir.path().join("nonexistent.yaml"), dir.path());
         assert!(result.is_err());
     }
 

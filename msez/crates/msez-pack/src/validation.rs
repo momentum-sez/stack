@@ -904,10 +904,7 @@ mod tests {
 
         let result = validate_lawpack_lock(&lock_path).unwrap();
         assert!(!result.is_valid);
-        assert!(result
-            .errors
-            .iter()
-            .any(|e| e.contains("empty domain")));
+        assert!(result.errors.iter().any(|e| e.contains("empty domain")));
     }
 
     #[test]
@@ -1007,10 +1004,7 @@ mod tests {
 
         let result = validate_module_descriptor(&module_dir).unwrap();
         assert!(!result.is_valid);
-        assert!(result
-            .errors
-            .iter()
-            .any(|e| e.contains("empty module_id")));
+        assert!(result.errors.iter().any(|e| e.contains("empty module_id")));
     }
 
     #[test]
@@ -1026,10 +1020,7 @@ mod tests {
 
         let result = validate_module_descriptor(&module_dir).unwrap();
         assert!(result.is_valid); // empty version is a warning
-        assert!(result
-            .warnings
-            .iter()
-            .any(|w| w.contains("empty version")));
+        assert!(result.warnings.iter().any(|w| w.contains("empty version")));
     }
 
     #[test]
@@ -1041,10 +1032,7 @@ mod tests {
 
         let result = validate_module_descriptor(&module_dir).unwrap();
         assert!(!result.is_valid);
-        assert!(result
-            .errors
-            .iter()
-            .any(|e| e.contains("failed to load")));
+        assert!(result.errors.iter().any(|e| e.contains("failed to load")));
     }
 
     // -----------------------------------------------------------------------
@@ -1107,10 +1095,7 @@ mod tests {
         };
         let result = validate_regpack_domains(&meta);
         assert!(!result.is_valid);
-        assert!(result
-            .errors
-            .iter()
-            .any(|e| e.contains("empty")));
+        assert!(result.errors.iter().any(|e| e.contains("empty")));
     }
 
     // -----------------------------------------------------------------------
@@ -1121,11 +1106,7 @@ mod tests {
     fn test_validate_zone_cross_references_no_domains() {
         let dir = tempfile::tempdir().unwrap();
         let zone_path = dir.path().join("zone.yaml");
-        std::fs::write(
-            &zone_path,
-            "zone_id: test\njurisdiction_id: pk\n",
-        )
-        .unwrap();
+        std::fs::write(&zone_path, "zone_id: test\njurisdiction_id: pk\n").unwrap();
 
         let result = validate_zone_cross_references(&zone_path, dir.path()).unwrap();
         assert!(result.is_valid);
@@ -1150,7 +1131,7 @@ mod tests {
         let result = validate_zone_cross_references(&zone_path, dir.path()).unwrap();
         // Should produce warnings for missing domain directories
         assert!(result.is_valid); // Warnings don't make it invalid
-        assert!(result.warnings.len() >= 1);
+        assert!(!result.warnings.is_empty());
     }
 
     #[test]

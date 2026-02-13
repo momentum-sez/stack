@@ -120,9 +120,18 @@ fn transition_digests_differ_by_type() {
     let d_activation = sha256_digest(&CanonicalBytes::new(&activation).unwrap());
     let d_dissolution = sha256_digest(&CanonicalBytes::new(&dissolution).unwrap());
 
-    assert_ne!(d_formation, d_activation, "formation and activation must differ");
-    assert_ne!(d_activation, d_dissolution, "activation and dissolution must differ");
-    assert_ne!(d_formation, d_dissolution, "formation and dissolution must differ");
+    assert_ne!(
+        d_formation, d_activation,
+        "formation and activation must differ"
+    );
+    assert_ne!(
+        d_activation, d_dissolution,
+        "activation and dissolution must differ"
+    );
+    assert_ne!(
+        d_formation, d_dissolution,
+        "formation and dissolution must differ"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -168,5 +177,8 @@ fn same_transition_idempotent() {
 
     let ref1 = store.store("transition", &transition).unwrap();
     let ref2 = store.store("transition", &transition).unwrap();
-    assert_eq!(ref1.digest, ref2.digest, "storing same transition twice must yield same digest");
+    assert_eq!(
+        ref1.digest, ref2.digest,
+        "storing same transition twice must yield same digest"
+    );
 }

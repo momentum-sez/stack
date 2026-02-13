@@ -1,14 +1,12 @@
 //! Rust counterpart of tests/perf/test_watcher_compare_scaling_perf.py
 //! Performance tests for watcher operations at scale.
 
-use msez_state::{Watcher, WatcherState, SlashingCondition};
 use msez_core::WatcherId;
+use msez_state::{SlashingCondition, Watcher, WatcherState};
 
 #[test]
 fn create_many_watchers() {
-    let watchers: Vec<Watcher> = (0..50).map(|_| {
-        Watcher::new(WatcherId::new())
-    }).collect();
+    let watchers: Vec<Watcher> = (0..50).map(|_| Watcher::new(WatcherId::new())).collect();
     assert_eq!(watchers.len(), 50);
     for w in &watchers {
         assert_eq!(w.state, WatcherState::Registered);
@@ -17,11 +15,13 @@ fn create_many_watchers() {
 
 #[test]
 fn activate_and_slash_at_scale() {
-    let mut watchers: Vec<Watcher> = (0..20).map(|i| {
-        let mut w = Watcher::new(WatcherId::new());
-        w.bond(100_000 * (i + 1)).unwrap();
-        w
-    }).collect();
+    let mut watchers: Vec<Watcher> = (0..20)
+        .map(|i| {
+            let mut w = Watcher::new(WatcherId::new());
+            w.bond(100_000 * (i + 1)).unwrap();
+            w
+        })
+        .collect();
     for w in &mut watchers {
         w.activate().unwrap();
     }
@@ -48,11 +48,13 @@ fn activate_and_slash_at_scale() {
 
 #[test]
 fn watcher_state_transitions_at_scale() {
-    let mut watchers: Vec<Watcher> = (0..10).map(|_| {
-        let mut w = Watcher::new(WatcherId::new());
-        w.bond(500_000).unwrap();
-        w
-    }).collect();
+    let mut watchers: Vec<Watcher> = (0..10)
+        .map(|_| {
+            let mut w = Watcher::new(WatcherId::new());
+            w.bond(500_000).unwrap();
+            w
+        })
+        .collect();
     for w in &mut watchers {
         w.activate().unwrap();
     }

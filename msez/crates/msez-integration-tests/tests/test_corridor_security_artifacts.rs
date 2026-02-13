@@ -103,7 +103,9 @@ fn security_artifact_cas_storage() {
         "verifying_key": vk.to_hex()
     });
 
-    let artifact_ref = store.store("security-attestation", &security_artifact).unwrap();
+    let artifact_ref = store
+        .store("security-attestation", &security_artifact)
+        .unwrap();
     assert_eq!(artifact_ref.artifact_type, "security-attestation");
 
     // Resolve and verify the stored artifact
@@ -125,7 +127,9 @@ fn security_artifact_cas_storage() {
     let recovered_vk = VerifyingKey::from_hex(stored_vk_hex).unwrap();
 
     assert!(
-        recovered_vk.verify(&recovered_canonical, &recovered_sig).is_ok(),
+        recovered_vk
+            .verify(&recovered_canonical, &recovered_sig)
+            .is_ok(),
         "signature from CAS-stored security artifact must verify"
     );
 }

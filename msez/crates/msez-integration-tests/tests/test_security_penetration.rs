@@ -64,7 +64,7 @@ fn xss_in_json_value_escaped() {
 #[test]
 fn null_bytes_in_identifier_rejected() {
     // Null bytes in CNIC
-    assert!(Cnic::new("12345\067890123").is_err());
+    assert!(Cnic::new("12345\x0067890123").is_err());
     assert!(Cnic::new("12345\x0067890123").is_err());
 
     // Null bytes in NTN

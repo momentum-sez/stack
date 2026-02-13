@@ -267,7 +267,10 @@ mod tests {
             ntn: None,
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("account_type"), "error should mention account_type: {err}");
+        assert!(
+            err.contains("account_type"),
+            "error should mention account_type: {err}"
+        );
     }
 
     #[test]
@@ -290,7 +293,10 @@ mod tests {
             ntn: None,
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("currency"), "error should mention currency: {err}");
+        assert!(
+            err.contains("currency"),
+            "error should mention currency: {err}"
+        );
     }
 
     #[test]
@@ -574,7 +580,7 @@ mod tests {
         let entity_id = Uuid::new_v4();
         let req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/fiscal/{entity_id}/tax-events"))
+            .uri(format!("/v1/fiscal/{entity_id}/tax-events"))
             .body(Body::empty())
             .unwrap();
 
@@ -620,7 +626,7 @@ mod tests {
         // Query tax events for entity_a.
         let req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/fiscal/{entity_a}/tax-events"))
+            .uri(format!("/v1/fiscal/{entity_a}/tax-events"))
             .body(Body::empty())
             .unwrap();
         let resp = app.clone().oneshot(req).await.unwrap();
@@ -634,7 +640,7 @@ mod tests {
         // Query tax events for entity_b.
         let req_b = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/fiscal/{entity_b}/tax-events"))
+            .uri(format!("/v1/fiscal/{entity_b}/tax-events"))
             .body(Body::empty())
             .unwrap();
         let resp_b = app.oneshot(req_b).await.unwrap();

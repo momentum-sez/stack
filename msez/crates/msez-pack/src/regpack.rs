@@ -936,7 +936,9 @@ mod tests {
         let result = checker.check_entity("Acme Corp", Some(&[query_ident]), 0.7);
         assert!(result.matched);
         // Should be deduplicated by entry_id
-        let unique_ids: std::collections::HashSet<_> = result.matches.iter()
+        let unique_ids: std::collections::HashSet<_> = result
+            .matches
+            .iter()
             .map(|m| m.entry.entry_id.clone())
             .collect();
         assert_eq!(unique_ids.len(), 1);
@@ -944,7 +946,10 @@ mod tests {
 
     #[test]
     fn test_sanctions_fuzzy_score_exact() {
-        assert_eq!(SanctionsChecker::fuzzy_score("hello world", "hello world"), 1.0);
+        assert_eq!(
+            SanctionsChecker::fuzzy_score("hello world", "hello world"),
+            1.0
+        );
     }
 
     #[test]
@@ -1127,23 +1132,15 @@ mod tests {
             applicable_license_types: vec![],
         }];
 
-        let digest = compute_regpack_digest(
-            &meta,
-            Some(&sanctions),
-            Some(&regulators),
-            Some(&deadlines),
-        )
-        .unwrap();
+        let digest =
+            compute_regpack_digest(&meta, Some(&sanctions), Some(&regulators), Some(&deadlines))
+                .unwrap();
         assert_eq!(digest.len(), 64);
 
         // Deterministic
-        let digest2 = compute_regpack_digest(
-            &meta,
-            Some(&sanctions),
-            Some(&regulators),
-            Some(&deadlines),
-        )
-        .unwrap();
+        let digest2 =
+            compute_regpack_digest(&meta, Some(&sanctions), Some(&regulators), Some(&deadlines))
+                .unwrap();
         assert_eq!(digest, digest2);
     }
 

@@ -231,7 +231,10 @@ mod tests {
             details: serde_json::json!({}),
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("identity_type"), "error should mention identity_type: {err}");
+        assert!(
+            err.contains("identity_type"),
+            "error should mention identity_type: {err}"
+        );
     }
 
     #[test]
@@ -261,7 +264,10 @@ mod tests {
             id_value: "12345-6789012-3".to_string(),
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("id_type"), "error should mention id_type: {err}");
+        assert!(
+            err.contains("id_type"),
+            "error should mention id_type: {err}"
+        );
     }
 
     #[test]
@@ -271,7 +277,10 @@ mod tests {
             id_value: "".to_string(),
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("id_value") || err.contains("id_type"), "error should mention fields: {err}");
+        assert!(
+            err.contains("id_value") || err.contains("id_type"),
+            "error should mention fields: {err}"
+        );
     }
 
     #[test]
@@ -301,7 +310,10 @@ mod tests {
             issuer: "NADRA".to_string(),
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("attestation_type"), "error should mention attestation_type: {err}");
+        assert!(
+            err.contains("attestation_type"),
+            "error should mention attestation_type: {err}"
+        );
     }
 
     #[test]
@@ -367,9 +379,7 @@ mod tests {
             .method("POST")
             .uri("/v1/identity/verify")
             .header("content-type", "application/json")
-            .body(Body::from(
-                r#"{"identity_type":"","details":{}}"#,
-            ))
+            .body(Body::from(r#"{"identity_type":"","details":{}}"#))
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
@@ -396,7 +406,7 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/identity/{id}"))
+            .uri(format!("/v1/identity/{id}"))
             .body(Body::empty())
             .unwrap();
 
@@ -426,7 +436,7 @@ mod tests {
         // Get the identity.
         let get_req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/identity/{}", created.id))
+            .uri(format!("/v1/identity/{}", created.id))
             .body(Body::empty())
             .unwrap();
         let get_resp = app.oneshot(get_req).await.unwrap();
@@ -459,7 +469,7 @@ mod tests {
         // Link a CNIC.
         let link_req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/identity/{}/link", created.id))
+            .uri(format!("/v1/identity/{}/link", created.id))
             .header("content-type", "application/json")
             .body(Body::from(
                 r#"{"id_type":"cnic","id_value":"12345-6789012-3"}"#,
@@ -477,7 +487,7 @@ mod tests {
         // Link an NTN as well.
         let link_req2 = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/identity/{}/link", created.id))
+            .uri(format!("/v1/identity/{}/link", created.id))
             .header("content-type", "application/json")
             .body(Body::from(r#"{"id_type":"ntn","id_value":"1234567"}"#))
             .unwrap();
@@ -495,9 +505,11 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/identity/{id}/link"))
+            .uri(format!("/v1/identity/{id}/link"))
             .header("content-type", "application/json")
-            .body(Body::from(r#"{"id_type":"cnic","id_value":"12345-6789012-3"}"#))
+            .body(Body::from(
+                r#"{"id_type":"cnic","id_value":"12345-6789012-3"}"#,
+            ))
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
@@ -524,7 +536,7 @@ mod tests {
         // Link with empty id_type.
         let link_req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/identity/{}/link", created.id))
+            .uri(format!("/v1/identity/{}/link", created.id))
             .header("content-type", "application/json")
             .body(Body::from(r#"{"id_type":"","id_value":"12345"}"#))
             .unwrap();
@@ -552,7 +564,7 @@ mod tests {
         // Link with empty id_value.
         let link_req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/identity/{}/link", created.id))
+            .uri(format!("/v1/identity/{}/link", created.id))
             .header("content-type", "application/json")
             .body(Body::from(r#"{"id_type":"cnic","id_value":""}"#))
             .unwrap();
@@ -570,16 +582,14 @@ mod tests {
             .method("POST")
             .uri("/v1/identity/verify")
             .header("content-type", "application/json")
-            .body(Body::from(
-                r#"{"identity_type":"kyc","details":{}}"#,
-            ))
+            .body(Body::from(r#"{"identity_type":"kyc","details":{}}"#))
             .unwrap();
         let create_resp = app.clone().oneshot(create_req).await.unwrap();
         let created: IdentityRecord = body_json(create_resp).await;
 
         let link_req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/identity/{}/link", created.id))
+            .uri(format!("/v1/identity/{}/link", created.id))
             .header("content-type", "application/json")
             .body(Body::from(r#"{{broken"#))
             .unwrap();
@@ -607,7 +617,7 @@ mod tests {
         // Submit an attestation.
         let attest_req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/identity/{}/attestation", created.id))
+            .uri(format!("/v1/identity/{}/attestation", created.id))
             .header("content-type", "application/json")
             .body(Body::from(
                 r#"{"attestation_type":"identity_verification","issuer":"NADRA"}"#,
@@ -618,7 +628,10 @@ mod tests {
 
         let attested: IdentityRecord = body_json(attest_resp).await;
         assert_eq!(attested.attestations.len(), 1);
-        assert_eq!(attested.attestations[0].attestation_type, "identity_verification");
+        assert_eq!(
+            attested.attestations[0].attestation_type,
+            "identity_verification"
+        );
         assert_eq!(attested.attestations[0].issuer, "NADRA");
         assert_eq!(attested.attestations[0].status, "PENDING");
         assert!(attested.attestations[0].expires_at.is_none());
@@ -626,7 +639,7 @@ mod tests {
         // Submit another attestation.
         let attest_req2 = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/identity/{}/attestation", created.id))
+            .uri(format!("/v1/identity/{}/attestation", created.id))
             .header("content-type", "application/json")
             .body(Body::from(
                 r#"{"attestation_type":"compliance_check","issuer":"FBR"}"#,
@@ -645,7 +658,7 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/identity/{id}/attestation"))
+            .uri(format!("/v1/identity/{id}/attestation"))
             .header("content-type", "application/json")
             .body(Body::from(
                 r#"{"attestation_type":"identity_verification","issuer":"NADRA"}"#,
@@ -666,9 +679,7 @@ mod tests {
             .method("POST")
             .uri("/v1/identity/verify")
             .header("content-type", "application/json")
-            .body(Body::from(
-                r#"{"identity_type":"kyc","details":{}}"#,
-            ))
+            .body(Body::from(r#"{"identity_type":"kyc","details":{}}"#))
             .unwrap();
         let create_resp = app.clone().oneshot(create_req).await.unwrap();
         let created: IdentityRecord = body_json(create_resp).await;
@@ -676,7 +687,7 @@ mod tests {
         // Submit attestation with empty type.
         let attest_req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/identity/{}/attestation", created.id))
+            .uri(format!("/v1/identity/{}/attestation", created.id))
             .header("content-type", "application/json")
             .body(Body::from(r#"{"attestation_type":"","issuer":"NADRA"}"#))
             .unwrap();
@@ -694,16 +705,14 @@ mod tests {
             .method("POST")
             .uri("/v1/identity/verify")
             .header("content-type", "application/json")
-            .body(Body::from(
-                r#"{"identity_type":"kyc","details":{}}"#,
-            ))
+            .body(Body::from(r#"{"identity_type":"kyc","details":{}}"#))
             .unwrap();
         let create_resp = app.clone().oneshot(create_req).await.unwrap();
         let created: IdentityRecord = body_json(create_resp).await;
 
         let attest_req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/identity/{}/attestation", created.id))
+            .uri(format!("/v1/identity/{}/attestation", created.id))
             .header("content-type", "application/json")
             .body(Body::from(r#"not json"#))
             .unwrap();

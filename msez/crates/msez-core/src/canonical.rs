@@ -208,12 +208,12 @@ mod tests {
 
     #[test]
     fn canonical_rejects_float() {
-        let value = json!({"amount": 3.14});
+        let value = json!({"amount": 3.15});
         let result = CanonicalBytes::new(&value);
         assert!(result.is_err());
         match result.unwrap_err() {
             CanonicalizationError::FloatRejected(f) => {
-                assert!((f - 3.14).abs() < f64::EPSILON);
+                assert!((f - 3.15).abs() < f64::EPSILON);
             }
             other => panic!("expected FloatRejected, got: {other}"),
         }
@@ -358,7 +358,7 @@ mod tests {
 
     #[test]
     fn canonical_rejects_float_in_nested_array() {
-        let value = json!({"data": [1, 2, 3.14]});
+        let value = json!({"data": [1, 2, 3.15]});
         let result = CanonicalBytes::new(&value);
         assert!(result.is_err());
     }
@@ -374,7 +374,7 @@ mod tests {
 
     #[test]
     fn canonical_from_value_rejects_float() {
-        let value = json!({"x": 3.14});
+        let value = json!({"x": 3.15});
         let result = CanonicalBytes::from_value(value);
         assert!(result.is_err());
     }

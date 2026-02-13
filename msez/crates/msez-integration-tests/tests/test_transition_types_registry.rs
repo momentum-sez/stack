@@ -159,11 +159,20 @@ fn corridor_state_serde_roundtrip() {
 fn migration_state_names_match_spec() {
     assert_eq!(MigrationState::Initiated.as_str(), "INITIATED");
     assert_eq!(MigrationState::ComplianceCheck.as_str(), "COMPLIANCE_CHECK");
-    assert_eq!(MigrationState::AttestationGathering.as_str(), "ATTESTATION_GATHERING");
+    assert_eq!(
+        MigrationState::AttestationGathering.as_str(),
+        "ATTESTATION_GATHERING"
+    );
     assert_eq!(MigrationState::SourceLocked.as_str(), "SOURCE_LOCKED");
     assert_eq!(MigrationState::InTransit.as_str(), "IN_TRANSIT");
-    assert_eq!(MigrationState::DestinationVerification.as_str(), "DESTINATION_VERIFICATION");
-    assert_eq!(MigrationState::DestinationUnlock.as_str(), "DESTINATION_UNLOCK");
+    assert_eq!(
+        MigrationState::DestinationVerification.as_str(),
+        "DESTINATION_VERIFICATION"
+    );
+    assert_eq!(
+        MigrationState::DestinationUnlock.as_str(),
+        "DESTINATION_UNLOCK"
+    );
     assert_eq!(MigrationState::Completed.as_str(), "COMPLETED");
     assert_eq!(MigrationState::Compensated.as_str(), "COMPENSATED");
     assert_eq!(MigrationState::TimedOut.as_str(), "TIMED_OUT");

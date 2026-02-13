@@ -356,10 +356,7 @@ mod tests {
         let doc_path = dir.path().join("doc.json");
         std::fs::write(&doc_path, r#"{"key":"val"}"#).unwrap();
 
-        let result = cmd_sign(
-            &dir.path().join("nonexistent.key"),
-            &doc_path,
-        );
+        let result = cmd_sign(&dir.path().join("nonexistent.key"), &doc_path);
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("private key file not found"));
@@ -437,11 +434,7 @@ mod tests {
         let doc_path = dir.path().join("doc.json");
         std::fs::write(&doc_path, r#"{"key":"val"}"#).unwrap();
 
-        let result = cmd_verify(
-            &dir.path().join("nonexistent.pub"),
-            &doc_path,
-            "aabbccdd",
-        );
+        let result = cmd_verify(&dir.path().join("nonexistent.pub"), &doc_path, "aabbccdd");
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("public key file not found"));
@@ -481,11 +474,7 @@ mod tests {
         let doc_path = dir.path().join("doc.json");
         std::fs::write(&doc_path, r#"{"key":"val"}"#).unwrap();
 
-        let result = cmd_verify(
-            &dir.path().join("test.pub"),
-            &doc_path,
-            "not_valid_hex",
-        );
+        let result = cmd_verify(&dir.path().join("test.pub"), &doc_path, "not_valid_hex");
         assert!(result.is_err());
     }
 
@@ -500,13 +489,13 @@ mod tests {
         // A valid 128-char hex string that is NOT the correct signature.
         let wrong_sig = "ab".repeat(64);
 
-        let result = cmd_verify(
-            &dir.path().join("test.pub"),
-            &doc_path,
-            &wrong_sig,
-        );
+        let result = cmd_verify(&dir.path().join("test.pub"), &doc_path, &wrong_sig);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 1, "Wrong signature should return exit code 1");
+        assert_eq!(
+            result.unwrap(),
+            1,
+            "Wrong signature should return exit code 1"
+        );
     }
 
     #[test]
@@ -518,11 +507,7 @@ mod tests {
         std::fs::write(&doc_path, "not json").unwrap();
 
         let wrong_sig = "ab".repeat(64);
-        let result = cmd_verify(
-            &dir.path().join("test.pub"),
-            &doc_path,
-            &wrong_sig,
-        );
+        let result = cmd_verify(&dir.path().join("test.pub"), &doc_path, &wrong_sig);
         assert!(result.is_err());
     }
 

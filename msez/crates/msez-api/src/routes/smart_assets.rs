@@ -255,7 +255,10 @@ mod tests {
             metadata: serde_json::json!({}),
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("asset_type"), "error should mention asset_type: {err}");
+        assert!(
+            err.contains("asset_type"),
+            "error should mention asset_type: {err}"
+        );
     }
 
     #[test]
@@ -276,7 +279,10 @@ mod tests {
             metadata: serde_json::json!({}),
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("jurisdiction_id"), "error should mention jurisdiction_id: {err}");
+        assert!(
+            err.contains("jurisdiction_id"),
+            "error should mention jurisdiction_id: {err}"
+        );
     }
 
     // ── ComplianceEvalRequest validation ──────────────────────────
@@ -318,7 +324,10 @@ mod tests {
             chain: "ethereum".to_string(),
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("anchor_digest"), "error should mention anchor_digest: {err}");
+        assert!(
+            err.contains("anchor_digest"),
+            "error should mention anchor_digest: {err}"
+        );
     }
 
     #[test]
@@ -430,7 +439,7 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/assets/{id}"))
+            .uri(format!("/v1/assets/{id}"))
             .body(Body::empty())
             .unwrap();
 
@@ -460,7 +469,7 @@ mod tests {
         // Get the asset.
         let get_req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/assets/{}", created.id))
+            .uri(format!("/v1/assets/{}", created.id))
             .body(Body::empty())
             .unwrap();
         let get_resp = app.oneshot(get_req).await.unwrap();
@@ -509,7 +518,7 @@ mod tests {
         // Evaluate compliance.
         let eval_req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/assets/{}/compliance/evaluate", created.id))
+            .uri(format!("/v1/assets/{}/compliance/evaluate", created.id))
             .header("content-type", "application/json")
             .body(Body::from(
                 r#"{"domains":["aml","kyc","sanctions"],"context":{"entity_id":"12345"}}"#,
@@ -529,11 +538,9 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/assets/{id}/compliance/evaluate"))
+            .uri(format!("/v1/assets/{id}/compliance/evaluate"))
             .header("content-type", "application/json")
-            .body(Body::from(
-                r#"{"domains":["aml"],"context":{}}"#,
-            ))
+            .body(Body::from(r#"{"domains":["aml"],"context":{}}"#))
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
@@ -546,7 +553,7 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/assets/{id}/compliance/evaluate"))
+            .uri(format!("/v1/assets/{id}/compliance/evaluate"))
             .header("content-type", "application/json")
             .body(Body::from(r#"not json"#))
             .unwrap();
@@ -561,7 +568,7 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/assets/{id}/anchors/corridor/verify"))
+            .uri(format!("/v1/assets/{id}/anchors/corridor/verify"))
             .header("content-type", "application/json")
             .body(Body::from(
                 r#"{"anchor_digest":"sha256:deadbeef","chain":"ethereum"}"#,
@@ -584,11 +591,9 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/assets/{id}/anchors/corridor/verify"))
+            .uri(format!("/v1/assets/{id}/anchors/corridor/verify"))
             .header("content-type", "application/json")
-            .body(Body::from(
-                r#"{"anchor_digest":"","chain":"ethereum"}"#,
-            ))
+            .body(Body::from(r#"{"anchor_digest":"","chain":"ethereum"}"#))
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
@@ -601,7 +606,7 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/assets/{id}/anchors/corridor/verify"))
+            .uri(format!("/v1/assets/{id}/anchors/corridor/verify"))
             .header("content-type", "application/json")
             .body(Body::from(r#"broken"#))
             .unwrap();

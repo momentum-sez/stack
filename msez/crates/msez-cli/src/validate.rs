@@ -329,7 +329,10 @@ mod tests {
 
     #[test]
     fn find_yaml_files_returns_empty_for_nonexistent_dir() {
-        let files = find_yaml_files(Path::new("/tmp/msez-test-nonexistent-dir-xyz"), "module.yaml");
+        let files = find_yaml_files(
+            Path::new("/tmp/msez-test-nonexistent-dir-xyz"),
+            "module.yaml",
+        );
         assert!(files.is_empty());
     }
 
@@ -417,7 +420,10 @@ mod tests {
         let validator = msez_schema::SchemaValidator::new(&schema_dir).unwrap();
         // No modules/ dir exists.
         let result = validate_all_modules(&validator, dir.path()).unwrap();
-        assert!(!result, "Should return false (no failures) when modules dir is missing");
+        assert!(
+            !result,
+            "Should return false (no failures) when modules dir is missing"
+        );
     }
 
     #[test]
@@ -428,7 +434,10 @@ mod tests {
 
         let validator = msez_schema::SchemaValidator::new(&schema_dir).unwrap();
         let result = validate_all_profiles(&validator, dir.path()).unwrap();
-        assert!(!result, "Should return false (no failures) when profiles dir is missing");
+        assert!(
+            !result,
+            "Should return false (no failures) when profiles dir is missing"
+        );
     }
 
     #[test]
@@ -439,7 +448,10 @@ mod tests {
 
         let validator = msez_schema::SchemaValidator::new(&schema_dir).unwrap();
         let result = validate_all_zones(&validator, dir.path()).unwrap();
-        assert!(!result, "Should return false (no failures) when jurisdictions dir is missing");
+        assert!(
+            !result,
+            "Should return false (no failures) when jurisdictions dir is missing"
+        );
     }
 
     #[test]
@@ -449,7 +461,8 @@ mod tests {
         std::fs::create_dir_all(&schema_dir).unwrap();
 
         let validator = msez_schema::SchemaValidator::new(&schema_dir).unwrap();
-        let result = validate_single_path(&validator, Path::new("/tmp/msez-no-such-file.yaml")).unwrap();
+        let result =
+            validate_single_path(&validator, Path::new("/tmp/msez-no-such-file.yaml")).unwrap();
         assert!(result, "Nonexistent path should return true (had_failures)");
     }
 
@@ -497,7 +510,10 @@ mod tests {
 
         let validator = msez_schema::SchemaValidator::new(&schema_dir).unwrap();
         let result = validate_single_path(&validator, &empty_dir).unwrap();
-        assert!(result, "Dir without module.yaml should return true (failure)");
+        assert!(
+            result,
+            "Dir without module.yaml should return true (failure)"
+        );
     }
 
     #[test]
@@ -515,7 +531,10 @@ mod tests {
             path: None,
         };
         let result = run_validate(&args, dir.path()).unwrap();
-        assert_eq!(result, 0, "Empty modules dir should pass (0 found, 0 failures)");
+        assert_eq!(
+            result, 0,
+            "Empty modules dir should pass (0 found, 0 failures)"
+        );
     }
 
     #[test]

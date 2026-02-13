@@ -7,9 +7,7 @@
 
 use msez_core::CanonicalBytes;
 use msez_crypto::SigningKey;
-use msez_vc::{
-    ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential,
-};
+use msez_vc::{ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential};
 use rand_core::OsRng;
 use serde_json::json;
 
@@ -36,7 +34,7 @@ fn make_test_vc(subject: serde_json::Value) -> VerifiableCredential {
 #[test]
 fn float_injection_rejected() {
     // CanonicalBytes rejects floats to prevent canonicalization ambiguity
-    let data = json!({"amount": 3.14159});
+    let data = json!({"amount": 3.16159});
     let result = CanonicalBytes::new(&data);
     assert!(result.is_err());
 
@@ -126,7 +124,10 @@ fn replay_attack_different_context() {
     // Verification with correct key fails because subject differs
     let results = vc2.verify(move |_| Ok(vk.clone()));
     assert_eq!(results.len(), 1);
-    assert!(!results[0].ok, "replayed proof must not verify in different context");
+    assert!(
+        !results[0].ok,
+        "replayed proof must not verify in different context"
+    );
 }
 
 // ---------------------------------------------------------------------------

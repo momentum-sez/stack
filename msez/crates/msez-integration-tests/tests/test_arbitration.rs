@@ -5,14 +5,13 @@
 //! enforcement order preconditions, and invalid state transition rejection.
 
 use msez_arbitration::{
-    Dispute, DisputeType, DisputeState, Party, Money, Claim, FilingEvidence,
-    ReviewInitiationEvidence, EvidencePhaseEvidence, HearingScheduleEvidence,
-    DecisionEvidence, EnforcementInitiationEvidence, ClosureEvidence,
-    EscrowAccount, EscrowType, EscrowStatus, ReleaseCondition, ReleaseConditionType,
-    EvidencePackage, EvidenceItem, EvidenceType,
-    EnforcementOrder, EnforcementStatus, EnforcementAction,
+    Claim, ClosureEvidence, DecisionEvidence, Dispute, DisputeState, DisputeType,
+    EnforcementAction, EnforcementInitiationEvidence, EnforcementOrder, EnforcementStatus,
+    EscrowAccount, EscrowStatus, EscrowType, EvidenceItem, EvidencePackage, EvidencePhaseEvidence,
+    EvidenceType, FilingEvidence, HearingScheduleEvidence, Money, Party, ReleaseCondition,
+    ReleaseConditionType, ReviewInitiationEvidence,
 };
-use msez_core::{JurisdictionId, CanonicalBytes, sha256_digest, Did, CorridorId, Timestamp};
+use msez_core::{sha256_digest, CanonicalBytes, CorridorId, Did, JurisdictionId, Timestamp};
 use serde_json::json;
 
 // ---------------------------------------------------------------------------
@@ -68,42 +67,54 @@ fn dispute_full_lifecycle() {
     assert_eq!(dispute.state, DisputeState::Filed);
 
     // Filed -> UnderReview
-    dispute.begin_review(ReviewInitiationEvidence {
-        case_reference: "DIFC-LCIA-2026-001".to_string(),
-        institution_acknowledgment_digest: make_digest("review"),
-    }).unwrap();
+    dispute
+        .begin_review(ReviewInitiationEvidence {
+            case_reference: "DIFC-LCIA-2026-001".to_string(),
+            institution_acknowledgment_digest: make_digest("review"),
+        })
+        .unwrap();
     assert_eq!(dispute.state, DisputeState::UnderReview);
 
     // UnderReview -> EvidenceCollection
-    dispute.open_evidence_collection(EvidencePhaseEvidence {
-        procedural_order_digest: make_digest("evidence_order"),
-        evidence_deadline: Timestamp::now(),
-    }).unwrap();
+    dispute
+        .open_evidence_collection(EvidencePhaseEvidence {
+            procedural_order_digest: make_digest("evidence_order"),
+            evidence_deadline: Timestamp::now(),
+        })
+        .unwrap();
     assert_eq!(dispute.state, DisputeState::EvidenceCollection);
 
     // EvidenceCollection -> Hearing
-    dispute.schedule_hearing(HearingScheduleEvidence {
-        hearing_date: Timestamp::now(),
-        tribunal_composition_digest: make_digest("tribunal"),
-    }).unwrap();
+    dispute
+        .schedule_hearing(HearingScheduleEvidence {
+            hearing_date: Timestamp::now(),
+            tribunal_composition_digest: make_digest("tribunal"),
+        })
+        .unwrap();
     assert_eq!(dispute.state, DisputeState::Hearing);
 
     // Hearing -> Decided
-    dispute.decide(DecisionEvidence {
-        ruling_digest: make_digest("ruling"),
-    }).unwrap();
+    dispute
+        .decide(DecisionEvidence {
+            ruling_digest: make_digest("ruling"),
+        })
+        .unwrap();
     assert_eq!(dispute.state, DisputeState::Decided);
 
     // Decided -> Enforced
-    dispute.enforce(EnforcementInitiationEvidence {
-        enforcement_order_digest: make_digest("enforcement"),
-    }).unwrap();
+    dispute
+        .enforce(EnforcementInitiationEvidence {
+            enforcement_order_digest: make_digest("enforcement"),
+        })
+        .unwrap();
     assert_eq!(dispute.state, DisputeState::Enforced);
 
     // Enforced -> Closed
-    dispute.close(ClosureEvidence {
-        final_report_digest: make_digest("closure"),
-    }).unwrap();
+    dispute
+        .close(ClosureEvidence {
+            final_report_digest: make_digest("closure"),
+        })
+        .unwrap();
     assert_eq!(dispute.state, DisputeState::Closed);
     assert!(dispute.state.is_terminal());
 
@@ -131,7 +142,8 @@ fn dispute_evidence_chain_of_custody() {
         "Original contract between parties".to_string(),
         &content,
         did_submitter.clone(),
-    ).unwrap();
+    )
+    .unwrap();
 
     assert_eq!(item.chain_of_custody.len(), 1);
     assert_eq!(item.evidence_type, EvidenceType::ContractDocument);
@@ -145,11 +157,7 @@ fn dispute_evidence_chain_of_custody() {
 
     // Package the evidence.
     let dispute_id = msez_arbitration::DisputeId::new();
-    let package = EvidencePackage::new(
-        dispute_id,
-        did_submitter,
-        vec![item],
-    ).unwrap();
+    let package = EvidencePackage::new(dispute_id, did_submitter, vec![item]).unwrap();
 
     assert_eq!(package.item_count(), 1);
     assert!(package.verify_package_integrity().is_ok());
@@ -163,12 +171,8 @@ fn dispute_evidence_chain_of_custody() {
 fn escrow_deposit_and_release() {
     let dispute_id = msez_arbitration::DisputeId::new();
 
-    let mut escrow = EscrowAccount::create(
-        dispute_id,
-        EscrowType::FilingFee,
-        "USD".to_string(),
-        None,
-    );
+    let mut escrow =
+        EscrowAccount::create(dispute_id, EscrowType::FilingFee, "USD".to_string(), None);
     assert_eq!(escrow.status, EscrowStatus::Pending);
 
     // Deposit.
@@ -177,11 +181,13 @@ fn escrow_deposit_and_release() {
     assert_eq!(escrow.held_amount, "50000");
 
     // Full release.
-    escrow.full_release(ReleaseCondition {
-        condition_type: ReleaseConditionType::RulingEnforced,
-        evidence_digest: test_digest(),
-        satisfied_at: Timestamp::now(),
-    }).unwrap();
+    escrow
+        .full_release(ReleaseCondition {
+            condition_type: ReleaseConditionType::RulingEnforced,
+            evidence_digest: test_digest(),
+            satisfied_at: Timestamp::now(),
+        })
+        .unwrap();
     assert_eq!(escrow.status, EscrowStatus::FullyReleased);
     assert_eq!(escrow.held_amount, "0");
     assert!(escrow.status.is_terminal());
@@ -200,14 +206,16 @@ fn escrow_partial_release() {
     escrow.deposit("100000".to_string(), test_digest()).unwrap();
 
     // Partial release.
-    escrow.partial_release(
-        "30000".to_string(),
-        ReleaseCondition {
-            condition_type: ReleaseConditionType::InstitutionOrder,
-            evidence_digest: test_digest(),
-            satisfied_at: Timestamp::now(),
-        },
-    ).unwrap();
+    escrow
+        .partial_release(
+            "30000".to_string(),
+            ReleaseCondition {
+                condition_type: ReleaseConditionType::InstitutionOrder,
+                evidence_digest: test_digest(),
+                satisfied_at: Timestamp::now(),
+            },
+        )
+        .unwrap();
     assert_eq!(escrow.status, EscrowStatus::PartiallyReleased);
     assert_eq!(escrow.held_amount, "70000");
 }
@@ -233,7 +241,9 @@ fn enforcement_order_preconditions() {
     assert_eq!(order.status, EnforcementStatus::Pending);
 
     // Add precondition.
-    order.add_precondition("Appeal period must expire".to_string()).unwrap();
+    order
+        .add_precondition("Appeal period must expire".to_string())
+        .unwrap();
 
     // Cannot begin without satisfying preconditions.
     let result = order.begin_enforcement();
@@ -278,18 +288,22 @@ fn terminal_state_rejects_all_transitions() {
     let mut dispute = filed_dispute();
 
     // Settle the dispute (terminal).
-    dispute.settle(msez_arbitration::SettlementEvidence {
-        settlement_agreement_digest: test_digest(),
-        party_consent_digests: vec![test_digest(), test_digest()],
-    }).unwrap();
+    dispute
+        .settle(msez_arbitration::SettlementEvidence {
+            settlement_agreement_digest: test_digest(),
+            party_consent_digests: vec![test_digest(), test_digest()],
+        })
+        .unwrap();
     assert_eq!(dispute.state, DisputeState::Settled);
     assert!(dispute.state.is_terminal());
 
     // All further transitions must be rejected.
-    assert!(dispute.begin_review(ReviewInitiationEvidence {
-        case_reference: "X".to_string(),
-        institution_acknowledgment_digest: test_digest(),
-    }).is_err());
+    assert!(dispute
+        .begin_review(ReviewInitiationEvidence {
+            case_reference: "X".to_string(),
+            institution_acknowledgment_digest: test_digest(),
+        })
+        .is_err());
 }
 
 #[test]

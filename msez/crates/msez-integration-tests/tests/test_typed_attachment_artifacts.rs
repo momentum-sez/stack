@@ -93,8 +93,7 @@ fn attachment_roundtrip() {
 
     // Verify canonical equivalence
     let original_canonical = CanonicalBytes::new(&attachment).unwrap();
-    let resolved_value: serde_json::Value =
-        serde_json::from_slice(&resolved.unwrap()).unwrap();
+    let resolved_value: serde_json::Value = serde_json::from_slice(&resolved.unwrap()).unwrap();
     let resolved_canonical = CanonicalBytes::new(&resolved_value).unwrap();
 
     assert_eq!(original_canonical, resolved_canonical);

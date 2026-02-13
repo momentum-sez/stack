@@ -1795,7 +1795,7 @@ mod tests {
 
     #[test]
     fn test_canonical_json_bytes_rejects_float() {
-        let val = json!({"rate": 3.14});
+        let val = json!({"rate": 3.15});
         assert!(canonical_json_bytes(&val).is_err());
     }
 
@@ -2165,13 +2165,19 @@ mod tests {
 
     #[test]
     fn test_license_compliance_state_display() {
-        assert_eq!(format!("{}", LicenseComplianceState::Compliant), "COMPLIANT");
+        assert_eq!(
+            format!("{}", LicenseComplianceState::Compliant),
+            "COMPLIANT"
+        );
         assert_eq!(
             format!("{}", LicenseComplianceState::NonCompliant),
             "NON_COMPLIANT"
         );
         assert_eq!(format!("{}", LicenseComplianceState::Pending), "PENDING");
-        assert_eq!(format!("{}", LicenseComplianceState::Suspended), "SUSPENDED");
+        assert_eq!(
+            format!("{}", LicenseComplianceState::Suspended),
+            "SUSPENDED"
+        );
         assert_eq!(format!("{}", LicenseComplianceState::Unknown), "UNKNOWN");
     }
 
@@ -2219,7 +2225,10 @@ mod tests {
     fn test_licensepack_metadata_serialization() {
         let meta = make_test_metadata();
         let json = serde_json::to_value(&meta).unwrap();
-        assert_eq!(json["licensepack_id"], "licensepack:pk:financial:2026-01-15");
+        assert_eq!(
+            json["licensepack_id"],
+            "licensepack:pk:financial:2026-01-15"
+        );
         assert_eq!(json["domain"], "financial");
         assert_eq!(json["snapshot_type"], "quarterly");
     }
@@ -2228,10 +2237,7 @@ mod tests {
     fn test_licensepack_metadata_with_delta() {
         let mut meta = make_test_metadata();
         let mut delta = BTreeMap::new();
-        delta.insert(
-            "licenses_granted".to_string(),
-            json!(5),
-        );
+        delta.insert("licenses_granted".to_string(), json!(5));
         meta.delta = Some(delta);
 
         let json = serde_json::to_value(&meta).unwrap();

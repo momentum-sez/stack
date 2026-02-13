@@ -40,10 +40,7 @@ fn blob_artifact_store_and_resolve() {
     let bytes = resolved.unwrap();
     let parsed: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(parsed["blob_type"], "document-scan");
-    assert_eq!(
-        parsed["payload_b64"].as_str().unwrap().len(),
-        10_000
-    );
+    assert_eq!(parsed["payload_b64"].as_str().unwrap().len(), 10_000);
 }
 
 #[test]

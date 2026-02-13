@@ -79,7 +79,10 @@ fn lock_and_node_refs_differ() {
 
     let d_lock = sha256_digest(&CanonicalBytes::new(&lock_data).unwrap());
     let d_node = sha256_digest(&CanonicalBytes::new(&node_data).unwrap());
-    assert_ne!(d_lock, d_node, "lock and node with different types must have different digests");
+    assert_ne!(
+        d_lock, d_node,
+        "lock and node with different types must have different digests"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -118,7 +121,10 @@ fn multiple_lock_files_different_digests() {
 
     let d1 = sha256_digest(&CanonicalBytes::new(&lock_v1).unwrap());
     let d2 = sha256_digest(&CanonicalBytes::new(&lock_v2).unwrap());
-    assert_ne!(d1, d2, "different lock file versions must produce different digests");
+    assert_ne!(
+        d1, d2,
+        "different lock file versions must produce different digests"
+    );
 }
 
 // ---------------------------------------------------------------------------

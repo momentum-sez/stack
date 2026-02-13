@@ -7,8 +7,8 @@
 //! routes using Dijkstra's algorithm and handles edge cases such as
 //! disconnected graphs and same-source-target queries.
 
-use msez_corridor::{BridgeEdge, CorridorBridge};
 use msez_core::{CorridorId, JurisdictionId};
+use msez_corridor::{BridgeEdge, CorridorBridge};
 
 fn jid(name: &str) -> JurisdictionId {
     JurisdictionId::new(name).unwrap()

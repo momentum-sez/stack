@@ -5,7 +5,6 @@
 //! and audit entry type completeness.
 
 use msez_agentic::{AuditEntry, AuditEntryType, AuditTrail};
-use msez_core::{sha256_digest, CanonicalBytes};
 use serde_json::json;
 
 // ---------------------------------------------------------------------------
@@ -99,7 +98,11 @@ fn audit_trail_digest_chain_integrity() {
 
     // Compute digests for all entries
     let digests = trail.compute_digests();
-    assert_eq!(digests.len(), 3, "all 3 entries must have computable digests");
+    assert_eq!(
+        digests.len(),
+        3,
+        "all 3 entries must have computable digests"
+    );
 
     // Each entry has a unique digest
     assert_ne!(digests[0].1, digests[1].1);
@@ -181,10 +184,7 @@ fn audit_trail_trimming_preserves_newest() {
     // The newest entry should always be the last one appended
     let entries = trail.entries();
     assert!(entries.len() <= 6);
-    assert_eq!(
-        entries.last().unwrap().asset_id.as_deref(),
-        Some("asset:9")
-    );
+    assert_eq!(entries.last().unwrap().asset_id.as_deref(), Some("asset:9"));
 }
 
 // ---------------------------------------------------------------------------

@@ -637,20 +637,41 @@ mod tests {
     #[test]
     fn compliance_state_display_all_variants() {
         assert_eq!(format!("{}", ComplianceState::Compliant), "compliant");
-        assert_eq!(format!("{}", ComplianceState::NonCompliant), "non_compliant");
+        assert_eq!(
+            format!("{}", ComplianceState::NonCompliant),
+            "non_compliant"
+        );
         assert_eq!(format!("{}", ComplianceState::Pending), "pending");
         assert_eq!(format!("{}", ComplianceState::Exempt), "exempt");
-        assert_eq!(format!("{}", ComplianceState::NotApplicable), "not_applicable");
+        assert_eq!(
+            format!("{}", ComplianceState::NotApplicable),
+            "not_applicable"
+        );
     }
 
     #[test]
     fn compliance_state_ord() {
         use std::cmp::Ordering;
-        assert_eq!(ComplianceState::NonCompliant.cmp(&ComplianceState::Pending), Ordering::Less);
-        assert_eq!(ComplianceState::Pending.cmp(&ComplianceState::NotApplicable), Ordering::Less);
-        assert_eq!(ComplianceState::NotApplicable.cmp(&ComplianceState::Exempt), Ordering::Less);
-        assert_eq!(ComplianceState::Exempt.cmp(&ComplianceState::Compliant), Ordering::Less);
-        assert_eq!(ComplianceState::Compliant.cmp(&ComplianceState::Compliant), Ordering::Equal);
+        assert_eq!(
+            ComplianceState::NonCompliant.cmp(&ComplianceState::Pending),
+            Ordering::Less
+        );
+        assert_eq!(
+            ComplianceState::Pending.cmp(&ComplianceState::NotApplicable),
+            Ordering::Less
+        );
+        assert_eq!(
+            ComplianceState::NotApplicable.cmp(&ComplianceState::Exempt),
+            Ordering::Less
+        );
+        assert_eq!(
+            ComplianceState::Exempt.cmp(&ComplianceState::Compliant),
+            Ordering::Less
+        );
+        assert_eq!(
+            ComplianceState::Compliant.cmp(&ComplianceState::Compliant),
+            Ordering::Equal
+        );
     }
 
     #[test]

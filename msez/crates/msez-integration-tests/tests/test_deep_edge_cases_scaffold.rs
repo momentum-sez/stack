@@ -1,7 +1,7 @@
 //! Rust counterpart of tests/scenarios/test_deep_edge_cases_scaffold.py
 //! Deep edge case tests for canonical bytes and digest computation.
 
-use msez_core::{CanonicalBytes, sha256_digest, CanonicalizationError};
+use msez_core::{sha256_digest, CanonicalBytes};
 use serde_json::json;
 
 #[test]

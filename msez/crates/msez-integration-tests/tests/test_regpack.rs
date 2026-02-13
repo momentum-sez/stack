@@ -3,8 +3,8 @@
 //! Validates regpack struct construction, digest computation via canonical
 //! bytes, domain mapping, and sanctions checking.
 
-use msez_core::{JurisdictionId, ComplianceDomain, CanonicalBytes, sha256_digest};
-use msez_pack::regpack::{Regpack, SanctionsEntry, SanctionsChecker};
+use msez_core::{sha256_digest, CanonicalBytes, ComplianceDomain, JurisdictionId};
+use msez_pack::regpack::{Regpack, SanctionsChecker, SanctionsEntry};
 
 // ---------------------------------------------------------------------------
 // Regpack creation
@@ -104,10 +104,7 @@ fn regpack_domain_mapping_validation() {
     assert_eq!(all_domains.len(), 20);
 
     // Build a domain name set.
-    let domain_names: Vec<&str> = all_domains
-        .iter()
-        .map(|d| d.as_str())
-        .collect();
+    let domain_names: Vec<&str> = all_domains.iter().map(|d| d.as_str()).collect();
 
     // Verify that known domains exist.
     assert!(domain_names.contains(&"aml"));
@@ -137,10 +134,7 @@ fn regpack_sanctions_check() {
         remarks: None,
     };
 
-    let checker = SanctionsChecker::new(
-        vec![entry],
-        "snapshot-2026-01".to_string(),
-    );
+    let checker = SanctionsChecker::new(vec![entry], "snapshot-2026-01".to_string());
 
     // Exact match must return a hit.
     let result = checker.check_entity("Evil Corp International", None, 0.7);
@@ -170,12 +164,12 @@ fn regpack_sanctions_fuzzy_match() {
         remarks: None,
     };
 
-    let checker = SanctionsChecker::new(
-        vec![entry],
-        "snapshot-2026-02".to_string(),
-    );
+    let checker = SanctionsChecker::new(vec![entry], "snapshot-2026-02".to_string());
 
     // Fuzzy match: partial name overlap.
     let result = checker.check_entity("John Smith", None, 0.5);
-    assert!(result.match_score > 0.0, "Partial name should have non-zero match score");
+    assert!(
+        result.match_score > 0.0,
+        "Partial name should have non-zero match score"
+    );
 }

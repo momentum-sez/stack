@@ -4,7 +4,7 @@
 //! validation, and exercises the compliance tensor evaluation across all
 //! 20 compliance domains for an entity in a test jurisdiction.
 
-use msez_core::{ComplianceDomain, Cnic, Did, EntityId, JurisdictionId, Ntn};
+use msez_core::{Cnic, ComplianceDomain, Did, EntityId, JurisdictionId, Ntn};
 use msez_tensor::evaluation::ComplianceState;
 use msez_tensor::tensor::{ComplianceTensor, DefaultJurisdiction};
 
@@ -107,7 +107,10 @@ fn compliance_tensor_evaluation() {
         None,
     );
 
-    assert_eq!(tensor.get(ComplianceDomain::Aml), ComplianceState::Compliant);
+    assert_eq!(
+        tensor.get(ComplianceDomain::Aml),
+        ComplianceState::Compliant
+    );
     assert_eq!(tensor.get(ComplianceDomain::Kyc), ComplianceState::Pending);
     assert_eq!(
         tensor.get(ComplianceDomain::Sanctions),

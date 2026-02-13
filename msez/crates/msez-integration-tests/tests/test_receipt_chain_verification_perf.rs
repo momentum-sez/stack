@@ -1,8 +1,8 @@
 //! Rust counterpart of tests/perf/test_receipt_chain_verification_perf.py
 //! Performance tests for receipt chain operations at scale.
 
-use msez_corridor::{CorridorReceipt, ReceiptChain};
 use msez_core::{sha256_digest, CanonicalBytes, CorridorId, Timestamp};
+use msez_corridor::{CorridorReceipt, ReceiptChain};
 use serde_json::json;
 
 fn make_next_root(i: u64) -> String {

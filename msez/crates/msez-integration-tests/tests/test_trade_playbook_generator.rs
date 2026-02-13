@@ -131,7 +131,9 @@ fn playbook_no_route_disconnected() {
     bridge.add_edge(edge("SG-SGFZ", "JP-TKYO", 40, 86400));
 
     assert!(
-        bridge.find_route(&jid("PK-RSEZ"), &jid("SG-SGFZ")).is_none(),
+        bridge
+            .find_route(&jid("PK-RSEZ"), &jid("SG-SGFZ"))
+            .is_none(),
         "disconnected jurisdictions should return no route"
     );
 }

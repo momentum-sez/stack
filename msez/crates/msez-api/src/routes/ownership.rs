@@ -271,7 +271,10 @@ mod tests {
             price_per_share: None,
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("quantity"), "error should mention quantity: {err}");
+        assert!(
+            err.contains("quantity"),
+            "error should mention quantity: {err}"
+        );
     }
 
     #[test]
@@ -380,7 +383,7 @@ mod tests {
         let transfer_body = r#"{"from_holder":"Alice","to_holder":"Bob","share_class":"Common","quantity":100,"price_per_share":"10.00"}"#;
         let transfer_req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/ownership/{entity_id}/transfers"))
+            .uri(format!("/v1/ownership/{entity_id}/transfers"))
             .header("content-type", "application/json")
             .body(Body::from(transfer_body))
             .unwrap();
@@ -413,10 +416,11 @@ mod tests {
         assert_eq!(create_resp.status(), StatusCode::CREATED);
 
         // Record a transfer with empty from_holder.
-        let transfer_body = r#"{"from_holder":"","to_holder":"Bob","share_class":"Common","quantity":100}"#;
+        let transfer_body =
+            r#"{"from_holder":"","to_holder":"Bob","share_class":"Common","quantity":100}"#;
         let transfer_req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/ownership/{entity_id}/transfers"))
+            .uri(format!("/v1/ownership/{entity_id}/transfers"))
             .header("content-type", "application/json")
             .body(Body::from(transfer_body))
             .unwrap();
@@ -443,10 +447,11 @@ mod tests {
         assert_eq!(create_resp.status(), StatusCode::CREATED);
 
         // Record a transfer with zero quantity.
-        let transfer_body = r#"{"from_holder":"Alice","to_holder":"Bob","share_class":"Common","quantity":0}"#;
+        let transfer_body =
+            r#"{"from_holder":"Alice","to_holder":"Bob","share_class":"Common","quantity":0}"#;
         let transfer_req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/ownership/{entity_id}/transfers"))
+            .uri(format!("/v1/ownership/{entity_id}/transfers"))
             .header("content-type", "application/json")
             .body(Body::from(transfer_body))
             .unwrap();
@@ -459,10 +464,11 @@ mod tests {
         let app = test_app();
         let entity_id = Uuid::new_v4();
 
-        let transfer_body = r#"{"from_holder":"Alice","to_holder":"Bob","share_class":"Common","quantity":100}"#;
+        let transfer_body =
+            r#"{"from_holder":"Alice","to_holder":"Bob","share_class":"Common","quantity":100}"#;
         let req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/ownership/{entity_id}/transfers"))
+            .uri(format!("/v1/ownership/{entity_id}/transfers"))
             .header("content-type", "application/json")
             .body(Body::from(transfer_body))
             .unwrap();
@@ -497,7 +503,7 @@ mod tests {
         // Get the cap table.
         let get_req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/ownership/{entity_id}/cap-table"))
+            .uri(format!("/v1/ownership/{entity_id}/cap-table"))
             .body(Body::empty())
             .unwrap();
         let get_resp = app.oneshot(get_req).await.unwrap();
@@ -516,7 +522,7 @@ mod tests {
         let entity_id = Uuid::new_v4();
         let req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/ownership/{entity_id}/cap-table"))
+            .uri(format!("/v1/ownership/{entity_id}/cap-table"))
             .body(Body::empty())
             .unwrap();
 
@@ -547,7 +553,7 @@ mod tests {
         // Get share classes.
         let get_req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/ownership/{entity_id}/share-classes"))
+            .uri(format!("/v1/ownership/{entity_id}/share-classes"))
             .body(Body::empty())
             .unwrap();
         let get_resp = app.oneshot(get_req).await.unwrap();
@@ -568,7 +574,7 @@ mod tests {
         let entity_id = Uuid::new_v4();
         let req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/ownership/{entity_id}/share-classes"))
+            .uri(format!("/v1/ownership/{entity_id}/share-classes"))
             .body(Body::empty())
             .unwrap();
 
@@ -610,7 +616,7 @@ mod tests {
         // Send bad JSON for transfer.
         let req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/ownership/{entity_id}/transfers"))
+            .uri(format!("/v1/ownership/{entity_id}/transfers"))
             .header("content-type", "application/json")
             .body(Body::from(r#"{{bad json"#))
             .unwrap();
@@ -640,10 +646,11 @@ mod tests {
         app.clone().oneshot(create_req).await.unwrap();
 
         // Record a transfer without price_per_share.
-        let transfer_body = r#"{"from_holder":"Alice","to_holder":"Bob","share_class":"Common","quantity":50}"#;
+        let transfer_body =
+            r#"{"from_holder":"Alice","to_holder":"Bob","share_class":"Common","quantity":50}"#;
         let transfer_req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/ownership/{entity_id}/transfers"))
+            .uri(format!("/v1/ownership/{entity_id}/transfers"))
             .header("content-type", "application/json")
             .body(Body::from(transfer_body))
             .unwrap();

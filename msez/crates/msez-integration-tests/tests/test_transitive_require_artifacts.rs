@@ -95,11 +95,9 @@ fn diamond_dependency() {
 
     // B and C both reference the same D digest
     let b_parsed: serde_json::Value =
-        serde_json::from_slice(&store.resolve("module", &b_ref.digest).unwrap().unwrap())
-            .unwrap();
+        serde_json::from_slice(&store.resolve("module", &b_ref.digest).unwrap().unwrap()).unwrap();
     let c_parsed: serde_json::Value =
-        serde_json::from_slice(&store.resolve("module", &c_ref.digest).unwrap().unwrap())
-            .unwrap();
+        serde_json::from_slice(&store.resolve("module", &c_ref.digest).unwrap().unwrap()).unwrap();
 
     assert_eq!(
         b_parsed["requires"][0]["digest"].as_str().unwrap(),
@@ -144,7 +142,14 @@ fn all_transitive_deps_resolvable() {
     let mut traversed = 0;
     loop {
         let bytes = store
-            .resolve("module", &all_refs.iter().find(|r| r.digest.to_hex() == current_digest).unwrap().digest)
+            .resolve(
+                "module",
+                &all_refs
+                    .iter()
+                    .find(|r| r.digest.to_hex() == current_digest)
+                    .unwrap()
+                    .digest,
+            )
             .unwrap()
             .unwrap();
         let parsed: serde_json::Value = serde_json::from_slice(&bytes).unwrap();

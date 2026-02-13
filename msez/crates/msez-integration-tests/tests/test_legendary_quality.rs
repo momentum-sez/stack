@@ -5,11 +5,9 @@
 //! digest agreement, domain serialization correctness, and known test
 //! vector anchoring for cross-language determinism.
 
-use msez_core::{sha256_digest, CanonicalBytes, ComplianceDomain, ContentDigest};
+use msez_core::{sha256_digest, CanonicalBytes, ComplianceDomain};
 use msez_crypto::{SigningKey, VerifyingKey};
-use msez_vc::{
-    ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential,
-};
+use msez_vc::{ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential};
 use rand_core::OsRng;
 use serde_json::json;
 

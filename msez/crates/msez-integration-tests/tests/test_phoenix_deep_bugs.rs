@@ -4,10 +4,10 @@
 //! migration deadline boundary conditions, Unicode handling in
 //! canonicalization, and digest collision resistance.
 
-use msez_core::{CanonicalBytes, sha256_digest, ComplianceDomain, JurisdictionId, MigrationId};
-use msez_tensor::{ComplianceTensor, DefaultJurisdiction, ComplianceState, TensorCommitment};
+use chrono::{Duration, Utc};
+use msez_core::{sha256_digest, CanonicalBytes, ComplianceDomain, JurisdictionId, MigrationId};
 use msez_state::{MigrationBuilder, MigrationState};
-use chrono::{Utc, Duration};
+use msez_tensor::{ComplianceState, ComplianceTensor, DefaultJurisdiction, TensorCommitment};
 use serde_json::json;
 
 // ---------------------------------------------------------------------------
@@ -24,7 +24,12 @@ fn tensor_commitment_changes_with_domain_state() {
 
     let commitment_before = TensorCommitment::compute(&tensor).unwrap();
 
-    tensor.set(ComplianceDomain::Aml, ComplianceState::Compliant, vec![], None);
+    tensor.set(
+        ComplianceDomain::Aml,
+        ComplianceState::Compliant,
+        vec![],
+        None,
+    );
 
     let commitment_after = TensorCommitment::compute(&tensor).unwrap();
 
@@ -101,7 +106,10 @@ fn migration_expired_deadline_triggers_timeout() {
         .build();
 
     let result = saga.advance();
-    assert!(result.is_err(), "Expired deadline should cause timeout error");
+    assert!(
+        result.is_err(),
+        "Expired deadline should cause timeout error"
+    );
     assert_eq!(
         saga.state,
         MigrationState::TimedOut,
@@ -162,5 +170,9 @@ fn digest_collision_resistance() {
         );
     }
 
-    assert_eq!(digests.len(), 100, "All 100 inputs must produce unique digests");
+    assert_eq!(
+        digests.len(),
+        100,
+        "All 100 inputs must produce unique digests"
+    );
 }

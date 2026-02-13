@@ -252,14 +252,32 @@ mod tests {
         assert!(tags.is_some(), "OpenAPI spec should have tags");
         let tags = tags.as_ref().unwrap();
         let tag_names: Vec<&str> = tags.iter().map(|t| t.name.as_str()).collect();
-        assert!(tag_names.contains(&"entities"), "should contain entities tag");
-        assert!(tag_names.contains(&"ownership"), "should contain ownership tag");
+        assert!(
+            tag_names.contains(&"entities"),
+            "should contain entities tag"
+        );
+        assert!(
+            tag_names.contains(&"ownership"),
+            "should contain ownership tag"
+        );
         assert!(tag_names.contains(&"fiscal"), "should contain fiscal tag");
-        assert!(tag_names.contains(&"identity"), "should contain identity tag");
+        assert!(
+            tag_names.contains(&"identity"),
+            "should contain identity tag"
+        );
         assert!(tag_names.contains(&"consent"), "should contain consent tag");
-        assert!(tag_names.contains(&"corridors"), "should contain corridors tag");
-        assert!(tag_names.contains(&"smart_assets"), "should contain smart_assets tag");
-        assert!(tag_names.contains(&"regulator"), "should contain regulator tag");
+        assert!(
+            tag_names.contains(&"corridors"),
+            "should contain corridors tag"
+        );
+        assert!(
+            tag_names.contains(&"smart_assets"),
+            "should contain smart_assets tag"
+        );
+        assert!(
+            tag_names.contains(&"regulator"),
+            "should contain regulator tag"
+        );
     }
 
     #[test]
@@ -280,7 +298,10 @@ mod tests {
         let json = serde_json::to_string(&spec);
         assert!(json.is_ok(), "OpenAPI spec should serialize to JSON");
         let json_str = json.unwrap();
-        assert!(json_str.contains("openapi"), "JSON should contain openapi key");
+        assert!(
+            json_str.contains("openapi"),
+            "JSON should contain openapi key"
+        );
     }
 
     // ── Router construction ───────────────────────────────────────

@@ -7,8 +7,8 @@
 //! content digest.
 
 use msez_core::{sha256_digest, CanonicalBytes, CorridorId, Timestamp};
-use msez_corridor::ReceiptChain;
 use msez_corridor::CorridorReceipt;
+use msez_corridor::ReceiptChain;
 use serde_json::json;
 
 fn make_next_root(i: u64) -> String {
@@ -42,12 +42,8 @@ fn digest_set_includes_lawpack_and_ruleset() {
     let lawpack_digests = vec!["aa".repeat(32), "bb".repeat(32)];
     let ruleset_digests = vec!["cc".repeat(32)];
 
-    let receipt = make_receipt_with_digests(
-        &chain,
-        0,
-        lawpack_digests.clone(),
-        ruleset_digests.clone(),
-    );
+    let receipt =
+        make_receipt_with_digests(&chain, 0, lawpack_digests.clone(), ruleset_digests.clone());
 
     // Verify the receipt preserves digest sets
     assert_eq!(receipt.lawpack_digest_set, lawpack_digests);
@@ -106,31 +102,20 @@ fn empty_digest_set_handled() {
 fn different_digest_sets_produce_different_receipts() {
     let chain = ReceiptChain::new(CorridorId::new());
 
-    let receipt_with_lawpack = make_receipt_with_digests(
-        &chain,
-        0,
-        vec!["aa".repeat(32)],
-        vec![],
-    );
-    let receipt_with_ruleset = make_receipt_with_digests(
-        &chain,
-        0,
-        vec![],
-        vec!["bb".repeat(32)],
-    );
-    let receipt_with_both = make_receipt_with_digests(
-        &chain,
-        0,
-        vec!["aa".repeat(32)],
-        vec!["bb".repeat(32)],
-    );
+    let receipt_with_lawpack = make_receipt_with_digests(&chain, 0, vec!["aa".repeat(32)], vec![]);
+    let receipt_with_ruleset = make_receipt_with_digests(&chain, 0, vec![], vec!["bb".repeat(32)]);
+    let receipt_with_both =
+        make_receipt_with_digests(&chain, 0, vec!["aa".repeat(32)], vec!["bb".repeat(32)]);
 
     let digest_lp = receipt_with_lawpack.content_digest().unwrap();
     let digest_rs = receipt_with_ruleset.content_digest().unwrap();
     let digest_both = receipt_with_both.content_digest().unwrap();
 
     // All three must differ
-    assert_ne!(digest_lp, digest_rs, "lawpack-only vs ruleset-only must differ");
+    assert_ne!(
+        digest_lp, digest_rs,
+        "lawpack-only vs ruleset-only must differ"
+    );
     assert_ne!(digest_lp, digest_both, "lawpack-only vs both must differ");
     assert_ne!(digest_rs, digest_both, "ruleset-only vs both must differ");
 }
@@ -140,18 +125,10 @@ fn digest_set_order_matters() {
     let chain = ReceiptChain::new(CorridorId::new());
 
     // Same digests but in different order
-    let receipt_ab = make_receipt_with_digests(
-        &chain,
-        0,
-        vec!["aa".repeat(32), "bb".repeat(32)],
-        vec![],
-    );
-    let receipt_ba = make_receipt_with_digests(
-        &chain,
-        0,
-        vec!["bb".repeat(32), "aa".repeat(32)],
-        vec![],
-    );
+    let receipt_ab =
+        make_receipt_with_digests(&chain, 0, vec!["aa".repeat(32), "bb".repeat(32)], vec![]);
+    let receipt_ba =
+        make_receipt_with_digests(&chain, 0, vec!["bb".repeat(32), "aa".repeat(32)], vec![]);
 
     let digest_ab = receipt_ab.content_digest().unwrap();
     let digest_ba = receipt_ba.content_digest().unwrap();

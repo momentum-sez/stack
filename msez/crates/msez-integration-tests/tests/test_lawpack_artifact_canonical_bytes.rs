@@ -4,9 +4,9 @@
 //! digests through the canonical bytes pipeline. Uses the same lawpack
 //! digest protocol as `tools/lawpack.py`.
 
-use msez_core::{CanonicalBytes, sha256_digest};
-use sha2::{Digest as _, Sha256};
+use msez_core::{sha256_digest, CanonicalBytes};
 use serde_json::json;
+use sha2::{Digest as _, Sha256};
 use std::collections::BTreeMap;
 
 mod hex_util {
@@ -42,7 +42,11 @@ fn lawpack_digest_uses_canonical_bytes() {
     );
 
     let digest = compute_lawpack_digest(&paths_data);
-    assert_eq!(digest.len(), 64, "Lawpack digest must be a 64-char hex string");
+    assert_eq!(
+        digest.len(),
+        64,
+        "Lawpack digest must be a 64-char hex string"
+    );
 
     // Must be deterministic.
     let digest2 = compute_lawpack_digest(&paths_data);
@@ -115,10 +119,7 @@ fn lawpack_data_canonical_bytes() {
     let c1 = CanonicalBytes::new(&data).unwrap();
     let c2 = CanonicalBytes::new(&data).unwrap();
 
-    assert_eq!(
-        sha256_digest(&c1).to_hex(),
-        sha256_digest(&c2).to_hex(),
-    );
+    assert_eq!(sha256_digest(&c1).to_hex(), sha256_digest(&c2).to_hex(),);
 }
 
 #[test]

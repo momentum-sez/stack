@@ -187,7 +187,10 @@ mod tests {
     #[test]
     fn pack_result_alias_works() {
         let ok: PackResult<i32> = Ok(42);
-        assert_eq!(ok.unwrap(), 42);
+        match ok {
+            Ok(val) => assert_eq!(val, 42),
+            Err(_) => panic!("expected Ok"),
+        }
 
         let err: PackResult<i32> = Err(PackError::Validation("bad".to_string()));
         assert!(err.is_err());

@@ -35,7 +35,10 @@ fn smart_asset_artifact_has_required_fields() {
     assert_eq!(artifact_ref.artifact_type, "smart-asset");
 
     // Resolve and verify required fields are preserved
-    let resolved = store.resolve("smart-asset", &artifact_ref.digest).unwrap().unwrap();
+    let resolved = store
+        .resolve("smart-asset", &artifact_ref.digest)
+        .unwrap()
+        .unwrap();
     let parsed: serde_json::Value = serde_json::from_slice(&resolved).unwrap();
 
     assert_eq!(parsed["asset_type"], "SmartAsset");
@@ -104,7 +107,9 @@ fn smart_asset_jurisdiction_binding_in_graph() {
     // All artifacts should be independently resolvable
     assert!(store.contains("compliance", &ref_a.digest).unwrap());
     assert!(store.contains("compliance", &ref_b.digest).unwrap());
-    assert!(store.contains("smart-asset-graph", &graph_ref.digest).unwrap());
+    assert!(store
+        .contains("smart-asset-graph", &graph_ref.digest)
+        .unwrap());
 
     // The two compliance artifacts must have different digests
     assert_ne!(ref_a.digest, ref_b.digest);
@@ -120,5 +125,8 @@ fn smart_asset_graph_rejects_float_amounts() {
     });
 
     let result = CanonicalBytes::new(&asset_with_float);
-    assert!(result.is_err(), "floats must be rejected by canonicalization");
+    assert!(
+        result.is_err(),
+        "floats must be rejected by canonicalization"
+    );
 }

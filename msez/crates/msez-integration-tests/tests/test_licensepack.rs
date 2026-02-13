@@ -5,7 +5,7 @@
 
 use msez_core::JurisdictionId;
 use msez_pack::licensepack::{
-    Licensepack, License, LicenseStatus, LicenseTypeDefinition, LicensePermission,
+    License, LicensePermission, LicenseStatus, LicenseTypeDefinition, Licensepack,
 };
 use std::collections::BTreeMap;
 

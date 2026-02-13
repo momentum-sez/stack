@@ -1,8 +1,8 @@
 //! Tests for infrastructure components: content-addressed store, Merkle
 //! Mountain Range, Ed25519 key operations, and identifier types.
 
+use msez_core::{sha256_digest, CanonicalBytes, EntityId, JurisdictionId};
 use msez_crypto::{ContentAddressedStore, MerkleMountainRange, SigningKey};
-use msez_core::{CanonicalBytes, sha256_digest, EntityId, JurisdictionId};
 use rand_core::OsRng;
 use serde_json::json;
 
@@ -75,10 +75,7 @@ fn mmr_append_and_root() {
     assert_eq!(mmr.size(), 2);
 
     let root2 = mmr.root().unwrap();
-    assert_ne!(
-        root1, root2,
-        "Adding a leaf must change the root"
-    );
+    assert_ne!(root1, root2, "Adding a leaf must change the root");
 }
 
 #[test]
@@ -151,7 +148,10 @@ fn jurisdiction_id_validation() {
     assert!(valid.is_ok(), "PK-RSEZ should be a valid JurisdictionId");
 
     let also_valid = JurisdictionId::new("AE-DIFC");
-    assert!(also_valid.is_ok(), "AE-DIFC should be a valid JurisdictionId");
+    assert!(
+        also_valid.is_ok(),
+        "AE-DIFC should be a valid JurisdictionId"
+    );
 
     // Empty string should be rejected.
     let empty = JurisdictionId::new("");

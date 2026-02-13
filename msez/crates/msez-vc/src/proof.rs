@@ -260,19 +260,34 @@ mod tests {
 
     #[test]
     fn proof_purpose_display_assertion_method() {
-        assert_eq!(format!("{}", ProofPurpose::AssertionMethod), "assertionMethod");
+        assert_eq!(
+            format!("{}", ProofPurpose::AssertionMethod),
+            "assertionMethod"
+        );
     }
 
     #[test]
     fn proof_purpose_display_authentication() {
-        assert_eq!(format!("{}", ProofPurpose::Authentication), "authentication");
+        assert_eq!(
+            format!("{}", ProofPurpose::Authentication),
+            "authentication"
+        );
     }
 
     #[test]
     fn proof_type_display_all_variants() {
-        assert_eq!(format!("{}", ProofType::Ed25519Signature2020), "Ed25519Signature2020");
-        assert_eq!(format!("{}", ProofType::MsezEd25519Signature2025), "MsezEd25519Signature2025");
-        assert_eq!(format!("{}", ProofType::BbsBlsSignature2020), "BbsBlsSignature2020");
+        assert_eq!(
+            format!("{}", ProofType::Ed25519Signature2020),
+            "Ed25519Signature2020"
+        );
+        assert_eq!(
+            format!("{}", ProofType::MsezEd25519Signature2025),
+            "MsezEd25519Signature2025"
+        );
+        assert_eq!(
+            format!("{}", ProofType::BbsBlsSignature2020),
+            "BbsBlsSignature2020"
+        );
     }
 
     #[test]
@@ -296,7 +311,10 @@ mod tests {
         let deserialized: Proof = serde_json::from_str(&json_str).unwrap();
 
         assert_eq!(deserialized.proof_type, ProofType::Ed25519Signature2020);
-        assert_eq!(deserialized.verification_method, "did:key:z6MkRoundtrip#key-1");
+        assert_eq!(
+            deserialized.verification_method,
+            "did:key:z6MkRoundtrip#key-1"
+        );
         assert_eq!(deserialized.proof_purpose, ProofPurpose::AssertionMethod);
         assert_eq!(deserialized.proof_value, "aa".repeat(64));
         assert_eq!(deserialized.created, proof.created);
@@ -304,11 +322,8 @@ mod tests {
 
     #[test]
     fn proof_msez_ed25519_serde_roundtrip() {
-        let proof = Proof::new_msez_ed25519(
-            "did:key:z6MkMsez#key-1".to_string(),
-            "bb".repeat(64),
-            None,
-        );
+        let proof =
+            Proof::new_msez_ed25519("did:key:z6MkMsez#key-1".to_string(), "bb".repeat(64), None);
 
         let json_str = serde_json::to_string(&proof).unwrap();
         let deserialized: Proof = serde_json::from_str(&json_str).unwrap();
@@ -379,7 +394,7 @@ mod tests {
 
     #[test]
     fn proof_deserializes_msez_type_from_json() {
-        let json_str = r#"{
+        let _json_str = r#"{
             "type": "MsezEd25519Signature2025",
             "created": "2026-03-01T10:30:00Z",
             "verificationMethod": "did:msez:key:001",

@@ -68,14 +68,8 @@ fn extensible_paths_contain_metadata() {
 #[test]
 fn schema_ids_are_non_empty() {
     for schema in SECURITY_CRITICAL_SCHEMAS {
-        assert!(
-            !schema.is_empty(),
-            "schema ID must not be empty"
-        );
-        assert!(
-            schema.len() > 5,
-            "schema ID {schema} is suspiciously short"
-        );
+        assert!(!schema.is_empty(), "schema ID must not be empty");
+        assert!(schema.len() > 5, "schema ID {schema} is suspiciously short");
     }
 }
 
@@ -87,10 +81,7 @@ fn schema_ids_are_non_empty() {
 fn extensible_paths_reference_valid_schemas() {
     // All extensible paths should be recognizable JSON Schema property names
     for path in EXTENSIBLE_PATHS {
-        assert!(
-            !path.is_empty(),
-            "extensible path must not be empty"
-        );
+        assert!(!path.is_empty(), "extensible path must not be empty");
         assert!(
             !path.contains('/'),
             "extensible path {path} should be a simple property name, not a JSON Pointer"
@@ -131,7 +122,11 @@ fn policy_check_open_schema_reports_violation() {
     });
 
     let violations = check_additional_properties_policy("test.schema.json", &open);
-    assert_eq!(violations.len(), 1, "open schema should report one violation");
+    assert_eq!(
+        violations.len(),
+        1,
+        "open schema should report one violation"
+    );
     assert_eq!(violations[0].path, "/");
     assert_eq!(violations[0].current_value, "true");
 }

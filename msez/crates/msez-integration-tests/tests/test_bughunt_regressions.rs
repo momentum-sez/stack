@@ -36,12 +36,9 @@ fn regression_float_in_nested_object() {
 
 #[test]
 fn regression_float_in_array_is_rejected() {
-    let data = json!([1, 2, 3.14, 4]);
+    let data = json!([1, 2, 3.15, 4]);
     let result = CanonicalBytes::new(&data);
-    assert!(
-        result.is_err(),
-        "float inside array must be rejected"
-    );
+    assert!(result.is_err(), "float inside array must be rejected");
 }
 
 // ---------------------------------------------------------------------------
@@ -77,7 +74,10 @@ fn regression_null_value_handling() {
     let d_empty = sha256_digest(&CanonicalBytes::new(&empty).unwrap());
 
     assert_ne!(d_null, d_value, "null value must differ from string value");
-    assert_ne!(d_null, d_empty, "object with null key must differ from empty object");
+    assert_ne!(
+        d_null, d_empty,
+        "object with null key must differ from empty object"
+    );
 }
 
 #[test]
@@ -149,7 +149,8 @@ fn regression_compliance_domain_data_stability() {
         let d1 = sha256_digest(&CanonicalBytes::new(&data).unwrap());
         let d2 = sha256_digest(&CanonicalBytes::new(&data).unwrap());
         assert_eq!(
-            d1, d2,
+            d1,
+            d2,
             "compliance domain '{}' data digest must be stable",
             domain.as_str()
         );

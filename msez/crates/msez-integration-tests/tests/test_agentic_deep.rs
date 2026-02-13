@@ -10,9 +10,7 @@
 //! - Condition evaluation (Equals, Threshold, Contains, And/Or)
 
 use msez_agentic::evaluation::PolicyEngine;
-use msez_agentic::policy::{
-    Condition, Policy, PolicyAction, Trigger, TriggerType,
-};
+use msez_agentic::policy::{Condition, Policy, PolicyAction, Trigger, TriggerType};
 use msez_agentic::{AuditEntry, AuditEntryType, AuditTrail};
 use serde_json::json;
 
@@ -33,7 +31,11 @@ fn evaluation_determinism() {
     let r1 = engine1.evaluate(&trigger, Some("asset:test"), None);
     let r2 = engine2.evaluate(&trigger, Some("asset:test"), None);
 
-    assert_eq!(r1.len(), r2.len(), "evaluation result count must be identical");
+    assert_eq!(
+        r1.len(),
+        r2.len(),
+        "evaluation result count must be identical"
+    );
     for (a, b) in r1.iter().zip(r2.iter()) {
         assert_eq!(a.policy_id, b.policy_id);
         assert_eq!(a.matched, b.matched);
@@ -61,12 +63,20 @@ fn jurisdiction_scoped_policy() {
     let trigger = Trigger::new(TriggerType::TaxYearEnd, json!({}));
     let pk_results = engine.evaluate(&trigger, Some("asset:test"), Some("PK-RSEZ"));
     let pk_matched: Vec<_> = pk_results.iter().filter(|r| r.matched).collect();
-    assert_eq!(pk_matched.len(), 2, "PK jurisdiction should match both policies");
+    assert_eq!(
+        pk_matched.len(),
+        2,
+        "PK jurisdiction should match both policies"
+    );
 
     // AE jurisdiction: only global should match
     let ae_results = engine.evaluate(&trigger, Some("asset:test"), Some("AE-DIFC"));
     let ae_matched: Vec<_> = ae_results.iter().filter(|r| r.matched).collect();
-    assert_eq!(ae_matched.len(), 1, "AE jurisdiction should match only global policy");
+    assert_eq!(
+        ae_matched.len(),
+        1,
+        "AE jurisdiction should match only global policy"
+    );
     assert_eq!(ae_matched[0].policy_id, "global");
 }
 
@@ -78,10 +88,10 @@ fn jurisdiction_scoped_policy() {
 fn priority_conflict_resolution() {
     let mut engine = PolicyEngine::new();
 
-    let low = Policy::new("low-pri", TriggerType::CheckpointDue, PolicyAction::Resume)
-        .with_priority(1);
-    let high = Policy::new("high-pri", TriggerType::CheckpointDue, PolicyAction::Halt)
-        .with_priority(100);
+    let low =
+        Policy::new("low-pri", TriggerType::CheckpointDue, PolicyAction::Resume).with_priority(1);
+    let high =
+        Policy::new("high-pri", TriggerType::CheckpointDue, PolicyAction::Halt).with_priority(100);
 
     engine.register_policy(low);
     engine.register_policy(high);
@@ -90,7 +100,10 @@ fn priority_conflict_resolution() {
     let resolved = engine.evaluate_and_resolve(&trigger, Some("asset:test"), None);
 
     assert!(!resolved.is_empty());
-    assert_eq!(resolved[0].priority, 100, "highest priority should be first");
+    assert_eq!(
+        resolved[0].priority, 100,
+        "highest priority should be first"
+    );
     assert_eq!(resolved[0].action, Some(PolicyAction::Halt));
 }
 
@@ -127,7 +140,10 @@ fn audit_trail_standalone_append_and_entries() {
     );
     trail.append(entry);
     assert_eq!(trail.len(), 1);
-    assert_eq!(trail.entries()[0].entry_type, AuditEntryType::TriggerReceived);
+    assert_eq!(
+        trail.entries()[0].entry_type,
+        AuditEntryType::TriggerReceived
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -154,7 +170,10 @@ fn condition_evaluation_equals() {
         json!({"status": "expired"}),
     );
     let results = engine.evaluate(&trigger_match, Some("asset:test"), None);
-    assert!(results.iter().any(|r| r.matched), "Equals condition should match");
+    assert!(
+        results.iter().any(|r| r.matched),
+        "Equals condition should match"
+    );
 
     // Non-matching
     let trigger_no_match = Trigger::new(
@@ -162,7 +181,10 @@ fn condition_evaluation_equals() {
         json!({"status": "active"}),
     );
     let results = engine.evaluate(&trigger_no_match, Some("asset:test"), None);
-    assert!(!results.iter().any(|r| r.matched), "Equals condition should not match");
+    assert!(
+        !results.iter().any(|r| r.matched),
+        "Equals condition should not match"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -186,12 +208,18 @@ fn condition_evaluation_threshold() {
     // Above threshold
     let trigger_high = Trigger::new(TriggerType::CorridorStateChange, json!({"risk_score": 95}));
     let results = engine.evaluate(&trigger_high, Some("asset:test"), None);
-    assert!(results.iter().any(|r| r.matched), "value above threshold should match");
+    assert!(
+        results.iter().any(|r| r.matched),
+        "value above threshold should match"
+    );
 
     // Below threshold
     let trigger_low = Trigger::new(TriggerType::CorridorStateChange, json!({"risk_score": 50}));
     let results = engine.evaluate(&trigger_low, Some("asset:test"), None);
-    assert!(!results.iter().any(|r| r.matched), "value below threshold should not match");
+    assert!(
+        !results.iter().any(|r| r.matched),
+        "value below threshold should not match"
+    );
 }
 
 // ---------------------------------------------------------------------------

@@ -271,7 +271,7 @@ mod tests {
 
     #[test]
     fn test_ensure_json_compatible_rejects_float() {
-        let value = serde_json::json!({"amount": 3.14});
+        let value = serde_json::json!({"amount": 3.15});
         assert!(ensure_json_compatible(&value, "$", "test").is_err());
     }
 
@@ -299,11 +299,7 @@ mod tests {
     fn test_load_yaml_as_value_nested() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("nested.yaml");
-        std::fs::write(
-            &path,
-            "outer:\n  inner: hello\n  list:\n    - a\n    - b\n",
-        )
-        .unwrap();
+        std::fs::write(&path, "outer:\n  inner: hello\n  list:\n    - a\n    - b\n").unwrap();
 
         let value = load_yaml_as_value(&path).unwrap();
         assert_eq!(value["outer"]["inner"], "hello");

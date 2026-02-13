@@ -5,8 +5,8 @@
 //! the same code paths that the CLI would invoke for `msez sign` and
 //! `msez verify` subcommands.
 
-use msez_core::{sha256_digest, CanonicalBytes};
-use msez_crypto::{SigningKey, VerifyingKey};
+use msez_core::CanonicalBytes;
+use msez_crypto::SigningKey;
 use msez_vc::{
     ContextValue, CredentialTypeValue, ProofType, ProofValue, VcError, VerifiableCredential,
 };
@@ -87,7 +87,10 @@ fn sign_vc_produces_proof() {
     let sk = SigningKey::generate(&mut OsRng);
     let mut vc = make_vc();
 
-    assert!(vc.proof.is_empty(), "VC should have no proof before signing");
+    assert!(
+        vc.proof.is_empty(),
+        "VC should have no proof before signing"
+    );
 
     vc.sign_ed25519(
         &sk,
@@ -139,7 +142,11 @@ fn verify_signed_vc_succeeds() {
 
     let results = vc.verify(move |_vm: &str| Ok(vk.clone()));
     assert_eq!(results.len(), 1);
-    assert!(results[0].ok, "valid signature should verify: {}", results[0].error);
+    assert!(
+        results[0].ok,
+        "valid signature should verify: {}",
+        results[0].error
+    );
 }
 
 #[test]

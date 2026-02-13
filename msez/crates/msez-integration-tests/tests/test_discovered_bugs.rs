@@ -202,7 +202,7 @@ fn bug_invalid_state_strings_rejected() {
 
 #[test]
 fn bug_float_rejection_error_type() {
-    let data = json!({"amount": 3.14});
+    let data = json!({"amount": 3.15});
     let result = CanonicalBytes::new(&data);
     assert!(result.is_err());
     // The error should be a CanonicalizationError, not a panic

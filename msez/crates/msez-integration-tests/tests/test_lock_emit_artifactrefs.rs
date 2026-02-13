@@ -55,7 +55,10 @@ fn emitted_ref_resolvable() {
 
     let artifact_ref = store.store("lockfile", &lock).unwrap();
     let resolved = store.resolve("lockfile", &artifact_ref.digest).unwrap();
-    assert!(resolved.is_some(), "emitted lockfile ref must be resolvable");
+    assert!(
+        resolved.is_some(),
+        "emitted lockfile ref must be resolvable"
+    );
 
     let resolved_bytes = resolved.unwrap();
     let reparsed: serde_json::Value = serde_json::from_slice(&resolved_bytes).unwrap();

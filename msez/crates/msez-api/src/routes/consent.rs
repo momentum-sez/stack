@@ -253,7 +253,10 @@ mod tests {
             }],
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("consent_type"), "error should mention consent_type: {err}");
+        assert!(
+            err.contains("consent_type"),
+            "error should mention consent_type: {err}"
+        );
     }
 
     #[test]
@@ -277,7 +280,10 @@ mod tests {
             parties: vec![],
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("party") || err.contains("parties"), "error should mention parties: {err}");
+        assert!(
+            err.contains("party") || err.contains("parties"),
+            "error should mention parties: {err}"
+        );
     }
 
     #[test]
@@ -326,7 +332,10 @@ mod tests {
             decision: "abstain".to_string(),
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("decision"), "error should mention decision: {err}");
+        assert!(
+            err.contains("decision"),
+            "error should mention decision: {err}"
+        );
     }
 
     #[test]
@@ -460,13 +469,10 @@ mod tests {
         let created: ConsentRecord = body_json(create_resp).await;
 
         // Sign the consent.
-        let sign_body = format!(
-            r#"{{"entity_id":"{}","decision":"approve"}}"#,
-            party_id
-        );
+        let sign_body = format!(r#"{{"entity_id":"{}","decision":"approve"}}"#, party_id);
         let sign_req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/consent/{}/sign", created.id))
+            .uri(format!("/v1/consent/{}/sign", created.id))
             .header("content-type", "application/json")
             .body(Body::from(sign_body))
             .unwrap();
@@ -502,13 +508,10 @@ mod tests {
         let created: ConsentRecord = body_json(create_resp).await;
 
         // Sign with invalid decision.
-        let sign_body = format!(
-            r#"{{"entity_id":"{}","decision":"abstain"}}"#,
-            party_id
-        );
+        let sign_body = format!(r#"{{"entity_id":"{}","decision":"abstain"}}"#, party_id);
         let sign_req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/consent/{}/sign", created.id))
+            .uri(format!("/v1/consent/{}/sign", created.id))
             .header("content-type", "application/json")
             .body(Body::from(sign_body))
             .unwrap();
@@ -521,13 +524,10 @@ mod tests {
         let app = test_app();
         let consent_id = Uuid::new_v4();
         let party_id = Uuid::new_v4();
-        let sign_body = format!(
-            r#"{{"entity_id":"{}","decision":"approve"}}"#,
-            party_id
-        );
+        let sign_body = format!(r#"{{"entity_id":"{}","decision":"approve"}}"#, party_id);
         let req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/consent/{consent_id}/sign"))
+            .uri(format!("/v1/consent/{consent_id}/sign"))
             .header("content-type", "application/json")
             .body(Body::from(sign_body))
             .unwrap();
@@ -542,7 +542,7 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/consent/{id}"))
+            .uri(format!("/v1/consent/{id}"))
             .body(Body::empty())
             .unwrap();
 

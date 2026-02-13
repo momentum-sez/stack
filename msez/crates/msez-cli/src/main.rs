@@ -151,14 +151,10 @@ mod tests {
 
     #[test]
     fn cli_parse_validate_with_path() {
-        let cli =
-            Cli::try_parse_from(["msez", "validate", "modules/test/module.yaml"]).unwrap();
+        let cli = Cli::try_parse_from(["msez", "validate", "modules/test/module.yaml"]).unwrap();
         if let Commands::Validate(args) = cli.command {
             assert!(!args.all_modules);
-            assert_eq!(
-                args.path,
-                Some(PathBuf::from("modules/test/module.yaml"))
-            );
+            assert_eq!(args.path, Some(PathBuf::from("modules/test/module.yaml")));
         }
     }
 
@@ -216,10 +212,7 @@ mod tests {
         if let Commands::Lock(args) = cli.command {
             assert!(args.check);
             assert_eq!(args.out, Some(PathBuf::from("output.lock")));
-            assert_eq!(
-                args.generated_at,
-                Some("2026-01-01T00:00:00Z".to_string())
-            );
+            assert_eq!(args.generated_at, Some("2026-01-01T00:00:00Z".to_string()));
             assert!(args.strict);
         }
     }
@@ -301,9 +294,10 @@ mod tests {
 
     #[test]
     fn cli_parse_vc_keygen() {
-        let cli =
-            Cli::try_parse_from(["msez", "vc", "keygen", "--output", "/tmp", "--prefix", "test"])
-                .unwrap();
+        let cli = Cli::try_parse_from([
+            "msez", "vc", "keygen", "--output", "/tmp", "--prefix", "test",
+        ])
+        .unwrap();
         assert!(matches!(cli.command, Commands::Signing(_)));
     }
 
@@ -355,27 +349,15 @@ mod tests {
 
     #[test]
     fn cli_parse_config_option() {
-        let cli = Cli::try_parse_from([
-            "msez",
-            "--config",
-            "msez.yaml",
-            "corridor",
-            "list",
-        ])
-        .unwrap();
+        let cli =
+            Cli::try_parse_from(["msez", "--config", "msez.yaml", "corridor", "list"]).unwrap();
         assert_eq!(cli.config, Some(PathBuf::from("msez.yaml")));
     }
 
     #[test]
     fn cli_parse_output_dir_option() {
-        let cli = Cli::try_parse_from([
-            "msez",
-            "--output-dir",
-            "/tmp/output",
-            "corridor",
-            "list",
-        ])
-        .unwrap();
+        let cli = Cli::try_parse_from(["msez", "--output-dir", "/tmp/output", "corridor", "list"])
+            .unwrap();
         assert_eq!(cli.output_dir, Some(PathBuf::from("/tmp/output")));
     }
 

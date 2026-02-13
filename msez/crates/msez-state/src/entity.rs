@@ -516,7 +516,10 @@ mod tests {
         assert_eq!(format!("{}", EntityLifecycleState::Applied), "APPLIED");
         assert_eq!(format!("{}", EntityLifecycleState::Active), "ACTIVE");
         assert_eq!(format!("{}", EntityLifecycleState::Suspended), "SUSPENDED");
-        assert_eq!(format!("{}", EntityLifecycleState::Dissolving), "DISSOLVING");
+        assert_eq!(
+            format!("{}", EntityLifecycleState::Dissolving),
+            "DISSOLVING"
+        );
         assert_eq!(format!("{}", EntityLifecycleState::Dissolved), "DISSOLVED");
         assert_eq!(format!("{}", EntityLifecycleState::Rejected), "REJECTED");
     }
@@ -573,29 +576,77 @@ mod tests {
 
     #[test]
     fn dissolution_stage_as_str_all_variants() {
-        assert_eq!(DissolutionStage::BoardResolution.as_str(), "BOARD_RESOLUTION");
-        assert_eq!(DissolutionStage::ShareholderResolution.as_str(), "SHAREHOLDER_RESOLUTION");
-        assert_eq!(DissolutionStage::AppointLiquidator.as_str(), "APPOINT_LIQUIDATOR");
-        assert_eq!(DissolutionStage::NotifyCreditors.as_str(), "NOTIFY_CREDITORS");
+        assert_eq!(
+            DissolutionStage::BoardResolution.as_str(),
+            "BOARD_RESOLUTION"
+        );
+        assert_eq!(
+            DissolutionStage::ShareholderResolution.as_str(),
+            "SHAREHOLDER_RESOLUTION"
+        );
+        assert_eq!(
+            DissolutionStage::AppointLiquidator.as_str(),
+            "APPOINT_LIQUIDATOR"
+        );
+        assert_eq!(
+            DissolutionStage::NotifyCreditors.as_str(),
+            "NOTIFY_CREDITORS"
+        );
         assert_eq!(DissolutionStage::RealizeAssets.as_str(), "REALIZE_ASSETS");
-        assert_eq!(DissolutionStage::SettleLiabilities.as_str(), "SETTLE_LIABILITIES");
-        assert_eq!(DissolutionStage::FinalDistribution.as_str(), "FINAL_DISTRIBUTION");
+        assert_eq!(
+            DissolutionStage::SettleLiabilities.as_str(),
+            "SETTLE_LIABILITIES"
+        );
+        assert_eq!(
+            DissolutionStage::FinalDistribution.as_str(),
+            "FINAL_DISTRIBUTION"
+        );
         assert_eq!(DissolutionStage::FinalMeeting.as_str(), "FINAL_MEETING");
-        assert_eq!(DissolutionStage::FileFinalDocuments.as_str(), "FILE_FINAL_DOCUMENTS");
+        assert_eq!(
+            DissolutionStage::FileFinalDocuments.as_str(),
+            "FILE_FINAL_DOCUMENTS"
+        );
         assert_eq!(DissolutionStage::Dissolution.as_str(), "DISSOLUTION");
     }
 
     #[test]
     fn dissolution_stage_display_all_variants() {
-        assert_eq!(format!("{}", DissolutionStage::BoardResolution), "Stage 1 (BOARD_RESOLUTION)");
-        assert_eq!(format!("{}", DissolutionStage::ShareholderResolution), "Stage 2 (SHAREHOLDER_RESOLUTION)");
-        assert_eq!(format!("{}", DissolutionStage::AppointLiquidator), "Stage 3 (APPOINT_LIQUIDATOR)");
-        assert_eq!(format!("{}", DissolutionStage::RealizeAssets), "Stage 5 (REALIZE_ASSETS)");
-        assert_eq!(format!("{}", DissolutionStage::SettleLiabilities), "Stage 6 (SETTLE_LIABILITIES)");
-        assert_eq!(format!("{}", DissolutionStage::FinalDistribution), "Stage 7 (FINAL_DISTRIBUTION)");
-        assert_eq!(format!("{}", DissolutionStage::FinalMeeting), "Stage 8 (FINAL_MEETING)");
-        assert_eq!(format!("{}", DissolutionStage::FileFinalDocuments), "Stage 9 (FILE_FINAL_DOCUMENTS)");
-        assert_eq!(format!("{}", DissolutionStage::Dissolution), "Stage 10 (DISSOLUTION)");
+        assert_eq!(
+            format!("{}", DissolutionStage::BoardResolution),
+            "Stage 1 (BOARD_RESOLUTION)"
+        );
+        assert_eq!(
+            format!("{}", DissolutionStage::ShareholderResolution),
+            "Stage 2 (SHAREHOLDER_RESOLUTION)"
+        );
+        assert_eq!(
+            format!("{}", DissolutionStage::AppointLiquidator),
+            "Stage 3 (APPOINT_LIQUIDATOR)"
+        );
+        assert_eq!(
+            format!("{}", DissolutionStage::RealizeAssets),
+            "Stage 5 (REALIZE_ASSETS)"
+        );
+        assert_eq!(
+            format!("{}", DissolutionStage::SettleLiabilities),
+            "Stage 6 (SETTLE_LIABILITIES)"
+        );
+        assert_eq!(
+            format!("{}", DissolutionStage::FinalDistribution),
+            "Stage 7 (FINAL_DISTRIBUTION)"
+        );
+        assert_eq!(
+            format!("{}", DissolutionStage::FinalMeeting),
+            "Stage 8 (FINAL_MEETING)"
+        );
+        assert_eq!(
+            format!("{}", DissolutionStage::FileFinalDocuments),
+            "Stage 9 (FILE_FINAL_DOCUMENTS)"
+        );
+        assert_eq!(
+            format!("{}", DissolutionStage::Dissolution),
+            "Stage 10 (DISSOLUTION)"
+        );
     }
 
     #[test]

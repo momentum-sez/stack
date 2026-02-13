@@ -4,8 +4,8 @@
 //! of the phoenix layer, including empty tensor commitments, key ordering
 //! inconsistencies, and domain enum completeness.
 
-use msez_core::{CanonicalBytes, sha256_digest, ComplianceDomain, JurisdictionId};
-use msez_tensor::{ComplianceTensor, DefaultJurisdiction, ComplianceState, TensorCommitment};
+use msez_core::{sha256_digest, CanonicalBytes, ComplianceDomain, JurisdictionId};
+use msez_tensor::{ComplianceState, ComplianceTensor, DefaultJurisdiction, TensorCommitment};
 use serde_json::json;
 
 // ---------------------------------------------------------------------------
@@ -105,7 +105,8 @@ fn domain_enum_completeness() {
         "ComplianceDomain::all() must return COUNT elements"
     );
     assert_eq!(
-        ComplianceDomain::COUNT, 20,
+        ComplianceDomain::COUNT,
+        20,
         "ComplianceDomain::COUNT must be 20"
     );
 }

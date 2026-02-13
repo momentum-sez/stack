@@ -737,12 +737,8 @@ mod tests {
         let subject = make_test_subject();
         let ts = Timestamp::now();
         let expected_dt = *ts.as_datetime();
-        let vc = SmartAssetRegistryVc::new(
-            "did:key:z6MkTestIssuer".to_string(),
-            subject,
-            Some(ts),
-        )
-        .unwrap();
+        let vc = SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject, Some(ts))
+            .unwrap();
         assert_eq!(vc.as_vc().issuance_date, expected_dt);
     }
 
@@ -770,10 +766,7 @@ mod tests {
             SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject, None).unwrap();
         let extracted = vc.subject().unwrap();
         assert_eq!(extracted.jurisdiction_bindings.len(), 2);
-        assert_eq!(
-            extracted.jurisdiction_bindings[1].harbor_id,
-            "zone-ae-01"
-        );
+        assert_eq!(extracted.jurisdiction_bindings[1].harbor_id, "zone-ae-01");
     }
 
     #[test]

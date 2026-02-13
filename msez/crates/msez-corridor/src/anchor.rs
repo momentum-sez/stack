@@ -420,11 +420,11 @@ mod tests {
         };
         let receipt = target.anchor(commitment).unwrap();
 
-        assert_eq!(receipt.commitment.checkpoint_digest.to_hex(), digest.to_hex());
-        assert_eq!(receipt.commitment.checkpoint_height, 42);
         assert_eq!(
-            receipt.commitment.chain_id.as_deref(),
-            Some("eth-goerli")
+            receipt.commitment.checkpoint_digest.to_hex(),
+            digest.to_hex()
         );
+        assert_eq!(receipt.commitment.checkpoint_height, 42);
+        assert_eq!(receipt.commitment.chain_id.as_deref(), Some("eth-goerli"));
     }
 }

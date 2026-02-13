@@ -776,7 +776,10 @@ mod tests {
     #[test]
     fn escrow_type_display() {
         assert_eq!(format!("{}", EscrowType::FilingFee), "filing_fee");
-        assert_eq!(format!("{}", EscrowType::SecurityDeposit), "security_deposit");
+        assert_eq!(
+            format!("{}", EscrowType::SecurityDeposit),
+            "security_deposit"
+        );
         assert_eq!(format!("{}", EscrowType::AwardEscrow), "award_escrow");
         assert_eq!(format!("{}", EscrowType::AppealBond), "appeal_bond");
     }
@@ -785,7 +788,10 @@ mod tests {
     fn escrow_status_display() {
         assert_eq!(format!("{}", EscrowStatus::Pending), "PENDING");
         assert_eq!(format!("{}", EscrowStatus::Funded), "FUNDED");
-        assert_eq!(format!("{}", EscrowStatus::PartiallyReleased), "PARTIALLY_RELEASED");
+        assert_eq!(
+            format!("{}", EscrowStatus::PartiallyReleased),
+            "PARTIALLY_RELEASED"
+        );
         assert_eq!(format!("{}", EscrowStatus::FullyReleased), "FULLY_RELEASED");
         assert_eq!(format!("{}", EscrowStatus::Forfeited), "FORFEITED");
     }
@@ -794,7 +800,10 @@ mod tests {
     fn escrow_status_as_str_all_variants() {
         assert_eq!(EscrowStatus::Pending.as_str(), "PENDING");
         assert_eq!(EscrowStatus::Funded.as_str(), "FUNDED");
-        assert_eq!(EscrowStatus::PartiallyReleased.as_str(), "PARTIALLY_RELEASED");
+        assert_eq!(
+            EscrowStatus::PartiallyReleased.as_str(),
+            "PARTIALLY_RELEASED"
+        );
         assert_eq!(EscrowStatus::FullyReleased.as_str(), "FULLY_RELEASED");
         assert_eq!(EscrowStatus::Forfeited.as_str(), "FORFEITED");
     }
@@ -810,11 +819,26 @@ mod tests {
 
     #[test]
     fn release_condition_type_display() {
-        assert_eq!(format!("{}", ReleaseConditionType::RulingEnforced), "ruling_enforced");
-        assert_eq!(format!("{}", ReleaseConditionType::AppealPeriodExpired), "appeal_period_expired");
-        assert_eq!(format!("{}", ReleaseConditionType::SettlementAgreed), "settlement_agreed");
-        assert_eq!(format!("{}", ReleaseConditionType::DisputeWithdrawn), "dispute_withdrawn");
-        assert_eq!(format!("{}", ReleaseConditionType::InstitutionOrder), "institution_order");
+        assert_eq!(
+            format!("{}", ReleaseConditionType::RulingEnforced),
+            "ruling_enforced"
+        );
+        assert_eq!(
+            format!("{}", ReleaseConditionType::AppealPeriodExpired),
+            "appeal_period_expired"
+        );
+        assert_eq!(
+            format!("{}", ReleaseConditionType::SettlementAgreed),
+            "settlement_agreed"
+        );
+        assert_eq!(
+            format!("{}", ReleaseConditionType::DisputeWithdrawn),
+            "dispute_withdrawn"
+        );
+        assert_eq!(
+            format!("{}", ReleaseConditionType::InstitutionOrder),
+            "institution_order"
+        );
     }
 
     #[test]
@@ -946,12 +970,8 @@ mod tests {
             EscrowType::AwardEscrow,
             EscrowType::AppealBond,
         ] {
-            let escrow = EscrowAccount::create(
-                test_dispute_id(),
-                escrow_type,
-                "PKR".to_string(),
-                None,
-            );
+            let escrow =
+                EscrowAccount::create(test_dispute_id(), escrow_type, "PKR".to_string(), None);
             assert_eq!(escrow.escrow_type, escrow_type);
             assert_eq!(escrow.status, EscrowStatus::Pending);
         }

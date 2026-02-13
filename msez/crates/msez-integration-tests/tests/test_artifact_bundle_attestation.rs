@@ -58,10 +58,7 @@ fn bundle_with_attestation_fields() {
 
     // Verify the canonical bytes parse back to the same structure
     let reparsed: serde_json::Value = serde_json::from_slice(canonical.as_bytes()).unwrap();
-    assert_eq!(
-        reparsed["attestation"]["attester"],
-        "did:key:z6MkAttester"
-    );
+    assert_eq!(reparsed["attestation"]["attester"], "did:key:z6MkAttester");
     assert_eq!(reparsed["attestation"]["jurisdiction"], "PK-RSEZ");
 }
 

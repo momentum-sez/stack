@@ -333,7 +333,10 @@ mod tests {
             beneficial_owners: vec![],
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("legal_name"), "error should mention legal_name: {err}");
+        assert!(
+            err.contains("legal_name"),
+            "error should mention legal_name: {err}"
+        );
     }
 
     #[test]
@@ -356,7 +359,10 @@ mod tests {
             beneficial_owners: vec![],
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("jurisdiction_id"), "error should mention jurisdiction_id: {err}");
+        assert!(
+            err.contains("jurisdiction_id"),
+            "error should mention jurisdiction_id: {err}"
+        );
     }
 
     #[test]
@@ -368,7 +374,10 @@ mod tests {
             beneficial_owners: vec![],
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("entity_type"), "error should mention entity_type: {err}");
+        assert!(
+            err.contains("entity_type"),
+            "error should mention entity_type: {err}"
+        );
     }
 
     // ── UpdateEntityRequest validation ─────────────────────────────
@@ -398,7 +407,10 @@ mod tests {
             status: None,
         };
         let err = req.validate().unwrap_err();
-        assert!(err.contains("legal_name"), "error should mention legal_name: {err}");
+        assert!(
+            err.contains("legal_name"),
+            "error should mention legal_name: {err}"
+        );
     }
 
     #[test]
@@ -558,7 +570,7 @@ mod tests {
         // Get the entity by ID.
         let get_req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/entities/{}", created.id))
+            .uri(format!("/v1/entities/{}", created.id))
             .body(Body::empty())
             .unwrap();
         let get_resp = app.oneshot(get_req).await.unwrap();
@@ -575,7 +587,7 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/entities/{id}"))
+            .uri(format!("/v1/entities/{id}"))
             .body(Body::empty())
             .unwrap();
 
@@ -606,11 +618,9 @@ mod tests {
         // Update the entity's legal_name and status.
         let update_req = Request::builder()
             .method("PUT")
-            .uri(&format!("/v1/entities/{}", created.id))
+            .uri(format!("/v1/entities/{}", created.id))
             .header("content-type", "application/json")
-            .body(Body::from(
-                r#"{"legal_name":"New Name","status":"ACTIVE"}"#,
-            ))
+            .body(Body::from(r#"{"legal_name":"New Name","status":"ACTIVE"}"#))
             .unwrap();
         let update_resp = app.oneshot(update_req).await.unwrap();
         assert_eq!(update_resp.status(), StatusCode::OK);
@@ -641,7 +651,7 @@ mod tests {
         // Update only legal_name (no status).
         let update_req = Request::builder()
             .method("PUT")
-            .uri(&format!("/v1/entities/{}", created.id))
+            .uri(format!("/v1/entities/{}", created.id))
             .header("content-type", "application/json")
             .body(Body::from(r#"{"legal_name":"Updated Partial Corp"}"#))
             .unwrap();
@@ -655,7 +665,7 @@ mod tests {
         // Update only status (no legal_name).
         let update_req2 = Request::builder()
             .method("PUT")
-            .uri(&format!("/v1/entities/{}", created.id))
+            .uri(format!("/v1/entities/{}", created.id))
             .header("content-type", "application/json")
             .body(Body::from(r#"{"status":"SUSPENDED"}"#))
             .unwrap();
@@ -673,7 +683,7 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("PUT")
-            .uri(&format!("/v1/entities/{id}"))
+            .uri(format!("/v1/entities/{id}"))
             .header("content-type", "application/json")
             .body(Body::from(r#"{"legal_name":"Ghost"}"#))
             .unwrap();
@@ -702,7 +712,7 @@ mod tests {
         // Update with empty legal_name.
         let update_req = Request::builder()
             .method("PUT")
-            .uri(&format!("/v1/entities/{}", created.id))
+            .uri(format!("/v1/entities/{}", created.id))
             .header("content-type", "application/json")
             .body(Body::from(r#"{"legal_name":""}"#))
             .unwrap();
@@ -730,7 +740,7 @@ mod tests {
         // Send malformed JSON.
         let update_req = Request::builder()
             .method("PUT")
-            .uri(&format!("/v1/entities/{}", created.id))
+            .uri(format!("/v1/entities/{}", created.id))
             .header("content-type", "application/json")
             .body(Body::from(r#"{broken json"#))
             .unwrap();
@@ -759,7 +769,7 @@ mod tests {
         // Get beneficial owners.
         let get_req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/entities/{}/beneficial-owners", created.id))
+            .uri(format!("/v1/entities/{}/beneficial-owners", created.id))
             .body(Body::empty())
             .unwrap();
         let get_resp = app.oneshot(get_req).await.unwrap();
@@ -780,7 +790,7 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/entities/{id}/beneficial-owners"))
+            .uri(format!("/v1/entities/{id}/beneficial-owners"))
             .body(Body::empty())
             .unwrap();
 
@@ -808,7 +818,7 @@ mod tests {
         // Initiate dissolution.
         let dissolve_req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/entities/{}/dissolution/initiate", created.id))
+            .uri(format!("/v1/entities/{}/dissolution/initiate", created.id))
             .body(Body::empty())
             .unwrap();
         let dissolve_resp = app.oneshot(dissolve_req).await.unwrap();
@@ -825,7 +835,7 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/entities/{id}/dissolution/initiate"))
+            .uri(format!("/v1/entities/{id}/dissolution/initiate"))
             .body(Body::empty())
             .unwrap();
 
@@ -853,7 +863,7 @@ mod tests {
         // Initiate dissolution.
         let dissolve_req = Request::builder()
             .method("POST")
-            .uri(&format!("/v1/entities/{}/dissolution/initiate", created.id))
+            .uri(format!("/v1/entities/{}/dissolution/initiate", created.id))
             .body(Body::empty())
             .unwrap();
         app.clone().oneshot(dissolve_req).await.unwrap();
@@ -861,7 +871,7 @@ mod tests {
         // Get dissolution status.
         let status_req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/entities/{}/dissolution/status", created.id))
+            .uri(format!("/v1/entities/{}/dissolution/status", created.id))
             .body(Body::empty())
             .unwrap();
         let status_resp = app.oneshot(status_req).await.unwrap();
@@ -894,7 +904,7 @@ mod tests {
         // Get dissolution status — no dissolution initiated.
         let status_req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/entities/{}/dissolution/status", created.id))
+            .uri(format!("/v1/entities/{}/dissolution/status", created.id))
             .body(Body::empty())
             .unwrap();
         let status_resp = app.oneshot(status_req).await.unwrap();
@@ -913,7 +923,7 @@ mod tests {
         let id = Uuid::new_v4();
         let req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/entities/{id}/dissolution/status"))
+            .uri(format!("/v1/entities/{id}/dissolution/status"))
             .body(Body::empty())
             .unwrap();
 
@@ -958,7 +968,7 @@ mod tests {
             let app = router().with_state(state.clone());
             let req = Request::builder()
                 .method("GET")
-                .uri(&format!("/v1/entities/{id}/dissolution/status"))
+                .uri(format!("/v1/entities/{id}/dissolution/status"))
                 .body(Body::empty())
                 .unwrap();
             let resp = app.oneshot(req).await.unwrap();
@@ -988,7 +998,7 @@ mod tests {
         let app = router().with_state(state.clone());
         let req = Request::builder()
             .method("GET")
-            .uri(&format!("/v1/entities/{unknown_id}/dissolution/status"))
+            .uri(format!("/v1/entities/{unknown_id}/dissolution/status"))
             .body(Body::empty())
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();

@@ -141,9 +141,14 @@ fn aml_kyc_compliance_scenario() {
     );
 
     let slice_nc = tensor.slice(&[ComplianceDomain::Aml, ComplianceDomain::Kyc]);
-    assert!(!slice_nc.all_passing(), "AML non-compliant should fail all_passing");
+    assert!(
+        !slice_nc.all_passing(),
+        "AML non-compliant should fail all_passing"
+    );
     assert_eq!(slice_nc.non_compliant_domains().len(), 1);
-    assert!(slice_nc.non_compliant_domains().contains(&ComplianceDomain::Aml));
+    assert!(slice_nc
+        .non_compliant_domains()
+        .contains(&ComplianceDomain::Aml));
 }
 
 // ---------------------------------------------------------------------------
@@ -155,12 +160,42 @@ fn cross_domain_compliance_check() {
     let mut tensor = ComplianceTensor::new(test_jurisdiction());
 
     // Set various domains to different states
-    tensor.set(ComplianceDomain::Aml, ComplianceState::Compliant, vec![], None);
-    tensor.set(ComplianceDomain::Kyc, ComplianceState::Compliant, vec![], None);
-    tensor.set(ComplianceDomain::Sanctions, ComplianceState::Compliant, vec![], None);
-    tensor.set(ComplianceDomain::Tax, ComplianceState::Pending, vec![], None);
-    tensor.set(ComplianceDomain::Securities, ComplianceState::NotApplicable, vec![], None);
-    tensor.set(ComplianceDomain::Licensing, ComplianceState::Compliant, vec![], None);
+    tensor.set(
+        ComplianceDomain::Aml,
+        ComplianceState::Compliant,
+        vec![],
+        None,
+    );
+    tensor.set(
+        ComplianceDomain::Kyc,
+        ComplianceState::Compliant,
+        vec![],
+        None,
+    );
+    tensor.set(
+        ComplianceDomain::Sanctions,
+        ComplianceState::Compliant,
+        vec![],
+        None,
+    );
+    tensor.set(
+        ComplianceDomain::Tax,
+        ComplianceState::Pending,
+        vec![],
+        None,
+    );
+    tensor.set(
+        ComplianceDomain::Securities,
+        ComplianceState::NotApplicable,
+        vec![],
+        None,
+    );
+    tensor.set(
+        ComplianceDomain::Licensing,
+        ComplianceState::Compliant,
+        vec![],
+        None,
+    );
 
     // Full slice
     let full = tensor.full_slice();

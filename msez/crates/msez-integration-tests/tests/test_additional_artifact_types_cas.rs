@@ -69,7 +69,9 @@ fn store_nested_artifact() {
     let artifact_ref = store.store("corridor-snapshot", &data).unwrap();
     assert_eq!(artifact_ref.artifact_type, "corridor-snapshot");
 
-    let resolved = store.resolve("corridor-snapshot", &artifact_ref.digest).unwrap();
+    let resolved = store
+        .resolve("corridor-snapshot", &artifact_ref.digest)
+        .unwrap();
     assert!(resolved.is_some());
 }
 

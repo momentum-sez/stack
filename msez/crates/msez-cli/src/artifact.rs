@@ -235,7 +235,8 @@ mod tests {
 
     #[test]
     fn parse_digest_hex_rejects_non_hex() {
-        let result = parse_digest_hex("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz");
+        let result =
+            parse_digest_hex("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz");
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("64 hex characters") || err_msg.contains("invalid digest"));

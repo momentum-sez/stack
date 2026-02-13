@@ -5,9 +5,9 @@
 //! compensation. Corresponds to the Python migration saga tests.
 
 use chrono::{TimeDelta, Utc};
-use msez_core::{EntityId, JurisdictionId, MigrationId};
+use msez_core::{JurisdictionId, MigrationId};
 use msez_state::migration::MigrationError;
-use msez_state::{MigrationBuilder, MigrationSaga, MigrationState};
+use msez_state::{MigrationBuilder, MigrationState};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -69,10 +69,16 @@ fn migration_flow_state_display_names() {
     let states = [
         (MigrationState::Initiated, "INITIATED"),
         (MigrationState::ComplianceCheck, "COMPLIANCE_CHECK"),
-        (MigrationState::AttestationGathering, "ATTESTATION_GATHERING"),
+        (
+            MigrationState::AttestationGathering,
+            "ATTESTATION_GATHERING",
+        ),
         (MigrationState::SourceLocked, "SOURCE_LOCKED"),
         (MigrationState::InTransit, "IN_TRANSIT"),
-        (MigrationState::DestinationVerification, "DESTINATION_VERIFICATION"),
+        (
+            MigrationState::DestinationVerification,
+            "DESTINATION_VERIFICATION",
+        ),
         (MigrationState::DestinationUnlock, "DESTINATION_UNLOCK"),
         (MigrationState::Completed, "COMPLETED"),
         (MigrationState::Compensated, "COMPENSATED"),

@@ -830,13 +830,17 @@ mod tests {
     #[test]
     fn test_get_schema_returns_none_for_unknown() {
         let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
-        assert!(validator.get_schema("https://unknown.example/schema.json").is_none());
+        assert!(validator
+            .get_schema("https://unknown.example/schema.json")
+            .is_none());
     }
 
     #[test]
     fn test_get_schema_by_filename_returns_none_for_unknown() {
         let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
-        assert!(validator.get_schema_by_filename("no-such-file.schema.json").is_none());
+        assert!(validator
+            .get_schema_by_filename("no-such-file.schema.json")
+            .is_none());
     }
 
     #[test]
@@ -851,7 +855,10 @@ mod tests {
     fn test_get_schema_by_filename_returns_some_for_known() {
         let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
         let schema = validator.get_schema_by_filename("module.schema.json");
-        assert!(schema.is_some(), "module.schema.json should be found by filename");
+        assert!(
+            schema.is_some(),
+            "module.schema.json should be found by filename"
+        );
     }
 
     #[test]
@@ -886,7 +893,8 @@ mod tests {
 
     #[test]
     fn test_find_all_modules_nonexistent_dir() {
-        let modules = SchemaValidator::find_all_modules(Path::new("/tmp/no-such-modules-dir-12345"));
+        let modules =
+            SchemaValidator::find_all_modules(Path::new("/tmp/no-such-modules-dir-12345"));
         assert!(modules.is_empty());
     }
 
@@ -965,7 +973,10 @@ mod tests {
         let result = validator.validate_value(&empty, &schema_id);
         assert!(result.is_err());
         if let Err(SchemaValidationError::ValidationFailed { count, details, .. }) = result {
-            assert!(count >= 1, "Should have at least one error for empty object");
+            assert!(
+                count >= 1,
+                "Should have at least one error for empty object"
+            );
             assert!(!details.is_empty());
         }
     }

@@ -2,8 +2,8 @@
 //! correctly handles duplicate storage and that strict mode preserves
 //! existing artifacts.
 
-use msez_crypto::ContentAddressedStore;
 use msez_core::sha256_digest;
+use msez_crypto::ContentAddressedStore;
 use serde_json::json;
 
 // ---------------------------------------------------------------------------

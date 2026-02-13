@@ -545,38 +545,58 @@ mod tests {
     fn obligation_count_tracks_additions() {
         let mut engine = NettingEngine::new();
         assert_eq!(engine.obligation_count(), 0);
-        engine.add_obligation(obligation("A", "B", 100, "USD")).unwrap();
+        engine
+            .add_obligation(obligation("A", "B", 100, "USD"))
+            .unwrap();
         assert_eq!(engine.obligation_count(), 1);
-        engine.add_obligation(obligation("B", "C", 200, "USD")).unwrap();
+        engine
+            .add_obligation(obligation("B", "C", 200, "USD"))
+            .unwrap();
         assert_eq!(engine.obligation_count(), 2);
-        engine.add_obligation(obligation("C", "A", 150, "PKR")).unwrap();
+        engine
+            .add_obligation(obligation("C", "A", 150, "PKR"))
+            .unwrap();
         assert_eq!(engine.obligation_count(), 3);
     }
 
     #[test]
     fn gross_positions_computed_correctly() {
         let mut engine = NettingEngine::new();
-        engine.add_obligation(obligation("A", "B", 100, "USD")).unwrap();
-        engine.add_obligation(obligation("B", "A", 60, "USD")).unwrap();
-        engine.add_obligation(obligation("A", "B", 50, "USD")).unwrap();
+        engine
+            .add_obligation(obligation("A", "B", 100, "USD"))
+            .unwrap();
+        engine
+            .add_obligation(obligation("B", "A", 60, "USD"))
+            .unwrap();
+        engine
+            .add_obligation(obligation("A", "B", 50, "USD"))
+            .unwrap();
 
         let positions = engine.compute_gross_positions();
         // A-USD: receivable=60, payable=150
-        let a_pos = positions.get(&("A".to_string(), "USD".to_string())).unwrap();
-        assert_eq!(a_pos.0, 60);  // receivable
+        let a_pos = positions
+            .get(&("A".to_string(), "USD".to_string()))
+            .unwrap();
+        assert_eq!(a_pos.0, 60); // receivable
         assert_eq!(a_pos.1, 150); // payable
 
         // B-USD: receivable=150, payable=60
-        let b_pos = positions.get(&("B".to_string(), "USD".to_string())).unwrap();
+        let b_pos = positions
+            .get(&("B".to_string(), "USD".to_string()))
+            .unwrap();
         assert_eq!(b_pos.0, 150); // receivable
-        assert_eq!(b_pos.1, 60);  // payable
+        assert_eq!(b_pos.1, 60); // payable
     }
 
     #[test]
     fn net_positions_computed_correctly() {
         let mut engine = NettingEngine::new();
-        engine.add_obligation(obligation("A", "B", 100, "USD")).unwrap();
-        engine.add_obligation(obligation("B", "A", 60, "USD")).unwrap();
+        engine
+            .add_obligation(obligation("A", "B", 100, "USD"))
+            .unwrap();
+        engine
+            .add_obligation(obligation("B", "A", 60, "USD"))
+            .unwrap();
 
         let positions = engine.compute_net_positions();
         let a_pos = positions.iter().find(|p| p.party_id == "A").unwrap();
@@ -593,17 +613,22 @@ mod tests {
     #[test]
     fn obligation_with_corridor_id() {
         let mut engine = NettingEngine::new();
-        engine.add_obligation(Obligation {
-            from_party: "A".to_string(),
-            to_party: "B".to_string(),
-            amount: 100,
-            currency: "USD".to_string(),
-            corridor_id: Some("corridor-pk-ae-001".to_string()),
-            priority: 5,
-        }).unwrap();
+        engine
+            .add_obligation(Obligation {
+                from_party: "A".to_string(),
+                to_party: "B".to_string(),
+                amount: 100,
+                currency: "USD".to_string(),
+                corridor_id: Some("corridor-pk-ae-001".to_string()),
+                priority: 5,
+            })
+            .unwrap();
 
         let plan = engine.compute_plan().unwrap();
-        assert_eq!(plan.obligations[0].corridor_id.as_deref(), Some("corridor-pk-ae-001"));
+        assert_eq!(
+            plan.obligations[0].corridor_id.as_deref(),
+            Some("corridor-pk-ae-001")
+        );
         assert_eq!(plan.obligations[0].priority, 5);
     }
 
@@ -638,8 +663,12 @@ mod tests {
     #[test]
     fn settlement_plan_serialization_roundtrip() {
         let mut engine = NettingEngine::new();
-        engine.add_obligation(obligation("A", "B", 100, "USD")).unwrap();
-        engine.add_obligation(obligation("B", "A", 40, "USD")).unwrap();
+        engine
+            .add_obligation(obligation("A", "B", 100, "USD"))
+            .unwrap();
+        engine
+            .add_obligation(obligation("B", "A", 40, "USD"))
+            .unwrap();
 
         let plan = engine.compute_plan().unwrap();
         let json_str = serde_json::to_string(&plan).unwrap();
@@ -659,16 +688,31 @@ mod tests {
     #[test]
     fn three_currency_netting() {
         let mut engine = NettingEngine::new();
-        engine.add_obligation(obligation("A", "B", 100, "USD")).unwrap();
-        engine.add_obligation(obligation("A", "B", 5000, "PKR")).unwrap();
-        engine.add_obligation(obligation("A", "B", 200, "AED")).unwrap();
-        engine.add_obligation(obligation("B", "A", 50, "USD")).unwrap();
-        engine.add_obligation(obligation("B", "A", 3000, "PKR")).unwrap();
-        engine.add_obligation(obligation("B", "A", 100, "AED")).unwrap();
+        engine
+            .add_obligation(obligation("A", "B", 100, "USD"))
+            .unwrap();
+        engine
+            .add_obligation(obligation("A", "B", 5000, "PKR"))
+            .unwrap();
+        engine
+            .add_obligation(obligation("A", "B", 200, "AED"))
+            .unwrap();
+        engine
+            .add_obligation(obligation("B", "A", 50, "USD"))
+            .unwrap();
+        engine
+            .add_obligation(obligation("B", "A", 3000, "PKR"))
+            .unwrap();
+        engine
+            .add_obligation(obligation("B", "A", 100, "AED"))
+            .unwrap();
 
         let plan = engine.compute_plan().unwrap();
-        let currencies: std::collections::BTreeSet<String> =
-            plan.settlement_legs.iter().map(|l| l.currency.clone()).collect();
+        let currencies: std::collections::BTreeSet<String> = plan
+            .settlement_legs
+            .iter()
+            .map(|l| l.currency.clone())
+            .collect();
         assert_eq!(currencies.len(), 3);
         assert!(currencies.contains("USD"));
         assert!(currencies.contains("PKR"));
@@ -680,8 +724,12 @@ mod tests {
         // If A owes B and B owes A the same amount in the same currency,
         // they should net to zero
         let mut engine = NettingEngine::new();
-        engine.add_obligation(obligation("X", "Y", 1000, "USD")).unwrap();
-        engine.add_obligation(obligation("Y", "X", 1000, "USD")).unwrap();
+        engine
+            .add_obligation(obligation("X", "Y", 1000, "USD"))
+            .unwrap();
+        engine
+            .add_obligation(obligation("Y", "X", 1000, "USD"))
+            .unwrap();
 
         let plan = engine.compute_plan().unwrap();
         assert_eq!(plan.settlement_legs.len(), 0);
@@ -692,11 +740,21 @@ mod tests {
     fn large_multilateral_netting() {
         let mut engine = NettingEngine::new();
         // Five-party circular obligation chain
-        engine.add_obligation(obligation("A", "B", 1000, "USD")).unwrap();
-        engine.add_obligation(obligation("B", "C", 800, "USD")).unwrap();
-        engine.add_obligation(obligation("C", "D", 600, "USD")).unwrap();
-        engine.add_obligation(obligation("D", "E", 400, "USD")).unwrap();
-        engine.add_obligation(obligation("E", "A", 200, "USD")).unwrap();
+        engine
+            .add_obligation(obligation("A", "B", 1000, "USD"))
+            .unwrap();
+        engine
+            .add_obligation(obligation("B", "C", 800, "USD"))
+            .unwrap();
+        engine
+            .add_obligation(obligation("C", "D", 600, "USD"))
+            .unwrap();
+        engine
+            .add_obligation(obligation("D", "E", 400, "USD"))
+            .unwrap();
+        engine
+            .add_obligation(obligation("E", "A", 200, "USD"))
+            .unwrap();
 
         let plan = engine.compute_plan().unwrap();
         assert_eq!(plan.gross_total, 3000);

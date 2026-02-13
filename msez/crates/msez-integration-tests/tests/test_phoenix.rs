@@ -110,7 +110,10 @@ fn tensor_creation_and_evaluation() {
         None,
     );
 
-    assert_eq!(tensor.get(ComplianceDomain::Aml), ComplianceState::Compliant);
+    assert_eq!(
+        tensor.get(ComplianceDomain::Aml),
+        ComplianceState::Compliant
+    );
     assert_eq!(tensor.get(ComplianceDomain::Tax), ComplianceState::Pending);
 
     // Slice

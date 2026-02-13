@@ -4,10 +4,8 @@
 //! jurisdictions, compute shortest paths, and produce deterministic
 //! digests for composition snapshots.
 
-use msez_core::{CanonicalBytes, sha256_digest, ComplianceDomain};
-use msez_tensor::{
-    ComplianceManifold, JurisdictionNode, CorridorEdge as TensorCorridorEdge,
-};
+use msez_core::{sha256_digest, CanonicalBytes, ComplianceDomain};
+use msez_tensor::{ComplianceManifold, CorridorEdge as TensorCorridorEdge, JurisdictionNode};
 use serde_json::json;
 
 // ---------------------------------------------------------------------------
@@ -36,7 +34,11 @@ fn ae_difc_node() -> JurisdictionNode {
         entry_fee_usd: 10000,
         annual_fee_usd: 5000,
         is_active: true,
-        required_domains: vec![ComplianceDomain::Aml, ComplianceDomain::Kyc, ComplianceDomain::Sanctions],
+        required_domains: vec![
+            ComplianceDomain::Aml,
+            ComplianceDomain::Kyc,
+            ComplianceDomain::Sanctions,
+        ],
     }
 }
 
@@ -67,7 +69,7 @@ fn two_zone_composition() {
     manifold.add_corridor(corridor_pk_ae());
 
     assert_eq!(manifold.list_jurisdictions().len(), 2);
-    assert!(manifold.list_corridors().len() >= 1);
+    assert!(!manifold.list_corridors().is_empty());
 }
 
 // ---------------------------------------------------------------------------
@@ -156,8 +158,5 @@ fn composition_key_ordering_invariant() {
     let ca = CanonicalBytes::new(&a).unwrap();
     let cb = CanonicalBytes::new(&b).unwrap();
 
-    assert_eq!(
-        sha256_digest(&ca).to_hex(),
-        sha256_digest(&cb).to_hex(),
-    );
+    assert_eq!(sha256_digest(&ca).to_hex(), sha256_digest(&cb).to_hex(),);
 }

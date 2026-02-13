@@ -1054,7 +1054,10 @@ mod tests {
             peak_index: 0,
             peak_height: 0,
             path: vec![],
-            peaks: vec![Peak { height: 0, hash: "00".repeat(32) }],
+            peaks: vec![Peak {
+                height: 0,
+                hash: "00".repeat(32),
+            }],
             computed_peak_root: "00".repeat(32),
         };
         assert!(!verify_inclusion_proof(&proof));
@@ -1092,7 +1095,10 @@ mod tests {
             peak_index: 5,
             peak_height: 0,
             path: vec![],
-            peaks: vec![Peak { height: 0, hash: lh }],
+            peaks: vec![Peak {
+                height: 0,
+                hash: lh,
+            }],
             computed_peak_root: "00".repeat(32),
         };
         assert!(!verify_inclusion_proof(&proof));
@@ -1109,9 +1115,12 @@ mod tests {
             receipt_next_root: nr,
             leaf_hash: lh.clone(),
             peak_index: 0,
-            peak_height: 3,  // wrong: should be 0 for single leaf
+            peak_height: 3, // wrong: should be 0 for single leaf
             path: vec![],
-            peaks: vec![Peak { height: 0, hash: lh }],
+            peaks: vec![Peak {
+                height: 0,
+                hash: lh,
+            }],
             computed_peak_root: "00".repeat(32),
         };
         assert!(!verify_inclusion_proof(&proof));
@@ -1130,7 +1139,10 @@ mod tests {
             peak_index: 0,
             peak_height: 0,
             path: vec![],
-            peaks: vec![Peak { height: 0, hash: "not_hex".to_string() }],
+            peaks: vec![Peak {
+                height: 0,
+                hash: "not_hex".to_string(),
+            }],
             computed_peak_root: "00".repeat(32),
         };
         assert!(!verify_inclusion_proof(&proof));
@@ -1144,11 +1156,14 @@ mod tests {
             root: "00".repeat(32),
             leaf_index: 0,
             receipt_next_root: nr,
-            leaf_hash: "00".repeat(32),  // wrong leaf hash
+            leaf_hash: "00".repeat(32), // wrong leaf hash
             peak_index: 0,
             peak_height: 0,
             path: vec![],
-            peaks: vec![Peak { height: 0, hash: "00".repeat(32) }],
+            peaks: vec![Peak {
+                height: 0,
+                hash: "00".repeat(32),
+            }],
             computed_peak_root: "00".repeat(32),
         };
         assert!(!verify_inclusion_proof(&proof));
@@ -1180,14 +1195,18 @@ mod tests {
 
     #[test]
     fn merkle_path_pow2_non_power_of_two() {
-        let hashes: Vec<String> = (1..=3).map(|i| mmr_leaf_hash(&receipt_hash(i)).unwrap()).collect();
+        let hashes: Vec<String> = (1..=3)
+            .map(|i| mmr_leaf_hash(&receipt_hash(i)).unwrap())
+            .collect();
         let result = merkle_path_for_power_of_two(&hashes, 0);
         assert!(result.is_err());
     }
 
     #[test]
     fn merkle_path_pow2_out_of_range() {
-        let hashes: Vec<String> = (1..=2).map(|i| mmr_leaf_hash(&receipt_hash(i)).unwrap()).collect();
+        let hashes: Vec<String> = (1..=2)
+            .map(|i| mmr_leaf_hash(&receipt_hash(i)).unwrap())
+            .collect();
         let result = merkle_path_for_power_of_two(&hashes, 5);
         assert!(result.is_err());
     }

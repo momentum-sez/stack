@@ -1,10 +1,10 @@
 //! Rust counterpart of tests/scenarios/test_smart_asset_integration_scaffold.py
 //! Smart asset integration scaffolding tests.
 
-use msez_core::{CanonicalBytes, sha256_digest, JurisdictionId, ComplianceDomain};
+use msez_core::{sha256_digest, CanonicalBytes, ComplianceDomain, JurisdictionId};
 use msez_crypto::ContentAddressedStore;
-use msez_vc::{VerifiableCredential, ContextValue, CredentialTypeValue, ProofValue};
 use msez_tensor::tensor::{ComplianceTensor, DefaultJurisdiction};
+use msez_vc::{ContextValue, CredentialTypeValue, ProofValue, VerifiableCredential};
 use serde_json::json;
 
 #[test]
@@ -39,7 +39,8 @@ fn smart_asset_compliance_evaluation() {
 fn smart_asset_cas_storage() {
     let dir = tempfile::tempdir().unwrap();
     let store = ContentAddressedStore::new(dir.path());
-    let asset_data = json!({"asset_id": "test", "type": "mining_license", "jurisdiction": "PK-RSEZ"});
+    let asset_data =
+        json!({"asset_id": "test", "type": "mining_license", "jurisdiction": "PK-RSEZ"});
     let aref = store.store("smart-asset", &asset_data).unwrap();
     let resolved = store.resolve("smart-asset", &aref.digest).unwrap();
     assert!(resolved.is_some());

@@ -4,12 +4,9 @@
 //! are structurally excluded from the Rust type system, and that the corridor
 //! state machine uses spec-aligned names throughout.
 
-use msez_core::{CanonicalBytes, sha256_digest, JurisdictionId, CorridorId};
-use msez_state::{
-    Corridor, Draft,
-    DynCorridorState,
-};
-use msez_state::corridor::{SubmissionEvidence, ActivationEvidence, HaltReason};
+use msez_core::{sha256_digest, CanonicalBytes, CorridorId, JurisdictionId};
+use msez_state::corridor::{ActivationEvidence, HaltReason, SubmissionEvidence};
+use msez_state::{Corridor, Draft, DynCorridorState};
 use serde_json::json;
 
 // ---------------------------------------------------------------------------

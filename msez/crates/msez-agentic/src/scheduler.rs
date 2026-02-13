@@ -905,8 +905,7 @@ mod tests {
 
     #[test]
     fn cron_schedule_inactive_does_not_fire() {
-        let mut schedule =
-            CronSchedule::new("hourly", "Hourly check", SchedulePattern::Hourly);
+        let mut schedule = CronSchedule::new("hourly", "Hourly check", SchedulePattern::Hourly);
         schedule.active = false;
         let at_zero = chrono::NaiveDate::from_ymd_opt(2026, 1, 15)
             .unwrap()

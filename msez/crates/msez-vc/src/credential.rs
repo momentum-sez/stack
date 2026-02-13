@@ -605,7 +605,7 @@ mod tests {
     #[test]
     fn signing_input_rejects_float_in_subject() {
         let mut vc = make_test_vc();
-        vc.credential_subject = json!({"amount": 3.14});
+        vc.credential_subject = json!({"amount": 3.15});
         let result = vc.signing_input();
         assert!(result.is_err());
     }
@@ -733,7 +733,11 @@ mod tests {
         assert!(!vc.proof.is_empty());
         let results = vc.verify(make_key_resolver(vk));
         assert_eq!(results.len(), 1);
-        assert!(results[0].ok, "verification should succeed: {}", results[0].error);
+        assert!(
+            results[0].ok,
+            "verification should succeed: {}",
+            results[0].error
+        );
     }
 
     #[test]

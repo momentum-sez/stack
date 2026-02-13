@@ -30,7 +30,10 @@ fn artifact_verification_succeeds_for_valid() {
 
     // Resolution performs integrity verification internally
     let resolved = store.resolve("receipt", &artifact_ref.digest).unwrap();
-    assert!(resolved.is_some(), "valid artifact must resolve successfully");
+    assert!(
+        resolved.is_some(),
+        "valid artifact must resolve successfully"
+    );
 
     // Verify the digest matches what we compute independently
     let canonical = CanonicalBytes::new(&data).unwrap();

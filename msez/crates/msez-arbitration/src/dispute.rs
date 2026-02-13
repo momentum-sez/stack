@@ -1211,7 +1211,10 @@ mod tests {
     fn dispute_state_display_all_variants() {
         assert_eq!(format!("{}", DisputeState::Filed), "FILED");
         assert_eq!(format!("{}", DisputeState::UnderReview), "UNDER_REVIEW");
-        assert_eq!(format!("{}", DisputeState::EvidenceCollection), "EVIDENCE_COLLECTION");
+        assert_eq!(
+            format!("{}", DisputeState::EvidenceCollection),
+            "EVIDENCE_COLLECTION"
+        );
         assert_eq!(format!("{}", DisputeState::Hearing), "HEARING");
         assert_eq!(format!("{}", DisputeState::Decided), "DECIDED");
         assert_eq!(format!("{}", DisputeState::Enforced), "ENFORCED");
@@ -1224,7 +1227,10 @@ mod tests {
     fn dispute_state_as_str_all_variants() {
         assert_eq!(DisputeState::Filed.as_str(), "FILED");
         assert_eq!(DisputeState::UnderReview.as_str(), "UNDER_REVIEW");
-        assert_eq!(DisputeState::EvidenceCollection.as_str(), "EVIDENCE_COLLECTION");
+        assert_eq!(
+            DisputeState::EvidenceCollection.as_str(),
+            "EVIDENCE_COLLECTION"
+        );
         assert_eq!(DisputeState::Hearing.as_str(), "HEARING");
         assert_eq!(DisputeState::Decided.as_str(), "DECIDED");
         assert_eq!(DisputeState::Enforced.as_str(), "ENFORCED");
@@ -1248,14 +1254,32 @@ mod tests {
 
     #[test]
     fn dispute_type_display_all_variants() {
-        assert_eq!(format!("{}", DisputeType::BreachOfContract), "breach_of_contract");
-        assert_eq!(format!("{}", DisputeType::NonConformingGoods), "non_conforming_goods");
-        assert_eq!(format!("{}", DisputeType::PaymentDefault), "payment_default");
-        assert_eq!(format!("{}", DisputeType::DeliveryFailure), "delivery_failure");
+        assert_eq!(
+            format!("{}", DisputeType::BreachOfContract),
+            "breach_of_contract"
+        );
+        assert_eq!(
+            format!("{}", DisputeType::NonConformingGoods),
+            "non_conforming_goods"
+        );
+        assert_eq!(
+            format!("{}", DisputeType::PaymentDefault),
+            "payment_default"
+        );
+        assert_eq!(
+            format!("{}", DisputeType::DeliveryFailure),
+            "delivery_failure"
+        );
         assert_eq!(format!("{}", DisputeType::QualityDefect), "quality_defect");
-        assert_eq!(format!("{}", DisputeType::DocumentaryDiscrepancy), "documentary_discrepancy");
+        assert_eq!(
+            format!("{}", DisputeType::DocumentaryDiscrepancy),
+            "documentary_discrepancy"
+        );
         assert_eq!(format!("{}", DisputeType::ForceMajeure), "force_majeure");
-        assert_eq!(format!("{}", DisputeType::FraudulentMisrepresentation), "fraudulent_misrepresentation");
+        assert_eq!(
+            format!("{}", DisputeType::FraudulentMisrepresentation),
+            "fraudulent_misrepresentation"
+        );
     }
 
     #[test]
@@ -1389,22 +1413,34 @@ mod tests {
     fn settle_rejected_from_enforced() {
         let mut dispute = file_dispute();
         // Advance to Enforced
-        dispute.begin_review(ReviewInitiationEvidence {
-            case_reference: "REF".to_string(),
-            institution_acknowledgment_digest: test_digest(),
-        }).unwrap();
-        dispute.open_evidence_collection(EvidencePhaseEvidence {
-            procedural_order_digest: test_digest(),
-            evidence_deadline: Timestamp::now(),
-        }).unwrap();
-        dispute.schedule_hearing(HearingScheduleEvidence {
-            hearing_date: Timestamp::now(),
-            tribunal_composition_digest: test_digest(),
-        }).unwrap();
-        dispute.decide(DecisionEvidence { ruling_digest: test_digest() }).unwrap();
-        dispute.enforce(EnforcementInitiationEvidence {
-            enforcement_order_digest: test_digest(),
-        }).unwrap();
+        dispute
+            .begin_review(ReviewInitiationEvidence {
+                case_reference: "REF".to_string(),
+                institution_acknowledgment_digest: test_digest(),
+            })
+            .unwrap();
+        dispute
+            .open_evidence_collection(EvidencePhaseEvidence {
+                procedural_order_digest: test_digest(),
+                evidence_deadline: Timestamp::now(),
+            })
+            .unwrap();
+        dispute
+            .schedule_hearing(HearingScheduleEvidence {
+                hearing_date: Timestamp::now(),
+                tribunal_composition_digest: test_digest(),
+            })
+            .unwrap();
+        dispute
+            .decide(DecisionEvidence {
+                ruling_digest: test_digest(),
+            })
+            .unwrap();
+        dispute
+            .enforce(EnforcementInitiationEvidence {
+                enforcement_order_digest: test_digest(),
+            })
+            .unwrap();
 
         let result = dispute.settle(SettlementEvidence {
             settlement_agreement_digest: test_digest(),
@@ -1434,10 +1470,12 @@ mod tests {
     #[test]
     fn dismiss_rejected_from_settled() {
         let mut dispute = file_dispute();
-        dispute.settle(SettlementEvidence {
-            settlement_agreement_digest: test_digest(),
-            party_consent_digests: vec![],
-        }).unwrap();
+        dispute
+            .settle(SettlementEvidence {
+                settlement_agreement_digest: test_digest(),
+                party_consent_digests: vec![],
+            })
+            .unwrap();
 
         let result = dispute.dismiss(DismissalEvidence {
             reason: "test".to_string(),

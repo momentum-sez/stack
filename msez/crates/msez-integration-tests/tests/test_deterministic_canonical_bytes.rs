@@ -4,7 +4,7 @@
 //! for semantically identical inputs, regardless of key ordering, and
 //! that it correctly rejects floats and normalizes datetimes.
 
-use msez_core::{CanonicalBytes, sha256_digest, DigestAlgorithm};
+use msez_core::{sha256_digest, CanonicalBytes, DigestAlgorithm};
 use serde_json::json;
 
 // ---------------------------------------------------------------------------
@@ -118,7 +118,10 @@ fn datetime_normalization() {
 fn float_rejection() {
     let data = json!({"amount": 1.5});
     let result = CanonicalBytes::new(&data);
-    assert!(result.is_err(), "Floats must be rejected by canonicalization");
+    assert!(
+        result.is_err(),
+        "Floats must be rejected by canonicalization"
+    );
 }
 
 #[test]

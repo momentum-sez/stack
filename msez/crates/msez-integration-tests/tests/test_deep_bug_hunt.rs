@@ -112,8 +112,14 @@ fn repeated_canonicalization_idempotent() {
     let canonical_3 = CanonicalBytes::new(&reparsed_2).unwrap();
     let bytes_3 = canonical_3.as_bytes().to_vec();
 
-    assert_eq!(bytes_1, bytes_2, "first and second canonicalization must be identical");
-    assert_eq!(bytes_2, bytes_3, "second and third canonicalization must be identical");
+    assert_eq!(
+        bytes_1, bytes_2,
+        "first and second canonicalization must be identical"
+    );
+    assert_eq!(
+        bytes_2, bytes_3,
+        "second and third canonicalization must be identical"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -122,20 +128,27 @@ fn repeated_canonicalization_idempotent() {
 
 #[test]
 fn tensor_commitment_repeated_access_stable() {
-    let mut tensor = ComplianceTensor::new(
-        DefaultJurisdiction::new(JurisdictionId::new("PK-RSEZ").unwrap()),
+    let mut tensor = ComplianceTensor::new(DefaultJurisdiction::new(
+        JurisdictionId::new("PK-RSEZ").unwrap(),
+    ));
+    tensor.set(
+        ComplianceDomain::Aml,
+        ComplianceState::Compliant,
+        vec![],
+        None,
     );
-    tensor.set(ComplianceDomain::Aml, ComplianceState::Compliant, vec![], None);
-    tensor.set(ComplianceDomain::Kyc, ComplianceState::Pending, vec![], None);
+    tensor.set(
+        ComplianceDomain::Kyc,
+        ComplianceState::Pending,
+        vec![],
+        None,
+    );
 
     // Commit 10 times, all must be identical
     let first_commit = tensor.commit().unwrap().to_hex();
     for i in 1..10 {
         let commit = tensor.commit().unwrap().to_hex();
-        assert_eq!(
-            first_commit, commit,
-            "commit {i} must match first commit"
-        );
+        assert_eq!(first_commit, commit, "commit {i} must match first commit");
     }
 }
 
@@ -171,6 +184,9 @@ fn empty_string_vs_absent_field() {
     let d_absent = sha256_digest(&CanonicalBytes::new(&without_key).unwrap());
 
     assert_ne!(d_empty, d_null, "empty string must differ from null");
-    assert_ne!(d_empty, d_absent, "empty string must differ from absent key");
+    assert_ne!(
+        d_empty, d_absent,
+        "empty string must differ from absent key"
+    );
     assert_ne!(d_null, d_absent, "null must differ from absent key");
 }

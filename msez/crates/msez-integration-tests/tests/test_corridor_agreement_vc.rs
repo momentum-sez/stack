@@ -7,16 +7,11 @@
 
 use msez_core::{sha256_digest, JurisdictionId};
 use msez_crypto::SigningKey;
-use msez_vc::{
-    ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential,
-};
+use msez_vc::{ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential};
 use rand_core::OsRng;
 use serde_json::json;
 
-fn make_corridor_agreement_vc(
-    jurisdiction_a: &str,
-    jurisdiction_b: &str,
-) -> VerifiableCredential {
+fn make_corridor_agreement_vc(jurisdiction_a: &str, jurisdiction_b: &str) -> VerifiableCredential {
     VerifiableCredential {
         context: ContextValue::Array(vec![json!("https://www.w3.org/2018/credentials/v1")]),
         id: Some(format!(
@@ -52,14 +47,8 @@ fn corridor_agreement_vc_creation() {
 
     assert!(vc.credential_type.contains_vc_type());
     assert_eq!(vc.issuer, "did:msez:jurisdiction:PK-RSEZ");
-    assert_eq!(
-        vc.credential_subject["jurisdiction_a"],
-        "PK-RSEZ"
-    );
-    assert_eq!(
-        vc.credential_subject["jurisdiction_b"],
-        "AE-DIFC"
-    );
+    assert_eq!(vc.credential_subject["jurisdiction_a"], "PK-RSEZ");
+    assert_eq!(vc.credential_subject["jurisdiction_b"], "AE-DIFC");
     assert!(vc.proof.is_empty());
 }
 
@@ -126,8 +115,16 @@ fn corridor_agreement_vc_bilateral_fields() {
     });
 
     assert_eq!(results.len(), 2);
-    assert!(results[0].ok, "jurisdiction A verification failed: {}", results[0].error);
-    assert!(results[1].ok, "jurisdiction B verification failed: {}", results[1].error);
+    assert!(
+        results[0].ok,
+        "jurisdiction A verification failed: {}",
+        results[0].error
+    );
+    assert!(
+        results[1].ok,
+        "jurisdiction B verification failed: {}",
+        results[1].error
+    );
 }
 
 #[test]

@@ -245,9 +245,7 @@ mod tests {
     use http_body_util::BodyExt;
 
     /// Helper to extract status and body from a Response.
-    async fn response_parts(
-        err: AppError,
-    ) -> (StatusCode, ErrorBody) {
+    async fn response_parts(err: AppError) -> (StatusCode, ErrorBody) {
         let response = err.into_response();
         let status = response.status();
         let bytes = response.into_body().collect().await.unwrap().to_bytes();

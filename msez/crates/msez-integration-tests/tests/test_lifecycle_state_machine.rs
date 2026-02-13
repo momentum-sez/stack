@@ -9,14 +9,16 @@
 //! - Migration: Initiated through all 7 phases to Completed
 
 use chrono::{TimeDelta, Utc};
-use msez_core::{sha256_digest, CanonicalBytes, ContentDigest, CorridorId, EntityId, JurisdictionId, MigrationId};
+use msez_core::{
+    sha256_digest, CanonicalBytes, ContentDigest, CorridorId, EntityId, JurisdictionId, MigrationId,
+};
 use msez_state::corridor::{
     ActivationEvidence, DeprecationEvidence, HaltReason, ResumeEvidence, SubmissionEvidence,
     SuspendReason,
 };
 use msez_state::{
-    Corridor, Draft, DynCorridorState, Entity, EntityLifecycleState,
-    License, LicenseState, MigrationBuilder, MigrationState,
+    Corridor, Draft, DynCorridorState, Entity, EntityLifecycleState, License, LicenseState,
+    MigrationBuilder, MigrationState,
 };
 use serde_json::json;
 

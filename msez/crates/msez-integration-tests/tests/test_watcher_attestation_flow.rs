@@ -1,8 +1,8 @@
 //! Rust counterpart of tests/integration/test_watcher_attestation_flow.py
 //! Integration test for watcher attestation flow.
 
-use msez_state::{Watcher, WatcherState, SlashingCondition};
-use msez_core::{WatcherId, CanonicalBytes, sha256_digest};
+use msez_core::{sha256_digest, CanonicalBytes, WatcherId};
+use msez_state::{SlashingCondition, Watcher, WatcherState};
 use serde_json::json;
 
 #[test]

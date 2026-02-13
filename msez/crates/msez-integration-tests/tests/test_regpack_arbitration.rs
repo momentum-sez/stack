@@ -4,10 +4,8 @@
 //! filings, and that arbitration institutions are correctly registered
 //! in the institution registry.
 
-use msez_core::{JurisdictionId, CanonicalBytes, sha256_digest, Did};
-use msez_arbitration::{
-    Dispute, DisputeType, DisputeState, Party, Money, Claim, FilingEvidence,
-};
+use msez_arbitration::{Claim, Dispute, DisputeState, DisputeType, FilingEvidence, Money, Party};
+use msez_core::{sha256_digest, CanonicalBytes, Did, JurisdictionId};
 use msez_pack::Regpack;
 
 // ---------------------------------------------------------------------------

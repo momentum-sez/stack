@@ -192,10 +192,10 @@ mod tests {
 
     #[test]
     fn canonicalization_error_float_rejected() {
-        let err = CanonicalizationError::FloatRejected(3.14);
+        let err = CanonicalizationError::FloatRejected(3.15);
         let msg = format!("{err}");
         assert!(msg.contains("float values are not permitted"));
-        assert!(msg.contains("3.14"));
+        assert!(msg.contains("3.15"));
     }
 
     #[test]

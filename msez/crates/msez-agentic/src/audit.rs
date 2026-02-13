@@ -465,11 +465,7 @@ mod tests {
     #[test]
     fn audit_trail_debug_format() {
         let mut trail = AuditTrail::new(50);
-        trail.append(AuditEntry::new(
-            AuditEntryType::TriggerReceived,
-            None,
-            None,
-        ));
+        trail.append(AuditEntry::new(AuditEntryType::TriggerReceived, None, None));
         let dbg = format!("{trail:?}");
         assert!(dbg.contains("AuditTrail"));
         assert!(dbg.contains("entries: 1"));
@@ -490,11 +486,7 @@ mod tests {
     #[test]
     fn audit_trail_entries_by_type_no_match() {
         let mut trail = AuditTrail::new(100);
-        trail.append(AuditEntry::new(
-            AuditEntryType::TriggerReceived,
-            None,
-            None,
-        ));
+        trail.append(AuditEntry::new(AuditEntryType::TriggerReceived, None, None));
         assert!(trail
             .entries_by_type(AuditEntryType::ActionCancelled)
             .is_empty());
@@ -503,11 +495,7 @@ mod tests {
     #[test]
     fn audit_trail_last_n_zero() {
         let mut trail = AuditTrail::new(100);
-        trail.append(AuditEntry::new(
-            AuditEntryType::TriggerReceived,
-            None,
-            None,
-        ));
+        trail.append(AuditEntry::new(AuditEntryType::TriggerReceived, None, None));
         let last = trail.last_n(0);
         assert!(last.is_empty());
     }

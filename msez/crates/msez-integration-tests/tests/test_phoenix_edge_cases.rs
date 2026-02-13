@@ -3,7 +3,7 @@
 //! Tests boundary conditions in canonicalization including empty objects,
 //! null values, large integers, deeply nested structures, and boolean values.
 
-use msez_core::{CanonicalBytes, sha256_digest};
+use msez_core::{sha256_digest, CanonicalBytes};
 use msez_zkp::mock::{MockCircuit, MockProvingKey, MockVerifyingKey};
 use msez_zkp::{MockProofSystem, ProofSystem};
 use serde_json::json;
@@ -150,5 +150,8 @@ fn mock_proof_verification_with_wrong_inputs() {
 
     // Verification with different public inputs should return false.
     let valid = system.verify(&vk, &proof, b"wrong").unwrap();
-    assert!(!valid, "Verification with wrong public inputs must return false");
+    assert!(
+        !valid,
+        "Verification with wrong public inputs must return false"
+    );
 }

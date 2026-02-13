@@ -42,7 +42,10 @@ fn openapi_path_structure_canonical() {
 
     let d1 = sha256_digest(&CanonicalBytes::new(&path_def).unwrap());
     let d2 = sha256_digest(&CanonicalBytes::new(&path_def).unwrap());
-    assert_eq!(d1, d2, "OpenAPI path structure digest must be deterministic");
+    assert_eq!(
+        d1, d2,
+        "OpenAPI path structure digest must be deterministic"
+    );
 
     // Canonical bytes should be valid UTF-8
     let cb = CanonicalBytes::new(&path_def).unwrap();
@@ -67,7 +70,10 @@ fn openapi_path_key_order_irrelevant() {
 
     let d1 = sha256_digest(&CanonicalBytes::new(&v1).unwrap());
     let d2 = sha256_digest(&CanonicalBytes::new(&v2).unwrap());
-    assert_eq!(d1, d2, "key order in path definition must not affect digest");
+    assert_eq!(
+        d1, d2,
+        "key order in path definition must not affect digest"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -103,7 +109,10 @@ fn openapi_schema_ref_canonical() {
 
     let d1 = sha256_digest(&CanonicalBytes::new(&schema_def).unwrap());
     let d2 = sha256_digest(&CanonicalBytes::new(&schema_def).unwrap());
-    assert_eq!(d1, d2, "OpenAPI schema definition digest must be deterministic");
+    assert_eq!(
+        d1, d2,
+        "OpenAPI schema definition digest must be deterministic"
+    );
 
     // Verify the $ref strings are preserved in canonical output
     let cb = CanonicalBytes::new(&schema_def).unwrap();
@@ -158,7 +167,10 @@ fn openapi_response_structure_canonical() {
 
     let d1 = sha256_digest(&CanonicalBytes::new(&response).unwrap());
     let d2 = sha256_digest(&CanonicalBytes::new(&response).unwrap());
-    assert_eq!(d1, d2, "OpenAPI response structure digest must be deterministic");
+    assert_eq!(
+        d1, d2,
+        "OpenAPI response structure digest must be deterministic"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -177,8 +189,14 @@ fn api_version_prefix_v1() {
     let d_nv = sha256_digest(&CanonicalBytes::new(&no_version).unwrap());
 
     assert_ne!(d_v1, d_v2, "v1 and v2 paths must produce different digests");
-    assert_ne!(d_v1, d_nv, "v1 and unversioned paths must produce different digests");
-    assert_ne!(d_v2, d_nv, "v2 and unversioned paths must produce different digests");
+    assert_ne!(
+        d_v1, d_nv,
+        "v1 and unversioned paths must produce different digests"
+    );
+    assert_ne!(
+        d_v2, d_nv,
+        "v2 and unversioned paths must produce different digests"
+    );
 }
 
 // ---------------------------------------------------------------------------

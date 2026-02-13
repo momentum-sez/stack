@@ -4,7 +4,7 @@
 //! cycle, including empty strings, special characters in keys, zero/negative
 //! integers, and Unicode key ordering.
 
-use msez_core::{CanonicalBytes, sha256_digest};
+use msez_core::{sha256_digest, CanonicalBytes};
 use serde_json::json;
 
 // ---------------------------------------------------------------------------
@@ -139,10 +139,7 @@ fn mixed_ascii_unicode_keys() {
     let ca = CanonicalBytes::new(&a).unwrap();
     let cb = CanonicalBytes::new(&b).unwrap();
 
-    assert_eq!(
-        sha256_digest(&ca).to_hex(),
-        sha256_digest(&cb).to_hex(),
-    );
+    assert_eq!(sha256_digest(&ca).to_hex(), sha256_digest(&cb).to_hex(),);
 }
 
 // ---------------------------------------------------------------------------

@@ -78,6 +78,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import queue
 import threading
 import uuid
@@ -97,6 +98,8 @@ from typing import (
     TypeVar,
     Union,
 )
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 E = TypeVar("E", bound="Event")
@@ -162,12 +165,13 @@ class Event:
         return cls(**data)
 
     def to_json(self) -> str:
-        """Serialize event to JSON."""
+        """Serialize event to JSON for display/transport (not for digest computation)."""
         return json.dumps(self.to_dict(), default=str, sort_keys=True)
 
     def digest(self) -> str:
-        """Compute deterministic digest of event content."""
-        return hashlib.sha256(self.to_json().encode()).hexdigest()
+        """Compute deterministic digest of event content using JCS canonicalization."""
+        from tools.lawpack import jcs_canonicalize
+        return hashlib.sha256(jcs_canonicalize(self.to_dict())).hexdigest()
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -958,9 +962,8 @@ class Saga:
             if step.compensate:
                 try:
                     step.compensate()
-                except Exception:
-                    # Log but continue compensating
-                    pass
+                except Exception as exc:
+                    logger.error("Saga compensation step %s failed: %s", step.name, exc, exc_info=True)
 
 
 # ════════════════════════════════════════════════════════════════════════════

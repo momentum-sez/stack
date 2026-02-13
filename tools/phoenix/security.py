@@ -91,9 +91,9 @@ class AttestationScope:
             "valid_from": self.valid_from,
             "valid_until": self.valid_until,
         }
-        canonical = json.dumps(content, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(canonical.encode()).hexdigest()
-    
+        from tools.lawpack import jcs_canonicalize
+        return hashlib.sha256(jcs_canonicalize(content)).hexdigest()
+
     def includes(self, asset_id: str, jurisdiction_id: str, domain: str) -> bool:
         """Check if the given context is within scope."""
         return (
@@ -695,9 +695,9 @@ class AuditEvent:
             "outcome": self.outcome,
             "previous_event_digest": self.previous_event_digest,
         }
-        canonical = json.dumps(content, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(canonical.encode()).hexdigest()
-    
+        from tools.lawpack import jcs_canonicalize
+        return hashlib.sha256(jcs_canonicalize(content)).hexdigest()
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "event_id": self.event_id,

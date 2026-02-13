@@ -39,6 +39,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 
+_logger = logging.getLogger(__name__)
+
 # Context variables for request-scoped data
 correlation_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
     "correlation_id", default=""
@@ -262,8 +264,8 @@ class Tracer:
         for exporter in self._exporters:
             try:
                 exporter(span)
-            except Exception:
-                pass  # Don't let exporter errors break tracing
+            except Exception as exc:
+                _logger.error("Span exporter failed: %s", exc, exc_info=True)
 
     def span(self, name: str, layer: PhoenixLayer, **attributes: Any) -> SpanContext:
         """Create a span context manager."""
@@ -299,7 +301,8 @@ class StructuredHandler(logging.Handler):
 
             self.stream.write(event.to_json() + "\n")
             self.stream.flush()
-        except Exception:
+        except Exception as exc:
+            _logger.debug("Structured log handler emit failed: %s", exc)
             self.handleError(record)
 
 
@@ -450,8 +453,9 @@ def timed_operation(
             try:
                 result = func(*args, **kwargs)
                 return result
-            except Exception:
+            except Exception as exc:
                 success = False
+                _logger.debug("Metered function %s failed: %s", func.__name__, exc)
                 raise
             finally:
                 duration_ms = (time.monotonic() - start) * 1000
@@ -494,10 +498,12 @@ class AuditLogger:
         self._lock = threading.Lock()
 
     def _compute_hash(self, event: AuditEvent) -> str:
-        """Compute hash for audit event."""
+        """Compute hash for audit event using JCS canonicalization."""
         import hashlib
-        data = json.dumps(event.to_dict(), sort_keys=True) + self._last_hash
-        return hashlib.sha256(data.encode()).hexdigest()
+        from tools.lawpack import jcs_canonicalize
+        canonical = jcs_canonicalize(event.to_dict())
+        data = canonical + self._last_hash.encode()
+        return hashlib.sha256(data).hexdigest()
 
     def log(
         self,

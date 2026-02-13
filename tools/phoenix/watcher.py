@@ -214,8 +214,8 @@ class SlashingEvidence:
 
     def __post_init__(self):
         if not self.evidence_digest:
-            content = json.dumps(self.evidence_data, sort_keys=True)
-            self.evidence_digest = hashlib.sha256(content.encode()).hexdigest()
+            from tools.lawpack import jcs_canonicalize
+            self.evidence_digest = hashlib.sha256(jcs_canonicalize(self.evidence_data)).hexdigest()
 
 
 @dataclass
@@ -232,8 +232,8 @@ class EquivocationEvidence:
             "attestation_1": self.attestation_1,
             "attestation_2": self.attestation_2,
         }
-        content = json.dumps(self.evidence_data, sort_keys=True)
-        self.evidence_digest = hashlib.sha256(content.encode()).hexdigest()
+        from tools.lawpack import jcs_canonicalize
+        self.evidence_digest = hashlib.sha256(jcs_canonicalize(self.evidence_data)).hexdigest()
 
 
 @dataclass

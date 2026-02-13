@@ -284,9 +284,9 @@ class Proof:
             "public_inputs": [p.value for p in self.public_inputs],
             "proof_data": self.proof_data.hex(),
         }
-        canonical = json.dumps(content, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(canonical.encode()).hexdigest()
-    
+        from tools.lawpack import jcs_canonicalize
+        return hashlib.sha256(jcs_canonicalize(content)).hexdigest()
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "circuit_id": self.circuit_id,
@@ -362,9 +362,9 @@ class Circuit:
             "constraint_count": self.constraint_count,
             "version": self.version,
         }
-        canonical = json.dumps(content, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(canonical.encode()).hexdigest()
-    
+        from tools.lawpack import jcs_canonicalize
+        return hashlib.sha256(jcs_canonicalize(content)).hexdigest()
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "circuit_id": self.circuit_id,
@@ -523,8 +523,9 @@ class MockProver:
         witness: Witness,
     ) -> Proof:
         # Create deterministic mock proof from witness
+        from tools.lawpack import jcs_canonicalize
         witness_hash = hashlib.sha256(
-            json.dumps(witness.private_inputs, sort_keys=True).encode()
+            jcs_canonicalize(witness.private_inputs)
         ).digest()
         
         public_inputs = []
@@ -707,8 +708,8 @@ class AggregatedProof:
             "individual_digests": [p.digest for p in self.individual_proofs],
             "aggregation_proof": self.aggregation_proof.hex(),
         }
-        canonical = json.dumps(content, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(canonical.encode()).hexdigest()
+        from tools.lawpack import jcs_canonicalize
+        return hashlib.sha256(jcs_canonicalize(content)).hexdigest()
 
 
 class ProofAggregator:

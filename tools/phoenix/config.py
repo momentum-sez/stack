@@ -16,6 +16,7 @@ Copyright (c) 2024 Momentum. All rights reserved.
 
 from __future__ import annotations
 
+import logging
 import os
 import threading
 from dataclasses import dataclass, field
@@ -26,6 +27,8 @@ from typing import Any, Callable, Dict, Generic, List, Optional, Set, TypeVar, U
 import yaml
 
 T = TypeVar("T")
+
+_logger = logging.getLogger(__name__)
 
 
 class ConfigError(Exception):
@@ -374,8 +377,8 @@ class ConfigManager:
             if path.exists():
                 try:
                     self.load_from_file(path)
-                except Exception:
-                    pass  # Ignore errors in default config loading
+                except Exception as exc:
+                    _logger.warning("Failed to load default config from %s: %s", path, exc)
 
     def _apply_dict(self, data: Dict[str, Any], prefix: str = "") -> None:
         """Apply dictionary values to configuration."""

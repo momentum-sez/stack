@@ -90,6 +90,27 @@ jobs:
         run: |
           python -m tools.msez fetch-akoma-schemas
 
+      - name: Schema backward compatibility check
+        run: |
+          python -c "
+          import json, pathlib
+          for f in sorted(pathlib.Path('schemas').glob('*.json')):
+              s = json.loads(f.read_text())
+              print(f'OK: {f.name} ({len(json.dumps(s))} bytes)')
+          "
+
+      - name: Canonicalization unity check
+        run: |
+          pytest tests/test_canonicalization_unity.py -v
+
+      - name: Security schema hardening check
+        run: |
+          pytest tests/test_schema_hardening.py -v
+
+      - name: Cross-module digest consistency check
+        run: |
+          pytest tests/test_cross_module_digest_consistency.py -v
+
       - name: Run conformance tests
         run: |
           pytest -q

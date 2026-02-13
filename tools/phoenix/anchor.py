@@ -138,9 +138,9 @@ class CorridorCheckpoint:
             "timestamp": self.timestamp,
             "previous_checkpoint_digest": self.previous_checkpoint_digest,
         }
-        canonical = json.dumps(content, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(canonical.encode()).hexdigest()
-    
+        from tools.lawpack import jcs_canonicalize
+        return hashlib.sha256(jcs_canonicalize(content)).hexdigest()
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "corridor_id": self.corridor_id,

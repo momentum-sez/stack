@@ -39,6 +39,7 @@ from typing import (
     Callable,
     Dict,
     FrozenSet,
+    Iterator,
     List,
     Optional,
     Set,
@@ -498,44 +499,77 @@ T = TypeVar('T')
 
 
 class ThreadSafeDict(Dict[str, T]):
-    """Thread-safe dictionary wrapper."""
-    
+    """Thread-safe dictionary wrapper.
+
+    All read, write, and iteration operations are protected by an RLock.
+
+    IMPORTANT: keys(), values(), and items() return snapshot lists, not live
+    views. This is intentional — live views would defeat the purpose of the
+    lock because they lazily iterate the underlying dict outside the critical
+    section.  Callers that need a consistent snapshot across multiple keys
+    should use the ``transaction()`` context manager.
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._lock = threading.RLock()
-    
+
     def __getitem__(self, key: str) -> T:
         with self._lock:
             return super().__getitem__(key)
-    
+
     def __setitem__(self, key: str, value: T) -> None:
         with self._lock:
             super().__setitem__(key, value)
-    
+
     def __delitem__(self, key: str) -> None:
         with self._lock:
             super().__delitem__(key)
-    
+
     def __contains__(self, key: object) -> bool:
         with self._lock:
             return super().__contains__(key)
-    
+
+    def __iter__(self) -> Iterator[str]:
+        with self._lock:
+            return iter(list(super().keys()))
+
+    def __len__(self) -> int:
+        with self._lock:
+            return super().__len__()
+
     def get(self, key: str, default: T = None) -> Optional[T]:
         with self._lock:
             return super().get(key, default)
-    
+
     def pop(self, key: str, *args) -> T:
         with self._lock:
             return super().pop(key, *args)
-    
+
     def setdefault(self, key: str, default: T = None) -> T:
         with self._lock:
             return super().setdefault(key, default)
-    
+
     def update(self, *args, **kwargs) -> None:
         with self._lock:
             super().update(*args, **kwargs)
-    
+
+    def keys(self) -> List[str]:
+        with self._lock:
+            return list(super().keys())
+
+    def values(self) -> List[T]:
+        with self._lock:
+            return list(super().values())
+
+    def items(self) -> List[Tuple[str, T]]:
+        with self._lock:
+            return list(super().items())
+
+    def copy(self) -> Dict[str, T]:
+        with self._lock:
+            return dict(super().items())
+
     @contextmanager
     def transaction(self):
         """Context manager for atomic multi-operation transactions."""

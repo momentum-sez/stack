@@ -109,8 +109,8 @@ fn cdb_canonical_bridge_deterministic() {
     let canonical = CanonicalBytes::new(&data).unwrap();
     let digest = sha256_digest(&canonical);
 
-    let cdb1 = Cdb::new(digest.clone());
-    let cdb2 = Cdb::new(digest);
+    let cdb1 = Cdb::new(digest.clone()).unwrap();
+    let cdb2 = Cdb::new(digest).unwrap();
 
     assert_eq!(
         cdb1.as_digest().to_hex(),
@@ -127,8 +127,8 @@ fn cdb_distinct_for_different_data() {
     let ca = CanonicalBytes::new(&data_a).unwrap();
     let cb = CanonicalBytes::new(&data_b).unwrap();
 
-    let cdb_a = Cdb::new(sha256_digest(&ca));
-    let cdb_b = Cdb::new(sha256_digest(&cb));
+    let cdb_a = Cdb::new(sha256_digest(&ca)).unwrap();
+    let cdb_b = Cdb::new(sha256_digest(&cb)).unwrap();
 
     assert_ne!(
         cdb_a.as_digest().to_hex(),

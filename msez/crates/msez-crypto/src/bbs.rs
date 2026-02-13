@@ -91,11 +91,10 @@ pub struct BbsVerifyingKey {
 ///
 /// Each message must be [`CanonicalBytes`] to maintain the
 /// canonicalization invariant across the entire stack.
-pub fn bbs_sign(_key: &BbsSigningKey, _messages: &[CanonicalBytes]) -> BbsSignature {
-    unimplemented!(
-        "BBS+ signing is Phase 4. Enable with `bbs-plus` feature flag \
-         once the concrete implementation is available."
-    )
+pub fn bbs_sign(_key: &BbsSigningKey, _messages: &[CanonicalBytes]) -> Result<BbsSignature, crate::error::CryptoError> {
+    Err(crate::error::CryptoError::NotImplemented(
+        "BBS+ signing available in Phase 4".into(),
+    ))
 }
 
 /// Create a selective disclosure proof from a BBS+ signature.
@@ -110,11 +109,10 @@ pub fn bbs_create_proof(
     _signature: &BbsSignature,
     _messages: &[CanonicalBytes],
     _disclosed_indices: &[usize],
-) -> BbsProof {
-    unimplemented!(
-        "BBS+ proof creation is Phase 4. Enable with `bbs-plus` feature flag \
-         once the concrete implementation is available."
-    )
+) -> Result<BbsProof, crate::error::CryptoError> {
+    Err(crate::error::CryptoError::NotImplemented(
+        "BBS+ proof creation available in Phase 4".into(),
+    ))
 }
 
 /// Verify a BBS+ selective disclosure proof.
@@ -129,10 +127,9 @@ pub fn bbs_verify_proof(
     _disclosed_messages: &[CanonicalBytes],
     _disclosed_indices: &[usize],
 ) -> Result<(), crate::error::CryptoError> {
-    unimplemented!(
-        "BBS+ proof verification is Phase 4. Enable with `bbs-plus` feature flag \
-         once the concrete implementation is available."
-    )
+    Err(crate::error::CryptoError::NotImplemented(
+        "BBS+ proof verification available in Phase 4".into(),
+    ))
 }
 
 #[cfg(test)]
@@ -140,28 +137,34 @@ mod tests {
     use super::*;
 
     #[test]
-    #[should_panic(expected = "BBS+ signing is Phase 4")]
-    fn bbs_sign_panics() {
+    fn bbs_sign_returns_not_implemented() {
         let key = BbsSigningKey { _private: () };
         let msg = CanonicalBytes::new(&serde_json::json!({"claim": "over_18"})).unwrap();
-        let _ = bbs_sign(&key, &[msg]);
+        let result = bbs_sign(&key, &[msg]);
+        assert!(result.is_err());
+        let err = format!("{}", result.unwrap_err());
+        assert!(err.contains("not implemented"));
     }
 
     #[test]
-    #[should_panic(expected = "BBS+ proof creation is Phase 4")]
-    fn bbs_create_proof_panics() {
+    fn bbs_create_proof_returns_not_implemented() {
         let key = BbsVerifyingKey { _private: () };
         let sig = BbsSignature { bytes: vec![] };
         let msg = CanonicalBytes::new(&serde_json::json!({"claim": "over_18"})).unwrap();
-        let _ = bbs_create_proof(&key, &sig, &[msg], &[0]);
+        let result = bbs_create_proof(&key, &sig, &[msg], &[0]);
+        assert!(result.is_err());
+        let err = format!("{}", result.unwrap_err());
+        assert!(err.contains("not implemented"));
     }
 
     #[test]
-    #[should_panic(expected = "BBS+ proof verification is Phase 4")]
-    fn bbs_verify_proof_panics() {
+    fn bbs_verify_proof_returns_not_implemented() {
         let key = BbsVerifyingKey { _private: () };
         let proof = BbsProof { bytes: vec![] };
         let msg = CanonicalBytes::new(&serde_json::json!({"claim": "over_18"})).unwrap();
-        let _ = bbs_verify_proof(&key, &proof, &[msg], &[0]);
+        let result = bbs_verify_proof(&key, &proof, &[msg], &[0]);
+        assert!(result.is_err());
+        let err = format!("{}", result.unwrap_err());
+        assert!(err.contains("not implemented"));
     }
 }

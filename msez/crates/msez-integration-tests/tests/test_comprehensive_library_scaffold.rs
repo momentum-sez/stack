@@ -73,5 +73,5 @@ fn agentic_engine_initializable() {
 fn zkp_mock_system_usable() {
     let _ps = MockProofSystem;
     let digest = sha256_digest(&CanonicalBytes::new(&json!({"test": "cdb"})).unwrap());
-    let _cdb = Cdb::new(digest);
+    let _cdb = Cdb::new(digest).unwrap();
 }

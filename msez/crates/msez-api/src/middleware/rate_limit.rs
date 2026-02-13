@@ -4,8 +4,9 @@
 //! Phase 1: in-memory. Phase 2: Redis-backed distributed rate limiting.
 
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::Instant;
+use parking_lot::RwLock;
 
 use axum::extract::Request;
 use axum::http::StatusCode;
@@ -58,7 +59,7 @@ impl RateLimiter {
 
     /// Check if a request from the given key should be allowed.
     fn check(&self, key: &str) -> bool {
-        let mut buckets = self.buckets.write().expect("rate limit lock poisoned");
+        let mut buckets = self.buckets.write();
         let now = Instant::now();
 
         let bucket = buckets.entry(key.to_string()).or_insert(BucketState {

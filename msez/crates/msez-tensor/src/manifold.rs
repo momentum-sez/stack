@@ -967,4 +967,244 @@ mod tests {
         let path = manifold.find_path("uae-difc", "kz-aifc", None, 0);
         assert!(path.is_none());
     }
+
+    // ── Additional coverage tests ──────────────────────────────────
+
+    #[test]
+    fn manifold_default_is_empty() {
+        let manifold = ComplianceManifold::default();
+        assert!(manifold.list_jurisdictions().is_empty());
+        assert!(manifold.list_corridors().is_empty());
+    }
+
+    #[test]
+    fn manifold_get_jurisdiction() {
+        let manifold = create_standard_manifold();
+        let difc = manifold.get_jurisdiction("uae-difc");
+        assert!(difc.is_some());
+        assert_eq!(difc.unwrap().country_code, "AE");
+
+        assert!(manifold.get_jurisdiction("nonexistent").is_none());
+    }
+
+    #[test]
+    fn manifold_get_corridor() {
+        let manifold = create_standard_manifold();
+        let corridor = manifold.get_corridor("corridor-difc-aifc");
+        assert!(corridor.is_some());
+        assert_eq!(corridor.unwrap().transfer_fee_bps, 10);
+
+        assert!(manifold.get_corridor("nonexistent").is_none());
+    }
+
+    #[test]
+    fn corridor_transfer_cost_zero_value() {
+        let corridor = create_difc_aifc_corridor();
+        // 10bps on $0 = $0, plus $100 flat = $100.
+        assert_eq!(corridor.transfer_cost(0), 100);
+    }
+
+    #[test]
+    fn corridor_transfer_cost_large_value() {
+        let corridor = create_difc_aifc_corridor();
+        // 10bps on $1,000,000 = $1,000, plus $100 flat = $1,100.
+        assert_eq!(corridor.transfer_cost(1_000_000), 1_100);
+    }
+
+    #[test]
+    fn migration_path_jurisdictions_empty_hops() {
+        let path = MigrationPath {
+            source_jurisdiction: "src".to_string(),
+            target_jurisdiction: "tgt".to_string(),
+            hops: vec![],
+            total_cost_usd: 0,
+            total_time_hours: 0,
+            path_id: "test".to_string(),
+        };
+        let jurisdictions = path.jurisdictions();
+        assert_eq!(jurisdictions, vec!["src", "tgt"]);
+    }
+
+    #[test]
+    fn migration_path_hop_count() {
+        let path = MigrationPath {
+            source_jurisdiction: "a".to_string(),
+            target_jurisdiction: "c".to_string(),
+            hops: vec![
+                MigrationHop {
+                    corridor_id: "c1".into(),
+                    source: "a".into(),
+                    target: "b".into(),
+                    cost_usd: 100,
+                    time_hours: 24,
+                },
+                MigrationHop {
+                    corridor_id: "c2".into(),
+                    source: "b".into(),
+                    target: "c".into(),
+                    cost_usd: 50,
+                    time_hours: 12,
+                },
+            ],
+            total_cost_usd: 150,
+            total_time_hours: 36,
+            path_id: "test".to_string(),
+        };
+        assert_eq!(path.hop_count(), 2);
+        assert_eq!(path.jurisdictions(), vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn path_constraint_default_values() {
+        let c = PathConstraint::default();
+        assert!(c.max_total_cost_usd.is_none());
+        assert!(c.max_per_hop_cost_usd.is_none());
+        assert!(c.max_total_time_hours.is_none());
+        assert_eq!(c.max_hops, 5);
+        assert!(c.excluded_jurisdictions.is_empty());
+        assert!(!c.allow_loops);
+    }
+
+    #[test]
+    fn path_respects_per_hop_cost_constraint() {
+        let manifold = create_standard_manifold();
+        let constraints = PathConstraint {
+            max_per_hop_cost_usd: Some(1), // Very low per-hop limit.
+            ..Default::default()
+        };
+        let path = manifold.find_path("uae-difc", "kz-aifc", Some(&constraints), 10_000);
+        assert!(path.is_none());
+    }
+
+    #[test]
+    fn path_respects_time_constraint() {
+        let manifold = create_standard_manifold();
+        let constraints = PathConstraint {
+            max_total_time_hours: Some(1), // Very low time limit.
+            ..Default::default()
+        };
+        // DIFC→AIFC corridor takes 72 hours, exceeds 1 hour limit.
+        let path = manifold.find_path("uae-difc", "kz-aifc", Some(&constraints), 0);
+        assert!(path.is_none());
+    }
+
+    #[test]
+    fn excluded_source_jurisdiction_returns_none() {
+        let manifold = create_standard_manifold();
+        let mut excluded = HashSet::new();
+        excluded.insert("uae-difc".to_string());
+        let constraints = PathConstraint {
+            excluded_jurisdictions: excluded,
+            ..Default::default()
+        };
+        let path = manifold.find_path("uae-difc", "kz-aifc", Some(&constraints), 0);
+        assert!(path.is_none());
+    }
+
+    #[test]
+    fn excluded_target_jurisdiction_returns_none() {
+        let manifold = create_standard_manifold();
+        let mut excluded = HashSet::new();
+        excluded.insert("kz-aifc".to_string());
+        let constraints = PathConstraint {
+            excluded_jurisdictions: excluded,
+            ..Default::default()
+        };
+        let path = manifold.find_path("uae-difc", "kz-aifc", Some(&constraints), 0);
+        assert!(path.is_none());
+    }
+
+    #[test]
+    fn compliance_distance_multi_hop() {
+        let manifold = create_standard_manifold();
+        let dist = manifold
+            .compliance_distance("uae-difc", "pk-rsez", None)
+            .expect("should compute multi-hop distance");
+        assert_eq!(dist.source, "uae-difc");
+        assert_eq!(dist.target, "pk-rsez");
+        assert_eq!(dist.hop_count, 2);
+        assert!(dist.total_time_hours > 0);
+    }
+
+    #[test]
+    fn compliance_distance_unreachable() {
+        let mut manifold = ComplianceManifold::new();
+        manifold.add_jurisdiction(create_uae_difc_jurisdiction());
+        let dist = manifold.compliance_distance("uae-difc", "kz-aifc", None);
+        assert!(dist.is_none());
+    }
+
+    #[test]
+    fn find_all_paths_unreachable_returns_empty() {
+        let mut manifold = ComplianceManifold::new();
+        manifold.add_jurisdiction(create_uae_difc_jurisdiction());
+        let paths = manifold.find_all_paths("uae-difc", "kz-aifc", None, 0, 3);
+        assert!(paths.is_empty());
+    }
+
+    #[test]
+    fn find_all_paths_sorted_by_cost() {
+        let manifold = create_standard_manifold();
+        let paths = manifold.find_all_paths("uae-difc", "pk-rsez", None, 10_000, 5);
+        // Paths should be sorted by cost ascending.
+        for w in paths.windows(2) {
+            assert!(w[0].total_cost_usd <= w[1].total_cost_usd);
+        }
+    }
+
+    #[test]
+    fn unidirectional_corridor() {
+        let mut manifold = ComplianceManifold::new();
+        manifold.add_jurisdiction(create_uae_difc_jurisdiction());
+        manifold.add_jurisdiction(create_kz_aifc_jurisdiction());
+
+        let mut corridor = create_difc_aifc_corridor();
+        corridor.is_bidirectional = false;
+        manifold.add_corridor(corridor);
+
+        // Forward path exists.
+        assert!(manifold.find_path("uae-difc", "kz-aifc", None, 0).is_some());
+        // Reverse path does not exist (unidirectional).
+        assert!(manifold.find_path("kz-aifc", "uae-difc", None, 0).is_none());
+    }
+
+    #[test]
+    fn jurisdiction_node_serde_roundtrip() {
+        let node = create_uae_difc_jurisdiction();
+        let json = serde_json::to_string(&node).unwrap();
+        let back: JurisdictionNode = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.jurisdiction_id, "uae-difc");
+        assert_eq!(back.country_code, "AE");
+        assert!(back.is_active);
+    }
+
+    #[test]
+    fn corridor_edge_serde_roundtrip() {
+        let edge = create_difc_aifc_corridor();
+        let json = serde_json::to_string(&edge).unwrap();
+        let back: CorridorEdge = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.corridor_id, "corridor-difc-aifc");
+        assert!(back.is_bidirectional);
+        assert_eq!(back.transfer_fee_bps, 10);
+    }
+
+    #[test]
+    fn find_path_same_source_and_target() {
+        let manifold = create_standard_manifold();
+        // Source == target: distance is 0, no hops needed.
+        let path = manifold.find_path("uae-difc", "uae-difc", None, 0);
+        // Dijkstra finds target immediately, no hops.
+        assert!(path.is_some());
+        let p = path.unwrap();
+        assert_eq!(p.hop_count(), 0);
+        assert_eq!(p.total_cost_usd, 0);
+    }
+
+    #[test]
+    fn aifc_rsez_corridor_transfer_cost() {
+        let corridor = create_aifc_rsez_corridor();
+        // 15bps on $100,000 = $150, plus $50 flat = $200.
+        assert_eq!(corridor.transfer_cost(100_000), 200);
+        assert_eq!(corridor.total_time_hours(), 36); // 12 + 24
+    }
 }

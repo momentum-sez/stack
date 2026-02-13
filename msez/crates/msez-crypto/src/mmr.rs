@@ -951,4 +951,342 @@ mod tests {
             "9-receipt MMR root does not match Python fixture"
         );
     }
+
+    // ── Coverage expansion tests ─────────────────────────────────────
+
+    #[test]
+    fn from_hex_rejects_odd_length() {
+        let result = from_hex("abc");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn from_hex_rejects_invalid_chars() {
+        let result = from_hex("zzzz");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn from_hex_valid() {
+        let result = from_hex("deadbeef").unwrap();
+        assert_eq!(result, vec![0xde, 0xad, 0xbe, 0xef]);
+    }
+
+    #[test]
+    fn is_hex_32_rejects_short() {
+        assert!(!is_hex_32("abcd"));
+    }
+
+    #[test]
+    fn is_hex_32_rejects_non_hex() {
+        assert!(!is_hex_32(&"zz".repeat(32)));
+    }
+
+    #[test]
+    fn is_hex_32_accepts_valid() {
+        assert!(is_hex_32(&"ab".repeat(32)));
+    }
+
+    #[test]
+    fn side_display() {
+        assert_eq!(format!("{}", Side::Left), "left");
+        assert_eq!(format!("{}", Side::Right), "right");
+    }
+
+    #[test]
+    fn side_as_str() {
+        assert_eq!(Side::Left.as_str(), "left");
+        assert_eq!(Side::Right.as_str(), "right");
+    }
+
+    #[test]
+    fn mmr_default_trait() {
+        let mmr = MerkleMountainRange::default();
+        assert_eq!(mmr.size(), 0);
+        assert_eq!(mmr.root().unwrap(), "");
+        assert!(mmr.peaks().is_empty());
+    }
+
+    #[test]
+    fn verify_proof_rejects_size_zero() {
+        let proof = MmrInclusionProof {
+            size: 0,
+            root: "00".repeat(32),
+            leaf_index: 0,
+            receipt_next_root: "00".repeat(32),
+            leaf_hash: "00".repeat(32),
+            peak_index: 0,
+            peak_height: 0,
+            path: vec![],
+            peaks: vec![],
+            computed_peak_root: "00".repeat(32),
+        };
+        assert!(!verify_inclusion_proof(&proof));
+    }
+
+    #[test]
+    fn verify_proof_rejects_leaf_index_out_of_range() {
+        let proof = MmrInclusionProof {
+            size: 1,
+            root: "00".repeat(32),
+            leaf_index: 5,
+            receipt_next_root: "00".repeat(32),
+            leaf_hash: "00".repeat(32),
+            peak_index: 0,
+            peak_height: 0,
+            path: vec![],
+            peaks: vec![],
+            computed_peak_root: "00".repeat(32),
+        };
+        assert!(!verify_inclusion_proof(&proof));
+    }
+
+    #[test]
+    fn verify_proof_rejects_invalid_root_hex() {
+        let nr = receipt_hash(1);
+        let lh = mmr_leaf_hash(&nr).unwrap();
+        let proof = MmrInclusionProof {
+            size: 1,
+            root: "not_valid_hex".to_string(),
+            leaf_index: 0,
+            receipt_next_root: nr,
+            leaf_hash: lh,
+            peak_index: 0,
+            peak_height: 0,
+            path: vec![],
+            peaks: vec![Peak {
+                height: 0,
+                hash: "00".repeat(32),
+            }],
+            computed_peak_root: "00".repeat(32),
+        };
+        assert!(!verify_inclusion_proof(&proof));
+    }
+
+    #[test]
+    fn verify_proof_rejects_empty_peaks() {
+        let nr = receipt_hash(1);
+        let lh = mmr_leaf_hash(&nr).unwrap();
+        let proof = MmrInclusionProof {
+            size: 1,
+            root: "00".repeat(32),
+            leaf_index: 0,
+            receipt_next_root: nr,
+            leaf_hash: lh,
+            peak_index: 0,
+            peak_height: 0,
+            path: vec![],
+            peaks: vec![],
+            computed_peak_root: "00".repeat(32),
+        };
+        assert!(!verify_inclusion_proof(&proof));
+    }
+
+    #[test]
+    fn verify_proof_rejects_peak_index_out_of_bounds() {
+        let nr = receipt_hash(1);
+        let lh = mmr_leaf_hash(&nr).unwrap();
+        let proof = MmrInclusionProof {
+            size: 1,
+            root: lh.clone(),
+            leaf_index: 0,
+            receipt_next_root: nr,
+            leaf_hash: lh.clone(),
+            peak_index: 5,
+            peak_height: 0,
+            path: vec![],
+            peaks: vec![Peak {
+                height: 0,
+                hash: lh,
+            }],
+            computed_peak_root: "00".repeat(32),
+        };
+        assert!(!verify_inclusion_proof(&proof));
+    }
+
+    #[test]
+    fn verify_proof_rejects_wrong_peak_height() {
+        let nr = receipt_hash(1);
+        let lh = mmr_leaf_hash(&nr).unwrap();
+        let proof = MmrInclusionProof {
+            size: 1,
+            root: lh.clone(),
+            leaf_index: 0,
+            receipt_next_root: nr,
+            leaf_hash: lh.clone(),
+            peak_index: 0,
+            peak_height: 3, // wrong: should be 0 for single leaf
+            path: vec![],
+            peaks: vec![Peak {
+                height: 0,
+                hash: lh,
+            }],
+            computed_peak_root: "00".repeat(32),
+        };
+        assert!(!verify_inclusion_proof(&proof));
+    }
+
+    #[test]
+    fn verify_proof_rejects_invalid_peak_hash() {
+        let nr = receipt_hash(1);
+        let lh = mmr_leaf_hash(&nr).unwrap();
+        let proof = MmrInclusionProof {
+            size: 1,
+            root: lh.clone(),
+            leaf_index: 0,
+            receipt_next_root: nr,
+            leaf_hash: lh.clone(),
+            peak_index: 0,
+            peak_height: 0,
+            path: vec![],
+            peaks: vec![Peak {
+                height: 0,
+                hash: "not_hex".to_string(),
+            }],
+            computed_peak_root: "00".repeat(32),
+        };
+        assert!(!verify_inclusion_proof(&proof));
+    }
+
+    #[test]
+    fn verify_proof_rejects_wrong_leaf_hash() {
+        let nr = receipt_hash(1);
+        let proof = MmrInclusionProof {
+            size: 1,
+            root: "00".repeat(32),
+            leaf_index: 0,
+            receipt_next_root: nr,
+            leaf_hash: "00".repeat(32), // wrong leaf hash
+            peak_index: 0,
+            peak_height: 0,
+            path: vec![],
+            peaks: vec![Peak {
+                height: 0,
+                hash: "00".repeat(32),
+            }],
+            computed_peak_root: "00".repeat(32),
+        };
+        assert!(!verify_inclusion_proof(&proof));
+    }
+
+    #[test]
+    fn verify_proof_rejects_invalid_path_step_hash() {
+        let next_roots: Vec<String> = (1..=2).map(receipt_hash).collect();
+        let mut proof = build_inclusion_proof(&next_roots, 0).unwrap();
+        assert!(verify_inclusion_proof(&proof));
+        // Corrupt a path step with invalid hex
+        if !proof.path.is_empty() {
+            proof.path[0].hash = "invalid_hex".to_string();
+        }
+        assert!(!verify_inclusion_proof(&proof));
+    }
+
+    #[test]
+    fn build_peaks_rejects_invalid_leaf_hash() {
+        let result = build_peaks(&["not_valid_hex".to_string()]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn merkle_path_pow2_empty() {
+        let result = merkle_path_for_power_of_two(&[], 0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn merkle_path_pow2_non_power_of_two() {
+        let hashes: Vec<String> = (1..=3)
+            .map(|i| mmr_leaf_hash(&receipt_hash(i)).unwrap())
+            .collect();
+        let result = merkle_path_for_power_of_two(&hashes, 0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn merkle_path_pow2_out_of_range() {
+        let hashes: Vec<String> = (1..=2)
+            .map(|i| mmr_leaf_hash(&receipt_hash(i)).unwrap())
+            .collect();
+        let result = merkle_path_for_power_of_two(&hashes, 5);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn three_receipt_mmr() {
+        let next_roots: Vec<String> = (1..=3).map(receipt_hash).collect();
+        let info = mmr_root_from_next_roots(&next_roots).unwrap();
+        assert_eq!(info.size, 3);
+        assert_eq!(info.peaks.len(), 2);
+        assert_eq!(info.peaks[0].height, 1);
+        assert_eq!(info.peaks[1].height, 0);
+        assert_eq!(info.root.len(), 64);
+    }
+
+    #[test]
+    fn five_receipt_mmr() {
+        let next_roots: Vec<String> = (1..=5).map(receipt_hash).collect();
+        let info = mmr_root_from_next_roots(&next_roots).unwrap();
+        assert_eq!(info.size, 5);
+        assert_eq!(info.peaks.len(), 2);
+        assert_eq!(info.peaks[0].height, 2);
+        assert_eq!(info.peaks[1].height, 0);
+    }
+
+    #[test]
+    fn mmr_root_info_debug() {
+        let next_roots: Vec<String> = (1..=2).map(receipt_hash).collect();
+        let info = mmr_root_from_next_roots(&next_roots).unwrap();
+        let debug_str = format!("{info:?}");
+        assert!(debug_str.contains("MmrRootInfo"));
+    }
+
+    #[test]
+    fn stateful_mmr_clone() {
+        let mut mmr = MerkleMountainRange::new();
+        mmr.append(&receipt_hash(1)).unwrap();
+        let cloned = mmr.clone();
+        assert_eq!(cloned.size(), mmr.size());
+        assert_eq!(cloned.root().unwrap(), mmr.root().unwrap());
+    }
+
+    #[test]
+    fn stateful_mmr_append_rejects_invalid() {
+        let mut mmr = MerkleMountainRange::new();
+        assert!(mmr.append("not_hex").is_err());
+        assert_eq!(mmr.size(), 0);
+    }
+
+    #[test]
+    fn inclusion_proof_all_indices_for_4_receipts() {
+        let next_roots: Vec<String> = (1..=4).map(receipt_hash).collect();
+        for idx in 0..4 {
+            let proof = build_inclusion_proof(&next_roots, idx).unwrap();
+            assert!(
+                verify_inclusion_proof(&proof),
+                "Verification failed at idx={idx} for 4-receipt MMR"
+            );
+        }
+    }
+
+    #[test]
+    fn find_peak_for_leaf_out_of_range() {
+        let result = find_peak_for_leaf(5, 5);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn peak_plan_power_of_two() {
+        assert_eq!(peak_plan(16), vec![(4, 16)]);
+        assert_eq!(peak_plan(4), vec![(2, 4)]);
+        assert_eq!(peak_plan(1), vec![(0, 1)]);
+    }
+
+    #[test]
+    fn mmr_leaf_hash_accepts_uppercase_hex() {
+        // is_hex_32 checks c.is_ascii_hexdigit() which accepts A-F
+        let nr = "FEA5396A7F4325C408B1B65B33A4D77BA5486CEBA941804D8889A8546CFBAB96";
+        // from_hex lowercases, so this should work
+        let result = mmr_leaf_hash(nr);
+        assert!(result.is_ok());
+    }
 }

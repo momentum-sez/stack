@@ -281,4 +281,150 @@ mod tests {
         assert_eq!(deserialized.block_number, receipt.block_number);
         assert_eq!(deserialized.status, AnchorStatus::Finalized);
     }
+
+    // ── Additional coverage tests ────────────────────────────────────
+
+    #[test]
+    fn anchor_status_serde_roundtrip_all_variants() {
+        let statuses = [
+            AnchorStatus::Pending,
+            AnchorStatus::Confirmed,
+            AnchorStatus::Finalized,
+            AnchorStatus::Failed,
+        ];
+        for status in &statuses {
+            let json = serde_json::to_string(status).unwrap();
+            let back: AnchorStatus = serde_json::from_str(&json).unwrap();
+            assert_eq!(&back, status, "Roundtrip failed for {status:?}");
+        }
+    }
+
+    #[test]
+    fn anchor_status_equality() {
+        assert_eq!(AnchorStatus::Pending, AnchorStatus::Pending);
+        assert_eq!(AnchorStatus::Confirmed, AnchorStatus::Confirmed);
+        assert_eq!(AnchorStatus::Finalized, AnchorStatus::Finalized);
+        assert_eq!(AnchorStatus::Failed, AnchorStatus::Failed);
+        assert_ne!(AnchorStatus::Pending, AnchorStatus::Finalized);
+        assert_ne!(AnchorStatus::Confirmed, AnchorStatus::Failed);
+    }
+
+    #[test]
+    fn mock_anchor_default() {
+        let target = MockAnchorTarget::default();
+        assert_eq!(target.chain_id(), "");
+    }
+
+    #[test]
+    fn anchor_commitment_without_chain_id() {
+        let target = MockAnchorTarget::new("local");
+        let commitment = AnchorCommitment {
+            checkpoint_digest: test_digest(),
+            chain_id: None,
+            checkpoint_height: 99,
+        };
+
+        let receipt = target.anchor(commitment).unwrap();
+        assert_eq!(receipt.chain_id, "local");
+        assert_eq!(receipt.status, AnchorStatus::Finalized);
+    }
+
+    #[test]
+    fn anchor_commitment_serialization_roundtrip_no_chain() {
+        let commitment = AnchorCommitment {
+            checkpoint_digest: test_digest(),
+            chain_id: None,
+            checkpoint_height: 0,
+        };
+
+        let json = serde_json::to_string(&commitment).unwrap();
+        let back: AnchorCommitment = serde_json::from_str(&json).unwrap();
+        assert!(back.chain_id.is_none());
+        assert_eq!(back.checkpoint_height, 0);
+    }
+
+    #[test]
+    fn mock_anchor_transaction_id_contains_digest_prefix() {
+        let target = MockAnchorTarget::new("test-chain");
+        let commitment = AnchorCommitment {
+            checkpoint_digest: test_digest(),
+            chain_id: Some("test-chain".to_string()),
+            checkpoint_height: 1,
+        };
+        let receipt = target.anchor(commitment).unwrap();
+        assert!(receipt.transaction_id.starts_with("mock-tx-"));
+        // Transaction ID should contain a prefix of the digest hex
+        assert!(receipt.transaction_id.len() > "mock-tx-".len());
+    }
+
+    #[test]
+    fn mock_anchor_concurrent_block_numbers() {
+        let target = MockAnchorTarget::new("concurrent-test");
+        let mut receipts = Vec::new();
+        for i in 0..10 {
+            let commitment = AnchorCommitment {
+                checkpoint_digest: test_digest(),
+                chain_id: Some("concurrent-test".to_string()),
+                checkpoint_height: i,
+            };
+            receipts.push(target.anchor(commitment).unwrap());
+        }
+        // All block numbers should be unique and sequential
+        for (i, receipt) in receipts.iter().enumerate() {
+            assert_eq!(receipt.block_number, (i + 1) as u64);
+        }
+    }
+
+    #[test]
+    fn anchor_error_display_rejected() {
+        let err = AnchorError::Rejected("invalid commitment format".to_string());
+        let msg = format!("{err}");
+        assert!(msg.contains("invalid commitment format"));
+    }
+
+    #[test]
+    fn anchor_error_display_chain_unavailable() {
+        let err = AnchorError::ChainUnavailable {
+            chain_id: "ethereum-mainnet".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("ethereum-mainnet"));
+    }
+
+    #[test]
+    fn anchor_error_display_transaction_failed() {
+        let err = AnchorError::TransactionFailed {
+            chain_id: "polygon".to_string(),
+            reason: "gas exhausted".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("polygon"));
+        assert!(msg.contains("gas exhausted"));
+    }
+
+    #[test]
+    fn anchor_error_display_verification_failed() {
+        let err = AnchorError::VerificationFailed("proof mismatch".to_string());
+        let msg = format!("{err}");
+        assert!(msg.contains("proof mismatch"));
+    }
+
+    #[test]
+    fn anchor_receipt_contains_full_commitment() {
+        let target = MockAnchorTarget::new("eth-goerli");
+        let digest = test_digest();
+        let commitment = AnchorCommitment {
+            checkpoint_digest: digest.clone(),
+            chain_id: Some("eth-goerli".to_string()),
+            checkpoint_height: 42,
+        };
+        let receipt = target.anchor(commitment).unwrap();
+
+        assert_eq!(
+            receipt.commitment.checkpoint_digest.to_hex(),
+            digest.to_hex()
+        );
+        assert_eq!(receipt.commitment.checkpoint_height, 42);
+        assert_eq!(receipt.commitment.chain_id.as_deref(), Some("eth-goerli"));
+    }
 }

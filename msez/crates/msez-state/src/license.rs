@@ -423,4 +423,239 @@ mod tests {
         assert!(!LicenseState::Active.is_terminal());
         assert!(!LicenseState::Suspended.is_terminal());
     }
+
+    // ── Additional coverage tests ────────────────────────────────────
+
+    #[test]
+    fn license_state_display_all_variants() {
+        assert_eq!(format!("{}", LicenseState::Applied), "APPLIED");
+        assert_eq!(format!("{}", LicenseState::UnderReview), "UNDER_REVIEW");
+        assert_eq!(format!("{}", LicenseState::Active), "ACTIVE");
+        assert_eq!(format!("{}", LicenseState::Suspended), "SUSPENDED");
+        assert_eq!(format!("{}", LicenseState::Revoked), "REVOKED");
+        assert_eq!(format!("{}", LicenseState::Expired), "EXPIRED");
+        assert_eq!(format!("{}", LicenseState::Surrendered), "SURRENDERED");
+        assert_eq!(format!("{}", LicenseState::Rejected), "REJECTED");
+    }
+
+    #[test]
+    fn cannot_review_from_under_review() {
+        let mut lic = test_license();
+        lic.review().unwrap();
+        let err = lic.review().unwrap_err();
+        assert!(matches!(err, LicenseError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_review_from_active() {
+        let mut lic = test_license();
+        lic.review().unwrap();
+        lic.issue().unwrap();
+        let err = lic.review().unwrap_err();
+        assert!(matches!(err, LicenseError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_issue_from_active() {
+        let mut lic = test_license();
+        lic.review().unwrap();
+        lic.issue().unwrap();
+        let err = lic.issue().unwrap_err();
+        assert!(matches!(err, LicenseError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_suspend_from_under_review() {
+        let mut lic = test_license();
+        lic.review().unwrap();
+        let err = lic.suspend("reason").unwrap_err();
+        assert!(matches!(err, LicenseError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_reinstate_from_applied() {
+        let mut lic = test_license();
+        let err = lic.reinstate().unwrap_err();
+        assert!(matches!(err, LicenseError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_reinstate_from_under_review() {
+        let mut lic = test_license();
+        lic.review().unwrap();
+        let err = lic.reinstate().unwrap_err();
+        assert!(matches!(err, LicenseError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_revoke_from_applied() {
+        let mut lic = test_license();
+        let err = lic.revoke("reason").unwrap_err();
+        assert!(matches!(err, LicenseError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_revoke_from_under_review() {
+        let mut lic = test_license();
+        lic.review().unwrap();
+        let err = lic.revoke("reason").unwrap_err();
+        assert!(matches!(err, LicenseError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_expire_from_applied() {
+        let mut lic = test_license();
+        let err = lic.expire().unwrap_err();
+        assert!(matches!(err, LicenseError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_expire_from_under_review() {
+        let mut lic = test_license();
+        lic.review().unwrap();
+        let err = lic.expire().unwrap_err();
+        assert!(matches!(err, LicenseError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_surrender_from_applied() {
+        let mut lic = test_license();
+        let err = lic.surrender().unwrap_err();
+        assert!(matches!(err, LicenseError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_surrender_from_suspended() {
+        let mut lic = test_license();
+        lic.review().unwrap();
+        lic.issue().unwrap();
+        lic.suspend("reason").unwrap();
+        let err = lic.surrender().unwrap_err();
+        assert!(matches!(err, LicenseError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_transition_from_rejected() {
+        let mut lic = test_license();
+        lic.reject("bad application").unwrap();
+        assert!(lic.review().is_err());
+        assert!(lic.issue().is_err());
+        assert!(lic.suspend("reason").is_err());
+        assert!(lic.reinstate().is_err());
+        assert!(lic.revoke("reason").is_err());
+        assert!(lic.expire().is_err());
+        assert!(lic.surrender().is_err());
+        assert!(lic.reject("again").is_err());
+    }
+
+    #[test]
+    fn cannot_transition_from_revoked() {
+        let mut lic = test_license();
+        lic.review().unwrap();
+        lic.issue().unwrap();
+        lic.revoke("violation").unwrap();
+        assert!(lic.review().is_err());
+        assert!(lic.issue().is_err());
+        assert!(lic.suspend("reason").is_err());
+        assert!(lic.reinstate().is_err());
+        assert!(lic.expire().is_err());
+        assert!(lic.surrender().is_err());
+    }
+
+    #[test]
+    fn cannot_transition_from_expired() {
+        let mut lic = test_license();
+        lic.review().unwrap();
+        lic.issue().unwrap();
+        lic.expire().unwrap();
+        assert!(lic.review().is_err());
+        assert!(lic.issue().is_err());
+        assert!(lic.reinstate().is_err());
+        assert!(lic.revoke("reason").is_err());
+        assert!(lic.surrender().is_err());
+    }
+
+    #[test]
+    fn cannot_transition_from_surrendered() {
+        let mut lic = test_license();
+        lic.review().unwrap();
+        lic.issue().unwrap();
+        lic.surrender().unwrap();
+        assert!(lic.review().is_err());
+        assert!(lic.issue().is_err());
+        assert!(lic.reinstate().is_err());
+        assert!(lic.revoke("reason").is_err());
+        assert!(lic.expire().is_err());
+    }
+
+    #[test]
+    fn license_error_invalid_transition_display() {
+        let err = LicenseError::InvalidTransition {
+            from: LicenseState::Applied,
+            to: LicenseState::Active,
+            reason: "must review first".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("APPLIED"));
+        assert!(msg.contains("ACTIVE"));
+        assert!(msg.contains("must review first"));
+    }
+
+    #[test]
+    fn license_error_already_terminal_display() {
+        let err = LicenseError::AlreadyTerminal {
+            state: LicenseState::Revoked,
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("terminal state"));
+        assert!(msg.contains("REVOKED"));
+    }
+
+    #[test]
+    fn license_state_reason_cleared_on_issue() {
+        let mut lic = test_license();
+        lic.review().unwrap();
+        // Manually set a state_reason to verify issue() clears it
+        lic.state_reason = Some("under review notes".to_string());
+        lic.issue().unwrap();
+        assert!(lic.state_reason.is_none());
+    }
+
+    #[test]
+    fn license_state_reason_set_on_suspend() {
+        let mut lic = test_license();
+        lic.review().unwrap();
+        lic.issue().unwrap();
+        lic.suspend("regulatory investigation").unwrap();
+        assert_eq!(
+            lic.state_reason.as_deref(),
+            Some("regulatory investigation")
+        );
+    }
+
+    #[test]
+    fn license_state_reason_set_on_revoke() {
+        let mut lic = test_license();
+        lic.review().unwrap();
+        lic.issue().unwrap();
+        lic.revoke("fraud detected").unwrap();
+        assert_eq!(lic.state_reason.as_deref(), Some("fraud detected"));
+    }
+
+    #[test]
+    fn license_state_reason_cleared_on_reinstate() {
+        let mut lic = test_license();
+        lic.review().unwrap();
+        lic.issue().unwrap();
+        lic.suspend("pending investigation").unwrap();
+        assert!(lic.state_reason.is_some());
+        lic.reinstate().unwrap();
+        assert!(lic.state_reason.is_none());
+    }
+
+    #[test]
+    fn license_category_preserved() {
+        let lic = License::new("PROFESSIONAL");
+        assert_eq!(lic.category, "PROFESSIONAL");
+    }
 }

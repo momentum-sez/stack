@@ -21,3 +21,47 @@ use msez_core::{sha256_digest as core_sha256_digest, CanonicalBytes, ContentDige
 pub fn sha256_digest(data: &CanonicalBytes) -> ContentDigest {
     core_sha256_digest(data)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn sha256_digest_produces_64_hex_chars() {
+        let canonical = CanonicalBytes::new(&json!({"key": "value"})).unwrap();
+        let digest = sha256_digest(&canonical);
+        assert_eq!(digest.to_hex().len(), 64);
+        assert!(digest.to_hex().chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn sha256_digest_is_deterministic() {
+        let canonical = CanonicalBytes::new(&json!({"a": 1, "b": 2})).unwrap();
+        let d1 = sha256_digest(&canonical);
+        let d2 = sha256_digest(&canonical);
+        assert_eq!(d1, d2);
+    }
+
+    #[test]
+    fn sha256_digest_different_input_produces_different_digest() {
+        let c1 = CanonicalBytes::new(&json!({"x": 1})).unwrap();
+        let c2 = CanonicalBytes::new(&json!({"x": 2})).unwrap();
+        assert_ne!(sha256_digest(&c1), sha256_digest(&c2));
+    }
+
+    #[test]
+    fn sha256_digest_agrees_with_core() {
+        let canonical = CanonicalBytes::new(&json!({"test": "agreement"})).unwrap();
+        let crypto_digest = sha256_digest(&canonical);
+        let core_digest = core_sha256_digest(&canonical);
+        assert_eq!(crypto_digest, core_digest);
+    }
+
+    #[test]
+    fn sha256_digest_empty_object() {
+        let canonical = CanonicalBytes::new(&json!({})).unwrap();
+        let digest = sha256_digest(&canonical);
+        assert_eq!(digest.to_hex().len(), 64);
+    }
+}

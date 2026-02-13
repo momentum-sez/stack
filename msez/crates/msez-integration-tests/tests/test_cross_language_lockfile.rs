@@ -51,8 +51,14 @@ const LAWPACK_DIGEST_V1_PREFIX: &[u8] = b"msez-lawpack-v1\0";
 fn lawpack_digest_v1_protocol_deterministic() {
     // Simulate a small lawpack with two files.
     let files: Vec<(&str, serde_json::Value)> = vec![
-        ("statutes/income-tax.json", json!({"act": "Income Tax Ordinance", "year": 2001})),
-        ("statutes/sales-tax.json", json!({"act": "Sales Tax Act", "year": 1990})),
+        (
+            "statutes/income-tax.json",
+            json!({"act": "Income Tax Ordinance", "year": 2001}),
+        ),
+        (
+            "statutes/sales-tax.json",
+            json!({"act": "Sales Tax Act", "year": 1990}),
+        ),
     ];
 
     // Compute digest using the v1 protocol.

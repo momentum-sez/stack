@@ -150,3 +150,164 @@ pub fn router() -> Router<AppState> {
 async fn openapi_json() -> Json<utoipa::openapi::OpenApi> {
     Json(ApiDoc::openapi())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── OpenAPI spec generation ───────────────────────────────────
+
+    #[test]
+    fn test_openapi_spec_generates_successfully() {
+        let spec = ApiDoc::openapi();
+        assert_eq!(spec.info.title, "MSEZ API — Five Programmable Primitives");
+        assert_eq!(spec.info.version, "0.1.0");
+    }
+
+    #[test]
+    fn test_openapi_spec_has_paths() {
+        let spec = ApiDoc::openapi();
+        assert!(
+            !spec.paths.paths.is_empty(),
+            "OpenAPI spec should contain at least one path"
+        );
+    }
+
+    #[test]
+    fn test_openapi_spec_has_entity_paths() {
+        let spec = ApiDoc::openapi();
+        assert!(
+            spec.paths.paths.contains_key("/v1/entities"),
+            "OpenAPI spec should contain /v1/entities path"
+        );
+    }
+
+    #[test]
+    fn test_openapi_spec_has_corridor_paths() {
+        let spec = ApiDoc::openapi();
+        assert!(
+            spec.paths.paths.contains_key("/v1/corridors"),
+            "OpenAPI spec should contain /v1/corridors path"
+        );
+    }
+
+    #[test]
+    fn test_openapi_spec_has_fiscal_paths() {
+        let spec = ApiDoc::openapi();
+        assert!(
+            spec.paths.paths.contains_key("/v1/fiscal/accounts"),
+            "OpenAPI spec should contain /v1/fiscal/accounts path"
+        );
+    }
+
+    #[test]
+    fn test_openapi_spec_has_identity_paths() {
+        let spec = ApiDoc::openapi();
+        assert!(
+            spec.paths.paths.contains_key("/v1/identity/verify"),
+            "OpenAPI spec should contain /v1/identity/verify path"
+        );
+    }
+
+    #[test]
+    fn test_openapi_spec_has_consent_paths() {
+        let spec = ApiDoc::openapi();
+        assert!(
+            spec.paths.paths.contains_key("/v1/consent/request"),
+            "OpenAPI spec should contain /v1/consent/request path"
+        );
+    }
+
+    #[test]
+    fn test_openapi_spec_has_ownership_paths() {
+        let spec = ApiDoc::openapi();
+        assert!(
+            spec.paths.paths.contains_key("/v1/ownership/cap-table"),
+            "OpenAPI spec should contain /v1/ownership/cap-table path"
+        );
+    }
+
+    #[test]
+    fn test_openapi_spec_has_smart_asset_paths() {
+        let spec = ApiDoc::openapi();
+        assert!(
+            spec.paths.paths.contains_key("/v1/assets/genesis"),
+            "OpenAPI spec should contain /v1/assets/genesis path"
+        );
+    }
+
+    #[test]
+    fn test_openapi_spec_has_regulator_paths() {
+        let spec = ApiDoc::openapi();
+        assert!(
+            spec.paths.paths.contains_key("/v1/regulator/summary"),
+            "OpenAPI spec should contain /v1/regulator/summary path"
+        );
+    }
+
+    #[test]
+    fn test_openapi_spec_has_tags() {
+        let spec = ApiDoc::openapi();
+        let tags = &spec.tags;
+        assert!(tags.is_some(), "OpenAPI spec should have tags");
+        let tags = tags.as_ref().unwrap();
+        let tag_names: Vec<&str> = tags.iter().map(|t| t.name.as_str()).collect();
+        assert!(
+            tag_names.contains(&"entities"),
+            "should contain entities tag"
+        );
+        assert!(
+            tag_names.contains(&"ownership"),
+            "should contain ownership tag"
+        );
+        assert!(tag_names.contains(&"fiscal"), "should contain fiscal tag");
+        assert!(
+            tag_names.contains(&"identity"),
+            "should contain identity tag"
+        );
+        assert!(tag_names.contains(&"consent"), "should contain consent tag");
+        assert!(
+            tag_names.contains(&"corridors"),
+            "should contain corridors tag"
+        );
+        assert!(
+            tag_names.contains(&"smart_assets"),
+            "should contain smart_assets tag"
+        );
+        assert!(
+            tag_names.contains(&"regulator"),
+            "should contain regulator tag"
+        );
+    }
+
+    #[test]
+    fn test_openapi_spec_has_components() {
+        let spec = ApiDoc::openapi();
+        let components = &spec.components;
+        assert!(components.is_some(), "OpenAPI spec should have components");
+        let schemas = &components.as_ref().unwrap().schemas;
+        assert!(
+            !schemas.is_empty(),
+            "OpenAPI spec should have schema components"
+        );
+    }
+
+    #[test]
+    fn test_openapi_spec_serializes_to_json() {
+        let spec = ApiDoc::openapi();
+        let json = serde_json::to_string(&spec);
+        assert!(json.is_ok(), "OpenAPI spec should serialize to JSON");
+        let json_str = json.unwrap();
+        assert!(
+            json_str.contains("openapi"),
+            "JSON should contain openapi key"
+        );
+    }
+
+    // ── Router construction ───────────────────────────────────────
+
+    #[test]
+    fn test_router_builds_successfully() {
+        let _router = router();
+    }
+}

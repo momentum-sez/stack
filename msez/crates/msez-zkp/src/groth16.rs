@@ -104,3 +104,81 @@ impl ProofSystem for Groth16ProofSystem {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn groth16_proof_serialization_roundtrip() {
+        let proof = Groth16Proof {
+            proof_bytes: vec![0xde, 0xad, 0xbe, 0xef],
+        };
+        let json = serde_json::to_string(&proof).unwrap();
+        let deser: Groth16Proof = serde_json::from_str(&json).unwrap();
+        assert_eq!(deser.proof_bytes, vec![0xde, 0xad, 0xbe, 0xef]);
+    }
+
+    #[test]
+    fn groth16_verifying_key_is_cloneable() {
+        let vk = Groth16VerifyingKey {
+            key_bytes: vec![1, 2, 3],
+        };
+        let vk2 = vk.clone();
+        assert_eq!(vk.key_bytes, vk2.key_bytes);
+    }
+
+    #[test]
+    fn groth16_circuit_is_cloneable() {
+        let circuit = Groth16Circuit {
+            circuit_id: "test-circuit".to_string(),
+            constraint_count: 1024,
+            public_inputs: vec![0; 32],
+        };
+        let c2 = circuit.clone();
+        assert_eq!(c2.circuit_id, "test-circuit");
+        assert_eq!(c2.constraint_count, 1024);
+    }
+
+    #[test]
+    #[should_panic(expected = "Phase 2")]
+    fn groth16_prove_panics_with_phase2_message() {
+        let sys = Groth16ProofSystem;
+        let pk = Groth16ProvingKey { key_bytes: vec![] };
+        let circuit = Groth16Circuit {
+            circuit_id: "test".to_string(),
+            constraint_count: 0,
+            public_inputs: vec![],
+        };
+        let _ = sys.prove(&pk, &circuit);
+    }
+
+    #[test]
+    #[should_panic(expected = "Phase 2")]
+    fn groth16_verify_panics_with_phase2_message() {
+        let sys = Groth16ProofSystem;
+        let vk = Groth16VerifyingKey { key_bytes: vec![] };
+        let proof = Groth16Proof {
+            proof_bytes: vec![],
+        };
+        let _ = sys.verify(&vk, &proof, &[]);
+    }
+
+    #[test]
+    fn groth16_types_are_debug() {
+        let proof = Groth16Proof {
+            proof_bytes: vec![],
+        };
+        let vk = Groth16VerifyingKey { key_bytes: vec![] };
+        let pk = Groth16ProvingKey { key_bytes: vec![] };
+        let circuit = Groth16Circuit {
+            circuit_id: "x".to_string(),
+            constraint_count: 0,
+            public_inputs: vec![],
+        };
+        assert!(!format!("{proof:?}").is_empty());
+        assert!(!format!("{vk:?}").is_empty());
+        assert!(!format!("{pk:?}").is_empty());
+        assert!(!format!("{circuit:?}").is_empty());
+    }
+}

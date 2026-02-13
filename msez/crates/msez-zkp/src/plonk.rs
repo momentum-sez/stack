@@ -105,3 +105,81 @@ impl ProofSystem for PlonkProofSystem {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn plonk_proof_serialization_roundtrip() {
+        let proof = PlonkProof {
+            proof_bytes: vec![0xca, 0xfe, 0xba, 0xbe],
+        };
+        let json = serde_json::to_string(&proof).unwrap();
+        let deser: PlonkProof = serde_json::from_str(&json).unwrap();
+        assert_eq!(deser.proof_bytes, vec![0xca, 0xfe, 0xba, 0xbe]);
+    }
+
+    #[test]
+    fn plonk_verifying_key_is_cloneable() {
+        let vk = PlonkVerifyingKey {
+            key_bytes: vec![4, 5, 6],
+        };
+        let vk2 = vk.clone();
+        assert_eq!(vk.key_bytes, vk2.key_bytes);
+    }
+
+    #[test]
+    fn plonk_circuit_is_cloneable() {
+        let circuit = PlonkCircuit {
+            circuit_id: "plonk-test".to_string(),
+            gate_count: 2048,
+            public_inputs: vec![0; 16],
+        };
+        let c2 = circuit.clone();
+        assert_eq!(c2.circuit_id, "plonk-test");
+        assert_eq!(c2.gate_count, 2048);
+    }
+
+    #[test]
+    #[should_panic(expected = "Phase 2")]
+    fn plonk_prove_panics_with_phase2_message() {
+        let sys = PlonkProofSystem;
+        let pk = PlonkProvingKey { key_bytes: vec![] };
+        let circuit = PlonkCircuit {
+            circuit_id: "test".to_string(),
+            gate_count: 0,
+            public_inputs: vec![],
+        };
+        let _ = sys.prove(&pk, &circuit);
+    }
+
+    #[test]
+    #[should_panic(expected = "Phase 2")]
+    fn plonk_verify_panics_with_phase2_message() {
+        let sys = PlonkProofSystem;
+        let vk = PlonkVerifyingKey { key_bytes: vec![] };
+        let proof = PlonkProof {
+            proof_bytes: vec![],
+        };
+        let _ = sys.verify(&vk, &proof, &[]);
+    }
+
+    #[test]
+    fn plonk_types_are_debug() {
+        let proof = PlonkProof {
+            proof_bytes: vec![],
+        };
+        let vk = PlonkVerifyingKey { key_bytes: vec![] };
+        let pk = PlonkProvingKey { key_bytes: vec![] };
+        let circuit = PlonkCircuit {
+            circuit_id: "x".to_string(),
+            gate_count: 0,
+            public_inputs: vec![],
+        };
+        assert!(!format!("{proof:?}").is_empty());
+        assert!(!format!("{vk:?}").is_empty());
+        assert!(!format!("{pk:?}").is_empty());
+        assert!(!format!("{circuit:?}").is_empty());
+    }
+}

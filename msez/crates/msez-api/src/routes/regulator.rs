@@ -35,14 +35,14 @@ impl Validate for QueryAttestationsRequest {
 }
 
 /// Query results response.
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct QueryResultsResponse {
     pub count: usize,
     pub results: Vec<AttestationRecord>,
 }
 
 /// Compliance summary for regulator dashboard.
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ComplianceSummary {
     pub total_entities: usize,
     pub total_corridors: usize,
@@ -123,4 +123,232 @@ async fn compliance_summary(State(state): State<AppState>) -> Json<ComplianceSum
         total_assets: state.smart_assets.list().len(),
         total_attestations: state.attestations.list().len(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::extractors::Validate;
+
+    // ── QueryAttestationsRequest validation ───────────────────────
+
+    #[test]
+    fn test_query_attestations_request_valid_empty() {
+        let req = QueryAttestationsRequest {
+            jurisdiction_id: None,
+            entity_id: None,
+            attestation_type: None,
+            status: None,
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_query_attestations_request_valid_with_filters() {
+        let req = QueryAttestationsRequest {
+            jurisdiction_id: Some("PK-PSEZ".to_string()),
+            entity_id: Some(uuid::Uuid::new_v4()),
+            attestation_type: Some("identity_verification".to_string()),
+            status: Some("ACTIVE".to_string()),
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_query_attestations_request_valid_partial_filters() {
+        let req = QueryAttestationsRequest {
+            jurisdiction_id: Some("AE-DIFC".to_string()),
+            entity_id: None,
+            attestation_type: None,
+            status: Some("PENDING".to_string()),
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    // ── Router construction ───────────────────────────────────────
+
+    #[test]
+    fn test_router_builds_successfully() {
+        let _router = router();
+    }
+
+    // ── Handler integration tests ──────────────────────────────────
+
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+
+    /// Helper: build the regulator router with a fresh AppState.
+    fn test_app() -> Router<()> {
+        router().with_state(AppState::new())
+    }
+
+    /// Helper: read the response body as bytes and deserialize from JSON.
+    async fn body_json<T: serde::de::DeserializeOwned>(resp: axum::response::Response) -> T {
+        let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    #[tokio::test]
+    async fn handler_query_attestations_empty_returns_200() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/regulator/query/attestations")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{}"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let result: QueryResultsResponse = body_json(resp).await;
+        assert_eq!(result.count, 0);
+        assert!(result.results.is_empty());
+    }
+
+    #[tokio::test]
+    async fn handler_query_attestations_with_filters_returns_200() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/regulator/query/attestations")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"jurisdiction_id":"PK-PSEZ","status":"ACTIVE"}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let result: QueryResultsResponse = body_json(resp).await;
+        assert_eq!(result.count, 0);
+    }
+
+    #[tokio::test]
+    async fn handler_query_attestations_filters_matching_records() {
+        let state = AppState::new();
+
+        // Seed the attestations store directly.
+        let att1 = AttestationRecord {
+            id: uuid::Uuid::new_v4(),
+            entity_id: uuid::Uuid::new_v4(),
+            attestation_type: "identity_verification".to_string(),
+            issuer: "NADRA".to_string(),
+            status: "ACTIVE".to_string(),
+            jurisdiction_id: "PK-PSEZ".to_string(),
+            issued_at: chrono::Utc::now(),
+            expires_at: None,
+            details: serde_json::json!({}),
+        };
+        let att2 = AttestationRecord {
+            id: uuid::Uuid::new_v4(),
+            entity_id: uuid::Uuid::new_v4(),
+            attestation_type: "compliance_check".to_string(),
+            issuer: "FBR".to_string(),
+            status: "PENDING".to_string(),
+            jurisdiction_id: "AE-DIFC".to_string(),
+            issued_at: chrono::Utc::now(),
+            expires_at: None,
+            details: serde_json::json!({}),
+        };
+        state.attestations.insert(att1.id, att1.clone());
+        state.attestations.insert(att2.id, att2.clone());
+
+        let app = router().with_state(state.clone());
+
+        // Query filtering by jurisdiction_id.
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/regulator/query/attestations")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"jurisdiction_id":"PK-PSEZ"}"#))
+            .unwrap();
+
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let result: QueryResultsResponse = body_json(resp).await;
+        assert_eq!(result.count, 1);
+        assert_eq!(result.results[0].jurisdiction_id, "PK-PSEZ");
+
+        // Query with no filters returns all.
+        let req_all = Request::builder()
+            .method("POST")
+            .uri("/v1/regulator/query/attestations")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{}"#))
+            .unwrap();
+        let resp_all = app.oneshot(req_all).await.unwrap();
+        let result_all: QueryResultsResponse = body_json(resp_all).await;
+        assert_eq!(result_all.count, 2);
+    }
+
+    #[tokio::test]
+    async fn handler_compliance_summary_empty_returns_200() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/regulator/summary")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let summary: ComplianceSummary = body_json(resp).await;
+        assert_eq!(summary.total_entities, 0);
+        assert_eq!(summary.total_corridors, 0);
+        assert_eq!(summary.total_assets, 0);
+        assert_eq!(summary.total_attestations, 0);
+    }
+
+    #[tokio::test]
+    async fn handler_compliance_summary_reflects_state() {
+        let state = AppState::new();
+
+        // Add some entities and corridors to the state.
+        let entity = crate::state::EntityRecord {
+            id: uuid::Uuid::new_v4(),
+            entity_type: "company".to_string(),
+            legal_name: "Test Corp".to_string(),
+            jurisdiction_id: "PK-PSEZ".to_string(),
+            status: "ACTIVE".to_string(),
+            beneficial_owners: vec![],
+            dissolution_stage: None,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+        state.entities.insert(entity.id, entity);
+
+        let corridor = crate::state::CorridorRecord {
+            id: uuid::Uuid::new_v4(),
+            jurisdiction_a: "PK-PSEZ".to_string(),
+            jurisdiction_b: "AE-DIFC".to_string(),
+            state: "ACTIVE".to_string(),
+            transition_log: vec![],
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+        state.corridors.insert(corridor.id, corridor);
+
+        let app = router().with_state(state.clone());
+
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/regulator/summary")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let summary: ComplianceSummary = body_json(resp).await;
+        assert_eq!(summary.total_entities, 1);
+        assert_eq!(summary.total_corridors, 1);
+        assert_eq!(summary.total_assets, 0);
+        assert_eq!(summary.total_attestations, 0);
+    }
 }

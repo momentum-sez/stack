@@ -557,4 +557,755 @@ mod tests {
         assert!(!result.is_valid);
         assert!(result.errors.iter().any(|e| e.contains("jurisdiction_id")));
     }
+
+    // -----------------------------------------------------------------------
+    // validate_zone — file-based tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_validate_zone_valid_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let zone_path = dir.path().join("zone.yaml");
+        std::fs::write(
+            &zone_path,
+            "zone_id: test-zone\njurisdiction_id: pk\nprofile: starter\n",
+        )
+        .unwrap();
+
+        let result = validate_zone(&zone_path).unwrap();
+        assert!(result.is_valid);
+        assert!(result.errors.is_empty());
+    }
+
+    #[test]
+    fn test_validate_zone_missing_fields() {
+        let dir = tempfile::tempdir().unwrap();
+        let zone_path = dir.path().join("zone.yaml");
+        std::fs::write(&zone_path, "profile: starter\n").unwrap();
+
+        let result = validate_zone(&zone_path).unwrap();
+        assert!(!result.is_valid);
+        assert!(result.errors.iter().any(|e| e.contains("zone_id")));
+        assert!(result.errors.iter().any(|e| e.contains("jurisdiction_id")));
+    }
+
+    #[test]
+    fn test_validate_zone_file_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let zone_path = dir.path().join("nonexistent.yaml");
+
+        let result = validate_zone(&zone_path);
+        // Should return Ok with a fail result, not an Err
+        assert!(result.is_ok());
+        let vr = result.unwrap();
+        assert!(!vr.is_valid);
+        assert!(vr.errors[0].contains("parse"));
+    }
+
+    #[test]
+    fn test_validate_zone_with_lawpacks() {
+        let dir = tempfile::tempdir().unwrap();
+        let zone_path = dir.path().join("zone.yaml");
+        let content = format!(
+            concat!(
+                "zone_id: test-zone\n",
+                "jurisdiction_id: pk\n",
+                "lawpacks:\n",
+                "  - jurisdiction_id: pk\n",
+                "    domain: civil\n",
+                "    lawpack_digest_sha256: {}\n",
+            ),
+            "a".repeat(64)
+        );
+        std::fs::write(&zone_path, &content).unwrap();
+
+        let result = validate_zone(&zone_path).unwrap();
+        assert!(result.is_valid);
+    }
+
+    #[test]
+    fn test_validate_zone_with_empty_lawpack_ref() {
+        let dir = tempfile::tempdir().unwrap();
+        let zone_path = dir.path().join("zone.yaml");
+        let content = format!(
+            concat!(
+                "zone_id: test-zone\n",
+                "jurisdiction_id: pk\n",
+                "lawpacks:\n",
+                "  - jurisdiction_id: ''\n",
+                "    domain: civil\n",
+                "    lawpack_digest_sha256: {}\n",
+            ),
+            "a".repeat(64)
+        );
+        std::fs::write(&zone_path, &content).unwrap();
+
+        let result = validate_zone(&zone_path).unwrap();
+        assert!(!result.is_valid);
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.contains("empty jurisdiction_id")));
+    }
+
+    #[test]
+    fn test_validate_zone_with_invalid_lawpack_digest() {
+        // resolve_lawpack_refs silently filters entries with invalid digests,
+        // so no error is produced for unresolvable digest strings. The entry
+        // simply doesn't appear in the resolved refs. This test documents
+        // that behavior.
+        let dir = tempfile::tempdir().unwrap();
+        let zone_path = dir.path().join("zone.yaml");
+        std::fs::write(
+            &zone_path,
+            concat!(
+                "zone_id: test-zone\n",
+                "jurisdiction_id: pk\n",
+                "lawpacks:\n",
+                "  - jurisdiction_id: pk\n",
+                "    domain: civil\n",
+                "    lawpack_digest_sha256: bad_digest\n",
+            ),
+        )
+        .unwrap();
+
+        let result = validate_zone(&zone_path).unwrap();
+        // Invalid digests are silently filtered by resolve_lawpack_refs,
+        // so the zone is still valid (no lawpack refs resolved).
+        assert!(result.is_valid);
+    }
+
+    #[test]
+    fn test_validate_zone_with_lawpack_domains() {
+        let dir = tempfile::tempdir().unwrap();
+        let zone_path = dir.path().join("zone.yaml");
+        std::fs::write(
+            &zone_path,
+            concat!(
+                "zone_id: test-zone\n",
+                "jurisdiction_id: pk\n",
+                "lawpack_domains:\n",
+                "  - aml\n",
+                "  - unknown_domain_xyz\n",
+            ),
+        )
+        .unwrap();
+
+        let result = validate_zone(&zone_path).unwrap();
+        // Should be valid (unknown domains are warnings, not errors)
+        assert!(result.is_valid);
+        assert!(result
+            .warnings
+            .iter()
+            .any(|w| w.contains("unknown_domain_xyz")));
+    }
+
+    #[test]
+    fn test_validate_zone_with_regpack_refs() {
+        let dir = tempfile::tempdir().unwrap();
+        let zone_path = dir.path().join("zone.yaml");
+        let content = format!(
+            concat!(
+                "zone_id: test-zone\n",
+                "jurisdiction_id: pk\n",
+                "regpacks:\n",
+                "  - jurisdiction_id: pk\n",
+                "    domain: financial\n",
+                "    regpack_digest_sha256: {}\n",
+            ),
+            "b".repeat(64)
+        );
+        std::fs::write(&zone_path, &content).unwrap();
+
+        let result = validate_zone(&zone_path).unwrap();
+        assert!(result.is_valid);
+    }
+
+    #[test]
+    fn test_validate_zone_with_empty_regpack_jid() {
+        let dir = tempfile::tempdir().unwrap();
+        let zone_path = dir.path().join("zone.yaml");
+        let content = format!(
+            concat!(
+                "zone_id: test-zone\n",
+                "jurisdiction_id: pk\n",
+                "regpacks:\n",
+                "  - jurisdiction_id: ''\n",
+                "    domain: financial\n",
+                "    regpack_digest_sha256: {}\n",
+            ),
+            "b".repeat(64)
+        );
+        std::fs::write(&zone_path, &content).unwrap();
+
+        let result = validate_zone(&zone_path).unwrap();
+        assert!(!result.is_valid);
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.contains("regpack") && e.contains("empty jurisdiction_id")));
+    }
+
+    #[test]
+    fn test_validate_zone_with_licensepack_refs() {
+        let dir = tempfile::tempdir().unwrap();
+        let zone_path = dir.path().join("zone.yaml");
+        let content = format!(
+            concat!(
+                "zone_id: test-zone\n",
+                "jurisdiction_id: pk\n",
+                "licensepacks:\n",
+                "  - jurisdiction_id: pk\n",
+                "    domain: financial\n",
+                "    licensepack_digest_sha256: {}\n",
+            ),
+            "c".repeat(64)
+        );
+        std::fs::write(&zone_path, &content).unwrap();
+
+        let result = validate_zone(&zone_path).unwrap();
+        assert!(result.is_valid);
+    }
+
+    #[test]
+    fn test_validate_zone_with_empty_licensepack_jid() {
+        let dir = tempfile::tempdir().unwrap();
+        let zone_path = dir.path().join("zone.yaml");
+        let content = format!(
+            concat!(
+                "zone_id: test-zone\n",
+                "jurisdiction_id: pk\n",
+                "licensepacks:\n",
+                "  - jurisdiction_id: ''\n",
+                "    domain: financial\n",
+                "    licensepack_digest_sha256: {}\n",
+            ),
+            "c".repeat(64)
+        );
+        std::fs::write(&zone_path, &content).unwrap();
+
+        let result = validate_zone(&zone_path).unwrap();
+        assert!(!result.is_valid);
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.contains("licensepack") && e.contains("empty jurisdiction_id")));
+    }
+
+    // -----------------------------------------------------------------------
+    // validate_zone_value — additional edge cases
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_validate_zone_value_with_only_zone_id() {
+        let zone = json!({"zone_id": "test"});
+        let result = validate_zone_value(&zone);
+        assert!(!result.is_valid);
+        // Should have jurisdiction_id error but not zone_id error
+        assert!(!result.errors.iter().any(|e| e.contains("zone_id")));
+        assert!(result.errors.iter().any(|e| e.contains("jurisdiction_id")));
+    }
+
+    #[test]
+    fn test_validate_zone_value_empty_object() {
+        let zone = json!({});
+        let result = validate_zone_value(&zone);
+        assert!(!result.is_valid);
+        assert_eq!(result.errors.len(), 2);
+    }
+
+    // -----------------------------------------------------------------------
+    // validate_lawpack_lock — file-based tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_validate_lawpack_lock_valid() {
+        let dir = tempfile::tempdir().unwrap();
+        let lock_path = dir.path().join("lawpack.lock.json");
+        let lock_data = json!({
+            "lawpack_digest_sha256": "a".repeat(64),
+            "jurisdiction_id": "pk",
+            "domain": "civil",
+            "as_of_date": "2026-01-15",
+            "artifact_path": "artifact.zip",
+            "artifact_sha256": "b".repeat(64),
+            "components": {
+                "lawpack_yaml_sha256": "c".repeat(64),
+                "index_json_sha256": "d".repeat(64),
+                "akn_sha256": {},
+                "sources_sha256": "e".repeat(64)
+            },
+            "provenance": {
+                "module_manifest_path": "module.yaml",
+                "sources_manifest_path": "sources.yaml"
+            }
+        });
+        std::fs::write(&lock_path, serde_json::to_string(&lock_data).unwrap()).unwrap();
+
+        let result = validate_lawpack_lock(&lock_path).unwrap();
+        assert!(result.is_valid);
+    }
+
+    #[test]
+    fn test_validate_lawpack_lock_empty_jurisdiction() {
+        let dir = tempfile::tempdir().unwrap();
+        let lock_path = dir.path().join("lawpack.lock.json");
+        let lock_data = json!({
+            "lawpack_digest_sha256": "a".repeat(64),
+            "jurisdiction_id": "",
+            "domain": "civil",
+            "as_of_date": "2026-01-15",
+            "artifact_path": "artifact.zip",
+            "artifact_sha256": "b".repeat(64),
+            "components": {
+                "lawpack_yaml_sha256": "c".repeat(64),
+                "index_json_sha256": "d".repeat(64),
+                "akn_sha256": {},
+                "sources_sha256": "e".repeat(64)
+            },
+            "provenance": {
+                "module_manifest_path": "module.yaml",
+                "sources_manifest_path": "sources.yaml"
+            }
+        });
+        std::fs::write(&lock_path, serde_json::to_string(&lock_data).unwrap()).unwrap();
+
+        let result = validate_lawpack_lock(&lock_path).unwrap();
+        assert!(!result.is_valid);
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.contains("empty jurisdiction_id")));
+    }
+
+    #[test]
+    fn test_validate_lawpack_lock_empty_domain() {
+        let dir = tempfile::tempdir().unwrap();
+        let lock_path = dir.path().join("lawpack.lock.json");
+        let lock_data = json!({
+            "lawpack_digest_sha256": "a".repeat(64),
+            "jurisdiction_id": "pk",
+            "domain": "",
+            "as_of_date": "2026-01-15",
+            "artifact_path": "artifact.zip",
+            "artifact_sha256": "b".repeat(64),
+            "components": {
+                "lawpack_yaml_sha256": "c".repeat(64),
+                "index_json_sha256": "d".repeat(64),
+                "akn_sha256": {},
+                "sources_sha256": "e".repeat(64)
+            },
+            "provenance": {
+                "module_manifest_path": "module.yaml",
+                "sources_manifest_path": "sources.yaml"
+            }
+        });
+        std::fs::write(&lock_path, serde_json::to_string(&lock_data).unwrap()).unwrap();
+
+        let result = validate_lawpack_lock(&lock_path).unwrap();
+        assert!(!result.is_valid);
+        assert!(result.errors.iter().any(|e| e.contains("empty domain")));
+    }
+
+    #[test]
+    fn test_validate_lawpack_lock_empty_as_of_date_is_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let lock_path = dir.path().join("lawpack.lock.json");
+        let lock_data = json!({
+            "lawpack_digest_sha256": "a".repeat(64),
+            "jurisdiction_id": "pk",
+            "domain": "civil",
+            "as_of_date": "",
+            "artifact_path": "artifact.zip",
+            "artifact_sha256": "b".repeat(64),
+            "components": {
+                "lawpack_yaml_sha256": "c".repeat(64),
+                "index_json_sha256": "d".repeat(64),
+                "akn_sha256": {},
+                "sources_sha256": "e".repeat(64)
+            },
+            "provenance": {
+                "module_manifest_path": "module.yaml",
+                "sources_manifest_path": "sources.yaml"
+            }
+        });
+        std::fs::write(&lock_path, serde_json::to_string(&lock_data).unwrap()).unwrap();
+
+        let result = validate_lawpack_lock(&lock_path).unwrap();
+        // Empty as_of_date is a warning, not an error
+        assert!(result.is_valid);
+        assert!(result
+            .warnings
+            .iter()
+            .any(|w| w.contains("empty as_of_date")));
+    }
+
+    #[test]
+    fn test_validate_lawpack_lock_invalid_digest() {
+        let dir = tempfile::tempdir().unwrap();
+        let lock_path = dir.path().join("bad.lock.json");
+        let lock_data = json!({
+            "lawpack_digest_sha256": "not-a-digest",
+            "jurisdiction_id": "pk",
+            "domain": "civil",
+            "as_of_date": "2026-01-15",
+            "artifact_path": "artifact.zip",
+            "artifact_sha256": "b".repeat(64),
+            "components": {
+                "lawpack_yaml_sha256": "c".repeat(64),
+                "index_json_sha256": "d".repeat(64),
+                "akn_sha256": {},
+                "sources_sha256": "e".repeat(64)
+            },
+            "provenance": {
+                "module_manifest_path": "module.yaml",
+                "sources_manifest_path": "sources.yaml"
+            }
+        });
+        std::fs::write(&lock_path, serde_json::to_string(&lock_data).unwrap()).unwrap();
+
+        let result = validate_lawpack_lock(&lock_path).unwrap();
+        assert!(!result.is_valid);
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.contains("validation failed")));
+    }
+
+    // -----------------------------------------------------------------------
+    // validate_module_descriptor — file-based tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_validate_module_descriptor_valid() {
+        let dir = tempfile::tempdir().unwrap();
+        let module_dir = dir.path().join("mod");
+        std::fs::create_dir(&module_dir).unwrap();
+        std::fs::write(
+            module_dir.join("module.yaml"),
+            "module_id: test-mod\nversion: '1.0'\nkind: legal\n",
+        )
+        .unwrap();
+
+        let result = validate_module_descriptor(&module_dir).unwrap();
+        assert!(result.is_valid);
+    }
+
+    #[test]
+    fn test_validate_module_descriptor_empty_module_id() {
+        let dir = tempfile::tempdir().unwrap();
+        let module_dir = dir.path().join("mod");
+        std::fs::create_dir(&module_dir).unwrap();
+        std::fs::write(
+            module_dir.join("module.yaml"),
+            "module_id: ''\nversion: '1.0'\nkind: legal\n",
+        )
+        .unwrap();
+
+        let result = validate_module_descriptor(&module_dir).unwrap();
+        assert!(!result.is_valid);
+        assert!(result.errors.iter().any(|e| e.contains("empty module_id")));
+    }
+
+    #[test]
+    fn test_validate_module_descriptor_empty_version_is_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let module_dir = dir.path().join("mod");
+        std::fs::create_dir(&module_dir).unwrap();
+        std::fs::write(
+            module_dir.join("module.yaml"),
+            "module_id: test-mod\nversion: ''\nkind: legal\n",
+        )
+        .unwrap();
+
+        let result = validate_module_descriptor(&module_dir).unwrap();
+        assert!(result.is_valid); // empty version is a warning
+        assert!(result.warnings.iter().any(|w| w.contains("empty version")));
+    }
+
+    #[test]
+    fn test_validate_module_descriptor_missing_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let module_dir = dir.path().join("no_module");
+        std::fs::create_dir(&module_dir).unwrap();
+        // No module.yaml
+
+        let result = validate_module_descriptor(&module_dir).unwrap();
+        assert!(!result.is_valid);
+        assert!(result.errors.iter().any(|e| e.contains("failed to load")));
+    }
+
+    // -----------------------------------------------------------------------
+    // validate_regpack_domains
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_validate_regpack_domains_known_domain() {
+        let meta = crate::regpack::RegPackMetadata {
+            regpack_id: "test".to_string(),
+            jurisdiction_id: "pk".to_string(),
+            domain: "aml".to_string(),
+            as_of_date: "2026-01-15".to_string(),
+            snapshot_type: "quarterly".to_string(),
+            sources: vec![],
+            includes: BTreeMap::new(),
+            previous_regpack_digest: None,
+            created_at: None,
+            expires_at: None,
+            digest_sha256: None,
+        };
+        let result = validate_regpack_domains(&meta);
+        assert!(result.is_valid);
+    }
+
+    #[test]
+    fn test_validate_regpack_domains_unknown_but_nonempty() {
+        let meta = crate::regpack::RegPackMetadata {
+            regpack_id: "test".to_string(),
+            jurisdiction_id: "pk".to_string(),
+            domain: "financial".to_string(), // broad category, not a specific domain
+            as_of_date: "2026-01-15".to_string(),
+            snapshot_type: "quarterly".to_string(),
+            sources: vec![],
+            includes: BTreeMap::new(),
+            previous_regpack_digest: None,
+            created_at: None,
+            expires_at: None,
+            digest_sha256: None,
+        };
+        let result = validate_regpack_domains(&meta);
+        // Non-empty but unrecognized domains are allowed
+        assert!(result.is_valid);
+    }
+
+    #[test]
+    fn test_validate_regpack_domains_empty_domain() {
+        let meta = crate::regpack::RegPackMetadata {
+            regpack_id: "test".to_string(),
+            jurisdiction_id: "pk".to_string(),
+            domain: "".to_string(),
+            as_of_date: "2026-01-15".to_string(),
+            snapshot_type: "quarterly".to_string(),
+            sources: vec![],
+            includes: BTreeMap::new(),
+            previous_regpack_digest: None,
+            created_at: None,
+            expires_at: None,
+            digest_sha256: None,
+        };
+        let result = validate_regpack_domains(&meta);
+        assert!(!result.is_valid);
+        assert!(result.errors.iter().any(|e| e.contains("empty")));
+    }
+
+    // -----------------------------------------------------------------------
+    // validate_zone_cross_references
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_validate_zone_cross_references_no_domains() {
+        let dir = tempfile::tempdir().unwrap();
+        let zone_path = dir.path().join("zone.yaml");
+        std::fs::write(&zone_path, "zone_id: test\njurisdiction_id: pk\n").unwrap();
+
+        let result = validate_zone_cross_references(&zone_path, dir.path()).unwrap();
+        assert!(result.is_valid);
+        assert!(result.warnings.is_empty());
+    }
+
+    #[test]
+    fn test_validate_zone_cross_references_with_missing_domain_dir() {
+        let dir = tempfile::tempdir().unwrap();
+
+        // Create modules/legal directory structure
+        let modules_dir = dir.path().join("modules").join("legal");
+        std::fs::create_dir_all(&modules_dir).unwrap();
+
+        let zone_path = dir.path().join("zone.yaml");
+        std::fs::write(
+            &zone_path,
+            "zone_id: test\njurisdiction_id: pk\nlawpack_domains:\n  - civil\n  - criminal\n",
+        )
+        .unwrap();
+
+        let result = validate_zone_cross_references(&zone_path, dir.path()).unwrap();
+        // Should produce warnings for missing domain directories
+        assert!(result.is_valid); // Warnings don't make it invalid
+        assert!(!result.warnings.is_empty());
+    }
+
+    #[test]
+    fn test_validate_zone_cross_references_with_existing_domain_dir() {
+        let dir = tempfile::tempdir().unwrap();
+
+        // Create modules/legal/jurisdictions/pk/civil directory
+        let domain_dir = dir
+            .path()
+            .join("modules")
+            .join("legal")
+            .join("jurisdictions")
+            .join("pk")
+            .join("civil");
+        std::fs::create_dir_all(&domain_dir).unwrap();
+
+        let zone_path = dir.path().join("zone.yaml");
+        std::fs::write(
+            &zone_path,
+            "zone_id: test\njurisdiction_id: pk\nlawpack_domains:\n  - civil\n",
+        )
+        .unwrap();
+
+        let result = validate_zone_cross_references(&zone_path, dir.path()).unwrap();
+        assert!(result.is_valid);
+        // No warning because the directory exists
+        assert!(result.warnings.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // PackValidationResult — additional tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_validation_result_add_warning() {
+        let mut r = PackValidationResult::ok();
+        r.add_warning("non-fatal issue".to_string());
+        assert!(r.is_valid); // warnings don't affect validity
+        assert_eq!(r.warnings.len(), 1);
+    }
+
+    #[test]
+    fn test_validation_result_merge_both_ok() {
+        let r1 = PackValidationResult::ok();
+        let mut r2 = PackValidationResult::ok();
+        r2.merge(r1);
+        assert!(r2.is_valid);
+        assert!(r2.errors.is_empty());
+    }
+
+    #[test]
+    fn test_validation_result_merge_preserves_warnings() {
+        let mut r1 = PackValidationResult::ok();
+        r1.add_warning("warn-a".to_string());
+
+        let mut r2 = PackValidationResult::ok();
+        r2.add_warning("warn-b".to_string());
+
+        r2.merge(r1);
+        assert!(r2.is_valid);
+        assert_eq!(r2.warnings.len(), 2);
+    }
+
+    #[test]
+    fn test_validation_result_fail_with_multiple_errors() {
+        let r = PackValidationResult::fail(vec![
+            "error1".to_string(),
+            "error2".to_string(),
+            "error3".to_string(),
+        ]);
+        assert!(!r.is_valid);
+        assert_eq!(r.errors.len(), 3);
+    }
+
+    // -----------------------------------------------------------------------
+    // validate_jurisdiction_stack — additional edge cases
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_validate_jurisdiction_stack_empty_array() {
+        let stack = json!([]);
+        let result = validate_jurisdiction_stack(&stack);
+        assert!(result.is_valid);
+        assert!(result.errors.is_empty());
+    }
+
+    #[test]
+    fn test_validate_jurisdiction_stack_unnamed_layer() {
+        let stack = json!([
+            {
+                "jurisdiction_id": "pk",
+                "domains": ["tax"]
+            }
+        ]);
+        let result = validate_jurisdiction_stack(&stack);
+        assert!(result.is_valid);
+    }
+
+    #[test]
+    fn test_validate_jurisdiction_stack_no_domains() {
+        let stack = json!([
+            {
+                "name": "empty",
+                "jurisdiction_id": "pk"
+            }
+        ]);
+        let result = validate_jurisdiction_stack(&stack);
+        assert!(result.is_valid);
+    }
+
+    #[test]
+    fn test_validate_jurisdiction_stack_multiple_overlaps() {
+        let stack = json!([
+            {
+                "name": "layer-a",
+                "jurisdiction_id": "pk",
+                "domains": ["tax", "aml", "corporate"]
+            },
+            {
+                "name": "layer-b",
+                "jurisdiction_id": "pk-kp",
+                "domains": ["tax", "corporate", "licensing"]
+            }
+        ]);
+        let result = validate_jurisdiction_stack(&stack);
+        assert!(result.is_valid);
+        // Two overlapping domains: "tax" and "corporate"
+        assert_eq!(result.warnings.len(), 2);
+    }
+
+    // -----------------------------------------------------------------------
+    // validate_domain_string — additional tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_validate_domain_string_aml_cft_underscore() {
+        assert_eq!(
+            validate_domain_string("aml_cft"),
+            Some(ComplianceDomain::Aml)
+        );
+    }
+
+    #[test]
+    fn test_validate_domain_string_consumer_protection() {
+        assert_eq!(
+            validate_domain_string("consumer-protection"),
+            Some(ComplianceDomain::ConsumerProtection)
+        );
+    }
+
+    #[test]
+    fn test_validate_domain_string_civil_returns_none() {
+        // "civil" is a broader category, not a specific ComplianceDomain
+        assert_eq!(validate_domain_string("civil"), None);
+    }
+
+    // -----------------------------------------------------------------------
+    // all_domain_strings — comprehensive coverage
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_all_domain_strings_non_empty() {
+        let domains = all_domain_strings();
+        assert!(!domains.is_empty());
+        for d in &domains {
+            assert!(!d.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_all_domain_strings_are_lowercase() {
+        let domains = all_domain_strings();
+        for d in &domains {
+            assert_eq!(*d, d.to_lowercase().as_str());
+        }
+    }
 }

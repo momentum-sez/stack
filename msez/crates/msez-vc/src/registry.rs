@@ -580,4 +580,202 @@ mod tests {
         );
         assert_eq!(back.enforcement_profile.unwrap().intensity.unwrap(), "high");
     }
+
+    // ── Additional coverage tests ──────────────────────────────────
+
+    #[test]
+    fn registry_schema_id_constant() {
+        assert!(REGISTRY_SCHEMA_ID.contains("smart-asset-registry"));
+    }
+
+    #[test]
+    fn artifact_ref_serde_roundtrip() {
+        let ar = ArtifactRef {
+            artifact_type: "smart-asset-genesis".to_string(),
+            digest_sha256: "d".repeat(64),
+            uri: Some("ipfs://Qm...".to_string()),
+            media_type: Some("application/json".to_string()),
+        };
+        let json = serde_json::to_string(&ar).unwrap();
+        let back: ArtifactRef = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.artifact_type, "smart-asset-genesis");
+        assert_eq!(back.uri.unwrap(), "ipfs://Qm...");
+        assert_eq!(back.media_type.unwrap(), "application/json");
+    }
+
+    #[test]
+    fn artifact_ref_optional_fields_omitted() {
+        let ar = ArtifactRef {
+            artifact_type: "test".to_string(),
+            digest_sha256: "e".repeat(64),
+            uri: None,
+            media_type: None,
+        };
+        let json = serde_json::to_string(&ar).unwrap();
+        assert!(!json.contains("uri"));
+        assert!(!json.contains("media_type"));
+    }
+
+    #[test]
+    fn lawpack_ref_serde_roundtrip() {
+        let lr = LawpackRef {
+            jurisdiction_id: "AE".to_string(),
+            domain: "aml".to_string(),
+            lawpack_digest_sha256: "f".repeat(64),
+            lawpack: Some(ArtifactRef {
+                artifact_type: "lawpack-bundle".to_string(),
+                digest_sha256: "f".repeat(64),
+                uri: None,
+                media_type: None,
+            }),
+        };
+        let json = serde_json::to_string(&lr).unwrap();
+        let back: LawpackRef = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.jurisdiction_id, "AE");
+        assert!(back.lawpack.is_some());
+    }
+
+    #[test]
+    fn compliance_profile_default() {
+        let cp = ComplianceProfile::default();
+        assert!(cp.allowed_transition_kinds.is_none());
+        assert!(cp.required_attestations.is_none());
+        assert!(cp.default_required_attestations.is_none());
+    }
+
+    #[test]
+    fn enforcement_profile_all_none() {
+        let ep = EnforcementProfile {
+            intensity: None,
+            audit_frequency: None,
+            notes: None,
+        };
+        let json = serde_json::to_string(&ep).unwrap();
+        // Optional fields should be omitted.
+        assert!(!json.contains("intensity"));
+        assert!(!json.contains("audit_frequency"));
+        assert!(!json.contains("notes"));
+    }
+
+    #[test]
+    fn smart_asset_registry_subject_serde_roundtrip() {
+        let subject = make_test_subject();
+        let json = serde_json::to_string(&subject).unwrap();
+        let back: SmartAssetRegistrySubject = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.asset_id, subject.asset_id);
+        assert_eq!(back.stack_spec_version, "0.4.44");
+        assert_eq!(back.asset_name.unwrap(), "Test Asset");
+        assert_eq!(back.asset_class.unwrap(), "equity");
+    }
+
+    #[test]
+    fn registry_vc_as_vc_mut() {
+        let subject = make_test_subject();
+        let mut vc =
+            SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject, None).unwrap();
+        let inner = vc.as_vc_mut();
+        inner.issuer = "did:key:z6MkNewIssuer".to_string();
+        assert_eq!(vc.as_vc().issuer, "did:key:z6MkNewIssuer");
+    }
+
+    #[test]
+    fn registry_vc_into_vc_and_from_vc() {
+        let subject = make_test_subject();
+        let vc =
+            SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject, None).unwrap();
+        let inner = vc.into_vc();
+        assert_eq!(inner.issuer, "did:key:z6MkTestIssuer");
+
+        let recovered = SmartAssetRegistryVc::from_vc(inner).unwrap();
+        assert_eq!(recovered.asset_id(), Some("a".repeat(64)));
+    }
+
+    #[test]
+    fn registry_vc_asset_id_missing() {
+        let vc = VerifiableCredential {
+            context: ContextValue::default(),
+            id: None,
+            credential_type: CredentialTypeValue::Single("VerifiableCredential".to_string()),
+            issuer: "did:key:z6Mk123".to_string(),
+            issuance_date: chrono::Utc::now(),
+            expiration_date: None,
+            credential_subject: json!({"no_asset_id": true, "asset_id": 42}),
+            proof: ProofValue::default(),
+        };
+        // asset_id is not a string, so returns None.
+        let wrapper = SmartAssetRegistryVc { vc };
+        assert!(wrapper.asset_id().is_none());
+    }
+
+    #[test]
+    fn compute_asset_id_from_non_object() {
+        // Non-object genesis (e.g., a string) should still produce a digest.
+        let genesis = json!("not an object");
+        let result = SmartAssetRegistryVc::compute_asset_id(&genesis);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 64);
+    }
+
+    #[test]
+    fn binding_compliance_result_fields() {
+        let result = BindingComplianceResult {
+            harbor_id: "zone-pk-01".to_string(),
+            binding_status: "active".to_string(),
+            shard_role: "primary".to_string(),
+            allowed: false,
+            reasons: vec!["missing kyc attestation".to_string()],
+            missing_attestations: vec!["kyc".to_string()],
+            present_attestations: vec!["aml".to_string()],
+        };
+        assert!(!result.allowed);
+        assert_eq!(result.missing_attestations.len(), 1);
+        assert_eq!(result.present_attestations.len(), 1);
+    }
+
+    #[test]
+    fn registry_vc_with_explicit_issuance_date() {
+        let subject = make_test_subject();
+        let ts = Timestamp::now();
+        let expected_dt = *ts.as_datetime();
+        let vc = SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject, Some(ts))
+            .unwrap();
+        assert_eq!(vc.as_vc().issuance_date, expected_dt);
+    }
+
+    #[test]
+    fn registry_vc_multiple_jurisdiction_bindings() {
+        let mut subject = make_test_subject();
+        subject.jurisdiction_bindings.push(JurisdictionBinding {
+            harbor_id: "zone-ae-01".to_string(),
+            binding_status: "active".to_string(),
+            shard_role: "secondary".to_string(),
+            lawpacks: vec![LawpackRef {
+                jurisdiction_id: "AE".to_string(),
+                domain: "aml".to_string(),
+                lawpack_digest_sha256: "c".repeat(64),
+                lawpack: None,
+            }],
+            compliance_profile: ComplianceProfile::default(),
+            enforcement_profile: None,
+            effective_from: None,
+            effective_until: None,
+            notes: Some("secondary shard in UAE".to_string()),
+        });
+
+        let vc =
+            SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject, None).unwrap();
+        let extracted = vc.subject().unwrap();
+        assert_eq!(extracted.jurisdiction_bindings.len(), 2);
+        assert_eq!(extracted.jurisdiction_bindings[1].harbor_id, "zone-ae-01");
+    }
+
+    #[test]
+    fn registry_vc_clone() {
+        let subject = make_test_subject();
+        let vc =
+            SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject, None).unwrap();
+        let cloned = vc.clone();
+        assert_eq!(vc.asset_id(), cloned.asset_id());
+        assert_eq!(vc.as_vc().issuer, cloned.as_vc().issuer);
+    }
 }

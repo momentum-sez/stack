@@ -36,3 +36,68 @@ pub enum CryptoError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn verification_failed_display() {
+        let err = CryptoError::VerificationFailed("bad sig".to_string());
+        assert!(format!("{err}").contains("bad sig"));
+    }
+
+    #[test]
+    fn invalid_signature_length_display() {
+        let err = CryptoError::InvalidSignatureLength(32);
+        let msg = format!("{err}");
+        assert!(msg.contains("64 bytes"));
+        assert!(msg.contains("32"));
+    }
+
+    #[test]
+    fn invalid_public_key_display() {
+        let err = CryptoError::InvalidPublicKey("too short".to_string());
+        assert!(format!("{err}").contains("too short"));
+    }
+
+    #[test]
+    fn hex_decode_display() {
+        let err = CryptoError::HexDecode("invalid char".to_string());
+        assert!(format!("{err}").contains("invalid char"));
+    }
+
+    #[test]
+    fn mmr_error_display() {
+        let err = CryptoError::Mmr("index out of range".to_string());
+        assert!(format!("{err}").contains("index out of range"));
+    }
+
+    #[test]
+    fn cas_error_display() {
+        let err = CryptoError::Cas("artifact not found".to_string());
+        assert!(format!("{err}").contains("artifact not found"));
+    }
+
+    #[test]
+    fn io_error_from_conversion() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file missing");
+        let err = CryptoError::from(io_err);
+        assert!(format!("{err}").contains("file missing"));
+    }
+
+    #[test]
+    fn all_variants_are_debug() {
+        let variants: Vec<CryptoError> = vec![
+            CryptoError::VerificationFailed("a".to_string()),
+            CryptoError::InvalidSignatureLength(0),
+            CryptoError::InvalidPublicKey("b".to_string()),
+            CryptoError::HexDecode("c".to_string()),
+            CryptoError::Mmr("d".to_string()),
+            CryptoError::Cas("e".to_string()),
+        ];
+        for v in variants {
+            assert!(!format!("{v:?}").is_empty());
+        }
+    }
+}

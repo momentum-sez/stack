@@ -631,4 +631,206 @@ mod tests {
             );
         }
     }
+
+    // ── Coverage expansion tests ─────────────────────────────────────
+
+    #[test]
+    fn compliance_state_display_all_variants() {
+        assert_eq!(format!("{}", ComplianceState::Compliant), "compliant");
+        assert_eq!(
+            format!("{}", ComplianceState::NonCompliant),
+            "non_compliant"
+        );
+        assert_eq!(format!("{}", ComplianceState::Pending), "pending");
+        assert_eq!(format!("{}", ComplianceState::Exempt), "exempt");
+        assert_eq!(
+            format!("{}", ComplianceState::NotApplicable),
+            "not_applicable"
+        );
+    }
+
+    #[test]
+    fn compliance_state_ord() {
+        use std::cmp::Ordering;
+        assert_eq!(
+            ComplianceState::NonCompliant.cmp(&ComplianceState::Pending),
+            Ordering::Less
+        );
+        assert_eq!(
+            ComplianceState::Pending.cmp(&ComplianceState::NotApplicable),
+            Ordering::Less
+        );
+        assert_eq!(
+            ComplianceState::NotApplicable.cmp(&ComplianceState::Exempt),
+            Ordering::Less
+        );
+        assert_eq!(
+            ComplianceState::Exempt.cmp(&ComplianceState::Compliant),
+            Ordering::Less
+        );
+        assert_eq!(
+            ComplianceState::Compliant.cmp(&ComplianceState::Compliant),
+            Ordering::Equal
+        );
+    }
+
+    #[test]
+    fn compliance_state_partial_ord() {
+        assert!(ComplianceState::NonCompliant < ComplianceState::Pending);
+        assert!(ComplianceState::Pending < ComplianceState::NotApplicable);
+        assert!(ComplianceState::NotApplicable < ComplianceState::Exempt);
+        assert!(ComplianceState::Exempt < ComplianceState::Compliant);
+    }
+
+    #[test]
+    fn attestation_ref_no_expiry_never_expired() {
+        let att = AttestationRef {
+            attestation_id: "att-1".into(),
+            attestation_type: "kyc".into(),
+            issuer_did: "did:example:issuer".into(),
+            issued_at: "2026-01-01T00:00:00Z".into(),
+            expires_at: None,
+            digest: "abc".into(),
+        };
+        assert!(!att.is_expired(&chrono::Utc::now()));
+    }
+
+    #[test]
+    fn attestation_ref_unparseable_expiry_not_expired() {
+        let att = AttestationRef {
+            attestation_id: "att-1".into(),
+            attestation_type: "kyc".into(),
+            issuer_did: "did:example:issuer".into(),
+            issued_at: "2026-01-01T00:00:00Z".into(),
+            expires_at: Some("not-a-date".into()),
+            digest: "abc".into(),
+        };
+        // Unparseable expiry returns false (not expired)
+        assert!(!att.is_expired(&chrono::Utc::now()));
+    }
+
+    #[test]
+    fn attestation_ref_future_expiry_not_expired() {
+        let att = AttestationRef {
+            attestation_id: "att-1".into(),
+            attestation_type: "kyc".into(),
+            issuer_did: "did:example:issuer".into(),
+            issued_at: "2026-01-01T00:00:00Z".into(),
+            expires_at: Some("2099-01-01T00:00:00Z".into()),
+            digest: "abc".into(),
+        };
+        assert!(!att.is_expired(&chrono::Utc::now()));
+    }
+
+    #[test]
+    fn attestation_ref_serde_roundtrip() {
+        let att = AttestationRef {
+            attestation_id: "att-1".into(),
+            attestation_type: "kyc".into(),
+            issuer_did: "did:example:issuer".into(),
+            issued_at: "2026-01-01T00:00:00Z".into(),
+            expires_at: Some("2027-01-01T00:00:00Z".into()),
+            digest: "abc123".into(),
+        };
+        let json = serde_json::to_string(&att).unwrap();
+        let deserialized: AttestationRef = serde_json::from_str(&json).unwrap();
+        assert_eq!(att, deserialized);
+    }
+
+    #[test]
+    fn attestation_ref_serde_skip_none_expires() {
+        let att = AttestationRef {
+            attestation_id: "att-1".into(),
+            attestation_type: "kyc".into(),
+            issuer_did: "did:example:issuer".into(),
+            issued_at: "2026-01-01T00:00:00Z".into(),
+            expires_at: None,
+            digest: "abc123".into(),
+        };
+        let json = serde_json::to_string(&att).unwrap();
+        assert!(!json.contains("expires_at"));
+    }
+
+    #[test]
+    fn compliance_state_is_terminal_all_variants() {
+        assert!(ComplianceState::Compliant.is_terminal());
+        assert!(ComplianceState::NonCompliant.is_terminal());
+        assert!(!ComplianceState::Pending.is_terminal());
+        assert!(ComplianceState::Exempt.is_terminal());
+        assert!(!ComplianceState::NotApplicable.is_terminal());
+    }
+
+    #[test]
+    fn compliance_state_is_passing_all_variants() {
+        assert!(ComplianceState::Compliant.is_passing());
+        assert!(!ComplianceState::NonCompliant.is_passing());
+        assert!(!ComplianceState::Pending.is_passing());
+        assert!(ComplianceState::Exempt.is_passing());
+        assert!(ComplianceState::NotApplicable.is_passing());
+    }
+
+    #[test]
+    fn evaluate_attested_domain_fresh_attestation_returns_compliant() {
+        let ctx = EvaluationContext {
+            entity_id: "entity-1".into(),
+            current_state: None,
+            attestations: vec![AttestationRef {
+                attestation_id: "att-fresh".into(),
+                attestation_type: "kyc_verification".into(),
+                issuer_did: "did:example:issuer".into(),
+                issued_at: "2026-01-01T00:00:00Z".into(),
+                expires_at: Some("2099-01-01T00:00:00Z".into()),
+                digest: "abc123".into(),
+            }],
+            metadata: HashMap::new(),
+        };
+        let (state, reason) = evaluate_domain_default(ComplianceDomain::Kyc, &ctx);
+        assert_eq!(state, ComplianceState::Compliant);
+        assert_eq!(reason.as_deref(), Some("attested"));
+    }
+
+    #[test]
+    fn evaluate_attested_domain_stale_attestation_no_stored_state() {
+        let ctx = EvaluationContext {
+            entity_id: "entity-1".into(),
+            current_state: None,
+            attestations: vec![AttestationRef {
+                attestation_id: "att-stale".into(),
+                attestation_type: "aml_screening".into(),
+                issuer_did: "did:example:issuer".into(),
+                issued_at: "2020-01-01T00:00:00Z".into(),
+                expires_at: Some("2020-06-01T00:00:00Z".into()),
+                digest: "abc123".into(),
+            }],
+            metadata: HashMap::new(),
+        };
+        let (state, reason) = evaluate_domain_default(ComplianceDomain::Aml, &ctx);
+        assert_eq!(state, ComplianceState::NonCompliant);
+        assert_eq!(reason.as_deref(), Some("attestation_expired"));
+    }
+
+    #[test]
+    fn compliance_state_serde_roundtrip() {
+        for state in [
+            ComplianceState::Compliant,
+            ComplianceState::NonCompliant,
+            ComplianceState::Pending,
+            ComplianceState::Exempt,
+            ComplianceState::NotApplicable,
+        ] {
+            let json = serde_json::to_string(&state).unwrap();
+            let deserialized: ComplianceState = serde_json::from_str(&json).unwrap();
+            assert_eq!(state, deserialized);
+        }
+    }
+
+    #[test]
+    fn compliance_state_hash_in_collection() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(ComplianceState::Compliant);
+        set.insert(ComplianceState::NonCompliant);
+        set.insert(ComplianceState::Compliant);
+        assert_eq!(set.len(), 2);
+    }
 }

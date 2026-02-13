@@ -395,4 +395,194 @@ mod tests {
         assert_eq!(parsed.asset_id, entry.asset_id);
         assert_eq!(parsed.metadata, entry.metadata);
     }
+
+    // ── Additional coverage tests ──────────────────────────────────
+
+    #[test]
+    fn audit_entry_type_display_failed_and_cancelled() {
+        assert_eq!(AuditEntryType::ActionFailed.to_string(), "action_failed");
+        assert_eq!(
+            AuditEntryType::ActionCancelled.to_string(),
+            "action_cancelled"
+        );
+    }
+
+    #[test]
+    fn audit_entry_type_as_str_all_variants() {
+        assert_eq!(AuditEntryType::TriggerReceived.as_str(), "trigger_received");
+        assert_eq!(AuditEntryType::PolicyEvaluated.as_str(), "policy_evaluated");
+        assert_eq!(AuditEntryType::ActionScheduled.as_str(), "action_scheduled");
+        assert_eq!(AuditEntryType::ActionExecuted.as_str(), "action_executed");
+        assert_eq!(AuditEntryType::ActionFailed.as_str(), "action_failed");
+        assert_eq!(AuditEntryType::ActionCancelled.as_str(), "action_cancelled");
+    }
+
+    #[test]
+    fn audit_entry_no_asset_no_metadata() {
+        let entry = AuditEntry::new(AuditEntryType::ActionFailed, None, None);
+        assert!(entry.asset_id.is_none());
+        assert!(entry.metadata.is_none());
+        // Should still produce a valid digest.
+        assert!(entry.digest().is_some());
+    }
+
+    #[test]
+    fn audit_entry_equality_ignores_timestamp() {
+        let e1 = AuditEntry {
+            entry_type: AuditEntryType::ActionExecuted,
+            timestamp: chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+                .unwrap()
+                .with_timezone(&Utc),
+            asset_id: Some("asset:x".into()),
+            metadata: None,
+        };
+        let e2 = AuditEntry {
+            entry_type: AuditEntryType::ActionExecuted,
+            timestamp: chrono::DateTime::parse_from_rfc3339("2026-06-15T12:00:00Z")
+                .unwrap()
+                .with_timezone(&Utc),
+            asset_id: Some("asset:x".into()),
+            metadata: None,
+        };
+        // PartialEq impl ignores timestamp.
+        assert_eq!(e1, e2);
+    }
+
+    #[test]
+    fn audit_entry_inequality_different_type() {
+        let e1 = AuditEntry::new(AuditEntryType::ActionExecuted, None, None);
+        let e2 = AuditEntry::new(AuditEntryType::ActionFailed, None, None);
+        assert_ne!(e1, e2);
+    }
+
+    #[test]
+    fn audit_trail_default_capacity() {
+        let trail = AuditTrail::default();
+        assert!(trail.is_empty());
+        assert_eq!(trail.len(), 0);
+    }
+
+    #[test]
+    fn audit_trail_debug_format() {
+        let mut trail = AuditTrail::new(50);
+        trail.append(AuditEntry::new(AuditEntryType::TriggerReceived, None, None));
+        let dbg = format!("{trail:?}");
+        assert!(dbg.contains("AuditTrail"));
+        assert!(dbg.contains("entries: 1"));
+        assert!(dbg.contains("max_entries: 50"));
+    }
+
+    #[test]
+    fn audit_trail_entries_for_asset_no_match() {
+        let mut trail = AuditTrail::new(100);
+        trail.append(AuditEntry::new(
+            AuditEntryType::TriggerReceived,
+            Some("asset:a".into()),
+            None,
+        ));
+        assert!(trail.entries_for_asset("asset:z").is_empty());
+    }
+
+    #[test]
+    fn audit_trail_entries_by_type_no_match() {
+        let mut trail = AuditTrail::new(100);
+        trail.append(AuditEntry::new(AuditEntryType::TriggerReceived, None, None));
+        assert!(trail
+            .entries_by_type(AuditEntryType::ActionCancelled)
+            .is_empty());
+    }
+
+    #[test]
+    fn audit_trail_last_n_zero() {
+        let mut trail = AuditTrail::new(100);
+        trail.append(AuditEntry::new(AuditEntryType::TriggerReceived, None, None));
+        let last = trail.last_n(0);
+        assert!(last.is_empty());
+    }
+
+    #[test]
+    fn audit_trail_trimming_precise() {
+        // max_entries = 10, so trim_count = max(10/10, 1) = 1.
+        // After 11th append, one is trimmed, leaving 10.
+        let mut trail = AuditTrail::new(10);
+        for i in 0..11 {
+            trail.append(AuditEntry::new(
+                AuditEntryType::TriggerReceived,
+                Some(format!("asset:{i}")),
+                None,
+            ));
+        }
+        assert_eq!(trail.len(), 10);
+        // Oldest entry (asset:0) should have been trimmed.
+        assert_eq!(trail.entries()[0].asset_id.as_deref(), Some("asset:1"));
+    }
+
+    #[test]
+    fn audit_trail_trimming_small_capacity() {
+        // max_entries = 1 means trim_count = max(1/10, 1) = 1.
+        let mut trail = AuditTrail::new(1);
+        trail.append(AuditEntry::new(
+            AuditEntryType::ActionExecuted,
+            Some("asset:0".into()),
+            None,
+        ));
+        // First entry within capacity.
+        assert_eq!(trail.len(), 1);
+
+        trail.append(AuditEntry::new(
+            AuditEntryType::ActionFailed,
+            Some("asset:1".into()),
+            None,
+        ));
+        // Second entry triggers trim: we had 2, which exceeds 1, so drain 1.
+        assert_eq!(trail.len(), 1);
+        assert_eq!(trail.entries()[0].asset_id.as_deref(), Some("asset:1"));
+    }
+
+    #[test]
+    fn audit_entry_type_serde_roundtrip() {
+        let types = [
+            AuditEntryType::TriggerReceived,
+            AuditEntryType::PolicyEvaluated,
+            AuditEntryType::ActionScheduled,
+            AuditEntryType::ActionExecuted,
+            AuditEntryType::ActionFailed,
+            AuditEntryType::ActionCancelled,
+        ];
+        for t in &types {
+            let json = serde_json::to_string(t).unwrap();
+            let back: AuditEntryType = serde_json::from_str(&json).unwrap();
+            assert_eq!(&back, t);
+        }
+    }
+
+    #[test]
+    fn audit_trail_compute_digests_all_entries() {
+        let mut trail = AuditTrail::new(100);
+        for i in 0..5 {
+            trail.append(AuditEntry::new(
+                AuditEntryType::ActionExecuted,
+                Some(format!("asset:{i}")),
+                Some(serde_json::json!({"i": i})),
+            ));
+        }
+        let digests = trail.compute_digests();
+        assert_eq!(digests.len(), 5);
+        // Verify indices are sequential.
+        for (idx, (i, _)) in digests.iter().enumerate() {
+            assert_eq!(*i, idx);
+        }
+    }
+
+    #[test]
+    fn audit_entry_clone() {
+        let entry = AuditEntry::new(
+            AuditEntryType::PolicyEvaluated,
+            Some("asset:clone".into()),
+            Some(serde_json::json!({"key": "val"})),
+        );
+        let cloned = entry.clone();
+        assert_eq!(entry, cloned);
+        assert_eq!(entry.timestamp, cloned.timestamp);
+    }
 }

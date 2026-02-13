@@ -207,3 +207,516 @@ async fn submit_attestation(
         .map(Json)
         .ok_or_else(|| AppError::NotFound(format!("identity {id} not found")))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::extractors::Validate;
+
+    // ── VerifyIdentityRequest validation ──────────────────────────
+
+    #[test]
+    fn test_verify_identity_request_valid() {
+        let req = VerifyIdentityRequest {
+            identity_type: "kyc".to_string(),
+            details: serde_json::json!({"name": "Ali Khan"}),
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_verify_identity_request_empty_identity_type() {
+        let req = VerifyIdentityRequest {
+            identity_type: "".to_string(),
+            details: serde_json::json!({}),
+        };
+        let err = req.validate().unwrap_err();
+        assert!(
+            err.contains("identity_type"),
+            "error should mention identity_type: {err}"
+        );
+    }
+
+    #[test]
+    fn test_verify_identity_request_whitespace_identity_type() {
+        let req = VerifyIdentityRequest {
+            identity_type: "   ".to_string(),
+            details: serde_json::json!({}),
+        };
+        assert!(req.validate().is_err());
+    }
+
+    // ── LinkExternalIdRequest validation ──────────────────────────
+
+    #[test]
+    fn test_link_external_id_request_valid() {
+        let req = LinkExternalIdRequest {
+            id_type: "cnic".to_string(),
+            id_value: "12345-6789012-3".to_string(),
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_link_external_id_request_empty_id_type() {
+        let req = LinkExternalIdRequest {
+            id_type: "".to_string(),
+            id_value: "12345-6789012-3".to_string(),
+        };
+        let err = req.validate().unwrap_err();
+        assert!(
+            err.contains("id_type"),
+            "error should mention id_type: {err}"
+        );
+    }
+
+    #[test]
+    fn test_link_external_id_request_empty_id_value() {
+        let req = LinkExternalIdRequest {
+            id_type: "cnic".to_string(),
+            id_value: "".to_string(),
+        };
+        let err = req.validate().unwrap_err();
+        assert!(
+            err.contains("id_value") || err.contains("id_type"),
+            "error should mention fields: {err}"
+        );
+    }
+
+    #[test]
+    fn test_link_external_id_request_both_empty() {
+        let req = LinkExternalIdRequest {
+            id_type: "  ".to_string(),
+            id_value: "  ".to_string(),
+        };
+        assert!(req.validate().is_err());
+    }
+
+    // ── SubmitAttestationRequest validation ───────────────────────
+
+    #[test]
+    fn test_submit_attestation_request_valid() {
+        let req = SubmitAttestationRequest {
+            attestation_type: "identity_verification".to_string(),
+            issuer: "NADRA".to_string(),
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_submit_attestation_request_empty_attestation_type() {
+        let req = SubmitAttestationRequest {
+            attestation_type: "".to_string(),
+            issuer: "NADRA".to_string(),
+        };
+        let err = req.validate().unwrap_err();
+        assert!(
+            err.contains("attestation_type"),
+            "error should mention attestation_type: {err}"
+        );
+    }
+
+    #[test]
+    fn test_submit_attestation_request_whitespace_attestation_type() {
+        let req = SubmitAttestationRequest {
+            attestation_type: "   ".to_string(),
+            issuer: "NADRA".to_string(),
+        };
+        assert!(req.validate().is_err());
+    }
+
+    // ── Router construction ───────────────────────────────────────
+
+    #[test]
+    fn test_router_builds_successfully() {
+        let _router = router();
+    }
+
+    // ── Handler integration tests ──────────────────────────────────
+
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+
+    /// Helper: build the identity router with a fresh AppState.
+    fn test_app() -> Router<()> {
+        router().with_state(AppState::new())
+    }
+
+    /// Helper: read the response body as bytes and deserialize from JSON.
+    async fn body_json<T: serde::de::DeserializeOwned>(resp: axum::response::Response) -> T {
+        let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    #[tokio::test]
+    async fn handler_verify_identity_returns_201() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/identity/verify")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"identity_type":"kyc","details":{"name":"Ali Khan","cnic":"12345-6789012-3"}}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::CREATED);
+
+        let record: IdentityRecord = body_json(resp).await;
+        assert_eq!(record.identity_type, "kyc");
+        assert_eq!(record.status, "PENDING");
+        assert!(record.linked_ids.is_empty());
+        assert!(record.attestations.is_empty());
+    }
+
+    #[tokio::test]
+    async fn handler_verify_identity_empty_type_returns_422() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/identity/verify")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"identity_type":"","details":{}}"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
+    async fn handler_verify_identity_bad_json_returns_400() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/identity/verify")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{bad"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn handler_get_identity_not_found_returns_404() {
+        let app = test_app();
+        let id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("GET")
+            .uri(format!("/v1/identity/{id}"))
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn handler_verify_then_get_identity_returns_200() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an identity via verify.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/identity/verify")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"identity_type":"kyb","details":{"company":"Acme Corp"}}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        assert_eq!(create_resp.status(), StatusCode::CREATED);
+
+        let created: IdentityRecord = body_json(create_resp).await;
+
+        // Get the identity.
+        let get_req = Request::builder()
+            .method("GET")
+            .uri(format!("/v1/identity/{}", created.id))
+            .body(Body::empty())
+            .unwrap();
+        let get_resp = app.oneshot(get_req).await.unwrap();
+        assert_eq!(get_resp.status(), StatusCode::OK);
+
+        let fetched: IdentityRecord = body_json(get_resp).await;
+        assert_eq!(fetched.id, created.id);
+        assert_eq!(fetched.identity_type, "kyb");
+    }
+
+    // ── Additional handler coverage ───────────────────────────────
+
+    #[tokio::test]
+    async fn handler_link_external_id_returns_200() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an identity first.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/identity/verify")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"identity_type":"kyc","details":{"name":"Ali Khan"}}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: IdentityRecord = body_json(create_resp).await;
+
+        // Link a CNIC.
+        let link_req = Request::builder()
+            .method("POST")
+            .uri(format!("/v1/identity/{}/link", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"id_type":"cnic","id_value":"12345-6789012-3"}"#,
+            ))
+            .unwrap();
+        let link_resp = app.clone().oneshot(link_req).await.unwrap();
+        assert_eq!(link_resp.status(), StatusCode::OK);
+
+        let linked: IdentityRecord = body_json(link_resp).await;
+        assert_eq!(linked.linked_ids.len(), 1);
+        assert_eq!(linked.linked_ids[0].id_type, "cnic");
+        assert_eq!(linked.linked_ids[0].id_value, "12345-6789012-3");
+        assert!(!linked.linked_ids[0].verified);
+
+        // Link an NTN as well.
+        let link_req2 = Request::builder()
+            .method("POST")
+            .uri(format!("/v1/identity/{}/link", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"id_type":"ntn","id_value":"1234567"}"#))
+            .unwrap();
+        let link_resp2 = app.oneshot(link_req2).await.unwrap();
+        assert_eq!(link_resp2.status(), StatusCode::OK);
+
+        let linked2: IdentityRecord = body_json(link_resp2).await;
+        assert_eq!(linked2.linked_ids.len(), 2);
+        assert_eq!(linked2.linked_ids[1].id_type, "ntn");
+    }
+
+    #[tokio::test]
+    async fn handler_link_external_id_not_found_returns_404() {
+        let app = test_app();
+        let id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("POST")
+            .uri(format!("/v1/identity/{id}/link"))
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"id_type":"cnic","id_value":"12345-6789012-3"}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn handler_link_external_id_empty_type_returns_422() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an identity first.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/identity/verify")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"identity_type":"kyc","details":{"name":"Test"}}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: IdentityRecord = body_json(create_resp).await;
+
+        // Link with empty id_type.
+        let link_req = Request::builder()
+            .method("POST")
+            .uri(format!("/v1/identity/{}/link", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"id_type":"","id_value":"12345"}"#))
+            .unwrap();
+        let link_resp = app.oneshot(link_req).await.unwrap();
+        assert_eq!(link_resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
+    async fn handler_link_external_id_empty_value_returns_422() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an identity first.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/identity/verify")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"identity_type":"kyc","details":{"name":"Test"}}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: IdentityRecord = body_json(create_resp).await;
+
+        // Link with empty id_value.
+        let link_req = Request::builder()
+            .method("POST")
+            .uri(format!("/v1/identity/{}/link", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"id_type":"cnic","id_value":""}"#))
+            .unwrap();
+        let link_resp = app.oneshot(link_req).await.unwrap();
+        assert_eq!(link_resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
+    async fn handler_link_external_id_bad_json_returns_400() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an identity first.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/identity/verify")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"identity_type":"kyc","details":{}}"#))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: IdentityRecord = body_json(create_resp).await;
+
+        let link_req = Request::builder()
+            .method("POST")
+            .uri(format!("/v1/identity/{}/link", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{{broken"#))
+            .unwrap();
+        let link_resp = app.oneshot(link_req).await.unwrap();
+        assert_eq!(link_resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn handler_submit_attestation_returns_200() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an identity first.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/identity/verify")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"identity_type":"kyc","details":{"name":"Fatima"}}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: IdentityRecord = body_json(create_resp).await;
+
+        // Submit an attestation.
+        let attest_req = Request::builder()
+            .method("POST")
+            .uri(format!("/v1/identity/{}/attestation", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"attestation_type":"identity_verification","issuer":"NADRA"}"#,
+            ))
+            .unwrap();
+        let attest_resp = app.clone().oneshot(attest_req).await.unwrap();
+        assert_eq!(attest_resp.status(), StatusCode::OK);
+
+        let attested: IdentityRecord = body_json(attest_resp).await;
+        assert_eq!(attested.attestations.len(), 1);
+        assert_eq!(
+            attested.attestations[0].attestation_type,
+            "identity_verification"
+        );
+        assert_eq!(attested.attestations[0].issuer, "NADRA");
+        assert_eq!(attested.attestations[0].status, "PENDING");
+        assert!(attested.attestations[0].expires_at.is_none());
+
+        // Submit another attestation.
+        let attest_req2 = Request::builder()
+            .method("POST")
+            .uri(format!("/v1/identity/{}/attestation", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"attestation_type":"compliance_check","issuer":"FBR"}"#,
+            ))
+            .unwrap();
+        let attest_resp2 = app.oneshot(attest_req2).await.unwrap();
+        assert_eq!(attest_resp2.status(), StatusCode::OK);
+
+        let attested2: IdentityRecord = body_json(attest_resp2).await;
+        assert_eq!(attested2.attestations.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn handler_submit_attestation_not_found_returns_404() {
+        let app = test_app();
+        let id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("POST")
+            .uri(format!("/v1/identity/{id}/attestation"))
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"attestation_type":"identity_verification","issuer":"NADRA"}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn handler_submit_attestation_empty_type_returns_422() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an identity first.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/identity/verify")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"identity_type":"kyc","details":{}}"#))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: IdentityRecord = body_json(create_resp).await;
+
+        // Submit attestation with empty type.
+        let attest_req = Request::builder()
+            .method("POST")
+            .uri(format!("/v1/identity/{}/attestation", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"attestation_type":"","issuer":"NADRA"}"#))
+            .unwrap();
+        let attest_resp = app.oneshot(attest_req).await.unwrap();
+        assert_eq!(attest_resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
+    async fn handler_submit_attestation_bad_json_returns_400() {
+        let state = AppState::new();
+        let app = router().with_state(state.clone());
+
+        // Create an identity first.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/identity/verify")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"identity_type":"kyc","details":{}}"#))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: IdentityRecord = body_json(create_resp).await;
+
+        let attest_req = Request::builder()
+            .method("POST")
+            .uri(format!("/v1/identity/{}/attestation", created.id))
+            .header("content-type", "application/json")
+            .body(Body::from(r#"not json"#))
+            .unwrap();
+        let attest_resp = app.oneshot(attest_req).await.unwrap();
+        assert_eq!(attest_resp.status(), StatusCode::BAD_REQUEST);
+    }
+}

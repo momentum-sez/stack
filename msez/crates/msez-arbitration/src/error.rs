@@ -115,3 +115,117 @@ pub enum ArbitrationError {
     #[error("unsupported escrow type: \"{0}\"")]
     InvalidEscrowType(String),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn invalid_transition_display() {
+        let err = ArbitrationError::InvalidTransition {
+            from: "Filed".to_string(),
+            to: "Awarded".to_string(),
+            reason: "must go through hearing".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("Filed"));
+        assert!(msg.contains("Awarded"));
+        assert!(msg.contains("must go through hearing"));
+    }
+
+    #[test]
+    fn terminal_state_display() {
+        let err = ArbitrationError::TerminalState {
+            dispute_id: "disp-001".to_string(),
+            state: "Settled".to_string(),
+        };
+        assert!(format!("{err}").contains("disp-001"));
+        assert!(format!("{err}").contains("Settled"));
+    }
+
+    #[test]
+    fn invalid_escrow_operation_display() {
+        let err = ArbitrationError::InvalidEscrowOperation {
+            escrow_id: "esc-001".to_string(),
+            operation: "release".to_string(),
+            status: "frozen".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("esc-001"));
+        assert!(msg.contains("release"));
+        assert!(msg.contains("frozen"));
+    }
+
+    #[test]
+    fn escrow_timeout_display() {
+        let err = ArbitrationError::EscrowTimeout {
+            escrow_id: "esc-002".to_string(),
+            deadline: "2026-01-15T00:00:00Z".to_string(),
+        };
+        assert!(format!("{err}").contains("esc-002"));
+    }
+
+    #[test]
+    fn insufficient_escrow_balance_display() {
+        let err = ArbitrationError::InsufficientEscrowBalance {
+            escrow_id: "esc-003".to_string(),
+            requested: "1000".to_string(),
+            remaining: "500".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("1000"));
+        assert!(msg.contains("500"));
+    }
+
+    #[test]
+    fn evidence_integrity_violation_display() {
+        let err = ArbitrationError::EvidenceIntegrityViolation {
+            evidence_id: "ev-001".to_string(),
+            expected: "aabb".to_string(),
+            actual: "ccdd".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("ev-001"));
+        assert!(msg.contains("aabb"));
+        assert!(msg.contains("ccdd"));
+    }
+
+    #[test]
+    fn enforcement_precondition_failed_display() {
+        let err = ArbitrationError::EnforcementPreconditionFailed {
+            order_id: "ord-001".to_string(),
+            reason: "appeal period active".to_string(),
+        };
+        assert!(format!("{err}").contains("appeal period active"));
+    }
+
+    #[test]
+    fn invalid_amount_display() {
+        let err = ArbitrationError::InvalidAmount("NaN".to_string());
+        assert!(format!("{err}").contains("NaN"));
+    }
+
+    #[test]
+    fn invalid_dispute_type_display() {
+        let err = ArbitrationError::InvalidDisputeType("unknown".to_string());
+        assert!(format!("{err}").contains("unknown"));
+    }
+
+    #[test]
+    fn invalid_evidence_type_display() {
+        let err = ArbitrationError::InvalidEvidenceType("bad".to_string());
+        assert!(format!("{err}").contains("bad"));
+    }
+
+    #[test]
+    fn invalid_escrow_type_display() {
+        let err = ArbitrationError::InvalidEscrowType("foo".to_string());
+        assert!(format!("{err}").contains("foo"));
+    }
+
+    #[test]
+    fn all_variants_are_debug() {
+        let err = ArbitrationError::InvalidAmount("test".to_string());
+        assert!(!format!("{err:?}").is_empty());
+    }
+}

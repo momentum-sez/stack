@@ -579,4 +579,210 @@ mod tests {
         let path = artifact_ref.path_in(&nested);
         assert!(path.exists());
     }
+
+    // ── Coverage expansion tests ─────────────────────────────────────
+
+    #[test]
+    fn validate_artifact_type_too_long() {
+        let long_type = "a".repeat(65);
+        let result = validate_artifact_type(&long_type);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validate_artifact_type_starts_with_hyphen() {
+        let result = validate_artifact_type("-invalid");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validate_artifact_type_contains_uppercase() {
+        // Should be lowercased and accepted
+        let result = validate_artifact_type("Receipt");
+        assert_eq!(result.unwrap(), "receipt");
+    }
+
+    #[test]
+    fn validate_artifact_type_contains_special_char() {
+        let result = validate_artifact_type("my_type");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn base_dir_accessor() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas = ContentAddressedStore::new(dir.path());
+        assert_eq!(cas.base_dir(), dir.path());
+    }
+
+    #[test]
+    fn store_raw_idempotent() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas = ContentAddressedStore::new(dir.path());
+
+        let data = json!({"idempotent": true});
+        let canonical = CanonicalBytes::new(&data).unwrap();
+        let digest = sha256_digest(&canonical);
+
+        // Store twice
+        cas.store_raw("receipt", &digest, canonical.as_bytes())
+            .unwrap();
+        cas.store_raw("receipt", &digest, canonical.as_bytes())
+            .unwrap();
+
+        // Should still resolve correctly
+        let resolved = cas.resolve("receipt", &digest).unwrap();
+        assert!(resolved.is_some());
+    }
+
+    #[test]
+    fn resolve_nonexistent_artifact() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas = ContentAddressedStore::new(dir.path());
+
+        let data = json!({"nonexistent": true});
+        let canonical = CanonicalBytes::new(&data).unwrap();
+        let digest = sha256_digest(&canonical);
+
+        let result = cas.resolve("receipt", &digest).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn resolve_corrupted_artifact() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas = ContentAddressedStore::new(dir.path());
+
+        // Store a valid artifact
+        let data = json!({"key": "value"});
+        let artifact_ref = cas.store("receipt", &data).unwrap();
+
+        // Corrupt the file
+        let path = artifact_ref.path_in(dir.path());
+        std::fs::write(&path, r#"{"key": "DIFFERENT"}"#).unwrap();
+
+        // Resolve should detect the integrity violation
+        let result = cas.resolve("receipt", &artifact_ref.digest);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn resolve_non_json_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas = ContentAddressedStore::new(dir.path());
+
+        let data = json!({"non_json": true});
+        let canonical = CanonicalBytes::new(&data).unwrap();
+        let digest = sha256_digest(&canonical);
+
+        // Write non-JSON content to the expected path
+        let receipt_dir = dir.path().join("receipt");
+        std::fs::create_dir_all(&receipt_dir).unwrap();
+        std::fs::write(
+            receipt_dir.join(format!("{}.json", digest.to_hex())),
+            "not json at all",
+        )
+        .unwrap();
+
+        let result = cas.resolve("receipt", &digest);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn list_digests_empty_type_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas = ContentAddressedStore::new(dir.path());
+
+        let digests = cas.list_digests("receipt").unwrap();
+        assert!(digests.is_empty());
+    }
+
+    #[test]
+    fn list_digests_skips_non_json_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas = ContentAddressedStore::new(dir.path());
+
+        // Store a valid artifact
+        cas.store("receipt", &json!({"a": 1})).unwrap();
+
+        // Add a non-json file
+        let receipt_dir = dir.path().join("receipt");
+        std::fs::write(receipt_dir.join("readme.txt"), "not an artifact").unwrap();
+
+        let digests = cas.list_digests("receipt").unwrap();
+        assert_eq!(digests.len(), 1);
+    }
+
+    #[test]
+    fn list_digests_skips_invalid_digest_filenames() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas = ContentAddressedStore::new(dir.path());
+
+        // Store a valid artifact
+        cas.store("receipt", &json!({"b": 2})).unwrap();
+
+        // Add a JSON file with non-digest name
+        let receipt_dir = dir.path().join("receipt");
+        std::fs::write(receipt_dir.join("not-a-digest.json"), "{}").unwrap();
+
+        let digests = cas.list_digests("receipt").unwrap();
+        assert_eq!(digests.len(), 1);
+    }
+
+    #[test]
+    fn contains_returns_false_when_absent() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas = ContentAddressedStore::new(dir.path());
+
+        let data = json!({"absent": true});
+        let canonical = CanonicalBytes::new(&data).unwrap();
+        let digest = sha256_digest(&canonical);
+
+        assert!(!cas.contains("receipt", &digest).unwrap());
+    }
+
+    #[test]
+    fn resolve_ref_delegates_correctly() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas = ContentAddressedStore::new(dir.path());
+
+        let data = json!({"delegate": "test"});
+        let artifact_ref = cas.store("receipt", &data).unwrap();
+
+        let resolved = cas.resolve_ref(&artifact_ref).unwrap();
+        assert!(resolved.is_some());
+    }
+
+    #[test]
+    fn artifact_ref_new_validates_type() {
+        let canonical = CanonicalBytes::new(&json!({})).unwrap();
+        let digest = sha256_digest(&canonical);
+
+        assert!(ArtifactRef::new("valid-type", digest.clone()).is_ok());
+        assert!(ArtifactRef::new("", digest.clone()).is_err());
+        assert!(ArtifactRef::new("-bad", digest).is_err());
+    }
+
+    #[test]
+    fn artifact_ref_debug_format() {
+        let canonical = CanonicalBytes::new(&json!({})).unwrap();
+        let digest = sha256_digest(&canonical);
+        let aref = ArtifactRef::new("receipt", digest).unwrap();
+        let debug = format!("{aref:?}");
+        assert!(debug.contains("ArtifactRef"));
+        assert!(debug.contains("receipt"));
+    }
+
+    #[test]
+    fn store_with_float_fails() {
+        let dir = tempfile::tempdir().unwrap();
+        let cas = ContentAddressedStore::new(dir.path());
+        let result = cas.store("receipt", &json!({"amount": 3.15}));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validate_digest_hex_rejects_short() {
+        assert!(validate_digest_hex("abcdef").is_err());
+    }
 }

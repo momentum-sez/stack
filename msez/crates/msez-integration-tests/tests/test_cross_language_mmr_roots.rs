@@ -94,11 +94,7 @@ fn next_roots_match_python() {
 
     for (i, expected) in fixtures.next_roots.iter().enumerate() {
         let actual = receipt_hash(i + 1);
-        assert_eq!(
-            &actual, expected,
-            "next_root mismatch at receipt-{}",
-            i + 1
-        );
+        assert_eq!(&actual, expected, "next_root mismatch at receipt-{}", i + 1);
     }
 }
 
@@ -132,7 +128,8 @@ fn all_leaf_hashes_match_python() {
     {
         let rust_lh = mmr_leaf_hash(nr).unwrap();
         assert_eq!(
-            &rust_lh, expected_lh,
+            &rust_lh,
+            expected_lh,
             "Leaf hash mismatch at index {i} (receipt-{})",
             i + 1
         );
@@ -178,9 +175,7 @@ fn incremental_roots_match_python() {
             expected.size
         );
 
-        for (i, (rust_peak, py_peak)) in
-            info.peaks.iter().zip(expected.peaks.iter()).enumerate()
-        {
+        for (i, (rust_peak, py_peak)) in info.peaks.iter().zip(expected.peaks.iter()).enumerate() {
             assert_eq!(
                 rust_peak.height, py_peak.height,
                 "Peak height mismatch at size={}, peak index={i}",
@@ -261,10 +256,7 @@ fn inclusion_proofs_valid_for_17_receipts() {
     // Test proofs at various indices: first, middle, last, powers of two.
     for idx in [0, 1, 2, 4, 7, 8, 15, 16] {
         let proof = build_inclusion_proof(next_roots, idx).unwrap();
-        assert_eq!(
-            proof.root, info.root,
-            "Proof root mismatch at idx={idx}"
-        );
+        assert_eq!(proof.root, info.root, "Proof root mismatch at idx={idx}");
         assert!(
             verify_inclusion_proof(&proof),
             "Inclusion proof verification failed at idx={idx}"

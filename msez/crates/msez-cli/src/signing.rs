@@ -285,4 +285,354 @@ mod tests {
     fn hex_to_bytes_odd_length_rejected() {
         assert!(hex_to_bytes("abc").is_err());
     }
+
+    // ── Additional coverage tests ────────────────────────────────────
+
+    #[test]
+    fn hex_to_bytes_empty_string() {
+        let bytes = hex_to_bytes("").unwrap();
+        assert!(bytes.is_empty());
+    }
+
+    #[test]
+    fn hex_to_bytes_invalid_chars() {
+        let result = hex_to_bytes("zzzz");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn hex_to_bytes_uppercase() {
+        let bytes = hex_to_bytes("DEADBEEF").unwrap();
+        assert_eq!(bytes, vec![0xde, 0xad, 0xbe, 0xef]);
+    }
+
+    #[test]
+    fn hex_to_bytes_all_zeros() {
+        let bytes = hex_to_bytes("00000000").unwrap();
+        assert_eq!(bytes, vec![0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn hex_to_bytes_all_ff() {
+        let bytes = hex_to_bytes("ffffffff").unwrap();
+        assert_eq!(bytes, vec![0xff, 0xff, 0xff, 0xff]);
+    }
+
+    #[test]
+    fn keygen_creates_directory_if_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let output_dir = dir.path().join("deep").join("nested").join("keys");
+        let result = cmd_keygen(&output_dir, "mykey");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+        assert!(output_dir.join("mykey.key").exists());
+        assert!(output_dir.join("mykey.pub").exists());
+    }
+
+    #[test]
+    fn keygen_custom_prefix() {
+        let dir = tempfile::tempdir().unwrap();
+        let result = cmd_keygen(dir.path(), "custom_prefix");
+        assert!(result.is_ok());
+        assert!(dir.path().join("custom_prefix.key").exists());
+        assert!(dir.path().join("custom_prefix.pub").exists());
+    }
+
+    #[test]
+    fn keygen_keys_are_valid_hex() {
+        let dir = tempfile::tempdir().unwrap();
+        cmd_keygen(dir.path(), "test").unwrap();
+
+        let key_hex = std::fs::read_to_string(dir.path().join("test.key")).unwrap();
+        assert!(key_hex.chars().all(|c| c.is_ascii_hexdigit()));
+
+        let pub_hex = std::fs::read_to_string(dir.path().join("test.pub")).unwrap();
+        assert!(pub_hex.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn cmd_sign_key_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let doc_path = dir.path().join("doc.json");
+        std::fs::write(&doc_path, r#"{"key":"val"}"#).unwrap();
+
+        let result = cmd_sign(&dir.path().join("nonexistent.key"), &doc_path);
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("private key file not found"));
+    }
+
+    #[test]
+    fn cmd_sign_doc_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        cmd_keygen(dir.path(), "test").unwrap();
+
+        let result = cmd_sign(
+            &dir.path().join("test.key"),
+            &dir.path().join("nonexistent.json"),
+        );
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("document file not found"));
+    }
+
+    #[test]
+    fn cmd_sign_invalid_key_hex() {
+        let dir = tempfile::tempdir().unwrap();
+        let key_path = dir.path().join("bad.key");
+        std::fs::write(&key_path, "not_valid_hex_at_all").unwrap();
+        let doc_path = dir.path().join("doc.json");
+        std::fs::write(&doc_path, r#"{"key":"val"}"#).unwrap();
+
+        let result = cmd_sign(&key_path, &doc_path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn cmd_sign_key_wrong_length() {
+        let dir = tempfile::tempdir().unwrap();
+        let key_path = dir.path().join("short.key");
+        // 16 bytes hex = 32 chars, but key should be 32 bytes = 64 chars.
+        std::fs::write(&key_path, "abcdef0123456789abcdef0123456789").unwrap();
+        let doc_path = dir.path().join("doc.json");
+        std::fs::write(&doc_path, r#"{"key":"val"}"#).unwrap();
+
+        let result = cmd_sign(&key_path, &doc_path);
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("32 bytes"));
+    }
+
+    #[test]
+    fn cmd_sign_invalid_json_doc() {
+        let dir = tempfile::tempdir().unwrap();
+        cmd_keygen(dir.path(), "test").unwrap();
+
+        let doc_path = dir.path().join("bad.json");
+        std::fs::write(&doc_path, "not json {{{").unwrap();
+
+        let result = cmd_sign(&dir.path().join("test.key"), &doc_path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn cmd_sign_returns_hex_signature() {
+        let dir = tempfile::tempdir().unwrap();
+        cmd_keygen(dir.path(), "test").unwrap();
+
+        let doc_path = dir.path().join("doc.json");
+        std::fs::write(&doc_path, r#"{"key":"value"}"#).unwrap();
+
+        let result = cmd_sign(&dir.path().join("test.key"), &doc_path);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn cmd_verify_pubkey_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let doc_path = dir.path().join("doc.json");
+        std::fs::write(&doc_path, r#"{"key":"val"}"#).unwrap();
+
+        let result = cmd_verify(&dir.path().join("nonexistent.pub"), &doc_path, "aabbccdd");
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("public key file not found"));
+    }
+
+    #[test]
+    fn cmd_verify_doc_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        cmd_keygen(dir.path(), "test").unwrap();
+
+        let result = cmd_verify(
+            &dir.path().join("test.pub"),
+            &dir.path().join("nonexistent.json"),
+            "aabbccdd",
+        );
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("document file not found"));
+    }
+
+    #[test]
+    fn cmd_verify_invalid_pubkey_hex() {
+        let dir = tempfile::tempdir().unwrap();
+        let pub_path = dir.path().join("bad.pub");
+        std::fs::write(&pub_path, "not_hex").unwrap();
+        let doc_path = dir.path().join("doc.json");
+        std::fs::write(&doc_path, r#"{"key":"val"}"#).unwrap();
+
+        let result = cmd_verify(&pub_path, &doc_path, "aa".repeat(64).as_str());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn cmd_verify_invalid_signature_hex() {
+        let dir = tempfile::tempdir().unwrap();
+        cmd_keygen(dir.path(), "test").unwrap();
+        let doc_path = dir.path().join("doc.json");
+        std::fs::write(&doc_path, r#"{"key":"val"}"#).unwrap();
+
+        let result = cmd_verify(&dir.path().join("test.pub"), &doc_path, "not_valid_hex");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn cmd_verify_wrong_signature_returns_1() {
+        let dir = tempfile::tempdir().unwrap();
+        cmd_keygen(dir.path(), "test").unwrap();
+
+        let doc_path = dir.path().join("doc.json");
+        std::fs::write(&doc_path, r#"{"key":"val"}"#).unwrap();
+
+        // A valid 128-char hex string that is NOT the correct signature.
+        let wrong_sig = "ab".repeat(64);
+
+        let result = cmd_verify(&dir.path().join("test.pub"), &doc_path, &wrong_sig);
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            1,
+            "Wrong signature should return exit code 1"
+        );
+    }
+
+    #[test]
+    fn cmd_verify_invalid_json_doc() {
+        let dir = tempfile::tempdir().unwrap();
+        cmd_keygen(dir.path(), "test").unwrap();
+
+        let doc_path = dir.path().join("bad.json");
+        std::fs::write(&doc_path, "not json").unwrap();
+
+        let wrong_sig = "ab".repeat(64);
+        let result = cmd_verify(&dir.path().join("test.pub"), &doc_path, &wrong_sig);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn run_signing_keygen_subcommand() {
+        let dir = tempfile::tempdir().unwrap();
+        let args = SigningArgs {
+            command: SigningCommand::Keygen {
+                output: dir.path().to_path_buf(),
+                prefix: "mykey".to_string(),
+            },
+        };
+        let result = run_signing(&args, dir.path());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+        assert!(dir.path().join("mykey.key").exists());
+        assert!(dir.path().join("mykey.pub").exists());
+    }
+
+    #[test]
+    fn run_signing_sign_subcommand() {
+        let dir = tempfile::tempdir().unwrap();
+        cmd_keygen(dir.path(), "test").unwrap();
+
+        let doc_path = dir.path().join("doc.json");
+        std::fs::write(&doc_path, r#"{"key":"value"}"#).unwrap();
+
+        let args = SigningArgs {
+            command: SigningCommand::Sign {
+                key: dir.path().join("test.key"),
+                file: doc_path,
+            },
+        };
+        let result = run_signing(&args, dir.path());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn run_signing_verify_subcommand_wrong_sig() {
+        let dir = tempfile::tempdir().unwrap();
+        cmd_keygen(dir.path(), "test").unwrap();
+
+        let doc_path = dir.path().join("doc.json");
+        std::fs::write(&doc_path, r#"{"key":"value"}"#).unwrap();
+
+        let wrong_sig = "cd".repeat(64);
+        let args = SigningArgs {
+            command: SigningCommand::Verify {
+                pubkey: dir.path().join("test.pub"),
+                file: doc_path,
+                signature: wrong_sig,
+            },
+        };
+        let result = run_signing(&args, dir.path());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 1); // Verification failure.
+    }
+
+    #[test]
+    fn full_sign_verify_via_run_signing() {
+        let dir = tempfile::tempdir().unwrap();
+
+        // Generate keys.
+        let keygen_args = SigningArgs {
+            command: SigningCommand::Keygen {
+                output: dir.path().to_path_buf(),
+                prefix: "signer".to_string(),
+            },
+        };
+        run_signing(&keygen_args, dir.path()).unwrap();
+
+        // Create document.
+        let doc_path = dir.path().join("contract.json");
+        let doc = json!({"parties": ["alice", "bob"], "amount": 5000});
+        std::fs::write(&doc_path, serde_json::to_string_pretty(&doc).unwrap()).unwrap();
+
+        // Sign it using the internal function to get the sig hex.
+        let sk_hex = std::fs::read_to_string(dir.path().join("signer.key")).unwrap();
+        let sk_bytes = hex_to_bytes(sk_hex.trim()).unwrap();
+        let mut sk_arr = [0u8; 32];
+        sk_arr.copy_from_slice(&sk_bytes);
+        let sk = SigningKey::from_bytes(&sk_arr);
+        let content = std::fs::read_to_string(&doc_path).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&content).unwrap();
+        let canonical = CanonicalBytes::new(&value).unwrap();
+        let sig = sk.sign(&canonical);
+
+        // Verify via run_signing.
+        let verify_args = SigningArgs {
+            command: SigningCommand::Verify {
+                pubkey: dir.path().join("signer.pub"),
+                file: doc_path,
+                signature: sig.to_hex(),
+            },
+        };
+        let result = run_signing(&verify_args, dir.path()).unwrap();
+        assert_eq!(result, 0, "Valid signature should verify successfully");
+    }
+
+    #[test]
+    fn keygen_generates_different_keys_each_time() {
+        let dir = tempfile::tempdir().unwrap();
+        cmd_keygen(dir.path(), "key1").unwrap();
+        cmd_keygen(dir.path(), "key2").unwrap();
+
+        let key1 = std::fs::read_to_string(dir.path().join("key1.key")).unwrap();
+        let key2 = std::fs::read_to_string(dir.path().join("key2.key")).unwrap();
+        assert_ne!(key1, key2, "Two keygen calls should produce different keys");
+    }
+
+    #[test]
+    fn cmd_sign_key_with_whitespace() {
+        let dir = tempfile::tempdir().unwrap();
+        cmd_keygen(dir.path(), "test").unwrap();
+
+        // Add whitespace around the key content.
+        let key_path = dir.path().join("test.key");
+        let key_content = std::fs::read_to_string(&key_path).unwrap();
+        std::fs::write(&key_path, format!("  {key_content}  \n")).unwrap();
+
+        let doc_path = dir.path().join("doc.json");
+        std::fs::write(&doc_path, r#"{"key":"val"}"#).unwrap();
+
+        let result = cmd_sign(&key_path, &doc_path);
+        assert!(result.is_ok(), "Should handle whitespace-padded key file");
+    }
 }

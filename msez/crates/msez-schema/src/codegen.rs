@@ -330,4 +330,192 @@ mod tests {
             eprintln!("These are documented findings per audit §3.1.");
         }
     }
+
+    #[test]
+    fn test_check_policy_missing_additional_properties_at_root() {
+        // A top-level object without additionalProperties should be reported
+        // because it defaults to true in JSON Schema.
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "name": { "type": "string" }
+            }
+        });
+        let violations = check_additional_properties_policy("test.schema.json", &schema);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].path, "/");
+        assert!(violations[0].current_value.contains("absent"));
+    }
+
+    #[test]
+    fn test_check_policy_nested_object_violation() {
+        // Nested object with additionalProperties: true should be flagged
+        // if the property name is not in EXTENSIBLE_PATHS.
+        let schema = json!({
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "proof": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {
+                        "type": { "type": "string" }
+                    }
+                }
+            }
+        });
+        let violations = check_additional_properties_policy("test.schema.json", &schema);
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].path.contains("proof"));
+    }
+
+    #[test]
+    fn test_check_policy_definitions_recursion() {
+        // Violations inside $defs should be detected.
+        let schema = json!({
+            "type": "object",
+            "additionalProperties": false,
+            "$defs": {
+                "SubType": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {
+                        "value": { "type": "integer" }
+                    }
+                }
+            }
+        });
+        let violations = check_additional_properties_policy("test.schema.json", &schema);
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].path.contains("$defs/SubType"));
+    }
+
+    #[test]
+    fn test_check_policy_definitions_key() {
+        // Violations inside "definitions" (not "$defs") should also be detected.
+        let schema = json!({
+            "type": "object",
+            "additionalProperties": false,
+            "definitions": {
+                "Helper": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {}
+                }
+            }
+        });
+        let violations = check_additional_properties_policy("test.schema.json", &schema);
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].path.contains("definitions/Helper"));
+    }
+
+    #[test]
+    fn test_check_policy_array_items() {
+        // Violations inside array items should be detected.
+        let schema = json!({
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "proofs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                            "value": { "type": "string" }
+                        }
+                    }
+                }
+            }
+        });
+        let violations = check_additional_properties_policy("test.schema.json", &schema);
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].path.contains("items"));
+    }
+
+    #[test]
+    fn test_check_policy_oneof_anyof_allof() {
+        // Violations inside oneOf/anyOf/allOf should be detected.
+        let schema = json!({
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "data": {
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "properties": { "a": { "type": "string" } }
+                        }
+                    ]
+                }
+            }
+        });
+        let violations = check_additional_properties_policy("test.schema.json", &schema);
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].path.contains("oneOf"));
+    }
+
+    #[test]
+    fn test_check_policy_non_object_node() {
+        // Non-object nodes should be ignored without error.
+        let schema = json!("just a string");
+        let violations = check_additional_properties_policy("test.schema.json", &schema);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_violation_display() {
+        let v = AdditionalPropertiesViolation {
+            schema_filename: "test.schema.json".to_string(),
+            path: "/proof".to_string(),
+            current_value: "true".to_string(),
+        };
+        let display = format!("{v}");
+        assert!(display.contains("test.schema.json"));
+        assert!(display.contains("true"));
+        assert!(display.contains("/proof"));
+        assert!(display.contains("expected false"));
+    }
+
+    #[test]
+    fn test_multiple_extensible_paths() {
+        // All extensible paths should be allowed.
+        for path_name in EXTENSIBLE_PATHS {
+            let mut props = serde_json::Map::new();
+            props.insert(
+                path_name.to_string(),
+                json!({
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {}
+                }),
+            );
+            let schema = json!({
+                "type": "object",
+                "additionalProperties": false,
+                "properties": props
+            });
+            let violations = check_additional_properties_policy("test.schema.json", &schema);
+            assert!(
+                violations.is_empty(),
+                "Extensible path '{path_name}' should not be flagged"
+            );
+        }
+    }
+
+    #[test]
+    fn test_additional_properties_as_schema_object() {
+        // additionalProperties can be a schema object (not just bool).
+        // This should not cause a violation since it's not explicitly `true`.
+        let schema = json!({
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "properties": {
+                "name": { "type": "string" }
+            }
+        });
+        let violations = check_additional_properties_policy("test.schema.json", &schema);
+        assert!(violations.is_empty());
+    }
 }

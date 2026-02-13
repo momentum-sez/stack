@@ -485,4 +485,156 @@ mod tests {
         assert_eq!(matched.len(), 1);
         assert_eq!(matched[0].policy_id, "threshold_test");
     }
+
+    // ── Additional coverage tests ──────────────────────────────────
+
+    #[test]
+    fn engine_default_is_empty() {
+        let engine = PolicyEngine::default();
+        assert_eq!(engine.policy_count(), 0);
+    }
+
+    #[test]
+    fn engine_debug_format() {
+        let engine = PolicyEngine::with_standard_policies();
+        let dbg = format!("{engine:?}");
+        assert!(dbg.contains("PolicyEngine"));
+        assert!(dbg.contains("policy_count"));
+        assert!(dbg.contains("audit_trail_size"));
+    }
+
+    #[test]
+    fn engine_get_policy() {
+        let engine = PolicyEngine::with_standard_policies();
+        assert!(engine.get_policy("sanctions_auto_halt").is_some());
+        assert!(engine.get_policy("nonexistent").is_none());
+    }
+
+    #[test]
+    fn engine_list_policies_sorted() {
+        let engine = PolicyEngine::with_standard_policies();
+        let policies = engine.list_policies();
+        // BTreeMap guarantees sorted order by policy_id.
+        let ids: Vec<&str> = policies.iter().map(|p| p.policy_id.as_str()).collect();
+        let mut sorted = ids.clone();
+        sorted.sort();
+        assert_eq!(ids, sorted);
+    }
+
+    #[test]
+    fn engine_unregister_nonexistent_returns_none() {
+        let mut engine = PolicyEngine::new();
+        assert!(engine.unregister_policy("nonexistent").is_none());
+    }
+
+    #[test]
+    fn engine_register_replaces_existing() {
+        let mut engine = PolicyEngine::new();
+        engine.register_policy(
+            Policy::new("p1", TriggerType::DisputeFiled, PolicyAction::Halt).with_priority(10),
+        );
+        assert_eq!(engine.policy_count(), 1);
+        assert_eq!(engine.get_policy("p1").unwrap().priority, 10);
+
+        // Replace with different priority.
+        engine.register_policy(
+            Policy::new("p1", TriggerType::DisputeFiled, PolicyAction::Halt).with_priority(99),
+        );
+        assert_eq!(engine.policy_count(), 1);
+        assert_eq!(engine.get_policy("p1").unwrap().priority, 99);
+    }
+
+    #[test]
+    fn evaluate_no_policies_returns_empty() {
+        let mut engine = PolicyEngine::new();
+        let trigger = Trigger::new(TriggerType::DisputeFiled, serde_json::json!({}));
+        let results = engine.evaluate(&trigger, None, None);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn evaluate_and_resolve_no_matches_returns_empty() {
+        let mut engine = PolicyEngine::new();
+        engine.register_policy(Policy::new(
+            "p1",
+            TriggerType::DisputeFiled,
+            PolicyAction::Halt,
+        ));
+        // Different trigger type — no match.
+        let trigger = Trigger::new(TriggerType::CheckpointDue, serde_json::json!({}));
+        let resolved = engine.evaluate_and_resolve(&trigger, None, None);
+        assert!(resolved.is_empty());
+    }
+
+    #[test]
+    fn process_trigger_with_no_matches() {
+        let mut engine = PolicyEngine::new();
+        engine.register_policy(Policy::new(
+            "p1",
+            TriggerType::DisputeFiled,
+            PolicyAction::Halt,
+        ));
+        let trigger = Trigger::new(TriggerType::CheckpointDue, serde_json::json!({}));
+        let actions = engine.process_trigger(&trigger, "asset:test", None);
+        assert!(actions.is_empty());
+    }
+
+    #[test]
+    fn process_trigger_populates_scheduled_action_fields() {
+        let mut engine = PolicyEngine::new();
+        engine.register_policy(Policy::new(
+            "halt_policy",
+            TriggerType::SanctionsListUpdate,
+            PolicyAction::Halt,
+        ));
+
+        let trigger = Trigger::new(
+            TriggerType::SanctionsListUpdate,
+            serde_json::json!({"affected_parties": ["self"]}),
+        );
+
+        let actions = engine.process_trigger(&trigger, "asset:xyz", None);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0].asset_id, "asset:xyz");
+        assert_eq!(actions[0].policy_id, "halt_policy");
+        assert_eq!(actions[0].action, PolicyAction::Halt);
+    }
+
+    #[test]
+    fn evaluation_result_serde_roundtrip() {
+        let result = EvaluationResult {
+            policy_id: "test_policy".to_string(),
+            matched: true,
+            action: Some(PolicyAction::Halt),
+            authorization_requirement: Some(AuthorizationRequirement::Automatic),
+            priority: 50,
+            evaluated_at: Utc::now(),
+        };
+        let json = serde_json::to_string(&result).unwrap();
+        let back: EvaluationResult = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.policy_id, "test_policy");
+        assert!(back.matched);
+        assert_eq!(back.priority, 50);
+    }
+
+    #[test]
+    fn evaluate_audit_trail_records_per_policy() {
+        let mut engine = PolicyEngine::new();
+        engine.register_policy(Policy::new(
+            "p1",
+            TriggerType::DisputeFiled,
+            PolicyAction::Halt,
+        ));
+        engine.register_policy(Policy::new(
+            "p2",
+            TriggerType::DisputeFiled,
+            PolicyAction::UpdateManifest,
+        ));
+
+        let trigger = Trigger::new(TriggerType::DisputeFiled, serde_json::json!({}));
+        engine.evaluate(&trigger, Some("asset:test"), None);
+
+        // 1 TriggerReceived + 2 PolicyEvaluated = 3 entries.
+        assert_eq!(engine.audit_trail.len(), 3);
+    }
 }

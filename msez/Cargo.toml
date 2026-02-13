@@ -79,4 +79,5 @@ utoipa = { version = "4", features = ["axum_extras", "chrono", "uuid"] }
 
 # Testing
 proptest = "1"
+tempfile = "3"
 http-body-util = "0.1"

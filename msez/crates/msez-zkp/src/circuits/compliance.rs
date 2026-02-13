@@ -153,7 +153,7 @@ mod tests {
             asset_id: "SA-PK-001".to_string(),
             jurisdiction_id: "PK".to_string(),
             domain: 0, // AML
-            time_quantum: 2026_01,
+            time_quantum: 202601,
             merkle_proof: vec![[0x10; 32]],
         };
         assert_eq!(circuit.jurisdiction_id, "PK");

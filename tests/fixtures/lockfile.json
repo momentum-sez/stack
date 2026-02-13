@@ -1,0 +1,17 @@
+{
+  "description": "Lockfile test fixture — placeholder pending Python generation",
+  "generator": "TODO: PYTHONPATH=/home/user/stack python3 tools/msez.py lock jurisdictions/_starter/zone.yaml",
+  "status": "PENDING",
+  "reason": "The Python cryptography module is not available in this environment (cffi backend issue). The lockfile fixture must be generated in an environment with working tools/msez.py.",
+  "generation_commands": [
+    "cd /home/user/stack",
+    "pip install -r tools/requirements.txt",
+    "PYTHONPATH=. python3 tools/msez.py lock jurisdictions/_starter/zone.yaml > tests/fixtures/lockfile_output.json"
+  ],
+  "notes": "The Rust msez-pack crate implements lockfile generation via Lawpack, Regpack, and Licensepack. The cross-language lockfile test validates that the Rust lockfile digest computation matches the Python lawpack.py:_compute_lawpack_digest_from_zip() output. For now, the Rust test verifies the lockfile determinism property (same input -> same lockfile) and the digest computation mechanics.",
+  "lawpack_digest_protocol": {
+    "version": "v1",
+    "prefix": "msez-lawpack-v1\\0",
+    "algorithm": "SHA256( prefix + for each path in sorted(paths): path.encode('utf-8') + '\\0' + canonical_bytes + '\\0' )"
+  }
+}

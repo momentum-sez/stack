@@ -1,305 +1,113 @@
-# MSEZ Stack - Local Development Compose
-# Special Economic Zone in a Box - Complete local deployment
+# MSEZ Stack — Docker Compose (Rust Binary Architecture)
+#
+# Replaces the previous 12-service Python-based compose that referenced
+# non-existent `serve` subcommands. The Rust architecture consolidates
+# all five primitive API services into a single msez-api binary (Axum),
+# with PostgreSQL for persistence and Prometheus/Grafana for observability.
+#
+# Previous setup: 9 Python services (zone-authority, entity-registry,
+#   license-registry, corridor-node, watcher, identity-service,
+#   settlement-service, compliance-service, regulator-console) — none
+#   of which could start because the `serve` CLI subcommands did not exist.
+#
+# Current setup: 1 Rust API server exposing all endpoints on port 8080,
+#   with PostgreSQL, Prometheus, and Grafana as supporting infrastructure.
 #
 # Usage:
-#   docker compose up -d              # Start all services
-#   docker compose logs -f            # Follow logs
-#   docker compose down               # Stop all services
-#   docker compose down -v            # Stop and remove volumes
+#   docker compose up -d                           # Start all services
+#   docker compose logs -f msez-api                # Follow API logs
+#   docker compose exec msez-api msez-cli validate --all-modules  # Run validation
+#   docker compose down                            # Stop all services
+#   docker compose down -v                         # Stop and remove volumes
 
 name: msez-zone
 
 services:
   # ============================================
-  # CORE SERVICES
+  # APPLICATION
   # ============================================
 
-  # Zone Authority - Core zone management
-  zone-authority:
+  # msez-api: Axum HTTP server serving all five primitive APIs
+  # (Entities, Ownership, Fiscal, Identity, Consent), corridor operations,
+  # smart asset CRUD, compliance evaluation, and regulator console.
+  msez-api:
     build:
       context: ../..
-      dockerfile: deploy/docker/Dockerfile.zone-authority
-    container_name: msez-zone-authority
+      dockerfile: deploy/docker/Dockerfile
+    container_name: msez-api
     restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
-      - MSEZ_ZONE_ID=${MSEZ_ZONE_ID:-org.momentum.msez.zone.local}
-      - MSEZ_JURISDICTION=${MSEZ_JURISDICTION:-ex}
-      - MSEZ_PROFILE=${MSEZ_PROFILE:-digital-financial-center}
-      - MSEZ_LOG_LEVEL=${MSEZ_LOG_LEVEL:-info}
-      - DATABASE_URL=postgresql://msez:msez@postgres:5432/msez
-      - REDIS_URL=redis://redis:6379/0
+      # Zone configuration
+      MSEZ_ZONE_ID: ${MSEZ_ZONE_ID:-org.momentum.msez.zone.local}
+      MSEZ_JURISDICTION: ${MSEZ_JURISDICTION:-ex}
+      MSEZ_PROFILE: ${MSEZ_PROFILE:-digital-financial-center}
+      # Server
+      MSEZ_HOST: "0.0.0.0"
+      MSEZ_PORT: "8080"
+      MSEZ_LOG_LEVEL: ${MSEZ_LOG_LEVEL:-info}
+      # Database (PostgreSQL via SQLx)
+      DATABASE_URL: "postgresql://msez:${POSTGRES_PASSWORD:-msez}@postgres:5432/msez"
+      # Corridor configuration
+      MSEZ_CORRIDOR_ID: ${MSEZ_CORRIDOR_ID:-org.momentum.msez.corridor.local}
+      # Watcher configuration
+      MSEZ_WATCHER_ID: ${MSEZ_WATCHER_ID:-watcher-local-001}
+      MSEZ_BOND_AMOUNT: ${MSEZ_BOND_AMOUNT:-100000}
+      # JWT signing (mount key file or set via env)
+      MSEZ_JWT_SECRET_FILE: /app/config/jwt-secret
+      # Metrics
+      MSEZ_METRICS_ENABLED: "true"
     volumes:
-      - zone-data:/data
-      - zone-config:/config
-      - ./config/zone.yaml:/config/zone.yaml:ro
+      - api-data:/app/data
+      - api-config:/app/config
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     networks:
       - msez-internal
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/liveness"]
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 3
-      start_period: 10s
-
-  # Entity Registry - Corporate and entity management
-  entity-registry:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/Dockerfile.zone-authority
-    container_name: msez-entity-registry
-    restart: unless-stopped
-    ports:
-      - "8083:8083"
-    environment:
-      - MSEZ_SERVICE=entity-registry
-      - DATABASE_URL=postgresql://msez:msez@postgres:5432/msez
-      - REDIS_URL=redis://redis:6379/1
-    volumes:
-      - entity-data:/data
-    depends_on:
-      - zone-authority
-    networks:
-      - msez-internal
-    command: ["python", "-m", "tools.msez", "entity-registry", "serve", "--port", "8083"]
-
-  # License Registry - License management and verification
-  license-registry:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/Dockerfile.zone-authority
-    container_name: msez-license-registry
-    restart: unless-stopped
-    ports:
-      - "8084:8084"
-    environment:
-      - MSEZ_SERVICE=license-registry
-      - DATABASE_URL=postgresql://msez:msez@postgres:5432/msez
-      - REDIS_URL=redis://redis:6379/2
-    volumes:
-      - license-data:/data
-      - licensepacks:/licensepacks
-    depends_on:
-      - zone-authority
-    networks:
-      - msez-internal
-    command: ["python", "-m", "tools.licensepack", "serve", "--port", "8084"]
+      start_period: 15s
 
   # ============================================
-  # CORRIDOR SERVICES
+  # DATABASE
   # ============================================
 
-  # Corridor Node - Settlement corridor management
-  corridor-node:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/Dockerfile.corridor-node
-    container_name: msez-corridor-node
-    restart: unless-stopped
-    ports:
-      - "8081:8081"
-    environment:
-      - MSEZ_CORRIDOR_ID=${MSEZ_CORRIDOR_ID:-org.momentum.msez.corridor.local}
-      - MSEZ_LOG_LEVEL=${MSEZ_LOG_LEVEL:-info}
-      - DATABASE_URL=postgresql://msez:msez@postgres:5432/msez_corridor
-      - REDIS_URL=redis://redis:6379/3
-    volumes:
-      - corridor-data:/corridor-data
-    depends_on:
-      - zone-authority
-    networks:
-      - msez-internal
-      - msez-corridor
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Watcher - Corridor attestation service
-  watcher:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/Dockerfile.watcher
-    container_name: msez-watcher
-    restart: unless-stopped
-    ports:
-      - "8082:8082"
-    environment:
-      - MSEZ_WATCHER_ID=${MSEZ_WATCHER_ID:-watcher-local-001}
-      - MSEZ_WATCHER_DID=${MSEZ_WATCHER_DID:-}
-      - MSEZ_BOND_AMOUNT=${MSEZ_BOND_AMOUNT:-100000}
-      - DATABASE_URL=postgresql://msez:msez@postgres:5432/msez_watcher
-      - REDIS_URL=redis://redis:6379/4
-    volumes:
-      - watcher-data:/watcher-data
-      - ./keys:/keys:ro
-    depends_on:
-      - corridor-node
-    networks:
-      - msez-internal
-      - msez-corridor
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # ============================================
-  # IDENTITY SERVICES
-  # ============================================
-
-  # Identity Service - DID and credential management
-  identity-service:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/Dockerfile.zone-authority
-    container_name: msez-identity
-    restart: unless-stopped
-    ports:
-      - "8085:8085"
-    environment:
-      - MSEZ_SERVICE=identity
-      - DATABASE_URL=postgresql://msez:msez@postgres:5432/msez
-      - REDIS_URL=redis://redis:6379/5
-    volumes:
-      - identity-data:/data
-    depends_on:
-      - zone-authority
-    networks:
-      - msez-internal
-    command: ["python", "-m", "tools.msez", "identity", "serve", "--port", "8085"]
-
-  # ============================================
-  # FINANCIAL SERVICES
-  # ============================================
-
-  # Settlement Service - Payment and settlement processing
-  settlement-service:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/Dockerfile.zone-authority
-    container_name: msez-settlement
-    restart: unless-stopped
-    ports:
-      - "8086:8086"
-    environment:
-      - MSEZ_SERVICE=settlement
-      - DATABASE_URL=postgresql://msez:msez@postgres:5432/msez_settlement
-      - REDIS_URL=redis://redis:6379/6
-    volumes:
-      - settlement-data:/data
-    depends_on:
-      - zone-authority
-      - corridor-node
-    networks:
-      - msez-internal
-    command: ["python", "-m", "tools.msez", "settlement", "serve", "--port", "8086"]
-
-  # ============================================
-  # COMPLIANCE SERVICES
-  # ============================================
-
-  # Compliance Tensor Service - Real-time compliance state
-  compliance-service:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/Dockerfile.zone-authority
-    container_name: msez-compliance
-    restart: unless-stopped
-    ports:
-      - "8087:8087"
-    environment:
-      - MSEZ_SERVICE=compliance
-      - DATABASE_URL=postgresql://msez:msez@postgres:5432/msez
-      - REDIS_URL=redis://redis:6379/7
-    volumes:
-      - compliance-data:/data
-    depends_on:
-      - zone-authority
-    networks:
-      - msez-internal
-    command: ["python", "-m", "tools.phoenix.tensor", "serve", "--port", "8087"]
-
-  # Regulator Console - Supervisory dashboard
-  regulator-console:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/Dockerfile.zone-authority
-    container_name: msez-regulator-console
-    restart: unless-stopped
-    ports:
-      - "8088:8088"
-    environment:
-      - MSEZ_SERVICE=regulator-console
-      - DATABASE_URL=postgresql://msez:msez@postgres:5432/msez
-      - REDIS_URL=redis://redis:6379/8
-    volumes:
-      - regulator-data:/data
-    depends_on:
-      - zone-authority
-      - compliance-service
-    networks:
-      - msez-internal
-    command: ["python", "-m", "tools.msez", "regulator-console", "serve", "--port", "8088"]
-
-  # ============================================
-  # INFRASTRUCTURE
-  # ============================================
-
-  # PostgreSQL - Primary database
+  # PostgreSQL 16 — primary data store
+  # Schema initialized via init-db.sql; runtime migrations via SQLx.
   postgres:
     image: postgres:16-alpine
     container_name: msez-postgres
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=msez
-      - POSTGRES_PASSWORD=msez
-      - POSTGRES_DB=msez
+      POSTGRES_USER: msez
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-msez}
+      POSTGRES_DB: msez
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     ports:
       - "5432:5432"
     networks:
       - msez-internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U msez"]
+      test: ["CMD-SHELL", "pg_isready -U msez -d msez"]
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # Redis - Caching and pub/sub
-  redis:
-    image: redis:7-alpine
-    container_name: msez-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes
-    volumes:
-      - redis-data:/data
-    ports:
-      - "6379:6379"
-    networks:
-      - msez-internal
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      start_period: 10s
 
   # ============================================
   # OBSERVABILITY
   # ============================================
 
-  # Prometheus - Metrics collection
+  # Prometheus — metrics collection from msez-api /metrics endpoint
   prometheus:
-    image: prom/prometheus:v2.48.0
+    image: prom/prometheus:v2.51.0
     container_name: msez-prometheus
     restart: unless-stopped
     volumes:
@@ -309,23 +117,25 @@ services:
       - "9090:9090"
     networks:
       - msez-internal
+    depends_on:
+      - msez-api
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
       - '--web.enable-lifecycle'
 
-  # Grafana - Metrics visualization
+  # Grafana — metrics visualization
   grafana:
-    image: grafana/grafana:10.2.2
+    image: grafana/grafana:10.4.1
     container_name: msez-grafana
     restart: unless-stopped
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
       - "3000:3000"
     networks:
@@ -341,32 +151,14 @@ networks:
   msez-internal:
     driver: bridge
     name: msez-internal
-  msez-corridor:
-    driver: bridge
-    name: msez-corridor
 
 # ============================================
 # VOLUMES
 # ============================================
 
 volumes:
-  # Core data
-  zone-data:
-  zone-config:
-  entity-data:
-  license-data:
-  licensepacks:
-  identity-data:
-  settlement-data:
-  compliance-data:
-  regulator-data:
-
-  # Corridor data
-  corridor-data:
-  watcher-data:
-
-  # Infrastructure
+  api-data:
+  api-config:
   postgres-data:
-  redis-data:
   prometheus-data:
   grafana-data:

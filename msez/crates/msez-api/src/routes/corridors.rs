@@ -217,7 +217,7 @@ async fn propose_receipt(
     Ok(Json(ReceiptResponse {
         id: Uuid::new_v4(),
         corridor_id: req.corridor_id,
-        status: "PROPOSED".to_string(),
+        status: "DRAFT".to_string(),
         payload: req.payload,
         created_at: Utc::now(),
     }))

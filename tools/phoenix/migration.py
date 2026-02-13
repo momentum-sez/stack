@@ -40,12 +40,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+
+logger = logging.getLogger(__name__)
 
 from tools.phoenix.tensor import (
     ComplianceDomain,
@@ -59,6 +62,11 @@ from tools.phoenix.manifold import (
     AttestationGap,
     AttestationRequirement,
 )
+
+
+class MigrationTimeoutError(Exception):
+    """Raised when a migration exceeds its deadline."""
+    pass
 
 
 # =============================================================================
@@ -335,9 +343,9 @@ class MigrationEvidence:
             "destination_verification": self.destination_verification.to_dict() if self.destination_verification else None,
             "final_state": self.final_state.value if self.final_state else None,
         }
-        canonical = json.dumps(content, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(canonical.encode()).hexdigest()
-    
+        from tools.lawpack import jcs_canonicalize
+        return hashlib.sha256(jcs_canonicalize(content)).hexdigest()
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "migration_id": self.migration_id,
@@ -461,9 +469,11 @@ class MigrationSaga:
         self,
         request: MigrationRequest,
         migration_id: Optional[str] = None,
+        deadline: Optional[datetime] = None,
     ):
         self.request = request
         self.migration_id = migration_id or self._generate_migration_id()
+        self.deadline = deadline
         self._state = MigrationState.INITIATED
         self._state_entered_at = datetime.now(timezone.utc)
         
@@ -519,7 +529,27 @@ class MigrationSaga:
         """Check if transition to target state is valid."""
         valid_targets = self.VALID_TRANSITIONS.get(self._state, set())
         return target_state in valid_targets
-    
+
+    def _check_deadline(self) -> None:
+        """Enforce migration deadline. Auto-compensate if expired.
+
+        Implements Protocol 16.1 - migration deadline enforcement.
+        Security invariant: expired migrations must not advance to prevent
+        stale state from propagating through the corridor.
+        """
+        if self.deadline and datetime.now(timezone.utc) > self.deadline:
+            if not self._state.is_terminal():
+                logger.warning(
+                    "Migration %s exceeded deadline (state=%s, deadline=%s). Triggering compensation.",
+                    self.migration_id, self._state.value, self.deadline.isoformat()
+                )
+                self.compensate(
+                    reason=f"deadline_exceeded:state={self._state.value}",
+                )
+                raise MigrationTimeoutError(
+                    f"Migration {self.migration_id} exceeded deadline at state {self._state.value}"
+                )
+
     def advance_to(
         self,
         target_state: MigrationState,
@@ -529,9 +559,12 @@ class MigrationSaga:
     ) -> bool:
         """
         Advance the saga to a new state.
-        
+
         Returns True if transition was successful.
+        Raises MigrationTimeoutError if the migration deadline has passed.
         """
+        self._check_deadline()
+
         if not self.can_transition_to(target_state):
             return False
         
@@ -621,17 +654,21 @@ class MigrationSaga:
         unlock_success = False
         if from_state in {MigrationState.SOURCE_LOCK, MigrationState.TRANSIT}:
             # Need to unlock source - attempt actual unlock
+            unlock_error = None
             try:
                 # In real implementation, would call lock service
                 unlock_success = True  # Mark success after successful unlock
-            except Exception:
+            except Exception as exc:
+                logger.error("Compensation UNLOCK_SOURCE failed for asset %s: %s", self.request.asset_id, exc, exc_info=True)
                 unlock_success = False
+                unlock_error = str(exc)
 
             self._compensations.append(CompensationRecord(
                 action=CompensationAction.UNLOCK_SOURCE,
                 timestamp=now,
                 success=unlock_success,
                 details={"asset_id": self.request.asset_id},
+                error=unlock_error,
             ))
 
         refund_success = False
@@ -643,26 +680,33 @@ class MigrationSaga:
         }:
             # Calculate actual refund amount based on migration progress
             refund_amount = self._calculate_refund_amount(from_state)
+            refund_error = None
             try:
                 # In real implementation, would process refund
                 refund_success = True
-            except Exception:
+            except Exception as exc:
+                logger.error("Compensation REFUND_FEES failed for migration %s: %s", self.migration_id, exc, exc_info=True)
                 refund_success = False
+                refund_error = str(exc)
 
             self._compensations.append(CompensationRecord(
                 action=CompensationAction.REFUND_FEES,
                 timestamp=now,
                 success=refund_success,
                 details={"refund_amount": str(refund_amount)},
+                error=refund_error,
             ))
 
         # Notify all parties
         notify_success = False
+        notify_error = None
         try:
             # In real implementation, would send notifications
             notify_success = True
-        except Exception:
+        except Exception as exc:
+            logger.error("Compensation NOTIFY_COUNTERPARTIES failed for migration %s: %s", self.migration_id, exc, exc_info=True)
             notify_success = False
+            notify_error = str(exc)
 
         self._compensations.append(CompensationRecord(
             action=CompensationAction.NOTIFY_COUNTERPARTIES,
@@ -672,6 +716,7 @@ class MigrationSaga:
                 "source_jurisdiction": self.request.source_jurisdiction,
                 "target_jurisdiction": self.request.target_jurisdiction,
             },
+            error=notify_error,
         ))
         
         # Execute registered compensation handler
@@ -761,8 +806,8 @@ class MigrationSaga:
         self._state_entered_at = datetime.now(timezone.utc)
         
         # Record dispute evidence
-        evidence_json = json.dumps(evidence, sort_keys=True)
-        evidence_digest = hashlib.sha256(evidence_json.encode()).hexdigest()
+        from tools.lawpack import jcs_canonicalize
+        evidence_digest = hashlib.sha256(jcs_canonicalize(evidence)).hexdigest()
         
         self._record_transition(
             from_state=old_state,

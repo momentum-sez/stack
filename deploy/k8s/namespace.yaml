@@ -1,0 +1,20 @@
+# MSEZ Stack — Kubernetes Namespace + ServiceAccount
+#
+# Apply first: kubectl apply -f deploy/k8s/namespace.yaml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: msez
+  labels:
+    app: msez-stack
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: msez-api
+  namespace: msez
+  labels:
+    app: msez-api

@@ -133,9 +133,9 @@ class PrepareReceipt:
             "lock_expiry": self.lock_expiry,
             "prepared_at": self.prepared_at,
         }
-        canonical = json.dumps(content, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(canonical.encode()).hexdigest()
-    
+        from tools.lawpack import jcs_canonicalize
+        return hashlib.sha256(jcs_canonicalize(content)).hexdigest()
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "receipt_id": self.receipt_id,
@@ -191,9 +191,9 @@ class CommitReceipt:
             "settlement_tx_id": self.settlement_tx_id,
             "committed_at": self.committed_at,
         }
-        canonical = json.dumps(content, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(canonical.encode()).hexdigest()
-    
+        from tools.lawpack import jcs_canonicalize
+        return hashlib.sha256(jcs_canonicalize(content)).hexdigest()
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "receipt_id": self.receipt_id,

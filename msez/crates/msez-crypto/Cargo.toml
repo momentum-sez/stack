@@ -1,0 +1,28 @@
+[package]
+name = "msez-crypto"
+description = "Cryptographic primitives for the SEZ Stack: Ed25519 signing/verification, Merkle Mountain Range, content-addressed storage, and SHA-256 digest computation."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[features]
+default = []
+# Phase 4: Poseidon2 ZK-friendly hashing for arithmetic circuits.
+# Contains only type signatures — implementation not yet available.
+poseidon2 = []
+# Phase 4: BBS+ selective disclosure signatures for Verifiable Credentials.
+# Contains only type signatures — implementation not yet available.
+bbs-plus = []
+
+[dependencies]
+msez-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+ed25519-dalek = { workspace = true }
+rand_core = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

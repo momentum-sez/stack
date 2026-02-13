@@ -1,0 +1,133 @@
+{
+  "description": "MMR roots computed incrementally using tools/mmr.py",
+  "generator": "python3 tools/mmr.py via mmr_root_from_next_roots()",
+  "leaf_generation": "SHA256(\"receipt-{i}\".encode()) for i in 1..N",
+  "domain_separation": {
+    "leaf": "SHA256(0x00 || leaf_bytes)",
+    "node": "SHA256(0x01 || left || right)"
+  },
+  "next_roots": [
+    "fea5396a7f4325c408b1b65b33a4d77ba5486ceba941804d8889a8546cfbab96",
+    "774ad7ab1a3d41b114b5f4a34e2d8fc19c2ee8d83dfc133f1d80068ed205597f",
+    "de84f16f82e8cf8c184f7883460865481ba6f1fa5b48c3ae4e75b9e9786a6b03",
+    "9bf922d8ee39a15df6c2b0081aa0f508601a13287fc31a902aa34eccbf835def",
+    "9f11d91831441bd7245531a84f92a4e1a7a2e2ab7b67786351f077a4fd10efea",
+    "1f88814ff1d5f5300396ba391fd12fc9e46cea4f68d1e70b3b219ab3dbcd480c",
+    "b9e8be61a195415d90f6453066a979ea13b30499b622f707ee5dbbe1ed58294a",
+    "eb75bd2e1c056b3ffc82bab6e9d09051e2547f2046baa7b62056e0c0a07fa1dd",
+    "e6fdb34dc858fdc85c667742163c42a257b8eaefab62c6c7138d2da4aa4344d2",
+    "a40b8ea6c3bfbe2a58cd15f870bd261297d1604b78bbb299b4b62afdb3fb2897",
+    "651e9f306453649cf1b3be1c468868c31f953a6268144f93a2f83e41ac48b77f",
+    "e90d497520fcfaa2c133d711f989d877eb7cfd8b57c10f8f91520fed45fcb849",
+    "63e81058f8e39f0b6551e2876b87c8cac05df6a6b3888f3fa18858c11b48a349",
+    "b27e6eebf85812aa8d6bb982bd60fe21acdee1dd1252e3a02bff48e7d11be237",
+    "83a00529fc37dea7e5fc90663041498d12447ba74524368dc2d8026406024528",
+    "4ce306d785e156ecce175d1c1693c2c72599eed1ce7e90dfcca7214e65ef2446",
+    "3d9b849244959f3c63eab896d824a077a145676a6205fb17b3d23df3a3f560b6"
+  ],
+  "leaf_hashes": [
+    "29534994a3ad2af6dd418f46d4093897971cd14bea312167ad82c4b31dbbfcec",
+    "70cd9dc55d5eb8e95d7678e9e63850bf6eab82e4c8320bd921189cf33650a6dd",
+    "92f8fcff2113db0203a7c8a5fab996979cc75acb286f05888b80913a4046426c",
+    "975f3a064d539cced75a2da9659911b5d5429496bfede6d7c83fa0cca6bb1579",
+    "9aefaac0575dc3a4ea988cd349280b3d78b85e380a8c5bfe26c9e59e5e439fab",
+    "014b1f294b09694e6b3610d2715ffeef03674da6ba6a3195a5da6d1e271153a1",
+    "2b75ab66f3d78ee4a6cbc2cf87d6772567f80514ad43679ec455e412da4a843d",
+    "a5e5d19866a9d0eb6f89e7a2c3564108df676da03915882e1fea97e614ffc840",
+    "630a05d2cd6d9976d6c0ae5d2a174882a955fd6dd453e05910234c5ccc77e8ea",
+    "f1ff27febd7b21aa882e3da4793a5e0af8a2c69c8ece5ec45f86e0e13ad535a7",
+    "9a6e6b28f261e8d3489aa04306b6cb03de96cee0e3b0a3593ffb31158db262fe",
+    "ae0f63b4da02dd5284aaa84ab32c0df01262b39737534e0325234d6aa8eea189",
+    "8f1e1253eec45e52966045f65f952d2a7c0066cdbc54f171d41b73e5cc8a6ddd",
+    "2ec8ac0c3720cb383fd80b7884b2113f87e3d9f8a10323cedda4febc1cc450b4",
+    "41bdc0b3cd727605f00ee6b9e73d539ccf325763fa84b567f73109f178e1a2bb",
+    "b5ebec74119bf7561b66e90e4243d50ac84fe2035a23d58de9a3b69c4be48717",
+    "2ba384ee5925e4ff8953fd5a59583c8fbff6fdf2f06ee056b6fae639ff1b66eb"
+  ],
+  "leaf_hash_vectors": [
+    {
+      "input_next_root": "fea5396a7f4325c408b1b65b33a4d77ba5486ceba941804d8889a8546cfbab96",
+      "leaf_hash": "29534994a3ad2af6dd418f46d4093897971cd14bea312167ad82c4b31dbbfcec"
+    },
+    {
+      "input_next_root": "774ad7ab1a3d41b114b5f4a34e2d8fc19c2ee8d83dfc133f1d80068ed205597f",
+      "leaf_hash": "70cd9dc55d5eb8e95d7678e9e63850bf6eab82e4c8320bd921189cf33650a6dd"
+    },
+    {
+      "input_next_root": "de84f16f82e8cf8c184f7883460865481ba6f1fa5b48c3ae4e75b9e9786a6b03",
+      "leaf_hash": "92f8fcff2113db0203a7c8a5fab996979cc75acb286f05888b80913a4046426c"
+    },
+    {
+      "input_next_root": "9bf922d8ee39a15df6c2b0081aa0f508601a13287fc31a902aa34eccbf835def",
+      "leaf_hash": "975f3a064d539cced75a2da9659911b5d5429496bfede6d7c83fa0cca6bb1579"
+    },
+    {
+      "input_next_root": "9f11d91831441bd7245531a84f92a4e1a7a2e2ab7b67786351f077a4fd10efea",
+      "leaf_hash": "9aefaac0575dc3a4ea988cd349280b3d78b85e380a8c5bfe26c9e59e5e439fab"
+    }
+  ],
+  "node_hash_vector": {
+    "left": "29534994a3ad2af6dd418f46d4093897971cd14bea312167ad82c4b31dbbfcec",
+    "right": "70cd9dc55d5eb8e95d7678e9e63850bf6eab82e4c8320bd921189cf33650a6dd",
+    "result": "a34e6d5dac1ff07f820cc5156b41a50ce78c6a6868d81d5c5824cad0cab7250b"
+  },
+  "incremental_roots": [
+    {
+      "size": 1,
+      "root": "29534994a3ad2af6dd418f46d4093897971cd14bea312167ad82c4b31dbbfcec",
+      "peaks": [{"height": 0, "hash": "29534994a3ad2af6dd418f46d4093897971cd14bea312167ad82c4b31dbbfcec"}]
+    },
+    {
+      "size": 2,
+      "root": "a34e6d5dac1ff07f820cc5156b41a50ce78c6a6868d81d5c5824cad0cab7250b",
+      "peaks": [{"height": 1, "hash": "a34e6d5dac1ff07f820cc5156b41a50ce78c6a6868d81d5c5824cad0cab7250b"}]
+    },
+    {
+      "size": 3,
+      "root": "59140b9d370d775da9f6e8e0fb3baa63489f19f4e62d8402495b9a576ce9fa51",
+      "peaks": [
+        {"height": 1, "hash": "a34e6d5dac1ff07f820cc5156b41a50ce78c6a6868d81d5c5824cad0cab7250b"},
+        {"height": 0, "hash": "92f8fcff2113db0203a7c8a5fab996979cc75acb286f05888b80913a4046426c"}
+      ]
+    },
+    {
+      "size": 4,
+      "root": "4f3cf7244fc877caa995afae4651eca55e47d1a5783393209d40c35fc19e0f21",
+      "peaks": [{"height": 2, "hash": "4f3cf7244fc877caa995afae4651eca55e47d1a5783393209d40c35fc19e0f21"}]
+    },
+    {
+      "size": 5,
+      "root": "c05444bdd9862e94c1e9f4feefe78984eb141d7a9a8112c852011e37952e3a02",
+      "peaks": [
+        {"height": 2, "hash": "4f3cf7244fc877caa995afae4651eca55e47d1a5783393209d40c35fc19e0f21"},
+        {"height": 0, "hash": "9aefaac0575dc3a4ea988cd349280b3d78b85e380a8c5bfe26c9e59e5e439fab"}
+      ]
+    },
+    {
+      "size": 8,
+      "root": "cc7b5fd2bc078fd0dc219b51d725405b4ba7cc936aeb83b4fb56d8a0ade8a9fb",
+      "peaks": [{"height": 3, "hash": "cc7b5fd2bc078fd0dc219b51d725405b4ba7cc936aeb83b4fb56d8a0ade8a9fb"}]
+    },
+    {
+      "size": 9,
+      "root": "2cbf59819f3070f62601d1e0c47af000896f1c7bcb3f1e421c9bcdbf6c20ef09",
+      "peaks": [
+        {"height": 3, "hash": "cc7b5fd2bc078fd0dc219b51d725405b4ba7cc936aeb83b4fb56d8a0ade8a9fb"},
+        {"height": 0, "hash": "630a05d2cd6d9976d6c0ae5d2a174882a955fd6dd453e05910234c5ccc77e8ea"}
+      ]
+    },
+    {
+      "size": 16,
+      "root": "a4064c64f52cf7cc433bf372e64076ebd2b78a49e1e223748802831e7a7f32ad",
+      "peaks": [{"height": 4, "hash": "a4064c64f52cf7cc433bf372e64076ebd2b78a49e1e223748802831e7a7f32ad"}]
+    },
+    {
+      "size": 17,
+      "root": "338734a36416c5153c1a46812c5b3c2bfc3a4fa688beae56eb6ae8447143db2e",
+      "peaks": [
+        {"height": 4, "hash": "a4064c64f52cf7cc433bf372e64076ebd2b78a49e1e223748802831e7a7f32ad"},
+        {"height": 0, "hash": "2ba384ee5925e4ff8953fd5a59583c8fbff6fdf2f06ee056b6fae639ff1b66eb"}
+      ]
+    }
+  ]
+}

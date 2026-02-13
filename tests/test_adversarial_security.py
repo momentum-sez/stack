@@ -176,7 +176,7 @@ class TestTOCTOUPrevention:
         assert success is False
 
         # Value should remain at 500 (the concurrent modification)
-        assert store.get(key) == Decimal("500")
+        assert store.get(key).value == Decimal("500")
 
     def test_concurrent_cas_only_one_succeeds(self):
         """In concurrent CAS operations, exactly one should succeed."""
@@ -188,7 +188,7 @@ class TestTOCTOUPrevention:
 
         def increment():
             version = store.get_version(key)
-            current = store.get(key)
+            current = store.get(key).value
             time.sleep(0.01)  # Simulate processing
             success = store.compare_and_swap(key, current + 1, expected_version=version)
             results.append(success)
@@ -598,7 +598,8 @@ class TestAuditLogIntegrity:
         logger.log("event3", actor="user1", resource="asset3")
 
         # Verify chain
-        assert logger.verify_chain() is True
+        valid, idx = logger.verify_chain()
+        assert valid is True
 
     def test_audit_log_detects_tampering(self):
         """Tampering with audit log should be detected."""
@@ -612,7 +613,8 @@ class TestAuditLogIntegrity:
             logger.events[0].metadata["tampered"] = True
 
         # Chain should be invalid
-        assert logger.verify_chain() is False
+        valid, idx = logger.verify_chain()
+        assert valid is False
 
 
 # =============================================================================

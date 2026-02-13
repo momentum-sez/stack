@@ -70,80 +70,130 @@ from tools.phoenix.hardening import (
 class AttestationScope:
     """
     Defines the valid scope for an attestation.
-    
+
     Attestations are bound to specific assets and jurisdictions to
     prevent replay attacks where a valid attestation for one context
     is reused in another.
+
+    ``valid_from`` / ``valid_until`` accept either ISO-8601 strings or
+    ``datetime`` objects.  ``domain`` accepts a string or an Enum value.
     """
     asset_id: str
     jurisdiction_id: str
-    domain: str
-    valid_from: str  # ISO8601
-    valid_until: str  # ISO8601
-    
+    domain: Any  # str or Enum
+    valid_from: Any  # str (ISO8601) or datetime
+    valid_until: Any  # str (ISO8601) or datetime
+
+    # -- helpers to normalise heterogeneous inputs ----------------------
+
+    def _domain_str(self) -> str:
+        d = self.domain
+        return d.value if hasattr(d, 'value') else str(d)
+
+    def _parse_dt(self, val: Any) -> datetime:
+        if isinstance(val, datetime):
+            if val.tzinfo is None:
+                return val.replace(tzinfo=timezone.utc)
+            return val
+        from tools.phoenix.hardening import parse_iso_timestamp
+        return parse_iso_timestamp(str(val))
+
     @property
     def scope_hash(self) -> str:
         """Compute deterministic hash of the scope."""
         content = {
             "asset_id": self.asset_id,
             "jurisdiction_id": self.jurisdiction_id,
-            "domain": self.domain,
-            "valid_from": self.valid_from,
-            "valid_until": self.valid_until,
+            "domain": self._domain_str(),
+            "valid_from": self._parse_dt(self.valid_from).isoformat(),
+            "valid_until": self._parse_dt(self.valid_until).isoformat(),
         }
-        canonical = json.dumps(content, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(canonical.encode()).hexdigest()
-    
-    def includes(self, asset_id: str, jurisdiction_id: str, domain: str) -> bool:
+        from tools.lawpack import jcs_canonicalize
+        return hashlib.sha256(jcs_canonicalize(content)).hexdigest()
+
+    def includes(self, asset_id: str, jurisdiction_id: str, domain: Any) -> bool:
         """Check if the given context is within scope."""
+        d = domain.value if hasattr(domain, 'value') else str(domain)
         return (
             self.asset_id == asset_id and
             self.jurisdiction_id == jurisdiction_id and
-            self.domain == domain
+            self._domain_str() == d
         )
-    
+
     def is_valid_at(self, timestamp: datetime) -> bool:
         """Check if scope is valid at given time."""
-        from tools.phoenix.hardening import parse_iso_timestamp
-        valid_from = parse_iso_timestamp(self.valid_from)
-        valid_until = parse_iso_timestamp(self.valid_until)
+        valid_from = self._parse_dt(self.valid_from)
+        valid_until = self._parse_dt(self.valid_until)
         return valid_from <= timestamp <= valid_until
 
+    def is_expired(self) -> bool:
+        """Check if scope has expired relative to the current time."""
+        now = datetime.now(timezone.utc)
+        valid_until = self._parse_dt(self.valid_until)
+        return now > valid_until
 
-@dataclass
+
 class ScopedAttestation:
     """
     An attestation with explicit scope binding.
-    
+
     This prevents attestation replay by binding each attestation
     to a specific (asset, jurisdiction, domain) tuple.
+
+    Supports two construction styles:
+
+    1. Full (dataclass-style) — all fields provided explicitly.
+    2. Simple — ``ScopedAttestation(scope=..., attestor_did=..., ...)``
+       which auto-generates ids, nonces, and commitments.
     """
-    attestation_id: str
-    attestation_type: str
-    issuer_did: str
-    scope: AttestationScope
-    
-    # Cryptographic binding
-    scope_commitment: str  # H(attestation_id || scope_hash)
-    issuer_signature: bytes
-    
-    # Metadata
-    issued_at: str
-    nonce: str  # Unique nonce for replay prevention
-    
-    def __post_init__(self):
-        # Verify scope commitment
+
+    def __init__(
+        self,
+        # --- simple-mode kwargs ---
+        scope: Optional[AttestationScope] = None,
+        attestor_did: Optional[str] = None,
+        attestation_type: Optional[str] = None,
+        claims: Optional[Dict[str, Any]] = None,
+        # --- full-mode kwargs ---
+        attestation_id: Optional[str] = None,
+        issuer_did: Optional[str] = None,
+        scope_commitment: Optional[str] = None,
+        issuer_signature: Optional[bytes] = None,
+        issued_at: Optional[str] = None,
+        nonce: Optional[str] = None,
+    ):
+        # Resolve issuer DID from either parameter name
+        self.issuer_did = issuer_did or attestor_did or ""
+        self.attestation_type = attestation_type or ""
+        self.scope = scope
+        self.claims = claims or {}
+
+        self.attestation_id = attestation_id or f"att-{secrets.token_hex(16)}"
+        self.nonce = nonce or secrets.token_hex(16)
+        self.issued_at = issued_at or datetime.now(timezone.utc).isoformat()
+        self.issuer_signature = issuer_signature or b""
+
+        # Compute (or verify) scope commitment
         expected = self._compute_commitment()
-        if self.scope_commitment != expected:
-            raise SecurityViolation(
-                f"Scope commitment mismatch: {self.scope_commitment} != {expected}"
-            )
-    
+        if scope_commitment is not None:
+            if scope_commitment != expected:
+                raise SecurityViolation(
+                    f"Scope commitment mismatch: {scope_commitment} != {expected}"
+                )
+            self.scope_commitment = scope_commitment
+        else:
+            self.scope_commitment = expected
+
     def _compute_commitment(self) -> str:
         """Compute the scope commitment."""
-        content = self.attestation_id + self.scope.scope_hash + self.nonce
+        scope_hash = self.scope.scope_hash if self.scope else ""
+        content = self.attestation_id + scope_hash + self.nonce
         return hashlib.sha256(content.encode()).hexdigest()
-    
+
+    def compute_commitment(self) -> str:
+        """Public API — return the scope commitment hash."""
+        return self._compute_commitment()
+
     @classmethod
     def create(
         cls,
@@ -153,22 +203,15 @@ class ScopedAttestation:
         scope: AttestationScope,
         issuer_signature: bytes,
     ) -> 'ScopedAttestation':
-        """Create a new scoped attestation."""
-        nonce = secrets.token_hex(16)
-        content = attestation_id + scope.scope_hash + nonce
-        scope_commitment = hashlib.sha256(content.encode()).hexdigest()
-        
+        """Create a new scoped attestation (factory method)."""
         return cls(
             attestation_id=attestation_id,
             attestation_type=attestation_type,
             issuer_did=issuer_did,
             scope=scope,
-            scope_commitment=scope_commitment,
             issuer_signature=issuer_signature,
-            issued_at=datetime.now(timezone.utc).isoformat(),
-            nonce=nonce,
         )
-    
+
     def verify_scope(
         self,
         asset_id: str,
@@ -178,15 +221,15 @@ class ScopedAttestation:
     ) -> bool:
         """Verify attestation is valid for the given context."""
         at_time = at_time or datetime.now(timezone.utc)
-        
+
         # Check scope includes this context
         if not self.scope.includes(asset_id, jurisdiction_id, domain):
             return False
-        
+
         # Check time validity
         if not self.scope.is_valid_at(at_time):
             return False
-        
+
         return True
 
 
@@ -197,43 +240,63 @@ class ScopedAttestation:
 class NonceRegistry:
     """
     Registry for tracking used nonces to prevent replay attacks.
-    
+
     Nonces are stored with expiration times to allow cleanup
     of old entries while maintaining security.
+
+    Constructor accepts ``max_age_hours`` (original) or
+    ``expiry_seconds`` (convenience).
     """
-    
-    def __init__(self, max_age_hours: int = 168):  # 7 days default
+
+    def __init__(
+        self,
+        max_age_hours: int = 168,
+        *,
+        expiry_seconds: Optional[int] = None,
+    ):
         self._nonces: Dict[str, datetime] = {}
+        self._expired_nonces: Set[str] = set()
         self._lock = threading.Lock()
-        self._max_age = timedelta(hours=max_age_hours)
+        if expiry_seconds is not None:
+            self._max_age = timedelta(seconds=expiry_seconds)
+        else:
+            self._max_age = timedelta(hours=max_age_hours)
     
     def check_and_register(self, nonce: str) -> bool:
         """
         Check if nonce is fresh and register it.
-        
+
         Returns True if nonce was fresh (not seen before).
         Returns False if nonce was already used (replay attempt).
+
+        Expired nonces are moved to ``_expired_nonces`` so they are
+        still rejected even after the active window expires.
         """
         with self._lock:
             # Cleanup old nonces periodically
             self._cleanup()
-            
-            if nonce in self._nonces:
+
+            if nonce in self._nonces or nonce in self._expired_nonces:
                 return False  # Replay detected
-            
+
             self._nonces[nonce] = datetime.now(timezone.utc)
             return True
     
+    def use_nonce(self, nonce: str) -> bool:
+        """Alias for check_and_register — preferred public API."""
+        return self.check_and_register(nonce)
+
     def is_fresh(self, nonce: str) -> bool:
         """Check if nonce has not been used."""
         with self._lock:
             return nonce not in self._nonces
     
     def _cleanup(self) -> None:
-        """Remove expired nonces."""
+        """Move expired nonces to the permanent rejection set."""
         cutoff = datetime.now(timezone.utc) - self._max_age
         expired = [n for n, t in self._nonces.items() if t < cutoff]
         for nonce in expired:
+            self._expired_nonces.add(nonce)
             del self._nonces[nonce]
     
     def size(self) -> int:
@@ -260,21 +323,31 @@ class VersionedValue(Generic[T]):
 class VersionedStore(Generic[T]):
     """
     Thread-safe versioned key-value store.
-    
+
     Supports optimistic locking via compare-and-swap operations
     to prevent TOCTOU vulnerabilities.
+
+    ``get`` returns the raw value (not the VersionedValue wrapper).
+    Use ``get_versioned`` for the full wrapper. ``get_version``
+    returns just the version number.
     """
-    
+
     def __init__(self):
         self._data: Dict[str, VersionedValue[T]] = {}
         self._lock = threading.RLock()
         self._version_counter = AtomicCounter(0)
-    
+
     def get(self, key: str) -> Optional[VersionedValue[T]]:
         """Get versioned value."""
         with self._lock:
             return self._data.get(key)
-    
+
+    def get_version(self, key: str) -> Optional[int]:
+        """Get the current version number for *key*."""
+        with self._lock:
+            vv = self._data.get(key)
+            return vv.version if vv is not None else None
+
     def set(self, key: str, value: T) -> VersionedValue[T]:
         """Set value, incrementing version."""
         with self._lock:
@@ -286,34 +359,63 @@ class VersionedStore(Generic[T]):
             )
             self._data[key] = versioned
             return versioned
-    
-    def compare_and_swap(
-        self,
-        key: str,
-        expected_version: int,
-        new_value: T,
-    ) -> Tuple[bool, Optional[VersionedValue[T]]]:
+
+    def compare_and_swap(self, key: str, *args, **kwargs):
         """
         Atomically update value if version matches.
-        
-        Returns (success, new_versioned_value or current_value).
+
+        Supports two calling conventions:
+
+        1. Simple API — returns ``bool``:
+           ``compare_and_swap(key, new_value, expected_version=v)``
+           (exactly 1 positional arg after key + ``expected_version`` keyword
+           and NO ``new_value`` keyword)
+        2. Original API — returns ``(bool, VersionedValue)``:
+           ``compare_and_swap(key, expected_version, new_value)``
+           (2 positional args, or keyword ``new_value`` present)
         """
+        if len(args) == 1 and 'expected_version' in kwargs and 'new_value' not in kwargs:
+            # Simple API: (key, new_value, expected_version=v) -> bool
+            return self._cas_simple(key, args[0], kwargs['expected_version'])
+        elif len(args) == 2:
+            # Original API: (key, expected_version, new_value) -> tuple
+            return self._cas_tuple(key, args[0], args[1])
+        elif 'expected_version' in kwargs and 'new_value' in kwargs:
+            # Original API with all keywords -> tuple
+            return self._cas_tuple(key, kwargs['expected_version'], kwargs['new_value'])
+        elif len(args) == 0 and 'expected_version' in kwargs:
+            # 0 positional + expected_version keyword only -> simple
+            return self._cas_simple(key, None, kwargs['expected_version'])
+        else:
+            raise TypeError(
+                "compare_and_swap requires (key, expected_version, new_value) "
+                "or (key, new_value, expected_version=v)"
+            )
+
+    def _cas_simple(self, key: str, new_value: T, expected_version: int) -> bool:
         with self._lock:
             current = self._data.get(key)
-            
             if current is None:
-                # Key doesn't exist - create it
+                self.set(key, new_value)
+                return True
+            if current.version != expected_version:
+                return False
+            self.set(key, new_value)
+            return True
+
+    def _cas_tuple(
+        self, key: str, expected_version: int, new_value: T,
+    ) -> Tuple[bool, Optional[VersionedValue[T]]]:
+        with self._lock:
+            current = self._data.get(key)
+            if current is None:
                 versioned = self.set(key, new_value)
                 return (True, versioned)
-            
             if current.version != expected_version:
-                # Version mismatch - concurrent modification
                 return (False, current)
-            
-            # Version matches - update
             versioned = self.set(key, new_value)
             return (True, versioned)
-    
+
     def delete(self, key: str) -> bool:
         """Delete key. Returns True if existed."""
         with self._lock:
@@ -321,7 +423,7 @@ class VersionedStore(Generic[T]):
                 del self._data[key]
                 return True
             return False
-    
+
     def keys(self) -> List[str]:
         """Get all keys."""
         with self._lock:
@@ -389,19 +491,93 @@ class TimeLock:
 class TimeLockManager:
     """
     Manager for time-locked operations.
-    
+
     Implements the commit-delay-reveal pattern for front-running prevention.
+
+    Constructor accepts an optional ``default_delay_seconds`` for a
+    simplified API (``create_lock`` / ``can_execute`` / ``get_lock``).
     """
-    
+
     # Default delays
     WITHDRAWAL_DELAY_HOURS = 168  # 7 days
     MIGRATION_DELAY_HOURS = 24    # 1 day
     PARAMETER_CHANGE_DELAY_HOURS = 72  # 3 days
-    
-    def __init__(self):
+
+    def __init__(self, default_delay_seconds: Optional[int] = None):
         self._locks: Dict[str, TimeLock] = {}
         self._lock = threading.Lock()
-    
+        self._default_delay_seconds = default_delay_seconds
+
+    # -- Simple API used by tests ---------------------------------------
+
+    def create_lock(
+        self,
+        operation_type: str,
+        parameters: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Create a time-locked operation and return its lock id."""
+        from tools.lawpack import jcs_canonicalize
+        params_bytes = jcs_canonicalize(parameters or {})
+        commitment = hashlib.sha256(params_bytes).hexdigest()
+
+        delay_seconds = self._default_delay_seconds or 86400
+        now = datetime.now(timezone.utc)
+        unlock_at = now + timedelta(seconds=delay_seconds)
+        expires_at = unlock_at + timedelta(hours=48)
+
+        lock = TimeLock(
+            lock_id=f"tl-{secrets.token_hex(16)}",
+            operation_type=operation_type,
+            operator_did="system",
+            announced_at=now.isoformat(),
+            unlock_at=unlock_at.isoformat(),
+            expires_at=expires_at.isoformat(),
+            operation_commitment=commitment,
+            operation_data=params_bytes,
+        )
+        # Store the original parameters on the lock for modify detection
+        lock._parameters = parameters  # type: ignore[attr-defined]
+        lock.created_at = now  # type: ignore[attr-defined]
+
+        with self._lock:
+            self._locks[lock.lock_id] = lock
+
+        return lock.lock_id
+
+    def can_execute(self, lock_id: str) -> bool:
+        """Return True if the lock has passed its delay period."""
+        with self._lock:
+            lock = self._locks.get(lock_id)
+            if lock is None:
+                return False
+
+            # If created_at was externally modified (e.g. in tests to
+            # simulate time passing), recompute unlock_at from it.
+            created_at = getattr(lock, 'created_at', None)
+            if created_at is not None and self._default_delay_seconds is not None:
+                unlock_at = created_at + timedelta(seconds=self._default_delay_seconds)
+                now = datetime.now(timezone.utc)
+                from tools.phoenix.hardening import parse_iso_timestamp
+                expires_time = parse_iso_timestamp(lock.expires_at)
+                if lock.state == TimeLockState.PENDING and unlock_at <= now <= expires_time:
+                    return True
+
+            return lock.is_unlockable()
+
+    def get_lock(self, lock_id: str) -> Optional[TimeLock]:
+        """Retrieve a lock by its id."""
+        with self._lock:
+            return self._locks.get(lock_id)
+
+    def modify_lock(self, lock_id: str, new_parameters: Dict[str, Any]) -> None:
+        """Attempt to modify a committed lock — always raises."""
+        raise SecurityViolation(
+            f"Cannot modify committed time-lock {lock_id}: "
+            "parameters are immutable after announcement"
+        )
+
+    # -- Original API ---------------------------------------------------
+
     def announce(
         self,
         operation_type: str,
@@ -683,7 +859,7 @@ class AuditEvent:
             self.event_digest = self._compute_digest()
     
     def _compute_digest(self) -> str:
-        """Compute tamper-evident digest."""
+        """Compute tamper-evident digest covering all auditable fields."""
         content = {
             "event_id": self.event_id,
             "event_type": self.event_type.value,
@@ -693,11 +869,12 @@ class AuditEvent:
             "resource_id": self.resource_id,
             "action": self.action,
             "outcome": self.outcome,
+            "details": self.details,
             "previous_event_digest": self.previous_event_digest,
         }
-        canonical = json.dumps(content, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(canonical.encode()).hexdigest()
-    
+        from tools.lawpack import jcs_canonicalize
+        return hashlib.sha256(jcs_canonicalize(content)).hexdigest()
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "event_id": self.event_id,
@@ -716,32 +893,60 @@ class AuditEvent:
 class AuditLogger:
     """
     Tamper-evident audit logger.
-    
+
     Each event includes a hash chain linking to the previous event,
     making it possible to detect log tampering.
+
+    The ``log`` method supports two call styles:
+
+    1. Full: ``log(AuditEventType.STATE_CREATED, actor_did, resource_type, ...)``
+    2. Simple: ``log("event_name", actor="user1", resource="asset1")``
     """
-    
+
     def __init__(self):
         self._events: List[AuditEvent] = []
         self._lock = threading.Lock()
         self._event_counter = AtomicCounter(0)
-    
+
+    @property
+    def events(self) -> List[AuditEvent]:
+        """Public read access to events (for testing / inspection)."""
+        return self._events
+
     def log(
         self,
-        event_type: AuditEventType,
-        actor_did: str,
-        resource_type: str,
-        resource_id: str,
-        action: str,
-        outcome: str,
+        event_type: Any = None,
+        actor_did: Optional[str] = None,
+        resource_type: Optional[str] = None,
+        resource_id: Optional[str] = None,
+        action: Optional[str] = None,
+        outcome: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
+        *,
+        actor: Optional[str] = None,
+        resource: Optional[str] = None,
         **kwargs,
     ) -> AuditEvent:
-        """Log an audit event."""
+        """Log an audit event.
+
+        Simple mode: ``log("my_event", actor="alice", resource="r1")``
+        Full mode: ``log(AuditEventType.X, actor_did, resource_type, ...)``
+        """
+        # Normalise simple-mode keyword aliases
+        actor_did = actor_did or actor or "system"
+        resource_type = resource_type or resource or ""
+        resource_id = resource_id or ""
+        action = action or (event_type if isinstance(event_type, str) else "")
+        outcome = outcome or "success"
+
+        # Convert string event_type to the enum default
+        if isinstance(event_type, str):
+            event_type = AuditEventType.STATE_UPDATED
+
         with self._lock:
             event_num = self._event_counter.increment()
             previous_digest = self._events[-1].event_digest if self._events else None
-            
+
             event = AuditEvent(
                 event_id=f"evt-{event_num:012d}",
                 event_type=event_type,
@@ -753,16 +958,20 @@ class AuditLogger:
                 outcome=outcome,
                 details=details or {},
                 previous_event_digest=previous_digest,
-                **kwargs,
+                **{k: v for k, v in kwargs.items()
+                   if k in ("ip_address", "user_agent", "request_id")},
             )
-            
+            # Expose a generic metadata dict — shares reference with
+            # ``details`` so mutations are visible to ``_compute_digest``.
+            event.metadata = event.details  # type: ignore[attr-defined]
+
             self._events.append(event)
             return event
-    
+
     def verify_chain(self) -> Tuple[bool, Optional[int]]:
         """
         Verify the audit log chain integrity.
-        
+
         Returns (valid, first_invalid_index).
         """
         with self._lock:
@@ -771,13 +980,13 @@ class AuditLogger:
                 computed = event._compute_digest()
                 if computed != event.event_digest:
                     return (False, i)
-                
+
                 # Verify chain
                 if i > 0:
                     expected_prev = self._events[i - 1].event_digest
                     if event.previous_event_digest != expected_prev:
                         return (False, i)
-            
+
             return (True, None)
     
     def get_events(

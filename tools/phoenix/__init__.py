@@ -127,6 +127,10 @@ Contact: engineering@momentum.inc
 __version__ = "0.4.44"
 __codename__ = "GENESIS"
 
+# Canonical digest computation — all phoenix modules MUST use this, never json.dumps for digests.
+# See tools/lawpack.py:jcs_canonicalize for the type coercion rules.
+from tools.lawpack import jcs_canonicalize as canonical_serialize
+
 # Lazy imports to avoid circular dependencies
 def __getattr__(name):
     """Lazy import PHOENIX modules on first access."""

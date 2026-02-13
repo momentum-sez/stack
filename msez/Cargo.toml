@@ -1,0 +1,83 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/msez-core",
+    "crates/msez-crypto",
+    "crates/msez-vc",
+    "crates/msez-state",
+    "crates/msez-tensor",
+    "crates/msez-zkp",
+    "crates/msez-pack",
+    "crates/msez-corridor",
+    "crates/msez-agentic",
+    "crates/msez-arbitration",
+    "crates/msez-schema",
+    "crates/msez-api",
+    "crates/msez-cli",
+    "crates/msez-integration-tests",
+]
+
+[workspace.package]
+version = "0.4.44"
+edition = "2021"
+rust-version = "1.75"
+license = "BUSL-1.1"
+repository = "https://github.com/momentum-sez/stack"
+
+[workspace.dependencies]
+# Internal crates
+msez-core = { path = "crates/msez-core" }
+msez-crypto = { path = "crates/msez-crypto" }
+msez-vc = { path = "crates/msez-vc" }
+msez-state = { path = "crates/msez-state" }
+msez-tensor = { path = "crates/msez-tensor" }
+msez-zkp = { path = "crates/msez-zkp" }
+msez-pack = { path = "crates/msez-pack" }
+msez-corridor = { path = "crates/msez-corridor" }
+msez-agentic = { path = "crates/msez-agentic" }
+msez-arbitration = { path = "crates/msez-arbitration" }
+msez-schema = { path = "crates/msez-schema" }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Cryptography
+sha2 = "0.10"
+ed25519-dalek = { version = "2", features = ["serde", "rand_core"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Identifiers
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Web framework
+axum = "0.7"
+tokio = { version = "1", features = ["full"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["trace"] }
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres"] }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+
+# OpenAPI
+utoipa = { version = "4", features = ["axum_extras", "chrono", "uuid"] }
+
+# Testing
+proptest = "1"
+tempfile = "3"
+http-body-util = "0.1"

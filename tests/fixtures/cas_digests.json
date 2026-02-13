@@ -1,0 +1,47 @@
+{
+  "description": "CAS digest test vectors computed using tools/lawpack.py:jcs_canonicalize()",
+  "generator": "python3 tools/lawpack.py:jcs_canonicalize() + hashlib.sha256()",
+  "path_convention": "dist/artifacts/{type}/{digest}.json",
+  "artifacts": [
+    {
+      "artifact_type": "receipt",
+      "input": {"action": "transfer", "amount": 1000, "currency": "PKR"},
+      "canonical_hex": "7b22616374696f6e223a227472616e73666572222c22616d6f756e74223a313030302c2263757272656e6379223a22504b52227d",
+      "canonical_utf8": "{\"action\":\"transfer\",\"amount\":1000,\"currency\":\"PKR\"}",
+      "sha256_digest": "1c3d079825b8ce6976e62fc1b1adfc6f99b01db4a3eb263cb5d21016303d736d",
+      "expected_path": "dist/artifacts/receipt/1c3d079825b8ce6976e62fc1b1adfc6f99b01db4a3eb263cb5d21016303d736d.json"
+    },
+    {
+      "artifact_type": "vc",
+      "input": {"@context": ["https://www.w3.org/2018/credentials/v1"], "type": ["VerifiableCredential"], "issuer": "did:msez:issuer-001", "credentialSubject": {"id": "did:msez:subject-001", "status": "active"}},
+      "canonical_hex": "7b2240636f6e74657874223a5b2268747470733a2f2f7777772e77332e6f72672f323031382f63726564656e7469616c732f7631225d2c2263726564656e7469616c5375626a656374223a7b226964223a226469643a6d73657a3a7375626a6563742d303031222c22737461747573223a22616374697665227d2c22697373756572223a226469643a6d73657a3a6973737565722d303031222c2274797065223a5b2256657269666961626c6543726564656e7469616c225d7d",
+      "canonical_utf8": "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"credentialSubject\":{\"id\":\"did:msez:subject-001\",\"status\":\"active\"},\"issuer\":\"did:msez:issuer-001\",\"type\":[\"VerifiableCredential\"]}",
+      "sha256_digest": "532a794aada544619a81cd5529777ea456112f91bef440b759bd8ea5e1279e00",
+      "expected_path": "dist/artifacts/vc/532a794aada544619a81cd5529777ea456112f91bef440b759bd8ea5e1279e00.json"
+    },
+    {
+      "artifact_type": "lawpack",
+      "input": {"name": "test-lawpack", "jurisdiction": "PK-RSEZ", "version": 1},
+      "canonical_hex": "7b226a7572697364696374696f6e223a22504b2d5253455a222c226e616d65223a22746573742d6c61777061636b222c2276657273696f6e223a317d",
+      "canonical_utf8": "{\"jurisdiction\":\"PK-RSEZ\",\"name\":\"test-lawpack\",\"version\":1}",
+      "sha256_digest": "4c30a0f20a279bf658fc6c3cb1b5d7607703f1b570f8b5831e811e1c946b2c67",
+      "expected_path": "dist/artifacts/lawpack/4c30a0f20a279bf658fc6c3cb1b5d7607703f1b570f8b5831e811e1c946b2c67.json"
+    },
+    {
+      "artifact_type": "ruleset",
+      "input": {"rules": [{"id": "R001", "domain": "aml", "threshold": 10000}]},
+      "canonical_hex": "7b2272756c6573223a5b7b22646f6d61696e223a22616d6c222c226964223a2252303031222c227468726573686f6c64223a31303030307d5d7d",
+      "canonical_utf8": "{\"rules\":[{\"domain\":\"aml\",\"id\":\"R001\",\"threshold\":10000}]}",
+      "sha256_digest": "74354f899f6464a2a6db918794dd7697a4febcebc477d2ddd0509e1c7f420461",
+      "expected_path": "dist/artifacts/ruleset/74354f899f6464a2a6db918794dd7697a4febcebc477d2ddd0509e1c7f420461.json"
+    },
+    {
+      "artifact_type": "transition-types",
+      "input": {"transitions": ["DRAFT_TO_PENDING", "PENDING_TO_ACTIVE"]},
+      "canonical_hex": "7b227472616e736974696f6e73223a5b2244524146545f544f5f50454e44494e47222c2250454e44494e475f544f5f414354495645225d7d",
+      "canonical_utf8": "{\"transitions\":[\"DRAFT_TO_PENDING\",\"PENDING_TO_ACTIVE\"]}",
+      "sha256_digest": "0c287d222294fa68cfa668c4db0dd0ac7b0ee801e313a99ca2a13e41ee60bdbd",
+      "expected_path": "dist/artifacts/transition-types/0c287d222294fa68cfa668c4db0dd0ac7b0ee801e313a99ca2a13e41ee60bdbd.json"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+[package]
+name = "msez-api"
+description = "Axum API services for the SEZ Stack: five programmable primitives (Entities, Ownership, Fiscal, Identity, Consent), corridor operations, smart asset CRUD, and regulator console."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "msez-api"
+path = "src/main.rs"
+
+[features]
+default = []
+swagger = []
+
+[dependencies]
+# Internal crates
+msez-core = { workspace = true }
+msez-state = { workspace = true }
+
+# Web framework
+axum = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Identifiers & time
+uuid = { workspace = true }
+chrono = { workspace = true }
+
+# OpenAPI
+utoipa = { workspace = true }
+
+# Observability
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+tower = { workspace = true }
+http-body-util = { workspace = true }

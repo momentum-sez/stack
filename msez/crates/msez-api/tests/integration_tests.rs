@@ -1,7 +1,8 @@
 //! # Integration Tests for msez-api
 //!
-//! Tests each primitive's basic CRUD operations, corridor state transitions,
-//! authentication middleware, and OpenAPI spec generation.
+//! Tests corridor state transitions, smart asset operations, regulator console,
+//! Mass API proxy behavior (503 without client), authentication middleware,
+//! and OpenAPI spec generation.
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
@@ -10,7 +11,7 @@ use tower::ServiceExt;
 
 use msez_api::state::{AppConfig, AppState};
 
-/// Helper: build the test app with auth disabled.
+/// Helper: build the test app with auth disabled and no Mass client.
 fn test_app() -> axum::Router {
     let state = AppState::new();
     msez_api::app(state)
@@ -22,7 +23,7 @@ fn test_app_with_auth(token: &str) -> axum::Router {
         port: 8080,
         auth_token: Some(token.to_string()),
     };
-    let state = AppState::with_config(config);
+    let state = AppState::with_config(config, None);
     msez_api::app(state)
 }
 
@@ -32,7 +33,7 @@ async fn body_string(response: axum::http::Response<Body>) -> String {
     String::from_utf8(bytes.to_vec()).unwrap()
 }
 
-// ── Health Probes ───────────────────────────────────────────────────
+// -- Health Probes ------------------------------------------------------------
 
 #[tokio::test]
 async fn test_liveness_probe() {
@@ -68,10 +69,12 @@ async fn test_readiness_probe() {
     assert_eq!(body, "ready");
 }
 
-// ── Entities CRUD ───────────────────────────────────────────────────
+// -- Entity Proxy (Mass API delegation) ---------------------------------------
+//
+// Without a Mass client configured, entity endpoints return 503.
 
 #[tokio::test]
-async fn test_create_entity() {
+async fn test_create_entity_returns_503_without_mass_client() {
     let app = test_app();
     let response = app
         .oneshot(
@@ -91,16 +94,11 @@ async fn test_create_entity() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::CREATED);
-    let body = body_string(response).await;
-    let entity: serde_json::Value = serde_json::from_str(&body).unwrap();
-    assert_eq!(entity["legal_name"], "Test Corp");
-    assert_eq!(entity["status"], "APPLIED");
-    assert!(entity["id"].is_string());
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
 #[tokio::test]
-async fn test_list_entities_empty() {
+async fn test_list_entities_returns_503_without_mass_client() {
     let app = test_app();
     let response = app
         .oneshot(
@@ -111,14 +109,11 @@ async fn test_list_entities_empty() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-    let body = body_string(response).await;
-    let entities: Vec<serde_json::Value> = serde_json::from_str(&body).unwrap();
-    assert!(entities.is_empty());
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
 #[tokio::test]
-async fn test_entity_not_found() {
+async fn test_get_entity_returns_503_without_mass_client() {
     let app = test_app();
     let response = app
         .oneshot(
@@ -129,178 +124,10 @@ async fn test_entity_not_found() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
-#[tokio::test]
-async fn test_create_entity_validation_error() {
-    let app = test_app();
-    let response = app
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/v1/entities")
-                .header("content-type", "application/json")
-                .body(Body::from(
-                    serde_json::to_string(&serde_json::json!({
-                        "entity_type": "",
-                        "legal_name": "Test",
-                        "jurisdiction_id": "PK-RSEZ"
-                    }))
-                    .unwrap(),
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
-}
-
-// ── Ownership ───────────────────────────────────────────────────────
-
-#[tokio::test]
-async fn test_create_cap_table() {
-    let app = test_app();
-    let entity_id = uuid::Uuid::new_v4();
-    let response = app
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/v1/ownership/cap-table")
-                .header("content-type", "application/json")
-                .body(Body::from(
-                    serde_json::to_string(&serde_json::json!({
-                        "entity_id": entity_id.to_string(),
-                        "share_classes": [{
-                            "name": "Common",
-                            "authorized_shares": 1000000,
-                            "issued_shares": 0,
-                            "par_value": "1.00",
-                            "voting_rights": true
-                        }]
-                    }))
-                    .unwrap(),
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(response.status(), StatusCode::CREATED);
-}
-
-// ── Fiscal ──────────────────────────────────────────────────────────
-
-#[tokio::test]
-async fn test_create_fiscal_account() {
-    let app = test_app();
-    let response = app
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/v1/fiscal/accounts")
-                .header("content-type", "application/json")
-                .body(Body::from(
-                    serde_json::to_string(&serde_json::json!({
-                        "entity_id": uuid::Uuid::new_v4().to_string(),
-                        "account_type": "treasury",
-                        "currency": "PKR",
-                        "ntn": "1234567"
-                    }))
-                    .unwrap(),
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(response.status(), StatusCode::CREATED);
-}
-
-#[tokio::test]
-async fn test_fiscal_ntn_validation() {
-    let app = test_app();
-    let response = app
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/v1/fiscal/accounts")
-                .header("content-type", "application/json")
-                .body(Body::from(
-                    serde_json::to_string(&serde_json::json!({
-                        "entity_id": uuid::Uuid::new_v4().to_string(),
-                        "account_type": "treasury",
-                        "currency": "PKR",
-                        "ntn": "123"
-                    }))
-                    .unwrap(),
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
-}
-
-// ── Identity ────────────────────────────────────────────────────────
-
-#[tokio::test]
-async fn test_identity_verify() {
-    let app = test_app();
-    let response = app
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/v1/identity/verify")
-                .header("content-type", "application/json")
-                .body(Body::from(
-                    serde_json::to_string(&serde_json::json!({
-                        "identity_type": "kyc",
-                        "details": {"name": "Test Person"}
-                    }))
-                    .unwrap(),
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(response.status(), StatusCode::CREATED);
-}
-
-// ── Consent ─────────────────────────────────────────────────────────
-
-#[tokio::test]
-async fn test_consent_lifecycle() {
-    let app = test_app();
-    let entity_a = uuid::Uuid::new_v4();
-    let entity_b = uuid::Uuid::new_v4();
-
-    let response = app
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/v1/consent/request")
-                .header("content-type", "application/json")
-                .body(Body::from(
-                    serde_json::to_string(&serde_json::json!({
-                        "consent_type": "tax_assessment",
-                        "description": "Annual tax assessment consent",
-                        "parties": [
-                            {"entity_id": entity_a.to_string(), "role": "taxpayer"},
-                            {"entity_id": entity_b.to_string(), "role": "assessor"}
-                        ]
-                    }))
-                    .unwrap(),
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(response.status(), StatusCode::CREATED);
-    let body = body_string(response).await;
-    let consent: serde_json::Value = serde_json::from_str(&body).unwrap();
-    assert_eq!(consent["status"], "PENDING");
-}
-
-// ── Corridors ───────────────────────────────────────────────────────
+// -- Corridors (SEZ Stack domain) ---------------------------------------------
 
 #[tokio::test]
 async fn test_create_corridor() {
@@ -351,7 +178,7 @@ async fn test_corridor_same_jurisdiction_rejected() {
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 }
 
-// ── Smart Assets ────────────────────────────────────────────────────
+// -- Smart Assets (SEZ Stack domain) ------------------------------------------
 
 #[tokio::test]
 async fn test_create_smart_asset() {
@@ -377,7 +204,7 @@ async fn test_create_smart_asset() {
     assert_eq!(response.status(), StatusCode::CREATED);
 }
 
-// ── Regulator ───────────────────────────────────────────────────────
+// -- Regulator (SEZ Stack domain) ---------------------------------------------
 
 #[tokio::test]
 async fn test_regulator_summary() {
@@ -398,7 +225,7 @@ async fn test_regulator_summary() {
     assert_eq!(summary["total_corridors"], 0);
 }
 
-// ── Authentication ──────────────────────────────────────────────────
+// -- Authentication -----------------------------------------------------------
 
 #[tokio::test]
 async fn test_auth_rejects_unauthorized() {
@@ -428,7 +255,8 @@ async fn test_auth_accepts_valid_token() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
+    // 503 because no Mass client, but auth passed (not 401).
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
 #[tokio::test]
@@ -462,7 +290,7 @@ async fn test_health_bypasses_auth() {
     assert_eq!(response.status(), StatusCode::OK);
 }
 
-// ── OpenAPI ─────────────────────────────────────────────────────────
+// -- OpenAPI ------------------------------------------------------------------
 
 #[tokio::test]
 async fn test_openapi_spec_generation() {
@@ -479,11 +307,9 @@ async fn test_openapi_spec_generation() {
     assert_eq!(response.status(), StatusCode::OK);
     let body = body_string(response).await;
     let spec: serde_json::Value = serde_json::from_str(&body).unwrap();
-    // Verify it's a valid OpenAPI spec.
     assert!(spec["openapi"].is_string());
     assert!(spec["info"]["title"].is_string());
     assert!(spec["paths"].is_object());
-    // Verify key paths exist.
     assert!(spec["paths"]["/v1/entities"].is_object());
     assert!(spec["paths"]["/v1/corridors"].is_object());
     assert!(spec["paths"]["/v1/assets/genesis"].is_object());
@@ -506,12 +332,10 @@ async fn test_openapi_contains_all_routes() {
     let paths = spec["paths"].as_object().unwrap();
 
     // Check that all expected path prefixes are present.
+    // Note: ownership, fiscal, identity, consent routes have been removed
+    // (those primitives are now proxied to Mass APIs via /v1/entities).
     let expected_paths = [
         "/v1/entities",
-        "/v1/ownership/cap-table",
-        "/v1/fiscal/accounts",
-        "/v1/identity/verify",
-        "/v1/consent/request",
         "/v1/corridors",
         "/v1/assets/genesis",
         "/v1/regulator/summary",

@@ -3,23 +3,28 @@
 //! Shared state for the Axum application, passed to all route handlers
 //! via the `State` extractor.
 //!
-//! ## Phase 1: In-Memory Storage
+//! ## Architecture
 //!
-//! All data is stored in `Arc<RwLock<HashMap>>` behind a generic [`Store`].
-//! This provides thread-safe concurrent access without a database dependency.
-//! The storage layer is designed so that a `sqlx::PgPool`-backed implementation
-//! can replace it without changing route handler signatures.
+//! AppState holds only SEZ-Stack-owned concerns:
+//! - **Corridors** — cross-border corridor lifecycle (SEZ Stack domain)
+//! - **Smart Assets** — smart asset lifecycle (SEZ Stack domain)
+//! - **Attestations** — compliance attestations for regulator queries (SEZ Stack domain)
+//! - **Mass API client** — typed client delegating primitive operations to live Mass APIs
+//!
+//! Entity, ownership, fiscal, identity, and consent data is NOT stored here.
+//! That data lives in the Mass APIs and is accessed via `msez-mass-client`.
+//! See CLAUDE.md Section II.
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use parking_lot::RwLock;
 
 use chrono::{DateTime, Utc};
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-// ── Generic In-Memory Store ─────────────────────────────────────────
+// -- Generic In-Memory Store --------------------------------------------------
 
 /// Thread-safe, cloneable in-memory key-value store.
 ///
@@ -104,168 +109,10 @@ impl<T: Clone + Send + Sync> Default for Store<T> {
     }
 }
 
-// ── Stored Record Types ─────────────────────────────────────────────
-
-/// Entity record in storage.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct EntityRecord {
-    pub id: Uuid,
-    pub entity_type: String,
-    pub legal_name: String,
-    pub jurisdiction_id: String,
-    pub status: String,
-    #[serde(default)]
-    pub beneficial_owners: Vec<BeneficialOwner>,
-    pub dissolution_stage: Option<u8>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-/// Beneficial owner of an entity.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct BeneficialOwner {
-    pub name: String,
-    pub ownership_percentage: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cnic: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub ntn: Option<String>,
-}
-
-/// Cap table record in storage.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct CapTableRecord {
-    pub id: Uuid,
-    pub entity_id: Uuid,
-    pub share_classes: Vec<ShareClass>,
-    pub transfers: Vec<OwnershipTransfer>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-/// Share class definition.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ShareClass {
-    pub name: String,
-    pub authorized_shares: u64,
-    pub issued_shares: u64,
-    pub par_value: Option<String>,
-    pub voting_rights: bool,
-}
-
-/// Ownership transfer event.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct OwnershipTransfer {
-    pub id: Uuid,
-    pub from_holder: String,
-    pub to_holder: String,
-    pub share_class: String,
-    pub quantity: u64,
-    pub price_per_share: Option<String>,
-    pub transferred_at: DateTime<Utc>,
-}
-
-/// Fiscal account record.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct FiscalAccountRecord {
-    pub id: Uuid,
-    pub entity_id: Uuid,
-    pub account_type: String,
-    pub currency: String,
-    pub balance: String,
-    pub ntn: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-/// Payment record.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct PaymentRecord {
-    pub id: Uuid,
-    pub from_account_id: Uuid,
-    pub to_account_id: Option<Uuid>,
-    pub amount: String,
-    pub currency: String,
-    pub reference: String,
-    pub status: String,
-    pub created_at: DateTime<Utc>,
-}
-
-/// Tax event record.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct TaxEventRecord {
-    pub id: Uuid,
-    pub entity_id: Uuid,
-    pub event_type: String,
-    pub amount: String,
-    pub currency: String,
-    pub tax_year: String,
-    pub details: serde_json::Value,
-    pub created_at: DateTime<Utc>,
-}
-
-/// Identity record.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct IdentityRecord {
-    pub id: Uuid,
-    pub identity_type: String,
-    pub status: String,
-    pub linked_ids: Vec<LinkedExternalId>,
-    pub attestations: Vec<IdentityAttestation>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-/// External ID linked to an identity.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct LinkedExternalId {
-    pub id_type: String,
-    pub id_value: String,
-    pub verified: bool,
-    pub linked_at: DateTime<Utc>,
-}
-
-/// Identity attestation.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct IdentityAttestation {
-    pub id: Uuid,
-    pub attestation_type: String,
-    pub issuer: String,
-    pub status: String,
-    pub issued_at: DateTime<Utc>,
-    pub expires_at: Option<DateTime<Utc>>,
-}
-
-/// Consent record.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ConsentRecord {
-    pub id: Uuid,
-    pub consent_type: String,
-    pub description: String,
-    pub parties: Vec<ConsentParty>,
-    pub status: String,
-    pub audit_trail: Vec<ConsentAuditEntry>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-/// Party involved in a consent request.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ConsentParty {
-    pub entity_id: Uuid,
-    pub role: String,
-    pub decision: Option<String>,
-    pub decided_at: Option<DateTime<Utc>>,
-}
-
-/// Audit trail entry for a consent.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ConsentAuditEntry {
-    pub action: String,
-    pub actor_id: Uuid,
-    pub timestamp: DateTime<Utc>,
-    pub details: Option<String>,
-}
+// -- SEZ-Stack-Owned Record Types ---------------------------------------------
+//
+// These types represent data that genuinely belongs to the SEZ Stack,
+// NOT Mass primitive data. Mass primitives are accessed via msez-mass-client.
 
 /// Corridor record (API-layer representation).
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -316,7 +163,7 @@ pub struct AttestationRecord {
     pub details: serde_json::Value,
 }
 
-// ── Application State ───────────────────────────────────────────────
+// -- Application State --------------------------------------------------------
 
 /// Application configuration.
 #[derive(Debug, Clone)]
@@ -339,42 +186,44 @@ impl Default for AppConfig {
 
 /// Shared application state accessible to all route handlers.
 ///
-/// Contains in-memory stores for each domain primitive and application
-/// configuration. Clone-friendly via `Arc` internals in each `Store`.
+/// Contains SEZ-Stack-owned stores (corridors, smart assets, attestations),
+/// the Mass API client for primitive operations, and application configuration.
+/// Clone-friendly via `Arc` internals in each `Store`.
+///
+/// ## What is NOT here
+///
+/// Entity, ownership, fiscal, identity, and consent stores have been removed.
+/// That data lives in the Mass APIs and is accessed via `state.mass_client`.
 #[derive(Debug, Clone)]
 pub struct AppState {
-    pub entities: Store<EntityRecord>,
-    pub cap_tables: Store<CapTableRecord>,
-    pub fiscal_accounts: Store<FiscalAccountRecord>,
-    pub payments: Store<PaymentRecord>,
-    pub tax_events: Store<TaxEventRecord>,
-    pub identities: Store<IdentityRecord>,
-    pub consents: Store<ConsentRecord>,
+    // -- SEZ Stack owned state --
     pub corridors: Store<CorridorRecord>,
     pub smart_assets: Store<SmartAssetRecord>,
     pub attestations: Store<AttestationRecord>,
+
+    // -- Mass API client (delegates primitive operations to live Mass APIs) --
+    pub mass_client: Option<msez_mass_client::MassClient>,
+
+    // -- Configuration --
     pub config: AppConfig,
 }
 
 impl AppState {
-    /// Create a new application state with default configuration.
+    /// Create a new application state with default configuration and no Mass client.
     pub fn new() -> Self {
-        Self::with_config(AppConfig::default())
+        Self::with_config(AppConfig::default(), None)
     }
 
-    /// Create a new application state with the given configuration.
-    pub fn with_config(config: AppConfig) -> Self {
+    /// Create a new application state with the given configuration and optional Mass client.
+    pub fn with_config(
+        config: AppConfig,
+        mass_client: Option<msez_mass_client::MassClient>,
+    ) -> Self {
         Self {
-            entities: Store::new(),
-            cap_tables: Store::new(),
-            fiscal_accounts: Store::new(),
-            payments: Store::new(),
-            tax_events: Store::new(),
-            identities: Store::new(),
-            consents: Store::new(),
             corridors: Store::new(),
             smart_assets: Store::new(),
             attestations: Store::new(),
+            mass_client,
             config,
         }
     }
@@ -391,27 +240,25 @@ mod tests {
     use super::*;
     use uuid::Uuid;
 
-    /// Helper: create a minimal EntityRecord for store tests.
-    fn sample_entity(id: Uuid) -> EntityRecord {
+    /// Helper: create a minimal CorridorRecord for store tests.
+    fn sample_corridor(id: Uuid) -> CorridorRecord {
         let now = Utc::now();
-        EntityRecord {
+        CorridorRecord {
             id,
-            entity_type: "llc".to_string(),
-            legal_name: "Acme Corp".to_string(),
-            jurisdiction_id: "pk-sez-01".to_string(),
-            status: "active".to_string(),
-            beneficial_owners: vec![],
-            dissolution_stage: None,
+            jurisdiction_a: "PK-PSEZ".to_string(),
+            jurisdiction_b: "AE-DIFC".to_string(),
+            state: "PENDING".to_string(),
+            transition_log: vec![],
             created_at: now,
             updated_at: now,
         }
     }
 
-    // ── Store tests ───────────────────────────────────────────────
+    // -- Store tests ----------------------------------------------------------
 
     #[test]
     fn store_new_creates_empty_store() {
-        let store: Store<EntityRecord> = Store::new();
+        let store: Store<CorridorRecord> = Store::new();
         assert!(store.is_empty());
         assert_eq!(store.len(), 0);
         assert!(store.list().is_empty());
@@ -421,16 +268,16 @@ mod tests {
     fn store_insert_and_get_roundtrip() {
         let store = Store::new();
         let id = Uuid::new_v4();
-        let entity = sample_entity(id);
+        let corridor = sample_corridor(id);
 
-        let prev = store.insert(id, entity.clone());
+        let prev = store.insert(id, corridor);
         assert!(prev.is_none(), "first insert should return None");
 
         let retrieved = store.get(&id);
         assert!(retrieved.is_some());
         let retrieved = retrieved.unwrap();
         assert_eq!(retrieved.id, id);
-        assert_eq!(retrieved.legal_name, "Acme Corp");
+        assert_eq!(retrieved.jurisdiction_a, "PK-PSEZ");
     }
 
     #[test]
@@ -438,9 +285,12 @@ mod tests {
         let store = Store::new();
         let id = Uuid::new_v4();
 
-        store.insert(id, sample_entity(id));
-        let prev = store.insert(id, sample_entity(id));
-        assert!(prev.is_some(), "second insert should return previous value");
+        store.insert(id, sample_corridor(id));
+        let prev = store.insert(id, sample_corridor(id));
+        assert!(
+            prev.is_some(),
+            "second insert should return previous value"
+        );
     }
 
     #[test]
@@ -450,14 +300,14 @@ mod tests {
         let id2 = Uuid::new_v4();
         let id3 = Uuid::new_v4();
 
-        store.insert(id1, sample_entity(id1));
-        store.insert(id2, sample_entity(id2));
-        store.insert(id3, sample_entity(id3));
+        store.insert(id1, sample_corridor(id1));
+        store.insert(id2, sample_corridor(id2));
+        store.insert(id3, sample_corridor(id3));
 
         let all = store.list();
         assert_eq!(all.len(), 3);
 
-        let ids: Vec<Uuid> = all.iter().map(|e| e.id).collect();
+        let ids: Vec<Uuid> = all.iter().map(|c| c.id).collect();
         assert!(ids.contains(&id1));
         assert!(ids.contains(&id2));
         assert!(ids.contains(&id3));
@@ -467,29 +317,26 @@ mod tests {
     fn store_update_modifies_existing() {
         let store = Store::new();
         let id = Uuid::new_v4();
-        store.insert(id, sample_entity(id));
+        store.insert(id, sample_corridor(id));
 
-        let updated = store.update(&id, |e| {
-            e.legal_name = "Updated Corp".to_string();
-            e.status = "suspended".to_string();
+        let updated = store.update(&id, |c| {
+            c.state = "ACTIVE".to_string();
         });
 
         assert!(updated.is_some());
         let updated = updated.unwrap();
-        assert_eq!(updated.legal_name, "Updated Corp");
-        assert_eq!(updated.status, "suspended");
+        assert_eq!(updated.state, "ACTIVE");
 
-        // Confirm the store itself reflects the change.
         let fetched = store.get(&id).unwrap();
-        assert_eq!(fetched.legal_name, "Updated Corp");
+        assert_eq!(fetched.state, "ACTIVE");
     }
 
     #[test]
     fn store_update_returns_none_for_missing_key() {
-        let store: Store<EntityRecord> = Store::new();
+        let store: Store<CorridorRecord> = Store::new();
         let missing = Uuid::new_v4();
-        let result = store.update(&missing, |e| {
-            e.legal_name = "Ghost".to_string();
+        let result = store.update(&missing, |c| {
+            c.state = "GHOST".to_string();
         });
         assert!(result.is_none());
     }
@@ -498,7 +345,7 @@ mod tests {
     fn store_remove_deletes_item() {
         let store = Store::new();
         let id = Uuid::new_v4();
-        store.insert(id, sample_entity(id));
+        store.insert(id, sample_corridor(id));
         assert_eq!(store.len(), 1);
 
         let removed = store.remove(&id);
@@ -511,7 +358,7 @@ mod tests {
 
     #[test]
     fn store_remove_returns_none_for_missing_key() {
-        let store: Store<EntityRecord> = Store::new();
+        let store: Store<CorridorRecord> = Store::new();
         let result = store.remove(&Uuid::new_v4());
         assert!(result.is_none());
     }
@@ -522,7 +369,7 @@ mod tests {
         let id = Uuid::new_v4();
         assert!(!store.contains(&id));
 
-        store.insert(id, sample_entity(id));
+        store.insert(id, sample_corridor(id));
         assert!(store.contains(&id));
 
         store.remove(&id);
@@ -537,11 +384,11 @@ mod tests {
 
         let id1 = Uuid::new_v4();
         let id2 = Uuid::new_v4();
-        store.insert(id1, sample_entity(id1));
+        store.insert(id1, sample_corridor(id1));
         assert!(!store.is_empty());
         assert_eq!(store.len(), 1);
 
-        store.insert(id2, sample_entity(id2));
+        store.insert(id2, sample_corridor(id2));
         assert_eq!(store.len(), 2);
 
         store.remove(&id1);
@@ -553,7 +400,7 @@ mod tests {
 
     #[test]
     fn store_default_is_empty() {
-        let store: Store<EntityRecord> = Store::default();
+        let store: Store<CorridorRecord> = Store::default();
         assert!(store.is_empty());
     }
 
@@ -561,7 +408,7 @@ mod tests {
     fn store_clone_shares_underlying_data() {
         let store = Store::new();
         let id = Uuid::new_v4();
-        store.insert(id, sample_entity(id));
+        store.insert(id, sample_corridor(id));
 
         let clone = store.clone();
         assert_eq!(clone.len(), 1);
@@ -569,25 +416,19 @@ mod tests {
 
         // Mutations through the clone are visible from the original.
         let id2 = Uuid::new_v4();
-        clone.insert(id2, sample_entity(id2));
+        clone.insert(id2, sample_corridor(id2));
         assert_eq!(store.len(), 2);
     }
 
-    // ── AppState tests ────────────────────────────────────────────
+    // -- AppState tests -------------------------------------------------------
 
     #[test]
     fn app_state_new_creates_empty_stores() {
         let state = AppState::new();
-        assert!(state.entities.is_empty());
-        assert!(state.cap_tables.is_empty());
-        assert!(state.fiscal_accounts.is_empty());
-        assert!(state.payments.is_empty());
-        assert!(state.tax_events.is_empty());
-        assert!(state.identities.is_empty());
-        assert!(state.consents.is_empty());
         assert!(state.corridors.is_empty());
         assert!(state.smart_assets.is_empty());
         assert!(state.attestations.is_empty());
+        assert!(state.mass_client.is_none());
     }
 
     #[test]
@@ -603,10 +444,10 @@ mod tests {
             port: 3000,
             auth_token: Some("secret-token".to_string()),
         };
-        let state = AppState::with_config(config);
+        let state = AppState::with_config(config, None);
         assert_eq!(state.config.port, 3000);
         assert_eq!(state.config.auth_token.as_deref(), Some("secret-token"));
-        assert!(state.entities.is_empty());
+        assert!(state.corridors.is_empty());
     }
 
     #[test]
@@ -614,6 +455,9 @@ mod tests {
         let default_state = AppState::default();
         let new_state = AppState::new();
         assert_eq!(default_state.config.port, new_state.config.port);
-        assert_eq!(default_state.config.auth_token, new_state.config.auth_token);
+        assert_eq!(
+            default_state.config.auth_token,
+            new_state.config.auth_token
+        );
     }
 }

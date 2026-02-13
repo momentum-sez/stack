@@ -1,21 +1,19 @@
 //! # msez-api — Axum API Services for the SEZ Stack
 //!
-//! Assembles the five programmable primitive API services into a single
-//! Axum application with Tower middleware for authentication, tracing,
-//! metrics, and rate limiting.
+//! The SEZ Stack is the orchestration layer above the Mass APIs.
+//! It provides compliance tensor evaluation, corridor lifecycle management,
+//! smart asset operations, regulator console, and a proxy layer to the
+//! live Mass APIs for primitive operations (entities, ownership, fiscal,
+//! identity, consent).
 //!
 //! ## API Surface
 //!
-//! | Prefix               | Module                     | Primitive      |
-//! |-----------------------|---------------------------|----------------|
-//! | `/v1/entities/*`      | [`routes::entities`]      | ENTITIES       |
-//! | `/v1/ownership/*`     | [`routes::ownership`]     | OWNERSHIP      |
-//! | `/v1/fiscal/*`        | [`routes::fiscal`]        | FISCAL         |
-//! | `/v1/identity/*`      | [`routes::identity`]      | IDENTITY       |
-//! | `/v1/consent/*`       | [`routes::consent`]       | CONSENT        |
-//! | `/v1/corridors/*`     | [`routes::corridors`]     | Corridors      |
-//! | `/v1/assets/*`        | [`routes::smart_assets`]  | Smart Assets   |
-//! | `/v1/regulator/*`     | [`routes::regulator`]     | Regulator      |
+//! | Prefix               | Module                      | Domain              |
+//! |-----------------------|----------------------------|---------------------|
+//! | `/v1/entities/*`      | [`routes::mass_proxy`]     | Mass proxy (Entities) |
+//! | `/v1/corridors/*`     | [`routes::corridors`]      | Corridors (SEZ)     |
+//! | `/v1/assets/*`        | [`routes::smart_assets`]   | Smart Assets (SEZ)  |
+//! | `/v1/regulator/*`     | [`routes::regulator`]      | Regulator (SEZ)     |
 //!
 //! ## Middleware Stack (execution order)
 //!
@@ -57,11 +55,9 @@ pub fn app(state: AppState) -> Router {
 
     // Authenticated API routes.
     let api = Router::new()
-        .merge(routes::entities::router())
-        .merge(routes::ownership::router())
-        .merge(routes::fiscal::router())
-        .merge(routes::identity::router())
-        .merge(routes::consent::router())
+        // Mass API proxy (entities via Mass client; ownership/fiscal/identity/consent pending)
+        .merge(routes::mass_proxy::router())
+        // SEZ Stack native routes (genuinely this codebase's domain)
         .merge(routes::corridors::router())
         .merge(routes::smart_assets::router())
         .merge(routes::regulator::router())

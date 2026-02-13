@@ -117,8 +117,18 @@ async fn query_attestations(
     tag = "regulator"
 )]
 async fn compliance_summary(State(state): State<AppState>) -> Json<ComplianceSummary> {
+    // Entity count is no longer stored locally — entities live in Mass APIs.
+    // The regulator summary reports SEZ-Stack-owned counts plus attestation-derived
+    // entity count (unique entity_ids across attestations).
+    let unique_entities: std::collections::HashSet<uuid::Uuid> = state
+        .attestations
+        .list()
+        .iter()
+        .map(|a| a.entity_id)
+        .collect();
+
     Json(ComplianceSummary {
-        total_entities: state.entities.list().len(),
+        total_entities: unique_entities.len(),
         total_corridors: state.corridors.list().len(),
         total_assets: state.smart_assets.list().len(),
         total_attestations: state.attestations.list().len(),
@@ -309,19 +319,21 @@ mod tests {
     async fn handler_compliance_summary_reflects_state() {
         let state = AppState::new();
 
-        // Add some entities and corridors to the state.
-        let entity = crate::state::EntityRecord {
+        // Entity count is now derived from unique entity_ids in attestations.
+        // Add an attestation to represent an entity known to the SEZ Stack.
+        let entity_id = uuid::Uuid::new_v4();
+        let att = AttestationRecord {
             id: uuid::Uuid::new_v4(),
-            entity_type: "company".to_string(),
-            legal_name: "Test Corp".to_string(),
-            jurisdiction_id: "PK-PSEZ".to_string(),
+            entity_id,
+            attestation_type: "kyc".to_string(),
+            issuer: "NADRA".to_string(),
             status: "ACTIVE".to_string(),
-            beneficial_owners: vec![],
-            dissolution_stage: None,
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
+            jurisdiction_id: "PK-PSEZ".to_string(),
+            issued_at: chrono::Utc::now(),
+            expires_at: None,
+            details: serde_json::json!({}),
         };
-        state.entities.insert(entity.id, entity);
+        state.attestations.insert(att.id, att);
 
         let corridor = crate::state::CorridorRecord {
             id: uuid::Uuid::new_v4(),
@@ -349,7 +361,7 @@ mod tests {
         assert_eq!(summary.total_entities, 1);
         assert_eq!(summary.total_corridors, 1);
         assert_eq!(summary.total_assets, 0);
-        assert_eq!(summary.total_attestations, 0);
+        assert_eq!(summary.total_attestations, 1);
     }
 
     // ── Additional regulator route tests ─────────────────────────

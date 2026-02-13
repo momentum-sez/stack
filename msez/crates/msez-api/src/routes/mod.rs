@@ -1,13 +1,14 @@
 //! # API Route Modules
 //!
-//! Each module defines an Axum `Router` for one of the five programmable
-//! primitives or an auxiliary service.
+//! Route modules for the SEZ Stack API surface:
+//!
+//! - `mass_proxy` — Thin proxy to Mass APIs for primitive operations (entities,
+//!   ownership, fiscal, identity, consent) via `msez-mass-client`.
+//! - `corridors` — Cross-border corridor lifecycle (SEZ Stack domain).
+//! - `smart_assets` — Smart asset lifecycle (SEZ Stack domain).
+//! - `regulator` — Read-only regulator console (SEZ Stack domain).
 
-pub mod consent;
 pub mod corridors;
-pub mod entities;
-pub mod fiscal;
-pub mod identity;
-pub mod ownership;
+pub mod mass_proxy;
 pub mod regulator;
 pub mod smart_assets;

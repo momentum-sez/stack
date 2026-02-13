@@ -111,6 +111,11 @@ jobs:
         run: |
           pytest tests/test_cross_module_digest_consistency.py -v
 
+      - name: Dependency security audit
+        run: |
+          pip install pip-audit
+          pip-audit --strict
+
       - name: Run conformance tests
         run: |
           pytest -q

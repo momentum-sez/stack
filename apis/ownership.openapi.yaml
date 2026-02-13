@@ -1,0 +1,1288 @@
+openapi: "3.1.0"
+info:
+  title: MSEZ Ownership API (Investment Info)
+  version: 0.4.44
+  description: |
+    OpenAPI specification for the **Ownership** programmable primitive of the
+    Momentum SEZ Stack.  This primitive maps to the Mass Investment Info API and
+    covers cap-table management, share-class definitions, ownership transfers,
+    and the capital-gains tax-event pipeline that feeds the GovOS fiscal layer.
+
+    Key design decisions:
+
+    * **Amounts are strings** — all monetary and share-quantity values are
+      encoded as decimal strings to eliminate floating-point ambiguity in
+      cross-border settlement contexts.
+    * **Tax events are first-class** — every ownership transfer that may
+      trigger a taxable gain or loss emits a `TaxEvent` record.  These
+      records carry the National Tax Number (NTN) of the disposing party
+      so that downstream fiscal reporting (FBR IRIS integration) can
+      process them without a secondary identity lookup.
+    * **Board-approval gating** — transfer endpoints accept an optional
+      `board_resolution_ref` that, when the zone's corporate module
+      requires board approval (`require_board_approval: true`), must
+      reference a signed consent artifact.
+
+    Spec authority: `spec/12-mass-primitives-mapping.md` — Ownership primitive.
+    Module descriptors: `modules/corporate/cap-table/module.yaml`,
+    `modules/corporate/beneficial-ownership/module.yaml`.
+
+  contact:
+    name: Momentum SEZ Stack Maintainers
+    url: https://github.com/momentum-sez/stack
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: https://{zone_node}/v1
+    description: Zone Node API (production)
+    variables:
+      zone_node:
+        default: api.example.zone
+        description: FQDN of the zone node hosting this API.
+  - url: http://localhost:8080/v1
+    description: Local development server
+
+tags:
+  - name: cap-table
+    description: |
+      Cap-table initialization, querying, and snapshot operations.
+      Maps to `msez.corporate.cap-table.v1` interface.
+  - name: transfers
+    description: |
+      Ownership transfer recording with automatic tax-event emission.
+      Maps to `msez.corporate.share-transfer.v1` interface.
+  - name: share-classes
+    description: |
+      Share-class definition and querying.
+      Maps to `msez.corporate.share-issuance.v1` interface.
+
+security:
+  - bearerAuth: []
+
+paths:
+  # --------------------------------------------------------------------------
+  # Cap Table
+  # --------------------------------------------------------------------------
+  /v1/ownership/cap-table:
+    post:
+      operationId: initializeCapTable
+      tags: [cap-table]
+      summary: Initialize a cap table for an entity
+      description: |
+        Creates a new capitalization table for the specified entity.  The entity
+        must already exist in the Entity Registry (see `apis/entities.openapi.yaml`).
+        The initial share classes and authorized share counts are set at creation
+        time; subsequent amendments use the share-class endpoints.
+
+        Requires scope: `ownership:cap-table:write`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CapTableInitRequest'
+      responses:
+        '201':
+          description: Cap table created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapTable'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: A cap table already exists for this entity.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/ownership/{entity_id}/cap-table:
+    get:
+      operationId: getCapTable
+      tags: [cap-table]
+      summary: Retrieve the current cap table for an entity
+      description: |
+        Returns the full cap-table view for the entity, including all share
+        classes, current holders, fully-diluted ownership percentages, and
+        any outstanding convertible instruments or option pools.
+
+        Requires scope: `ownership:cap-table:read`.
+      parameters:
+        - $ref: '#/components/parameters/EntityIdPath'
+        - name: as_of
+          in: query
+          required: false
+          description: |
+            ISO 8601 UTC timestamp.  When provided, returns the cap-table
+            state as of the given point in time (historical snapshot).
+          schema:
+            type: string
+            format: date-time
+        - name: include_fully_diluted
+          in: query
+          required: false
+          description: |
+            When `true`, includes fully-diluted ownership calculations
+            accounting for convertible instruments, options, and warrants.
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Current (or historical) cap-table view.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapTable'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # --------------------------------------------------------------------------
+  # Ownership Transfers
+  # --------------------------------------------------------------------------
+  /v1/ownership/transfers:
+    post:
+      operationId: recordOwnershipTransfer
+      tags: [transfers]
+      summary: Record an ownership transfer (triggers tax event)
+      description: |
+        Records a transfer of shares or other equity instruments from one holder
+        to another.  The system performs the following steps atomically:
+
+        1. **Validation** — verifies that the `from_holder` owns sufficient
+           shares of the specified class, that the transfer does not violate
+           any lock-up or vesting restrictions, and that board approval is
+           present when required by the zone's corporate module.
+        2. **Cap-table mutation** — debits the source holder and credits the
+           destination holder.
+        3. **Tax-event emission** — computes the capital gain or loss based on
+           the cost basis of the transferred shares and the declared transfer
+           price, then emits a `TaxEvent` record into the GovOS fiscal pipeline.
+           The `TaxEvent` includes the NTN (National Tax Number) of the
+           disposing party for FBR IRIS integration.
+        4. **Audit trail** — the transfer is recorded as a corridor receipt
+           attachment if the entity is corridor-bound.
+
+        Requires scope: `ownership:transfers:write`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OwnershipTransferRequest'
+      responses:
+        '201':
+          description: Transfer recorded and tax event emitted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnershipTransferResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # --------------------------------------------------------------------------
+  # Share Classes
+  # --------------------------------------------------------------------------
+  /v1/ownership/{entity_id}/share-classes:
+    get:
+      operationId: getShareClasses
+      tags: [share-classes]
+      summary: List share-class definitions for an entity
+      description: |
+        Returns all share classes defined for the entity's cap table,
+        including authorized and issued counts, par value, voting rights,
+        dividend preferences, and liquidation priority.
+
+        Requires scope: `ownership:share-classes:read`.
+      parameters:
+        - $ref: '#/components/parameters/EntityIdPath'
+        - name: status
+          in: query
+          required: false
+          description: Filter by share-class status.
+          schema:
+            type: string
+            enum:
+              - active
+              - retired
+              - all
+            default: active
+      responses:
+        '200':
+          description: List of share-class definitions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [entity_id, share_classes]
+                additionalProperties: false
+                properties:
+                  entity_id:
+                    type: string
+                    description: Entity identifier.
+                  share_classes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ShareClass'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+# ==========================================================================
+# Components
+# ==========================================================================
+components:
+
+  # --------------------------------------------------------------------------
+  # Security Schemes
+  # --------------------------------------------------------------------------
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT bearer token with scope claims.  Required scopes per endpoint:
+
+        * `ownership:cap-table:read` — read cap-table data
+        * `ownership:cap-table:write` — create or amend cap tables
+        * `ownership:transfers:write` — record ownership transfers
+        * `ownership:share-classes:read` — read share-class definitions
+
+        Tokens are issued by the zone's identity provider and MUST contain
+        the `sub` (subject entity DID) and `scope` claims.
+
+  # --------------------------------------------------------------------------
+  # Parameters
+  # --------------------------------------------------------------------------
+  parameters:
+    EntityIdPath:
+      name: entity_id
+      in: path
+      required: true
+      description: |
+        Unique entity identifier as assigned by the Entity Registry.
+        Typically a DID or a zone-scoped UUID.
+      schema:
+        type: string
+        minLength: 1
+
+  # --------------------------------------------------------------------------
+  # Reusable Responses
+  # --------------------------------------------------------------------------
+  responses:
+    BadRequest:
+      description: |
+        The request body or query parameters are malformed or violate
+        schema constraints.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: |
+        Missing, expired, or invalid bearer token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: |
+        The authenticated principal lacks the required scope or does not
+        have authority over the target entity.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: |
+        The referenced entity, cap table, share class, or transfer does
+        not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    UnprocessableEntity:
+      description: |
+        The request is syntactically valid but semantically rejected.
+        Common reasons: insufficient shares for transfer, violated lock-up
+        period, missing board resolution when required, duplicate share-class
+        identifier.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalServerError:
+      description: |
+        An unexpected server-side error occurred.  The response body MAY
+        contain a correlation ID for incident triage.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  # --------------------------------------------------------------------------
+  # Schemas
+  # --------------------------------------------------------------------------
+  schemas:
+
+    # ---- Error --------------------------------------------------------------
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error_code, message]
+      properties:
+        error_code:
+          type: string
+          description: |
+            Machine-readable error code.  Format: `OWNERSHIP_<CATEGORY>_<DETAIL>`.
+            Examples: `OWNERSHIP_TRANSFER_INSUFFICIENT_SHARES`,
+            `OWNERSHIP_CAPTABLE_ALREADY_EXISTS`.
+          examples:
+            - OWNERSHIP_TRANSFER_INSUFFICIENT_SHARES
+        message:
+          type: string
+          description: Human-readable error description.
+        details:
+          type: array
+          description: |
+            Structured detail entries for validation errors.  Each entry
+            identifies the violating field, the constraint, and the
+            actual value.
+          items:
+            type: object
+            additionalProperties: false
+            required: [field, reason]
+            properties:
+              field:
+                type: string
+                description: JSON Pointer to the violating field.
+              reason:
+                type: string
+                description: Machine-readable constraint violation identifier.
+              expected:
+                type: string
+                description: Expected value or constraint description.
+              actual:
+                type: string
+                description: Actual value that caused the violation.
+        correlation_id:
+          type: string
+          description: |
+            Unique identifier for this error occurrence, suitable for
+            log correlation and incident triage.
+
+    # ---- Share Class --------------------------------------------------------
+    ShareClass:
+      type: object
+      additionalProperties: false
+      required:
+        - share_class_id
+        - name
+        - authorized_shares
+        - issued_shares
+        - status
+      properties:
+        share_class_id:
+          type: string
+          description: |
+            Unique identifier for this share class within the entity's
+            cap table.
+          minLength: 1
+        name:
+          type: string
+          description: |
+            Human-readable name (e.g., "Class A Common", "Series Seed
+            Preferred").
+          minLength: 1
+        description:
+          type: string
+          description: Optional long description of the share class terms.
+        authorized_shares:
+          type: string
+          pattern: '^[0-9]+$'
+          description: |
+            Total number of shares authorized for issuance under this
+            class.  Encoded as a decimal string.
+        issued_shares:
+          type: string
+          pattern: '^[0-9]+$'
+          description: |
+            Number of shares currently issued and outstanding.  Encoded
+            as a decimal string.  Must be <= authorized_shares.
+        par_value:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]+)?$'
+          description: |
+            Nominal par value per share.  Encoded as a decimal string.
+            May be "0" for no-par-value jurisdictions.
+        currency:
+          type: string
+          description: |
+            ISO 4217 currency code for the par value and any
+            monetary attributes of this share class.
+          pattern: '^[A-Z]{3}$'
+          examples:
+            - USD
+            - PKR
+        voting_rights:
+          type: object
+          additionalProperties: false
+          description: Voting rights attached to this share class.
+          properties:
+            votes_per_share:
+              type: integer
+              minimum: 0
+              description: |
+                Number of votes per share.  Zero for non-voting classes.
+            special_matters:
+              type: array
+              description: |
+                List of special matters where this class has enhanced
+                or restricted voting rights.
+              items:
+                type: string
+        dividend_preference:
+          type: object
+          additionalProperties: false
+          description: Dividend preference terms for this share class.
+          properties:
+            preference_type:
+              type: string
+              enum:
+                - non_participating
+                - participating
+                - cumulative
+                - non_cumulative
+            rate:
+              type: string
+              pattern: '^[0-9]+(\.[0-9]+)?$'
+              description: |
+                Annual dividend rate as a decimal string (e.g., "0.08"
+                for 8% preferred dividend).
+        liquidation_preference:
+          type: object
+          additionalProperties: false
+          description: Liquidation waterfall terms.
+          properties:
+            multiple:
+              type: string
+              pattern: '^[0-9]+(\.[0-9]+)?$'
+              description: |
+                Liquidation preference multiple (e.g., "1.0" for 1x).
+            participation_cap:
+              type: string
+              pattern: '^[0-9]+(\.[0-9]+)?$'
+              description: |
+                Maximum participation cap as a multiple.  Omit for
+                uncapped participation.
+        transfer_restrictions:
+          type: object
+          additionalProperties: false
+          description: |
+            Transfer restrictions on this share class (ROFR, lock-up, etc.).
+          properties:
+            rofr:
+              type: boolean
+              description: Right of first refusal applies.
+            lock_up_expiry:
+              type: string
+              format: date
+              description: |
+                Date after which lock-up restrictions lapse.  ISO 8601
+                date format.
+            board_approval_required:
+              type: boolean
+              description: |
+                Whether transfers of this class require board resolution.
+        status:
+          type: string
+          enum:
+            - active
+            - retired
+          description: |
+            Share-class lifecycle status.  Retired classes cannot have
+            new shares issued.
+        created_at:
+          type: string
+          format: date-time
+          description: ISO 8601 UTC timestamp of share-class creation.
+        updated_at:
+          type: string
+          format: date-time
+          description: ISO 8601 UTC timestamp of last modification.
+
+    # ---- Holder -------------------------------------------------------------
+    Holder:
+      type: object
+      additionalProperties: false
+      required:
+        - holder_id
+        - holder_type
+        - shares_held
+        - share_class_id
+      properties:
+        holder_id:
+          type: string
+          description: |
+            Unique identifier for the holder (DID, NTN, CNIC-linked
+            identity, or zone-scoped UUID).
+          minLength: 1
+        holder_type:
+          type: string
+          enum:
+            - individual
+            - entity
+            - trust
+            - fund
+            - nominee
+          description: Classification of the holder.
+        name:
+          type: string
+          description: Display name of the holder.
+        shares_held:
+          type: string
+          pattern: '^[0-9]+$'
+          description: |
+            Number of shares held in this class.  Encoded as a decimal
+            string.
+        share_class_id:
+          type: string
+          description: Share class in which the shares are held.
+          minLength: 1
+        cost_basis_per_share:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]+)?$'
+          description: |
+            Weighted average cost basis per share.  Used for capital gains
+            computation on transfer.  Decimal string in the share-class
+            currency.
+        acquisition_date:
+          type: string
+          format: date
+          description: |
+            Date of original acquisition (or latest lot acquisition for
+            averaged basis).  ISO 8601 date format.
+        vesting_schedule_ref:
+          type: string
+          description: |
+            Optional reference to a vesting schedule artifact.  When
+            present, the system enforces vesting cliffs and release
+            dates on transfer operations.
+        ntn:
+          type: string
+          description: |
+            National Tax Number of the holder.  Required for Pakistani
+            tax-resident holders.  Used for FBR IRIS integration and
+            automatic withholding tax computation.
+          pattern: '^[0-9]{7}-[0-9]$'
+
+    # ---- Cap Table ----------------------------------------------------------
+    CapTable:
+      type: object
+      additionalProperties: false
+      required:
+        - cap_table_id
+        - entity_id
+        - share_classes
+        - holders
+        - status
+        - created_at
+      properties:
+        cap_table_id:
+          type: string
+          description: |
+            Content-addressed identifier for this cap-table snapshot.
+          minLength: 1
+        entity_id:
+          type: string
+          description: Entity to which this cap table belongs.
+          minLength: 1
+        share_classes:
+          type: array
+          description: All share classes defined for this entity.
+          items:
+            $ref: '#/components/schemas/ShareClass'
+        holders:
+          type: array
+          description: |
+            All current holders and their positions.  Each entry
+            represents a single holder's position in a single share
+            class.
+          items:
+            $ref: '#/components/schemas/Holder'
+        convertible_instruments:
+          type: array
+          description: |
+            Outstanding convertible instruments (SAFEs, convertible
+            notes, warrants) that affect fully-diluted ownership.
+          items:
+            $ref: '#/components/schemas/ConvertibleInstrument'
+        option_pools:
+          type: array
+          description: |
+            Option pools (ESOP, advisor pools) and their allocation
+            status.
+          items:
+            $ref: '#/components/schemas/OptionPool'
+        total_authorized_shares:
+          type: string
+          pattern: '^[0-9]+$'
+          description: |
+            Sum of authorized shares across all share classes.
+        total_issued_shares:
+          type: string
+          pattern: '^[0-9]+$'
+          description: |
+            Sum of issued and outstanding shares across all classes.
+        fully_diluted_shares:
+          type: string
+          pattern: '^[0-9]+$'
+          description: |
+            Total shares on a fully-diluted basis, including all
+            convertible instruments and option pools.
+        status:
+          type: string
+          enum:
+            - active
+            - frozen
+            - dissolved
+          description: |
+            Cap-table lifecycle status.  `frozen` indicates the entity
+            is undergoing dissolution or regulatory hold.
+        state_digest_sha256:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: |
+            SHA-256 digest of the JCS-canonicalized cap-table state.
+            Computed via `jcs_canonicalize()` for content addressing
+            and corridor anchoring.
+        created_at:
+          type: string
+          format: date-time
+          description: ISO 8601 UTC timestamp of cap-table creation.
+        updated_at:
+          type: string
+          format: date-time
+          description: ISO 8601 UTC timestamp of last mutation.
+
+    # ---- Cap Table Init Request --------------------------------------------
+    CapTableInitRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - entity_id
+        - share_classes
+      properties:
+        entity_id:
+          type: string
+          description: |
+            Entity for which to create the cap table.  Must reference
+            an existing entity in the Entity Registry.
+          minLength: 1
+        share_classes:
+          type: array
+          description: |
+            Initial share-class definitions.  At least one class is
+            required.
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - name
+              - authorized_shares
+            properties:
+              name:
+                type: string
+                minLength: 1
+              authorized_shares:
+                type: string
+                pattern: '^[0-9]+$'
+              par_value:
+                type: string
+                pattern: '^[0-9]+(\.[0-9]+)?$'
+              currency:
+                type: string
+                pattern: '^[A-Z]{3}$'
+              voting_rights:
+                type: object
+                additionalProperties: false
+                properties:
+                  votes_per_share:
+                    type: integer
+                    minimum: 0
+              dividend_preference:
+                type: object
+                additionalProperties: false
+                properties:
+                  preference_type:
+                    type: string
+                    enum:
+                      - non_participating
+                      - participating
+                      - cumulative
+                      - non_cumulative
+                  rate:
+                    type: string
+                    pattern: '^[0-9]+(\.[0-9]+)?$'
+              liquidation_preference:
+                type: object
+                additionalProperties: false
+                properties:
+                  multiple:
+                    type: string
+                    pattern: '^[0-9]+(\.[0-9]+)?$'
+                  participation_cap:
+                    type: string
+                    pattern: '^[0-9]+(\.[0-9]+)?$'
+              transfer_restrictions:
+                type: object
+                additionalProperties: false
+                properties:
+                  rofr:
+                    type: boolean
+                  lock_up_expiry:
+                    type: string
+                    format: date
+                  board_approval_required:
+                    type: boolean
+        initial_holders:
+          type: array
+          description: |
+            Optional initial shareholding allocations (e.g., founder
+            shares at incorporation).
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - holder_id
+              - holder_type
+              - share_class_name
+              - shares
+            properties:
+              holder_id:
+                type: string
+                minLength: 1
+              holder_type:
+                type: string
+                enum:
+                  - individual
+                  - entity
+                  - trust
+                  - fund
+                  - nominee
+              name:
+                type: string
+              share_class_name:
+                type: string
+                description: |
+                  Must match one of the `name` values in `share_classes`.
+                minLength: 1
+              shares:
+                type: string
+                pattern: '^[0-9]+$'
+              cost_basis_per_share:
+                type: string
+                pattern: '^[0-9]+(\.[0-9]+)?$'
+              ntn:
+                type: string
+                pattern: '^[0-9]{7}-[0-9]$'
+                description: |
+                  National Tax Number.  Required for Pakistani tax-resident
+                  holders.
+        track_fully_diluted:
+          type: boolean
+          default: true
+          description: |
+            Whether to compute fully-diluted ownership.  Maps to the
+            `track_fully_diluted` parameter in the cap-table module
+            descriptor.
+
+    # ---- Ownership Transfer Request ----------------------------------------
+    OwnershipTransferRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - entity_id
+        - share_class_id
+        - from_holder_id
+        - to_holder_id
+        - shares
+        - transfer_price_per_share
+        - transfer_date
+      properties:
+        entity_id:
+          type: string
+          description: Entity whose cap table is being mutated.
+          minLength: 1
+        share_class_id:
+          type: string
+          description: Share class of the shares being transferred.
+          minLength: 1
+        from_holder_id:
+          type: string
+          description: |
+            Identifier of the disposing holder.  Must hold sufficient
+            shares in the specified class.
+          minLength: 1
+        to_holder_id:
+          type: string
+          description: Identifier of the acquiring holder.
+          minLength: 1
+        to_holder_type:
+          type: string
+          enum:
+            - individual
+            - entity
+            - trust
+            - fund
+            - nominee
+          description: |
+            Type of the acquiring holder.  Required when the acquirer
+            is new to the cap table.
+        to_holder_name:
+          type: string
+          description: Display name of the acquiring holder.
+        shares:
+          type: string
+          pattern: '^[0-9]+$'
+          description: |
+            Number of shares to transfer.  Encoded as a decimal string.
+            Must be > 0 and <= the from_holder's current position.
+        transfer_price_per_share:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]+)?$'
+          description: |
+            Price per share at which the transfer occurs.  Used to
+            compute capital gain or loss against the cost basis.
+            Encoded as a decimal string in the share-class currency.
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          description: |
+            ISO 4217 currency code for the transfer price.  Must match
+            the share-class currency.
+        transfer_date:
+          type: string
+          format: date
+          description: |
+            Effective date of the transfer.  ISO 8601 date format.
+            Used for holding-period computation (short-term vs
+            long-term capital gains).
+        transfer_type:
+          type: string
+          enum:
+            - sale
+            - gift
+            - inheritance
+            - corporate_action
+            - vesting_release
+          default: sale
+          description: |
+            Nature of the transfer.  Affects tax-event computation:
+            gifts and inheritances may have different cost-basis
+            rules depending on the jurisdiction.
+        board_resolution_ref:
+          type: string
+          description: |
+            Artifact reference (CAS digest) to the signed board
+            resolution authorizing this transfer.  Required when the
+            share class has `board_approval_required: true`.
+        nonce:
+          type: string
+          minLength: 1
+          description: |
+            Unique per-sender nonce for replay protection.
+        notes:
+          type: string
+          description: |
+            Free-text notes attached to the transfer record.
+        ntn_from:
+          type: string
+          pattern: '^[0-9]{7}-[0-9]$'
+          description: |
+            National Tax Number of the disposing party.  Included in
+            the emitted TaxEvent for FBR IRIS integration.
+        ntn_to:
+          type: string
+          pattern: '^[0-9]{7}-[0-9]$'
+          description: |
+            National Tax Number of the acquiring party, if applicable.
+
+    # ---- Ownership Transfer Response ---------------------------------------
+    OwnershipTransferResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - transfer_id
+        - entity_id
+        - share_class_id
+        - from_holder_id
+        - to_holder_id
+        - shares
+        - transfer_price_per_share
+        - transfer_date
+        - tax_event
+        - state_digest_sha256
+        - recorded_at
+      properties:
+        transfer_id:
+          type: string
+          description: |
+            Unique identifier for this transfer record.  Content-addressed
+            via `jcs_canonicalize()`.
+          minLength: 1
+        entity_id:
+          type: string
+        share_class_id:
+          type: string
+        from_holder_id:
+          type: string
+        to_holder_id:
+          type: string
+        shares:
+          type: string
+          pattern: '^[0-9]+$'
+        transfer_price_per_share:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]+)?$'
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        transfer_date:
+          type: string
+          format: date
+        transfer_type:
+          type: string
+          enum:
+            - sale
+            - gift
+            - inheritance
+            - corporate_action
+            - vesting_release
+        board_resolution_ref:
+          type: string
+        tax_event:
+          $ref: '#/components/schemas/TaxEvent'
+        state_digest_sha256:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: |
+            SHA-256 digest of the post-transfer cap-table state.
+            Computed via `jcs_canonicalize()`.
+        corridor_receipt_ref:
+          type: string
+          description: |
+            If the entity is corridor-bound, the corridor receipt
+            digest that anchors this transfer.
+        recorded_at:
+          type: string
+          format: date-time
+          description: ISO 8601 UTC timestamp of when the transfer was recorded.
+
+    # ---- Tax Event ----------------------------------------------------------
+    TaxEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - tax_event_id
+        - event_type
+        - entity_id
+        - disposing_holder_id
+        - share_class_id
+        - shares_disposed
+        - cost_basis_per_share
+        - proceeds_per_share
+        - gain_or_loss
+        - currency
+        - disposal_date
+        - holding_period
+        - generated_at
+      description: |
+        A capital-gains tax event emitted by the GovOS fiscal pipeline when
+        an ownership transfer triggers a taxable disposition.  This record
+        is the authoritative input for FBR IRIS reporting and withholding-
+        at-source computation.
+      properties:
+        tax_event_id:
+          type: string
+          description: |
+            Unique identifier for this tax event.  Content-addressed
+            via `jcs_canonicalize()`.
+          minLength: 1
+        event_type:
+          type: string
+          enum:
+            - capital_gain_short_term
+            - capital_gain_long_term
+            - capital_loss_short_term
+            - capital_loss_long_term
+            - exempt
+          description: |
+            Classification of the tax event.  Determined by the holding
+            period and the jurisdiction's short-term/long-term threshold.
+        entity_id:
+          type: string
+          description: Entity whose cap table produced this event.
+        disposing_holder_id:
+          type: string
+          description: Identifier of the holder disposing of shares.
+        acquiring_holder_id:
+          type: string
+          description: Identifier of the acquiring holder.
+        ntn:
+          type: string
+          pattern: '^[0-9]{7}-[0-9]$'
+          description: |
+            National Tax Number of the disposing party.  This is the
+            primary fiscal identifier for FBR IRIS integration.
+        share_class_id:
+          type: string
+          description: Share class of the disposed shares.
+        shares_disposed:
+          type: string
+          pattern: '^[0-9]+$'
+          description: |
+            Number of shares disposed.  Decimal string.
+        cost_basis_per_share:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]+)?$'
+          description: |
+            Cost basis per share at the time of acquisition.  Used to
+            compute the gain or loss.  Decimal string.
+        proceeds_per_share:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]+)?$'
+          description: |
+            Transfer price per share (the disposal proceeds).  Decimal
+            string.
+        total_cost_basis:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]+)?$'
+          description: |
+            `cost_basis_per_share * shares_disposed`.  Decimal string.
+            Provided as a convenience for downstream tax computation.
+        total_proceeds:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]+)?$'
+          description: |
+            `proceeds_per_share * shares_disposed`.  Decimal string.
+        gain_or_loss:
+          type: string
+          pattern: '^-?[0-9]+(\.[0-9]+)?$'
+          description: |
+            Net capital gain (positive) or loss (negative).  Computed as
+            `total_proceeds - total_cost_basis`.  Decimal string.  Negative
+            values are prefixed with `-`.
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          description: ISO 4217 currency code.
+        disposal_date:
+          type: string
+          format: date
+          description: |
+            Effective date of the disposal.  ISO 8601 date format.
+        acquisition_date:
+          type: string
+          format: date
+          description: |
+            Original acquisition date of the disposed shares.
+        holding_period:
+          type: string
+          enum:
+            - short_term
+            - long_term
+          description: |
+            Holding-period classification.  Determined by the
+            jurisdiction's threshold (typically 1 year).
+        withholding_applicable:
+          type: boolean
+          description: |
+            Whether withholding tax at source applies to this
+            disposition.
+        withholding_rate:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]+)?$'
+          description: |
+            Applicable withholding tax rate as a decimal (e.g., "0.15"
+            for 15%).  Present only when `withholding_applicable` is
+            `true`.
+        withholding_amount:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]+)?$'
+          description: |
+            Computed withholding amount.  Decimal string.  Present only
+            when `withholding_applicable` is `true`.
+        jurisdiction_id:
+          type: string
+          description: |
+            Zone or jurisdiction that governs the tax treatment of
+            this event.
+        transfer_ref:
+          type: string
+          description: |
+            Reference to the `OwnershipTransferResponse.transfer_id`
+            that generated this tax event.
+        generated_at:
+          type: string
+          format: date-time
+          description: ISO 8601 UTC timestamp of tax-event generation.
+
+    # ---- Convertible Instrument --------------------------------------------
+    ConvertibleInstrument:
+      type: object
+      additionalProperties: false
+      required:
+        - instrument_id
+        - instrument_type
+        - holder_id
+        - principal_amount
+        - currency
+        - status
+      properties:
+        instrument_id:
+          type: string
+          description: Unique identifier for this instrument.
+          minLength: 1
+        instrument_type:
+          type: string
+          enum:
+            - safe
+            - convertible_note
+            - warrant
+          description: |
+            Type of convertible instrument.
+        holder_id:
+          type: string
+          description: Identifier of the instrument holder.
+          minLength: 1
+        principal_amount:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]+)?$'
+          description: |
+            Face value or investment amount.  Decimal string.
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        valuation_cap:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]+)?$'
+          description: |
+            Valuation cap for conversion.  Decimal string.
+        discount_rate:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]+)?$'
+          description: |
+            Discount rate for conversion (e.g., "0.20" for 20%).
+        interest_rate:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]+)?$'
+          description: |
+            Annual interest rate for convertible notes.
+        maturity_date:
+          type: string
+          format: date
+          description: |
+            Maturity date for notes and warrants.  ISO 8601 date format.
+        conversion_share_class:
+          type: string
+          description: |
+            Share class into which this instrument converts.
+        status:
+          type: string
+          enum:
+            - outstanding
+            - converted
+            - cancelled
+            - expired
+
+    # ---- Option Pool --------------------------------------------------------
+    OptionPool:
+      type: object
+      additionalProperties: false
+      required:
+        - pool_id
+        - name
+        - share_class_id
+        - total_shares
+        - allocated_shares
+        - available_shares
+      properties:
+        pool_id:
+          type: string
+          description: Unique identifier for this option pool.
+          minLength: 1
+        name:
+          type: string
+          description: |
+            Pool name (e.g., "Employee Stock Option Pool", "Advisor
+            Pool").
+          minLength: 1
+        share_class_id:
+          type: string
+          description: Share class from which options are drawn.
+          minLength: 1
+        total_shares:
+          type: string
+          pattern: '^[0-9]+$'
+          description: |
+            Total shares reserved for this pool.  Decimal string.
+        allocated_shares:
+          type: string
+          pattern: '^[0-9]+$'
+          description: |
+            Shares already allocated to option grants.
+        available_shares:
+          type: string
+          pattern: '^[0-9]+$'
+          description: |
+            Shares available for new grants (`total - allocated`).
+        exercised_shares:
+          type: string
+          pattern: '^[0-9]+$'
+          description: |
+            Shares from this pool that have been exercised into
+            actual shareholdings.

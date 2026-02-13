@@ -33,6 +33,22 @@ from tools.vc import (
 )  # type: ignore
 
 
+__all__ = [
+    "asset_id_from_genesis",
+    "state_root_from_state",
+    "build_genesis",
+    "evaluate_transition_compliance",
+    "BindingComplianceResult",
+    "cmd_asset_genesis_init",
+    "cmd_asset_genesis_hash",
+    "cmd_asset_registry_init",
+    "cmd_asset_checkpoint_build",
+    "cmd_asset_attestation_init",
+    "cmd_asset_compliance_eval",
+    "cmd_asset_rule_eval_evidence_init",
+]
+
+
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
@@ -159,12 +175,21 @@ def _extract_attestation_kinds_from_artifact(
             repo_root=REPO_ROOT,
             store_roots=store_roots,
         )
-    except Exception:
+    except (FileNotFoundError, ValueError, OSError) as exc:
+        # Artifact not found in any store root — treat as unavailable.
+        import logging
+        logging.getLogger(__name__).debug(
+            "Could not resolve artifact %s:%s: %s", at, dg, exc,
+        )
         return set()
 
     try:
         obj = json.loads(resolved.read_text(encoding="utf-8"))
-    except Exception:
+    except (json.JSONDecodeError, OSError) as exc:
+        import logging
+        logging.getLogger(__name__).debug(
+            "Could not parse artifact %s:%s at %s: %s", at, dg, resolved, exc,
+        )
         return set()
 
     if not isinstance(obj, dict):
@@ -601,7 +626,7 @@ def _evaluate_quorum_policy(
     if mode == "quorum":
         try:
             min_harbors = int(rule.get("min_harbors") or 0)
-        except Exception:
+        except (ValueError, TypeError):
             min_harbors = 0
         if min_harbors < 1:
             min_harbors = 1

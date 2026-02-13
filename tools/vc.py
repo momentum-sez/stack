@@ -32,6 +32,22 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
 
+__all__ = [
+    "canonicalize_json",
+    "signing_input",
+    "verify_credential",
+    "add_ed25519_proof",
+    "load_ed25519_private_key_from_jwk",
+    "load_proof_keypair",
+    "generate_ed25519_jwk",
+    "public_jwk_from_private_jwk",
+    "did_key_from_ed25519_public_key",
+    "ed25519_public_key_from_did_key",
+    "now_rfc3339",
+    "ProofResult",
+]
+
+
 # Base58 implementation (no external deps)
 B58_ALPHABET = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 B58_MAP = {c: i for i, c in enumerate(B58_ALPHABET)}

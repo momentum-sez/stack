@@ -42,7 +42,7 @@ def _is_hex_32(s: str) -> bool:
     try:
         bytes.fromhex(ss)
         return True
-    except Exception:
+    except ValueError:
         return False
 
 
@@ -226,7 +226,7 @@ def verify_inclusion_proof(proof: Dict[str, Any]) -> bool:
         root = str(proof.get("root") or "").strip().lower()
         peaks_in = proof.get("peaks")
         path = proof.get("path")
-    except Exception:
+    except (TypeError, ValueError, AttributeError):
         return False
 
     if size <= 0 or leaf_index < 0 or leaf_index >= size:
@@ -260,7 +260,7 @@ def verify_inclusion_proof(proof: Dict[str, Any]) -> bool:
         exp_peak_index, _start, exp_height = _find_peak_for_leaf(size, leaf_index)
         if exp_peak_index != peak_index or exp_height != peak_height:
             return False
-    except Exception:
+    except (ValueError, RuntimeError):
         return False
 
     # Compute peak root from path.

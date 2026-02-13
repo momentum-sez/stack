@@ -118,6 +118,11 @@ impl<'de> Deserialize<'de> for Ed25519Signature {
 ///
 /// ## Security
 ///
+/// The inner `ed25519_dalek::SigningKey` implements `ZeroizeOnDrop` (enabled via
+/// the `zeroize` feature flag on the `ed25519-dalek` crate). When this wrapper
+/// is dropped, the 32-byte secret key material is securely overwritten with
+/// zeros, preventing it from lingering in memory.
+///
 /// This type intentionally does **not** implement `Serialize`. Private keys
 /// must not be casually serialized. Use [`SigningKey::to_bytes()`] for
 /// explicit key export when required.
@@ -439,6 +444,13 @@ mod tests {
         let sig1 = sk.sign(&data);
         let sig2 = sk.sign(&data);
         assert_eq!(sig1, sig2);
+    }
+
+    #[test]
+    fn signing_key_drops_cleanly() {
+        let key = SigningKey::generate(&mut OsRng);
+        let _pub = key.verifying_key();
+        drop(key);
     }
 
     // ── Coverage expansion tests ─────────────────────────────────────

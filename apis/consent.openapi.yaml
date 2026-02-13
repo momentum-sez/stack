@@ -1,0 +1,1014 @@
+openapi: "3.1.0"
+info:
+  title: MSEZ Consent Info API
+  version: "0.4.44"
+  description: |
+    OpenAPI specification for the Consent primitive of the Momentum SEZ Stack.
+
+    The Consent primitive governs multi-party signatures, resolutions, approvals,
+    and delegated authority within a zone. Every state transition that requires
+    authorization from more than one party (e.g., corporate resolutions, transfer
+    approvals, regulatory sign-offs) flows through the consent subsystem.
+
+    Consent records are content-addressed and append-only. Once a consent request
+    is created, its terms are immutable. Signatories approve or reject the request,
+    and a full audit trail is maintained for regulatory inspection.
+
+    This API supports the five programmable primitives architecture defined in
+    spec/12-mass-primitives-mapping.md: Entities, Ownership, Instruments,
+    Identity, and Consent.
+
+  contact:
+    name: Momentum SEZ Stack
+    url: https://github.com/momentum-sez/stack
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: https://{zone_node}/api
+    description: Zone node API gateway
+    variables:
+      zone_node:
+        default: example.zone
+        description: Hostname of the zone node serving this API.
+
+tags:
+  - name: consent
+    description: >
+      Multi-party consent lifecycle: request creation, signature collection,
+      status queries, and audit trail retrieval.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/consent/request:
+    post:
+      tags: [consent]
+      summary: Request multi-party consent
+      operationId: createConsentRequest
+      description: |
+        Creates a new multi-party consent request. The request specifies the action
+        requiring consent, the list of required signatories, the approval threshold,
+        and an optional deadline after which the request expires.
+
+        The returned `consent_id` is a content-addressed identifier derived from the
+        canonical serialization of the consent terms. This ensures that any
+        modification to the terms produces a different identifier, preventing
+        tampering.
+
+        **Authorization scope:** `consent:create`
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentRequest'
+            examples:
+              corporate_resolution:
+                summary: Board resolution requiring majority approval
+                value:
+                  action_type: "corporate_resolution"
+                  title: "Approve Q1 dividend distribution"
+                  description: "Resolution to distribute quarterly dividends to Class A shareholders."
+                  requester_id: "did:msez:entity:corp-1234"
+                  zone_id: "zone:pk-sez-01"
+                  signatories:
+                    - signatory_id: "did:msez:identity:director-001"
+                      role: "board_director"
+                      required: true
+                    - signatory_id: "did:msez:identity:director-002"
+                      role: "board_director"
+                      required: true
+                    - signatory_id: "did:msez:identity:director-003"
+                      role: "board_director"
+                      required: false
+                  threshold:
+                    type: "majority"
+                    minimum_count: 2
+                  reference_documents:
+                    - document_type: "resolution_text"
+                      digest_sha256: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+                      uri: "cas://resolution/a1b2c3d4.json"
+                  deadline: "2026-03-15T23:59:59Z"
+                  metadata:
+                    fiscal_quarter: "Q1-2026"
+      responses:
+        '201':
+          description: Consent request created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentRecord'
+          headers:
+            Location:
+              description: URI of the newly created consent record.
+              schema:
+                type: string
+                format: uri
+                examples:
+                  - "/v1/consent/con_abc123def456"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/consent/{consent_id}:
+    get:
+      tags: [consent]
+      summary: Get consent status
+      operationId: getConsentStatus
+      description: |
+        Retrieves the current state of a consent request, including the list of
+        signatories, their approval/rejection status, and whether the overall
+        consent threshold has been met.
+
+        The response includes the full consent record with computed fields:
+        - `status`: The aggregate consent status (pending, approved, rejected, expired).
+        - `signatures_collected`: Count of signatures received.
+        - `threshold_met`: Whether the approval threshold has been satisfied.
+
+        **Authorization scope:** `consent:read`
+      parameters:
+        - $ref: '#/components/parameters/ConsentId'
+      responses:
+        '200':
+          description: Current consent record with status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentRecord'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/consent/{consent_id}/sign:
+    post:
+      tags: [consent]
+      summary: Sign consent
+      operationId: signConsent
+      description: |
+        Submits a cryptographic signature for a consent request. The signatory
+        must be listed in the consent request's `signatories` array.
+
+        The signature payload includes the signatory's decision (approve or reject),
+        an optional justification, and the Ed25519 proof over the consent terms.
+
+        Signing is idempotent for approval: re-submitting an identical approval
+        signature returns 200 with the existing record. However, changing a
+        decision (e.g., from approve to reject) after submission is not permitted
+        and returns 422.
+
+        Once the approval threshold is met, the consent record transitions to
+        `approved` status. If enough rejections accumulate to make threshold
+        approval impossible, the record transitions to `rejected`.
+
+        **Authorization scope:** `consent:sign`
+      parameters:
+        - $ref: '#/components/parameters/ConsentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentSignature'
+            examples:
+              approval:
+                summary: Director approves a resolution
+                value:
+                  signatory_id: "did:msez:identity:director-001"
+                  decision: "approve"
+                  justification: "Terms reviewed and accepted per fiduciary obligation."
+                  signed_at: "2026-02-13T14:30:00Z"
+                  proof:
+                    type: "Ed25519Signature2020"
+                    created: "2026-02-13T14:30:00Z"
+                    verification_method: "did:msez:identity:director-001#key-1"
+                    proof_purpose: "assertionMethod"
+                    proof_value: "z3hF9xK7mNpQr..."
+              rejection:
+                summary: Director rejects a resolution
+                value:
+                  signatory_id: "did:msez:identity:director-002"
+                  decision: "reject"
+                  justification: "Insufficient reserves for proposed distribution."
+                  signed_at: "2026-02-13T15:00:00Z"
+                  proof:
+                    type: "Ed25519Signature2020"
+                    created: "2026-02-13T15:00:00Z"
+                    verification_method: "did:msez:identity:director-002#key-1"
+                    proof_purpose: "assertionMethod"
+                    proof_value: "z4gH0yL8nOpRs..."
+      responses:
+        '200':
+          description: Signature accepted and recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentRecord'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/consent/{consent_id}/audit-trail:
+    get:
+      tags: [consent]
+      summary: Get full audit history
+      operationId: getConsentAuditTrail
+      description: |
+        Returns the complete, ordered audit trail for a consent request. Every
+        state-changing event is recorded: creation, each signature submission,
+        threshold transitions, expiration events, and any administrative actions.
+
+        The audit trail is append-only and content-addressed. Each entry includes
+        a `previous_entry_digest` field forming a hash chain, enabling independent
+        verification of trail integrity without access to the full database.
+
+        Results are ordered chronologically (oldest first). Pagination is supported
+        via `offset` and `limit` query parameters for consent requests with
+        extensive audit histories.
+
+        **Authorization scope:** `consent:audit`
+      parameters:
+        - $ref: '#/components/parameters/ConsentId'
+        - name: offset
+          in: query
+          required: false
+          description: Number of audit entries to skip (for pagination).
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of audit entries to return.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+      responses:
+        '200':
+          description: Ordered list of audit trail entries.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [consent_id, entries, total_count]
+                properties:
+                  consent_id:
+                    type: string
+                    description: The consent request identifier.
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditTrailEntry'
+                  total_count:
+                    type: integer
+                    description: Total number of audit entries for this consent request.
+                    minimum: 0
+                  offset:
+                    type: integer
+                    description: Current pagination offset.
+                  limit:
+                    type: integer
+                    description: Current pagination limit.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT bearer token with scope claims. Tokens are issued by the zone's
+        identity provider and must include the appropriate scope for each
+        endpoint:
+        - `consent:create` for POST /v1/consent/request
+        - `consent:read` for GET /v1/consent/{consent_id}
+        - `consent:sign` for POST /v1/consent/{consent_id}/sign
+        - `consent:audit` for GET /v1/consent/{consent_id}/audit-trail
+
+        Tokens must include the `sub` claim identifying the caller and the
+        `zone_id` claim restricting access to consent records within the
+        caller's zone.
+
+  parameters:
+    ConsentId:
+      name: consent_id
+      in: path
+      required: true
+      description: |
+        Content-addressed identifier for the consent request. Derived from
+        the SHA-256 digest of the JCS-canonicalized consent terms at creation
+        time, prefixed with `con_`.
+      schema:
+        type: string
+        pattern: '^con_[a-f0-9]{64}$'
+        examples:
+          - "con_a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+
+  responses:
+    BadRequest:
+      description: >
+        The request body is malformed, missing required fields, or contains
+        invalid values that prevent parsing.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing_field:
+              summary: Required field missing
+              value:
+                error_code: "INVALID_REQUEST"
+                message: "Request validation failed."
+                details:
+                  - field: "signatories"
+                    reason: "Field is required but was not provided."
+                request_id: "req_abc123"
+                timestamp: "2026-02-13T12:00:00Z"
+
+    Unauthorized:
+      description: >
+        Authentication is required. The request did not include a valid bearer
+        token, or the token has expired.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            expired_token:
+              summary: Token expired
+              value:
+                error_code: "AUTHENTICATION_REQUIRED"
+                message: "Bearer token is missing or expired."
+                details: []
+                request_id: "req_def456"
+                timestamp: "2026-02-13T12:00:00Z"
+
+    Forbidden:
+      description: >
+        The authenticated caller does not have the required scope or zone
+        membership to perform this operation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            insufficient_scope:
+              summary: Missing required scope
+              value:
+                error_code: "INSUFFICIENT_SCOPE"
+                message: "Token lacks the required scope 'consent:sign'."
+                details:
+                  - field: "authorization"
+                    reason: "Required scope: consent:sign"
+                request_id: "req_ghi789"
+                timestamp: "2026-02-13T12:00:00Z"
+
+    NotFound:
+      description: >
+        No consent record exists with the specified consent_id, or the record
+        belongs to a zone the caller does not have access to.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            not_found:
+              summary: Consent record not found
+              value:
+                error_code: "CONSENT_NOT_FOUND"
+                message: "No consent record found for the specified identifier."
+                details: []
+                request_id: "req_jkl012"
+                timestamp: "2026-02-13T12:00:00Z"
+
+    UnprocessableEntity:
+      description: >
+        The request is syntactically valid but cannot be processed due to
+        business rule violations (e.g., duplicate signature, consent already
+        finalized, signatory not authorized, decision change attempted).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            consent_expired:
+              summary: Consent request has expired
+              value:
+                error_code: "CONSENT_EXPIRED"
+                message: "Cannot sign an expired consent request."
+                details:
+                  - field: "deadline"
+                    reason: "Consent deadline was 2026-02-12T23:59:59Z."
+                request_id: "req_mno345"
+                timestamp: "2026-02-13T12:00:00Z"
+            decision_change:
+              summary: Attempted to change a previously recorded decision
+              value:
+                error_code: "DECISION_IMMUTABLE"
+                message: "Cannot change decision from 'approve' to 'reject' after submission."
+                details:
+                  - field: "decision"
+                    reason: "Previous decision 'approve' was recorded at 2026-02-13T10:00:00Z."
+                request_id: "req_pqr678"
+                timestamp: "2026-02-13T12:00:00Z"
+
+    InternalServerError:
+      description: >
+        An unexpected internal error occurred. The request_id can be used
+        for incident correlation with zone operator support.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            internal_error:
+              summary: Internal server error
+              value:
+                error_code: "INTERNAL_ERROR"
+                message: "An unexpected error occurred. Please retry or contact support."
+                details: []
+                request_id: "req_stu901"
+                timestamp: "2026-02-13T12:00:00Z"
+
+  schemas:
+    ConsentRequest:
+      type: object
+      description: |
+        A request to obtain multi-party consent for a specified action. The
+        request defines the action, the required signatories, the approval
+        threshold, and an optional deadline.
+
+        Once submitted, the consent terms are immutable. The consent_id is
+        derived from the JCS-canonicalized digest of the terms, ensuring that
+        any modification produces a distinct identifier.
+      additionalProperties: false
+      required:
+        - action_type
+        - title
+        - requester_id
+        - zone_id
+        - signatories
+        - threshold
+      properties:
+        action_type:
+          type: string
+          description: |
+            Classification of the action requiring consent. Used for routing
+            to the appropriate approval policy.
+          examples:
+            - "corporate_resolution"
+            - "ownership_transfer"
+            - "regulatory_approval"
+            - "delegation_of_authority"
+            - "amendment"
+        title:
+          type: string
+          description: Human-readable title summarizing the consent request.
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+          description: Detailed description of the action requiring consent.
+          maxLength: 5000
+        requester_id:
+          type: string
+          description: |
+            DID of the entity or identity initiating the consent request.
+            Must be a valid DID within the zone's identity registry.
+          pattern: '^did:msez:'
+        zone_id:
+          type: string
+          description: |
+            Identifier of the zone in which this consent request operates.
+            Consent records are zone-scoped; cross-zone consent requires
+            corridor-level coordination.
+        signatories:
+          type: array
+          description: |
+            Ordered list of parties whose consent is requested. Each signatory
+            is identified by DID and may be marked as required (must sign for
+            threshold to be met) or optional (contributes to count but not
+            mandatory).
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/SignatoryDefinition'
+        threshold:
+          $ref: '#/components/schemas/ApprovalThreshold'
+        reference_documents:
+          type: array
+          description: |
+            Content-addressed references to documents that form the basis of
+            the consent request (e.g., resolution text, contract terms,
+            regulatory filings). Signatories attest to having reviewed these
+            documents when signing.
+          items:
+            $ref: '#/components/schemas/ReferenceDocument'
+        deadline:
+          type: string
+          format: date-time
+          description: |
+            ISO 8601 UTC timestamp after which the consent request expires
+            automatically. If not provided, the request remains open
+            indefinitely (subject to zone-level expiration policies).
+        metadata:
+          type: object
+          description: |
+            Extensible metadata for zone-specific or action-specific context.
+            Not included in the consent_id digest computation.
+          additionalProperties: true
+
+    ConsentRecord:
+      type: object
+      description: |
+        The full state of a consent request, including computed status fields.
+        Returned by both the creation and status endpoints.
+      additionalProperties: false
+      required:
+        - consent_id
+        - action_type
+        - title
+        - requester_id
+        - zone_id
+        - signatories
+        - threshold
+        - status
+        - signatures_collected
+        - threshold_met
+        - created_at
+        - updated_at
+        - digest_sha256
+      properties:
+        consent_id:
+          type: string
+          description: Content-addressed identifier for this consent request.
+          pattern: '^con_[a-f0-9]{64}$'
+        action_type:
+          type: string
+          description: Classification of the action requiring consent.
+        title:
+          type: string
+          description: Human-readable title of the consent request.
+        description:
+          type: string
+          description: Detailed description of the action requiring consent.
+        requester_id:
+          type: string
+          description: DID of the entity or identity that initiated the request.
+          pattern: '^did:msez:'
+        zone_id:
+          type: string
+          description: Zone in which this consent request operates.
+        signatories:
+          type: array
+          description: |
+            List of signatories with their current signature status. Each entry
+            reflects whether the signatory has signed and their decision.
+          items:
+            $ref: '#/components/schemas/SignatoryStatus'
+        threshold:
+          $ref: '#/components/schemas/ApprovalThreshold'
+        reference_documents:
+          type: array
+          description: Content-addressed document references for the consent terms.
+          items:
+            $ref: '#/components/schemas/ReferenceDocument'
+        deadline:
+          type: string
+          format: date-time
+          description: Expiration deadline (UTC) if set.
+        status:
+          type: string
+          description: |
+            Aggregate consent status, computed from signatory decisions and
+            the threshold configuration.
+          enum:
+            - pending
+            - approved
+            - rejected
+            - expired
+            - revoked
+        signatures_collected:
+          type: integer
+          description: Number of approval signatures received so far.
+          minimum: 0
+        threshold_met:
+          type: boolean
+          description: Whether the approval threshold has been satisfied.
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the consent request was created (UTC).
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp of the most recent state change (UTC).
+        digest_sha256:
+          type: string
+          description: |
+            SHA-256 digest of the JCS-canonicalized consent terms. This is
+            the value that signatories cryptographically attest to when signing.
+          pattern: '^[a-f0-9]{64}$'
+        metadata:
+          type: object
+          description: Extensible metadata (not included in digest computation).
+          additionalProperties: true
+
+    ConsentSignature:
+      type: object
+      description: |
+        A cryptographic signature submitted by a signatory to approve or reject
+        a consent request. The proof covers the JCS-canonicalized consent terms
+        digest, the signatory's decision, and the timestamp.
+      additionalProperties: false
+      required:
+        - signatory_id
+        - decision
+        - signed_at
+        - proof
+      properties:
+        signatory_id:
+          type: string
+          description: |
+            DID of the signatory submitting this signature. Must match one of
+            the signatories listed in the consent request.
+          pattern: '^did:msez:'
+        decision:
+          type: string
+          description: The signatory's decision on the consent request.
+          enum:
+            - approve
+            - reject
+        justification:
+          type: string
+          description: |
+            Optional free-text justification for the decision. Recorded in the
+            audit trail for governance and compliance review.
+          maxLength: 5000
+        signed_at:
+          type: string
+          format: date-time
+          description: |
+            ISO 8601 UTC timestamp of when the signatory made the decision.
+            Must not be in the future (subject to a 5-minute clock skew
+            tolerance) and must not precede the consent request creation time.
+        proof:
+          $ref: '#/components/schemas/CryptographicProof'
+
+    CryptographicProof:
+      type: object
+      description: |
+        Ed25519 cryptographic proof over the consent terms digest and the
+        signatory's decision. Follows the W3C Verifiable Credential Data
+        Integrity specification.
+      additionalProperties: false
+      required:
+        - type
+        - created
+        - verification_method
+        - proof_purpose
+        - proof_value
+      properties:
+        type:
+          type: string
+          description: Signature suite identifier.
+          enum:
+            - Ed25519Signature2020
+        created:
+          type: string
+          format: date-time
+          description: Timestamp when the proof was generated (UTC).
+        verification_method:
+          type: string
+          description: |
+            DID URL identifying the public key used to generate the proof.
+            Must resolve to a key controlled by the signatory.
+          pattern: '^did:msez:.+#.+$'
+        proof_purpose:
+          type: string
+          description: The purpose of the proof in the consent context.
+          enum:
+            - assertionMethod
+            - authentication
+        proof_value:
+          type: string
+          description: |
+            Base58-encoded Ed25519 signature value over the canonical digest
+            of the consent terms concatenated with the decision and timestamp.
+
+    SignatoryDefinition:
+      type: object
+      description: |
+        Definition of a signatory in a consent request. Specifies who must
+        sign and whether their signature is mandatory.
+      additionalProperties: false
+      required:
+        - signatory_id
+        - role
+      properties:
+        signatory_id:
+          type: string
+          description: DID of the signatory.
+          pattern: '^did:msez:'
+        role:
+          type: string
+          description: |
+            Role of the signatory in the context of this consent request
+            (e.g., board_director, compliance_officer, regulator, shareholder).
+        required:
+          type: boolean
+          description: |
+            Whether this signatory's approval is mandatory. If true, the
+            consent cannot reach 'approved' status without this signatory's
+            approval, regardless of the threshold count.
+          default: false
+        delegation_allowed:
+          type: boolean
+          description: |
+            Whether this signatory may delegate their signing authority to
+            another identity. Delegation must be backed by a valid delegation
+            credential.
+          default: false
+
+    SignatoryStatus:
+      type: object
+      description: |
+        Current status of a signatory within a consent record, including
+        whether they have signed and their decision.
+      additionalProperties: false
+      required:
+        - signatory_id
+        - role
+        - has_signed
+      properties:
+        signatory_id:
+          type: string
+          description: DID of the signatory.
+          pattern: '^did:msez:'
+        role:
+          type: string
+          description: Role of the signatory.
+        required:
+          type: boolean
+          description: Whether this signatory's approval is mandatory.
+        has_signed:
+          type: boolean
+          description: Whether this signatory has submitted a signature.
+        decision:
+          type: string
+          description: The signatory's decision, if they have signed.
+          enum:
+            - approve
+            - reject
+        signed_at:
+          type: string
+          format: date-time
+          description: Timestamp of the signature submission (UTC).
+        justification:
+          type: string
+          description: Signatory's justification for their decision.
+
+    ApprovalThreshold:
+      type: object
+      description: |
+        Defines the approval threshold for a consent request. Supports
+        unanimous, majority, and custom count-based thresholds.
+      additionalProperties: false
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: |
+            Threshold computation method:
+            - `unanimous`: All signatories must approve.
+            - `majority`: More than half of signatories must approve.
+            - `qualified_majority`: A supermajority (e.g., 2/3) must approve.
+            - `count`: A specific minimum number of approvals is required.
+          enum:
+            - unanimous
+            - majority
+            - qualified_majority
+            - count
+        minimum_count:
+          type: integer
+          description: |
+            Minimum number of approval signatures required. Mandatory when
+            `type` is `count`. For `qualified_majority`, this represents the
+            numerator of the fraction (e.g., 2 for a 2/3 majority).
+          minimum: 1
+        denominator:
+          type: integer
+          description: |
+            Denominator for `qualified_majority` threshold (e.g., 3 for a
+            2/3 majority). Ignored for other threshold types.
+          minimum: 1
+
+    AuditTrailEntry:
+      type: object
+      description: |
+        A single entry in the consent audit trail. Entries form a hash chain:
+        each entry includes the SHA-256 digest of the previous entry, enabling
+        independent integrity verification.
+      additionalProperties: false
+      required:
+        - entry_id
+        - consent_id
+        - event_type
+        - timestamp
+        - actor_id
+        - entry_digest_sha256
+      properties:
+        entry_id:
+          type: string
+          description: Unique identifier for this audit trail entry.
+        consent_id:
+          type: string
+          description: The consent request this entry belongs to.
+          pattern: '^con_[a-f0-9]{64}$'
+        event_type:
+          type: string
+          description: Classification of the audited event.
+          enum:
+            - consent_created
+            - signature_submitted
+            - threshold_met
+            - consent_approved
+            - consent_rejected
+            - consent_expired
+            - consent_revoked
+            - deadline_extended
+            - delegation_recorded
+        timestamp:
+          type: string
+          format: date-time
+          description: UTC timestamp of the event.
+        actor_id:
+          type: string
+          description: |
+            DID of the actor who caused this event. For system-generated events
+            (e.g., expiration), this is the zone system identity.
+        previous_entry_digest:
+          type: string
+          description: |
+            SHA-256 digest of the previous audit trail entry, forming a hash
+            chain. Null for the first entry in the trail.
+          pattern: '^[a-f0-9]{64}$'
+        entry_digest_sha256:
+          type: string
+          description: |
+            SHA-256 digest of the JCS-canonicalized content of this entry
+            (excluding this field itself). Used as the `previous_entry_digest`
+            for the next entry.
+          pattern: '^[a-f0-9]{64}$'
+        detail:
+          type: object
+          description: |
+            Event-specific detail. Structure varies by event_type. For
+            `signature_submitted`, includes the signatory_id and decision.
+            For `threshold_met`, includes the final approval count.
+          additionalProperties: true
+        snapshot_status:
+          type: string
+          description: |
+            The consent record status at the time this event was recorded.
+            Provides a point-in-time view without requiring reconstruction.
+          enum:
+            - pending
+            - approved
+            - rejected
+            - expired
+            - revoked
+
+    ReferenceDocument:
+      type: object
+      description: |
+        Content-addressed reference to a document that forms part of the
+        consent terms. Signatories attest to having reviewed all referenced
+        documents when they sign.
+      additionalProperties: false
+      required:
+        - document_type
+        - digest_sha256
+      properties:
+        document_type:
+          type: string
+          description: |
+            Classification of the document (e.g., resolution_text, contract,
+            regulatory_filing, amendment).
+        digest_sha256:
+          type: string
+          description: SHA-256 digest of the document content.
+          pattern: '^[a-f0-9]{64}$'
+        uri:
+          type: string
+          description: |
+            Optional retrieval URI for the document. May be a CAS URI
+            (cas://type/digest.json) or an HTTPS URL.
+          format: uri
+        title:
+          type: string
+          description: Human-readable title of the referenced document.
+
+    Error:
+      type: object
+      description: |
+        Structured error response. All error responses from the Consent API
+        follow this format to enable programmatic error handling and
+        consistent operator diagnostics.
+      additionalProperties: false
+      required:
+        - error_code
+        - message
+        - request_id
+        - timestamp
+      properties:
+        error_code:
+          type: string
+          description: |
+            Machine-readable error code for programmatic handling. Codes
+            are stable across API versions and safe to match against.
+          enum:
+            - INVALID_REQUEST
+            - AUTHENTICATION_REQUIRED
+            - INSUFFICIENT_SCOPE
+            - CONSENT_NOT_FOUND
+            - CONSENT_EXPIRED
+            - CONSENT_ALREADY_FINALIZED
+            - SIGNATORY_NOT_AUTHORIZED
+            - DECISION_IMMUTABLE
+            - DUPLICATE_SIGNATURE
+            - INVALID_PROOF
+            - DEADLINE_VIOLATION
+            - ZONE_MISMATCH
+            - INTERNAL_ERROR
+        message:
+          type: string
+          description: Human-readable error description.
+        details:
+          type: array
+          description: |
+            Field-level error details for validation failures. Empty array
+            for non-validation errors.
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - field
+              - reason
+            properties:
+              field:
+                type: string
+                description: JSON path to the field that caused the error.
+              reason:
+                type: string
+                description: Human-readable explanation of the field error.
+              expected:
+                type: string
+                description: Expected value or format, if applicable.
+              actual:
+                type: string
+                description: Actual value received, if applicable.
+        request_id:
+          type: string
+          description: |
+            Unique identifier for this request. Used for incident correlation
+            with zone operator support and audit logging.
+        timestamp:
+          type: string
+          format: date-time
+          description: UTC timestamp of the error response.

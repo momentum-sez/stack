@@ -1,0 +1,1563 @@
+openapi: "3.1.0"
+info:
+  title: MSEZ Entities API — Organization Info Primitive
+  version: "0.4.44"
+  description: |
+    OpenAPI specification for the **Entities** programmable primitive of the
+    Momentum SEZ Stack (GENESIS v0.4.44).
+
+    This API provides the full entity lifecycle for Special Economic Zone
+    operations: formation (incorporation/registration), status management,
+    beneficial ownership registry, and the 10-stage dissolution workflow.
+
+    The Entities primitive maps to the **Organization Info API** in the Mass
+    five-primitives architecture and serves as the authoritative interface for
+    Corporate Service Provider (CSP) operations within a Zone Node.
+
+    ## Domain Model
+
+    An **Entity** represents a legal person (LLC, Corporation, Partnership,
+    Trust, DAO-LLC, or Foundation) incorporated or registered within a zone
+    jurisdiction. Each entity has:
+
+    - A unique `entity_id` (content-addressed, derived from genesis document)
+    - A lifecycle status governed by the corporate state machine
+    - A beneficial ownership registry (UBO) compliant with FATF recommendations
+    - Optional dissolution saga (10 sequential stages per the voluntary
+      dissolution workflow)
+
+    ## Authentication
+
+    All endpoints require a bearer token (JWT) with appropriate scope claims.
+    Tokens are issued by the Zone Node's identity provider and carry zone-scoped
+    authorization grants.
+
+    ## Versioning
+
+    All paths are prefixed with `/v1/`. Breaking changes will increment the
+    version prefix. Non-breaking additions (new optional fields, new endpoints)
+    do not trigger a version bump.
+
+  contact:
+    name: Momentum SEZ Stack
+    url: https://github.com/momentum-sez/stack
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: https://{zone_node}/api/v1
+    description: Zone Node API server
+    variables:
+      zone_node:
+        default: example.zone
+        description: Hostname of the target Zone Node
+
+tags:
+  - name: entities
+    description: Entity formation, retrieval, and lifecycle status management.
+  - name: beneficial-ownership
+    description: Beneficial ownership (UBO) registry operations per FATF recommendations.
+  - name: dissolution
+    description: |
+      10-stage entity dissolution workflow. Stages proceed sequentially:
+      board_resolution, shareholder_resolution, appoint_liquidator,
+      notify_creditors, realize_assets, settle_liabilities,
+      final_distribution, final_meeting, file_final_documents, dissolution.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/entities:
+    post:
+      tags: [entities]
+      operationId: createEntity
+      summary: Create an entity (formation)
+      description: |
+        Initiate entity formation (incorporation or registration) within the
+        zone jurisdiction. The request specifies the entity type, legal name,
+        jurisdiction bindings, and initial beneficial owners.
+
+        On success, returns the created entity with a content-addressed
+        `entity_id` derived from the canonical genesis document. The entity
+        is created in `DRAFT` status and must be advanced through the
+        formation workflow to reach `ACTIVE`.
+
+        This endpoint delegates to the `org.momentum.msez.corporate.formation`
+        module and enforces all jurisdiction-specific requirements (minimum
+        directors, local registered office, share capital constraints).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEntityRequest'
+            examples:
+              llc_formation:
+                summary: LLC formation in a starter zone
+                value:
+                  entity_type: "llc"
+                  legal_name: "Acme Trading LLC"
+                  jurisdiction_id: "ex"
+                  registered_office:
+                    address_line_1: "123 Commerce Boulevard"
+                    city: "Zone Alpha"
+                    country_code: "EX"
+                  share_capital:
+                    authorized_amount: "10000"
+                    currency: "USD"
+                  directors:
+                    - name: "Jane Director"
+                      identity_ref: "did:msez:id:jane-director-001"
+                      role: "director"
+                  beneficial_owners:
+                    - name: "Jane Director"
+                      identity_ref: "did:msez:id:jane-director-001"
+                      ownership_percentage: "100.0"
+                      control_type: "direct"
+                  metadata:
+                    formation_variant: "baseline"
+      responses:
+        '201':
+          description: Entity created successfully. Returns the entity in `DRAFT` status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entity'
+          headers:
+            Location:
+              description: URI of the created entity resource.
+              schema:
+                type: string
+                format: uri
+                example: "/v1/entities/ent_sha256_a1b2c3d4e5f6"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/entities/{entity_id}:
+    get:
+      tags: [entities]
+      operationId: getEntity
+      summary: Get entity details
+      description: |
+        Retrieve the current state of an entity, including its lifecycle status,
+        formation metadata, jurisdiction bindings, and summary beneficial
+        ownership information.
+
+        The response includes the entity's full formation record, current status,
+        and references to related resources (beneficial owners, dissolution
+        status if applicable).
+      parameters:
+        - $ref: '#/components/parameters/EntityId'
+      responses:
+        '200':
+          description: Entity details retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entity'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/entities/{entity_id}/status:
+    put:
+      tags: [entities]
+      operationId: updateEntityStatus
+      summary: Update entity lifecycle status
+      description: |
+        Transition the entity to a new lifecycle status. Valid transitions
+        are governed by the corporate lifecycle state machine:
+
+        ```
+        DRAFT -> PENDING_APPROVAL -> ACTIVE -> SUSPENDED -> ACTIVE
+                                           \-> DISSOLVING -> DISSOLVED
+                                           \-> STRUCK_OFF
+        PENDING_APPROVAL -> REJECTED
+        ```
+
+        Each transition may require evidence (e.g., board resolutions,
+        regulatory approvals, compliance attestations). The `evidence`
+        array accepts Verifiable Credential references or inline VCs.
+
+        Status updates are recorded in the entity's immutable history and
+        anchored to the corridor state for auditability.
+      parameters:
+        - $ref: '#/components/parameters/EntityId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEntityStatusRequest'
+            examples:
+              activate_entity:
+                summary: Activate a pending entity
+                value:
+                  target_status: "ACTIVE"
+                  reason: "Formation requirements satisfied"
+                  effective_at: "2026-02-13T12:00:00Z"
+                  evidence:
+                    - type: "VerifiableCredential"
+                      credential_ref:
+                        digest_sha256: "a1b2c3d4e5f60718293a4b5c6d7e8f901234567890abcdef1234567890abcdef"
+                        artifact_type: "vc"
+      responses:
+        '200':
+          description: Entity status updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entity'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/entities/{entity_id}/beneficial-owners:
+    get:
+      tags: [beneficial-ownership]
+      operationId: getBeneficialOwners
+      summary: Beneficial ownership registry
+      description: |
+        Retrieve the current beneficial ownership (UBO) registry for the entity.
+        Returns all individuals who meet the ownership or control threshold
+        (default: 25% per FATF recommendations).
+
+        The response includes each beneficial owner's identity reference,
+        ownership percentage, control type, verification status, and the
+        timestamp of the last verification.
+
+        This endpoint enforces role-based access control. Regulator-scoped
+        tokens receive full UBO details. Entity-scoped tokens receive only
+        the owners associated with the requesting identity. Public access
+        is governed by the zone's `public_access` parameter.
+
+        Implements the `org.momentum.msez.corporate.beneficial-ownership`
+        module interface.
+      parameters:
+        - $ref: '#/components/parameters/EntityId'
+        - name: include_historical
+          in: query
+          required: false
+          description: |
+            When `true`, includes beneficial owners who have been removed or
+            whose ownership has fallen below the threshold. Historical entries
+            are marked with `active: false` and include the `removed_at`
+            timestamp.
+          schema:
+            type: boolean
+            default: false
+        - name: verification_status
+          in: query
+          required: false
+          description: Filter by verification status.
+          schema:
+            type: string
+            enum:
+              - verified
+              - pending
+              - expired
+              - unverified
+      responses:
+        '200':
+          description: Beneficial ownership registry retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BeneficialOwnershipRegistry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/entities/{entity_id}/dissolution/initiate:
+    post:
+      tags: [dissolution]
+      operationId: initiateDissolution
+      summary: Begin 10-stage dissolution
+      description: |
+        Initiate the voluntary dissolution workflow for the entity. This
+        transitions the entity status to `DISSOLVING` and creates a dissolution
+        saga that tracks progress through the 10 sequential stages defined in
+        the `org.momentum.msez.corporate.dissolution` module:
+
+        | Stage | ID                      | Description                           |
+        |-------|-------------------------|---------------------------------------|
+        | 1     | `board_resolution`      | Board resolves to recommend dissolution |
+        | 2     | `shareholder_resolution` | Shareholders pass special resolution  |
+        | 3     | `appoint_liquidator`    | Appoint licensed insolvency practitioner |
+        | 4     | `notify_creditors`      | Publish gazette notice, notify creditors |
+        | 5     | `realize_assets`        | Liquidator realizes company assets    |
+        | 6     | `settle_liabilities`    | Pay creditors in statutory priority order |
+        | 7     | `final_distribution`    | Distribute remaining assets to shareholders |
+        | 8     | `final_meeting`         | Liquidator presents final accounts    |
+        | 9     | `file_final_documents`  | File final return and request dissolution |
+        | 10    | `dissolution`           | Company formally dissolved             |
+
+        ### Prerequisites
+
+        The entity must satisfy all of the following before dissolution can
+        be initiated:
+
+        - Entity status is `ACTIVE`
+        - No outstanding regulatory actions
+        - All statutory filings are current
+        - A solvency declaration is provided (for voluntary dissolution)
+
+        ### Parameters
+
+        The dissolution workflow is configurable per jurisdiction. Key
+        parameters include `creditor_notice_period_days` (default: 90),
+        `final_accounts_deadline_days` (default: 30), and
+        `minimum_liquidation_period_days` (default: 90).
+      parameters:
+        - $ref: '#/components/parameters/EntityId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitiateDissolutionRequest'
+            examples:
+              voluntary_dissolution:
+                summary: Initiate voluntary dissolution with solvency declaration
+                value:
+                  dissolution_type: "voluntary"
+                  reason: "Members resolved to wind up operations"
+                  solvency_declaration:
+                    declared_solvent: true
+                    directors_signing:
+                      - identity_ref: "did:msez:id:director-001"
+                        signed_at: "2026-02-13T10:00:00Z"
+                      - identity_ref: "did:msez:id:director-002"
+                        signed_at: "2026-02-13T10:05:00Z"
+                    statement_of_assets:
+                      total_assets: "500000"
+                      total_liabilities: "150000"
+                      currency: "USD"
+                  parameters:
+                    creditor_notice_period_days: 90
+                    final_accounts_deadline_days: 30
+      responses:
+        '202':
+          description: |
+            Dissolution initiated. The entity status transitions to
+            `DISSOLVING` and the dissolution saga is created at stage 1
+            (`board_resolution`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DissolutionStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/entities/{entity_id}/dissolution/status:
+    get:
+      tags: [dissolution]
+      operationId: getDissolutionStatus
+      summary: Dissolution stage query
+      description: |
+        Retrieve the current status of an entity's dissolution saga, including
+        the current stage, completed stages with their outputs and timestamps,
+        pending stages with estimated timelines, and overall progress metrics.
+
+        If the entity does not have an active dissolution saga, returns 404.
+      parameters:
+        - $ref: '#/components/parameters/EntityId'
+        - name: include_stage_details
+          in: query
+          required: false
+          description: |
+            When `true`, includes detailed action-level progress within each
+            stage, including individual action statuses and output documents.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Dissolution status retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DissolutionStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Zone Node JWT with scope claims. Required scopes vary by endpoint:
+
+        - `entities:write` — required for POST and PUT operations
+        - `entities:read` — required for GET operations
+        - `dissolution:write` — required to initiate dissolution
+        - `dissolution:read` — required to query dissolution status
+        - `ubo:read` — required to query beneficial ownership
+        - `regulator:read` — grants full UBO access (regulator-scoped tokens)
+
+  parameters:
+    EntityId:
+      name: entity_id
+      in: path
+      required: true
+      description: |
+        Unique entity identifier. Content-addressed, derived from the SHA-256
+        digest of the canonical genesis document. Format: `ent_{hex_digest}`.
+      schema:
+        type: string
+        pattern: '^ent_[a-f0-9]{64}$'
+        example: "ent_a1b2c3d4e5f60718293a4b5c6d7e8f901234567890abcdef1234567890abcdef"
+
+  responses:
+    BadRequest:
+      description: |
+        The request body is malformed, missing required fields, or contains
+        invalid values that fail schema validation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error_code: "VALIDATION_ERROR"
+            message: "Request body failed schema validation"
+            details:
+              - field: "entity_type"
+                reason: "must be one of: llc, corporation, partnership, trust, dao_llc, foundation"
+                received: "invalid_type"
+            request_id: "req_01H2X3Y4Z5"
+            timestamp: "2026-02-13T12:00:00Z"
+
+    Unauthorized:
+      description: |
+        No valid bearer token provided. The request must include an
+        `Authorization: Bearer <token>` header with a valid Zone Node JWT.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error_code: "AUTHENTICATION_REQUIRED"
+            message: "Valid bearer token required"
+            details: []
+            request_id: "req_01H2X3Y4Z5"
+            timestamp: "2026-02-13T12:00:00Z"
+
+    Forbidden:
+      description: |
+        The authenticated principal lacks the required scope claims for
+        this operation. Check the `security` requirements for the endpoint.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error_code: "INSUFFICIENT_SCOPE"
+            message: "Token lacks required scope: entities:write"
+            details:
+              - field: "scope"
+                reason: "required scope not present in token claims"
+                received: "entities:read"
+            request_id: "req_01H2X3Y4Z5"
+            timestamp: "2026-02-13T12:00:00Z"
+
+    NotFound:
+      description: The specified entity or resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error_code: "ENTITY_NOT_FOUND"
+            message: "Entity not found"
+            details:
+              - field: "entity_id"
+                reason: "no entity exists with the specified identifier"
+                received: "ent_0000000000000000000000000000000000000000000000000000000000000000"
+            request_id: "req_01H2X3Y4Z5"
+            timestamp: "2026-02-13T12:00:00Z"
+
+    UnprocessableEntity:
+      description: |
+        The request is syntactically valid but cannot be processed due to
+        business rule violations (e.g., invalid state transition, unmet
+        prerequisites, failed compliance checks).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error_code: "STATE_TRANSITION_REJECTED"
+            message: "Cannot transition entity from DRAFT to DISSOLVED"
+            details:
+              - field: "target_status"
+                reason: "transition not allowed by corporate lifecycle state machine"
+                received: "DISSOLVED"
+            request_id: "req_01H2X3Y4Z5"
+            timestamp: "2026-02-13T12:00:00Z"
+
+    InternalServerError:
+      description: |
+        An unexpected server error occurred. The `request_id` can be used
+        to correlate with server-side logs for diagnosis.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error_code: "INTERNAL_ERROR"
+            message: "An unexpected error occurred"
+            details: []
+            request_id: "req_01H2X3Y4Z5"
+            timestamp: "2026-02-13T12:00:00Z"
+
+  schemas:
+    # ---------------------------------------------------------------------------
+    # Core Entity schema
+    # ---------------------------------------------------------------------------
+    Entity:
+      type: object
+      description: |
+        A legal entity registered within a Special Economic Zone. Represents
+        the canonical state of an organization including its formation record,
+        lifecycle status, jurisdiction bindings, and governance structure.
+      additionalProperties: false
+      required:
+        - entity_id
+        - entity_type
+        - legal_name
+        - status
+        - jurisdiction_id
+        - created_at
+        - updated_at
+      properties:
+        entity_id:
+          type: string
+          description: |
+            Content-addressed entity identifier derived from the SHA-256 digest
+            of the canonical genesis document.
+          pattern: '^ent_[a-f0-9]{64}$'
+          example: "ent_a1b2c3d4e5f60718293a4b5c6d7e8f901234567890abcdef1234567890abcdef"
+        entity_type:
+          $ref: '#/components/schemas/EntityType'
+        legal_name:
+          type: string
+          description: Registered legal name of the entity.
+          minLength: 1
+          maxLength: 500
+          example: "Acme Trading LLC"
+        trading_name:
+          type: string
+          description: Optional trading name or DBA (doing business as).
+          maxLength: 500
+        status:
+          $ref: '#/components/schemas/EntityStatus'
+        jurisdiction_id:
+          type: string
+          description: |
+            Zone jurisdiction identifier where the entity is registered.
+            References the zone's jurisdiction configuration.
+          example: "ex"
+        registered_office:
+          $ref: '#/components/schemas/Address'
+        share_capital:
+          $ref: '#/components/schemas/ShareCapital'
+        directors:
+          type: array
+          description: Current directors or officers of the entity.
+          items:
+            $ref: '#/components/schemas/Officer'
+        formation_date:
+          type: string
+          format: date
+          description: Date of formal incorporation or registration.
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the entity record was created (ISO 8601, UTC).
+          example: "2026-02-13T12:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp of the most recent status change (ISO 8601, UTC).
+          example: "2026-02-13T12:00:00Z"
+        dissolution_ref:
+          type: string
+          description: |
+            Reference to the active dissolution saga, if the entity is in
+            `DISSOLVING` status. Null or absent for non-dissolving entities.
+          nullable: true
+        history:
+          type: array
+          description: Immutable log of all lifecycle status transitions.
+          items:
+            $ref: '#/components/schemas/StatusTransitionRecord'
+        metadata:
+          type: object
+          description: |
+            Extensible metadata. Jurisdiction-specific fields, formation
+            variant parameters, and custom attributes are placed here.
+            This object is intentionally open for forward compatibility.
+          additionalProperties: true
+
+    # ---------------------------------------------------------------------------
+    # Entity Type enumeration
+    # ---------------------------------------------------------------------------
+    EntityType:
+      type: string
+      description: |
+        Legal form of the entity. Supported types align with the
+        `org.momentum.msez.corporate.formation` module's
+        `supported_entity_types` parameter.
+      enum:
+        - llc
+        - corporation
+        - partnership
+        - trust
+        - dao_llc
+        - foundation
+      example: "llc"
+
+    # ---------------------------------------------------------------------------
+    # Entity Status enumeration
+    # ---------------------------------------------------------------------------
+    EntityStatus:
+      type: string
+      description: |
+        Lifecycle status of the entity, governed by the corporate lifecycle
+        state machine. Valid transitions:
+
+        ```
+        DRAFT -> PENDING_APPROVAL -> ACTIVE -> SUSPENDED -> ACTIVE
+                                           \-> DISSOLVING -> DISSOLVED
+                                           \-> STRUCK_OFF
+        PENDING_APPROVAL -> REJECTED
+        ```
+      enum:
+        - DRAFT
+        - PENDING_APPROVAL
+        - ACTIVE
+        - SUSPENDED
+        - DISSOLVING
+        - DISSOLVED
+        - STRUCK_OFF
+        - REJECTED
+      example: "ACTIVE"
+
+    # ---------------------------------------------------------------------------
+    # Create Entity Request
+    # ---------------------------------------------------------------------------
+    CreateEntityRequest:
+      type: object
+      description: Request body for entity formation (incorporation/registration).
+      additionalProperties: false
+      required:
+        - entity_type
+        - legal_name
+      properties:
+        entity_type:
+          $ref: '#/components/schemas/EntityType'
+        legal_name:
+          type: string
+          description: Registered legal name of the entity.
+          minLength: 1
+          maxLength: 500
+        trading_name:
+          type: string
+          description: Optional trading name or DBA.
+          maxLength: 500
+        jurisdiction_id:
+          type: string
+          description: |
+            Target jurisdiction for registration. If omitted, defaults to
+            the zone's `default_jurisdiction` parameter.
+          example: "ex"
+        registered_office:
+          $ref: '#/components/schemas/Address'
+        share_capital:
+          $ref: '#/components/schemas/ShareCapital'
+        directors:
+          type: array
+          description: |
+            Initial directors or officers. Must meet the jurisdiction's
+            `minimum_directors` requirement.
+          items:
+            $ref: '#/components/schemas/Officer'
+          minItems: 1
+        beneficial_owners:
+          type: array
+          description: |
+            Initial beneficial owners. Required when the zone's
+            `require_ubo_verification` parameter is `true`.
+          items:
+            $ref: '#/components/schemas/BeneficialOwnerInput'
+        metadata:
+          type: object
+          description: |
+            Extensible metadata for jurisdiction-specific formation data.
+            This object is intentionally open for forward compatibility.
+          additionalProperties: true
+
+    # ---------------------------------------------------------------------------
+    # Update Entity Status Request
+    # ---------------------------------------------------------------------------
+    UpdateEntityStatusRequest:
+      type: object
+      description: |
+        Request to transition an entity to a new lifecycle status. Transitions
+        are validated against the corporate lifecycle state machine.
+      additionalProperties: false
+      required:
+        - target_status
+      properties:
+        target_status:
+          $ref: '#/components/schemas/EntityStatus'
+        reason:
+          type: string
+          description: Human-readable justification for the status change.
+          maxLength: 2000
+        effective_at:
+          type: string
+          format: date-time
+          description: |
+            Effective timestamp for the transition (ISO 8601, UTC).
+            If omitted, defaults to the server's current time.
+        evidence:
+          type: array
+          description: |
+            Supporting evidence for the transition. Accepts Verifiable
+            Credential objects or artifact references (digest + type).
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+
+    # ---------------------------------------------------------------------------
+    # Beneficial Ownership
+    # ---------------------------------------------------------------------------
+    BeneficialOwnershipRegistry:
+      type: object
+      description: |
+        The beneficial ownership (UBO) registry for an entity. Contains all
+        individuals meeting the ownership or control threshold per FATF
+        recommendations.
+      additionalProperties: false
+      required:
+        - entity_id
+        - threshold_percentage
+        - beneficial_owners
+        - as_of
+      properties:
+        entity_id:
+          type: string
+          pattern: '^ent_[a-f0-9]{64}$'
+        threshold_percentage:
+          type: string
+          description: |
+            Ownership/control percentage threshold that triggers UBO
+            declaration. Encoded as a string to avoid floating-point
+            precision issues in financial contexts.
+          example: "25.0"
+        beneficial_owners:
+          type: array
+          items:
+            $ref: '#/components/schemas/BeneficialOwner'
+        as_of:
+          type: string
+          format: date-time
+          description: Timestamp of this registry snapshot (ISO 8601, UTC).
+
+    BeneficialOwner:
+      type: object
+      description: |
+        A beneficial owner (UBO) record. Represents an individual who
+        exercises ownership or control above the jurisdictional threshold.
+      additionalProperties: false
+      required:
+        - beneficial_owner_id
+        - name
+        - ownership_percentage
+        - control_type
+        - verification_status
+        - active
+      properties:
+        beneficial_owner_id:
+          type: string
+          description: Unique identifier for this UBO record.
+          example: "ubo_001"
+        name:
+          type: string
+          description: Full legal name of the beneficial owner.
+          example: "Jane Smith"
+        identity_ref:
+          type: string
+          description: |
+            DID or external identity reference for the beneficial owner.
+            Supports MSEZ DIDs, NADRA CNIC references, and passport-linked
+            identities.
+          example: "did:msez:id:jane-smith-001"
+        nationality:
+          type: string
+          description: ISO 3166-1 alpha-2 country code.
+          pattern: '^[A-Z]{2}$'
+          example: "PK"
+        date_of_birth:
+          type: string
+          format: date
+          description: Date of birth (ISO 8601).
+        ownership_percentage:
+          type: string
+          description: |
+            Percentage of ownership held. Encoded as a string to avoid
+            floating-point precision issues.
+          example: "35.5"
+        control_type:
+          type: string
+          description: Nature of the beneficial ownership or control.
+          enum:
+            - direct
+            - indirect
+            - joint
+            - nominee
+            - trust_beneficiary
+            - voting_rights
+          example: "direct"
+        verification_status:
+          type: string
+          description: Current verification status of this UBO record.
+          enum:
+            - verified
+            - pending
+            - expired
+            - unverified
+          example: "verified"
+        verified_at:
+          type: string
+          format: date-time
+          description: Timestamp of the most recent successful verification.
+        verification_method:
+          type: string
+          description: |
+            Method used for verification (e.g., `cnic_crossref` for NADRA
+            CNIC verification, `passport_scan`, `corporate_registry_lookup`).
+          example: "cnic_crossref"
+        pep_screening_result:
+          type: string
+          description: Result of Politically Exposed Person screening.
+          enum:
+            - clear
+            - flagged
+            - pending
+            - not_screened
+        sanctions_screening_result:
+          type: string
+          description: Result of sanctions list screening.
+          enum:
+            - clear
+            - flagged
+            - pending
+            - not_screened
+        active:
+          type: boolean
+          description: |
+            Whether this UBO record is currently active. Historical records
+            (returned when `include_historical=true`) have `active: false`.
+        removed_at:
+          type: string
+          format: date-time
+          description: |
+            Timestamp when this owner was removed from the registry.
+            Only present for historical (inactive) records.
+          nullable: true
+        metadata:
+          type: object
+          description: Extensible metadata for jurisdiction-specific UBO fields.
+          additionalProperties: true
+
+    BeneficialOwnerInput:
+      type: object
+      description: |
+        Input schema for declaring a beneficial owner during entity formation.
+      additionalProperties: false
+      required:
+        - name
+        - ownership_percentage
+        - control_type
+      properties:
+        name:
+          type: string
+          description: Full legal name of the beneficial owner.
+          minLength: 1
+          maxLength: 300
+        identity_ref:
+          type: string
+          description: DID or external identity reference.
+        nationality:
+          type: string
+          pattern: '^[A-Z]{2}$'
+        date_of_birth:
+          type: string
+          format: date
+        ownership_percentage:
+          type: string
+          description: Percentage of ownership (string-encoded decimal).
+          example: "50.0"
+        control_type:
+          type: string
+          enum:
+            - direct
+            - indirect
+            - joint
+            - nominee
+            - trust_beneficiary
+            - voting_rights
+
+    # ---------------------------------------------------------------------------
+    # Dissolution
+    # ---------------------------------------------------------------------------
+    InitiateDissolutionRequest:
+      type: object
+      description: |
+        Request to initiate the 10-stage dissolution workflow. The entity
+        must be in `ACTIVE` status with all filings current.
+      additionalProperties: false
+      required:
+        - dissolution_type
+        - reason
+      properties:
+        dissolution_type:
+          type: string
+          description: Type of dissolution proceeding.
+          enum:
+            - voluntary
+            - involuntary
+            - court_supervised
+          example: "voluntary"
+        reason:
+          type: string
+          description: Reason for initiating dissolution.
+          minLength: 1
+          maxLength: 2000
+        solvency_declaration:
+          $ref: '#/components/schemas/SolvencyDeclaration'
+        liquidator:
+          $ref: '#/components/schemas/LiquidatorDesignation'
+        parameters:
+          type: object
+          description: |
+            Jurisdiction-specific dissolution parameters. Overrides the
+            module defaults from `org.momentum.msez.corporate.dissolution`.
+          additionalProperties: false
+          properties:
+            creditor_notice_period_days:
+              type: integer
+              minimum: 1
+              default: 90
+              description: Days for creditors to submit claims.
+            final_accounts_deadline_days:
+              type: integer
+              minimum: 1
+              default: 30
+              description: Days to file final accounts after dissolution.
+            strike_off_notice_period_days:
+              type: integer
+              minimum: 1
+              default: 90
+              description: Notice period before strike-off.
+            minimum_liquidation_period_days:
+              type: integer
+              minimum: 1
+              default: 90
+              description: Minimum period for the liquidation process.
+
+    DissolutionStatus:
+      type: object
+      description: |
+        Current status of an entity's dissolution saga. Tracks progress
+        through the 10 sequential stages of the dissolution workflow.
+      additionalProperties: false
+      required:
+        - entity_id
+        - dissolution_id
+        - dissolution_type
+        - current_stage
+        - stage_sequence
+        - overall_status
+        - initiated_at
+        - stages
+      properties:
+        entity_id:
+          type: string
+          pattern: '^ent_[a-f0-9]{64}$'
+        dissolution_id:
+          type: string
+          description: Unique identifier for this dissolution saga.
+          example: "diss_f1e2d3c4b5a6"
+        dissolution_type:
+          type: string
+          enum:
+            - voluntary
+            - involuntary
+            - court_supervised
+        current_stage:
+          type: string
+          description: |
+            Stage ID of the current active stage in the dissolution workflow.
+          enum:
+            - board_resolution
+            - shareholder_resolution
+            - appoint_liquidator
+            - notify_creditors
+            - realize_assets
+            - settle_liabilities
+            - final_distribution
+            - final_meeting
+            - file_final_documents
+            - dissolution
+          example: "notify_creditors"
+        stage_sequence:
+          type: integer
+          description: Numeric sequence of the current stage (1-10).
+          minimum: 1
+          maximum: 10
+          example: 4
+        overall_status:
+          type: string
+          description: Aggregate status of the dissolution saga.
+          enum:
+            - in_progress
+            - completed
+            - suspended
+            - cancelled
+          example: "in_progress"
+        initiated_at:
+          type: string
+          format: date-time
+          description: Timestamp when dissolution was initiated (ISO 8601, UTC).
+        completed_at:
+          type: string
+          format: date-time
+          description: |
+            Timestamp when dissolution was completed (certificate of
+            dissolution issued). Null if not yet completed.
+          nullable: true
+        estimated_completion:
+          $ref: '#/components/schemas/DissolutionTimeline'
+        liquidator:
+          $ref: '#/components/schemas/LiquidatorDesignation'
+        stages:
+          type: array
+          description: |
+            Status of each dissolution stage. Always contains exactly 10
+            entries, one per stage in sequential order.
+          items:
+            $ref: '#/components/schemas/DissolutionStage'
+          minItems: 10
+          maxItems: 10
+        documents_produced:
+          type: array
+          description: Artifact references for documents produced during dissolution.
+          items:
+            $ref: '#/components/schemas/ArtifactRef'
+
+    DissolutionStage:
+      type: object
+      description: Status and details of a single dissolution stage.
+      additionalProperties: false
+      required:
+        - stage_id
+        - name
+        - sequence
+        - status
+        - required
+      properties:
+        stage_id:
+          type: string
+          description: Machine-readable stage identifier.
+          enum:
+            - board_resolution
+            - shareholder_resolution
+            - appoint_liquidator
+            - notify_creditors
+            - realize_assets
+            - settle_liabilities
+            - final_distribution
+            - final_meeting
+            - file_final_documents
+            - dissolution
+        name:
+          type: string
+          description: Human-readable stage name.
+          example: "Notify Creditors"
+        sequence:
+          type: integer
+          description: Stage sequence number (1-10).
+          minimum: 1
+          maximum: 10
+        status:
+          type: string
+          description: Status of this stage.
+          enum:
+            - pending
+            - in_progress
+            - completed
+            - skipped
+          example: "completed"
+        required:
+          type: boolean
+          description: Whether this stage is mandatory.
+        started_at:
+          type: string
+          format: date-time
+          description: Timestamp when this stage was started.
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          description: Timestamp when this stage was completed.
+          nullable: true
+        estimated_days:
+          type: integer
+          description: Estimated duration in days for this stage.
+          minimum: 0
+        actions:
+          type: array
+          description: |
+            Detailed action-level progress within the stage. Only populated
+            when `include_stage_details=true`.
+          items:
+            $ref: '#/components/schemas/DissolutionAction'
+        outputs:
+          type: array
+          description: Artifact references for documents produced by this stage.
+          items:
+            $ref: '#/components/schemas/ArtifactRef'
+
+    DissolutionAction:
+      type: object
+      description: A single action within a dissolution stage.
+      additionalProperties: false
+      required:
+        - action_id
+        - description
+        - status
+      properties:
+        action_id:
+          type: string
+          description: Machine-readable action identifier.
+          example: "publish_gazette_notice"
+        description:
+          type: string
+          description: Human-readable description of the action.
+        status:
+          type: string
+          enum:
+            - pending
+            - in_progress
+            - completed
+            - failed
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        output_ref:
+          $ref: '#/components/schemas/ArtifactRef'
+
+    DissolutionTimeline:
+      type: object
+      description: Estimated timeline for the dissolution process.
+      additionalProperties: false
+      properties:
+        minimum_days:
+          type: integer
+          description: Best-case total duration in days.
+          example: 180
+        typical_days:
+          type: integer
+          description: Typical total duration in days.
+          example: 270
+        maximum_days:
+          type: integer
+          description: Worst-case total duration in days.
+          example: 365
+        estimated_completion_date:
+          type: string
+          format: date
+          description: Projected completion date based on current progress.
+
+    SolvencyDeclaration:
+      type: object
+      description: |
+        Statutory declaration of solvency by the directors. Required for
+        voluntary dissolution. The declaration must be made by a majority
+        of directors and include a statement of assets and liabilities.
+      additionalProperties: false
+      required:
+        - declared_solvent
+        - directors_signing
+        - statement_of_assets
+      properties:
+        declared_solvent:
+          type: boolean
+          description: Directors' declaration that the company can pay its debts.
+        directors_signing:
+          type: array
+          description: Directors who have signed the solvency declaration.
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - identity_ref
+              - signed_at
+            properties:
+              identity_ref:
+                type: string
+                description: DID of the signing director.
+              signed_at:
+                type: string
+                format: date-time
+          minItems: 1
+        statement_of_assets:
+          type: object
+          description: Statement of assets and liabilities as of the declaration date.
+          additionalProperties: false
+          required:
+            - total_assets
+            - total_liabilities
+            - currency
+          properties:
+            total_assets:
+              type: string
+              description: Total asset value (string-encoded to preserve precision).
+            total_liabilities:
+              type: string
+              description: Total liability value (string-encoded to preserve precision).
+            currency:
+              type: string
+              description: ISO 4217 currency code.
+              pattern: '^[A-Z]{3}$'
+              example: "USD"
+        validity_period_days:
+          type: integer
+          description: |
+            Number of days the solvency declaration remains valid.
+            Default is 35 days per statutory requirements.
+          default: 35
+          minimum: 1
+
+    LiquidatorDesignation:
+      type: object
+      description: Designation of the liquidator for the dissolution process.
+      additionalProperties: false
+      required:
+        - name
+        - identity_ref
+      properties:
+        name:
+          type: string
+          description: Full legal name of the liquidator.
+        identity_ref:
+          type: string
+          description: DID or professional registration reference.
+        license_number:
+          type: string
+          description: Insolvency practitioner license number.
+        appointed_at:
+          type: string
+          format: date-time
+
+    # ---------------------------------------------------------------------------
+    # Shared / Supporting schemas
+    # ---------------------------------------------------------------------------
+    Address:
+      type: object
+      description: Physical address for registered office or correspondence.
+      additionalProperties: false
+      properties:
+        address_line_1:
+          type: string
+          maxLength: 500
+        address_line_2:
+          type: string
+          maxLength: 500
+        city:
+          type: string
+          maxLength: 200
+        state_province:
+          type: string
+          maxLength: 200
+        postal_code:
+          type: string
+          maxLength: 20
+        country_code:
+          type: string
+          description: ISO 3166-1 alpha-2 country code.
+          pattern: '^[A-Z]{2}$'
+          example: "PK"
+      required:
+        - address_line_1
+        - city
+        - country_code
+
+    ShareCapital:
+      type: object
+      description: |
+        Share capital structure of the entity. Amounts are string-encoded
+        to avoid floating-point precision issues in financial contexts.
+      additionalProperties: false
+      properties:
+        authorized_amount:
+          type: string
+          description: Authorized share capital amount (string-encoded).
+          example: "10000"
+        issued_amount:
+          type: string
+          description: Issued share capital amount (string-encoded).
+          example: "1000"
+        currency:
+          type: string
+          description: ISO 4217 currency code.
+          pattern: '^[A-Z]{3}$'
+          example: "USD"
+        share_classes:
+          type: array
+          description: Share class definitions, if applicable.
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              class_name:
+                type: string
+                example: "Ordinary"
+              par_value:
+                type: string
+                example: "1.00"
+              authorized_shares:
+                type: integer
+                minimum: 0
+              voting_rights:
+                type: boolean
+                default: true
+            required:
+              - class_name
+
+    Officer:
+      type: object
+      description: A director or officer of the entity.
+      additionalProperties: false
+      required:
+        - name
+        - role
+      properties:
+        name:
+          type: string
+          description: Full legal name.
+          maxLength: 300
+        identity_ref:
+          type: string
+          description: DID or external identity reference.
+        role:
+          type: string
+          description: Role within the entity.
+          enum:
+            - director
+            - secretary
+            - treasurer
+            - president
+            - vice_president
+            - registered_agent
+          example: "director"
+        appointed_at:
+          type: string
+          format: date-time
+        nationality:
+          type: string
+          pattern: '^[A-Z]{2}$'
+        is_resident:
+          type: boolean
+          description: Whether the officer is a resident of the zone jurisdiction.
+
+    EvidenceRef:
+      type: object
+      description: |
+        Reference to a Verifiable Credential or artifact that serves as
+        evidence for a lifecycle transition. Accepts either an inline VC
+        object or an artifact reference by digest.
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          description: Evidence type identifier.
+          example: "VerifiableCredential"
+        credential_ref:
+          $ref: '#/components/schemas/ArtifactRef'
+        inline_vc:
+          type: object
+          description: |
+            Inline Verifiable Credential. When present, the server validates
+            the VC against the appropriate schema in `schemas/`.
+          additionalProperties: true
+
+    ArtifactRef:
+      type: object
+      description: |
+        Content-addressed artifact reference. Matches the schema defined in
+        `schemas/artifact-ref.schema.json`.
+      additionalProperties: false
+      required:
+        - digest_sha256
+      properties:
+        digest_sha256:
+          type: string
+          description: SHA-256 hex digest of the artifact content.
+          pattern: '^[a-f0-9]{64}$'
+        artifact_type:
+          type: string
+          description: |
+            Artifact type for CAS resolution (e.g., `vc`, `document`,
+            `receipt`).
+          example: "vc"
+        uri:
+          type: string
+          format: uri
+          description: Optional URI for direct retrieval of the artifact.
+
+    StatusTransitionRecord:
+      type: object
+      description: |
+        Immutable record of a single lifecycle status transition. Stored
+        in the entity's `history` array.
+      additionalProperties: false
+      required:
+        - from_status
+        - to_status
+        - transitioned_at
+      properties:
+        from_status:
+          $ref: '#/components/schemas/EntityStatus'
+        to_status:
+          $ref: '#/components/schemas/EntityStatus'
+        transitioned_at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+        evidence_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtifactRef'
+        transition_id:
+          type: string
+          description: Unique identifier for this transition event.
+
+    # ---------------------------------------------------------------------------
+    # Error schema
+    # ---------------------------------------------------------------------------
+    Error:
+      type: object
+      description: |
+        Structured error response. All error responses from the Entities API
+        conform to this schema. The `error_code` is machine-readable, the
+        `message` is human-readable, and `details` provides field-level
+        diagnostic information for validation failures.
+      additionalProperties: false
+      required:
+        - error_code
+        - message
+        - request_id
+        - timestamp
+      properties:
+        error_code:
+          type: string
+          description: |
+            Machine-readable error code. Common codes:
+            - `VALIDATION_ERROR` — request body failed schema validation
+            - `AUTHENTICATION_REQUIRED` — missing or invalid bearer token
+            - `INSUFFICIENT_SCOPE` — token lacks required scope claims
+            - `ENTITY_NOT_FOUND` — entity does not exist
+            - `STATE_TRANSITION_REJECTED` — invalid lifecycle transition
+            - `PREREQUISITE_NOT_MET` — dissolution prerequisites not satisfied
+            - `INTERNAL_ERROR` — unexpected server error
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          description: Human-readable error description.
+          example: "Request body failed schema validation"
+        details:
+          type: array
+          description: |
+            Field-level error details. Each entry identifies the offending
+            field, the reason for rejection, and the value that was received.
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              field:
+                type: string
+                description: JSON path to the offending field.
+                example: "entity_type"
+              reason:
+                type: string
+                description: Explanation of why the field value was rejected.
+              received:
+                type: string
+                description: The value that was received (stringified).
+            required:
+              - field
+              - reason
+          default: []
+        request_id:
+          type: string
+          description: |
+            Unique request identifier for log correlation. Generated by the
+            server for every request.
+          example: "req_01H2X3Y4Z5"
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp when the error occurred (ISO 8601, UTC).
+          example: "2026-02-13T12:00:00Z"

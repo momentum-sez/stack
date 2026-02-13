@@ -64,35 +64,21 @@ class Digest:
 def json_canonicalize(obj: Any) -> str:
     """
     Definition 3.4 (JSON Canonicalization Scheme - JCS).
-    
-    RFC 8785 compliant JSON canonicalization:
-    1. Key ordering: lexicographic by UTF-16 code units
-    2. Number normalization: no unnecessary precision
-    3. Whitespace removal: no insignificant whitespace
-    4. String escaping: minimal escape sequences
-    5. Encoding: UTF-8 output
+
+    RFC 8785 compliant JSON canonicalization.
+
+    IMPORTANT: This function delegates to the canonical ``jcs_canonicalize()``
+    implementation in ``tools.lawpack`` which is the single source of truth for
+    digest computation across the entire SEZ Stack.  The core function applies
+    strict type coercion (rejecting floats, converting datetimes to UTC ISO8601,
+    coercing non-string dict keys, converting tuples to lists) that plain
+    ``json.dumps(sort_keys=True)`` does not.
+
+    Returns a UTF-8 *string* (not bytes) for backward compatibility with callers
+    in this module that pass the result to ``.encode('utf-8')``.
     """
-    def _canonical_sort(obj: Any) -> Any:
-        if isinstance(obj, dict):
-            # Sort keys lexicographically
-            return {k: _canonical_sort(v) for k, v in sorted(obj.items())}
-        elif isinstance(obj, list):
-            return [_canonical_sort(item) for item in obj]
-        elif isinstance(obj, float):
-            # Normalize numbers - remove unnecessary precision
-            if obj == int(obj):
-                return int(obj)
-            return obj
-        elif isinstance(obj, Decimal):
-            # Convert Decimal to float for JSON
-            f = float(obj)
-            if f == int(f):
-                return int(f)
-            return f
-        return obj
-    
-    sorted_obj = _canonical_sort(obj)
-    return json.dumps(sorted_obj, separators=(',', ':'), ensure_ascii=False, sort_keys=True)
+    from tools.lawpack import jcs_canonicalize
+    return jcs_canonicalize(obj).decode("utf-8")
 
 
 def stack_digest(artifact: Any) -> Digest:
@@ -231,9 +217,15 @@ def compute_artifact_closure(root: ArtifactRef, resolver: Callable[[ArtifactRef]
             artifact = resolver(ref)
             nested_refs = extract_artifact_refs(artifact)
             queue.extend(nested_refs)
-        except Exception:
-            # Artifact not resolvable - add to visited but don't expand
-            pass
+        except Exception as exc:
+            # Artifact not resolvable — add to visited but don't expand.
+            # Log at debug level; callers handle the missing-artifact case
+            # via the returned visited set.
+            import logging
+            logging.getLogger(__name__).debug(
+                "Artifact %s not resolvable during closure expansion: %s",
+                ref.digest_sha256, exc,
+            )
     
     return visited
 
@@ -462,43 +454,54 @@ class MerkleMountainRange:
     def append(self, leaf_hash: str) -> str:
         """
         MMR_{n+1} = MMRAppend(MMR_n, H_n)
-        
-        Theorem 12.2: Append requires at most ⌊log_2 n⌋ + 1 hash operations.
+
+        Theorem 12.2: Append requires at most floor(log_2 n) + 1 hash operations.
+
+        Hashing uses binary concatenation of the raw 32-byte digests (decoded
+        from hex) with a 0x01 internal-node domain separator, matching the
+        convention in ``tools.mmr``.
         """
         self.leaf_count += 1
         new_peak = leaf_hash
         height = 0
-        
+
         # Merge with existing peaks of same height
         while height < len(self.peaks) and self.peaks[height] is not None:
-            # Merge: hash(left || right)
+            # Merge: SHA256(0x01 || left_bytes || right_bytes)
             left = self.peaks[height]
-            new_peak = hashlib.sha256(f"{left}{new_peak}".encode()).hexdigest()
+            left_bytes = bytes.fromhex(left)
+            right_bytes = bytes.fromhex(new_peak)
+            new_peak = hashlib.sha256(b"\x01" + left_bytes + right_bytes).hexdigest()
             self.peaks[height] = None
             height += 1
-        
+
         if height >= len(self.peaks):
             self.peaks.append(new_peak)
         else:
             self.peaks[height] = new_peak
-        
+
         return self.root
-    
+
     @property
     def root(self) -> str:
         """
         Compute MMR root from peaks.
         Root can be computed from peaks in O(log n) time.
+
+        Bagging uses binary concatenation with the 0x01 domain separator,
+        matching ``tools.mmr.bag_peaks``.
         """
         active_peaks = [p for p in self.peaks if p is not None]
         if not active_peaks:
             return "0" * 64
-        
+
         # Bag the peaks right-to-left
         result = active_peaks[-1]
         for peak in reversed(active_peaks[:-1]):
-            result = hashlib.sha256(f"{peak}{result}".encode()).hexdigest()
-        
+            peak_bytes = bytes.fromhex(peak)
+            result_bytes = bytes.fromhex(result)
+            result = hashlib.sha256(b"\x01" + peak_bytes + result_bytes).hexdigest()
+
         return result
     
     def prove(self, index: int) -> List[Tuple[str, bool]]:
@@ -746,17 +749,19 @@ class ComplianceTensor:
         """
         On-Chain Representation:
         tensor_root = MerkleRoot({(Poseidon(op, src, dst), status)})
-        
-        For off-chain, we use SHA256 of sorted canonical entries.
+
+        For off-chain, we use SHA256 of sorted canonical entries.  Each entry
+        is canonicalized via ``json_canonicalize`` (which delegates to
+        ``jcs_canonicalize``) to guarantee deterministic serialization.
         """
         entries = []
         for (op, src, dst), constraint in sorted(self._entries.items()):
-            entry_data = f"{op}:{src}:{dst}:{json.dumps(constraint.to_dict(), sort_keys=True)}"
+            entry_data = f"{op}:{src}:{dst}:{json_canonicalize(constraint.to_dict())}"
             entries.append(entry_data)
-        
+
         if not entries:
             return "0" * 64
-        
+
         combined = "\n".join(entries)
         return hashlib.sha256(combined.encode()).hexdigest()
 

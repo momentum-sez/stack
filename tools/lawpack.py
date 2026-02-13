@@ -33,6 +33,22 @@ import yaml
 from lxml import etree
 
 
+__all__ = [
+    "jcs_canonicalize",
+    "canonicalize_yaml",
+    "canonicalize_json",
+    "canonicalize_xml",
+    "canonicalize_xml_bytes",
+    "compute_lawpack_digest",
+    "build_eid_index",
+    "find_akn_xml_files",
+    "ingest_lawpack",
+    "parse_lawpack_ref",
+    "sha256_bytes",
+    "now_rfc3339",
+]
+
+
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -306,7 +322,9 @@ def _fetch_source(uri: str, out_path: pathlib.Path) -> Tuple[str, str]:
 def normalize_relpath_for_lock(path: pathlib.Path, repo_root: pathlib.Path) -> str:
     try:
         return path.resolve().relative_to(repo_root.resolve()).as_posix()
-    except Exception:
+    except (ValueError, RuntimeError):
+        # ValueError: path is not relative to repo_root (e.g. different mount points).
+        # Fall back to the unresolved posix path.
         return path.as_posix()
 
 
@@ -442,7 +460,8 @@ def ingest_lawpack(
             if isinstance(existing_lock, dict):
                 norm = (existing_lock.get("provenance") or {}).get("normalization") or {}
                 locked_tool_version = str(norm.get("tool_version") or "").strip()
-        except Exception:
+        except (OSError, json.JSONDecodeError, KeyError, TypeError):
+            # Lock file unreadable or malformed — fall back to the provided tool_version.
             locked_tool_version = ""
     effective_tool_version = locked_tool_version or (tool_version or "")
 

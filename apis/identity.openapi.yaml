@@ -1,0 +1,1190 @@
+openapi: "3.1.0"
+info:
+  title: MSEZ Identity API
+  version: "0.4.44"
+  description: |
+    Identity primitive API for the Momentum SEZ Stack.
+
+    This specification defines endpoints for identity verification (KYC/KYB),
+    external identifier linking, and identity attestation management. It is
+    designed for sovereign digital infrastructure serving nation-states and
+    supports integration with national identity systems including:
+
+    - **NADRA CNIC** (Computerized National Identity Card) — Pakistan's national
+      biometric identity system administered by the National Database and
+      Registration Authority.
+    - **NTN** (National Tax Number) — Issued by the Federal Board of Revenue (FBR)
+      for tax identification via the IRIS platform.
+    - **Passport** — ICAO-compliant machine-readable travel documents.
+
+    All identity operations produce auditable attestation chains anchored to the
+    corridor state. Verification results are expressed as signed attestations
+    conforming to the stack's attestation schema.
+
+    ## Security Model
+
+    All endpoints require a bearer JWT with appropriate scope claims. Identity
+    data is classified as sensitive PII under the stack's data privacy domain
+    (ComplianceDomain.DATA_PRIVACY) and LICENSING domain controls. Access is
+    subject to zone-level consent policies enforced by the Consent primitive.
+
+    ## NADRA CNIC Integration
+
+    CNIC verification is performed via cross-referencing with the NADRA VERISYS
+    system. The stack supports both 13-digit old-format and 5-digit family
+    number new-format CNIC numbers. Biometric verification (fingerprint) is
+    delegated to the NADRA gateway and is not processed or stored by the stack.
+
+  contact:
+    name: Momentum SEZ Stack
+    url: https://momentum-sez.org
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: https://{zone_node}/api
+    description: Zone node API server
+    variables:
+      zone_node:
+        default: example.zone
+        description: Zone node hostname
+
+tags:
+  - name: identity.verification
+    description: KYC/KYB identity verification operations.
+  - name: identity.records
+    description: Identity record retrieval and lifecycle management.
+  - name: identity.linking
+    description: External identifier linking (CNIC, NTN, passport).
+  - name: identity.attestation
+    description: Identity attestation submission and management.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/identity/verify:
+    post:
+      tags: [identity.verification]
+      summary: Submit a KYC/KYB verification request
+      operationId: verifyIdentity
+      description: |
+        Initiate an identity verification request for an individual (KYC) or
+        business entity (KYB). The verification method determines which external
+        systems are consulted.
+
+        Supported verification methods:
+        - `nadra_cnic` — Cross-reference against NADRA VERISYS using a 13-digit
+          CNIC number. Returns a signed attestation with match confidence.
+        - `ntn_lookup` — Validate NTN against FBR IRIS taxpayer registry.
+        - `passport_mrz` — Validate passport MRZ data against ICAO PKD.
+        - `document_review` — Manual document review by a licensed verification
+          agent (asynchronous; returns `pending` status).
+        - `business_registry` — KYB verification against SECP company registry.
+
+        The response includes a `verification_id` for tracking. If the
+        verification can be completed synchronously (e.g., NADRA CNIC online
+        lookup), the response includes the result immediately. Otherwise, the
+        status is `pending` and the caller must poll via
+        `GET /v1/identity/{identity_id}`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationRequest'
+            examples:
+              nadra_cnic_verification:
+                summary: NADRA CNIC verification for a Pakistani citizen
+                value:
+                  subject_type: individual
+                  legal_name: "Muhammad Ali Khan"
+                  verification_method: nadra_cnic
+                  verification_parameters:
+                    cnic_number: "3520112345671"
+                    date_of_birth: "1990-05-15"
+                  jurisdiction_id: "PK"
+                  requesting_entity_id: "urn:msez:entity:zone-pk-01:reg-agent-001"
+              ntn_verification:
+                summary: NTN verification for a business entity
+                value:
+                  subject_type: business
+                  legal_name: "Momentum Technologies (Pvt) Ltd"
+                  verification_method: ntn_lookup
+                  verification_parameters:
+                    ntn: "1234567-8"
+                    business_registration_number: "0012345"
+                  jurisdiction_id: "PK"
+                  requesting_entity_id: "urn:msez:entity:zone-pk-01:reg-agent-001"
+      responses:
+        '201':
+          description: Verification request accepted and identity record created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityRecord'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/identity/{identity_id}:
+    get:
+      tags: [identity.records]
+      summary: Retrieve an identity record
+      operationId: getIdentity
+      description: |
+        Retrieve the current state of an identity record, including verification
+        status, linked external identifiers, and associated attestations.
+
+        Identity records are immutable once verified. Status transitions follow:
+        `pending` -> `verified` | `rejected` | `expired`.
+
+        Access to identity records is governed by zone-level consent policies.
+        The caller must hold the `identity:read` scope and the subject must have
+        an active consent grant for the requesting entity.
+      parameters:
+        - name: identity_id
+          in: path
+          required: true
+          description: |
+            Unique identifier for the identity record. Format is a URN:
+            `urn:msez:identity:{zone_id}:{unique_id}`.
+          schema:
+            type: string
+            pattern: '^urn:msez:identity:[a-z0-9_-]+:[a-zA-Z0-9_-]+$'
+            examples:
+              - "urn:msez:identity:zone-pk-01:id-00a1b2c3"
+        - name: include_attestations
+          in: query
+          required: false
+          description: |
+            If true, include the full attestation chain in the response.
+            Defaults to false for performance.
+          schema:
+            type: boolean
+            default: false
+        - name: include_linked_ids
+          in: query
+          required: false
+          description: |
+            If true, include all linked external identifiers in the response.
+            Defaults to true.
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Identity record found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityRecord'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/identity/link:
+    post:
+      tags: [identity.linking]
+      summary: Link an external identifier to an identity record
+      operationId: linkExternalId
+      description: |
+        Associate an external identifier (CNIC, NTN, passport number, or other
+        national ID) with an existing identity record. Each link triggers a
+        verification check against the relevant external system before the link
+        is confirmed.
+
+        A single identity record may have multiple linked identifiers of
+        different types (e.g., one CNIC and one NTN). Duplicate links of the
+        same type and value are rejected.
+
+        Supported identifier types:
+        - `cnic` — NADRA Computerized National Identity Card (13-digit format:
+          `XXXXX-XXXXXXX-X`). Validated against NADRA VERISYS.
+        - `ntn` — National Tax Number issued by FBR (format: `XXXXXXX-X`).
+          Validated against FBR IRIS taxpayer registry.
+        - `passport` — ICAO passport number. Validated against issuing
+          authority's MRZ data if available.
+        - `secp_registration` — SECP company registration number for business
+          entities.
+        - `custom` — Zone-defined identifier type. Requires `custom_type_name`
+          in the request body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalIdLink'
+            examples:
+              link_cnic:
+                summary: Link a NADRA CNIC to an identity record
+                value:
+                  identity_id: "urn:msez:identity:zone-pk-01:id-00a1b2c3"
+                  id_type: cnic
+                  id_value: "35201-1234567-1"
+                  issuing_authority: "NADRA"
+                  issued_date: "2020-03-10"
+                  expiry_date: "2030-03-09"
+                  metadata:
+                    cnic_format: "smart_card"
+              link_ntn:
+                summary: Link an NTN to an identity record
+                value:
+                  identity_id: "urn:msez:identity:zone-pk-01:id-00a1b2c3"
+                  id_type: ntn
+                  id_value: "1234567-8"
+                  issuing_authority: "FBR"
+                  issued_date: "2019-07-01"
+              link_passport:
+                summary: Link a passport to an identity record
+                value:
+                  identity_id: "urn:msez:identity:zone-pk-01:id-00a1b2c3"
+                  id_type: passport
+                  id_value: "AB1234567"
+                  issuing_authority: "DGIP-PK"
+                  issued_date: "2022-01-15"
+                  expiry_date: "2032-01-14"
+                  metadata:
+                    mrz_line_1: "P<PAKKHAN<<MUHAMMAD<ALI<<<<<<<<<<<<<<<<<<<<"
+                    mrz_line_2: "AB12345671PAK9005153M3201149<<<<<<<<<<<<<<02"
+      responses:
+        '201':
+          description: External identifier linked successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalIdLinkResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/identity/attestation:
+    post:
+      tags: [identity.attestation]
+      summary: Submit an identity attestation
+      operationId: submitIdentityAttestation
+      description: |
+        Submit a signed attestation about an identity record. Attestations are
+        the mechanism by which verification results, compliance determinations,
+        and third-party endorsements are recorded against an identity.
+
+        Each attestation is a signed document conforming to the stack's
+        attestation schema (`schemas/attestation.schema.json`). The issuer must
+        be a registered verification agent or authorized zone operator.
+
+        Attestation types:
+        - `kyc_verification` — Result of a KYC check (individual).
+        - `kyb_verification` — Result of a KYB check (business entity).
+        - `cnic_cross_reference` — NADRA CNIC verification result with match
+          confidence score.
+        - `ntn_validation` — FBR NTN validation result.
+        - `sanctions_screening` — AML/CFT sanctions list screening result.
+        - `pep_screening` — Politically Exposed Person screening result.
+        - `address_verification` — Physical address verification result.
+        - `beneficial_ownership` — Beneficial ownership declaration attestation.
+        - `risk_assessment` — Composite risk score attestation.
+
+        Attestations are append-only. Once submitted, they cannot be modified
+        or deleted. Superseding attestations reference the prior attestation
+        via the `supersedes` field.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentityAttestation'
+            examples:
+              cnic_cross_reference:
+                summary: NADRA CNIC cross-reference attestation
+                value:
+                  identity_id: "urn:msez:identity:zone-pk-01:id-00a1b2c3"
+                  attestation_type: "cnic_cross_reference"
+                  issuer: "did:msez:zone-pk-01:verification-agent-001"
+                  issued_at: "2026-02-13T10:30:00Z"
+                  expires_at: "2027-02-13T10:30:00Z"
+                  claims:
+                    cnic_number: "35201-1234567-1"
+                    match_result: "confirmed"
+                    match_confidence: 0.99
+                    verisys_reference: "VERISYS-2026-0213-00451"
+                    name_match: true
+                    date_of_birth_match: true
+                    photo_match: true
+                    cnic_status: "active"
+                  proof:
+                    type: "Ed25519Signature2020"
+                    verification_method: "did:msez:zone-pk-01:verification-agent-001#key-1"
+                    signature: "<base64-encoded-signature>"
+      responses:
+        '202':
+          description: Attestation accepted and queued for processing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityAttestationResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT bearer token with scope claims. Required scopes vary by endpoint:
+        - `identity:verify` — Required for POST /v1/identity/verify
+        - `identity:read` — Required for GET /v1/identity/{identity_id}
+        - `identity:link` — Required for POST /v1/identity/link
+        - `identity:attest` — Required for POST /v1/identity/attestation
+
+        Tokens are issued by the zone's identity provider and must include
+        the `sub` (subject DID), `iss` (zone authority DID), `aud` (API
+        audience URI), and `scope` claims.
+
+  responses:
+    BadRequest:
+      description: |
+        The request body is malformed, missing required fields, or contains
+        values that fail basic syntactic validation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error_code: "INVALID_REQUEST"
+            message: "Request validation failed."
+            details:
+              - field: "verification_parameters.cnic_number"
+                issue: "CNIC number must be exactly 13 digits."
+                expected: "13-digit numeric string"
+                actual: "12345"
+            request_id: "req-20260213-abcdef01"
+            timestamp: "2026-02-13T10:30:00Z"
+
+    Unauthorized:
+      description: |
+        Authentication credentials are missing or invalid. The bearer token
+        is absent, expired, or malformed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error_code: "AUTHENTICATION_REQUIRED"
+            message: "Bearer token is missing or expired."
+            details: []
+            request_id: "req-20260213-abcdef02"
+            timestamp: "2026-02-13T10:30:00Z"
+
+    Forbidden:
+      description: |
+        The authenticated principal lacks the required scope or consent
+        grant for this operation. The token is valid but insufficient.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error_code: "INSUFFICIENT_SCOPE"
+            message: "Token lacks required scope 'identity:verify'."
+            details:
+              - field: "authorization"
+                issue: "Missing required scope."
+                expected: "identity:verify"
+                actual: "identity:read"
+            request_id: "req-20260213-abcdef03"
+            timestamp: "2026-02-13T10:30:00Z"
+
+    NotFound:
+      description: |
+        The requested identity record does not exist or has been redacted
+        under data privacy regulations.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error_code: "IDENTITY_NOT_FOUND"
+            message: "Identity record not found."
+            details:
+              - field: "identity_id"
+                issue: "No record exists for the given identifier."
+                expected: "Valid identity URN"
+                actual: "urn:msez:identity:zone-pk-01:id-nonexistent"
+            request_id: "req-20260213-abcdef04"
+            timestamp: "2026-02-13T10:30:00Z"
+
+    UnprocessableEntity:
+      description: |
+        The request is syntactically valid but semantically incorrect.
+        Examples: linking a duplicate identifier, verifying against an
+        unsupported method, or referencing a non-existent identity record.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error_code: "DUPLICATE_LINK"
+            message: "An identifier of this type is already linked to the identity record."
+            details:
+              - field: "id_type"
+                issue: "Duplicate external identifier link."
+                expected: "Unique id_type per identity record"
+                actual: "cnic (already linked)"
+            request_id: "req-20260213-abcdef05"
+            timestamp: "2026-02-13T10:30:00Z"
+
+    InternalServerError:
+      description: |
+        An unexpected error occurred during processing. The request may be
+        retried. If the error persists, contact zone operations.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error_code: "INTERNAL_ERROR"
+            message: "An unexpected error occurred. Please retry or contact support."
+            details: []
+            request_id: "req-20260213-abcdef06"
+            timestamp: "2026-02-13T10:30:00Z"
+
+  schemas:
+    Error:
+      type: object
+      description: |
+        Structured error response body used across all error responses.
+        Provides machine-readable error codes, human-readable messages,
+        and field-level diagnostic details for client-side remediation.
+      required:
+        - error_code
+        - message
+        - request_id
+        - timestamp
+      properties:
+        error_code:
+          type: string
+          description: |
+            Machine-readable error code. Clients should switch on this value
+            for programmatic error handling.
+          enum:
+            - INVALID_REQUEST
+            - AUTHENTICATION_REQUIRED
+            - INSUFFICIENT_SCOPE
+            - IDENTITY_NOT_FOUND
+            - DUPLICATE_LINK
+            - VERIFICATION_METHOD_UNSUPPORTED
+            - EXTERNAL_SERVICE_UNAVAILABLE
+            - CONSENT_NOT_GRANTED
+            - ATTESTATION_SIGNATURE_INVALID
+            - INTERNAL_ERROR
+        message:
+          type: string
+          description: Human-readable error message.
+        details:
+          type: array
+          description: |
+            Field-level error details. Each entry identifies the offending
+            field, the nature of the issue, and the expected vs actual values.
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: JSON path to the offending field.
+              issue:
+                type: string
+                description: Description of the validation failure.
+              expected:
+                type: string
+                description: What was expected.
+              actual:
+                type: string
+                description: What was received.
+            additionalProperties: false
+        request_id:
+          type: string
+          description: |
+            Unique request identifier for correlation with server-side logs.
+            Format: `req-{date}-{hex}`.
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the error occurrence (UTC).
+      additionalProperties: false
+
+    VerificationRequest:
+      type: object
+      description: |
+        Request body for initiating a KYC (individual) or KYB (business entity)
+        identity verification. The verification_method determines which external
+        system is consulted and which verification_parameters are required.
+      required:
+        - subject_type
+        - legal_name
+        - verification_method
+        - jurisdiction_id
+        - requesting_entity_id
+      properties:
+        subject_type:
+          type: string
+          description: |
+            Whether this is an individual (KYC) or business entity (KYB)
+            verification.
+          enum:
+            - individual
+            - business
+        legal_name:
+          type: string
+          description: |
+            Full legal name of the individual or registered name of the
+            business entity as it appears on official documents.
+          minLength: 1
+          maxLength: 500
+        verification_method:
+          type: string
+          description: |
+            The verification method to use. Determines which external system
+            is consulted and which verification_parameters are required.
+          enum:
+            - nadra_cnic
+            - ntn_lookup
+            - passport_mrz
+            - document_review
+            - business_registry
+        verification_parameters:
+          type: object
+          description: |
+            Method-specific parameters. Required fields vary by
+            verification_method:
+            - nadra_cnic: cnic_number (required), date_of_birth (required),
+              father_name (optional)
+            - ntn_lookup: ntn (required), business_registration_number (optional)
+            - passport_mrz: passport_number (required), mrz_line_1 (required),
+              mrz_line_2 (required), issuing_country (required)
+            - document_review: document_type (required), document_images (required)
+            - business_registry: registration_number (required),
+              registration_authority (required)
+          properties:
+            cnic_number:
+              type: string
+              description: |
+                NADRA CNIC number. Must be exactly 13 digits. The format
+                XXXXX-XXXXXXX-X (with dashes) is also accepted and will be
+                normalized to the 13-digit form.
+              pattern: '^\d{5}-?\d{7}-?\d{1}$'
+            date_of_birth:
+              type: string
+              format: date
+              description: Date of birth in ISO 8601 format (YYYY-MM-DD).
+            father_name:
+              type: string
+              description: Father's name as recorded on the CNIC.
+            ntn:
+              type: string
+              description: |
+                National Tax Number issued by FBR. Format: XXXXXXX-X
+                (7 digits, dash, 1 check digit).
+              pattern: '^\d{7}-\d{1}$'
+            business_registration_number:
+              type: string
+              description: SECP or equivalent business registration number.
+            passport_number:
+              type: string
+              description: Passport number as printed on the document.
+              maxLength: 20
+            mrz_line_1:
+              type: string
+              description: |
+                First line of the machine-readable zone (MRZ). 44 characters
+                for TD3 (passport) format.
+              maxLength: 44
+            mrz_line_2:
+              type: string
+              description: |
+                Second line of the machine-readable zone (MRZ). 44 characters
+                for TD3 (passport) format.
+              maxLength: 44
+            issuing_country:
+              type: string
+              description: ISO 3166-1 alpha-2 country code of the issuing authority.
+              pattern: '^[A-Z]{2}$'
+            document_type:
+              type: string
+              description: Type of document for manual review.
+              enum:
+                - national_id
+                - drivers_license
+                - utility_bill
+                - bank_statement
+                - corporate_filing
+            document_images:
+              type: array
+              description: |
+                Base64-encoded images of the document. Maximum 5 images,
+                each no larger than 10MB.
+              items:
+                type: object
+                required:
+                  - content_type
+                  - data
+                properties:
+                  content_type:
+                    type: string
+                    enum:
+                      - image/jpeg
+                      - image/png
+                      - application/pdf
+                  data:
+                    type: string
+                    format: byte
+                    description: Base64-encoded document image.
+                  label:
+                    type: string
+                    description: |
+                      Label for the image (e.g., "front", "back", "selfie").
+                additionalProperties: false
+              maxItems: 5
+            registration_number:
+              type: string
+              description: Business registration number with the relevant authority.
+            registration_authority:
+              type: string
+              description: |
+                Name or code of the registration authority (e.g., "SECP",
+                "SBP", "PRA").
+          additionalProperties: true
+        jurisdiction_id:
+          type: string
+          description: |
+            ISO 3166-1 alpha-2 country code or zone-specific jurisdiction
+            identifier where the verification applies.
+          pattern: '^[A-Z]{2}(-[A-Z0-9]+)?$'
+        requesting_entity_id:
+          type: string
+          description: |
+            URN of the entity requesting the verification. Must be a
+            registered verification agent or zone operator.
+          pattern: '^urn:msez:entity:.+'
+        callback_url:
+          type: string
+          format: uri
+          description: |
+            Optional webhook URL for asynchronous verification result
+            delivery. If provided, the server will POST the completed
+            IdentityRecord to this URL when verification completes.
+        metadata:
+          type: object
+          description: |
+            Extensible metadata for zone-specific or method-specific
+            additional context. Not used in digest computation.
+          additionalProperties: true
+      additionalProperties: false
+
+    IdentityRecord:
+      type: object
+      description: |
+        Core identity record representing a verified (or pending verification)
+        individual or business entity within the stack. Identity records are
+        the authoritative source of KYC/KYB status for all downstream
+        operations including entity formation, ownership transfers, and
+        fiscal reporting.
+      required:
+        - identity_id
+        - subject_type
+        - legal_name
+        - verification_status
+        - jurisdiction_id
+        - created_at
+        - updated_at
+      properties:
+        identity_id:
+          type: string
+          description: |
+            Unique identity record identifier. Format:
+            `urn:msez:identity:{zone_id}:{unique_id}`.
+          pattern: '^urn:msez:identity:[a-z0-9_-]+:[a-zA-Z0-9_-]+$'
+        subject_type:
+          type: string
+          enum:
+            - individual
+            - business
+        legal_name:
+          type: string
+          description: Full legal name or registered entity name.
+        verification_status:
+          type: string
+          description: |
+            Current verification status. Transitions:
+            `pending` -> `in_review` -> `verified` | `rejected`.
+            `verified` -> `expired` (automatic, based on attestation expiry).
+            `rejected` -> `pending` (on resubmission with corrected data).
+          enum:
+            - pending
+            - in_review
+            - verified
+            - rejected
+            - expired
+        verification_method:
+          type: string
+          description: The method used for the most recent verification.
+          enum:
+            - nadra_cnic
+            - ntn_lookup
+            - passport_mrz
+            - document_review
+            - business_registry
+        risk_score:
+          type: string
+          description: |
+            Composite risk score as a string-encoded decimal (not float,
+            per stack canonicalization rules). Range: "0.00" (lowest risk)
+            to "100.00" (highest risk). Computed from attestation claims.
+          pattern: '^\d{1,3}\.\d{2}$'
+        jurisdiction_id:
+          type: string
+          description: Jurisdiction where the identity is registered.
+        linked_identifiers:
+          type: array
+          description: |
+            External identifiers linked to this identity record. Each
+            entry represents a verified association with a national ID
+            system or external registry.
+          items:
+            $ref: '#/components/schemas/LinkedIdentifier'
+        attestations:
+          type: array
+          description: |
+            Attestation chain for this identity record. Each attestation
+            is a signed document recording a verification result or
+            compliance determination. Only included when
+            `include_attestations=true` is set on the query.
+          items:
+            $ref: '../schemas/attestation.schema.json'
+        consent_grants:
+          type: array
+          description: |
+            Active consent grants authorizing specific entities to access
+            this identity record. Managed via the Consent primitive API.
+          items:
+            type: object
+            properties:
+              grantee_entity_id:
+                type: string
+                description: URN of the entity granted access.
+              scope:
+                type: string
+                description: |
+                  Scope of the consent grant (e.g., "identity:read",
+                  "identity:attest").
+              granted_at:
+                type: string
+                format: date-time
+              expires_at:
+                type: string
+                format: date-time
+            required:
+              - grantee_entity_id
+              - scope
+              - granted_at
+            additionalProperties: false
+        created_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of record creation (UTC).
+        updated_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of last status change (UTC).
+        verified_at:
+          type: string
+          format: date-time
+          description: |
+            ISO 8601 timestamp of when verification was completed (UTC).
+            Null if not yet verified.
+        metadata:
+          type: object
+          description: Extensible metadata. Not used in digest computation.
+          additionalProperties: true
+      additionalProperties: false
+
+    LinkedIdentifier:
+      type: object
+      description: |
+        An external identifier linked to an identity record. Represents a
+        verified association between the stack identity and a national ID
+        system or external registry.
+      required:
+        - id_type
+        - id_value
+        - issuing_authority
+        - link_status
+        - linked_at
+      properties:
+        id_type:
+          type: string
+          description: Type of the external identifier.
+          enum:
+            - cnic
+            - ntn
+            - passport
+            - secp_registration
+            - custom
+        id_value:
+          type: string
+          description: |
+            The external identifier value. Stored in normalized form:
+            - CNIC: 13 digits without dashes (e.g., "3520112345671")
+            - NTN: with dash (e.g., "1234567-8")
+            - Passport: uppercase alphanumeric (e.g., "AB1234567")
+        id_value_masked:
+          type: string
+          description: |
+            Masked version of the identifier for display in non-privileged
+            contexts. Example: "35201-*******-1" for CNIC.
+        issuing_authority:
+          type: string
+          description: |
+            Authority that issued the identifier. Examples: "NADRA",
+            "FBR", "DGIP-PK", "SECP".
+        issued_date:
+          type: string
+          format: date
+          description: Date the external identifier was issued.
+        expiry_date:
+          type: string
+          format: date
+          description: |
+            Date the external identifier expires. Null for identifiers
+            without expiry (e.g., NTN).
+        link_status:
+          type: string
+          description: |
+            Status of the link. `pending` means the cross-reference check
+            has not yet completed. `confirmed` means the external system
+            verified the association. `revoked` means the link was
+            invalidated (e.g., CNIC blocked by NADRA).
+          enum:
+            - pending
+            - confirmed
+            - failed
+            - revoked
+            - expired
+        verification_reference:
+          type: string
+          description: |
+            Reference number from the external verification system
+            (e.g., NADRA VERISYS transaction reference).
+        linked_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the link was created (UTC).
+        verified_at:
+          type: string
+          format: date-time
+          description: |
+            ISO 8601 timestamp of when the link was verified (UTC).
+            Null if not yet verified.
+        custom_type_name:
+          type: string
+          description: |
+            Name of the custom identifier type. Required when id_type
+            is "custom". Example: "provincial_business_license".
+        metadata:
+          type: object
+          description: |
+            Additional identifier-specific metadata. Examples include
+            CNIC smart card vs. old format, passport type (ordinary,
+            diplomatic, official), etc.
+          additionalProperties: true
+      additionalProperties: false
+
+    ExternalIdLink:
+      type: object
+      description: |
+        Request body for linking an external identifier to an existing
+        identity record. The link is validated against the relevant
+        external system before confirmation.
+      required:
+        - identity_id
+        - id_type
+        - id_value
+        - issuing_authority
+      properties:
+        identity_id:
+          type: string
+          description: |
+            URN of the identity record to link the identifier to.
+          pattern: '^urn:msez:identity:[a-z0-9_-]+:[a-zA-Z0-9_-]+$'
+        id_type:
+          type: string
+          description: Type of the external identifier to link.
+          enum:
+            - cnic
+            - ntn
+            - passport
+            - secp_registration
+            - custom
+        id_value:
+          type: string
+          description: |
+            The external identifier value. Will be normalized on storage:
+            - CNIC: accepts "XXXXX-XXXXXXX-X" or "XXXXXXXXXXXXX"
+            - NTN: accepts "XXXXXXX-X"
+            - Passport: uppercase alphanumeric
+          minLength: 1
+          maxLength: 50
+        issuing_authority:
+          type: string
+          description: |
+            Authority that issued the identifier. Must match the expected
+            authority for the id_type (e.g., "NADRA" for cnic).
+        issued_date:
+          type: string
+          format: date
+          description: Date the external identifier was issued.
+        expiry_date:
+          type: string
+          format: date
+          description: Expiry date of the identifier, if applicable.
+        custom_type_name:
+          type: string
+          description: |
+            Required when id_type is "custom". Defines the zone-specific
+            identifier type name.
+          maxLength: 100
+        metadata:
+          type: object
+          description: |
+            Additional context for the link request. Not used in digest
+            computation. Examples: CNIC format (smart_card, old_format),
+            passport type, etc.
+          additionalProperties: true
+      additionalProperties: false
+
+    ExternalIdLinkResult:
+      type: object
+      description: |
+        Response body for a successful external identifier link request.
+        Includes the link status and verification reference if available.
+      required:
+        - identity_id
+        - id_type
+        - link_status
+        - linked_at
+      properties:
+        identity_id:
+          type: string
+          description: URN of the identity record.
+        id_type:
+          type: string
+          description: Type of the linked identifier.
+          enum:
+            - cnic
+            - ntn
+            - passport
+            - secp_registration
+            - custom
+        id_value_masked:
+          type: string
+          description: Masked version of the identifier for safe display.
+        link_status:
+          type: string
+          description: |
+            Current status of the link. May be "pending" if the
+            external verification is asynchronous.
+          enum:
+            - pending
+            - confirmed
+            - failed
+        verification_reference:
+          type: string
+          description: |
+            Reference number from the external system's verification
+            response. Null if verification is still pending.
+        linked_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of link creation (UTC).
+        message:
+          type: string
+          description: Human-readable status message.
+      additionalProperties: false
+
+    IdentityAttestation:
+      type: object
+      description: |
+        An identity attestation submission. Conforms to the stack's
+        attestation schema with identity-specific claim types. The
+        attestation is cryptographically signed by the issuing
+        verification agent.
+      required:
+        - identity_id
+        - attestation_type
+        - issuer
+        - issued_at
+        - claims
+        - proof
+      properties:
+        identity_id:
+          type: string
+          description: URN of the identity record this attestation applies to.
+          pattern: '^urn:msez:identity:[a-z0-9_-]+:[a-zA-Z0-9_-]+$'
+        attestation_type:
+          type: string
+          description: |
+            Type of attestation. Determines the expected claims structure.
+          enum:
+            - kyc_verification
+            - kyb_verification
+            - cnic_cross_reference
+            - ntn_validation
+            - sanctions_screening
+            - pep_screening
+            - address_verification
+            - beneficial_ownership
+            - risk_assessment
+        issuer:
+          type: string
+          description: |
+            DID of the attestation issuer. Must be a registered
+            verification agent with the appropriate authorization.
+          pattern: '^did:msez:.+'
+        issued_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of attestation creation (UTC).
+        expires_at:
+          type: string
+          format: date-time
+          description: |
+            ISO 8601 timestamp of attestation expiry (UTC). After this
+            time, the attestation is no longer considered valid for
+            compliance purposes. Downstream systems must re-verify.
+        supersedes:
+          type: string
+          description: |
+            Digest (SHA-256 hex) of a prior attestation that this
+            attestation supersedes. Used to build the attestation chain
+            and track verification history.
+          pattern: '^[a-f0-9]{64}$'
+        claims:
+          type: object
+          description: |
+            Attestation claims. Structure varies by attestation_type.
+            For cnic_cross_reference, expected fields include:
+            cnic_number, match_result, match_confidence,
+            verisys_reference, name_match, date_of_birth_match,
+            photo_match, cnic_status.
+          additionalProperties: true
+        proof:
+          type: object
+          description: |
+            Cryptographic proof for the attestation. Must conform to
+            the stack's proof structure (Ed25519Signature2020 or
+            equivalent).
+          required:
+            - type
+            - verification_method
+            - signature
+          properties:
+            type:
+              type: string
+              description: Proof type identifier.
+              enum:
+                - Ed25519Signature2020
+                - JsonWebSignature2020
+            verification_method:
+              type: string
+              description: |
+                DID URL of the verification method (public key) used
+                to create the signature.
+            signature:
+              type: string
+              description: Base64-encoded digital signature.
+            created:
+              type: string
+              format: date-time
+              description: Timestamp of signature creation.
+            proof_purpose:
+              type: string
+              description: Purpose of the proof.
+              enum:
+                - assertionMethod
+                - authentication
+              default: assertionMethod
+          additionalProperties: false
+      additionalProperties: false
+
+    IdentityAttestationResult:
+      type: object
+      description: |
+        Response body for a successfully submitted identity attestation.
+        Includes the computed digest for the attestation record.
+      required:
+        - attestation_digest
+        - identity_id
+        - attestation_type
+        - status
+        - received_at
+      properties:
+        attestation_digest:
+          type: string
+          description: |
+            SHA-256 hex digest of the canonicalized attestation. Used as
+            the content-addressed identifier in the CAS store.
+          pattern: '^[a-f0-9]{64}$'
+        identity_id:
+          type: string
+          description: URN of the identity record.
+        attestation_type:
+          type: string
+          description: Type of the submitted attestation.
+        status:
+          type: string
+          description: |
+            Processing status of the attestation. "accepted" means the
+            attestation signature was verified and the record was stored.
+            "queued" means signature verification is pending.
+          enum:
+            - accepted
+            - queued
+        received_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the server received the attestation (UTC).
+        message:
+          type: string
+          description: Human-readable status message.
+      additionalProperties: false

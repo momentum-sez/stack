@@ -40,6 +40,9 @@ utoipa = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
+# Constant-time comparison
+subtle = { workspace = true }
+
 # Error handling
 thiserror = { workspace = true }
 

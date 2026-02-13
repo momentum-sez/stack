@@ -13,6 +13,7 @@ use axum::http::{header, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
+use subtle::ConstantTimeEq;
 
 use crate::error::{ErrorBody, ErrorDetail};
 
@@ -20,6 +21,18 @@ use crate::error::{ErrorBody, ErrorDetail};
 #[derive(Debug, Clone)]
 pub struct AuthConfig {
     pub token: Option<String>,
+}
+
+/// Constant-time token comparison. Prevents timing side-channel attacks.
+fn constant_time_token_eq(provided: &str, expected: &str) -> bool {
+    let provided = provided.as_bytes();
+    let expected = expected.as_bytes();
+    if provided.len() != expected.len() {
+        // Dummy comparison to keep timing constant regardless of length match.
+        let _ = expected.ct_eq(expected);
+        return false;
+    }
+    provided.ct_eq(expected).into()
 }
 
 /// Extract and validate the Bearer token from the Authorization header.
@@ -40,7 +53,7 @@ pub async fn auth_middleware(request: Request, next: Next) -> Response {
             match auth_header {
                 Some(header_value) if header_value.starts_with("Bearer ") => {
                     let provided = &header_value[7..];
-                    if provided == expected.as_str() {
+                    if constant_time_token_eq(provided, expected) {
                         next.run(request).await
                     } else {
                         unauthorized_response("invalid bearer token")
@@ -188,5 +201,25 @@ mod tests {
 
         let response = app.oneshot(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[test]
+    fn constant_time_eq_matches_identical() {
+        assert!(constant_time_token_eq("secret-token", "secret-token"));
+    }
+
+    #[test]
+    fn constant_time_eq_rejects_different() {
+        assert!(!constant_time_token_eq("wrong", "secret-token"));
+    }
+
+    #[test]
+    fn constant_time_eq_rejects_prefix() {
+        assert!(!constant_time_token_eq("secret", "secret-token"));
+    }
+
+    #[test]
+    fn constant_time_eq_rejects_empty() {
+        assert!(!constant_time_token_eq("", "secret-token"));
     }
 }

@@ -72,6 +72,9 @@ sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres"] }
 # CLI
 clap = { version = "4", features = ["derive"] }
 
+# Concurrency
+parking_lot = "0.12"
+
 # Observability
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }

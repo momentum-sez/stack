@@ -1,6 +1,6 @@
 [package]
 name = "msez-api"
-description = "Axum API services for the SEZ Stack: five programmable primitives (Entities, Ownership, Fiscal, Identity, Consent), corridor operations, smart asset CRUD, and regulator console."
+description = "Axum API services for the SEZ Stack: orchestration layer above Mass APIs, corridor operations, smart asset lifecycle, compliance tensor, and regulator console."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -18,6 +18,7 @@ swagger = []
 # Internal crates
 msez-core = { workspace = true }
 msez-state = { workspace = true }
+msez-mass-client = { workspace = true }
 
 # Web framework
 axum = { workspace = true }

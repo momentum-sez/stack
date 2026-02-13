@@ -14,41 +14,16 @@ use crate::state::AppState;
 #[derive(OpenApi)]
 #[openapi(
     info(
-        title = "MSEZ API — Five Programmable Primitives",
+        title = "MSEZ API — SEZ Stack Orchestration Layer",
         version = "0.4.44",
-        description = "Axum API services for the Momentum SEZ Stack: Entities, Ownership, Fiscal, Identity, Consent, Corridors, Smart Assets, and Regulator Console.",
+        description = "Axum API services for the Momentum SEZ Stack: orchestration layer above Mass APIs. Provides Mass API proxy for primitive operations (entities, ownership, fiscal, identity, consent), plus SEZ-Stack-native corridor lifecycle, smart asset management, and regulator console.",
         license(name = "BUSL-1.1")
     ),
     paths(
-        // Entities
-        crate::routes::entities::create_entity,
-        crate::routes::entities::list_entities,
-        crate::routes::entities::get_entity,
-        crate::routes::entities::update_entity,
-        crate::routes::entities::get_beneficial_owners,
-        crate::routes::entities::initiate_dissolution,
-        crate::routes::entities::get_dissolution_status,
-        // Ownership
-        crate::routes::ownership::create_cap_table,
-        crate::routes::ownership::get_cap_table,
-        crate::routes::ownership::record_transfer,
-        crate::routes::ownership::get_share_classes,
-        // Fiscal
-        crate::routes::fiscal::create_account,
-        crate::routes::fiscal::initiate_payment,
-        crate::routes::fiscal::calculate_withholding,
-        crate::routes::fiscal::get_tax_events,
-        crate::routes::fiscal::generate_report,
-        // Identity
-        crate::routes::identity::verify_identity,
-        crate::routes::identity::get_identity,
-        crate::routes::identity::link_external_id,
-        crate::routes::identity::submit_attestation,
-        // Consent
-        crate::routes::consent::create_consent,
-        crate::routes::consent::get_consent,
-        crate::routes::consent::sign_consent,
-        crate::routes::consent::get_audit_trail,
+        // Mass API proxy (entities)
+        crate::routes::mass_proxy::create_entity,
+        crate::routes::mass_proxy::get_entity,
+        crate::routes::mass_proxy::list_entities,
         // Corridors
         crate::routes::corridors::create_corridor,
         crate::routes::corridors::list_corridors,
@@ -69,21 +44,7 @@ use crate::state::AppState;
         crate::routes::regulator::compliance_summary,
     ),
     components(schemas(
-        // State record types
-        crate::state::EntityRecord,
-        crate::state::BeneficialOwner,
-        crate::state::CapTableRecord,
-        crate::state::ShareClass,
-        crate::state::OwnershipTransfer,
-        crate::state::FiscalAccountRecord,
-        crate::state::PaymentRecord,
-        crate::state::TaxEventRecord,
-        crate::state::IdentityRecord,
-        crate::state::LinkedExternalId,
-        crate::state::IdentityAttestation,
-        crate::state::ConsentRecord,
-        crate::state::ConsentParty,
-        crate::state::ConsentAuditEntry,
+        // State record types (SEZ-Stack-owned)
         crate::state::CorridorRecord,
         crate::state::CorridorTransitionEntry,
         crate::state::SmartAssetRecord,
@@ -91,26 +52,9 @@ use crate::state::AppState;
         // Error types
         crate::error::ErrorBody,
         crate::error::ErrorDetail,
-        // Entity DTOs
-        crate::routes::entities::CreateEntityRequest,
-        crate::routes::entities::UpdateEntityRequest,
-        crate::routes::entities::DissolutionStatusResponse,
-        // Ownership DTOs
-        crate::routes::ownership::CreateCapTableRequest,
-        crate::routes::ownership::RecordTransferRequest,
-        // Fiscal DTOs
-        crate::routes::fiscal::CreateAccountRequest,
-        crate::routes::fiscal::InitiatePaymentRequest,
-        crate::routes::fiscal::WithholdingCalculateRequest,
-        crate::routes::fiscal::WithholdingResponse,
-        // Identity DTOs
-        crate::routes::identity::VerifyIdentityRequest,
-        crate::routes::identity::LinkExternalIdRequest,
-        crate::routes::identity::SubmitAttestationRequest,
-        // Consent DTOs
-        crate::routes::consent::CreateConsentRequest,
-        crate::routes::consent::ConsentPartyInput,
-        crate::routes::consent::SignConsentRequest,
+        // Mass proxy DTOs
+        crate::routes::mass_proxy::CreateEntityProxyRequest,
+        crate::routes::mass_proxy::BeneficialOwnerInput,
         // Corridor DTOs
         crate::routes::corridors::CreateCorridorRequest,
         crate::routes::corridors::TransitionCorridorRequest,
@@ -127,14 +71,10 @@ use crate::state::AppState;
         crate::routes::regulator::ComplianceSummary,
     )),
     tags(
-        (name = "entities", description = "ENTITIES primitive — Organization Info API"),
-        (name = "ownership", description = "OWNERSHIP primitive — Investment Info API"),
-        (name = "fiscal", description = "FISCAL primitive — Treasury Info API"),
-        (name = "identity", description = "IDENTITY primitive — Identity Verification API"),
-        (name = "consent", description = "CONSENT primitive — Consent Info API"),
-        (name = "corridors", description = "Corridor Operations API"),
-        (name = "smart_assets", description = "Smart Asset API"),
-        (name = "regulator", description = "Regulator Console API"),
+        (name = "entities", description = "ENTITIES primitive — proxied to Mass organization-info API"),
+        (name = "corridors", description = "Corridor Operations API (SEZ Stack domain)"),
+        (name = "smart_assets", description = "Smart Asset API (SEZ Stack domain)"),
+        (name = "regulator", description = "Regulator Console API (SEZ Stack domain)"),
     )
 )]
 pub struct ApiDoc;
@@ -155,12 +95,13 @@ async fn openapi_json() -> Json<utoipa::openapi::OpenApi> {
 mod tests {
     use super::*;
 
-    // ── OpenAPI spec generation ───────────────────────────────────
-
     #[test]
     fn test_openapi_spec_generates_successfully() {
         let spec = ApiDoc::openapi();
-        assert_eq!(spec.info.title, "MSEZ API — Five Programmable Primitives");
+        assert_eq!(
+            spec.info.title,
+            "MSEZ API — SEZ Stack Orchestration Layer"
+        );
         assert_eq!(spec.info.version, "0.4.44");
     }
 
@@ -188,42 +129,6 @@ mod tests {
         assert!(
             spec.paths.paths.contains_key("/v1/corridors"),
             "OpenAPI spec should contain /v1/corridors path"
-        );
-    }
-
-    #[test]
-    fn test_openapi_spec_has_fiscal_paths() {
-        let spec = ApiDoc::openapi();
-        assert!(
-            spec.paths.paths.contains_key("/v1/fiscal/accounts"),
-            "OpenAPI spec should contain /v1/fiscal/accounts path"
-        );
-    }
-
-    #[test]
-    fn test_openapi_spec_has_identity_paths() {
-        let spec = ApiDoc::openapi();
-        assert!(
-            spec.paths.paths.contains_key("/v1/identity/verify"),
-            "OpenAPI spec should contain /v1/identity/verify path"
-        );
-    }
-
-    #[test]
-    fn test_openapi_spec_has_consent_paths() {
-        let spec = ApiDoc::openapi();
-        assert!(
-            spec.paths.paths.contains_key("/v1/consent/request"),
-            "OpenAPI spec should contain /v1/consent/request path"
-        );
-    }
-
-    #[test]
-    fn test_openapi_spec_has_ownership_paths() {
-        let spec = ApiDoc::openapi();
-        assert!(
-            spec.paths.paths.contains_key("/v1/ownership/cap-table"),
-            "OpenAPI spec should contain /v1/ownership/cap-table path"
         );
     }
 
@@ -256,16 +161,6 @@ mod tests {
             tag_names.contains(&"entities"),
             "should contain entities tag"
         );
-        assert!(
-            tag_names.contains(&"ownership"),
-            "should contain ownership tag"
-        );
-        assert!(tag_names.contains(&"fiscal"), "should contain fiscal tag");
-        assert!(
-            tag_names.contains(&"identity"),
-            "should contain identity tag"
-        );
-        assert!(tag_names.contains(&"consent"), "should contain consent tag");
         assert!(
             tag_names.contains(&"corridors"),
             "should contain corridors tag"
@@ -303,8 +198,6 @@ mod tests {
             "JSON should contain openapi key"
         );
     }
-
-    // ── Router construction ───────────────────────────────────────
 
     #[test]
     fn test_router_builds_successfully() {

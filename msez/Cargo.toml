@@ -13,6 +13,7 @@ members = [
     "crates/msez-arbitration",
     "crates/msez-schema",
     "crates/msez-api",
+    "crates/msez-mass-client",
     "crates/msez-cli",
     "crates/msez-integration-tests",
 ]
@@ -37,6 +38,7 @@ msez-corridor = { path = "crates/msez-corridor" }
 msez-agentic = { path = "crates/msez-agentic" }
 msez-arbitration = { path = "crates/msez-arbitration" }
 msez-schema = { path = "crates/msez-schema" }
+msez-mass-client = { path = "crates/msez-mass-client" }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
@@ -61,6 +63,10 @@ uuid = { version = "1", features = ["v4", "serde"] }
 
 subtle = "2"
 parking_lot = "0.12"
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+url = "2"
 
 # Web framework
 axum = "0.7"

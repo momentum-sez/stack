@@ -22,10 +22,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(8080);
 
     let auth_token = std::env::var("AUTH_TOKEN").ok();
-
     let config = AppConfig { port, auth_token };
 
-    let state = AppState::with_config(config);
+    // Attempt to create Mass API client from environment.
+    let mass_client = match msez_mass_client::MassApiConfig::from_env() {
+        Ok(mass_config) => {
+            tracing::info!("Mass API client configured");
+            match msez_mass_client::MassClient::new(mass_config) {
+                Ok(client) => Some(client),
+                Err(e) => {
+                    tracing::error!("Failed to create Mass API client: {e}");
+                    return Err(e.into());
+                }
+            }
+        }
+        Err(e) => {
+            tracing::warn!(
+                "Mass API client not configured: {e}. Primitive proxy endpoints will return 503."
+            );
+            None
+        }
+    };
+
+    let state = AppState::with_config(config, mass_client);
     let app = msez_api::app(state);
 
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));

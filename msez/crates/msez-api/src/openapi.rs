@@ -15,7 +15,7 @@ use crate::state::AppState;
 #[openapi(
     info(
         title = "MSEZ API — Five Programmable Primitives",
-        version = "0.1.0",
+        version = "0.4.44",
         description = "Axum API services for the Momentum SEZ Stack: Entities, Ownership, Fiscal, Identity, Consent, Corridors, Smart Assets, and Regulator Console.",
         license(name = "BUSL-1.1")
     ),
@@ -161,7 +161,7 @@ mod tests {
     fn test_openapi_spec_generates_successfully() {
         let spec = ApiDoc::openapi();
         assert_eq!(spec.info.title, "MSEZ API — Five Programmable Primitives");
-        assert_eq!(spec.info.version, "0.1.0");
+        assert_eq!(spec.info.version, "0.4.44");
     }
 
     #[test]

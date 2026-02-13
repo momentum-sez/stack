@@ -1,6 +1,6 @@
-# MSEZ Rust Workspace
+# MSEZ Rust Workspace — v0.4.44 GENESIS
 
-The native Rust implementation of the MSEZ Stack protocol. 14 crates, 70K lines, 2,580+ tests at 98% line coverage.
+The native Rust implementation of the MSEZ Stack v0.4.44 GENESIS protocol. 14 crates, 70K lines, 2,580+ tests at 98% line coverage.
 
 ---
 

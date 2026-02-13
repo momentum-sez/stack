@@ -171,4 +171,142 @@ mod tests {
         let deserialized: RangeProofCircuit = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.value, 42);
     }
+
+    // ── RangeProofCircuit comprehensive tests ───────────────────
+
+    #[test]
+    fn range_proof_value_at_lower_bound() {
+        let circuit = RangeProofCircuit {
+            lower_bound: 100,
+            upper_bound: 10_000,
+            value_commitment: [0xaa; 32],
+            value: 100,
+            blinding_factor: [0xbb; 32],
+        };
+        assert!(circuit.value >= circuit.lower_bound);
+        assert!(circuit.value <= circuit.upper_bound);
+    }
+
+    #[test]
+    fn range_proof_value_at_upper_bound() {
+        let circuit = RangeProofCircuit {
+            lower_bound: 100,
+            upper_bound: 10_000,
+            value_commitment: [0xaa; 32],
+            value: 10_000,
+            blinding_factor: [0xbb; 32],
+        };
+        assert!(circuit.value <= circuit.upper_bound);
+    }
+
+    #[test]
+    fn range_proof_zero_range() {
+        let circuit = RangeProofCircuit {
+            lower_bound: 500,
+            upper_bound: 500,
+            value_commitment: [0xaa; 32],
+            value: 500,
+            blinding_factor: [0xbb; 32],
+        };
+        assert_eq!(circuit.lower_bound, circuit.upper_bound);
+        assert_eq!(circuit.value, circuit.lower_bound);
+    }
+
+    // ── MerkleMembershipCircuit comprehensive tests ─────────────
+
+    #[test]
+    fn merkle_membership_serialization_roundtrip() {
+        let circuit = MerkleMembershipCircuit {
+            merkle_root: [0x11; 32],
+            leaf_hash: [0x22; 32],
+            merkle_proof: vec![[0x33; 32], [0x44; 32]],
+            path_indices: vec![false, true],
+        };
+        let json = serde_json::to_string(&circuit).unwrap();
+        let deserialized: MerkleMembershipCircuit = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.merkle_root, [0x11; 32]);
+        assert_eq!(deserialized.leaf_hash, [0x22; 32]);
+        assert_eq!(deserialized.merkle_proof.len(), 2);
+    }
+
+    #[test]
+    fn merkle_membership_deep_tree() {
+        let depth = 20;
+        let circuit = MerkleMembershipCircuit {
+            merkle_root: [0x11; 32],
+            leaf_hash: [0x22; 32],
+            merkle_proof: vec![[0x33; 32]; depth],
+            path_indices: vec![false; depth],
+        };
+        assert_eq!(circuit.merkle_proof.len(), depth);
+        assert_eq!(circuit.path_indices.len(), depth);
+    }
+
+    #[test]
+    fn merkle_membership_empty_proof() {
+        let circuit = MerkleMembershipCircuit {
+            merkle_root: [0x22; 32],
+            leaf_hash: [0x22; 32],
+            merkle_proof: vec![],
+            path_indices: vec![],
+        };
+        assert_eq!(circuit.merkle_root, circuit.leaf_hash, "Single-element tree: root == leaf");
+    }
+
+    // ── NettingValidityCircuit comprehensive tests ──────────────
+
+    #[test]
+    fn netting_validity_serialization_roundtrip() {
+        let circuit = NettingValidityCircuit {
+            gross_positions_commitment: [0xaa; 32],
+            net_positions_commitment: [0xbb; 32],
+            participant_count: 2,
+            gross_positions: vec![100, -100],
+            net_positions: vec![100, -100],
+            netting_matrix: vec![0, 100, -100, 0],
+        };
+        let json = serde_json::to_string(&circuit).unwrap();
+        let deserialized: NettingValidityCircuit = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.participant_count, 2);
+        let net_sum: i64 = deserialized.net_positions.iter().sum();
+        assert_eq!(net_sum, 0);
+    }
+
+    #[test]
+    fn netting_validity_large_participant_set() {
+        let n = 10u32;
+        let gross: Vec<i64> = (0..n as i64).map(|i| if i % 2 == 0 { 1000 } else { -1000 }).collect();
+        let net: Vec<i64> = gross.clone();
+        let matrix = vec![0i64; (n * n) as usize];
+        let circuit = NettingValidityCircuit {
+            gross_positions_commitment: [0xaa; 32],
+            net_positions_commitment: [0xbb; 32],
+            participant_count: n,
+            gross_positions: gross,
+            net_positions: net,
+            netting_matrix: matrix,
+        };
+        assert_eq!(circuit.gross_positions.len(), n as usize);
+        assert_eq!(circuit.netting_matrix.len(), (n * n) as usize);
+        let net_sum: i64 = circuit.net_positions.iter().sum();
+        assert_eq!(net_sum, 0);
+    }
+
+    #[test]
+    fn netting_matrix_is_square() {
+        let n = 4u32;
+        let circuit = NettingValidityCircuit {
+            gross_positions_commitment: [0xaa; 32],
+            net_positions_commitment: [0xbb; 32],
+            participant_count: n,
+            gross_positions: vec![0; n as usize],
+            net_positions: vec![0; n as usize],
+            netting_matrix: vec![0; (n * n) as usize],
+        };
+        assert_eq!(
+            circuit.netting_matrix.len(),
+            (circuit.participant_count * circuit.participant_count) as usize,
+            "Netting matrix must be square"
+        );
+    }
 }

@@ -91,18 +91,27 @@ class TestJSONCanonicalization:
         canonical = json_canonicalize(obj)
         assert canonical == '{"a":3,"b":{"x":2,"y":1}}'
     
-    def test_number_normalization(self):
-        """Numbers should be normalized."""
+    def test_float_rejection(self):
+        """Floats must be rejected per JCS spec — use strings or integers.
+
+        The stack's canonical serialization (jcs_canonicalize) rejects floats
+        because IEEE 754 float representation is non-deterministic across
+        implementations.  Financial amounts MUST be strings.
+        """
         obj = {"val": 1.0}
-        canonical = json_canonicalize(obj)
-        # 1.0 should become 1
-        assert canonical == '{"val":1}'
-    
+        with pytest.raises(ValueError, match="[Ff]loat"):
+            json_canonicalize(obj)
+
     def test_decimal_handling(self):
-        """Decimal values should be handled correctly."""
+        """Decimal values should be coerced to strings.
+
+        The canonical serialization falls back to ``str(obj)`` for types it
+        does not recognize natively (Decimal is not a JSON primitive).  This
+        ensures amounts are represented deterministically as strings.
+        """
         obj = {"amount": Decimal("100.50")}
         canonical = json_canonicalize(obj)
-        assert '100.5' in canonical
+        assert '"100.50"' in canonical
     
     def test_whitespace_removal(self):
         """No insignificant whitespace."""

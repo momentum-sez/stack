@@ -1,0 +1,1302 @@
+openapi: "3.1.0"
+info:
+  title: MSEZ Fiscal API — Treasury Info Primitive
+  version: "0.4.44"
+  description: |
+    OpenAPI specification for the Fiscal primitive of the Momentum SEZ Stack.
+
+    This API maps to the **Treasury Info** programmable primitive and provides
+    endpoints for treasury account management, payment initiation, withholding-at-source
+    computation, tax event querying, and tax return data generation.
+
+    **FBR IRIS Integration:** All fiscal identifiers support the Pakistan Federal Board
+    of Revenue (FBR) Inland Revenue Information System (IRIS). The National Tax Number
+    (NTN) is a first-class identifier throughout. CNIC-based cross-referencing is
+    supported via the identity linking layer.
+
+    **Specification authority:** spec/12-mass-primitives-mapping.md (Primitives),
+    spec/11-architecture-overview.md (Layer D — safeguarding and treasury controls).
+
+    **Security model:** All endpoints require a bearer JWT with appropriate scope claims.
+    Fiscal operations are audit-logged and anchored to the corridor state channel for
+    tamper-evident record keeping.
+
+  contact:
+    name: Momentum SEZ Stack Maintainers
+    url: https://github.com/momentum-sez/stack
+  license:
+    name: Proprietary — Sovereign Infrastructure
+    url: https://momentum.ms/license
+
+servers:
+  - url: https://{zone_node}/api
+    description: Zone Node fiscal API endpoint
+    variables:
+      zone_node:
+        default: example.zone
+        description: Zone node hostname
+
+tags:
+  - name: accounts
+    description: Treasury account lifecycle (create, query, update).
+  - name: payments
+    description: Payment initiation and tracking.
+  - name: withholding
+    description: Withholding-at-source computation per applicable tax treaties and local law.
+  - name: tax-events
+    description: Tax event history and audit trail.
+  - name: reporting
+    description: Tax return data generation for FBR IRIS and other fiscal authorities.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/fiscal/accounts:
+    post:
+      tags: [accounts]
+      operationId: createTreasuryAccount
+      summary: Create a treasury account
+      description: |
+        Provisions a new treasury account for an entity within the zone. The account
+        is bound to the entity's NTN (National Tax Number) for FBR IRIS reporting
+        purposes. Each entity may hold multiple treasury accounts denominated in
+        different currencies.
+
+        Triggers a `fiscal.account.created` transition event on the corridor state
+        channel for audit anchoring.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTreasuryAccountRequest'
+      responses:
+        '201':
+          description: Treasury account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreasuryAccount'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/fiscal/accounts/{account_id}:
+    get:
+      tags: [accounts]
+      operationId: getTreasuryAccount
+      summary: Get treasury account details
+      description: |
+        Retrieves the current state of a treasury account, including balance,
+        status, and associated NTN binding.
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        '200':
+          description: Treasury account details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreasuryAccount'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/fiscal/payments:
+    post:
+      tags: [payments]
+      operationId: initiatePayment
+      summary: Initiate a payment
+      description: |
+        Initiates a payment from a source treasury account. The payment may be
+        domestic (intra-zone) or cross-border (via corridor settlement).
+
+        Withholding-at-source is automatically computed and applied when the
+        payment type and jurisdiction require it. The withholding amount is
+        recorded as a separate tax event linked to the payment.
+
+        The payment lifecycle follows: INITIATED -> AUTHORIZED -> SETTLED | FAILED.
+        Each state transition is anchored to the corridor state channel.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitiatePaymentRequest'
+      responses:
+        '201':
+          description: Payment initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/fiscal/payments/{payment_id}:
+    get:
+      tags: [payments]
+      operationId: getPayment
+      summary: Get payment details and status
+      description: |
+        Retrieves the current state of a payment, including settlement status,
+        withholding details, and corridor anchoring evidence.
+      parameters:
+        - $ref: '#/components/parameters/PaymentId'
+      responses:
+        '200':
+          description: Payment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/fiscal/withholding/calculate:
+    post:
+      tags: [withholding]
+      operationId: calculateWithholding
+      summary: Compute withholding at source
+      description: |
+        Computes the withholding tax amount for a prospective transaction without
+        initiating a payment. This is a read-only computation endpoint used for
+        pre-flight checks and user-facing tax previews.
+
+        The calculation considers:
+        - Source and destination jurisdictions and their applicable tax treaties
+        - Transaction type (dividend, royalty, service fee, goods payment, etc.)
+        - Entity tax status (NTN registration, filer/non-filer status per FBR)
+        - Applicable withholding tax sections (e.g., Pakistan Income Tax Ordinance 2001)
+        - Double Taxation Agreement (DTA) relief where applicable
+
+        Returns the gross amount, withholding amount, net amount, and the legal
+        basis (statute sections) for the withholding computation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithholdingCalculationRequest'
+      responses:
+        '200':
+          description: Withholding calculation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WithholdingCalculation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/fiscal/{entity_id}/tax-events:
+    get:
+      tags: [tax-events]
+      operationId: listTaxEvents
+      summary: Query tax event history for an entity
+      description: |
+        Returns the chronological history of tax events for an entity, identified
+        by its NTN or internal entity_id. Tax events include withholding deductions,
+        capital gains realizations, dividend distributions, and other fiscally
+        reportable occurrences.
+
+        Results are paginated. Each tax event includes a corridor anchor reference
+        for tamper-evident verification.
+      parameters:
+        - $ref: '#/components/parameters/EntityId'
+        - name: tax_year
+          in: query
+          required: false
+          description: |
+            Filter by Pakistani fiscal year (July-June). Format: the calendar year
+            in which the fiscal year ends (e.g., "2026" for FY 2025-2026).
+          schema:
+            type: string
+            pattern: '^\d{4}$'
+            example: "2026"
+        - name: event_type
+          in: query
+          required: false
+          description: Filter by tax event type.
+          schema:
+            type: string
+            enum:
+              - withholding_deduction
+              - capital_gains
+              - dividend_distribution
+              - royalty_payment
+              - service_fee
+              - goods_payment
+              - penalty
+              - refund
+              - adjustment
+        - name: from_date
+          in: query
+          required: false
+          description: Start date for the query range (inclusive, ISO 8601).
+          schema:
+            type: string
+            format: date
+        - name: to_date
+          in: query
+          required: false
+          description: End date for the query range (inclusive, ISO 8601).
+          schema:
+            type: string
+            format: date
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque pagination cursor from a previous response.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of events to return (default 50, max 500).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 50
+      responses:
+        '200':
+          description: Paginated list of tax events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxEventList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/fiscal/reporting/generate:
+    post:
+      tags: [reporting]
+      operationId: generateTaxReport
+      summary: Generate tax return data
+      description: |
+        Generates a structured tax return data package for submission to FBR IRIS
+        or other fiscal authorities. The report aggregates all tax events for the
+        specified entity and fiscal year, computes summary totals, and produces
+        output in the requested format.
+
+        Supported output formats:
+        - `fbr_iris_xml`: FBR IRIS-compatible XML for direct electronic filing
+        - `structured_json`: Stack-native JSON for programmatic consumption
+        - `summary`: Human-readable summary with section-level breakdowns
+
+        The generated report includes a content-addressed digest and corridor
+        anchor reference for non-repudiation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaxReportRequest'
+      responses:
+        '200':
+          description: Generated tax report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT bearer token with scope claims. Required scopes per endpoint:
+        - `fiscal:accounts:write` — createTreasuryAccount
+        - `fiscal:accounts:read` — getTreasuryAccount
+        - `fiscal:payments:write` — initiatePayment
+        - `fiscal:payments:read` — getPayment
+        - `fiscal:withholding:read` — calculateWithholding
+        - `fiscal:tax-events:read` — listTaxEvents
+        - `fiscal:reporting:write` — generateTaxReport
+
+  parameters:
+    EntityId:
+      name: entity_id
+      in: path
+      required: true
+      description: |
+        Entity identifier. Accepts either the stack-internal entity UUID or the
+        entity's registered NTN (National Tax Number). When an NTN is provided,
+        the system resolves it to the corresponding entity record.
+      schema:
+        type: string
+        minLength: 1
+        example: "ent_01H9XKQV3R7NWFP"
+    AccountId:
+      name: account_id
+      in: path
+      required: true
+      description: Treasury account identifier.
+      schema:
+        type: string
+        minLength: 1
+        example: "acc_01H9XKQV3R7NWFP"
+    PaymentId:
+      name: payment_id
+      in: path
+      required: true
+      description: Payment identifier.
+      schema:
+        type: string
+        minLength: 1
+        example: "pay_01H9XKQV3R7NWFP"
+
+  responses:
+    BadRequest:
+      description: The request body is malformed or missing required fields.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Authentication credentials are missing or invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: The authenticated principal lacks the required scope for this operation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: The requested resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    UnprocessableEntity:
+      description: |
+        The request is syntactically valid but semantically incorrect. Examples:
+        invalid NTN format, currency mismatch, insufficient balance, or a
+        withholding calculation that references a non-existent tax treaty.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: An unexpected internal error occurred. The request may be retried.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    # -------------------------------------------------------------------------
+    # Error
+    # -------------------------------------------------------------------------
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error_code, message, request_id]
+      properties:
+        error_code:
+          type: string
+          description: Machine-readable error code (e.g., "INVALID_NTN", "INSUFFICIENT_BALANCE").
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          description: Human-readable error description.
+          example: "The NTN format is invalid. Expected 7-digit numeric string."
+        request_id:
+          type: string
+          description: Unique request identifier for support correlation.
+          format: uuid
+        details:
+          type: array
+          description: Structured detail entries for validation errors.
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              field:
+                type: string
+                description: JSON pointer to the offending field.
+                example: "/ntn"
+              reason:
+                type: string
+                description: Why this field failed validation.
+                example: "Must be a 7-digit numeric string."
+              expected:
+                type: string
+                description: Expected format or value.
+              actual:
+                type: string
+                description: The value that was provided.
+
+    # -------------------------------------------------------------------------
+    # National Tax Number (NTN) — first-class FBR identifier
+    # -------------------------------------------------------------------------
+    NationalTaxNumber:
+      type: object
+      additionalProperties: false
+      description: |
+        Pakistan National Tax Number (NTN) as issued by FBR. This is a first-class
+        identifier in the fiscal system, used for all FBR IRIS reporting and
+        withholding computations.
+      required: [ntn_number, ntn_type]
+      properties:
+        ntn_number:
+          type: string
+          description: |
+            The NTN number as registered with FBR. Format varies by type:
+            - Company NTN: 7-digit numeric (e.g., "1234567")
+            - Individual NTN: 13-digit CNIC-based (e.g., "1234567890123")
+          pattern: '^\d{7}(\d{6})?$'
+          example: "1234567"
+        ntn_type:
+          type: string
+          description: Type of NTN registration.
+          enum:
+            - company
+            - individual
+            - aop
+        filer_status:
+          type: string
+          description: |
+            FBR Active Taxpayer List (ATL) status. Non-filers are subject to
+            higher withholding rates under the Income Tax Ordinance 2001.
+          enum:
+            - filer
+            - non_filer
+            - exempt
+        registration_date:
+          type: string
+          format: date
+          description: Date of NTN registration with FBR.
+        strn:
+          type: string
+          description: |
+            Sales Tax Registration Number (STRN), if applicable. Required for
+            entities registered for sales tax under the Sales Tax Act 1990.
+          pattern: '^\d{13}$'
+
+    # -------------------------------------------------------------------------
+    # Treasury Account
+    # -------------------------------------------------------------------------
+    CreateTreasuryAccountRequest:
+      type: object
+      additionalProperties: false
+      required: [entity_id, account_type, currency, ntn]
+      properties:
+        entity_id:
+          type: string
+          description: The entity that owns this treasury account.
+        account_type:
+          type: string
+          description: Account classification.
+          enum:
+            - operating
+            - escrow
+            - withholding
+            - settlement
+            - reserve
+        currency:
+          type: string
+          description: ISO 4217 currency code.
+          pattern: '^[A-Z]{3}$'
+          example: "PKR"
+        ntn:
+          $ref: '#/components/schemas/NationalTaxNumber'
+        bank_details:
+          type: object
+          additionalProperties: true
+          description: |
+            Optional bank account linkage for fiat settlement rails. Structure
+            varies by jurisdiction and banking system (IBAN, SWIFT, SBP RAAST, etc.).
+          properties:
+            iban:
+              type: string
+              description: International Bank Account Number.
+            swift_bic:
+              type: string
+              description: SWIFT/BIC code.
+            raast_id:
+              type: string
+              description: SBP RAAST instant payment identifier (Pakistan).
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Extensible metadata for forward compatibility.
+
+    TreasuryAccount:
+      type: object
+      additionalProperties: false
+      required:
+        - account_id
+        - entity_id
+        - account_type
+        - currency
+        - balance
+        - status
+        - ntn
+        - created_at
+      properties:
+        account_id:
+          type: string
+          description: Unique treasury account identifier.
+          example: "acc_01H9XKQV3R7NWFP"
+        entity_id:
+          type: string
+          description: Owning entity identifier.
+        account_type:
+          type: string
+          enum:
+            - operating
+            - escrow
+            - withholding
+            - settlement
+            - reserve
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          example: "PKR"
+        balance:
+          type: string
+          description: |
+            Current balance as a decimal string. Amounts are ALWAYS represented as
+            strings to avoid floating-point precision loss — this is a hard requirement
+            of the stack's canonicalization layer (jcs_canonicalize rejects floats).
+          pattern: '^\d+(\.\d{1,4})?$'
+          example: "1000000.00"
+        status:
+          type: string
+          enum:
+            - active
+            - frozen
+            - closed
+            - pending_activation
+        ntn:
+          $ref: '#/components/schemas/NationalTaxNumber'
+        bank_details:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+          description: Account creation timestamp (UTC, ISO 8601).
+        updated_at:
+          type: string
+          format: date-time
+          description: Last modification timestamp (UTC, ISO 8601).
+        corridor_anchor_ref:
+          type: string
+          description: |
+            Content-addressed reference to the corridor state receipt that anchors
+            this account's creation event.
+        metadata:
+          type: object
+          additionalProperties: true
+
+    # -------------------------------------------------------------------------
+    # Payment
+    # -------------------------------------------------------------------------
+    InitiatePaymentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - source_account_id
+        - destination
+        - amount
+        - currency
+        - payment_type
+      properties:
+        source_account_id:
+          type: string
+          description: Source treasury account identifier.
+        destination:
+          type: object
+          additionalProperties: false
+          description: Payment destination. Either an internal account or external routing.
+          required: [type]
+          properties:
+            type:
+              type: string
+              enum:
+                - internal_account
+                - external_bank
+                - corridor_settlement
+              description: Destination routing type.
+            account_id:
+              type: string
+              description: Target internal treasury account (for internal_account type).
+            bank_details:
+              type: object
+              additionalProperties: true
+              description: External bank routing details (for external_bank type).
+              properties:
+                iban:
+                  type: string
+                swift_bic:
+                  type: string
+                raast_id:
+                  type: string
+                beneficiary_name:
+                  type: string
+                beneficiary_ntn:
+                  $ref: '#/components/schemas/NationalTaxNumber'
+            corridor_id:
+              type: string
+              description: Corridor identifier for cross-border settlement.
+            destination_zone_id:
+              type: string
+              description: Target zone for corridor settlement.
+        amount:
+          type: string
+          description: |
+            Payment amount as a decimal string. Must be positive. String representation
+            is mandatory — the stack canonicalization layer rejects floats.
+          pattern: '^\d+(\.\d{1,4})?$'
+          example: "50000.00"
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          example: "PKR"
+        payment_type:
+          type: string
+          description: |
+            Payment classification. Determines applicable withholding rules under
+            the Income Tax Ordinance 2001.
+          enum:
+            - goods_payment
+            - service_fee
+            - dividend
+            - royalty
+            - profit_on_debt
+            - rent
+            - salary
+            - commission
+            - contract_payment
+            - capital_gains_settlement
+            - other
+        reference:
+          type: string
+          description: Payer-assigned payment reference or invoice number.
+          maxLength: 256
+        narration:
+          type: string
+          description: Free-text payment narration.
+          maxLength: 1024
+        withholding_override:
+          type: object
+          additionalProperties: false
+          description: |
+            Optional withholding override. If omitted, withholding is computed
+            automatically based on payment_type and entity filer status.
+          properties:
+            exempt:
+              type: boolean
+              description: Set true if this payment is exempt from withholding (requires exemption_certificate_ref).
+            exemption_certificate_ref:
+              type: string
+              description: Content-addressed reference to the FBR exemption certificate artifact.
+            reduced_rate:
+              type: string
+              description: Reduced rate under a Double Taxation Agreement (decimal string, e.g., "0.10" for 10%).
+              pattern: '^\d+(\.\d{1,4})?$'
+            dta_reference:
+              type: string
+              description: Reference to the applicable Double Taxation Agreement.
+        idempotency_key:
+          type: string
+          description: |
+            Client-provided idempotency key to prevent duplicate payment initiation.
+            Must be unique per source_account_id within a 24-hour window.
+          format: uuid
+        metadata:
+          type: object
+          additionalProperties: true
+
+    Payment:
+      type: object
+      additionalProperties: false
+      required:
+        - payment_id
+        - source_account_id
+        - destination
+        - gross_amount
+        - currency
+        - payment_type
+        - status
+        - created_at
+      properties:
+        payment_id:
+          type: string
+          description: Unique payment identifier.
+          example: "pay_01H9XKQV3R7NWFP"
+        source_account_id:
+          type: string
+        destination:
+          type: object
+          additionalProperties: true
+          description: Resolved destination details.
+        gross_amount:
+          type: string
+          description: Original payment amount before withholding (decimal string).
+          pattern: '^\d+(\.\d{1,4})?$'
+        withholding_amount:
+          type: string
+          description: |
+            Amount withheld at source (decimal string). Zero if no withholding applies.
+          pattern: '^\d+(\.\d{1,4})?$'
+          example: "5000.00"
+        net_amount:
+          type: string
+          description: |
+            Amount disbursed to the beneficiary (gross_amount - withholding_amount).
+          pattern: '^\d+(\.\d{1,4})?$'
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        payment_type:
+          type: string
+          enum:
+            - goods_payment
+            - service_fee
+            - dividend
+            - royalty
+            - profit_on_debt
+            - rent
+            - salary
+            - commission
+            - contract_payment
+            - capital_gains_settlement
+            - other
+        status:
+          type: string
+          enum:
+            - initiated
+            - authorized
+            - processing
+            - settled
+            - failed
+            - reversed
+        withholding_details:
+          $ref: '#/components/schemas/WithholdingCalculation'
+        tax_event_id:
+          type: string
+          description: |
+            Reference to the tax event generated by this payment's withholding deduction.
+            Null if no withholding was applied.
+        reference:
+          type: string
+        narration:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        settled_at:
+          type: string
+          format: date-time
+          description: Timestamp of settlement completion (null if not yet settled).
+        corridor_anchor_ref:
+          type: string
+          description: Content-addressed reference to the corridor receipt anchoring this payment.
+        settlement_evidence:
+          type: object
+          additionalProperties: true
+          description: |
+            Settlement rail evidence (SWIFT confirmation, RAAST receipt, blockchain
+            tx hash, etc.). Structure varies by settlement rail.
+        metadata:
+          type: object
+          additionalProperties: true
+
+    # -------------------------------------------------------------------------
+    # Withholding Calculation
+    # -------------------------------------------------------------------------
+    WithholdingCalculationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - payer_entity_id
+        - payee_ntn
+        - amount
+        - currency
+        - payment_type
+      properties:
+        payer_entity_id:
+          type: string
+          description: Entity ID of the payer (withholding agent).
+        payee_ntn:
+          $ref: '#/components/schemas/NationalTaxNumber'
+        amount:
+          type: string
+          description: Gross transaction amount (decimal string).
+          pattern: '^\d+(\.\d{1,4})?$'
+          example: "100000.00"
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          example: "PKR"
+        payment_type:
+          type: string
+          description: Transaction type for withholding classification.
+          enum:
+            - goods_payment
+            - service_fee
+            - dividend
+            - royalty
+            - profit_on_debt
+            - rent
+            - salary
+            - commission
+            - contract_payment
+            - capital_gains_settlement
+            - other
+        source_jurisdiction:
+          type: string
+          description: |
+            Jurisdiction of the payer. Defaults to the zone's home jurisdiction if omitted.
+          example: "PK"
+        destination_jurisdiction:
+          type: string
+          description: |
+            Jurisdiction of the payee. Used to determine DTA applicability.
+          example: "PK"
+        effective_date:
+          type: string
+          format: date
+          description: |
+            Date for which to compute the applicable rate. Defaults to today.
+            Rates may change across fiscal years.
+
+    WithholdingCalculation:
+      type: object
+      additionalProperties: false
+      required:
+        - gross_amount
+        - withholding_rate
+        - withholding_amount
+        - net_amount
+        - currency
+        - legal_basis
+        - computed_at
+      properties:
+        gross_amount:
+          type: string
+          description: The input gross amount (decimal string).
+          pattern: '^\d+(\.\d{1,4})?$'
+        withholding_rate:
+          type: string
+          description: |
+            Applied withholding rate as a decimal string (e.g., "0.15" for 15%).
+          pattern: '^\d+(\.\d{1,6})?$'
+          example: "0.15"
+        withholding_amount:
+          type: string
+          description: Computed withholding amount (decimal string).
+          pattern: '^\d+(\.\d{1,4})?$'
+          example: "15000.00"
+        net_amount:
+          type: string
+          description: Amount after withholding deduction (decimal string).
+          pattern: '^\d+(\.\d{1,4})?$'
+          example: "85000.00"
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        legal_basis:
+          type: array
+          description: |
+            Statutory provisions justifying the withholding computation. Each entry
+            references a specific section of applicable tax law.
+          items:
+            type: object
+            additionalProperties: false
+            required: [statute, section, description]
+            properties:
+              statute:
+                type: string
+                description: Name of the governing statute.
+                example: "Income Tax Ordinance 2001"
+              section:
+                type: string
+                description: Specific section number.
+                example: "153(1)(a)"
+              description:
+                type: string
+                description: Human-readable description of what this section mandates.
+                example: "Withholding on payment for goods to filer companies"
+              rate:
+                type: string
+                description: Rate specified by this section (decimal string).
+                pattern: '^\d+(\.\d{1,6})?$'
+        filer_status_applied:
+          type: string
+          description: The payee filer status used in the computation.
+          enum:
+            - filer
+            - non_filer
+            - exempt
+        dta_applied:
+          type: object
+          additionalProperties: false
+          description: Details of Double Taxation Agreement relief, if applicable.
+          properties:
+            treaty_name:
+              type: string
+              description: Name of the DTA.
+              example: "Pakistan-UAE Double Taxation Agreement"
+            article:
+              type: string
+              description: Relevant treaty article.
+            standard_rate:
+              type: string
+              description: Domestic rate that would have applied without DTA relief.
+              pattern: '^\d+(\.\d{1,6})?$'
+            treaty_rate:
+              type: string
+              description: Reduced rate under the DTA.
+              pattern: '^\d+(\.\d{1,6})?$'
+            savings:
+              type: string
+              description: Amount saved due to DTA relief (decimal string).
+              pattern: '^\d+(\.\d{1,4})?$'
+        computed_at:
+          type: string
+          format: date-time
+          description: Timestamp of the computation (UTC, ISO 8601).
+        computation_digest:
+          type: string
+          description: |
+            SHA-256 digest of the canonicalized computation inputs and outputs,
+            computed via jcs_canonicalize for non-repudiation.
+          pattern: '^[a-f0-9]{64}$'
+
+    # -------------------------------------------------------------------------
+    # Tax Events
+    # -------------------------------------------------------------------------
+    TaxEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - tax_event_id
+        - entity_id
+        - ntn
+        - event_type
+        - tax_year
+        - amount
+        - currency
+        - occurred_at
+      properties:
+        tax_event_id:
+          type: string
+          description: Unique tax event identifier.
+          example: "txe_01H9XKQV3R7NWFP"
+        entity_id:
+          type: string
+        ntn:
+          $ref: '#/components/schemas/NationalTaxNumber'
+        event_type:
+          type: string
+          description: Classification of the tax event.
+          enum:
+            - withholding_deduction
+            - capital_gains
+            - dividend_distribution
+            - royalty_payment
+            - service_fee
+            - goods_payment
+            - penalty
+            - refund
+            - adjustment
+        tax_year:
+          type: string
+          description: |
+            Pakistani fiscal year identifier. The calendar year in which the fiscal
+            year ends (e.g., "2026" represents FY July 2025 - June 2026).
+          pattern: '^\d{4}$'
+          example: "2026"
+        amount:
+          type: string
+          description: Tax amount involved in this event (decimal string).
+          pattern: '^\d+(\.\d{1,4})?$'
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        legal_basis:
+          type: array
+          description: Statutory provisions applicable to this tax event.
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              statute:
+                type: string
+              section:
+                type: string
+              description:
+                type: string
+        source_payment_id:
+          type: string
+          description: Reference to the originating payment, if applicable.
+        source_transaction_ref:
+          type: string
+          description: Reference to the originating transaction (e.g., ownership transfer).
+        occurred_at:
+          type: string
+          format: date-time
+          description: Timestamp when the tax event occurred (UTC, ISO 8601).
+        corridor_anchor_ref:
+          type: string
+          description: Content-addressed reference to the corridor receipt anchoring this event.
+        digest:
+          type: string
+          description: |
+            SHA-256 digest of the canonicalized tax event data for integrity verification.
+          pattern: '^[a-f0-9]{64}$'
+        metadata:
+          type: object
+          additionalProperties: true
+
+    TaxEventList:
+      type: object
+      additionalProperties: false
+      required: [events, total_count]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxEvent'
+        total_count:
+          type: integer
+          description: Total number of matching events (across all pages).
+          minimum: 0
+        next_cursor:
+          type: string
+          description: |
+            Opaque pagination cursor. Include as the `cursor` query parameter in
+            the next request to retrieve the next page. Null if no more results.
+        has_more:
+          type: boolean
+          description: Whether additional pages of results exist.
+
+    # -------------------------------------------------------------------------
+    # Tax Report
+    # -------------------------------------------------------------------------
+    TaxReportRequest:
+      type: object
+      additionalProperties: false
+      required: [entity_id, tax_year, output_format]
+      properties:
+        entity_id:
+          type: string
+          description: Entity for which to generate the report.
+        tax_year:
+          type: string
+          description: |
+            Pakistani fiscal year to report on. The calendar year in which the
+            fiscal year ends (e.g., "2026" for FY July 2025 - June 2026).
+          pattern: '^\d{4}$'
+          example: "2026"
+        output_format:
+          type: string
+          description: Desired output format for the report.
+          enum:
+            - fbr_iris_xml
+            - structured_json
+            - summary
+        include_supporting_evidence:
+          type: boolean
+          default: false
+          description: |
+            Whether to include corridor anchor references and computation digests
+            for each line item. Produces a larger response but enables full
+            auditability.
+        ntn:
+          $ref: '#/components/schemas/NationalTaxNumber'
+
+    TaxReport:
+      type: object
+      additionalProperties: false
+      required:
+        - report_id
+        - entity_id
+        - ntn
+        - tax_year
+        - output_format
+        - generated_at
+        - summary
+        - report_digest
+      properties:
+        report_id:
+          type: string
+          description: Unique report identifier.
+          example: "rpt_01H9XKQV3R7NWFP"
+        entity_id:
+          type: string
+        ntn:
+          $ref: '#/components/schemas/NationalTaxNumber'
+        tax_year:
+          type: string
+          pattern: '^\d{4}$'
+        output_format:
+          type: string
+          enum:
+            - fbr_iris_xml
+            - structured_json
+            - summary
+        generated_at:
+          type: string
+          format: date-time
+          description: Report generation timestamp (UTC, ISO 8601).
+        summary:
+          type: object
+          additionalProperties: false
+          description: Aggregate summary of fiscal activity for the tax year.
+          required:
+            - total_income
+            - total_withholding_deducted
+            - total_withholding_collected
+            - total_tax_events
+            - currency
+          properties:
+            total_income:
+              type: string
+              description: Total gross income for the fiscal year (decimal string).
+              pattern: '^\d+(\.\d{1,4})?$'
+            total_withholding_deducted:
+              type: string
+              description: |
+                Total withholding tax deducted from payments received (decimal string).
+              pattern: '^\d+(\.\d{1,4})?$'
+            total_withholding_collected:
+              type: string
+              description: |
+                Total withholding tax collected on payments made (decimal string).
+              pattern: '^\d+(\.\d{1,4})?$'
+            total_capital_gains:
+              type: string
+              description: Total capital gains realized (decimal string).
+              pattern: '^\d+(\.\d{1,4})?$'
+            total_tax_events:
+              type: integer
+              description: Count of tax events included in this report.
+              minimum: 0
+            currency:
+              type: string
+              pattern: '^[A-Z]{3}$'
+            breakdown_by_type:
+              type: array
+              description: Tax event totals grouped by event type.
+              items:
+                type: object
+                additionalProperties: false
+                required: [event_type, count, total_amount]
+                properties:
+                  event_type:
+                    type: string
+                  count:
+                    type: integer
+                    minimum: 0
+                  total_amount:
+                    type: string
+                    pattern: '^\d+(\.\d{1,4})?$'
+            breakdown_by_section:
+              type: array
+              description: Withholding totals grouped by statutory section.
+              items:
+                type: object
+                additionalProperties: false
+                required: [statute, section, count, total_amount]
+                properties:
+                  statute:
+                    type: string
+                  section:
+                    type: string
+                  count:
+                    type: integer
+                    minimum: 0
+                  total_amount:
+                    type: string
+                    pattern: '^\d+(\.\d{1,4})?$'
+        line_items:
+          type: array
+          description: |
+            Individual tax event line items. Included when output_format is
+            "structured_json" or when include_supporting_evidence is true.
+          items:
+            $ref: '#/components/schemas/TaxEvent'
+        fbr_iris_payload:
+          type: string
+          description: |
+            Base64-encoded FBR IRIS XML document. Present only when output_format
+            is "fbr_iris_xml".
+        report_digest:
+          type: string
+          description: |
+            SHA-256 digest of the canonicalized report data (via jcs_canonicalize),
+            providing non-repudiation for the generated tax return.
+          pattern: '^[a-f0-9]{64}$'
+        corridor_anchor_ref:
+          type: string
+          description: |
+            Content-addressed reference to the corridor receipt anchoring this
+            report generation event.
+        artifact_ref:
+          type: string
+          description: |
+            Content-addressed storage reference for the full report artifact
+            in the CAS (dist/artifacts/).

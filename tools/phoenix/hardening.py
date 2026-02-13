@@ -207,9 +207,14 @@ class Validators:
             errors.append(ValidationError(field_name, f"Expected string, got {type(value).__name__}", value))
             return ValidationResult.failure(errors)
         
-        # Sanitize: strip whitespace and null bytes
-        sanitized = value.strip().replace('\x00', '')
-        
+        # Reject null bytes — they indicate injection attempts
+        if '\x00' in value:
+            errors.append(ValidationError(field_name, "Contains null bytes", value))
+            return ValidationResult.failure(errors)
+
+        # Sanitize: strip whitespace
+        sanitized = value.strip()
+
         if len(sanitized) < min_length:
             errors.append(ValidationError(field_name, f"Too short (min {min_length} chars)", value))
         
@@ -252,27 +257,28 @@ class Validators:
         )
     
     @classmethod
-    def validate_did(cls, value: Any) -> ValidationResult:
+    def validate_did(cls, value: Any, field_name: str = "did") -> ValidationResult:
         """Validate a DID."""
         return cls.validate_string(
-            value, "did",
+            value, field_name,
             min_length=8, max_length=256,
             pattern=cls.DID_PATTERN
         )
     
     @classmethod
     def validate_digest(cls, value: Any, field_name: str = "digest") -> ValidationResult:
-        """Validate a SHA256 digest (64 hex chars)."""
+        """Validate a SHA256 digest (64 lowercase hex chars)."""
         result = cls.validate_string(value, field_name, min_length=64, max_length=64)
         if not result.is_valid:
             return result
-        
-        if not cls.HEX64_PATTERN.match(result.sanitized_value.lower()):
+
+        # Digests must already be lowercase — reject uppercase
+        if not cls.HEX64_PATTERN.match(result.sanitized_value):
             return ValidationResult.failure([
                 ValidationError(field_name, "Must be 64 lowercase hex characters", value)
             ])
-        
-        return ValidationResult.success(result.sanitized_value.lower())
+
+        return ValidationResult.success(result.sanitized_value)
     
     @classmethod
     def validate_address(cls, value: Any, field_name: str = "address") -> ValidationResult:
@@ -470,16 +476,12 @@ class CryptoUtils:
         return current_level[0]
     
     @staticmethod
-    def verify_merkle_proof(
+    def compute_merkle_root(
         leaf: str,
         proof: List[str],
         indices: List[int],
-        root: str,
-    ) -> bool:
-        """Verify a Merkle inclusion proof."""
-        if len(proof) != len(indices):
-            return False
-        
+    ) -> str:
+        """Walk a Merkle proof and return the computed root hash."""
         current = leaf
         for sibling, index in zip(proof, indices):
             if index == 0:  # Current is left
@@ -487,8 +489,31 @@ class CryptoUtils:
             else:  # Current is right
                 combined = sibling + current
             current = hashlib.sha256(combined.encode()).hexdigest()
-        
-        return CryptoUtils.secure_compare_str(current, root)
+        return current
+
+    @staticmethod
+    def verify_merkle_proof(
+        leaf: str,
+        proof: List[str],
+        indices: List[int],
+        root: Optional[str] = None,
+    ) -> Union[bool, str]:
+        """Verify a Merkle inclusion proof.
+
+        When *root* is provided, returns ``True``/``False`` indicating
+        whether the proof matches (original API).  When *root* is omitted,
+        returns the computed root hash so the caller can compare it.
+        """
+        if len(proof) != len(indices):
+            if root is not None:
+                return False
+            return ""
+
+        computed = CryptoUtils.compute_merkle_root(leaf, proof, indices)
+
+        if root is not None:
+            return CryptoUtils.secure_compare_str(computed, root)
+        return computed
 
 
 # =============================================================================
@@ -596,11 +621,17 @@ class AtomicCounter:
             self._value -= delta
             return self._value
     
+    @property
+    def value(self) -> int:
+        """Get current value (property access)."""
+        with self._lock:
+            return self._value
+
     def get(self) -> int:
         """Get current value."""
         with self._lock:
             return self._value
-    
+
     def compare_and_set(self, expected: int, new_value: int) -> bool:
         """Atomically set value if it equals expected."""
         with self._lock:
@@ -616,7 +647,26 @@ class AtomicCounter:
 
 class InvariantChecker:
     """Enforces state machine invariants."""
-    
+
+    def __init__(self) -> None:
+        self._state_machines: Dict[str, Dict[str, List[str]]] = {}
+
+    def register_state_machine(
+        self,
+        name: str,
+        transitions: Dict[str, List[str]],
+    ) -> None:
+        """Register a named state machine with its valid transitions."""
+        self._state_machines[name] = transitions
+
+    def can_transition(self, name: str, from_state: str, to_state: str) -> bool:
+        """Check whether a transition is valid for a registered state machine."""
+        machine = self._state_machines.get(name)
+        if machine is None:
+            return False
+        valid_targets = machine.get(from_state, [])
+        return to_state in valid_targets
+
     @staticmethod
     def check_state_transition(
         current_state: Enum,
@@ -668,13 +718,69 @@ class InvariantChecker:
 # =============================================================================
 
 class EconomicGuard:
-    """Guards against economic attacks."""
-    
-    # Thresholds
+    """Guards against economic attacks.
+
+    Can be used as a class (classmethods raise on violation) or as an
+    instance with configurable thresholds and boolean return values.
+    """
+
+    # Thresholds (class-level defaults)
     MAX_ATTESTATION_VALUE_MULTIPLE = Decimal("10")  # Max 10x collateral
     MIN_BOND_COLLATERAL_USD = Decimal("1000")
     MAX_SLASH_RATE_PER_EPOCH = Decimal("0.5")  # Max 50% slash per epoch
-    
+
+    def __init__(
+        self,
+        max_attestation_value_multiple: Optional[Decimal] = None,
+        min_collateral_usd: Optional[Decimal] = None,
+        max_slash_rate_per_epoch: Optional[Decimal] = None,
+        max_stake_concentration: Optional[Decimal] = None,
+    ) -> None:
+        self._max_attestation_value_multiple = (
+            Decimal(str(max_attestation_value_multiple))
+            if max_attestation_value_multiple is not None
+            else self.MAX_ATTESTATION_VALUE_MULTIPLE
+        )
+        self._min_collateral_usd = (
+            min_collateral_usd if min_collateral_usd is not None
+            else self.MIN_BOND_COLLATERAL_USD
+        )
+        self._max_slash_rate = (
+            max_slash_rate_per_epoch if max_slash_rate_per_epoch is not None
+            else self.MAX_SLASH_RATE_PER_EPOCH
+        )
+        self._max_stake_concentration = (
+            max_stake_concentration if max_stake_concentration is not None
+            else Decimal("0.33")
+        )
+
+    # -- Instance methods returning bool --------------------------------
+
+    def validate_attestation_value(
+        self, attestation_value: Decimal, collateral: Decimal
+    ) -> bool:
+        """Return True if attestation value is within collateral limits."""
+        max_value = collateral * self._max_attestation_value_multiple
+        return attestation_value <= max_value
+
+    def check_concentration(
+        self, stake: Decimal, total_stake: Decimal
+    ) -> bool:
+        """Return True if stake concentration is within threshold."""
+        if total_stake == 0:
+            return True
+        return (stake / total_stake) <= self._max_stake_concentration
+
+    def validate_slash(
+        self, slash_amount: Decimal, watcher_stake: Decimal
+    ) -> bool:
+        """Return True if slash amount is within per-epoch limits."""
+        if watcher_stake == 0:
+            return True
+        return (slash_amount / watcher_stake) <= self._max_slash_rate
+
+    # -- Class methods (original API — raise on violation) ---------------
+
     @classmethod
     def check_attestation_limit(
         cls,
@@ -688,7 +794,7 @@ class EconomicGuard:
                 f"Attestation value {attestation_value} exceeds limit {max_value} "
                 f"for bond collateral {bond_collateral}"
             )
-    
+
     @classmethod
     def check_minimum_collateral(cls, collateral: Decimal) -> None:
         """Ensure minimum collateral requirements met."""
@@ -696,7 +802,7 @@ class EconomicGuard:
             raise EconomicAttackDetected(
                 f"Collateral {collateral} below minimum {cls.MIN_BOND_COLLATERAL_USD}"
             )
-    
+
     @classmethod
     def check_slash_rate(
         cls,
@@ -707,14 +813,14 @@ class EconomicGuard:
         """Check slash rate within acceptable bounds."""
         if total_collateral == 0:
             return
-        
+
         slash_rate = total_slashed / total_collateral
         if slash_rate > cls.MAX_SLASH_RATE_PER_EPOCH:
             raise EconomicAttackDetected(
                 f"Slash rate {slash_rate} exceeds epoch maximum {cls.MAX_SLASH_RATE_PER_EPOCH}. "
                 f"Possible coordinated attack."
             )
-    
+
     @staticmethod
     def check_whale_concentration(
         operator_stake: Decimal,
@@ -724,7 +830,7 @@ class EconomicGuard:
         """Check for whale concentration risk."""
         if total_stake == 0:
             return
-        
+
         concentration = operator_stake / total_stake
         if concentration > max_concentration:
             raise EconomicAttackDetected(
@@ -745,47 +851,109 @@ class RateLimitConfig:
     burst_size: int = 10
 
 
+class _PerClientBucket:
+    """Internal per-client token bucket."""
+
+    def __init__(self, rate: int, window: float) -> None:
+        self._rate = rate
+        self._window = window
+        self._timestamps: List[float] = []
+
+    def allow(self) -> bool:
+        """Return True if the request is within the rate limit."""
+        import time as _time
+        now = _time.monotonic()
+        # Discard timestamps outside the current window
+        cutoff = now - self._window
+        self._timestamps = [t for t in self._timestamps if t > cutoff]
+        if len(self._timestamps) < self._rate:
+            self._timestamps.append(now)
+            return True
+        return False
+
+
 class RateLimiter:
-    """Token bucket rate limiter."""
-    
-    def __init__(self, config: RateLimitConfig):
-        self.config = config
-        self._tokens = float(config.burst_size)
-        self._last_update = datetime.now(timezone.utc)
-        self._lock = threading.Lock()
-        
-        # Tokens refill per second
-        self._refill_rate = config.requests_per_minute / 60.0
-    
+    """Token bucket rate limiter.
+
+    Supports two construction styles:
+      - ``RateLimiter(config=RateLimitConfig(...))``   (original API)
+      - ``RateLimiter(rate=10, per_seconds=1)``        (simple per-client API)
+    """
+
+    def __init__(
+        self,
+        config: Optional[RateLimitConfig] = None,
+        *,
+        rate: Optional[int] = None,
+        per_seconds: Optional[float] = None,
+    ):
+        if rate is not None:
+            # Simple per-client mode
+            self._rate = rate
+            self._window = float(per_seconds) if per_seconds else 1.0
+            self._clients: Dict[str, _PerClientBucket] = {}
+            self._client_lock = threading.Lock()
+            self._simple_mode = True
+            # Also initialise legacy fields so ``acquire`` still works
+            self.config = RateLimitConfig(
+                requests_per_minute=int(rate * (60.0 / self._window)),
+                burst_size=rate,
+            )
+        elif config is not None:
+            self.config = config
+            self._simple_mode = False
+        else:
+            self.config = RateLimitConfig()
+            self._simple_mode = False
+
+        if not self._simple_mode:
+            self._tokens = float(self.config.burst_size)
+            self._last_update = datetime.now(timezone.utc)
+            self._lock = threading.Lock()
+            self._refill_rate = self.config.requests_per_minute / 60.0
+
+    # -- Simple per-client API ------------------------------------------
+
+    def allow(self, client_id: str) -> bool:
+        """Check whether *client_id* is within its rate limit."""
+        with self._client_lock:
+            bucket = self._clients.get(client_id)
+            if bucket is None:
+                bucket = _PerClientBucket(self._rate, self._window)
+                self._clients[client_id] = bucket
+            return bucket.allow()
+
+    # -- Original API ---------------------------------------------------
+
     def acquire(self, tokens: int = 1) -> bool:
         """Try to acquire tokens. Returns True if successful."""
         with self._lock:
             now = datetime.now(timezone.utc)
             elapsed = (now - self._last_update).total_seconds()
             self._last_update = now
-            
+
             # Refill tokens
             self._tokens = min(
                 self.config.burst_size,
                 self._tokens + elapsed * self._refill_rate
             )
-            
+
             if self._tokens >= tokens:
                 self._tokens -= tokens
                 return True
             return False
-    
+
     def wait_and_acquire(self, tokens: int = 1, max_wait_seconds: float = 10.0) -> bool:
         """Wait for tokens to become available."""
         start = datetime.now(timezone.utc)
         while True:
             if self.acquire(tokens):
                 return True
-            
+
             elapsed = (datetime.now(timezone.utc) - start).total_seconds()
             if elapsed >= max_wait_seconds:
                 return False
-            
+
             # Sleep a bit
             import time
             time.sleep(0.1)

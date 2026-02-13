@@ -370,6 +370,30 @@ mod tests {
         assert!(result.is_err());
     }
 
+    /// Sentinel test: serde_json MUST NOT have preserve_order enabled.
+    ///
+    /// CanonicalBytes requires lexicographic key ordering (BTreeMap).
+    /// If preserve_order is enabled by any transitive dependency,
+    /// serde_json::Map switches to IndexMap (insertion order),
+    /// silently corrupting ALL content-addressed digests in the system.
+    #[test]
+    fn serde_json_map_uses_lexicographic_ordering() {
+        let mut map = serde_json::Map::new();
+        map.insert("zebra".to_string(), serde_json::Value::Null);
+        map.insert("alpha".to_string(), serde_json::Value::Null);
+        map.insert("middle".to_string(), serde_json::Value::Null);
+
+        let keys: Vec<&String> = map.keys().collect();
+        assert_eq!(
+            keys,
+            vec!["alpha", "middle", "zebra"],
+            "CRITICAL: serde_json::Map is NOT using BTreeMap! \
+             The preserve_order feature is likely enabled by a transitive dependency. \
+             This WILL corrupt all content-addressed digests. \
+             Run: cargo tree -e features -i serde_json"
+        );
+    }
+
     // ── Coverage expansion tests (agent-added unique tests) ─────────
 
     #[test]

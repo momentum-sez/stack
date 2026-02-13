@@ -739,7 +739,7 @@ mod tests {
 
         let receipt: ReceiptResponse = body_json(resp).await;
         assert_eq!(receipt.corridor_id, corridor_id);
-        assert_eq!(receipt.status, "PROPOSED");
+        assert_eq!(receipt.status, "DRAFT");
         assert_eq!(receipt.payload["transaction"], "transfer");
     }
 

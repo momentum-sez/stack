@@ -27,6 +27,15 @@ jobs:
       - name: Clippy (warnings as errors)
         run: cargo clippy --workspace -- -D warnings
 
+      - name: Guard serde_json preserve_order
+        run: |
+          if cargo tree -e features -i serde_json 2>&1 | grep -q preserve_order; then
+            echo "FATAL: serde_json preserve_order feature is enabled!"
+            echo "This will corrupt all content-addressed digests."
+            cargo tree -e features -i serde_json
+            exit 1
+          fi
+
       - name: Run tests
         run: cargo test --workspace
 

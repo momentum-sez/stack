@@ -9,9 +9,16 @@
 //! This provides thread-safe concurrent access without a database dependency.
 //! The storage layer is designed so that a `sqlx::PgPool`-backed implementation
 //! can replace it without changing route handler signatures.
+//!
+//! Uses `parking_lot::RwLock` instead of `std::sync::RwLock`.
+//! `parking_lot::RwLock` is non-poisonable — a panicking writer does not
+//! permanently corrupt the store, so subsequent lock acquisitions succeed
+//! normally.
 
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+
+use parking_lot::RwLock;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -22,8 +29,9 @@ use uuid::Uuid;
 
 /// Thread-safe, cloneable in-memory key-value store.
 ///
-/// All operations are synchronous (the RwLock is `std::sync`, not `tokio::sync`)
-/// because we never hold the lock across `.await` points.
+/// Uses `parking_lot::RwLock` which is non-poisonable — a panicking writer
+/// does not permanently corrupt the store. All operations are synchronous
+/// (not `tokio::sync`) because we never hold the lock across `.await` points.
 #[derive(Debug)]
 pub struct Store<T: Clone + Send + Sync> {
     data: Arc<RwLock<HashMap<Uuid, T>>>,
@@ -47,34 +55,22 @@ impl<T: Clone + Send + Sync> Store<T> {
 
     /// Insert a record, returning the previous value if the key existed.
     pub fn insert(&self, id: Uuid, value: T) -> Option<T> {
-        self.data
-            .write()
-            .expect("store lock poisoned")
-            .insert(id, value)
+        self.data.write().insert(id, value)
     }
 
     /// Retrieve a record by ID.
     pub fn get(&self, id: &Uuid) -> Option<T> {
-        self.data
-            .read()
-            .expect("store lock poisoned")
-            .get(id)
-            .cloned()
+        self.data.read().get(id).cloned()
     }
 
     /// List all records.
     pub fn list(&self) -> Vec<T> {
-        self.data
-            .read()
-            .expect("store lock poisoned")
-            .values()
-            .cloned()
-            .collect()
+        self.data.read().values().cloned().collect()
     }
 
     /// Update a record in place. Returns the updated record, or `None` if not found.
     pub fn update(&self, id: &Uuid, f: impl FnOnce(&mut T)) -> Option<T> {
-        let mut guard = self.data.write().expect("store lock poisoned");
+        let mut guard = self.data.write();
         if let Some(entry) = guard.get_mut(id) {
             f(entry);
             Some(entry.clone())
@@ -86,22 +82,19 @@ impl<T: Clone + Send + Sync> Store<T> {
     /// Remove a record by ID.
     #[allow(dead_code)]
     pub fn remove(&self, id: &Uuid) -> Option<T> {
-        self.data.write().expect("store lock poisoned").remove(id)
+        self.data.write().remove(id)
     }
 
     /// Check if a record exists.
     #[allow(dead_code)]
     pub fn contains(&self, id: &Uuid) -> bool {
-        self.data
-            .read()
-            .expect("store lock poisoned")
-            .contains_key(id)
+        self.data.read().contains_key(id)
     }
 
     /// Return the number of records.
     #[allow(dead_code)]
     pub fn len(&self) -> usize {
-        self.data.read().expect("store lock poisoned").len()
+        self.data.read().len()
     }
 
     /// Whether the store is empty.

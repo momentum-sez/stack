@@ -1,8 +1,13 @@
 //! Typed client for Mass identity services (IDENTITY primitive).
+//!
+//! Identity is embedded within the organization-info and consent-info APIs.
+//! This client wraps the identity-specific endpoints.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+use crate::error::MassApiError;
 
 // -- Types matching Mass API schemas ------------------------------------------
 
@@ -38,20 +43,111 @@ pub struct MassIdentityAttestation {
     pub expires_at: Option<DateTime<Utc>>,
 }
 
+/// Request to verify an identity (KYC/KYB).
+#[derive(Debug, Serialize)]
+pub struct VerifyIdentityRequest {
+    pub identity_type: String,
+    pub linked_ids: Vec<LinkedIdInput>,
+}
+
+/// Input for linking an external ID during verification.
+#[derive(Debug, Serialize)]
+pub struct LinkedIdInput {
+    pub id_type: String,
+    pub id_value: String,
+}
+
 // -- Client -------------------------------------------------------------------
 
 /// Client for Mass identity services.
 #[derive(Debug, Clone)]
 pub struct IdentityClient {
-    _http: reqwest::Client,
-    _base_url: url::Url,
+    http: reqwest::Client,
+    base_url: url::Url,
 }
 
 impl IdentityClient {
     pub(crate) fn new(http: reqwest::Client, base_url: url::Url) -> Self {
-        Self {
-            _http: http,
-            _base_url: base_url,
+        Self { http, base_url }
+    }
+
+    /// Get an identity by ID.
+    ///
+    /// Calls `GET {base_url}/consent-info/identities/{id}`.
+    pub async fn get_identity(
+        &self,
+        id: Uuid,
+    ) -> Result<Option<MassIdentity>, MassApiError> {
+        let endpoint = format!("GET /identities/{id}");
+        let url = format!("{}consent-info/identities/{id}", self.base_url);
+
+        let resp =
+            self.http
+                .get(&url)
+                .send()
+                .await
+                .map_err(|e| MassApiError::Http {
+                    endpoint: endpoint.clone(),
+                    source: e,
+                })?;
+
+        if resp.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(None);
         }
+
+        if !resp.status().is_success() {
+            let status = resp.status().as_u16();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(MassApiError::ApiError {
+                endpoint,
+                status,
+                body,
+            });
+        }
+
+        resp.json()
+            .await
+            .map(Some)
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint,
+                source: e,
+            })
+    }
+
+    /// Submit a verification request (KYC/KYB).
+    ///
+    /// Calls `POST {base_url}/consent-info/identities/verify`.
+    pub async fn verify(
+        &self,
+        req: &VerifyIdentityRequest,
+    ) -> Result<MassIdentity, MassApiError> {
+        let endpoint = "POST /identities/verify";
+        let url = format!("{}consent-info/identities/verify", self.base_url);
+
+        let resp = self
+            .http
+            .post(&url)
+            .json(req)
+            .send()
+            .await
+            .map_err(|e| MassApiError::Http {
+                endpoint: endpoint.into(),
+                source: e,
+            })?;
+
+        if !resp.status().is_success() {
+            let status = resp.status().as_u16();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(MassApiError::ApiError {
+                endpoint: endpoint.into(),
+                status,
+                body,
+            });
+        }
+
+        resp.json().await.map_err(|e| MassApiError::Deserialization {
+            endpoint: endpoint.into(),
+            source: e,
+        })
     }
 }

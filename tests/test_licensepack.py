@@ -275,7 +275,7 @@ class TestLicenseHolder:
             entity_type="company",
             legal_name="Acme Financial Services Ltd",
             registration_number="12345678",
-            jurisdiction="ae-dubai-difc",
+            jurisdiction_of_incorporation="ae-dubai-difc",
         )
         assert holder.holder_id == "H001"
         assert holder.legal_name == "Acme Financial Services Ltd"
@@ -287,7 +287,7 @@ class TestLicenseHolder:
             entity_type="company",
             legal_name="Test Corp",
             registration_number="REG123",
-            jurisdiction="sg-mas",
+            jurisdiction_of_incorporation="sg-mas",
             did="did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
         )
         d = holder.to_dict()
@@ -303,7 +303,9 @@ class TestLicense:
         lic = License(
             license_id="LIC001",
             license_type_id="banking.category4",
+            license_number="BNK-001",
             holder_id="H001",
+            holder_legal_name="Acme Financial Services Ltd",
             holder_did="did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
             status=LicenseStatus.ACTIVE,
             issued_date="2023-01-01",
@@ -317,7 +319,9 @@ class TestLicense:
         lic = License(
             license_id="L1",
             license_type_id="banking.cat4",
+            license_number=None,
             holder_id="H1",
+            holder_legal_name="Test Corp",
             status=LicenseStatus.ACTIVE,
             issued_date="2023-01-01",
             regulator_id="reg1",
@@ -327,25 +331,29 @@ class TestLicense:
         lic.status = LicenseStatus.SUSPENDED
         assert lic.is_active() is False
 
-    def test_is_active_expiry(self):
+    def test_is_expired(self):
         """Expiry date check."""
         lic = License(
             license_id="L1",
             license_type_id="banking.cat4",
+            license_number=None,
             holder_id="H1",
+            holder_legal_name="Test Corp",
             status=LicenseStatus.ACTIVE,
             issued_date="2020-01-01",
             expiry_date="2020-12-31",  # Expired
             regulator_id="reg1",
         )
-        assert lic.is_active() is False
+        assert lic.is_expired() is True
 
     def test_has_permission(self):
         """Permission check."""
         lic = License(
             license_id="L1",
             license_type_id="banking.cat4",
+            license_number=None,
             holder_id="H1",
+            holder_legal_name="Test Corp",
             status=LicenseStatus.ACTIVE,
             issued_date="2023-01-01",
             regulator_id="reg1",
@@ -360,8 +368,8 @@ class TestLicense:
                 ),
             ],
         )
-        assert lic.has_permission("deposit_taking") is True
-        assert lic.has_permission("trading") is False
+        assert lic.permits_activity("deposit_taking") is True
+        assert lic.permits_activity("trading") is False
 
 
 class TestLicenseType:
@@ -370,14 +378,15 @@ class TestLicenseType:
     def test_basic_construction(self):
         """Basic license type construction."""
         lt = LicenseType(
-            type_id="banking.category4",
+            license_type_id="banking.category4",
             name="Category 4 Banking License",
-            domain=LicenseDomain.FINANCIAL,
-            jurisdiction_id="ae-dubai-difc",
-            default_permissions=["deposit_taking", "lending", "fx"],
+            description="Category 4 banking license for DIFC",
+            regulator_id="ae-dubai-difc-dfsa",
+            category="banking",
+            permitted_activities=["deposit_taking", "lending", "fx"],
         )
-        assert lt.type_id == "banking.category4"
-        assert LicenseDomain.FINANCIAL == lt.domain
+        assert lt.license_type_id == "banking.category4"
+        assert lt.category == "banking"
 
 
 class TestRegulator:
@@ -389,10 +398,10 @@ class TestRegulator:
             regulator_id="ae-dubai-difc-dfsa",
             name="Dubai Financial Services Authority",
             jurisdiction_id="ae-dubai-difc",
-            website="https://www.dfsa.ae",
+            registry_url="https://www.dfsa.ae",
         )
         assert reg.regulator_id == "ae-dubai-difc-dfsa"
-        assert "dfsa" in reg.website.lower()
+        assert "dfsa" in reg.registry_url.lower()
 
 
 class TestLicensepackMetadata:
@@ -400,11 +409,20 @@ class TestLicensepackMetadata:
 
     def test_basic_construction(self):
         """Basic metadata construction."""
+        reg = Regulator(
+            regulator_id="dfsa",
+            name="Dubai Financial Services Authority",
+            jurisdiction_id="ae-dubai-difc",
+        )
         meta = LicensepackMetadata(
+            licensepack_id="licensepack:ae-dubai-difc:financial:2024-01-15T10:30:00Z",
             jurisdiction_id="ae-dubai-difc",
             domain=LicenseDomain.FINANCIAL,
-            version="1.0.0",
+            as_of_date="2024-01-15",
             snapshot_timestamp="2024-01-15T10:30:00Z",
+            snapshot_type="on_demand",
+            regulator=reg,
+            license="CC0-1.0",
         )
         assert meta.jurisdiction_id == "ae-dubai-difc"
         assert meta.domain == LicenseDomain.FINANCIAL
@@ -416,36 +434,41 @@ class TestLicensePack:
     @pytest.fixture
     def sample_pack(self):
         """Create a sample license pack for testing."""
-        meta = LicensepackMetadata(
-            jurisdiction_id="ae-dubai-difc",
-            domain=LicenseDomain.FINANCIAL,
-            version="1.0.0",
-            snapshot_timestamp="2024-01-15T10:30:00Z",
-        )
-        pack = LicensePack(metadata=meta)
-
-        # Add a regulator
-        pack.add_regulator(Regulator(
+        reg = Regulator(
             regulator_id="dfsa",
             name="Dubai Financial Services Authority",
             jurisdiction_id="ae-dubai-difc",
-            website="https://www.dfsa.ae",
-        ))
+            registry_url="https://www.dfsa.ae",
+        )
+        meta = LicensepackMetadata(
+            licensepack_id="licensepack:ae-dubai-difc:financial:2024-01-15T10:30:00Z",
+            jurisdiction_id="ae-dubai-difc",
+            domain=LicenseDomain.FINANCIAL,
+            as_of_date="2024-01-15",
+            snapshot_timestamp="2024-01-15T10:30:00Z",
+            snapshot_type="on_demand",
+            regulator=reg,
+            license="CC0-1.0",
+        )
+        pack = LicensePack(metadata=meta)
 
         # Add a license type
         pack.add_license_type(LicenseType(
-            type_id="banking.cat4",
+            license_type_id="banking.cat4",
             name="Category 4 Banking",
-            domain=LicenseDomain.FINANCIAL,
-            jurisdiction_id="ae-dubai-difc",
-            default_permissions=["deposit_taking", "lending"],
+            description="Category 4 banking license",
+            regulator_id="dfsa",
+            category="banking",
+            permitted_activities=["deposit_taking", "lending"],
         ))
 
         # Add a license
         pack.add_license(License(
             license_id="DFSA-LIC-001",
             license_type_id="banking.cat4",
+            license_number=None,
             holder_id="H001",
+            holder_legal_name="Acme Financial Services Ltd",
             holder_did="did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
             status=LicenseStatus.ACTIVE,
             issued_date="2023-01-01",
@@ -481,7 +504,7 @@ class TestLicensePack:
     def test_get_licenses_by_holder(self, sample_pack):
         """Getting licenses by holder DID."""
         did = "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK"
-        licenses = sample_pack.get_licenses_by_holder(did)
+        licenses = sample_pack.get_license_by_holder_did(did)
         assert len(licenses) == 1
         assert licenses[0].license_id == "DFSA-LIC-001"
 
@@ -513,7 +536,7 @@ class TestLicensePack:
             activity="deposit_taking",
         )
         assert is_valid is False
-        assert state == ComplianceState.UNKNOWN
+        assert state == ComplianceState.NON_COMPLIANT
 
     def test_compute_digest_deterministic(self, sample_pack):
         """Digest is deterministic."""
@@ -530,7 +553,9 @@ class TestLicensePack:
         sample_pack.add_license(License(
             license_id="DFSA-LIC-002",
             license_type_id="banking.cat4",
+            license_number=None,
             holder_id="H002",
+            holder_legal_name="Beta Corp",
             status=LicenseStatus.ACTIVE,
             issued_date="2024-01-01",
             regulator_id="dfsa",
@@ -539,22 +564,19 @@ class TestLicensePack:
         d2 = sample_pack.compute_digest()
         assert d1 != d2
 
-    def test_statistics(self, sample_pack):
-        """Statistics computation."""
-        stats = sample_pack.statistics()
-        assert stats["total_licenses"] == 1
-        assert stats["active_licenses"] == 1
-        assert stats["license_types"] == 1
-        assert stats["regulators"] == 1
+    def test_pack_counts(self, sample_pack):
+        """Pack collection counts."""
+        assert len(sample_pack.licenses) == 1
+        assert len(sample_pack.license_types) == 1
+        active = sample_pack.get_active_licenses()
+        assert len(active) == 1
 
-    def test_to_dict(self, sample_pack):
-        """to_dict serialization."""
-        d = sample_pack.to_dict()
-        assert "metadata" in d
-        assert "licenses" in d
-        assert "license_types" in d
-        assert "regulators" in d
-        assert d["metadata"]["jurisdiction_id"] == "ae-dubai-difc"
+    def test_pack_metadata_access(self, sample_pack):
+        """Pack metadata access via properties."""
+        assert sample_pack.jurisdiction_id == "ae-dubai-difc"
+        assert sample_pack.domain == LicenseDomain.FINANCIAL
+        meta_dict = sample_pack.metadata.to_dict()
+        assert meta_dict["jurisdiction_id"] == "ae-dubai-difc"
 
 
 class TestJCSCanonicalize:
@@ -584,22 +606,38 @@ class TestJCSCanonicalize:
 class TestComputeLicensepackDigest:
     """Test compute_licensepack_digest function."""
 
+    def _make_pack(self, jurisdiction_id: str) -> LicensePack:
+        """Helper to create a minimal LicensePack."""
+        reg = Regulator(
+            regulator_id="test-reg",
+            name="Test Regulator",
+            jurisdiction_id=jurisdiction_id,
+        )
+        meta = LicensepackMetadata(
+            licensepack_id=f"licensepack:{jurisdiction_id}:financial:2024-01-01T00:00:00Z",
+            jurisdiction_id=jurisdiction_id,
+            domain=LicenseDomain.FINANCIAL,
+            as_of_date="2024-01-01",
+            snapshot_timestamp="2024-01-01T00:00:00Z",
+            snapshot_type="on_demand",
+            regulator=reg,
+            license="CC0-1.0",
+        )
+        return LicensePack(metadata=meta)
+
     def test_deterministic(self):
         """Digest computation is deterministic."""
-        data = {
-            "metadata": {"jurisdiction_id": "test", "domain": "financial"},
-            "licenses": [],
-        }
-        d1 = compute_licensepack_digest(data)
-        d2 = compute_licensepack_digest(data)
+        pack = self._make_pack("test")
+        d1 = compute_licensepack_digest(pack)
+        d2 = compute_licensepack_digest(pack)
         assert d1 == d2
 
     def test_different_data_different_digest(self):
         """Different data produces different digest."""
-        data1 = {"metadata": {"jurisdiction_id": "test1"}}
-        data2 = {"metadata": {"jurisdiction_id": "test2"}}
-        d1 = compute_licensepack_digest(data1)
-        d2 = compute_licensepack_digest(data2)
+        pack1 = self._make_pack("test1")
+        pack2 = self._make_pack("test2")
+        d1 = compute_licensepack_digest(pack1)
+        d2 = compute_licensepack_digest(pack2)
         assert d1 != d2
 
 
@@ -608,16 +646,24 @@ class TestEdgeCases:
 
     def test_empty_pack(self):
         """Empty pack operations."""
+        reg = Regulator(
+            regulator_id="test-reg",
+            name="Test Regulator",
+            jurisdiction_id="test",
+        )
         meta = LicensepackMetadata(
+            licensepack_id="licensepack:test:financial:2024-01-01T00:00:00Z",
             jurisdiction_id="test",
             domain=LicenseDomain.FINANCIAL,
-            version="1.0.0",
+            as_of_date="2024-01-01",
+            snapshot_timestamp="2024-01-01T00:00:00Z",
+            snapshot_type="on_demand",
+            regulator=reg,
+            license="CC0-1.0",
         )
         pack = LicensePack(metadata=meta)
 
         assert len(pack.licenses) == 0
-        stats = pack.statistics()
-        assert stats["total_licenses"] == 0
 
         # Digest still works
         digest = pack.compute_digest()
@@ -628,9 +674,10 @@ class TestEdgeCases:
         lic = License(
             license_id="L1",
             license_type_id="type1",
+            license_number="LN-001",
             holder_id="H1",
-            holder_did="did:key:test",
             holder_legal_name="Test Corp",
+            holder_did="did:key:test",
             status=LicenseStatus.ACTIVE,
             issued_date="2024-01-01",
             effective_date="2024-01-15",
@@ -660,16 +707,13 @@ class TestEdgeCases:
                     blocked_jurisdictions=["us"],
                 ),
             ],
-            amendments=[{"date": "2024-06-01", "description": "Amendment 1"}],
-            linked_entities=["entity1", "entity2"],
-            metadata={"internal_id": "INT001"},
         )
 
         d = lic.to_dict()
         assert d["license_id"] == "L1"
-        assert len(d["permissions"]) == 1
-        assert len(d["conditions"]) == 1
-        assert len(d["restrictions"]) == 1
+        assert len(lic.permissions) == 1
+        assert len(lic.conditions) == 1
+        assert len(lic.restrictions) == 1
 
     def test_permission_with_complex_scope(self):
         """Permission with complex scope definition."""

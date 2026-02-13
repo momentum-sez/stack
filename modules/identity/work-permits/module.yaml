@@ -179,15 +179,17 @@ compliance:
     - worker_hotline
   violations:
     minor:
-      - late_renewal
-      - documentation_gaps
+      types:
+        - late_renewal
+        - documentation_gaps
       penalties:
         - warning
         - fine_usd: 500
     major:
-      - unauthorized_employment
-      - quota_violations
-      - exploitation
+      types:
+        - unauthorized_employment
+        - quota_violations
+        - exploitation
       penalties:
         - permit_revocation
         - employer_ban_years: 2

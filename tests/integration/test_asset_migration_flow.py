@@ -49,10 +49,14 @@ class TestMigrationSagaFlow:
 
         saga = MigrationSaga(request)
 
-        # Check valid transitions
-        assert saga.can_transition_to(MigrationState.ATTESTATION_GATHERING)
+        # Check valid transitions — INITIATED → COMPLIANCE_CHECK first
+        assert saga.can_transition_to(MigrationState.COMPLIANCE_CHECK)
 
-        # Advance to attestation gathering
+        # Advance through COMPLIANCE_CHECK to ATTESTATION_GATHERING
+        saga.advance_to(MigrationState.COMPLIANCE_CHECK)
+        assert saga.state == MigrationState.COMPLIANCE_CHECK
+
+        assert saga.can_transition_to(MigrationState.ATTESTATION_GATHERING)
         saga.advance_to(MigrationState.ATTESTATION_GATHERING)
         assert saga.state == MigrationState.ATTESTATION_GATHERING
 
@@ -66,6 +70,7 @@ class TestMigrationSagaFlow:
         )
 
         saga = MigrationSaga(request)
+        saga.advance_to(MigrationState.COMPLIANCE_CHECK)
         saga.advance_to(MigrationState.ATTESTATION_GATHERING)
 
         result = saga.cancel("user_requested")

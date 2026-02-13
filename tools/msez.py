@@ -2344,7 +2344,10 @@ def build_corridor_index(repo_root: pathlib.Path) -> Dict[str, pathlib.Path]:
 
 def validate_module(module_dir: pathlib.Path, validator: Draft202012Validator) -> Tuple[bool, List[str], Dict[str,Any]]:
     manifest_path = module_dir / "module.yaml"
-    data = load_yaml(manifest_path)
+    try:
+        data = load_yaml(manifest_path)
+    except Exception as ex:
+        return (False, [f"Failed to parse {manifest_path}: {ex}"], {})
     errors = validate_with_schema(data, validator)
 
     # Basic checks for provided artifact paths
@@ -2578,6 +2581,7 @@ def validate_profile_semantics(
     if not isinstance(modules, list):
         return ["profile.modules must be a list"]
     profile_module_ids = {m.get("module_id") for m in modules if isinstance(m, dict)}
+    mods_by_id = {m.get("module_id"): m for m in modules if isinstance(m, dict) and m.get("module_id")}
 
     for m in modules:
         if not isinstance(m, dict):

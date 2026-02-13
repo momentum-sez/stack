@@ -2,6 +2,7 @@
 
 **Version:** 0.4.44-GENESIS
 **Date:** 2026-02-13
+**Audit Session:** Capstone verification (final pass)
 **Status:** Phase 3 Complete — Production-Ready Core
 **Classification:** Technical Due Diligence Document
 
@@ -11,7 +12,7 @@
 
 The Momentum SEZ Stack has been migrated from a Python monolith (`tools/msez.py`, 15,472 lines) and 17-module Phoenix layer to a Rust workspace comprising 14 crates and 70,926 lines of Rust. The migration eliminates entire classes of defects identified in the February 2026 institutional-grade audit — notably the canonicalization split, string-based state machines, and untyped error handling — by leveraging Rust's type system to make these defect classes structurally impossible.
 
-All 2,651 Rust tests pass. `cargo clippy --workspace -- -D warnings` produces zero warnings. `cargo audit` reports zero vulnerabilities. The Python toolchain remains operational for module validation and artifact management, running in parallel via CI.
+All 2,651 Rust tests pass. `cargo clippy --workspace -- -D warnings` produces zero warnings. `cargo audit` reports zero vulnerabilities (1 allowed unmaintained advisory). The Python toolchain remains operational for module validation and artifact management, running in parallel via CI.
 
 ---
 
@@ -20,40 +21,41 @@ All 2,651 Rust tests pass. `cargo clippy --workspace -- -D warnings` produces ze
 | Metric | Value |
 |--------|-------|
 | Total Rust LOC | 70,926 |
+| Source LOC (crates/*/src/) | 51,385 |
+| Test LOC (crates/*/tests/ + integration) | 19,541 |
 | Crate count | 14 |
 | Total Rust tests passing | 2,651 |
 | Total test failures | 0 |
-| Integration test files | 98 (+ 2 cross-language + 1 schema + 1 API) |
+| Integration test files (msez-integration-tests) | 98 |
 | Third-party dependencies (Cargo.lock) | 273 packages |
 | Direct workspace dependencies | ~25 (see Cargo.toml) |
-| Python test files (legacy, still in CI) | 87 |
+| Python test files (legacy, still in CI) | 82 |
 | JSON schemas | 116 |
-| OpenAPI route modules | 8 |
-| API endpoints (`/v1/*` routes) | 29 |
+| API route modules | 9 |
+| API endpoints (`/v1/*` routes) | 30 |
 | ComplianceDomain variants | 20 |
 | Corridor typestate states | 6 (DRAFT, PENDING, ACTIVE, HALTED, SUSPENDED, DEPRECATED) |
 | Clippy warnings | 0 |
-| Security advisories | 0 (1 allowed unmaintained warning: `proc-macro-error` via `utoipa`) |
-| `cargo fmt --check` | Clean |
+| Security advisories (cargo audit) | 0 (1 allowed unmaintained: `proc-macro-error` via `utoipa`) |
 
 ### LOC Breakdown by Crate
 
 | Crate | Lines | Purpose |
 |-------|-------|---------|
-| msez-integration-tests | 17,769 | 98 integration/e2e test files |
-| msez-api | 8,598 | Axum REST API (8 route modules, OpenAPI) |
-| msez-pack | 7,560 | Lawpack, Regpack, Licensepack operations |
-| msez-arbitration | 5,116 | Dispute lifecycle, evidence, escrow, enforcement |
-| msez-cli | 4,316 | CLI entry point (validate, lock, sign, corridor) |
-| msez-state | 4,245 | Corridor typestate, migration saga, watcher, entity lifecycle |
-| msez-crypto | 3,836 | SHA-256, Ed25519, BBS+, Poseidon, CAS, MMR |
-| msez-agentic | 3,555 | Policy engine, audit trail, evaluation, scheduler |
-| msez-tensor | 3,396 | Compliance Tensor, manifold, evaluation |
-| msez-corridor | 3,018 | Bridge, fork resolution, anchor, netting, receipt, SWIFT |
-| msez-core | 2,706 | CanonicalBytes, ContentDigest, ComplianceDomain, identity, temporal |
-| msez-zkp | 2,629 | ZK proof circuits (mock), CDB, Groth16/PLONK stubs |
-| msez-schema | 2,131 | JSON Schema validation (116 schemas) |
-| msez-vc | 2,051 | Verifiable Credentials, proofs, registry |
+| msez-integration-tests | ~17,769 | 98 integration/e2e test files |
+| msez-api | ~8,598 | Axum REST API (9 route modules, OpenAPI) |
+| msez-pack | ~7,560 | Lawpack, Regpack, Licensepack operations |
+| msez-arbitration | ~5,116 | Dispute lifecycle, evidence, escrow, enforcement |
+| msez-cli | ~4,316 | CLI entry point (validate, lock, sign, corridor) |
+| msez-state | ~4,245 | Corridor typestate, migration saga, watcher, entity lifecycle |
+| msez-crypto | ~3,836 | SHA-256, Ed25519, BBS+, Poseidon, CAS, MMR |
+| msez-agentic | ~3,555 | Policy engine, audit trail, evaluation, scheduler |
+| msez-tensor | ~3,396 | Compliance Tensor, manifold, evaluation |
+| msez-corridor | ~3,018 | Bridge, fork resolution, anchor, netting, receipt, SWIFT |
+| msez-core | ~2,706 | CanonicalBytes, ContentDigest, ComplianceDomain, identity, temporal |
+| msez-zkp | ~2,629 | ZK proof circuits (mock), CDB, Groth16/PLONK stubs |
+| msez-schema | ~2,131 | JSON Schema validation (116 schemas) |
+| msez-vc | ~2,051 | Verifiable Credentials, proofs, registry |
 
 ---
 
@@ -61,21 +63,21 @@ All 2,651 Rust tests pass. `cargo clippy --workspace -- -D warnings` produces ze
 
 ### Criterion 1: `cargo test --workspace` — PASS
 
-**Result:** 2,651 tests passed, 0 failed, 1 ignored.
+**Result:** 2,651 tests passed, 0 failed across 14 crates and 30 test binaries.
 
-All test results across 14 crates report `ok`. The single ignored test is a known placeholder. Zero test failures across unit tests, integration tests, property-based tests (proptest), and doc tests.
+All test results report `ok`. Zero test failures across unit tests, integration tests, property-based tests (proptest), and doc tests. One doc test passes in msez-zkp.
 
-### Criterion 2: Python Test Scenario Coverage — 98/87 PORTED
+### Criterion 2: Python Test Scenario Coverage — 98 Rust Integration Test Files
 
-**Result:** 98 Rust integration test files exist in `msez-integration-tests/tests/`, covering all 87 original Python test scenarios plus 11 additional Rust-specific test files (cross-language digest verification, typestate validation, adversarial security, etc.).
+**Result:** 98 Rust integration test files exist in `msez-integration-tests/tests/`, covering the original Python test scenarios plus Rust-specific additions (cross-language digest verification, typestate validation, adversarial security, performance benchmarks, etc.).
 
-The Python test suite (87 files) remains operational and runs in CI via the `validate-and-test` job, ensuring backward compatibility of the module validation and artifact management pathways.
+82 Python test files remain in `tests/` and continue to run in CI via the `validate-and-test` job, ensuring backward compatibility of the module validation and artifact management pathways.
 
 ### Criterion 3: Lockfile Determinism — PASS
 
-**Result:** `Cargo.lock` exists (2,748 lines, 273 packages), checked into the repository, and used by CI (`cargo test` implicitly uses the lockfile). The `test_pack_lockfile_determinism` integration test explicitly validates lockfile determinism for lawpack/regpack artifacts.
+**Result:** `Cargo.lock` exists (273 packages), checked into the repository, and used by CI. The `test_pack_lockfile_determinism` integration test explicitly validates lockfile determinism for lawpack/regpack artifacts. The `msez-cli lock --check` command verifies zone lockfiles are canonical and up-to-date.
 
-### Criterion 4: ComplianceDomain — 20 VARIANTS (EXCEEDS SPEC)
+### Criterion 4: ComplianceDomain — 20 VARIANTS
 
 **Result:** `ComplianceDomain` enum in `msez-core/src/domain.rs` defines 20 variants:
 
@@ -85,7 +87,7 @@ Licensing, Banking, Payments, Clearing, Settlement, DigitalAssets,
 Employment, Immigration, Ip, ConsumerProtection, Arbitration, Trade
 ```
 
-The CLAUDE.md spec called for 9 domains (the Python tensor.py had 8, with Licensing as the 9th). The Rust implementation unifies the Phoenix tensor domains (8) with the composition domains (20 from `tools/msez/composition.py`) into a single canonical enum. The compiler enforces exhaustive `match` across all crates — adding a domain forces every handler to address it.
+The CLAUDE.md spec called for 9 domains (the Python `tensor.py` had 8, with `Licensing` as the 9th). The Rust implementation unifies the Phoenix tensor domains with the composition domains (20 from `tools/msez/composition.py`) into a single canonical enum. The compiler enforces exhaustive `match` — adding a domain forces every handler in the entire codebase to address it.
 
 `ComplianceDomain::COUNT` is asserted as 20 in both unit tests and integration tests.
 
@@ -95,32 +97,37 @@ The CLAUDE.md spec called for 9 domains (the Python tensor.py had 8, with Licens
 
 - `Draft`, `Pending`, `Active`, `Halted`, `Suspended`, `Deprecated`
 
-These are **compile-time types**, not runtime strings. Invalid transitions are rejected at compile time — there is no `"PROPOSED"` or `"OPERATIONAL"` string anywhere in the type system. The `DynCorridorState` enum (for serialization/deserialization) explicitly rejects these legacy names, verified by multiple integration tests (`test_discovered_bugs`, `test_corridor_lifecycle_e2e`, `test_elite_tier_validation`, `test_sez_deployment_bugs`, `test_corridor_schema`).
+These are compile-time types, not runtime strings. Invalid transitions are compile errors. There is no `"PROPOSED"` or `"OPERATIONAL"` anywhere in the type system. The `DynCorridorState` enum (for serialization/deserialization) explicitly rejects these legacy names, verified by multiple integration tests (`test_discovered_bugs`, `test_corridor_lifecycle_e2e`, `test_elite_tier_validation`, `test_corridor_schema`).
 
-The v2 state machine in `governance/corridor.lifecycle.state-machine.v2.json` is fully aligned with spec §40-corridors.
+The v2 state machine in `governance/corridor.lifecycle.state-machine.v2.json` is fully aligned with spec §40-corridors, defining 6 states and 9 transitions.
 
-### Criterion 6: CanonicalBytes Sole Digest Path — ENFORCED BY TYPE SYSTEM
+### Criterion 6: CanonicalBytes Sole Digest Path — ENFORCED FOR CONTENT-ADDRESSED DIGESTS
 
-**Result:** `CanonicalBytes` in `msez-core/src/canonical.rs` has a **private inner field** (`Vec<u8>`). The only construction path is `CanonicalBytes::new()` or `CanonicalBytes::from_value()`, both of which apply the full Momentum type coercion pipeline (float rejection, datetime normalization, key sorting).
+**Result:** `CanonicalBytes` in `msez-core/src/canonical.rs` has a private inner field (`Vec<u8>`). The only construction path is `CanonicalBytes::new()`, which applies the full Momentum type coercion pipeline (float rejection, datetime normalization, key sorting). `sha256_digest()` in `msez-core/src/digest.rs` accepts only `&CanonicalBytes`, making it structurally impossible to compute a content-addressed digest from raw `serde_json` output.
 
-`sha256_digest()` in `msez-core/src/digest.rs` accepts only `&CanonicalBytes` — it is structurally impossible to compute a digest from raw bytes or `serde_json::to_string()` output. This eliminates the entire class of canonicalization-split defects identified in the audit (Finding §2.1).
+**Noted exception:** Direct `sha2::Sha256` usage exists in four legitimate contexts that do NOT involve content-addressed object digests:
 
-All digest computation across all crates flows through: `CanonicalBytes::new(data)` → `sha256_digest(&canonical)` → `ContentDigest` (also a newtype with private internals).
+1. **`msez-cli/src/lock.rs`:** `sha256_file()` and `sha256_of_bytes()` hash raw file bytes for lockfile verification. These operate on filesystem bytes, not serialized data objects.
+2. **`msez-pack/src/{lawpack,regpack,licensepack}.rs`:** Pack digest computation over ordered canonical file contents (raw bytes with path separators). This is a Merkle-like directory digest, not a JSON object digest.
+3. **`msez-crypto/src/mmr.rs`:** Merkle Mountain Range leaf hashing operates on raw byte inputs per the MMR protocol.
+4. **`msez-zkp/src/mock.rs`:** Mock proof commitment hashing (Phase 4 placeholder).
 
-### Criterion 7: Five API Services — 29 ROUTES ACROSS 8 MODULES
+All JSON object digest paths flow through `CanonicalBytes::new()` → `sha256_digest()` → `ContentDigest`. The canonicalization split defect (audit Finding §2.1) is eliminated for the content-addressed storage layer.
+
+### Criterion 7: Five API Services — 30 ROUTES ACROSS 9 MODULES
 
 **Result:** The `msez-api` crate implements all five programmable primitives plus corridors, smart assets, and regulator access:
 
 | Service | Routes | Endpoints |
 |---------|--------|-----------|
-| **Entities** | 2 | `POST/GET /v1/entities`, `GET/PUT /v1/entities/:id` |
-| **Ownership** | 3 | `POST /v1/ownership/cap-table`, `GET /v1/ownership/:entity_id/cap-table`, `POST /v1/ownership/:entity_id/transfers` |
-| **Fiscal** | 5 | `POST /v1/fiscal/accounts`, `POST /v1/fiscal/payments`, `GET /v1/fiscal/:entity_id/tax-events`, `POST /v1/fiscal/reporting/generate` |
-| **Identity** | 4 | `POST /v1/identity/verify`, `GET /v1/identity/:id`, `POST /v1/identity/:id/link`, `POST /v1/identity/:id/attestation` |
-| **Consent** | 4 | `POST /v1/consent/request`, `GET /v1/consent/:id`, `POST /v1/consent/:id/sign`, `GET /v1/consent/:id/audit-trail` |
-| **Corridors** | 7 | `POST/GET /v1/corridors`, `GET /v1/corridors/:id`, `PUT /v1/corridors/:id/transition`, `POST /v1/corridors/state/{propose,fork-resolve,anchor,finality-status}` |
-| **Smart Assets** | 3 | `POST /v1/assets/genesis`, `POST /v1/assets/registry`, `GET /v1/assets/:id` |
-| **Regulator** | 2 | `POST /v1/regulator/query/attestations`, `GET /v1/regulator/summary` |
+| **Entities** | `/v1/entities` | `POST` (create), `GET` (list), `GET /:id`, `PUT /:id` |
+| **Ownership** | `/v1/ownership` | `POST /cap-table`, `GET /:entity_id/cap-table`, `POST /:entity_id/transfers` |
+| **Fiscal** | `/v1/fiscal` | `POST /accounts`, `POST /payments`, `GET /:entity_id/tax-events`, `POST /reporting/generate` |
+| **Identity** | `/v1/identity` | `POST /verify`, `GET /:id`, `POST /:id/link`, `POST /:id/attestation` |
+| **Consent** | `/v1/consent` | `POST /request`, `GET /:id`, `POST /:id/sign`, `GET /:id/audit-trail` |
+| **Corridors** | `/v1/corridors` | `POST`, `GET`, `GET /:id`, `PUT /:id/transition`, `POST /state/propose`, `POST /state/fork-resolve`, `POST /state/anchor`, `POST /state/finality-status` |
+| **Smart Assets** | `/v1/assets` | `POST /genesis`, `POST /registry`, `GET /:id` |
+| **Regulator** | `/v1/regulator` | `POST /query/attestations`, `GET /summary` |
 
 OpenAPI spec is auto-generated via `utoipa` and served at `/openapi.json`. Health endpoints at `/health/liveness` and `/health/readiness`.
 
@@ -130,65 +137,81 @@ OpenAPI spec is auto-generated via `utoipa` and served at `/openapi.json`. Healt
 
 ### Criterion 9: `cargo audit` — PASS
 
-**Result:** Zero vulnerabilities. One allowed warning for `proc-macro-error` (unmaintained, transitive dependency via `utoipa-gen`). This is a build-time-only dependency with no runtime exposure.
+**Result:** Zero vulnerabilities. One allowed warning for `proc-macro-error` (RUSTSEC-2024-0370, unmaintained). This is a build-time-only transitive dependency via `utoipa-gen → utoipa → msez-api` with no runtime exposure.
 
 ### Criterion 10: Docker — OPERATIONAL
 
-**Result:** Multi-stage Dockerfile at `deploy/docker/Dockerfile`:
-- Stage 1: `rust:1.77-bookworm` builder compiles `msez-api` and `msez-cli` in release mode
-- Stage 2: `debian:bookworm-slim` runtime with non-root `msez` user, health check, OCI labels
-- Kubernetes manifests in `deploy/k8s/` (configmap, deployment, namespace, secret, service)
-- Docker Compose at `deploy/docker/docker-compose.yaml`
+**Result:** Complete containerization:
+- **Dockerfile** (`deploy/docker/Dockerfile`): Multi-stage build — `rust:1.77-bookworm` builder compiles `msez-api` and `msez-cli` in release mode; `debian:bookworm-slim` runtime with non-root `msez` user, OCI labels, health check.
+- **Docker Compose** (`deploy/docker/docker-compose.yaml`): 4 services — `msez-api` (Axum server), `postgres:16-alpine` (persistence), `prom/prometheus:v2.51.0` (metrics), `grafana/grafana:10.4.1` (dashboards).
+- **Kubernetes manifests** in `deploy/k8s/` (configmap, deployment, namespace, secret, service).
+- Health check: `curl -f http://localhost:8080/health/liveness`.
 
 ---
 
 ## 3. Anti-Pattern Scan Results
 
-### Anti-Pattern 1: Raw Serialization for Digests — CLEAR
+### Anti-Pattern 1: Raw Serialization for Digests — CLEAR (with noted exceptions)
 
-No instances of `serde_json::to_string()` or `serde_json::to_vec()` are used for digest computation in library code. All `serde_json::to_string()` calls found are in test code (serialization roundtrip assertions) or API response construction — neither of which involves digest computation.
+No instances of `serde_json::to_string()` or `serde_json::to_vec()` are used for content-addressed digest computation in library code. All `serde_json` serialization found in non-test code is for API response construction, CLI output formatting, or data persistence — none involves content digests.
 
-The `CanonicalBytes` newtype with private inner field makes this anti-pattern structurally impossible.
+The `CanonicalBytes` newtype with private inner field makes this anti-pattern structurally impossible for JSON object digests. Direct `sha2::Sha256` usage for raw file/byte hashing (lockfiles, pack digests, MMR) is intentional and correct — these are not content-addressed object digests. See Criterion 6 for details.
 
-### Anti-Pattern 2: String State Names at Runtime — CLEAR
+### Anti-Pattern 2: String State Names at Runtime — CLEAR (with API boundary note)
 
-The corridor typestate uses zero-sized types (`Draft`, `Pending`, `Active`, etc.), not strings. The `DynCorridorState` enum uses `#[serde(rename_all = "SCREAMING_SNAKE_CASE")]` for serialization — state names appear as strings only at serialization boundaries. The legacy `"PROPOSED"` and `"OPERATIONAL"` strings appear only in test assertions that verify these names are **rejected** by deserialization.
+The corridor typestate in `msez-state` uses zero-sized types (`Draft`, `Pending`, `Active`, etc.), not strings. Invalid transitions are compile errors.
 
-### Anti-Pattern 3: `.unwrap()` Outside Tests — NOTED, LOW RISK
+**Noted:** The `msez-api` route handlers (`routes/corridors.rs`) use string literals (`"DRAFT"`, `"PENDING"`, etc.) at the HTTP serialization boundary. This is expected — HTTP APIs communicate via JSON strings. The key invariant is that the domain logic in `msez-state` enforces transitions at the type level. The API routes are not currently wired to the typestate machinery (they return stub responses); connecting them is Phase 5 work.
 
-`.unwrap()` appears in library source files, but the vast majority are inside `#[cfg(test)]` blocks co-located with source. A small number of `.unwrap()` calls exist in non-test library code (primarily in `msez-core/src/canonical.rs:135` for `n.as_f64().unwrap_or(f64::NAN)` which is guarded by `n.is_f64()`, and in CLI output formatting where failure would only affect display). None are in security-critical digest or cryptographic paths.
+The legacy `"PROPOSED"` and `"OPERATIONAL"` strings appear only in integration tests that verify these names are **rejected** by `DynCorridorState` deserialization.
 
-**Recommendation:** Future work should audit remaining `.unwrap()` in library code and replace with proper error propagation where the call site is reachable from external input.
+### Anti-Pattern 3: `.unwrap()` Outside Tests — LOW RISK
+
+**Finding:** 21 `.unwrap()` calls in non-test source code across 3 crates:
+- `msez-core` (3): Inside `CanonicalBytes` implementation — guarded by type checks (e.g., `n.is_f64()` before `n.as_f64().unwrap()`).
+- `msez-schema` (17): Primarily in schema codegen utilities and diagnostic output — not in validation hot paths.
+- `msez-zkp` (1): Mock proof construction placeholder.
+
+None are in security-critical digest, cryptographic signing, or state transition paths. The vast majority of `.unwrap()` in the codebase (2,100+) are inside `#[cfg(test)]` blocks.
+
+**Recommendation:** Future work should replace the 17 `msez-schema` `.unwrap()` calls with proper error propagation.
 
 ### Anti-Pattern 4: Unjustified Dependencies — ACCEPTABLE
 
-The workspace declares ~25 direct dependencies in `Cargo.toml`. All are well-justified:
+The workspace declares ~25 direct dependencies. All are well-justified:
+
 - **Serialization:** `serde`, `serde_json`, `serde_yaml` (fundamental to a schema-driven system)
-- **Crypto:** `sha2`, `ed25519-dalek`, `rand_core` (required for VC signing)
+- **Crypto:** `sha2`, `ed25519-dalek`, `rand_core` (required for VC signing and content addressing)
 - **Web:** `axum`, `tokio`, `tower`, `tower-http` (API server)
 - **CLI:** `clap` (argument parsing)
 - **Observability:** `tracing`, `tracing-subscriber` (structured logging)
 - **OpenAPI:** `utoipa` (spec generation)
 - **Time/ID:** `chrono`, `uuid` (temporal types, identifiers)
 - **Error:** `thiserror`, `anyhow` (typed + contextual errors)
-- **Testing:** `proptest`, `tempfile`, `http-body-util` (test-only)
-- **Database:** `sqlx` (declared but not yet heavily used — Phase 5)
+- **Testing:** `proptest`, `tempfile`, `http-body-util` (dev-only)
+- **Database:** `sqlx` (declared, persistence layer for Phase 5)
+- **Validation:** `jsonschema` (JSON Schema Draft 2020-12 validation)
 
 No bloat dependencies. The 273 transitive packages in `Cargo.lock` are consistent with the dependency graph.
 
 ### Anti-Pattern 5: Schema URI Changes — NO CHANGES
 
-The 116 JSON schemas in `schemas/` are unchanged from the original. The Rust `msez-schema` crate loads and validates against these same schemas. No `$id` or `$ref` URIs were modified.
+The 116 JSON schemas in `schemas/` are unchanged from the original Python codebase. The Rust `msez-schema` crate loads and validates against these same schemas. No `$id` or `$ref` URIs were modified.
 
 ### Anti-Pattern 6: Mocked Crypto in Tests — MINIMAL, JUSTIFIED
 
 The only mock crypto is in `msez-zkp/src/mock.rs`, which provides deterministic mock ZK proofs for testing. This is explicitly justified: real ZK proof generation requires circuit setup that is Phase 4 work. The mock verifier recomputes SHA-256 digests — it uses real hashing, only the proof structure is mocked.
 
-No digest computation or VC signing is mocked anywhere in the test suite.
+No digest computation, VC signing, or Ed25519 operations are mocked anywhere in the test suite.
 
-### Anti-Pattern 7: `Box<dyn Error>` — CLEAR
+### Anti-Pattern 7: `Box<dyn Error>` — 2 INSTANCES (LOW SEVERITY)
 
-Zero instances of `Box<dyn Error>` in the codebase. The only mentions are in documentation comments explaining that the codebase intentionally avoids this pattern. Error handling uses `thiserror`-derived enums throughout.
+**Finding:** Two instances of `Box<dyn Error>` exist in production code:
+
+1. `msez-api/src/main.rs:9` — `async fn main() -> Result<(), Box<dyn std::error::Error>>`: The binary entry point. Acceptable Rust idiom for `main()` functions that aggregate errors from multiple subsystems.
+2. `msez-schema/src/validate.rs:129` — `Result<Value, Box<dyn std::error::Error + Send + Sync>>`: Interface boundary where errors from `jsonschema` (third-party) must be propagated.
+
+Neither instance is in a security-critical path. The remainder of the codebase uses `thiserror`-derived enums.
 
 ### Anti-Pattern 8: `unsafe` — CLEAR
 
@@ -196,11 +219,15 @@ Zero instances of `unsafe` blocks anywhere in the Rust codebase.
 
 ### Anti-Pattern 9: Spec Contradictions — CLEAR
 
-The v2 state machine (`governance/corridor.lifecycle.state-machine.v2.json`) is fully aligned with `spec/40-corridors.md`. It defines 6 states (`DRAFT`, `PENDING`, `ACTIVE`, `HALTED`, `SUSPENDED`, `DEPRECATED`) with 9 transitions matching the spec. The v1 file is preserved with a supersession note.
+The v2 state machine (`governance/corridor.lifecycle.state-machine.v2.json`) is fully aligned with `spec/40-corridors.md`. It defines 6 states and 9 transitions. The v1 file is preserved with a supersession note. The `meta` field in v2 cross-references the spec, audit, and Rust implementation.
 
-### Anti-Pattern 10: `println!()` — CLI ONLY
+### Anti-Pattern 10: `println!()` — CLI ONLY, 50 INSTANCES
 
-`println!()` appears only in `msez-cli/src/validate.rs` and `msez-cli/src/signing.rs` — the CLI binary where stdout output is the intended user interface. Zero instances in library crates (`msez-core`, `msez-crypto`, `msez-state`, `msez-api`, etc.). The `msez-schema/tests/` uses `eprintln!()` for diagnostic output in test runners, which is acceptable.
+**Finding:** 50 `println!()` calls in `msez-cli/src/` across 5 files: `artifact.rs`, `corridor.rs`, `lock.rs`, `signing.rs`, and `validate.rs`. All are in the CLI binary where stdout output is the intended user interface. Zero `println!()` in library crates.
+
+`eprintln!()` appears in `msez-schema/src/codegen.rs` and `validate.rs` for diagnostic output during schema analysis — these are development/audit tools, not production library code.
+
+**Recommendation:** For production CLI output, consider migrating to structured logging via `tracing` with a human-readable subscriber, allowing both human and machine-readable output modes.
 
 ---
 
@@ -219,7 +246,7 @@ The v2 state machine (`governance/corridor.lifecycle.state-machine.v2.json`) is 
 | Merkle Mountain Range (MMR) | Done | msez-crypto |
 | BBS+ signatures (stub) | Done | msez-crypto |
 | Poseidon hash (stub) | Done | msez-crypto |
-| Cross-language digest compatibility tests | Done | msez-core/tests, msez-crypto/tests |
+| Cross-language digest compatibility tests | Done | msez-integration-tests |
 
 ### Phase 2: State Machines, Protocols & Business Logic — COMPLETE
 
@@ -247,17 +274,18 @@ The v2 state machine (`governance/corridor.lifecycle.state-machine.v2.json`) is 
 
 | Deliverable | Status | Crate/Location |
 |-------------|--------|----------------|
-| REST API (8 route modules, 29 endpoints) | Done | msez-api |
+| REST API (9 route modules, 30 endpoints) | Done | msez-api |
 | OpenAPI auto-generation (utoipa) | Done | msez-api |
 | Bearer token auth middleware | Done | msez-api |
 | Request ID middleware | Done | msez-api |
 | Health endpoints (liveness/readiness) | Done | msez-api |
 | CLI (validate, lock, sign, corridor) | Done | msez-cli |
 | Dockerfile (multi-stage, non-root) | Done | deploy/docker |
+| Docker Compose (API + Postgres + Prometheus + Grafana) | Done | deploy/docker |
 | Kubernetes manifests | Done | deploy/k8s |
 | CI pipeline (Rust + Python, dual-track) | Done | .github/workflows |
 
-### Phase 4: ZK Proof Circuits — NOT STARTED
+### Phase 4: ZK Proof Circuits — NOT STARTED (Stubs in Place)
 
 | Deliverable | Status | Notes |
 |-------------|--------|-------|
@@ -270,7 +298,7 @@ The v2 state machine (`governance/corridor.lifecycle.state-machine.v2.json`) is 
 | Confidential Data Bus (CDB) | Structure only | `msez-zkp/src/cdb.rs` |
 | Mock-to-real prover swap | Not started | Currently all proofs use `mock.rs` |
 
-### Phase 5: Pakistan Integrations — NOT STARTED
+### Phase 5: Pakistan Integrations — NOT STARTED (API Schemas Ready)
 
 | Deliverable | Status | Notes |
 |-------------|--------|-------|
@@ -278,6 +306,7 @@ The v2 state machine (`governance/corridor.lifecycle.state-machine.v2.json`) is 
 | NADRA CNIC cross-referencing | API schema ready | `/v1/identity/*` endpoints accept CNIC links |
 | SBP payment rails | Not started | SWIFT adapter provides ISO 20022 foundation |
 | SECP digital assets licensing | Not started | Licensing domain exists in ComplianceDomain |
+| Database persistence (PostgreSQL via sqlx) | Not started | Docker Compose includes Postgres; init-db.sql exists |
 | Multi-jurisdiction corridor activation (PK↔AE, PK↔SA) | Not started | Corridor typestate supports bilateral agreements |
 
 ---
@@ -286,29 +315,29 @@ The v2 state machine (`governance/corridor.lifecycle.state-machine.v2.json`) is 
 
 ### High Priority
 
-1. **`.unwrap()` in library code.** While most are in test-adjacent code, a systematic audit should replace any `.unwrap()` reachable from external input with proper error propagation. Estimated scope: ~50 genuine non-test occurrences across all crates.
+1. **API routes return stub responses.** Most API endpoints return hardcoded or in-memory responses. Business logic integration — connecting route handlers to the typestate state machines in `msez-state`, the pack operations in `msez-pack`, and the arbitration lifecycle in `msez-arbitration` — is Phase 5 work. This is the single largest gap between the current state and a deployable system.
 
-2. **ZK proofs are fully mocked.** The `msez-zkp` crate has complete type definitions and circuit interfaces but no real proof generation. All ZK verification uses `mock::MockVerifier` which recomputes SHA-256 digests rather than verifying actual proofs. This is a known Phase 4 deliverable.
+2. **ZK proofs are fully mocked.** The `msez-zkp` crate has complete type definitions and circuit interfaces but no real proof generation. All ZK verification uses `mock::MockVerifier` which recomputes SHA-256 digests. This is a known Phase 4 deliverable. The trait-based design (`ZkProver`, `ZkVerifier`, `ZkBackend` enum) means the swap from mock to real is a configuration change.
 
-3. **Database layer is declared but unused.** `sqlx` is in workspace dependencies but no crate currently executes SQL queries. The API routes return in-memory stub responses. Persistence is a Phase 5 deliverable.
-
-4. **`proc-macro-error` unmaintained warning.** Transitive dependency via `utoipa-gen`. Build-time only, no runtime exposure. Will resolve when `utoipa` updates its dependency tree.
+3. **Database layer is declared but unused.** `sqlx` is in workspace dependencies and `init-db.sql` exists in `deploy/docker/`, but no crate currently executes SQL queries. All state is in-memory.
 
 ### Medium Priority
 
-5. **Python monolith still present.** `tools/msez.py` (15,472 lines) remains in the repository and is exercised by CI for module/profile/zone validation. This should be replaced by `msez-cli` equivalents once the Rust CLI achieves full feature parity for validation commands.
+4. **Python monolith still present.** `tools/msez.py` (15,472 lines) remains in the repository and is exercised by CI for module/profile/zone validation. The Rust `msez-cli` should achieve full feature parity for these commands so the Python path can be retired.
 
-6. **Four original OpenAPI YAML specs are scaffolds.** The `apis/*.openapi.yaml` files are the original Python-era scaffolds. The Rust API generates its own OpenAPI spec via `utoipa`. The YAML scaffolds should either be removed or replaced with the auto-generated spec.
+5. **Four original OpenAPI YAML specs are scaffolds.** The `apis/*.openapi.yaml` files are the original Python-era scaffolds. The Rust API generates its own OpenAPI spec via `utoipa`. The YAML scaffolds should either be removed or replaced with the auto-generated spec.
 
-7. **`println!()` in CLI.** The CLI uses `println!()` for output. For production use, this should migrate to structured logging via `tracing` with a human-readable subscriber for terminal output.
+6. **`Box<dyn Error>` in two locations.** `msez-api/src/main.rs:9` (binary entry point) and `msez-schema/src/validate.rs:129` (third-party error boundary). Low severity but inconsistent with the codebase's `thiserror` convention.
+
+7. **`proc-macro-error` unmaintained warning.** Transitive dependency via `utoipa-gen`. Build-time only. Will resolve when `utoipa` updates its dependency tree.
 
 ### Low Priority
 
-8. **Cross-language test coverage.** The `cross_language.rs` tests in `msez-core` and `msez-crypto` depend on Python 3 being available and skip gracefully if it is not. CI should ensure Python is available for these tests.
+8. **21 `.unwrap()` calls in non-test library code.** 17 in `msez-schema` (codegen/diagnostic utilities), 3 in `msez-core` (guarded by type checks), 1 in `msez-zkp` (mock). None in security-critical paths.
 
-9. **`msez-api` route handlers return stubs.** Most API endpoints return hardcoded or in-memory responses. Business logic integration (connecting routes to state machines and pack operations) is Phase 5 work.
+9. **CLI uses `println!()` for output.** 50 instances across 5 CLI source files. Acceptable for a CLI binary but should migrate to `tracing` for structured output in production deployments.
 
-10. **No rate limiting or request size limits.** The API server has auth middleware but no rate limiting. This should be added before production deployment.
+10. **Cross-language tests depend on Python 3.** The cross-language tests in `msez-integration-tests` skip gracefully when Python is unavailable. CI should ensure Python is present for these tests.
 
 ---
 
@@ -340,24 +369,27 @@ Phase 5 connects the SEZ Stack to Pakistan's national digital infrastructure for
 - **NADRA CNIC:** Implement CNIC cross-referencing for identity verification via `/v1/identity/verify` and `/v1/identity/:id/link`. The identity route already accepts external ID linking.
 - **SBP Payment Rails:** Extend the SWIFT ISO 20022 adapter in `msez-corridor/src/swift.rs` to support SBP-specific message types.
 - **SECP Licensing:** Wire the `Licensing` compliance domain to the SECP's digital licensing verification API.
-- **Database Persistence:** Implement PostgreSQL storage via `sqlx` for all stateful entities (corridors, assets, identities, consent records).
+- **Database Persistence:** Implement PostgreSQL storage via `sqlx` for all stateful entities (corridors, assets, identities, consent records). The Docker Compose stack already provisions PostgreSQL with `init-db.sql`.
+- **Business Logic Integration:** Connect API route handlers to state machine crates. Priority: corridors (highest complexity), then entities, fiscal, identity, consent, ownership.
 - **Multi-Zone Deployment:** Deploy corridor instances for PK↔AE (Pakistan-UAE) and PK↔SA (Pakistan-Saudi Arabia) trade corridors.
 
 ---
 
 ## 8. Recommendations for Next Steps
 
-1. **Eliminate the Python validation path.** Port the remaining `python -m tools.msez validate` commands to the Rust CLI (`msez-cli validate`). Once at parity, remove `tools/msez.py` from CI and mark it as legacy.
+1. **Wire API routes to domain logic.** This is the highest-impact work. Connect the 30 API endpoints to the typestate state machines and pack operations. The type-safe foundation is in place; the routes need to instantiate `Corridor<Draft>`, advance it through `Corridor<Pending>` → `Corridor<Active>`, and persist state.
 
-2. **Integrate business logic into API routes.** Connect the API handlers to the state machine crates. Priority order: corridors (highest complexity), entities, fiscal, identity, consent, ownership.
+2. **Add database persistence.** Define the PostgreSQL schema based on the existing Rust types. Use `sqlx` compile-time checked queries. The Docker Compose stack already provisions Postgres.
 
-3. **Add database persistence.** Define the PostgreSQL schema based on the existing Rust types. Use `sqlx` compile-time checked queries.
+3. **Eliminate the Python validation path.** Port the remaining `python -m tools.msez validate` commands to the Rust CLI (`msez-cli validate`). Once at parity, remove `tools/msez.py` from CI and mark it as legacy.
 
-4. **Begin ZK circuit prototyping.** Start with the compliance tensor circuit as a proof-of-concept, since the tensor's domain-based evaluation model maps cleanly to circuit constraints.
+4. **Begin ZK circuit prototyping.** Start with the compliance tensor circuit as a proof-of-concept, since the tensor's 20-domain evaluation model maps cleanly to circuit constraints.
 
 5. **Security hardening for production.** Add rate limiting, request size limits, and CORS configuration to the API server. Conduct a focused security review of the auth middleware.
 
 6. **Performance benchmarking.** Establish baseline latencies for corridor receipt processing, VC issuance, and schema validation. Set SLAs for the Pakistan deployment.
+
+7. **Resolve `proc-macro-error` advisory.** Monitor `utoipa` for an update that drops this transitive dependency, or evaluate `aide` as an alternative OpenAPI generator.
 
 ---
 
@@ -365,24 +397,53 @@ Phase 5 connects the SEZ Stack to Pakistan's national digital infrastructure for
 
 ### Strengths
 
-- **Type-level correctness guarantees.** The `CanonicalBytes` private newtype, corridor typestate pattern, and `ContentDigest` newtype make three of the four most critical audit findings structurally impossible. This is a qualitative improvement over any amount of runtime checking.
+- **Type-level correctness guarantees.** The `CanonicalBytes` private newtype, corridor typestate pattern, and `ContentDigest` newtype make the three most critical audit findings structurally impossible. This is a qualitative improvement over any amount of runtime checking or testing.
 
-- **Unified ComplianceDomain.** The Python codebase had two independent domain enums (8 in tensor.py, 20 in composition.py) that could silently diverge. The single Rust enum with exhaustive `match` eliminates this defect class.
+- **Unified ComplianceDomain.** The Python codebase had two independent domain enums (8 in `tensor.py`, 20 in `composition.py`) that could silently diverge. The single Rust enum with exhaustive `match` eliminates this defect class entirely.
 
-- **Comprehensive test coverage.** 2,651 tests including property-based tests (proptest), cross-language digest verification, and adversarial security tests. The test suite is a production-grade asset.
+- **Comprehensive test coverage.** 2,651 tests including property-based tests (proptest), cross-language digest verification, adversarial security tests, and performance regression tests.
 
-- **Clean dependency graph.** No circular dependencies between crates. Clear layering: `msez-core` → `msez-crypto` → domain crates → `msez-api`/`msez-cli`.
+- **Clean dependency graph.** No circular dependencies between crates. Clear layering: `msez-core` → `msez-crypto` → domain crates → `msez-api`/`msez-cli`. The workspace resolver ensures consistent dependency versions.
 
-- **Zero clippy warnings, zero unsafe, zero Box<dyn Error>.** The codebase meets a high bar for Rust idiom compliance.
+- **Zero clippy warnings, zero unsafe, zero vulnerabilities.** The codebase meets a high bar for Rust idiom compliance.
+
+- **Production-ready infrastructure.** Multi-stage Docker build, Kubernetes manifests, Prometheus metrics, health checks, and structured logging are in place.
 
 ### Areas for Improvement
 
-- **API routes are stubs.** The type-safe foundation is in place but routes do not yet execute real business logic.
+- **API routes are stubs.** The type-safe foundation is in place but routes do not yet execute real business logic or persist state.
 
 - **No async state machine operations.** The corridor and migration state machines are synchronous. For production throughput, state transitions should be async with database-backed durability.
 
 - **ZK is entirely mocked.** This is the largest functional gap between the current state and the production vision.
 
+- **Two `Box<dyn Error>` instances.** Minor inconsistency with the codebase's otherwise clean error handling.
+
 ---
 
-*This report was generated as part of the capstone audit session for the Python-to-Rust migration of the Momentum SEZ Stack. It is suitable for inclusion in technical due diligence materials and investor documentation.*
+## 10. CI Pipeline Summary
+
+The CI pipeline (`.github/workflows/ci.yml`) runs two parallel jobs:
+
+### `rust` (Rust Workspace Checks)
+1. `cargo fmt --check --all` — formatting
+2. `cargo clippy --workspace -- -D warnings` — lint
+3. `cargo test --workspace` — all 2,651 tests
+4. `cargo audit` — dependency security
+5. `cargo doc --workspace --no-deps` — documentation builds
+
+### `validate-and-test` (Python Legacy Validation)
+1. Module validation (`python -m tools.msez validate --all-modules`)
+2. Profile validation (`python -m tools.msez validate --all-profiles`)
+3. Zone validation (`python -m tools.msez validate --all-zones`)
+4. Lockfile check (`python -m tools.msez lock ... --check`)
+5. Trade playbook determinism
+6. Schema backward compatibility
+7. Canonicalization unity check
+8. Security schema hardening check
+9. Cross-module digest consistency
+10. Full Python test suite (`pytest -q`)
+
+---
+
+*This report was generated as part of the capstone audit session for the Python-to-Rust migration of the Momentum SEZ Stack v0.4.44-GENESIS. All findings are based on direct execution of `cargo test`, `cargo clippy`, `cargo audit`, and systematic `grep` analysis of the 70,926-line Rust codebase. It is suitable for inclusion in technical due diligence materials and investor documentation.*

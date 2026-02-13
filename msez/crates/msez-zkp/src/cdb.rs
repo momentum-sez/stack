@@ -65,14 +65,14 @@ impl Cdb {
     ///
     /// let canonical = CanonicalBytes::new(&json!({"key": "value"})).unwrap();
     /// let digest = sha256_digest(&canonical);
-    /// let cdb = Cdb::new(digest);
+    /// let cdb = Cdb::new(digest).unwrap();
     /// assert_eq!(cdb.as_digest().to_hex().len(), 64);
     /// ```
-    pub fn new(digest: ContentDigest) -> Self {
+    pub fn new(digest: ContentDigest) -> Result<Self, crate::traits::ProofError> {
         #[cfg(not(feature = "poseidon2"))]
         {
             // Phase 1: identity — SHA-256 digest passes through unchanged.
-            Self { digest }
+            Ok(Self { digest })
         }
 
         #[cfg(feature = "poseidon2")]
@@ -80,15 +80,10 @@ impl Cdb {
             // Phase 2: Apply Poseidon2(Split256(digest)).
             // Split the 256-bit digest into two 128-bit halves, then hash
             // through Poseidon2 to produce a field-native digest.
-            //
-            // Currently unimplemented — the poseidon2 crate integration is
-            // Phase 2 work.
             let _ = &digest;
-            unimplemented!(
-                "Poseidon2 CDB is Phase 2. The `poseidon2` feature flag is enabled \
-                 but the Poseidon2 implementation is not yet available. \
-                 Use `--features mock` for Phase 1 SHA-256-only CDB."
-            )
+            Err(crate::traits::ProofError::NotImplemented(
+                "Poseidon2 CDB available in Phase 2".into(),
+            ))
         }
     }
 
@@ -124,7 +119,7 @@ mod tests {
     fn cdb_phase1_is_identity() {
         let canonical = CanonicalBytes::new(&json!({"a": 1, "b": 2})).unwrap();
         let digest = sha256_digest(&canonical);
-        let cdb = Cdb::new(digest.clone());
+        let cdb = Cdb::new(digest.clone()).unwrap();
         assert_eq!(cdb.as_digest(), &digest);
     }
 
@@ -133,8 +128,8 @@ mod tests {
         let canonical = CanonicalBytes::new(&json!({"key": "value"})).unwrap();
         let d1 = sha256_digest(&canonical);
         let d2 = sha256_digest(&canonical);
-        let cdb1 = Cdb::new(d1);
-        let cdb2 = Cdb::new(d2);
+        let cdb1 = Cdb::new(d1).unwrap();
+        let cdb2 = Cdb::new(d2).unwrap();
         assert_eq!(cdb1, cdb2);
     }
 
@@ -142,7 +137,7 @@ mod tests {
     fn cdb_hex_is_64_chars() {
         let canonical = CanonicalBytes::new(&json!({})).unwrap();
         let digest = sha256_digest(&canonical);
-        let cdb = Cdb::new(digest);
+        let cdb = Cdb::new(digest).unwrap();
         assert_eq!(cdb.to_hex().len(), 64);
     }
 
@@ -150,7 +145,7 @@ mod tests {
     fn cdb_display_format() {
         let canonical = CanonicalBytes::new(&json!({"x": 1})).unwrap();
         let digest = sha256_digest(&canonical);
-        let cdb = Cdb::new(digest);
+        let cdb = Cdb::new(digest).unwrap();
         let display = format!("{cdb}");
         assert!(display.starts_with("CDB(sha256:"));
     }
@@ -159,8 +154,8 @@ mod tests {
     fn cdb_different_inputs_produce_different_digests() {
         let c1 = CanonicalBytes::new(&json!({"a": 1})).unwrap();
         let c2 = CanonicalBytes::new(&json!({"a": 2})).unwrap();
-        let cdb1 = Cdb::new(sha256_digest(&c1));
-        let cdb2 = Cdb::new(sha256_digest(&c2));
+        let cdb1 = Cdb::new(sha256_digest(&c1)).unwrap();
+        let cdb2 = Cdb::new(sha256_digest(&c2)).unwrap();
         assert_ne!(cdb1, cdb2);
     }
 
@@ -168,7 +163,7 @@ mod tests {
     fn cdb_into_digest_consumes() {
         let canonical = CanonicalBytes::new(&json!({"k": "v"})).unwrap();
         let digest = sha256_digest(&canonical);
-        let cdb = Cdb::new(digest.clone());
+        let cdb = Cdb::new(digest.clone()).unwrap();
         let recovered = cdb.into_digest();
         assert_eq!(recovered, digest);
     }

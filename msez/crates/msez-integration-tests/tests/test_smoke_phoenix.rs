@@ -149,7 +149,7 @@ fn smoke_cdb_bridge() {
     let digest = sha256_digest(&canonical);
 
     // Create CDB (Phase 1: identity)
-    let cdb = Cdb::new(digest.clone());
+    let cdb = Cdb::new(digest.clone()).unwrap();
     assert_eq!(cdb.to_hex().len(), 64);
 
     // In Phase 1, CDB is identity
@@ -165,8 +165,8 @@ fn smoke_cdb_deterministic() {
     let canonical = CanonicalBytes::new(&json!({"test": true})).unwrap();
     let d1 = sha256_digest(&canonical);
     let d2 = sha256_digest(&canonical);
-    let cdb1 = Cdb::new(d1);
-    let cdb2 = Cdb::new(d2);
+    let cdb1 = Cdb::new(d1).unwrap();
+    let cdb2 = Cdb::new(d2).unwrap();
     assert_eq!(cdb1, cdb2);
 }
 
@@ -174,7 +174,7 @@ fn smoke_cdb_deterministic() {
 fn smoke_cdb_into_digest() {
     let canonical = CanonicalBytes::new(&json!({"k": "v"})).unwrap();
     let digest = sha256_digest(&canonical);
-    let cdb = Cdb::new(digest.clone());
+    let cdb = Cdb::new(digest.clone()).unwrap();
     let recovered = cdb.into_digest();
     assert_eq!(recovered, digest);
 }

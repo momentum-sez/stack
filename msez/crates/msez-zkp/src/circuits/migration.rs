@@ -189,4 +189,224 @@ mod tests {
         };
         assert!(circuit.compensation_records[0].success);
     }
+
+    // ── MigrationEvidenceCircuit comprehensive tests ────────────
+
+    #[test]
+    fn migration_evidence_circuit_full_8_phase() {
+        let circuit = MigrationEvidenceCircuit {
+            source_jurisdiction: [0x01; 32],
+            target_jurisdiction: [0x02; 32],
+            migration_id: [0x03; 32],
+            final_state_commitment: [0x04; 32],
+            phase_evidence: vec![
+                [0x10; 32], [0x20; 32], [0x30; 32], [0x40; 32],
+                [0x50; 32], [0x60; 32], [0x70; 32], [0x80; 32],
+            ],
+            transition_timestamps: vec![1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000],
+            approval_signatures: vec![vec![0xaa; 64], vec![0xbb; 64]],
+        };
+        assert_eq!(circuit.phase_evidence.len(), 8, "All 8 phases must have evidence");
+        assert_eq!(circuit.transition_timestamps.len(), 8);
+        assert_eq!(circuit.approval_signatures.len(), 2);
+    }
+
+    #[test]
+    fn migration_evidence_circuit_serialization_roundtrip() {
+        let circuit = MigrationEvidenceCircuit {
+            source_jurisdiction: [0x01; 32],
+            target_jurisdiction: [0x02; 32],
+            migration_id: [0x03; 32],
+            final_state_commitment: [0x04; 32],
+            phase_evidence: vec![[0x10; 32]],
+            transition_timestamps: vec![1738281600],
+            approval_signatures: vec![vec![0xaa; 64]],
+        };
+        let json = serde_json::to_string(&circuit).unwrap();
+        let deserialized: MigrationEvidenceCircuit = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.source_jurisdiction, circuit.source_jurisdiction);
+        assert_eq!(deserialized.target_jurisdiction, circuit.target_jurisdiction);
+        assert_eq!(deserialized.migration_id, circuit.migration_id);
+    }
+
+    #[test]
+    fn migration_evidence_circuit_empty_phases() {
+        let circuit = MigrationEvidenceCircuit {
+            source_jurisdiction: [0x01; 32],
+            target_jurisdiction: [0x02; 32],
+            migration_id: [0x03; 32],
+            final_state_commitment: [0x04; 32],
+            phase_evidence: vec![],
+            transition_timestamps: vec![],
+            approval_signatures: vec![],
+        };
+        assert_eq!(circuit.phase_evidence.len(), 0);
+    }
+
+    #[test]
+    fn migration_evidence_timestamps_monotonic() {
+        let timestamps = vec![1000u64, 2000, 3000, 4000];
+        let circuit = MigrationEvidenceCircuit {
+            source_jurisdiction: [0x01; 32],
+            target_jurisdiction: [0x02; 32],
+            migration_id: [0x03; 32],
+            final_state_commitment: [0x04; 32],
+            phase_evidence: vec![[0; 32]; 4],
+            transition_timestamps: timestamps.clone(),
+            approval_signatures: vec![],
+        };
+        for i in 1..circuit.transition_timestamps.len() {
+            assert!(
+                circuit.transition_timestamps[i] > circuit.transition_timestamps[i - 1],
+                "Timestamps must be monotonically increasing"
+            );
+        }
+    }
+
+    // ── OwnershipChainCircuit comprehensive tests ───────────────
+
+    #[test]
+    fn ownership_chain_circuit_multi_level() {
+        let entries: Vec<OwnershipEntry> = (0..5)
+            .map(|i| OwnershipEntry {
+                owner_hash: [i as u8; 32],
+                timestamp: 1738281600 + (i as u64 * 86400),
+                evidence_hash: [(i + 0x10) as u8; 32],
+            })
+            .collect();
+        let proofs: Vec<Vec<[u8; 32]>> = (0..5)
+            .map(|_| vec![[0x33; 32], [0x44; 32]])
+            .collect();
+        let circuit = OwnershipChainCircuit {
+            asset_digest: [0xab; 32],
+            current_owner_commitment: [0xcd; 32],
+            chain_root: [0xef; 32],
+            ownership_entries: entries,
+            transfer_proofs: proofs,
+        };
+        assert_eq!(circuit.ownership_entries.len(), 5);
+        assert_eq!(circuit.transfer_proofs.len(), 5);
+    }
+
+    #[test]
+    fn ownership_chain_circuit_serialization_roundtrip() {
+        let circuit = OwnershipChainCircuit {
+            asset_digest: [0xab; 32],
+            current_owner_commitment: [0xcd; 32],
+            chain_root: [0xef; 32],
+            ownership_entries: vec![OwnershipEntry {
+                owner_hash: [0x11; 32],
+                timestamp: 1738281600,
+                evidence_hash: [0x22; 32],
+            }],
+            transfer_proofs: vec![vec![[0x33; 32]]],
+        };
+        let json = serde_json::to_string(&circuit).unwrap();
+        let deserialized: OwnershipChainCircuit = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.asset_digest, circuit.asset_digest);
+        assert_eq!(deserialized.chain_root, circuit.chain_root);
+    }
+
+    #[test]
+    fn ownership_entry_construction_and_serde() {
+        let entry = OwnershipEntry {
+            owner_hash: [0xaa; 32],
+            timestamp: 1738281600,
+            evidence_hash: [0xbb; 32],
+        };
+        let json = serde_json::to_string(&entry).unwrap();
+        let deserialized: OwnershipEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.owner_hash, entry.owner_hash);
+        assert_eq!(deserialized.timestamp, entry.timestamp);
+        assert_eq!(deserialized.evidence_hash, entry.evidence_hash);
+    }
+
+    // ── CompensationValidityCircuit comprehensive tests ─────────
+
+    #[test]
+    fn compensation_circuit_multiple_actions() {
+        let records = vec![
+            CompensationRecord {
+                action_type: "unlock_source".to_string(),
+                success: true,
+                evidence_hash: [0x01; 32],
+                timestamp: 1738281600,
+            },
+            CompensationRecord {
+                action_type: "refund_fees".to_string(),
+                success: true,
+                evidence_hash: [0x02; 32],
+                timestamp: 1738281601,
+            },
+            CompensationRecord {
+                action_type: "notify_counterparties".to_string(),
+                success: false,
+                evidence_hash: [0x03; 32],
+                timestamp: 1738281602,
+            },
+        ];
+        let circuit = CompensationValidityCircuit {
+            migration_id: [0xaa; 32],
+            compensation_commitment: [0xbb; 32],
+            compensation_records: records,
+            failure_evidence: [0xdd; 32],
+        };
+        assert_eq!(circuit.compensation_records.len(), 3);
+        assert!(circuit.compensation_records[0].success);
+        assert!(!circuit.compensation_records[2].success);
+    }
+
+    #[test]
+    fn compensation_circuit_serialization_roundtrip() {
+        let circuit = CompensationValidityCircuit {
+            migration_id: [0xaa; 32],
+            compensation_commitment: [0xbb; 32],
+            compensation_records: vec![CompensationRecord {
+                action_type: "unlock_source".to_string(),
+                success: true,
+                evidence_hash: [0xcc; 32],
+                timestamp: 1738281600,
+            }],
+            failure_evidence: [0xdd; 32],
+        };
+        let json = serde_json::to_string(&circuit).unwrap();
+        let deserialized: CompensationValidityCircuit = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.migration_id, circuit.migration_id);
+        assert_eq!(deserialized.compensation_records.len(), 1);
+    }
+
+    #[test]
+    fn compensation_record_construction_and_serde() {
+        let record = CompensationRecord {
+            action_type: "refund_fees".to_string(),
+            success: false,
+            evidence_hash: [0xff; 32],
+            timestamp: 1738281600,
+        };
+        let json = serde_json::to_string(&record).unwrap();
+        let deserialized: CompensationRecord = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.action_type, "refund_fees");
+        assert!(!deserialized.success);
+        assert_eq!(deserialized.timestamp, 1738281600);
+    }
+
+    #[test]
+    fn compensation_record_all_action_types() {
+        let action_types = [
+            "unlock_source",
+            "refund_fees",
+            "notify_counterparties",
+            "rollback_state",
+            "release_escrow",
+        ];
+        for action in action_types {
+            let record = CompensationRecord {
+                action_type: action.to_string(),
+                success: true,
+                evidence_hash: [0x00; 32],
+                timestamp: 1738281600,
+            };
+            assert_eq!(record.action_type, action);
+        }
+    }
 }

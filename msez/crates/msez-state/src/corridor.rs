@@ -700,4 +700,384 @@ mod tests {
         assert_eq!(corridor.jurisdiction_a, ja);
         assert_eq!(corridor.jurisdiction_b, jb);
     }
+
+    // ── Comprehensive typestate transition tests ─────────────────
+
+    #[test]
+    fn submit_stores_pack_trilogy_digest() {
+        let draft = test_corridor();
+        let pack_digest = test_digest();
+        let bilateral_digest = test_digest();
+        let pending = draft.submit(SubmissionEvidence {
+            bilateral_agreement_digest: bilateral_digest,
+            pack_trilogy_digest: pack_digest,
+        });
+        assert_eq!(pending.state_name(), "PENDING");
+        // Transition record stores bilateral agreement as evidence
+        assert!(pending.transition_log()[0].evidence_digest.is_some());
+    }
+
+    #[test]
+    fn activate_records_regulatory_approval_evidence() {
+        let active = test_corridor()
+            .submit(SubmissionEvidence {
+                bilateral_agreement_digest: test_digest(),
+                pack_trilogy_digest: test_digest(),
+            })
+            .activate(ActivationEvidence {
+                regulatory_approval_a: test_digest(),
+                regulatory_approval_b: test_digest(),
+            });
+        let log = active.transition_log();
+        assert_eq!(log[1].from_state, "PENDING");
+        assert_eq!(log[1].to_state, "ACTIVE");
+        assert!(log[1].evidence_digest.is_some());
+    }
+
+    #[test]
+    fn halt_stores_reason_and_evidence() {
+        let active = test_corridor()
+            .submit(SubmissionEvidence {
+                bilateral_agreement_digest: test_digest(),
+                pack_trilogy_digest: test_digest(),
+            })
+            .activate(ActivationEvidence {
+                regulatory_approval_a: test_digest(),
+                regulatory_approval_b: test_digest(),
+            });
+        let evidence = test_digest();
+        let halted = active.halt(HaltReason {
+            reason: "Sanctions violation detected".to_string(),
+            authority: JurisdictionId::new("PK-RSEZ").unwrap(),
+            evidence: evidence.clone(),
+        });
+        let log = halted.transition_log();
+        assert_eq!(log[2].from_state, "ACTIVE");
+        assert_eq!(log[2].to_state, "HALTED");
+        assert!(log[2].evidence_digest.is_some());
+    }
+
+    #[test]
+    fn suspend_with_expected_resume_date() {
+        let active = test_corridor()
+            .submit(SubmissionEvidence {
+                bilateral_agreement_digest: test_digest(),
+                pack_trilogy_digest: test_digest(),
+            })
+            .activate(ActivationEvidence {
+                regulatory_approval_a: test_digest(),
+                regulatory_approval_b: test_digest(),
+            });
+        let resume_date = Utc::now() + chrono::Duration::days(30);
+        let suspended = active.suspend(SuspendReason {
+            reason: "Scheduled maintenance".to_string(),
+            expected_resume: Some(resume_date),
+        });
+        assert_eq!(suspended.state_name(), "SUSPENDED");
+        // Suspension has no evidence digest (voluntary)
+        let log = suspended.transition_log();
+        assert!(log[2].evidence_digest.is_none());
+    }
+
+    #[test]
+    fn resume_after_suspension_returns_to_active() {
+        let active = test_corridor()
+            .submit(SubmissionEvidence {
+                bilateral_agreement_digest: test_digest(),
+                pack_trilogy_digest: test_digest(),
+            })
+            .activate(ActivationEvidence {
+                regulatory_approval_a: test_digest(),
+                regulatory_approval_b: test_digest(),
+            });
+        let suspended = active.suspend(SuspendReason {
+            reason: "Maintenance".to_string(),
+            expected_resume: None,
+        });
+        let resumed = suspended.resume(ResumeEvidence {
+            resolution_attestation: test_digest(),
+        });
+        assert_eq!(resumed.state_name(), "ACTIVE");
+        assert!(!resumed.is_terminal());
+        assert_eq!(resumed.transition_log().len(), 4);
+    }
+
+    #[test]
+    fn deprecate_is_terminal() {
+        let deprecated = test_corridor()
+            .submit(SubmissionEvidence {
+                bilateral_agreement_digest: test_digest(),
+                pack_trilogy_digest: test_digest(),
+            })
+            .activate(ActivationEvidence {
+                regulatory_approval_a: test_digest(),
+                regulatory_approval_b: test_digest(),
+            })
+            .halt(HaltReason {
+                reason: "End of life".to_string(),
+                authority: JurisdictionId::new("AE-DIFC").unwrap(),
+                evidence: test_digest(),
+            })
+            .deprecate(DeprecationEvidence {
+                deprecation_decision_digest: test_digest(),
+                reason: "Bilateral agreement expired".to_string(),
+            });
+        assert!(deprecated.is_terminal());
+        assert_eq!(deprecated.state_name(), "DEPRECATED");
+    }
+
+    #[test]
+    fn transition_log_timestamps_are_chronological() {
+        let corridor = test_corridor()
+            .submit(SubmissionEvidence {
+                bilateral_agreement_digest: test_digest(),
+                pack_trilogy_digest: test_digest(),
+            })
+            .activate(ActivationEvidence {
+                regulatory_approval_a: test_digest(),
+                regulatory_approval_b: test_digest(),
+            });
+        let log = corridor.transition_log();
+        for i in 1..log.len() {
+            assert!(
+                log[i].timestamp >= log[i - 1].timestamp,
+                "Transitions must be chronologically ordered"
+            );
+        }
+    }
+
+    #[test]
+    fn created_at_does_not_change_across_transitions() {
+        let draft = test_corridor();
+        let created = draft.created_at;
+        let active = draft
+            .submit(SubmissionEvidence {
+                bilateral_agreement_digest: test_digest(),
+                pack_trilogy_digest: test_digest(),
+            })
+            .activate(ActivationEvidence {
+                regulatory_approval_a: test_digest(),
+                regulatory_approval_b: test_digest(),
+            });
+        assert_eq!(active.created_at, created);
+    }
+
+    #[test]
+    fn updated_at_changes_on_transition() {
+        let draft = test_corridor();
+        let updated_before = draft.updated_at;
+        let pending = draft.submit(SubmissionEvidence {
+            bilateral_agreement_digest: test_digest(),
+            pack_trilogy_digest: test_digest(),
+        });
+        assert!(pending.updated_at >= updated_before);
+    }
+
+    // ── DynCorridorState comprehensive tests ─────────────────────
+
+    #[test]
+    fn dyn_corridor_state_all_variants_serialize_correctly() {
+        let states = [
+            (DynCorridorState::Draft, "\"DRAFT\""),
+            (DynCorridorState::Pending, "\"PENDING\""),
+            (DynCorridorState::Active, "\"ACTIVE\""),
+            (DynCorridorState::Halted, "\"HALTED\""),
+            (DynCorridorState::Suspended, "\"SUSPENDED\""),
+            (DynCorridorState::Deprecated, "\"DEPRECATED\""),
+        ];
+        for (state, expected_json) in states {
+            assert_eq!(serde_json::to_string(&state).unwrap(), expected_json);
+        }
+    }
+
+    #[test]
+    fn dyn_corridor_state_all_variants_deserialize_correctly() {
+        let cases = [
+            ("\"DRAFT\"", DynCorridorState::Draft),
+            ("\"PENDING\"", DynCorridorState::Pending),
+            ("\"ACTIVE\"", DynCorridorState::Active),
+            ("\"HALTED\"", DynCorridorState::Halted),
+            ("\"SUSPENDED\"", DynCorridorState::Suspended),
+            ("\"DEPRECATED\"", DynCorridorState::Deprecated),
+        ];
+        for (json, expected) in cases {
+            let deserialized: DynCorridorState = serde_json::from_str(json).unwrap();
+            assert_eq!(deserialized, expected);
+        }
+    }
+
+    #[test]
+    fn dyn_corridor_state_invalid_names_rejected() {
+        let invalid = [
+            "\"PROPOSED\"",
+            "\"OPERATIONAL\"",
+            "\"INACTIVE\"",
+            "\"CLOSED\"",
+            "\"active\"",
+            "\"draft\"",
+        ];
+        for json in invalid {
+            let result: Result<DynCorridorState, _> = serde_json::from_str(json);
+            assert!(result.is_err(), "{json} must not be a valid state");
+        }
+    }
+
+    #[test]
+    fn dyn_corridor_state_valid_transitions_exhaustive() {
+        assert_eq!(
+            DynCorridorState::Draft.valid_transitions(),
+            &[DynCorridorState::Pending]
+        );
+        assert_eq!(
+            DynCorridorState::Pending.valid_transitions(),
+            &[DynCorridorState::Active]
+        );
+        assert_eq!(
+            DynCorridorState::Active.valid_transitions(),
+            &[DynCorridorState::Halted, DynCorridorState::Suspended]
+        );
+        assert_eq!(
+            DynCorridorState::Halted.valid_transitions(),
+            &[DynCorridorState::Deprecated]
+        );
+        assert_eq!(
+            DynCorridorState::Suspended.valid_transitions(),
+            &[DynCorridorState::Active]
+        );
+        assert!(DynCorridorState::Deprecated.valid_transitions().is_empty());
+    }
+
+    #[test]
+    fn dyn_corridor_state_terminal_only_deprecated() {
+        assert!(!DynCorridorState::Draft.is_terminal());
+        assert!(!DynCorridorState::Pending.is_terminal());
+        assert!(!DynCorridorState::Active.is_terminal());
+        assert!(!DynCorridorState::Halted.is_terminal());
+        assert!(!DynCorridorState::Suspended.is_terminal());
+        assert!(DynCorridorState::Deprecated.is_terminal());
+    }
+
+    #[test]
+    fn dyn_corridor_from_all_typestate_variants() {
+        // Draft
+        let draft = test_corridor();
+        let dyn_draft = DynCorridorData::from(&draft);
+        assert_eq!(dyn_draft.state, DynCorridorState::Draft);
+
+        // Pending
+        let pending = test_corridor().submit(SubmissionEvidence {
+            bilateral_agreement_digest: test_digest(),
+            pack_trilogy_digest: test_digest(),
+        });
+        let dyn_pending = DynCorridorData::from(&pending);
+        assert_eq!(dyn_pending.state, DynCorridorState::Pending);
+
+        // Active
+        let active = test_corridor()
+            .submit(SubmissionEvidence {
+                bilateral_agreement_digest: test_digest(),
+                pack_trilogy_digest: test_digest(),
+            })
+            .activate(ActivationEvidence {
+                regulatory_approval_a: test_digest(),
+                regulatory_approval_b: test_digest(),
+            });
+        let dyn_active = DynCorridorData::from(&active);
+        assert_eq!(dyn_active.state, DynCorridorState::Active);
+
+        // Halted
+        let halted = test_corridor()
+            .submit(SubmissionEvidence {
+                bilateral_agreement_digest: test_digest(),
+                pack_trilogy_digest: test_digest(),
+            })
+            .activate(ActivationEvidence {
+                regulatory_approval_a: test_digest(),
+                regulatory_approval_b: test_digest(),
+            })
+            .halt(HaltReason {
+                reason: "Test".to_string(),
+                authority: JurisdictionId::new("PK-RSEZ").unwrap(),
+                evidence: test_digest(),
+            });
+        let dyn_halted = DynCorridorData::from(&halted);
+        assert_eq!(dyn_halted.state, DynCorridorState::Halted);
+
+        // Suspended
+        let suspended = test_corridor()
+            .submit(SubmissionEvidence {
+                bilateral_agreement_digest: test_digest(),
+                pack_trilogy_digest: test_digest(),
+            })
+            .activate(ActivationEvidence {
+                regulatory_approval_a: test_digest(),
+                regulatory_approval_b: test_digest(),
+            })
+            .suspend(SuspendReason {
+                reason: "Test".to_string(),
+                expected_resume: None,
+            });
+        let dyn_suspended = DynCorridorData::from(&suspended);
+        assert_eq!(dyn_suspended.state, DynCorridorState::Suspended);
+
+        // Deprecated
+        let deprecated = test_corridor()
+            .submit(SubmissionEvidence {
+                bilateral_agreement_digest: test_digest(),
+                pack_trilogy_digest: test_digest(),
+            })
+            .activate(ActivationEvidence {
+                regulatory_approval_a: test_digest(),
+                regulatory_approval_b: test_digest(),
+            })
+            .halt(HaltReason {
+                reason: "Test".to_string(),
+                authority: JurisdictionId::new("PK-RSEZ").unwrap(),
+                evidence: test_digest(),
+            })
+            .deprecate(DeprecationEvidence {
+                deprecation_decision_digest: test_digest(),
+                reason: "Test".to_string(),
+            });
+        let dyn_deprecated = DynCorridorData::from(&deprecated);
+        assert_eq!(dyn_deprecated.state, DynCorridorState::Deprecated);
+    }
+
+    #[test]
+    fn dyn_corridor_data_serialization_roundtrip() {
+        let corridor = test_corridor()
+            .submit(SubmissionEvidence {
+                bilateral_agreement_digest: test_digest(),
+                pack_trilogy_digest: test_digest(),
+            });
+        let dyn_data = DynCorridorData::from(&corridor);
+        let json = serde_json::to_string(&dyn_data).unwrap();
+        let deserialized: DynCorridorData = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.state, DynCorridorState::Pending);
+        assert_eq!(deserialized.transition_log.len(), 1);
+    }
+
+    #[test]
+    fn dyn_corridor_data_preserves_transition_log() {
+        let corridor = test_corridor()
+            .submit(SubmissionEvidence {
+                bilateral_agreement_digest: test_digest(),
+                pack_trilogy_digest: test_digest(),
+            })
+            .activate(ActivationEvidence {
+                regulatory_approval_a: test_digest(),
+                regulatory_approval_b: test_digest(),
+            })
+            .suspend(SuspendReason {
+                reason: "Test".to_string(),
+                expected_resume: None,
+            })
+            .resume(ResumeEvidence {
+                resolution_attestation: test_digest(),
+            });
+        let dyn_data = DynCorridorData::from(&corridor);
+        assert_eq!(dyn_data.transition_log.len(), 4);
+        assert_eq!(dyn_data.transition_log[0].from_state, "DRAFT");
+        assert_eq!(dyn_data.transition_log[3].to_state, "ACTIVE");
+    }
 }

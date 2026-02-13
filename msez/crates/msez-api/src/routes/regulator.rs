@@ -351,4 +351,222 @@ mod tests {
         assert_eq!(summary.total_assets, 0);
         assert_eq!(summary.total_attestations, 0);
     }
+
+    // ── Additional regulator route tests ─────────────────────────
+
+    #[tokio::test]
+    async fn handler_query_attestations_invalid_json_returns_400() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/regulator/query/attestations")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"not valid json"#))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn handler_query_attestations_filter_by_entity_id() {
+        let state = AppState::new();
+        let target_entity = uuid::Uuid::new_v4();
+
+        let att1 = AttestationRecord {
+            id: uuid::Uuid::new_v4(),
+            entity_id: target_entity,
+            attestation_type: "kyc".to_string(),
+            issuer: "NADRA".to_string(),
+            status: "ACTIVE".to_string(),
+            jurisdiction_id: "PK-PSEZ".to_string(),
+            issued_at: chrono::Utc::now(),
+            expires_at: None,
+            details: serde_json::json!({}),
+        };
+        let att2 = AttestationRecord {
+            id: uuid::Uuid::new_v4(),
+            entity_id: uuid::Uuid::new_v4(),
+            attestation_type: "kyc".to_string(),
+            issuer: "FBR".to_string(),
+            status: "ACTIVE".to_string(),
+            jurisdiction_id: "PK-PSEZ".to_string(),
+            issued_at: chrono::Utc::now(),
+            expires_at: None,
+            details: serde_json::json!({}),
+        };
+        state.attestations.insert(att1.id, att1);
+        state.attestations.insert(att2.id, att2);
+
+        let app = router().with_state(state);
+        let body = serde_json::json!({ "entity_id": target_entity });
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/regulator/query/attestations")
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let result: QueryResultsResponse = body_json(resp).await;
+        assert_eq!(result.count, 1);
+        assert_eq!(result.results[0].entity_id, target_entity);
+    }
+
+    #[tokio::test]
+    async fn handler_query_attestations_filter_by_attestation_type() {
+        let state = AppState::new();
+
+        let att1 = AttestationRecord {
+            id: uuid::Uuid::new_v4(),
+            entity_id: uuid::Uuid::new_v4(),
+            attestation_type: "identity_verification".to_string(),
+            issuer: "NADRA".to_string(),
+            status: "ACTIVE".to_string(),
+            jurisdiction_id: "PK-PSEZ".to_string(),
+            issued_at: chrono::Utc::now(),
+            expires_at: None,
+            details: serde_json::json!({}),
+        };
+        let att2 = AttestationRecord {
+            id: uuid::Uuid::new_v4(),
+            entity_id: uuid::Uuid::new_v4(),
+            attestation_type: "compliance_check".to_string(),
+            issuer: "FBR".to_string(),
+            status: "ACTIVE".to_string(),
+            jurisdiction_id: "PK-PSEZ".to_string(),
+            issued_at: chrono::Utc::now(),
+            expires_at: None,
+            details: serde_json::json!({}),
+        };
+        state.attestations.insert(att1.id, att1);
+        state.attestations.insert(att2.id, att2);
+
+        let app = router().with_state(state);
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/regulator/query/attestations")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"attestation_type":"compliance_check"}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let result: QueryResultsResponse = body_json(resp).await;
+        assert_eq!(result.count, 1);
+        assert_eq!(result.results[0].attestation_type, "compliance_check");
+    }
+
+    #[tokio::test]
+    async fn handler_query_attestations_combined_filters() {
+        let state = AppState::new();
+
+        for i in 0..5 {
+            let att = AttestationRecord {
+                id: uuid::Uuid::new_v4(),
+                entity_id: uuid::Uuid::new_v4(),
+                attestation_type: if i % 2 == 0 { "kyc" } else { "aml" }.to_string(),
+                issuer: "NADRA".to_string(),
+                status: if i < 3 { "ACTIVE" } else { "PENDING" }.to_string(),
+                jurisdiction_id: if i < 2 { "PK-PSEZ" } else { "AE-DIFC" }.to_string(),
+                issued_at: chrono::Utc::now(),
+                expires_at: None,
+                details: serde_json::json!({}),
+            };
+            state.attestations.insert(att.id, att);
+        }
+
+        let app = router().with_state(state);
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/regulator/query/attestations")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"jurisdiction_id":"PK-PSEZ","status":"ACTIVE"}"#,
+            ))
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let result: QueryResultsResponse = body_json(resp).await;
+        // PK-PSEZ (indices 0,1) and ACTIVE (indices 0,1,2) → intersection = indices 0,1
+        assert_eq!(result.count, 2);
+    }
+
+    #[tokio::test]
+    async fn handler_compliance_summary_counts_assets_and_attestations() {
+        let state = AppState::new();
+
+        // Add a smart asset
+        let asset = crate::state::SmartAssetRecord {
+            id: uuid::Uuid::new_v4(),
+            asset_type: "CapTable".to_string(),
+            jurisdiction_id: "PK-PSEZ".to_string(),
+            status: "ACTIVE".to_string(),
+            genesis_digest: None,
+            compliance_status: Some("COMPLIANT".to_string()),
+            metadata: serde_json::json!({}),
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+        state.smart_assets.insert(asset.id, asset);
+
+        // Add an attestation
+        let att = AttestationRecord {
+            id: uuid::Uuid::new_v4(),
+            entity_id: uuid::Uuid::new_v4(),
+            attestation_type: "kyc".to_string(),
+            issuer: "NADRA".to_string(),
+            status: "ACTIVE".to_string(),
+            jurisdiction_id: "PK-PSEZ".to_string(),
+            issued_at: chrono::Utc::now(),
+            expires_at: None,
+            details: serde_json::json!({}),
+        };
+        state.attestations.insert(att.id, att);
+
+        let app = router().with_state(state);
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/regulator/summary")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let summary: ComplianceSummary = body_json(resp).await;
+        assert_eq!(summary.total_assets, 1);
+        assert_eq!(summary.total_attestations, 1);
+    }
+
+    #[test]
+    fn compliance_summary_serialization() {
+        let summary = ComplianceSummary {
+            total_entities: 10,
+            total_corridors: 3,
+            total_assets: 25,
+            total_attestations: 100,
+        };
+        let json = serde_json::to_string(&summary).unwrap();
+        let deserialized: ComplianceSummary = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.total_entities, 10);
+        assert_eq!(deserialized.total_corridors, 3);
+        assert_eq!(deserialized.total_assets, 25);
+        assert_eq!(deserialized.total_attestations, 100);
+    }
+
+    #[test]
+    fn query_results_response_serialization() {
+        let resp = QueryResultsResponse {
+            count: 0,
+            results: vec![],
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        let deserialized: QueryResultsResponse = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.count, 0);
+        assert!(deserialized.results.is_empty());
+    }
 }

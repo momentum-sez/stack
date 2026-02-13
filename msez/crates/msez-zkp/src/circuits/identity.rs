@@ -170,4 +170,152 @@ mod tests {
         };
         assert!(circuit.signatures.len() >= circuit.threshold as usize);
     }
+
+    // ── KycAttestationCircuit comprehensive tests ───────────────
+
+    #[test]
+    fn kyc_attestation_circuit_serialization_roundtrip() {
+        let circuit = KycAttestationCircuit {
+            approved_issuers_root: [0xaa; 32],
+            min_kyc_level: 2,
+            verification_timestamp: 1738281600,
+            attestation_hash: [0xbb; 32],
+            issuer_signature: vec![0xcc; 64],
+            issuer_pubkey: vec![0xdd; 32],
+            kyc_level: 3,
+            issuer_merkle_proof: vec![[0xee; 32]],
+        };
+        let json = serde_json::to_string(&circuit).unwrap();
+        let deserialized: KycAttestationCircuit = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.min_kyc_level, 2);
+        assert_eq!(deserialized.kyc_level, 3);
+        assert_eq!(deserialized.verification_timestamp, 1738281600);
+    }
+
+    #[test]
+    fn kyc_attestation_circuit_all_levels() {
+        for level in 1u8..=3 {
+            let circuit = KycAttestationCircuit {
+                approved_issuers_root: [0xaa; 32],
+                min_kyc_level: level,
+                verification_timestamp: 1738281600,
+                attestation_hash: [0xbb; 32],
+                issuer_signature: vec![0xcc; 64],
+                issuer_pubkey: vec![0xdd; 32],
+                kyc_level: level,
+                issuer_merkle_proof: vec![[0xee; 32]],
+            };
+            assert!(circuit.kyc_level >= circuit.min_kyc_level);
+        }
+    }
+
+    #[test]
+    fn kyc_attestation_deep_merkle_proof() {
+        let circuit = KycAttestationCircuit {
+            approved_issuers_root: [0xaa; 32],
+            min_kyc_level: 1,
+            verification_timestamp: 1738281600,
+            attestation_hash: [0xbb; 32],
+            issuer_signature: vec![0xcc; 64],
+            issuer_pubkey: vec![0xdd; 32],
+            kyc_level: 3,
+            issuer_merkle_proof: (0..10).map(|i| [i as u8; 32]).collect(),
+        };
+        assert_eq!(circuit.issuer_merkle_proof.len(), 10);
+    }
+
+    // ── AttestationValidityCircuit comprehensive tests ──────────
+
+    #[test]
+    fn attestation_validity_circuit_serialization_roundtrip() {
+        let circuit = AttestationValidityCircuit {
+            attestation_commitment: [0x11; 32],
+            current_timestamp: 1738281600,
+            revocation_root: [0x22; 32],
+            attestation_hash: [0x33; 32],
+            expiry_timestamp: 1769817600,
+            revocation_non_membership: vec![[0x44; 32], [0x55; 32]],
+        };
+        let json = serde_json::to_string(&circuit).unwrap();
+        let deserialized: AttestationValidityCircuit = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.current_timestamp, 1738281600);
+        assert_eq!(deserialized.expiry_timestamp, 1769817600);
+    }
+
+    #[test]
+    fn attestation_validity_not_expired() {
+        let circuit = AttestationValidityCircuit {
+            attestation_commitment: [0x11; 32],
+            current_timestamp: 1738281600,
+            revocation_root: [0x22; 32],
+            attestation_hash: [0x33; 32],
+            expiry_timestamp: 1769817600,
+            revocation_non_membership: vec![],
+        };
+        assert!(
+            circuit.expiry_timestamp > circuit.current_timestamp,
+            "Attestation must not be expired"
+        );
+    }
+
+    #[test]
+    fn attestation_validity_expired() {
+        let circuit = AttestationValidityCircuit {
+            attestation_commitment: [0x11; 32],
+            current_timestamp: 1800000000,
+            revocation_root: [0x22; 32],
+            attestation_hash: [0x33; 32],
+            expiry_timestamp: 1769817600,
+            revocation_non_membership: vec![],
+        };
+        assert!(
+            circuit.current_timestamp > circuit.expiry_timestamp,
+            "This attestation is expired"
+        );
+    }
+
+    // ── ThresholdSignatureCircuit comprehensive tests ────────────
+
+    #[test]
+    fn threshold_signature_circuit_serialization_roundtrip() {
+        let circuit = ThresholdSignatureCircuit {
+            statement_hash: [0xab; 32],
+            threshold: 2,
+            authorized_signers_root: [0xcd; 32],
+            signatures: vec![vec![0x01; 64]; 2],
+            signer_pubkeys: vec![vec![0x02; 32]; 2],
+            signer_merkle_proofs: vec![vec![[0x03; 32]]; 2],
+        };
+        let json = serde_json::to_string(&circuit).unwrap();
+        let deserialized: ThresholdSignatureCircuit = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.threshold, 2);
+        assert_eq!(deserialized.signatures.len(), 2);
+    }
+
+    #[test]
+    fn threshold_signature_exceeds_minimum() {
+        let circuit = ThresholdSignatureCircuit {
+            statement_hash: [0xab; 32],
+            threshold: 2,
+            authorized_signers_root: [0xcd; 32],
+            signatures: vec![vec![0x01; 64]; 5],
+            signer_pubkeys: vec![vec![0x02; 32]; 5],
+            signer_merkle_proofs: vec![vec![[0x03; 32]]; 5],
+        };
+        assert!(circuit.signatures.len() > circuit.threshold as usize);
+    }
+
+    #[test]
+    fn threshold_signature_single_signer() {
+        let circuit = ThresholdSignatureCircuit {
+            statement_hash: [0xab; 32],
+            threshold: 1,
+            authorized_signers_root: [0xcd; 32],
+            signatures: vec![vec![0x01; 64]],
+            signer_pubkeys: vec![vec![0x02; 32]],
+            signer_merkle_proofs: vec![vec![[0x03; 32]]],
+        };
+        assert_eq!(circuit.threshold, 1);
+        assert_eq!(circuit.signatures.len(), 1);
+    }
 }

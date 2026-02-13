@@ -27,7 +27,7 @@ FROM debian:bookworm-slim
 LABEL org.opencontainers.image.title="MSEZ API"
 LABEL org.opencontainers.image.description="Momentum SEZ Stack — Axum API server and CLI toolchain"
 LABEL org.opencontainers.image.vendor="Momentum"
-LABEL org.opencontainers.image.version="0.5.0"
+LABEL org.opencontainers.image.version="0.4.44"
 LABEL org.opencontainers.image.source="https://github.com/momentum-sez/stack"
 
 # Install minimal runtime dependencies (TLS certs for HTTPS, libpq for PostgreSQL)

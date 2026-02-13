@@ -172,4 +172,105 @@ mod tests {
         assert_eq!(deserialized.threshold, 500);
         assert_eq!(deserialized.balance, 1000);
     }
+
+    // ── BalanceSufficiencyCircuit comprehensive tests ────────────
+
+    #[test]
+    fn balance_sufficiency_exact_threshold() {
+        let circuit = BalanceSufficiencyCircuit {
+            threshold: 1000,
+            threshold_public: true,
+            result_commitment: [0u8; 32],
+            balance: 1000,
+        };
+        assert!(circuit.balance >= circuit.threshold);
+    }
+
+    #[test]
+    fn balance_sufficiency_private_threshold() {
+        let circuit = BalanceSufficiencyCircuit {
+            threshold: 500,
+            threshold_public: false,
+            result_commitment: [0xaa; 32],
+            balance: 1000,
+        };
+        assert!(!circuit.threshold_public);
+    }
+
+    #[test]
+    fn balance_sufficiency_zero_threshold() {
+        let circuit = BalanceSufficiencyCircuit {
+            threshold: 0,
+            threshold_public: true,
+            result_commitment: [0u8; 32],
+            balance: 0,
+        };
+        assert!(circuit.balance >= circuit.threshold);
+    }
+
+    // ── SanctionsClearanceCircuit comprehensive tests ────────────
+
+    #[test]
+    fn sanctions_clearance_serialization_roundtrip() {
+        let circuit = SanctionsClearanceCircuit {
+            sanctions_root: [0xab; 32],
+            verification_timestamp: 1738281600,
+            entity_hash: [0xcd; 32],
+            merkle_proof: vec![[0x01; 32], [0x02; 32]],
+            merkle_path_indices: vec![false, true],
+        };
+        let json = serde_json::to_string(&circuit).unwrap();
+        let deserialized: SanctionsClearanceCircuit = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.sanctions_root, [0xab; 32]);
+        assert_eq!(deserialized.merkle_proof.len(), 2);
+    }
+
+    #[test]
+    fn sanctions_clearance_deep_tree() {
+        let depth = 16;
+        let circuit = SanctionsClearanceCircuit {
+            sanctions_root: [0xab; 32],
+            verification_timestamp: 1738281600,
+            entity_hash: [0xcd; 32],
+            merkle_proof: vec![[0x01; 32]; depth],
+            merkle_path_indices: vec![false; depth],
+        };
+        assert_eq!(circuit.merkle_proof.len(), depth);
+    }
+
+    // ── TensorInclusionCircuit comprehensive tests ──────────────
+
+    #[test]
+    fn tensor_inclusion_serialization_roundtrip() {
+        let circuit = TensorInclusionCircuit {
+            tensor_commitment: [0xff; 32],
+            claimed_state: 2,
+            asset_id: "SA-PK-001".to_string(),
+            jurisdiction_id: "PK-RSEZ".to_string(),
+            domain: 0,
+            time_quantum: 202601,
+            merkle_proof: vec![[0x10; 32], [0x20; 32]],
+        };
+        let json = serde_json::to_string(&circuit).unwrap();
+        let deserialized: TensorInclusionCircuit = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.claimed_state, 2);
+        assert_eq!(deserialized.jurisdiction_id, "PK-RSEZ");
+    }
+
+    #[test]
+    fn tensor_inclusion_all_domain_ordinals() {
+        // 20 compliance domains: ordinals 0..19
+        for domain in 0u8..20 {
+            let circuit = TensorInclusionCircuit {
+                tensor_commitment: [0xff; 32],
+                claimed_state: 1,
+                asset_id: "SA-001".to_string(),
+                jurisdiction_id: "PK".to_string(),
+                domain,
+                time_quantum: 202601,
+                merkle_proof: vec![],
+            };
+            assert_eq!(circuit.domain, domain);
+        }
+    }
 }

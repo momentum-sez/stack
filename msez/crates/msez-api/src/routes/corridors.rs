@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
-use crate::state::{AppState, CorridorRecord, CorridorTransitionEntry};
+use crate::state::{AppState, CorridorRecord, CorridorTransitionEntry, PaginatedResponse, PaginationParams};
 use axum::extract::rejection::JsonRejection;
 
 /// Request to create a corridor.
@@ -124,17 +124,29 @@ async fn create_corridor(
     Ok((axum::http::StatusCode::CREATED, Json(record)))
 }
 
-/// GET /v1/corridors — List all corridors.
+/// GET /v1/corridors — List corridors with pagination.
 #[utoipa::path(
     get,
     path = "/v1/corridors",
+    params(PaginationParams),
     responses(
-        (status = 200, description = "List of corridors", body = Vec<CorridorRecord>),
+        (status = 200, description = "Paginated list of corridors", body = PaginatedResponse<CorridorRecord>),
     ),
     tag = "corridors"
 )]
-async fn list_corridors(State(state): State<AppState>) -> Json<Vec<CorridorRecord>> {
-    Json(state.corridors.list())
+async fn list_corridors(
+    State(state): State<AppState>,
+    axum::extract::Query(params): axum::extract::Query<PaginationParams>,
+) -> Json<PaginatedResponse<CorridorRecord>> {
+    let limit = params.clamped_limit();
+    let total = state.corridors.count();
+    let data = state.corridors.list_paginated(params.offset, limit);
+    Json(PaginatedResponse {
+        data,
+        total,
+        offset: params.offset,
+        limit,
+    })
 }
 
 /// GET /v1/corridors/:id — Get a corridor.
@@ -499,8 +511,11 @@ mod tests {
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
 
-        let records: Vec<CorridorRecord> = body_json(resp).await;
-        assert!(records.is_empty());
+        let page: PaginatedResponse<CorridorRecord> = body_json(resp).await;
+        assert!(page.data.is_empty());
+        assert_eq!(page.total, 0);
+        assert_eq!(page.offset, 0);
+        assert_eq!(page.limit, 50);
     }
 
     #[tokio::test]
@@ -529,9 +544,10 @@ mod tests {
         let list_resp = app.oneshot(list_req).await.unwrap();
         assert_eq!(list_resp.status(), StatusCode::OK);
 
-        let records: Vec<CorridorRecord> = body_json(list_resp).await;
-        assert_eq!(records.len(), 1);
-        assert_eq!(records[0].jurisdiction_a, "PK-PSEZ");
+        let page: PaginatedResponse<CorridorRecord> = body_json(list_resp).await;
+        assert_eq!(page.data.len(), 1);
+        assert_eq!(page.total, 1);
+        assert_eq!(page.data[0].jurisdiction_a, "PK-PSEZ");
     }
 
     #[tokio::test]

@@ -25,6 +25,46 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+// ── Pagination ──────────────────────────────────────────────────────
+
+/// Query parameters for paginated list endpoints.
+///
+/// Defaults: `offset = 0`, `limit = 50`. The maximum allowed limit is 500;
+/// any larger value is silently clamped via [`PaginationParams::clamped_limit`].
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+pub struct PaginationParams {
+    /// Number of records to skip (0-based).
+    #[serde(default)]
+    pub offset: usize,
+    /// Maximum number of records to return (default 50, max 500).
+    #[serde(default = "default_limit")]
+    pub limit: usize,
+}
+
+fn default_limit() -> usize {
+    50
+}
+
+impl PaginationParams {
+    /// Return `self.limit` clamped to the server maximum of 500.
+    pub fn clamped_limit(&self) -> usize {
+        self.limit.min(500)
+    }
+}
+
+/// Envelope returned by paginated list endpoints.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct PaginatedResponse<T: Serialize> {
+    /// The page of records.
+    pub data: Vec<T>,
+    /// Total number of records in the store (before pagination).
+    pub total: usize,
+    /// The offset that was applied.
+    pub offset: usize,
+    /// The limit that was applied (after clamping).
+    pub limit: usize,
+}
+
 // ── Generic In-Memory Store ─────────────────────────────────────────
 
 /// Thread-safe, cloneable in-memory key-value store.
@@ -66,6 +106,26 @@ impl<T: Clone + Send + Sync> Store<T> {
     /// List all records.
     pub fn list(&self) -> Vec<T> {
         self.data.read().values().cloned().collect()
+    }
+
+    /// List records with offset/limit pagination.
+    ///
+    /// Returns at most `limit` records starting from the `offset`-th record.
+    /// The iteration order over the underlying `HashMap` is arbitrary but
+    /// stable for a given snapshot (no concurrent writes while reading).
+    pub fn list_paginated(&self, offset: usize, limit: usize) -> Vec<T> {
+        self.data
+            .read()
+            .values()
+            .skip(offset)
+            .take(limit)
+            .cloned()
+            .collect()
+    }
+
+    /// Return the total number of records in the store.
+    pub fn count(&self) -> usize {
+        self.data.read().len()
     }
 
     /// Update a record in place. Returns the updated record, or `None` if not found.

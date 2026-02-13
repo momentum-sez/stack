@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
-use crate::state::{AppState, FiscalAccountRecord, PaymentRecord, TaxEventRecord};
+use crate::state::{AppState, FiscalAccountRecord, PaginatedResponse, PaginationParams, PaymentRecord, TaxEventRecord};
 use axum::extract::rejection::JsonRejection;
 
 /// Request to create a fiscal/treasury account.
@@ -189,27 +189,39 @@ async fn calculate_withholding(
     }))
 }
 
-/// GET /v1/fiscal/:entity_id/tax-events — Get tax event history.
+/// GET /v1/fiscal/:entity_id/tax-events — Get tax event history with pagination.
 #[utoipa::path(
     get,
     path = "/v1/fiscal/{entity_id}/tax-events",
-    params(("entity_id" = Uuid, Path, description = "Entity ID")),
+    params(
+        ("entity_id" = Uuid, Path, description = "Entity ID"),
+        PaginationParams,
+    ),
     responses(
-        (status = 200, description = "Tax events", body = Vec<TaxEventRecord>),
+        (status = 200, description = "Paginated tax events", body = PaginatedResponse<TaxEventRecord>),
     ),
     tag = "fiscal"
 )]
 async fn get_tax_events(
     State(state): State<AppState>,
     Path(entity_id): Path<Uuid>,
-) -> Json<Vec<TaxEventRecord>> {
-    let events: Vec<_> = state
+    axum::extract::Query(params): axum::extract::Query<PaginationParams>,
+) -> Json<PaginatedResponse<TaxEventRecord>> {
+    let limit = params.clamped_limit();
+    let all: Vec<_> = state
         .tax_events
         .list()
         .into_iter()
         .filter(|e| e.entity_id == entity_id)
         .collect();
-    Json(events)
+    let total = all.len();
+    let data: Vec<_> = all.into_iter().skip(params.offset).take(limit).collect();
+    Json(PaginatedResponse {
+        data,
+        total,
+        offset: params.offset,
+        limit,
+    })
 }
 
 /// POST /v1/fiscal/reporting/generate — Generate tax return data.
@@ -587,8 +599,9 @@ mod tests {
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
 
-        let events: Vec<TaxEventRecord> = body_json(resp).await;
-        assert!(events.is_empty());
+        let page: PaginatedResponse<TaxEventRecord> = body_json(resp).await;
+        assert!(page.data.is_empty());
+        assert_eq!(page.total, 0);
     }
 
     #[tokio::test]
@@ -632,10 +645,11 @@ mod tests {
         let resp = app.clone().oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
 
-        let events: Vec<TaxEventRecord> = body_json(resp).await;
-        assert_eq!(events.len(), 1);
-        assert_eq!(events[0].entity_id, entity_a);
-        assert_eq!(events[0].event_type, "capital_gains");
+        let page: PaginatedResponse<TaxEventRecord> = body_json(resp).await;
+        assert_eq!(page.data.len(), 1);
+        assert_eq!(page.total, 1);
+        assert_eq!(page.data[0].entity_id, entity_a);
+        assert_eq!(page.data[0].event_type, "capital_gains");
 
         // Query tax events for entity_b.
         let req_b = Request::builder()
@@ -644,9 +658,10 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let resp_b = app.oneshot(req_b).await.unwrap();
-        let events_b: Vec<TaxEventRecord> = body_json(resp_b).await;
-        assert_eq!(events_b.len(), 1);
-        assert_eq!(events_b[0].entity_id, entity_b);
+        let page_b: PaginatedResponse<TaxEventRecord> = body_json(resp_b).await;
+        assert_eq!(page_b.data.len(), 1);
+        assert_eq!(page_b.total, 1);
+        assert_eq!(page_b.data[0].entity_id, entity_b);
     }
 
     #[tokio::test]

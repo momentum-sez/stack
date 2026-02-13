@@ -9,8 +9,8 @@
     "VerifiableCredential",
     "MSEZCorridorDefinitionCredential"
   ],
-  "issuer": "did:key:z6Mkp8BMuNpEfPPWC4La2djUue1kpwNzEVn1ivpcSythWvqb",
-  "issuanceDate": "2025-12-22T00:00:00Z",
+  "issuer": "did:key:z6Mkj1RtUAUEQqRYCr7rzLqVunkPwMY1UjA68MJF8A8Mh9Kz",
+  "issuanceDate": "2026-02-13T10:51:30Z",
   "credentialSubject": {
     "corridor_id": "org.momentum.msez.corridor.correspondent.baseline",
     "ruleset": "msez.corridor.verification.v1",
@@ -21,7 +21,7 @@
       },
       "trust_anchors": {
         "path": "trust-anchors.yaml",
-        "sha256": "8fe86b313a40af507fe6d3b834520bab96fca5b0f55bfb70626f21490cc5a512"
+        "sha256": "f0b4f3fa8e6ff3a375d8ee2439aa7a9aab05c9d7b7ab0404d682f3f17f430bce"
       },
       "key_rotation": {
         "path": "key-rotation.yaml",
@@ -31,13 +31,11 @@
     "version": "0.2.0",
     "maintainer": "Momentum SEZ Stack (example key)"
   },
-  "proof": [
-    {
-      "type": "MsezEd25519Signature2025",
-      "created": "2025-12-22T00:00:00Z",
-      "verificationMethod": "did:key:z6Mkp8BMuNpEfPPWC4La2djUue1kpwNzEVn1ivpcSythWvqb#key-1",
-      "proofPurpose": "assertionMethod",
-      "jws": "YeI_aRXMdIz43zuYLhE5nMN7gg3NfFeChjHuCueGtJ13CaV3kL6PPjEV9XbiQX-KqCsJbS-jv0Yoa3pfiVGoBg"
-    }
-  ]
+  "proof": {
+    "type": "MsezEd25519Signature2025",
+    "created": "2026-02-13T10:51:30Z",
+    "verificationMethod": "did:key:z6Mkj1RtUAUEQqRYCr7rzLqVunkPwMY1UjA68MJF8A8Mh9Kz#key-1",
+    "proofPurpose": "assertionMethod",
+    "jws": "5q9JQTaTE9XXwO994TRKHxgcbdNARbVhkOPAoHfNeR3bxDXtVNQzQM5bHivU4ZW76t2U2z8HBr9JboSJhWobAA"
+  }
 }

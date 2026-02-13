@@ -1148,6 +1148,22 @@ def cli_query(
 
 
 # =============================================================================
+# Convenience wrappers and re-exports
+# =============================================================================
+
+from tools.lawpack import jcs_canonicalize
+
+
+def compute_licensepack_digest(pack: LicensePack) -> str:
+    """Compute the content-addressed digest of a LicensePack instance.
+
+    Convenience wrapper around ``LicensePack.compute_digest()`` for callers
+    that prefer a functional interface.
+    """
+    return pack.compute_digest()
+
+
+# =============================================================================
 # Module Exports
 # =============================================================================
 
@@ -1169,9 +1185,11 @@ __all__ = [
     # Main class
     "LicensePack",
     # Functions
+    "compute_licensepack_digest",
     "create_licensepack",
     "create_standard_financial_license_types",
     "evaluate_license_compliance",
+    "jcs_canonicalize",
     # CLI
     "cli_fetch",
     "cli_verify",

@@ -2,7 +2,7 @@ version: 1
 trust_anchors:
 - anchor_id: zone-authority
   type: did
-  identifier: did:web:example.zone-authority
+  identifier: did:key:z6MkjFL4SL5NuNeDctg12pK8SgYSoZzWRpXhBSNmFsuzkw8X
   allowed_attestations:
   - kyb_verified
   - bo_verified
@@ -13,7 +13,7 @@ trust_anchors:
     notes: Placeholder trust anchor; deployments must replace with real issuers.
 - anchor_id: corridor-governance
   type: did
-  identifier: did:key:z6Mkp8BMuNpEfPPWC4La2djUue1kpwNzEVn1ivpcSythWvqb
+  identifier: did:key:z6Mkj1RtUAUEQqRYCr7rzLqVunkPwMY1UjA68MJF8A8Mh9Kz
   allowed_attestations:
   - corridor_definition
   - corridor_receipt

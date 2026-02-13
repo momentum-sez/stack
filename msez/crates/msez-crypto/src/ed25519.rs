@@ -177,6 +177,15 @@ impl std::fmt::Debug for SigningKey {
     }
 }
 
+impl Drop for SigningKey {
+    fn drop(&mut self) {
+        // Overwrite key material with zeros as defense in depth.
+        // The inner `ed25519_dalek::SigningKey` also zeroizes via `ZeroizeOnDrop`
+        // (enabled by the `zeroize` cargo feature), providing a second layer.
+        self.inner = ed25519_dalek::SigningKey::from_bytes(&[0u8; 32]);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // VerifyingKey
 // ---------------------------------------------------------------------------
@@ -439,6 +448,14 @@ mod tests {
         let sig1 = sk.sign(&data);
         let sig2 = sk.sign(&data);
         assert_eq!(sig1, sig2);
+    }
+
+    #[test]
+    fn signing_key_drops_without_panic() {
+        let mut rng = rand_core::OsRng;
+        let key = SigningKey::generate(&mut rng);
+        let _pub_key = key.verifying_key();
+        drop(key);
     }
 
     // ── Coverage expansion tests ─────────────────────────────────────

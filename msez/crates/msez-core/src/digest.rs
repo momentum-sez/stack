@@ -118,17 +118,16 @@ pub fn sha256_digest(canonical: &CanonicalBytes) -> ContentDigest {
 /// Compute a Poseidon2 content digest from canonical bytes.
 ///
 /// **Phase 2 — not yet implemented.** This function is gated behind the
-/// `poseidon2` feature flag and currently panics with `unimplemented!()`.
+/// `poseidon2` feature flag and currently returns `Err(MsezError::NotImplemented)`.
 ///
 /// Poseidon2 is a ZK-friendly hash function designed for efficient verification
 /// inside arithmetic circuits. It will be used for zero-knowledge proof
 /// generation in the Phase 2 ZKP layer.
 #[cfg(feature = "poseidon2")]
-pub fn poseidon2_digest(_canonical: &CanonicalBytes) -> ContentDigest {
-    unimplemented!(
-        "Poseidon2 digest is Phase 2. The `poseidon2` feature flag is enabled \
-         but the implementation is not yet available."
-    )
+pub fn poseidon2_digest(_canonical: &CanonicalBytes) -> Result<ContentDigest, crate::error::MsezError> {
+    Err(crate::error::MsezError::NotImplemented(
+        "Poseidon2 digest available in Phase 2".into(),
+    ))
 }
 
 #[cfg(test)]

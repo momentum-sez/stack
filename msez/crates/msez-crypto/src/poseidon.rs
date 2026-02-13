@@ -59,11 +59,10 @@ impl Poseidon2Digest {
 ///
 /// The input must be [`CanonicalBytes`] to maintain the same
 /// canonicalization invariant as SHA-256 digest computation.
-pub fn poseidon2_digest(_data: &CanonicalBytes) -> Poseidon2Digest {
-    unimplemented!(
-        "Poseidon2 digest is Phase 4. Enable with `poseidon2` feature flag \
-         once the concrete implementation is available."
-    )
+pub fn poseidon2_digest(_data: &CanonicalBytes) -> Result<Poseidon2Digest, crate::error::CryptoError> {
+    Err(crate::error::CryptoError::NotImplemented(
+        "Poseidon2 digest available in Phase 4".into(),
+    ))
 }
 
 /// Compute a Poseidon2 hash over two 32-byte inputs (for Merkle nodes).
@@ -71,12 +70,11 @@ pub fn poseidon2_digest(_data: &CanonicalBytes) -> Poseidon2Digest {
 /// ## Phase 4 — Not Yet Implemented
 ///
 /// This is the ZK-friendly equivalent of the SHA-256 node hash used
-/// in MMR construction. It currently panics.
-pub fn poseidon2_node_hash(_left: &[u8; 32], _right: &[u8; 32]) -> Poseidon2Digest {
-    unimplemented!(
-        "Poseidon2 node hashing is Phase 4. Enable with `poseidon2` feature flag \
-         once the concrete implementation is available."
-    )
+/// in MMR construction.
+pub fn poseidon2_node_hash(_left: &[u8; 32], _right: &[u8; 32]) -> Result<Poseidon2Digest, crate::error::CryptoError> {
+    Err(crate::error::CryptoError::NotImplemented(
+        "Poseidon2 node hashing available in Phase 4".into(),
+    ))
 }
 
 #[cfg(test)]
@@ -84,15 +82,17 @@ mod tests {
     use super::*;
 
     #[test]
-    #[should_panic(expected = "Poseidon2 digest is Phase 4")]
-    fn poseidon2_digest_panics() {
+    fn poseidon2_digest_returns_not_implemented() {
         let data = CanonicalBytes::new(&serde_json::json!({"test": true})).unwrap();
-        let _ = poseidon2_digest(&data);
+        let result = poseidon2_digest(&data);
+        assert!(result.is_err());
+        assert!(format!("{}", result.unwrap_err()).contains("not implemented"));
     }
 
     #[test]
-    #[should_panic(expected = "Poseidon2 node hashing is Phase 4")]
-    fn poseidon2_node_hash_panics() {
-        let _ = poseidon2_node_hash(&[0u8; 32], &[1u8; 32]);
+    fn poseidon2_node_hash_returns_not_implemented() {
+        let result = poseidon2_node_hash(&[0u8; 32], &[1u8; 32]);
+        assert!(result.is_err());
+        assert!(format!("{}", result.unwrap_err()).contains("not implemented"));
     }
 }

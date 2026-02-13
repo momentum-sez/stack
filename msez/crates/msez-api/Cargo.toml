@@ -40,6 +40,10 @@ utoipa = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
+# Security
+subtle = { workspace = true }
+parking_lot = { workspace = true }
+
 # Error handling
 thiserror = { workspace = true }
 

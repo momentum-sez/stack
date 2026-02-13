@@ -47,6 +47,10 @@ pub enum MsezError {
     /// JSON serialization/deserialization error.
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
+
+    /// Feature is not yet implemented.
+    #[error("not implemented: {0}")]
+    NotImplemented(String),
 }
 
 /// Errors during canonical serialization.

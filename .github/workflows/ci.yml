@@ -27,6 +27,15 @@ jobs:
       - name: Clippy (warnings as errors)
         run: cargo clippy --workspace -- -D warnings
 
+      - name: Guard — serde_json preserve_order must NOT be enabled
+        run: |
+          if cargo tree -e features -i serde_json 2>&1 | grep -qi "preserve.order\|indexmap"; then
+            echo "FATAL: serde_json preserve_order detected — all digests would be corrupted"
+            cargo tree -e features -i serde_json
+            exit 1
+          fi
+          echo "OK: serde_json uses BTreeMap (preserve_order not active)"
+
       - name: Run tests
         run: cargo test --workspace
 

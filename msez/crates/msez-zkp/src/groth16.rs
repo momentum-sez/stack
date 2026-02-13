@@ -86,10 +86,9 @@ impl ProofSystem for Groth16ProofSystem {
         _pk: &Self::ProvingKey,
         _circuit: &Self::Circuit,
     ) -> Result<Self::Proof, ProofError> {
-        unimplemented!(
-            "Groth16 proof generation requires the `ark-groth16` dependency. \
-             This is Phase 2 work. Use `MockProofSystem` for Phase 1."
-        )
+        Err(ProofError::NotImplemented(
+            "Groth16 proof generation available in Phase 2".into(),
+        ))
     }
 
     fn verify(
@@ -98,10 +97,9 @@ impl ProofSystem for Groth16ProofSystem {
         _proof: &Self::Proof,
         _public_inputs: &[u8],
     ) -> Result<bool, VerifyError> {
-        unimplemented!(
-            "Groth16 proof verification requires the `ark-groth16` dependency. \
-             This is Phase 2 work. Use `MockProofSystem` for Phase 1."
-        )
+        Err(VerifyError::NotImplemented(
+            "Groth16 proof verification available in Phase 2".into(),
+        ))
     }
 }
 
@@ -141,8 +139,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Phase 2")]
-    fn groth16_prove_panics_with_phase2_message() {
+    fn groth16_prove_returns_not_implemented() {
         let sys = Groth16ProofSystem;
         let pk = Groth16ProvingKey { key_bytes: vec![] };
         let circuit = Groth16Circuit {
@@ -150,18 +147,21 @@ mod tests {
             constraint_count: 0,
             public_inputs: vec![],
         };
-        let _ = sys.prove(&pk, &circuit);
+        let result = sys.prove(&pk, &circuit);
+        assert!(result.is_err());
+        assert!(format!("{}", result.unwrap_err()).contains("not implemented"));
     }
 
     #[test]
-    #[should_panic(expected = "Phase 2")]
-    fn groth16_verify_panics_with_phase2_message() {
+    fn groth16_verify_returns_not_implemented() {
         let sys = Groth16ProofSystem;
         let vk = Groth16VerifyingKey { key_bytes: vec![] };
         let proof = Groth16Proof {
             proof_bytes: vec![],
         };
-        let _ = sys.verify(&vk, &proof, &[]);
+        let result = sys.verify(&vk, &proof, &[]);
+        assert!(result.is_err());
+        assert!(format!("{}", result.unwrap_err()).contains("not implemented"));
     }
 
     #[test]

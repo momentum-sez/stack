@@ -17,10 +17,10 @@
 //! | `/v1/assets/*`        | [`routes::smart_assets`]  | Smart Assets   |
 //! | `/v1/regulator/*`     | [`routes::regulator`]     | Regulator      |
 //!
-//! ## Middleware Stack
+//! ## Middleware Stack (execution order)
 //!
 //! ```text
-//! TraceLayer → MetricsMiddleware → RateLimitMiddleware → AuthMiddleware
+//! TraceLayer → MetricsMiddleware → AuthMiddleware → RateLimitMiddleware → Handler
 //! ```
 //!
 //! ## OpenAPI
@@ -66,8 +66,8 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::smart_assets::router())
         .merge(routes::regulator::router())
         .merge(openapi::router())
-        .layer(from_fn(auth::auth_middleware))
         .layer(from_fn(middleware::rate_limit::rate_limit_middleware))
+        .layer(from_fn(auth::auth_middleware))
         .layer(from_fn(middleware::metrics::metrics_middleware))
         .layer(TraceLayer::new_for_http())
         .layer(axum::Extension(auth_config))

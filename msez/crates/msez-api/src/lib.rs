@@ -19,6 +19,8 @@
 //! | `/v1/assets/*`        | [`routes::smart_assets`]   | Smart Assets (SEZ)  |
 //! | `/v1/assets/*/credentials/*` | [`routes::credentials`] | VC Issuance (SEZ) |
 //! | `/v1/credentials/*`  | [`routes::credentials`]    | VC Verification (SEZ) |
+//! | `/v1/triggers`        | [`routes::agentic`]        | Agentic Engine (SEZ)|
+//! | `/v1/policies/*`      | [`routes::agentic`]        | Policy Mgmt (SEZ)   |
 //! | `/v1/regulator/*`     | [`routes::regulator`]      | Regulator (SEZ)     |
 //!
 //! ## Middleware Stack (execution order)
@@ -69,6 +71,7 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::smart_assets::router())
         .merge(routes::credentials::router())
         .merge(routes::regulator::router())
+        .merge(routes::agentic::router())
         .merge(openapi::router())
         .layer(from_fn(middleware::rate_limit::rate_limit_middleware))
         .layer(from_fn(auth::auth_middleware))

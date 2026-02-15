@@ -123,7 +123,7 @@ pub enum ViolationSeverity {
     p("Identity verification follows the zkKYC model, enabling compliance verification without continuous identity disclosure. Verification providers issue Verifiable Credentials attesting to verification completion. Re-verification triggers when circumstances change or credentials expire."),
 
     h3("19.2.1 Verification Tiers"),
-    p("Identity verification is tiered to match the risk profile of the entity's activities. Higher tiers unlock access to higher-value transactions, additional corridor participation, and regulated activities. Each tier builds on the previous, adding additional verification requirements."),
+    p("Identity verification is tiered to match the risk profile of the entity's activities. Higher tiers grant access to higher-value transactions, additional corridor participation, and regulated activities. Each tier builds on the previous, adding additional verification requirements."),
     table(
       ["Tier", "Verification Requirements", "Transaction Limits", "Corridor Access"],
       [

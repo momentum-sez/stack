@@ -24,5 +24,20 @@ module.exports = function build_chapter40() {
     ),
 
     spacer(),
+
+    p("The pipeline processes four tax categories for the Pakistan deployment:"),
+    table(
+      ["Category", "Legislation", "WHT Rates", "Filing Frequency"],
+      [
+        ["Income Tax", "Income Tax Ordinance 2001", "Variable by section (e.g., \u00a7153: 4-15% on services/supplies)", "Monthly advance, annual return"],
+        ["Sales Tax / GST", "Sales Tax Act 1990", "Standard 18%, reduced rates per SRO", "Monthly return"],
+        ["Federal Excise", "Federal Excise Act 2005", "Category-specific rates", "Monthly return"],
+        ["Customs Duty", "Customs Act 1969", "Tariff schedule, CPEC preferences", "Per-consignment"],
+      ],
+      [1800, 2400, 2800, 2360]
+    ),
+    spacer(),
+
+    p("Withholding tax at source is the pipeline's primary collection mechanism. Every payment processed through Mass Fiscal triggers a WHT lookup against the regpack's withholding table. The lookup considers the payee's NTN status (filers receive reduced rates), the payment category (services, supplies, contracts, rent), the payment amount (de minimis exemptions), and any applicable SRO exemptions. The WHT amount is deducted atomically from the payment and deposited into FBR's designated account via SBP Raast, with a TaxEvent receipt appended to the payer's chain."),
   ];
 };

@@ -53,7 +53,7 @@ module.exports = function build_chapter14() {
       [1800, 2800, 2800, 1960]
     ),
     spacer(),
-    p("Recursive composition leverages Halo2-style accumulation to avoid the need for a trusted setup at intermediate layers. Each STARK proof attests not only to the correctness of its own computation but also to the validity of all proofs it aggregates. The final Groth16 wrapping step is the only component requiring a structured reference string (SRS), and its circuit is fixed and auditable."),
+    p("Recursive composition uses Halo2-style accumulation to avoid the need for a trusted setup at intermediate layers. Each STARK proof attests not only to the correctness of its own computation but also to the validity of all proofs it aggregates. The final Groth16 wrapping step is the only component requiring a structured reference string (SRS), and its circuit is fixed and auditable."),
 
     // --- 14.3 Client-Side Proving ---
     h2("14.3 Client-Side Proving"),

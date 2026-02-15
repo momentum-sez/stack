@@ -65,5 +65,25 @@ module.exports = function build_chapter13() {
       "}"
     ),
     spacer(),
+
+    // --- 13.5 Jurisdiction Virtual Machine ---
+    h2("13.5 Jurisdiction Virtual Machine (JVM)"),
+    p("Each Harbor shard runs a Jurisdiction Virtual Machine that executes compliance predicates, asset state transitions, and governance operations within a single jurisdictional context. The JVM extends the SAVM with jurisdiction-specific built-in functions: lawpack evaluation (direct access to the jurisdiction's Akoma Ntoso corpus), regpack queries (real-time sanctions, rate tables, and calendar data), and licensepack verification (license status checks against live registries). These built-in functions execute as coprocessor calls, bypassing the general-purpose instruction set for performance-critical operations."),
+    p("JVM isolation ensures that a jurisdiction's internal operations cannot observe or interfere with another jurisdiction's state. Cross-jurisdictional interactions are mediated exclusively through the corridor protocol, with TLC consensus providing the ordering guarantee."),
+
+    // --- 13.6 Asset Orbit ---
+    h2("13.6 Asset Orbit"),
+    p("An Asset Orbit is the set of Harbor shards that a Smart Asset has transited through during its lifecycle. The orbit determines which jurisdictions hold state commitments for the asset and which watcher sets are authorized to attest to its compliance. As an asset migrates from one jurisdiction to another, its orbit expands to include the destination Harbor. The orbit provides the basis for cross-jurisdictional audit: any jurisdiction in an asset's orbit can verify the asset's full receipt chain against its local state commitments."),
+    ...codeBlock(
+      "/// Tracks the jurisdictional history of a Smart Asset.\n" +
+      "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +
+      "pub struct AssetOrbit {\n" +
+      "    pub asset_id: AssetId,\n" +
+      "    pub harbors_visited: Vec<(HarborId, DateTime<Utc>)>,\n" +
+      "    pub current_harbor: HarborId,\n" +
+      "    pub total_migrations: u32,\n" +
+      "}"
+    ),
+    spacer(),
   ];
 };

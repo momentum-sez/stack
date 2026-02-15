@@ -7,7 +7,7 @@ const {
 module.exports = function build_chapter09() {
   return [
     chapterHeading("Chapter 9: Receipt Chain Architecture"),
-    p("Receipt chains provide the cryptographic backbone for Smart Asset state management."),
+    p("Receipt chains provide the cryptographic backbone for Smart Asset state management. Every state transition \u2014 creation, transfer, compliance update, migration, dispute \u2014 produces a cryptographically linked receipt. The chain of receipts forms a complete, independently verifiable history of the asset from genesis to current state. Receipt chains operate without blockchain dependency; they are the settlement mechanism in the Pre-L1 phase and remain the primary audit trail in the With-L1 phase."),
 
     // --- 9.1 Receipt Structure ---
     h2("9.1 Receipt Structure"),
@@ -37,5 +37,13 @@ module.exports = function build_chapter09() {
     h2("9.3 Fork Resolution"),
     p("Fork detection occurs when two receipts reference the same prev_digest with different transitions. The receipt chain architecture treats forks as exceptional but recoverable events. Resolution follows a deterministic protocol: the fork is detected by watchers or participants, competing branches are evaluated against compliance predicates and timestamp ordering, and the canonical branch is selected through a combination of watcher consensus and corridor-level arbitration. Non-canonical receipts are preserved in an evidence package for audit purposes."),
     theorem("Theorem 9.1 (Object Survivability).", "A Smart Asset with a valid receipt chain maintains full operational capability without connectivity to any external system, including the MASS L1 settlement layer. Proof: The receipt chain provides total ordering, the Compliance Tensor carries compliance state, and the state machine specification enables deterministic execution. No external oracle is required for continued operation."),
+
+    // --- 9.4 Receipt Chain Pruning ---
+    h2("9.4 Receipt Chain Pruning"),
+    p("MMR checkpoints enable receipt chain pruning without loss of verifiability. Once a checkpoint is created and attested by the required watcher quorum, individual receipts covered by the checkpoint may be pruned from active storage. The checkpoint's mmr_root provides a commitment to all pruned receipts, and Merkle proofs against this root can verify the existence and content of any individual receipt. Pruned receipts are archived to cold storage with their inclusion proofs, maintaining full auditability while reducing the active state footprint. Pruning policy is configurable per jurisdiction and asset class: financial instruments may retain the full chain indefinitely, while high-frequency trade finance receipts may prune after 90 days."),
+
+    // --- 9.5 Cross-Chain Receipt Synchronization ---
+    h2("9.5 Cross-Chain Receipt Synchronization"),
+    p("When an asset operates across multiple corridors, its receipt chain segments are synchronized through corridor state anchors. Each corridor maintains a view of the asset's receipt chain tail (the most recent checkpoint and subsequent receipts). When the asset migrates, the destination corridor receives a receipt chain proof covering the full history up to the migration receipt. The destination corridor verifies this proof against the source corridor's published MMR root and begins appending new receipts from the migration point forward. This mechanism ensures that no receipt chain segment is lost during cross-corridor operations."),
   ];
 };

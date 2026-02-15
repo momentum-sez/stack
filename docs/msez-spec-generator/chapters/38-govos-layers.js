@@ -34,5 +34,20 @@ module.exports = function build_chapter38() {
     p_runs([bold("Layer 03 — Jurisdictional Configuration."), " The Jurisdictional Configuration layer is the MSEZ Pack Trilogy encoding Pakistani law, regulation, and licensing requirements in machine-readable format. Lawpacks encode the Income Tax Ordinance 2001, Sales Tax Act 1990, Companies Act 2017, and all relevant SROs. Regpacks encode SBP rates, FATF sanctions lists, and filing calendars. Licensepacks encode SECP, BOI, PTA, PEMRA, and provincial authority requirements."]),
 
     p_runs([bold("Layer 04 — National System Integration."), " The National System Integration layer connects GovOS to existing Pakistani government systems. This includes FBR IRIS (tax administration), SBP Raast (instant payments), NADRA (identity verification), SECP (company registration), SBP RTGS (large-value settlements), and Pakistan Single Window (trade facilitation). Mass enhances these systems; it never replaces them. Integration is additive and reversible."]),
+
+    // --- National System Integration Table ---
+    table(
+      ["System", "Authority", "Integration Type", "Function"],
+      [
+        ["FBR IRIS", "Federal Board of Revenue", "Bidirectional API", "Tax filing, NTN registration, WHT reporting, refund processing"],
+        ["SBP Raast", "State Bank of Pakistan", "Payment rail", "Instant payments, P2P transfers, merchant settlement"],
+        ["NADRA", "National Database & Registration Authority", "Identity verification", "CNIC verification, biometric matching, NTN cross-reference"],
+        ["SECP", "Securities and Exchange Commission", "Registry integration", "Company incorporation, annual filing, director changes, beneficial ownership"],
+        ["SBP RTGS", "State Bank of Pakistan", "Settlement", "Large-value interbank settlements, government securities"],
+        ["PSW", "Pakistan Single Window", "Trade facilitation", "Import/export documentation, customs clearance, certificate of origin"],
+      ],
+      [1600, 2200, 1800, 3760]
+    ),
+    spacer(),
   ];
 };

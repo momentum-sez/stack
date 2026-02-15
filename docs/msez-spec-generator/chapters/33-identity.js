@@ -29,7 +29,7 @@ module.exports = function build_chapter33() {
 
     // --- 33.3 Progressive KYC Tiers ---
     h2("33.3 Progressive KYC Tiers"),
-    p("Progressive KYC allows users to start with minimal identity verification and incrementally increase their verification level as needed. Each tier unlocks additional capabilities and higher transaction limits. Tier advancement is non-destructive: all prior credentials remain valid while new attestations are added. The system supports jurisdiction-specific KYC requirements through the compliance tensor."),
+    p("Progressive KYC allows users to start with minimal identity verification and incrementally increase their verification level as needed. Each tier enables additional capabilities and higher transaction limits. Tier advancement is non-destructive: all prior credentials remain valid while new attestations are added. The system supports jurisdiction-specific KYC requirements through the compliance tensor."),
 
     // --- 33.4 Credentials Module ---
     h2("33.4 Credentials Module"),

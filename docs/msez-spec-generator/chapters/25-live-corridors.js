@@ -24,11 +24,22 @@ module.exports = function build_chapter25() {
 
     // --- 25.2 PAK<->UAE Corridor ---
     h2("25.2 PAK\u2194UAE Corridor ($10.1B Bilateral)"),
-    p("UAE-Pakistan bilateral trade totals $10.1B annually with $6.7B in remittances. Mass operates in 27 Dubai Free Zones. The SIFC FDI pipeline channels investment through the corridor. Status: live."),
+    p("UAE-Pakistan bilateral trade totals $10.1B annually with $6.7B in remittances. Mass operates in 27 Dubai Free Zones through the Dubai Free Zone Council integration. The SIFC (Special Investment Facilitation Council) FDI pipeline channels investment through the corridor. Status: live and processing transactions."),
+    table(
+      ["Component", "Implementation"],
+      [
+        ["Free Zone Integration", "27 Dubai free zones connected via DFZC. Mass APIs serve entity + fiscal; MSEZ provides zone-specific licensing per free zone authority."],
+        ["Remittance Processing", "$6.7B annual remittances via SBP Raast + UAE Central Bank. Automatic WHT per ITO 2001 \u00a7153. SWIFT pacs.008 adapter for cross-border payments."],
+        ["FDI Pipeline", "SIFC investment proposals routed through corridor. Compliance tensor evaluates across SECURITIES, CORPORATE, and AML_CFT domains."],
+        ["ADGM Integration", "1,000+ entities onboarded, $1.7B+ capital processed via Northern Trust custody."],
+      ],
+      [2400, 6960]
+    ),
+    spacer(),
 
     // --- 25.3 PAK<->CHN Corridor ---
     h2("25.3 PAK\u2194CHN Corridor ($23.1B Bilateral)"),
-    p("China-Pakistan trade totals $23.1B annually, primarily through CPEC 2.0. Nine SEZs, Gwadar customs operations, and e-trade documentation planned for corridor integration. Status: planned."),
+    p("China-Pakistan trade totals $23.1B annually, primarily through CPEC 2.0 (China-Pakistan Economic Corridor). The corridor targets nine SEZs, Gwadar Port customs operations, and full e-trade documentation. Integration with SAFE (State Administration of Foreign Exchange) compliance requirements is planned for the cross-border payment leg. Status: planned, with infrastructure build underway."),
     table(
       ["Corridor", "Volume", "Status", "Key Features"],
       [

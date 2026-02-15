@@ -30,6 +30,11 @@ module.exports = function build_chapter15() {
 
     // --- 15.3 Compliance Integration ---
     h2("15.3 Compliance Integration"),
-    p("Privacy and compliance coexist through ZK proofs that demonstrate regulatory predicates without revealing underlying data. A transaction can prove that both parties passed KYC/KYB verification, that the transfer amount is below a jurisdictional reporting threshold, that neither party appears on a sanctions list, and that applicable withholding tax has been computed correctly -- all without disclosing the identities, the amount, or the tax computation to any observer. Compliance Viewing Keys (cvk) enable authorized regulators to decrypt transaction details when presented with a valid legal instrument, providing a controlled escape hatch that satisfies regulatory requirements without compromising the privacy of uninvolved parties."),
+    p("Privacy and compliance coexist through ZK proofs that demonstrate regulatory predicates without revealing underlying data. A transaction can prove that both parties passed KYC/KYB verification, that the transfer amount is below a jurisdictional reporting threshold, that neither party appears on a sanctions list, and that applicable withholding tax has been computed correctly \u2014 all without disclosing the identities, the amount, or the tax computation to any observer."),
+    p("Compliance Viewing Keys (cvk) enable authorized regulators to decrypt transaction details when presented with a valid legal instrument. The cvk hierarchy is jurisdiction-scoped: a Pakistani FBR officer's cvk decrypts only transactions involving Pakistani entities or PKR-denominated flows. A UAE Central Bank cvk decrypts only AED-denominated flows within ADGM-regulated entities. This scoping is enforced cryptographically, not by access control, ensuring that key compromise in one jurisdiction does not expose data from another."),
+
+    // --- 15.4 Multi-Asset Privacy ---
+    h2("15.4 Multi-Asset Privacy"),
+    p("The privacy architecture supports multiple asset types within a single shielded pool. Asset type tags are encrypted alongside amounts in output records, preventing observers from distinguishing between PKR transfers, equity token movements, and trade finance instruments. Cross-asset operations (e.g., DVP settlement involving both securities and cash) execute atomically within the shielded pool, with the \u03C0priv circuit verifying balance conservation per asset type."),
   ];
 };

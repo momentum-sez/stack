@@ -90,7 +90,7 @@ GovOS Console → SEZ Stack API
 
 1. **Never duplicate Mass CRUD.** The SEZ Stack never stores or manages entity data, cap table data, payment data, identity records, or consent records. Those live in Mass.
 
-2. **The `mass_proxy` routes are transitional.** Currently they pass through to Mass APIs. The target is orchestration endpoints that compose Mass API calls with compliance evaluation, corridor operations, and VC issuance.
+2. **The `mass_proxy` routes are orchestration endpoints.** They compose Mass API calls with compliance evaluation, corridor operations, and VC issuance. Entity creation evaluates compliance, issues formation VCs, and stores attestations. Payment initiation runs the tax pipeline for withholding computation.
 
 3. **`msez-mass-client` is the sole gateway.** All Mass API communication goes through this crate. Direct HTTP requests to Mass endpoints from any other crate are forbidden.
 
@@ -112,21 +112,21 @@ These findings are from Architecture Audit v5.0. Address them in priority order.
 
 | ID | Defect | Location |
 |----|--------|----------|
-| P1-004 | Mass proxy routes are passthrough, not orchestration | `msez-api/src/routes/mass_proxy.rs` |
+| P1-004 | ~~Mass proxy routes are passthrough, not orchestration~~ | **RESOLVED** — orchestration endpoints with compliance evaluation, VC issuance, and attestation storage |
 | P1-005 | Identity primitive split across services | `msez-mass-client/src/identity.rs` |
 | P1-006 | ~~Composition engine exists only in Python~~ | **RESOLVED** — ported to `msez-pack/src/composition.rs` |
 | P1-007 | ~~Several CLI commands Python-only~~ | **RESOLVED** — Python removed, core commands in `msez-cli` |
 | P1-008 | ~~No database persistence (in-memory only)~~ | **RESOLVED** — SQLx + PgPool in `msez-api/src/db/`, migration, write-through, startup hydration |
-| P1-009 | Tax collection pipeline not implemented | N/A |
-| P1-010 | CanonicalBytes bypass verification needed | All crates |
+| P1-009 | ~~Tax collection pipeline not implemented~~ | **RESOLVED** — `TaxPipeline` in AppState, `WithholdingEngine` with Pakistan rules, FBR IRIS reporting, wired to payment orchestration |
+| P1-010 | ~~CanonicalBytes bypass verification needed~~ | **RESOLVED** — `Sha256Accumulator` and `sha256_raw_hex` added to `msez-core::digest`; `sha2` dependency removed from `msez-pack`, `msez-api`, `msez-cli`, `msez-zkp`; all SHA-256 now flows through `msez-core` |
 
 ### P2 — Code Quality
 
 | ID | Defect | Location |
 |----|--------|----------|
-| P2-002 | `msez-mass-client` does not share identifier types with `msez-core` | `msez-mass-client/Cargo.toml` |
-| P2-003 | `licensepack.rs` at 2,265 lines — needs submodule extraction | `msez-pack/src/licensepack.rs` |
-| P2-004 | Auth token stored as plain `Option<String>` | `msez-api/src/auth.rs` |
+| P2-002 | ~~`msez-mass-client` does not share identifier types with `msez-core`~~ | **RESOLVED** — `msez-core` dependency added, `EntityId`/`JurisdictionId`/`Ntn`/`Cnic`/`Did` re-exported |
+| P2-003 | ~~`licensepack.rs` at 2,265 lines — needs submodule extraction~~ | **RESOLVED** — split into 6 submodules under `msez-pack/src/licensepack/` (largest 807 lines) |
+| P2-004 | ~~Auth token stored as plain `Option<String>`~~ | **RESOLVED** — `SecretToken` newtype with `Zeroize`/`ZeroizeOnDrop`, custom `Debug` redaction |
 | P2-005 | ~~45K lines of Python still in `tools/`~~ | **RESOLVED** — all Python removed |
 
 ### Resolved from Prior Audits
@@ -225,10 +225,10 @@ When conflicts arise, resolve in this order:
 These invariants must hold at all times. Violating any is a blocking code review failure.
 
 1. **`msez-core` has zero internal dependencies.** It depends only on `serde`, `serde_json`, `thiserror`, `chrono`, `uuid`, `sha2`.
-2. **`msez-mass-client` has zero (or at most one) internal dependencies.** If it depends on `msez-core`, it is ONLY for identifier newtypes. It must never import SEZ Stack domain logic.
+2. **`msez-mass-client` depends on `msez-core` for identifier newtypes only.** It re-exports `EntityId`, `JurisdictionId`, `Ntn`, `Cnic`, `Did`. It must never import SEZ Stack domain logic.
 3. **No cycles in the dependency graph.**
 4. **`msez-api` is the only crate that composes all others.** No other crate should depend on `msez-api`.
-5. **All SHA-256 computation flows through `CanonicalBytes::new()`.** No crate may compute SHA-256 digests through any other path.
+5. **All SHA-256 computation flows through `msez-core::digest`.** Use `sha256_digest(&CanonicalBytes)` for structured data, `Sha256Accumulator` for multi-part digests, or `sha256_raw_hex()` for raw bytes. No crate may use `sha2::Sha256` directly (except `msez-core` and `msez-crypto`).
 6. **`ComplianceDomain` is defined once in `msez-core`.** No other crate may define its own domain enum.
 
 ---
@@ -263,7 +263,7 @@ The codebase is production-ready when:
 7. `msez-mass-client` contract tests pass against live Mass API Swagger specs
 8. Canonicalization and digest test vectors verified (Python removed; vectors hardcoded)
 9. ~~The composition engine exists in Rust~~ **DONE** — `msez-pack::composition`
-10. Each `mass_proxy` route is an orchestration endpoint (compliance + Mass API + VC)
+10. ~~Each `mass_proxy` route is an orchestration endpoint (compliance + Mass API + VC)~~ **DONE** — all mass proxy routes call `evaluate_compliance()`, issue VCs, store attestations
 11. Postgres persistence for corridor state, tensor snapshots, VC audit log, agentic policy state
 12. The crate dependency graph has no cycles and no unnecessary edges
 

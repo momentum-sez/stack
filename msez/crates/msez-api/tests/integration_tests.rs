@@ -21,7 +21,7 @@ fn test_app() -> axum::Router {
 fn test_app_with_auth(token: &str) -> axum::Router {
     let config = AppConfig {
         port: 8080,
-        auth_token: Some(token.to_string()),
+        auth_token: Some(msez_api::auth::SecretToken::new(token.to_string())),
     };
     let state = AppState::with_config(config, None);
     msez_api::app(state)

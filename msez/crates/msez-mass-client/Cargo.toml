@@ -7,6 +7,8 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+# Internal: identifier newtypes ONLY (per CLAUDE.md §VIII invariant 2).
+msez-core = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

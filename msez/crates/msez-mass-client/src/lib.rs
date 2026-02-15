@@ -34,6 +34,11 @@ pub mod templating;
 pub use config::MassApiConfig;
 pub use error::MassApiError;
 
+// Re-export msez-core identifier newtypes for callers that need type-safe
+// identifiers when working with Mass API data. Per CLAUDE.md §VIII, this
+// crate depends on msez-core ONLY for these identifier types.
+pub use msez_core::{Cnic, Did, EntityId, JurisdictionId, Ntn};
+
 use std::time::Duration;
 
 /// Top-level Mass API client. Holds sub-clients for each primitive.

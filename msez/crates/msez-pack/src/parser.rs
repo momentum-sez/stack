@@ -250,12 +250,11 @@ pub fn ensure_json_compatible(value: &Value, path: &str, context: &str) -> PackR
 }
 
 /// Compute SHA-256 hex digest of raw bytes.
+///
+/// Delegates to [`msez_core::digest::sha256_raw_hex`] — all SHA-256
+/// computation in the SEZ Stack flows through `msez-core`.
 pub fn sha256_hex(data: &[u8]) -> String {
-    use sha2::{Digest, Sha256};
-    let mut hasher = Sha256::new();
-    hasher.update(data);
-    let result = hasher.finalize();
-    result.iter().map(|b| format!("{b:02x}")).collect()
+    msez_core::digest::sha256_raw_hex(data)
 }
 
 #[cfg(test)]

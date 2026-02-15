@@ -29,9 +29,46 @@ use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
 use utoipa::ToSchema;
 use uuid::Uuid;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::error::{AppError, ErrorBody, ErrorDetail};
 use crate::state::SmartAssetRecord;
+
+// ── SecretToken ──────────────────────────────────────────────────────────────
+
+/// A bearer token that is zeroized from memory on drop.
+///
+/// Defense-in-depth: prevents credential material from lingering in process
+/// memory after the token is no longer needed. Custom `Debug` redacts the
+/// value to prevent credential leakage in logs.
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
+pub struct SecretToken(String);
+
+impl SecretToken {
+    /// Wrap a raw token string.
+    pub fn new(s: String) -> Self {
+        Self(s)
+    }
+
+    /// Borrow the token value for comparison.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Debug for SecretToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("[REDACTED]")
+    }
+}
+
+impl PartialEq for SecretToken {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl Eq for SecretToken {}
 
 // ── Role ────────────────────────────────────────────────────────────────────
 
@@ -142,18 +179,12 @@ pub fn require_role(caller: &CallerIdentity, minimum: Role) -> Result<(), AppErr
 
 /// Auth configuration injected into request extensions.
 ///
-/// Custom `Debug` redacts the token value to prevent credential leakage in logs.
-#[derive(Clone)]
+/// Uses [`SecretToken`] to ensure token material is zeroized from memory
+/// on drop. Custom `Debug` redacts the token value to prevent credential
+/// leakage in logs.
+#[derive(Clone, Debug)]
 pub struct AuthConfig {
-    pub token: Option<String>,
-}
-
-impl std::fmt::Debug for AuthConfig {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("AuthConfig")
-            .field("token", &self.token.as_ref().map(|_| "[REDACTED]"))
-            .finish()
-    }
+    pub token: Option<SecretToken>,
 }
 
 // ── Token Validation ────────────────────────────────────────────────────────
@@ -245,7 +276,7 @@ pub async fn auth_middleware(mut request: Request, next: Next) -> Response {
 
     match expected_token {
         Some(AuthConfig {
-            token: Some(ref expected),
+            token: Some(ref expected_token),
         }) => {
             let auth_header = request
                 .headers()
@@ -255,7 +286,7 @@ pub async fn auth_middleware(mut request: Request, next: Next) -> Response {
             match auth_header {
                 Some(header_value) if header_value.starts_with("Bearer ") => {
                     let provided = &header_value[7..];
-                    match parse_bearer_token(provided, expected) {
+                    match parse_bearer_token(provided, expected_token.as_str()) {
                         Ok(identity) => {
                             request.extensions_mut().insert(identity);
                             next.run(request).await
@@ -305,7 +336,9 @@ mod tests {
 
     /// Build a minimal router with the auth middleware and a simple handler.
     fn test_app(token: Option<String>) -> Router {
-        let auth_config = AuthConfig { token };
+        let auth_config = AuthConfig {
+            token: token.map(SecretToken::new),
+        };
         Router::new()
             .route("/test", get(|| async { "ok" }))
             .layer(from_fn(auth_middleware))

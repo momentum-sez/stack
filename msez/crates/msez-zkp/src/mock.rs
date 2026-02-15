@@ -27,7 +27,7 @@
 
 use msez_core::CanonicalBytes;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
+use msez_core::digest::Sha256Accumulator;
 
 use crate::traits::{ProofError, ProofSystem, VerifyError};
 
@@ -129,12 +129,10 @@ impl ProofSystem for MockProofSystem {
         })?;
 
         // SHA256(canonical_bytes(circuit_data) || public_inputs)
-        let mut hasher = Sha256::new();
-        hasher.update(canonical.as_bytes());
-        hasher.update(&circuit.public_inputs);
-        let digest = hasher.finalize();
-
-        let proof_hex = digest.iter().map(|b| format!("{b:02x}")).collect();
+        let mut acc = Sha256Accumulator::new();
+        acc.update(canonical.as_bytes());
+        acc.update(&circuit.public_inputs);
+        let proof_hex = acc.finalize_hex();
 
         Ok(MockProof { proof_hex })
     }
@@ -166,10 +164,7 @@ impl ProofSystem for MockProofSystem {
         }
 
         // Recompute: SHA256(public_inputs).
-        let mut hasher = Sha256::new();
-        hasher.update(public_inputs);
-        let expected = hasher.finalize();
-        let expected_hex: String = expected.iter().map(|b| format!("{b:02x}")).collect();
+        let expected_hex = msez_core::digest::sha256_raw_hex(public_inputs);
 
         Ok(proof.proof_hex == expected_hex)
     }

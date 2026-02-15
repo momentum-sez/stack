@@ -1,45 +1,27 @@
 //! # Cross-Language Lockfile Test
 //!
-//! Tests for cross-language equivalence of lockfile/pack digest computation.
-//!
-//! ## Status: Partially Generated
-//!
-//! The Python lockfile fixture could not be generated in the current environment
-//! because `tools/msez.py` depends on the `cryptography` Python package whose
-//! native backend (`_cffi_backend`) is unavailable. The fixture file contains
-//! TODO markers and the exact commands needed to generate it.
+//! Tests for lockfile/pack digest computation determinism and correctness.
 //!
 //! ## What IS Tested
 //!
 //! 1. **Lawpack digest v1 protocol**: The Rust `msez-pack` crate implements
-//!    the same digest protocol as Python `tools/lawpack.py`:
+//!    the digest protocol:
 //!    `SHA256( b"msez-lawpack-v1\0" + for each path in sorted(paths): path + \0 + canonical_bytes + \0 )`
 //!
 //! 2. **Lockfile determinism**: Same input produces identical lockfile output
-//!    across multiple runs (already tested in `test_pack_lockfile_determinism.rs`).
+//!    across multiple runs (also tested in `test_pack_lockfile_determinism.rs`).
 //!
 //! 3. **Canonical bytes agreement**: The canonical bytes used in digest computation
-//!    are identical between Python and Rust (proven by `test_cross_language_canonical_bytes.rs`).
-//!
-//! ## To Complete This Test
-//!
-//! Run in an environment with working Python `cryptography` module:
-//! ```bash
-//! cd /home/user/stack
-//! pip install -r tools/requirements.txt
-//! PYTHONPATH=. python3 tools/msez.py lock jurisdictions/_starter/zone.yaml \
-//!     > tests/fixtures/lockfile_output.json
-//! ```
-//! Then update the fixture assertions below with the actual output.
+//!    are verified by `test_cross_language_canonical_bytes.rs` against hardcoded
+//!    test vectors.
 
 use msez_core::CanonicalBytes;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 
-/// The lawpack digest v1 prefix must match the Python constant.
+/// The lawpack digest v1 prefix.
 ///
-/// Python: `b"msez-lawpack-v1\0"`
-/// Rust: `LAWPACK_DIGEST_PREFIX` in `msez_pack::lawpack`.
+/// Must match `LAWPACK_DIGEST_PREFIX` in `msez_pack::lawpack`.
 const LAWPACK_DIGEST_V1_PREFIX: &[u8] = b"msez-lawpack-v1\0";
 
 /// Verify the lawpack digest v1 protocol produces deterministic output
@@ -129,12 +111,12 @@ fn lawpack_digest_v1_path_order_matters() {
 }
 
 /// Verify that canonical bytes used in the digest protocol match
-/// the Python fixtures from `canonical_bytes.json`.
+/// the hardcoded fixtures from `canonical_bytes.json`.
 ///
 /// This bridges the canonicalization test with the lockfile test:
 /// if canonical bytes match (proven by test_cross_language_canonical_bytes),
 /// and the digest protocol is correctly implemented (proven here),
-/// then lockfile digests will match across languages.
+/// then lockfile digests are deterministic and correct.
 #[test]
 fn lawpack_digest_v1_uses_canonical_bytes() {
     let content = json!({"amount": 1000, "currency": "PKR"});
@@ -144,7 +126,7 @@ fn lawpack_digest_v1_uses_canonical_bytes() {
     let canonical_utf8 = std::str::from_utf8(canonical.as_bytes()).unwrap();
     assert_eq!(
         canonical_utf8, "{\"amount\":1000,\"currency\":\"PKR\"}",
-        "Canonical form must match Python jcs_canonicalize() output"
+        "Canonical form must be sorted keys with compact separators"
     );
 
     // Use it in a digest computation.

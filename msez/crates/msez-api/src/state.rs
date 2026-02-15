@@ -350,7 +350,10 @@ impl std::fmt::Debug for AppConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppConfig")
             .field("port", &self.port)
-            .field("auth_token", &self.auth_token.as_ref().map(|_| "[REDACTED]"))
+            .field(
+                "auth_token",
+                &self.auth_token.as_ref().map(|_| "[REDACTED]"),
+            )
             .finish()
     }
 }
@@ -469,7 +472,6 @@ pub struct AppState {
     pub mass_client: Option<msez_mass_client::MassClient>,
 
     // -- Zone identity --
-
     /// The zone operator's Ed25519 signing key.
     /// Used to sign Verifiable Credentials issued by this zone.
     /// Wrapped in `Arc` because `SigningKey` is not `Clone` (it contains
@@ -481,7 +483,6 @@ pub struct AppState {
     pub zone_did: String,
 
     // -- Agentic policy engine --
-
     /// The autonomous policy engine. `parking_lot::Mutex` because `PolicyEngine`
     /// is not `Sync` (it holds a mutable audit trail) and evaluation mutates
     /// internal state. `parking_lot::Mutex` never poisons on panic, eliminating
@@ -489,7 +490,6 @@ pub struct AppState {
     pub policy_engine: Arc<Mutex<PolicyEngine>>,
 
     // -- Zone context (from bootstrap) --
-
     /// Zone context, if bootstrapped from a zone manifest.
     /// When present, the server operates as a configured zone node.
     /// When absent (generic mode), endpoints use default behavior.
@@ -664,10 +664,7 @@ mod tests {
 
         store.insert(id, sample_corridor(id));
         let prev = store.insert(id, sample_corridor(id));
-        assert!(
-            prev.is_some(),
-            "second insert should return previous value"
-        );
+        assert!(prev.is_some(), "second insert should return previous value");
     }
 
     #[test]
@@ -832,10 +829,7 @@ mod tests {
         let default_state = AppState::default();
         let new_state = AppState::new();
         assert_eq!(default_state.config.port, new_state.config.port);
-        assert_eq!(
-            default_state.config.auth_token,
-            new_state.config.auth_token
-        );
+        assert_eq!(default_state.config.auth_token, new_state.config.auth_token);
     }
 
     #[test]

@@ -250,7 +250,10 @@ mod tests {
             merkle_proof: vec![],
             path_indices: vec![],
         };
-        assert_eq!(circuit.merkle_root, circuit.leaf_hash, "Single-element tree: root == leaf");
+        assert_eq!(
+            circuit.merkle_root, circuit.leaf_hash,
+            "Single-element tree: root == leaf"
+        );
     }
 
     // ── NettingValidityCircuit comprehensive tests ──────────────
@@ -275,7 +278,9 @@ mod tests {
     #[test]
     fn netting_validity_large_participant_set() {
         let n = 10u32;
-        let gross: Vec<i64> = (0..n as i64).map(|i| if i % 2 == 0 { 1000 } else { -1000 }).collect();
+        let gross: Vec<i64> = (0..n as i64)
+            .map(|i| if i % 2 == 0 { 1000 } else { -1000 })
+            .collect();
         let net: Vec<i64> = gross.clone();
         let matrix = vec![0i64; (n * n) as usize];
         let circuit = NettingValidityCircuit {

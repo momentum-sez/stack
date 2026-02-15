@@ -445,8 +445,10 @@ mod tests {
         let value: serde_json::Value = serde_json::from_str(input).unwrap();
         let cb = CanonicalBytes::new(&value).unwrap();
         let output = std::str::from_utf8(cb.as_bytes()).unwrap();
-        assert_eq!(output, r#"{"apple":2,"mango":3,"zebra":1}"#,
-            "Canonical output keys not sorted — preserve_order may be active");
+        assert_eq!(
+            output, r#"{"apple":2,"mango":3,"zebra":1}"#,
+            "Canonical output keys not sorted — preserve_order may be active"
+        );
     }
 }
 

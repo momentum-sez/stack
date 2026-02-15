@@ -81,7 +81,8 @@ fn content_digest_from_hex_empty_string() {
 
 #[test]
 fn content_digest_from_hex_non_hex_chars() {
-    let result = ContentDigest::from_hex("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz");
+    let result =
+        ContentDigest::from_hex("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz");
     assert!(result.is_err(), "Non-hex chars should be rejected");
 }
 
@@ -153,8 +154,8 @@ fn did_method_and_id_no_panic() {
     );
 
     // Valid DIDs still work correctly through serde
-    let valid: Did = serde_json::from_str("\"did:web:example.com\"")
-        .expect("valid DID should deserialize");
+    let valid: Did =
+        serde_json::from_str("\"did:web:example.com\"").expect("valid DID should deserialize");
     assert_eq!(valid.method(), "web");
     assert_eq!(valid.method_specific_id(), "example.com");
 }
@@ -317,7 +318,10 @@ fn netting_negative_amount_obligation_rejected() {
 fn netting_empty_engine_compute_plan_returns_error() {
     let engine = NettingEngine::new();
     let result = engine.compute_plan();
-    assert!(result.is_err(), "Empty engine should return NoObligations error");
+    assert!(
+        result.is_err(),
+        "Empty engine should return NoObligations error"
+    );
 }
 
 #[test]
@@ -480,9 +484,7 @@ fn sha256_digest_empty_input_no_panic() {
 fn ed25519_sign_empty_message_no_panic() {
     let signing_key = SigningKey::generate(&mut rand_core::OsRng);
     let canonical = CanonicalBytes::new(&json!({})).unwrap();
-    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        signing_key.sign(&canonical)
-    }));
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| signing_key.sign(&canonical)));
     assert!(result.is_ok(), "Signing empty canonical should not panic");
 }
 
@@ -500,10 +502,7 @@ fn ed25519_verify_wrong_key_returns_error() {
 #[test]
 fn ed25519_signature_from_hex_invalid() {
     let result = Ed25519Signature::from_hex("not-hex-at-all-this-is-garbage");
-    assert!(
-        result.is_err(),
-        "Non-hex signature should be rejected"
-    );
+    assert!(result.is_err(), "Non-hex signature should be rejected");
 }
 
 #[test]
@@ -672,14 +671,8 @@ fn corridor_state_all_states_valid_transitions_no_panic() {
         DynCorridorState::Deprecated,
     ];
     for state in &states {
-        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-            state.valid_transitions()
-        }));
-        assert!(
-            result.is_ok(),
-            "{:?}.valid_transitions() panicked",
-            state
-        );
+        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| state.valid_transitions()));
+        assert!(result.is_ok(), "{:?}.valid_transitions() panicked", state);
     }
 }
 
@@ -890,10 +883,11 @@ fn fork_resolve_identical_branches_no_panic() {
         next_root: "aa".repeat(32),
     };
     // Identical branches — resolution should not panic
-    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        resolve_fork(&branch, &branch)
-    }));
-    assert!(result.is_ok(), "Fork resolution with identical branches should not panic");
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| resolve_fork(&branch, &branch)));
+    assert!(
+        result.is_ok(),
+        "Fork resolution with identical branches should not panic"
+    );
 }
 
 #[test]
@@ -915,7 +909,10 @@ fn fork_resolve_zero_attestations_no_panic() {
     let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
         resolve_fork(&branch_a, &branch_b)
     }));
-    assert!(result.is_ok(), "Fork resolution with zero attestations should not panic");
+    assert!(
+        result.is_ok(),
+        "Fork resolution with zero attestations should not panic"
+    );
 }
 
 #[test]
@@ -1066,7 +1063,9 @@ fn receipt_chain_append_and_height() {
 // =========================================================================
 
 use msez_arbitration::dispute::DisputeId;
-use msez_arbitration::escrow::{EscrowAccount, EscrowStatus, EscrowType, ReleaseCondition, ReleaseConditionType};
+use msez_arbitration::escrow::{
+    EscrowAccount, EscrowStatus, EscrowType, ReleaseCondition, ReleaseConditionType,
+};
 
 fn test_digest_for(label: &str) -> ContentDigest {
     let canonical = CanonicalBytes::new(&serde_json::json!({"label": label})).unwrap();
@@ -1094,7 +1093,9 @@ fn escrow_double_deposit_no_panic() {
         "USD".to_string(),
         None,
     );
-    escrow.deposit("10000".to_string(), test_digest_for("dep-1")).unwrap();
+    escrow
+        .deposit("10000".to_string(), test_digest_for("dep-1"))
+        .unwrap();
     // Second deposit on already-Funded escrow
     let result = escrow.deposit("5000".to_string(), test_digest_for("dep-2"));
     // Should either succeed (adding more) or return error, never panic
@@ -1126,7 +1127,9 @@ fn escrow_forfeit_from_funded_no_panic() {
         "SGD".to_string(),
         None,
     );
-    escrow.deposit("25000".to_string(), test_digest_for("deposit")).unwrap();
+    escrow
+        .deposit("25000".to_string(), test_digest_for("deposit"))
+        .unwrap();
     let result = escrow.forfeit(test_digest_for("forfeit-evidence"));
     assert!(result.is_ok(), "Forfeit from Funded should succeed");
     assert_eq!(escrow.status, EscrowStatus::Forfeited);
@@ -1140,7 +1143,9 @@ fn escrow_forfeited_is_terminal() {
         "USD".to_string(),
         None,
     );
-    escrow.deposit("50000".to_string(), test_digest_for("dep")).unwrap();
+    escrow
+        .deposit("50000".to_string(), test_digest_for("dep"))
+        .unwrap();
     escrow.forfeit(test_digest_for("forfeit")).unwrap();
     // All operations from Forfeited should fail
     let cond = ReleaseCondition {
@@ -1148,8 +1153,16 @@ fn escrow_forfeited_is_terminal() {
         evidence_digest: test_digest_for("release"),
         satisfied_at: Timestamp::now(),
     };
-    assert!(escrow.full_release(cond).is_err(), "Release from Forfeited should fail");
-    assert!(escrow.deposit("1000".to_string(), test_digest_for("dep2")).is_err(), "Deposit on Forfeited should fail");
+    assert!(
+        escrow.full_release(cond).is_err(),
+        "Release from Forfeited should fail"
+    );
+    assert!(
+        escrow
+            .deposit("1000".to_string(), test_digest_for("dep2"))
+            .is_err(),
+        "Deposit on Forfeited should fail"
+    );
 }
 
 // =========================================================================
@@ -1172,18 +1185,16 @@ fn enforcement_begin_without_preconditions_no_panic() {
     );
     // No preconditions added — begin should succeed
     let result = order.begin_enforcement();
-    assert!(result.is_ok(), "Begin enforcement without preconditions should succeed");
+    assert!(
+        result.is_ok(),
+        "Begin enforcement without preconditions should succeed"
+    );
     assert_eq!(order.status, EnforcementStatus::InProgress);
 }
 
 #[test]
 fn enforcement_complete_without_action_results_no_panic() {
-    let mut order = EnforcementOrder::new(
-        DisputeId::new(),
-        test_digest_for("award"),
-        vec![],
-        None,
-    );
+    let mut order = EnforcementOrder::new(DisputeId::new(), test_digest_for("award"), vec![], None);
     order.begin_enforcement().unwrap();
     // Complete without recording any action results
     let result = order.complete();
@@ -1193,12 +1204,7 @@ fn enforcement_complete_without_action_results_no_panic() {
 
 #[test]
 fn enforcement_cancel_from_pending() {
-    let mut order = EnforcementOrder::new(
-        DisputeId::new(),
-        test_digest_for("award"),
-        vec![],
-        None,
-    );
+    let mut order = EnforcementOrder::new(DisputeId::new(), test_digest_for("award"), vec![], None);
     let result = order.cancel();
     assert!(result.is_ok(), "Cancel from Pending should succeed");
     assert_eq!(order.status, EnforcementStatus::Cancelled);
@@ -1206,23 +1212,24 @@ fn enforcement_cancel_from_pending() {
 
 #[test]
 fn enforcement_cancelled_is_terminal() {
-    let mut order = EnforcementOrder::new(
-        DisputeId::new(),
-        test_digest_for("award"),
-        vec![],
-        None,
-    );
+    let mut order = EnforcementOrder::new(DisputeId::new(), test_digest_for("award"), vec![], None);
     order.cancel().unwrap();
-    assert!(order.begin_enforcement().is_err(), "Begin from Cancelled should fail");
-    assert!(order.complete().is_err(), "Complete from Cancelled should fail");
+    assert!(
+        order.begin_enforcement().is_err(),
+        "Begin from Cancelled should fail"
+    );
+    assert!(
+        order.complete().is_err(),
+        "Complete from Cancelled should fail"
+    );
 }
 
 // =========================================================================
 // msez-agentic: Scheduler panic paths
 // =========================================================================
 
-use msez_agentic::scheduler::{ActionScheduler, ScheduledAction as SchedAction};
 use msez_agentic::policy::{AuthorizationRequirement, PolicyAction};
+use msez_agentic::scheduler::{ActionScheduler, ScheduledAction as SchedAction};
 
 #[test]
 fn scheduler_cancel_nonexistent_action() {
@@ -1256,7 +1263,10 @@ fn scheduler_schedule_and_retrieve() {
     );
     let id = scheduler.schedule(action);
     let retrieved = scheduler.get_action(&id);
-    assert!(retrieved.is_some(), "Scheduled action should be retrievable");
+    assert!(
+        retrieved.is_some(),
+        "Scheduled action should be retrievable"
+    );
     assert_eq!(retrieved.unwrap().action, PolicyAction::Halt);
 }
 
@@ -1271,11 +1281,21 @@ fn scheduler_status_counts() {
     );
     let id = scheduler.schedule(action);
     let counts = scheduler.status_counts();
-    assert_eq!(*counts.get(&msez_agentic::scheduler::ActionStatus::Pending).unwrap_or(&0), 1);
+    assert_eq!(
+        *counts
+            .get(&msez_agentic::scheduler::ActionStatus::Pending)
+            .unwrap_or(&0),
+        1
+    );
     scheduler.mark_executing(&id);
     scheduler.mark_completed(&id);
     let counts2 = scheduler.status_counts();
-    assert_eq!(*counts2.get(&msez_agentic::scheduler::ActionStatus::Completed).unwrap_or(&0), 1);
+    assert_eq!(
+        *counts2
+            .get(&msez_agentic::scheduler::ActionStatus::Completed)
+            .unwrap_or(&0),
+        1
+    );
 }
 
 use msez_arbitration::dispute::DisputeState;
@@ -1306,26 +1326,20 @@ fn dispute_state_all_valid_transitions_no_panic() {
         DisputeState::Dismissed,
     ];
     for state in &states {
-        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-            state.valid_transitions()
-        }));
-        assert!(
-            result.is_ok(),
-            "{:?}.valid_transitions() panicked",
-            state
-        );
+        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| state.valid_transitions()));
+        assert!(result.is_ok(), "{:?}.valid_transitions() panicked", state);
     }
 }
 
 #[test]
 fn dispute_state_terminal_states_have_no_transitions() {
-    let terminals = [DisputeState::Closed, DisputeState::Settled, DisputeState::Dismissed];
+    let terminals = [
+        DisputeState::Closed,
+        DisputeState::Settled,
+        DisputeState::Dismissed,
+    ];
     for state in &terminals {
-        assert!(
-            state.is_terminal(),
-            "{:?} should be terminal",
-            state
-        );
+        assert!(state.is_terminal(), "{:?} should be terminal", state);
         let valid = state.valid_transitions();
         assert!(
             valid.is_empty(),
@@ -1390,10 +1404,7 @@ fn policy_engine_process_trigger_no_panic() {
     let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
         engine.process_trigger(&trigger, "asset:test", None)
     }));
-    assert!(
-        result.is_ok(),
-        "process_trigger should not panic"
-    );
+    assert!(result.is_ok(), "process_trigger should not panic");
 }
 
 // =========================================================================
@@ -1403,7 +1414,10 @@ fn policy_engine_process_trigger_no_panic() {
 #[test]
 fn deser_corridor_state_from_invalid_string_no_panic() {
     let result: Result<DynCorridorState, _> = serde_json::from_str("\"INVALID_STATE\"");
-    assert!(result.is_err(), "Invalid state string should fail deserialization");
+    assert!(
+        result.is_err(),
+        "Invalid state string should fail deserialization"
+    );
 }
 
 #[test]

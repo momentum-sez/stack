@@ -522,8 +522,14 @@ mod tests {
         let pending = draft.submit(evidence);
         assert_eq!(pending.state_name(), "PENDING");
         assert_eq!(pending.transition_log().len(), 1);
-        assert_eq!(pending.transition_log()[0].from_state, DynCorridorState::Draft);
-        assert_eq!(pending.transition_log()[0].to_state, DynCorridorState::Pending);
+        assert_eq!(
+            pending.transition_log()[0].from_state,
+            DynCorridorState::Draft
+        );
+        assert_eq!(
+            pending.transition_log()[0].to_state,
+            DynCorridorState::Pending
+        );
     }
 
     #[test]
@@ -1057,11 +1063,10 @@ mod tests {
 
     #[test]
     fn dyn_corridor_data_serialization_roundtrip() {
-        let corridor = test_corridor()
-            .submit(SubmissionEvidence {
-                bilateral_agreement_digest: test_digest(),
-                pack_trilogy_digest: test_digest(),
-            });
+        let corridor = test_corridor().submit(SubmissionEvidence {
+            bilateral_agreement_digest: test_digest(),
+            pack_trilogy_digest: test_digest(),
+        });
         let dyn_data = DynCorridorData::from(&corridor);
         let json = serde_json::to_string(&dyn_data).unwrap();
         let deserialized: DynCorridorData = serde_json::from_str(&json).unwrap();
@@ -1089,7 +1094,13 @@ mod tests {
             });
         let dyn_data = DynCorridorData::from(&corridor);
         assert_eq!(dyn_data.transition_log.len(), 4);
-        assert_eq!(dyn_data.transition_log[0].from_state, DynCorridorState::Draft);
-        assert_eq!(dyn_data.transition_log[3].to_state, DynCorridorState::Active);
+        assert_eq!(
+            dyn_data.transition_log[0].from_state,
+            DynCorridorState::Draft
+        );
+        assert_eq!(
+            dyn_data.transition_log[3].to_state,
+            DynCorridorState::Active
+        );
     }
 }

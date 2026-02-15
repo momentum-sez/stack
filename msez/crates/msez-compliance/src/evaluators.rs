@@ -57,10 +57,7 @@ impl DomainEvaluator for SanctionsEvaluator {
     }
 
     fn evaluate(&self, ctx: &EvaluationContext) -> (ComplianceState, Option<String>) {
-        let entity_name = ctx
-            .metadata
-            .get("entity_name")
-            .and_then(|v| v.as_str());
+        let entity_name = ctx.metadata.get("entity_name").and_then(|v| v.as_str());
 
         let entity_name = match entity_name {
             Some(name) if !name.is_empty() => name,

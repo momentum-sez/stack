@@ -4,7 +4,7 @@
 //! Mass organization-info API, replacing the in-process CRUD tests that
 //! previously lived in msez-api/src/routes/entities.rs.
 
-use msez_mass_client::entities::{CreateEntityRequest, MassEntityType, MassEntityStatus};
+use msez_mass_client::entities::{CreateEntityRequest, MassEntityStatus, MassEntityType};
 use msez_mass_client::{MassApiConfig, MassClient};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -64,9 +64,7 @@ async fn get_entity_returns_entity_when_found() {
     let id = "550e8400-e29b-41d4-a716-446655440000";
 
     Mock::given(method("GET"))
-        .and(path(format!(
-            "/organization-info/organizations/{id}"
-        )))
+        .and(path(format!("/organization-info/organizations/{id}")))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "id": id,
             "entity_type": "company",
@@ -98,19 +96,13 @@ async fn get_entity_returns_none_when_not_found() {
     let id = "550e8400-e29b-41d4-a716-446655440001";
 
     Mock::given(method("GET"))
-        .and(path(format!(
-            "/organization-info/organizations/{id}"
-        )))
+        .and(path(format!("/organization-info/organizations/{id}")))
         .respond_with(ResponseTemplate::new(404))
         .mount(&mock_server)
         .await;
 
     let client = test_client(&mock_server).await;
-    let entity = client
-        .entities()
-        .get(id.parse().unwrap())
-        .await
-        .unwrap();
+    let entity = client.entities().get(id.parse().unwrap()).await.unwrap();
 
     assert!(entity.is_none());
 }
@@ -177,9 +169,7 @@ async fn create_entity_handles_api_error() {
     assert!(result.is_err());
     let err = result.unwrap_err();
     match err {
-        msez_mass_client::MassApiError::ApiError {
-            status, body, ..
-        } => {
+        msez_mass_client::MassApiError::ApiError { status, body, .. } => {
             assert_eq!(status, 422);
             assert!(body.contains("validation failed"));
         }

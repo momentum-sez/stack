@@ -120,10 +120,9 @@ impl ProofSystem for MockProofSystem {
         circuit: &Self::Circuit,
     ) -> Result<Self::Proof, ProofError> {
         // Validate circuit data is canonicalizable (no floats, valid JSON).
-        let _canonical =
-            CanonicalBytes::from_value(circuit.circuit_data.clone()).map_err(|e| {
-                ProofError::GenerationFailed(format!("failed to canonicalize circuit data: {e}"))
-            })?;
+        let _canonical = CanonicalBytes::from_value(circuit.circuit_data.clone()).map_err(|e| {
+            ProofError::GenerationFailed(format!("failed to canonicalize circuit data: {e}"))
+        })?;
 
         let mut hasher = Sha256::new();
         hasher.update(&circuit.public_inputs);

@@ -23,9 +23,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use msez_core::Timestamp;
-use msez_vc::{
-    ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential,
-};
+use msez_vc::{ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential};
 
 use crate::compliance::{
     apply_attestations, build_evaluation_result, build_tensor, AttestationInput,

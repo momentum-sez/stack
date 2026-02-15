@@ -9,6 +9,7 @@
 //! - **Corridors** — cross-border corridor lifecycle (SEZ Stack domain)
 //! - **Smart Assets** — smart asset lifecycle (SEZ Stack domain)
 //! - **Attestations** — compliance attestations for regulator queries (SEZ Stack domain)
+//! - **Tax Events** — tax collection pipeline events and withholding records (SEZ Stack domain)
 //! - **Mass API client** — typed client delegating primitive operations to live Mass APIs
 //!
 //! Entity, ownership, fiscal, identity, and consent data is NOT stored here.
@@ -19,7 +20,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
-use msez_agentic::PolicyEngine;
+use msez_agentic::{PolicyEngine, TaxPipeline};
 use msez_corridor::ReceiptChain;
 use msez_crypto::SigningKey;
 use msez_state::{DynCorridorState, TransitionRecord};
@@ -331,6 +332,50 @@ pub struct AttestationRecord {
     pub details: serde_json::Value,
 }
 
+/// Tax event record stored by the tax collection pipeline.
+///
+/// Wraps a [`msez_agentic::TaxEvent`] with withholding results and pipeline
+/// status for API-layer persistence. Tax events are SEZ-Stack-owned data —
+/// they represent the jurisdictional tax awareness applied to Mass fiscal
+/// operations, not Mass fiscal CRUD.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct TaxEventRecord {
+    /// Unique identifier (matches the inner event_id).
+    pub id: Uuid,
+    /// Entity subject to this tax event.
+    pub entity_id: Uuid,
+    /// Event type classification.
+    pub event_type: String,
+    /// Tax category.
+    pub tax_category: String,
+    /// Jurisdiction where the tax obligation arises.
+    pub jurisdiction_id: String,
+    /// Gross amount of the economic activity.
+    pub gross_amount: String,
+    /// Total computed withholding amount.
+    pub withholding_amount: String,
+    /// Net amount after withholding.
+    pub net_amount: String,
+    /// Currency code.
+    pub currency: String,
+    /// Tax year.
+    pub tax_year: String,
+    /// Entity NTN, if registered.
+    pub ntn: Option<String>,
+    /// Filing status of the entity.
+    pub filer_status: String,
+    /// Statutory section reference.
+    pub statutory_section: Option<String>,
+    /// Whether withholding has been executed via Mass fiscal API.
+    pub withholding_executed: bool,
+    /// Reference to the originating Mass payment.
+    pub mass_payment_id: Option<Uuid>,
+    /// Number of withholding rules that matched.
+    pub rules_applied: usize,
+    /// When the event was recorded.
+    pub created_at: DateTime<Utc>,
+}
+
 // -- Application State --------------------------------------------------------
 
 /// Application configuration.
@@ -448,6 +493,15 @@ pub struct AppState {
     pub corridors: Store<CorridorRecord>,
     pub smart_assets: Store<SmartAssetRecord>,
     pub attestations: Store<AttestationRecord>,
+    pub tax_events: Store<TaxEventRecord>,
+
+    // -- Tax collection pipeline --
+
+    /// The tax collection pipeline orchestrator. Contains the withholding
+    /// computation engine with jurisdiction-specific rules loaded from regpacks.
+    /// `parking_lot::Mutex` because the pipeline may be reconfigured at runtime
+    /// (e.g., when new SRO rates are loaded).
+    pub tax_pipeline: Arc<Mutex<TaxPipeline>>,
 
     /// Per-corridor receipt chains (append-only MMR accumulators).
     ///
@@ -536,6 +590,8 @@ impl AppState {
             corridors: Store::new(),
             smart_assets: Store::new(),
             attestations: Store::new(),
+            tax_events: Store::new(),
+            tax_pipeline: Arc::new(Mutex::new(TaxPipeline::pakistan())),
             receipt_chains: Arc::new(RwLock::new(HashMap::new())),
             mass_client,
             zone_signing_key: Arc::new(zone_signing_key),
@@ -746,6 +802,7 @@ mod tests {
         assert!(state.corridors.is_empty());
         assert!(state.smart_assets.is_empty());
         assert!(state.attestations.is_empty());
+        assert!(state.tax_events.is_empty());
         assert!(state.mass_client.is_none());
     }
 

@@ -483,7 +483,7 @@ async fn dashboard(
     // ── Policy Activity ─────────────────────────────────────────
     let policy_activity = {
         let engine = state.policy_engine.lock();
-        let recent = engine.audit_trail.last_n(20);
+        let recent = engine.audit_trail.last_n(50);
         PolicyActivity {
             policy_count: engine.policy_count(),
             audit_trail_size: engine.audit_trail.len(),

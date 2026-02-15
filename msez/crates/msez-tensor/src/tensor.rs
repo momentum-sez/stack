@@ -96,10 +96,32 @@ pub struct TensorCell {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub attestations: Vec<AttestationRef>,
     /// ISO 8601 timestamp when this state was determined.
+    ///
+    /// Must be a valid ISO 8601 datetime string (e.g. `"2026-01-15T10:30:00Z"`).
+    /// Validated on deserialization — malformed timestamps are rejected.
+    #[serde(deserialize_with = "deserialize_iso8601_timestamp")]
     pub determined_at: String,
     /// Optional reason code explaining the state determination.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+}
+
+/// Validate that a string is a parseable ISO 8601 datetime during deserialization.
+fn deserialize_iso8601_timestamp<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    // Accept RFC 3339 (strict ISO 8601 profile) or YYYY-MM-DDTHH:MM:SSZ
+    if chrono::DateTime::parse_from_rfc3339(&s).is_err()
+        && chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M:%SZ").is_err()
+        && chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M:%S").is_err()
+    {
+        return Err(serde::de::Error::custom(format!(
+            "invalid ISO 8601 timestamp: \"{s}\""
+        )));
+    }
+    Ok(s)
 }
 
 impl TensorCell {

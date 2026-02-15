@@ -21,7 +21,6 @@ use msez_core::ComplianceDomain;
 
 use crate::error::PackResult;
 use crate::lawpack;
-use crate::licensepack;
 use crate::parser;
 use crate::regpack;
 
@@ -148,11 +147,23 @@ pub fn validate_zone(zone_path: &Path) -> PackResult<PackValidationResult> {
         }
     }
 
-    // 6. Validate licensepack references
-    if let Ok(refs) = licensepack::resolve_licensepack_refs(&zone) {
-        for r in &refs {
-            if r.jurisdiction_id.is_empty() {
+    // 6. Validate licensepack references (check raw zone data since
+    //    resolve_licensepack_refs now correctly skips invalid entries)
+    if let Some(licensepacks) = zone.get("licensepacks").and_then(|v| v.as_array()) {
+        for lp in licensepacks {
+            let jid = lp
+                .get("jurisdiction_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let domain = lp
+                .get("domain")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            if jid.is_empty() {
                 result.add_error("licensepack ref has empty jurisdiction_id".to_string());
+            }
+            if domain.is_empty() {
+                result.add_error("licensepack ref has empty domain".to_string());
             }
         }
     }

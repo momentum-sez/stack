@@ -410,6 +410,22 @@ impl MigrationSaga {
             });
         }
 
+        // Only allow compensation from InTransit or later — pre-transit states
+        // should use cancel, not compensate, since no irreversible work has occurred.
+        let compensable = matches!(
+            self.state,
+            MigrationState::InTransit
+                | MigrationState::DestinationVerification
+                | MigrationState::DestinationUnlock
+        );
+        if !compensable {
+            return Err(MigrationError::InvalidTransition {
+                from: self.state,
+                to: MigrationState::Compensated,
+                reason: "compensation only allowed from IN_TRANSIT or later; use cancel for pre-transit states".to_string(),
+            });
+        }
+
         self.compensation_log.push(CompensationRecord {
             from_state: self.state,
             action: format!("compensate: {reason}"),
@@ -541,16 +557,18 @@ mod tests {
     #[test]
     fn compensation_records_context() {
         let mut saga = test_saga();
-        saga.advance().unwrap(); // → ComplianceCheck
-        saga.advance().unwrap(); // → AttestationGathering
+        for _ in 0..4 {
+            saga.advance().unwrap();
+        }
+        assert_eq!(saga.state, MigrationState::InTransit);
 
-        saga.compensate("compliance_failure").unwrap();
+        saga.compensate("transit_failure").unwrap();
         assert_eq!(saga.state, MigrationState::Compensated);
         assert_eq!(saga.compensation_log.len(), 1);
         assert!(saga.compensation_log[0].succeeded);
         assert!(saga.compensation_log[0]
             .action
-            .contains("compliance_failure"));
+            .contains("transit_failure"));
     }
 
     #[test]
@@ -728,11 +746,12 @@ mod tests {
     }
 
     #[test]
-    fn compensate_from_initiated() {
+    fn compensate_from_initiated_rejected() {
         let mut saga = test_saga();
-        saga.compensate("early_abort").unwrap();
-        assert_eq!(saga.state, MigrationState::Compensated);
-        assert!(saga.state.is_terminal());
+        let err = saga.compensate("early_abort").unwrap_err();
+        assert!(matches!(err, MigrationError::InvalidTransition { .. }));
+        // State should remain Initiated — compensation was rejected.
+        assert_eq!(saga.state, MigrationState::Initiated);
     }
 
     #[test]
@@ -749,6 +768,11 @@ mod tests {
     #[test]
     fn compensate_from_compensated_fails() {
         let mut saga = test_saga();
+        // Advance to InTransit so the first compensate is allowed.
+        for _ in 0..4 {
+            saga.advance().unwrap();
+        }
+        assert_eq!(saga.state, MigrationState::InTransit);
         saga.compensate("first").unwrap();
         let err = saga.compensate("second").unwrap_err();
         assert!(matches!(err, MigrationError::AlreadyTerminal { .. }));

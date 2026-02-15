@@ -809,7 +809,8 @@ mod tests {
     // ── Additional regulator route tests ─────────────────────────
 
     #[tokio::test]
-    async fn handler_query_attestations_invalid_json_returns_400() {
+    async fn handler_query_attestations_invalid_json_returns_422() {
+        // BUG-038: JSON parse errors now return 422 (Unprocessable Entity).
         let app = test_app();
         let req = Request::builder()
             .method("POST")
@@ -819,7 +820,7 @@ mod tests {
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
     #[tokio::test]

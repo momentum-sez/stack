@@ -207,11 +207,19 @@ fn migration_flow_compensation() {
         .deadline(future_deadline())
         .build();
 
-    // Advance a couple of states
+    // BUG-037 RESOLVED: compensation only allowed from InTransit or later.
+    // Pre-transit states should use cancel instead.
     saga.advance().unwrap(); // ComplianceCheck
     saga.advance().unwrap(); // AttestationGathering
 
-    // Compensate
+    // Attempting compensation from pre-transit state should fail
+    assert!(saga.compensate("too_early").is_err(), "BUG-037: compensation rejected before InTransit");
+
+    // Advance to InTransit (2 more advances: SourceLocked → InTransit)
+    saga.advance().unwrap(); // SourceLocked
+    saga.advance().unwrap(); // InTransit
+
+    // Compensate from InTransit — valid
     saga.compensate("sanctions_hit: entity appeared on OFAC list")
         .unwrap();
     assert_eq!(saga.state, MigrationState::Compensated);

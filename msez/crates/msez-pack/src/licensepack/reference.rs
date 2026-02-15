@@ -93,6 +93,9 @@ pub fn resolve_licensepack_refs(zone: &serde_json::Value) -> PackResult<Vec<Lice
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
+            if jid.is_empty() || domain.is_empty() {
+                continue;
+            }
             if !digest.is_empty() && parser::is_valid_sha256(&digest) {
                 refs.push(LicensepackRef {
                     jurisdiction_id: jid,

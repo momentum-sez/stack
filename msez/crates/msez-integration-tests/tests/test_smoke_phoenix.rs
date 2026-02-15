@@ -116,10 +116,9 @@ fn smoke_mock_proof_system() {
 }
 
 #[test]
-fn smoke_mock_proof_same_public_inputs_same_proof() {
-    // In the mock proof system, circuit data is validated but not hashed
-    // into the proof. Circuit binding happens through the verifying key
-    // in real ZK systems. Same public_inputs → same proof.
+fn smoke_mock_proof_binds_circuit_data() {
+    // BUG-048 RESOLVED: circuit_data is now hashed into the proof.
+    // Different circuit data with same public inputs → different proofs.
     use msez_zkp::mock::{MockCircuit, MockProvingKey};
 
     let system = MockProofSystem;
@@ -136,9 +135,20 @@ fn smoke_mock_proof_same_public_inputs_same_proof() {
 
     let proof1 = system.prove(&pk, &circuit1).unwrap();
     let proof2 = system.prove(&pk, &circuit2).unwrap();
-    assert_eq!(
+    assert_ne!(
         proof1, proof2,
-        "same public_inputs must produce same proofs regardless of circuit data"
+        "BUG-048 RESOLVED: different circuit_data produces different proofs"
+    );
+
+    // Same circuit data + same public inputs → same proof (deterministic).
+    let circuit1_dup = MockCircuit {
+        circuit_data: json!({"type": "a"}),
+        public_inputs: b"inputs".to_vec(),
+    };
+    let proof1_dup = system.prove(&pk, &circuit1_dup).unwrap();
+    assert_eq!(
+        proof1, proof1_dup,
+        "identical circuit_data + public_inputs → identical proofs"
     );
 
     // Different public_inputs MUST produce different proofs.

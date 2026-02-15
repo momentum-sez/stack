@@ -40,7 +40,7 @@ fn bilateral_netting_reduces_flows() {
     assert_eq!(plan.settlement_legs[0].from_party, "A");
     assert_eq!(plan.settlement_legs[0].to_party, "B");
     assert_eq!(plan.settlement_legs[0].amount, 40);
-    assert!(plan.reduction_percentage > 0.0);
+    assert!(plan.reduction_bps > 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -65,7 +65,7 @@ fn multilateral_netting_compression() {
     assert_eq!(plan.gross_total, 240);
     assert!(plan.net_total < plan.gross_total);
     // Netting should reduce the total settlement amount
-    assert!(plan.reduction_percentage > 0.0);
+    assert!(plan.reduction_bps > 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -113,7 +113,7 @@ fn single_obligation_no_netting() {
     assert_eq!(plan.net_total, 500);
     assert_eq!(plan.settlement_legs.len(), 1);
     // Zero reduction for single obligation
-    assert!((plan.reduction_percentage - 0.0).abs() < f64::EPSILON);
+    assert_eq!(plan.reduction_bps, 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -133,7 +133,7 @@ fn perfectly_balanced_nets_to_zero() {
     let plan = engine.compute_plan().unwrap();
     assert_eq!(plan.settlement_legs.len(), 0);
     assert_eq!(plan.net_total, 0);
-    assert!((plan.reduction_percentage - 100.0).abs() < f64::EPSILON);
+    assert_eq!(plan.reduction_bps, 10_000);
 }
 
 // ---------------------------------------------------------------------------

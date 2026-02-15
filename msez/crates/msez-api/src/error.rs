@@ -48,7 +48,12 @@ pub enum AppError {
     #[error("validation error: {0}")]
     Validation(String),
 
-    /// Request body could not be parsed (400).
+    /// Request body could not be parsed or contains invalid values (422).
+    ///
+    /// Normalized with `Validation` to 422 Unprocessable Entity (BUG-038):
+    /// the client sent syntactically valid HTTP but semantically invalid
+    /// content. Both JSON deserialization failures and business-rule
+    /// violations are 422 — only malformed HTTP framing is 400.
     #[error("bad request: {0}")]
     BadRequest(String),
 
@@ -87,7 +92,7 @@ impl AppError {
         match self {
             Self::NotFound(_) => (StatusCode::NOT_FOUND, "NOT_FOUND"),
             Self::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, "VALIDATION_ERROR"),
-            Self::BadRequest(_) => (StatusCode::BAD_REQUEST, "BAD_REQUEST"),
+            Self::BadRequest(_) => (StatusCode::UNPROCESSABLE_ENTITY, "BAD_REQUEST"),
             Self::Unauthorized(_) => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED"),
             Self::Forbidden(_) => (StatusCode::FORBIDDEN, "FORBIDDEN"),
             Self::Conflict(_) => (StatusCode::CONFLICT, "CONFLICT"),
@@ -191,9 +196,11 @@ mod tests {
 
     #[test]
     fn bad_request_status_code() {
+        // BUG-038: BadRequest now returns 422 (same as Validation) since the
+        // client sent syntactically valid HTTP but semantically invalid content.
         let err = AppError::BadRequest("malformed JSON".to_string());
         let (status, code) = err.status_and_code();
-        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(code, "BAD_REQUEST");
     }
 
@@ -333,8 +340,9 @@ mod tests {
 
     #[tokio::test]
     async fn into_response_bad_request() {
+        // BUG-038: BadRequest now returns 422 Unprocessable Entity.
         let (status, body) = response_parts(AppError::BadRequest("malformed".into())).await;
-        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(body.error.code, "BAD_REQUEST");
         assert!(body.error.message.contains("malformed"));
     }

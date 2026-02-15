@@ -559,18 +559,16 @@ impl EnforcementOrder {
 
     /// Cancel the enforcement order.
     ///
-    /// Can be called from Pending or Blocked status. InProgress orders
-    /// should be completed, not cancelled.
+    /// Can only be called from Pending status. Blocked orders cannot be
+    /// cancelled as this could bypass the appeals process. InProgress
+    /// orders should be completed, not cancelled.
     ///
     /// # Errors
     ///
     /// Returns [`ArbitrationError::EnforcementPreconditionFailed`] if the
     /// order is not in a cancellable status.
     pub fn cancel(&mut self) -> Result<(), ArbitrationError> {
-        if !matches!(
-            self.status,
-            EnforcementStatus::Pending | EnforcementStatus::Blocked
-        ) {
+        if self.status != EnforcementStatus::Pending {
             return Err(ArbitrationError::EnforcementPreconditionFailed {
                 order_id: self.id.to_string(),
                 reason: format!("cannot cancel enforcement in {} status", self.status),
@@ -583,14 +581,14 @@ impl EnforcementOrder {
 
     /// Mark the order as blocked due to a precondition failure.
     ///
-    /// Can only be called from Pending status.
+    /// Can be called from Pending or InProgress status.
     ///
     /// # Errors
     ///
     /// Returns [`ArbitrationError::EnforcementPreconditionFailed`] if the
     /// order is not in Pending status.
     pub fn block(&mut self, reason: &str) -> Result<(), ArbitrationError> {
-        if self.status != EnforcementStatus::Pending {
+        if !matches!(self.status, EnforcementStatus::Pending | EnforcementStatus::InProgress) {
             return Err(ArbitrationError::EnforcementPreconditionFailed {
                 order_id: self.id.to_string(),
                 reason: format!(
@@ -808,13 +806,14 @@ mod tests {
     }
 
     #[test]
-    fn cancel_from_blocked() {
+    fn cancel_rejected_from_blocked() {
         let mut order = basic_order();
         order.block("test block").unwrap();
         assert_eq!(order.status, EnforcementStatus::Blocked);
 
-        order.cancel().unwrap();
-        assert_eq!(order.status, EnforcementStatus::Cancelled);
+        let result = order.cancel();
+        assert!(result.is_err());
+        assert_eq!(order.status, EnforcementStatus::Blocked);
     }
 
     #[test]
@@ -1107,11 +1106,11 @@ mod tests {
     }
 
     #[test]
-    fn block_rejected_when_in_progress() {
+    fn block_from_in_progress() {
         let mut order = basic_order();
         order.begin_enforcement().unwrap();
-        let result = order.block("should fail");
-        assert!(result.is_err());
+        order.block("precondition discovered during execution").unwrap();
+        assert_eq!(order.status, EnforcementStatus::Blocked);
     }
 
     #[test]

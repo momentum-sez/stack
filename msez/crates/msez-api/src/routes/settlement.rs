@@ -60,7 +60,7 @@ pub struct SettlementPlanResponse {
     pub obligations_skipped: usize,
     pub gross_total: i64,
     pub net_total: i64,
-    pub reduction_percentage: f64,
+    pub reduction_bps: u32,
     pub net_positions: Vec<NetPositionResponse>,
     pub settlement_legs: Vec<SettlementLegResponse>,
 }
@@ -213,6 +213,15 @@ pub fn router() -> Router<AppState> {
 /// The handler accepts obligations directly in the request body.
 /// This decouples settlement computation from receipt chain storage
 /// format and lets clients submit obligations from any source.
+///
+/// ## Negative / Zero Amount Handling (BUG-024: Resolved)
+///
+/// Obligations with non-positive amounts are rejected by
+/// `NettingEngine::add_obligation` (returns `NettingError::InvalidAmount`).
+/// The handler catches this error, logs a warning, and increments the
+/// `obligations_skipped` counter in the response. The settlement plan
+/// is computed from valid obligations only. If ALL obligations are
+/// invalid, the handler returns 422.
 #[utoipa::path(
     post,
     path = "/v1/corridors/{id}/settlement/compute",
@@ -272,7 +281,7 @@ async fn compute_settlement(
         obligations_skipped: skipped,
         gross_total: plan.gross_total,
         net_total: plan.net_total,
-        reduction_percentage: plan.reduction_percentage,
+        reduction_bps: plan.reduction_bps,
         net_positions: plan
             .net_positions
             .iter()
@@ -563,7 +572,7 @@ mod tests {
         assert_eq!(plan["settlement_legs"].as_array().unwrap().len(), 1);
         assert_eq!(plan["settlement_legs"][0]["amount"], 3_500_000);
         // Reduction: 1 - (3.5M / 12.5M) = 72%
-        assert!(plan["reduction_percentage"].as_f64().unwrap() > 70.0);
+        assert!(plan["reduction_bps"].as_u64().unwrap() > 7000);
         // Processed count
         assert_eq!(plan["obligations_processed"], 3);
         assert_eq!(plan["obligations_skipped"], 0);
@@ -667,7 +676,7 @@ mod tests {
         let plan: serde_json::Value = body_json(resp).await;
         assert_eq!(plan["net_total"], 0);
         assert_eq!(plan["settlement_legs"].as_array().unwrap().len(), 0);
-        assert!((plan["reduction_percentage"].as_f64().unwrap() - 100.0).abs() < f64::EPSILON,);
+        assert_eq!(plan["reduction_bps"].as_u64().unwrap(), 10_000);
     }
 
     // ── Bridge routing tests ────────────────────────────────────

@@ -203,8 +203,11 @@ impl ReceiptChain {
     /// Append a receipt to the chain.
     ///
     /// Validates:
-    /// 1. Sequence number matches expected (chain height).
-    /// 2. `prev_root` matches current MMR root.
+    /// 1. **Sequence number** — must equal `self.height()` (0-indexed).
+    ///    The first receipt has sequence 0, the second has sequence 1, etc.
+    /// 2. **`prev_root`** — must equal the current MMR root (`self.mmr_root()`),
+    ///    NOT the previous receipt's `next_root`. This is an important distinction:
+    ///    the MMR root is an accumulator over all prior `next_root` values.
     ///
     /// After validation, the receipt's `next_root` is appended to the MMR.
     ///

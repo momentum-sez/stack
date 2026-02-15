@@ -91,6 +91,9 @@ impl Licensepack {
 
     /// Get all licenses for a holder DID.
     pub fn get_licenses_by_holder_did(&self, holder_did: &str) -> Vec<&License> {
+        if holder_did.is_empty() {
+            return Vec::new();
+        }
         self.licenses
             .values()
             .filter(|lic| lic.holder_did.as_deref() == Some(holder_did))

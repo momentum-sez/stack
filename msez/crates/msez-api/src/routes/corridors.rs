@@ -369,8 +369,8 @@ async fn transition_corridor(
             // Build the transition record and apply.
             let now = Utc::now();
             let record = TransitionRecord {
-                from_state: current.as_str().to_string(),
-                to_state: target.as_str().to_string(),
+                from_state: current,
+                to_state: target,
                 timestamp: now,
                 evidence_digest: evidence_digest.clone(),
             };
@@ -959,8 +959,8 @@ mod tests {
         let transitioned: CorridorRecord = body_json(transition_resp).await;
         assert_eq!(transitioned.state, DynCorridorState::Pending);
         assert_eq!(transitioned.transition_log.len(), 1);
-        assert_eq!(transitioned.transition_log[0].from_state, "DRAFT");
-        assert_eq!(transitioned.transition_log[0].to_state, "PENDING");
+        assert_eq!(transitioned.transition_log[0].from_state, DynCorridorState::Draft);
+        assert_eq!(transitioned.transition_log[0].to_state, DynCorridorState::Pending);
         assert!(
             transitioned.transition_log[0].evidence_digest.is_some(),
             "transition to PENDING should carry evidence digest"
@@ -979,8 +979,8 @@ mod tests {
         let transitioned2: CorridorRecord = body_json(transition_resp2).await;
         assert_eq!(transitioned2.state, DynCorridorState::Active);
         assert_eq!(transitioned2.transition_log.len(), 2);
-        assert_eq!(transitioned2.transition_log[1].from_state, "PENDING");
-        assert_eq!(transitioned2.transition_log[1].to_state, "ACTIVE");
+        assert_eq!(transitioned2.transition_log[1].from_state, DynCorridorState::Pending);
+        assert_eq!(transitioned2.transition_log[1].to_state, DynCorridorState::Active);
         assert!(transitioned2.transition_log[1].evidence_digest.is_none());
     }
 
@@ -1406,8 +1406,8 @@ mod tests {
         let record: CorridorRecord = body_json(resp).await;
         assert_eq!(record.state, DynCorridorState::Pending);
         assert_eq!(record.transition_log.len(), 1);
-        assert_eq!(record.transition_log[0].from_state, "DRAFT");
-        assert_eq!(record.transition_log[0].to_state, "PENDING");
+        assert_eq!(record.transition_log[0].from_state, DynCorridorState::Draft);
+        assert_eq!(record.transition_log[0].to_state, DynCorridorState::Pending);
     }
 
     #[tokio::test]
@@ -1507,14 +1507,14 @@ mod tests {
 
         // Verify the final transition log has 4 entries with correct from/to states.
         assert_eq!(r.transition_log.len(), 4);
-        assert_eq!(r.transition_log[0].from_state, "DRAFT");
-        assert_eq!(r.transition_log[0].to_state, "PENDING");
-        assert_eq!(r.transition_log[1].from_state, "PENDING");
-        assert_eq!(r.transition_log[1].to_state, "ACTIVE");
-        assert_eq!(r.transition_log[2].from_state, "ACTIVE");
-        assert_eq!(r.transition_log[2].to_state, "HALTED");
-        assert_eq!(r.transition_log[3].from_state, "HALTED");
-        assert_eq!(r.transition_log[3].to_state, "DEPRECATED");
+        assert_eq!(r.transition_log[0].from_state, DynCorridorState::Draft);
+        assert_eq!(r.transition_log[0].to_state, DynCorridorState::Pending);
+        assert_eq!(r.transition_log[1].from_state, DynCorridorState::Pending);
+        assert_eq!(r.transition_log[1].to_state, DynCorridorState::Active);
+        assert_eq!(r.transition_log[2].from_state, DynCorridorState::Active);
+        assert_eq!(r.transition_log[2].to_state, DynCorridorState::Halted);
+        assert_eq!(r.transition_log[3].from_state, DynCorridorState::Halted);
+        assert_eq!(r.transition_log[3].to_state, DynCorridorState::Deprecated);
     }
 
     #[tokio::test]

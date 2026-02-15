@@ -16,6 +16,8 @@ use msez_core::{ComplianceDomain, JurisdictionId};
 use msez_tensor::{ComplianceState, ComplianceTensor, DefaultJurisdiction};
 
 use crate::state::SmartAssetRecord;
+#[cfg(test)]
+use crate::state::AssetComplianceStatus;
 
 /// Attestation evidence for a single compliance domain.
 #[derive(Debug, Clone, Deserialize, ToSchema)]
@@ -231,7 +233,7 @@ mod tests {
             jurisdiction_id: "PK-PSEZ".to_string(),
             status: "GENESIS".to_string(),
             genesis_digest: None,
-            compliance_status: None,
+            compliance_status: AssetComplianceStatus::Unevaluated,
             metadata: serde_json::json!({}),
             created_at: Utc::now(),
             updated_at: Utc::now(),

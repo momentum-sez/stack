@@ -17,7 +17,7 @@ use uuid::Uuid;
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
 use crate::middleware::metrics::ApiMetrics;
-use crate::state::{AppState, AttestationRecord};
+use crate::state::{AppState, AssetComplianceStatus, AttestationRecord};
 use axum::extract::rejection::JsonRejection;
 
 /// Query attestations request.
@@ -125,7 +125,7 @@ pub struct ZoneStatus {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CompliancePosture {
     /// Per-asset compliance summary.
-    pub assets: Vec<AssetComplianceStatus>,
+    pub assets: Vec<AssetComplianceSnapshot>,
     /// Number of assets with all domains passing.
     pub fully_compliant_count: usize,
     /// Number of assets with at least one blocking domain.
@@ -134,9 +134,9 @@ pub struct CompliancePosture {
     pub all_pending_count: usize,
 }
 
-/// Per-asset compliance status snapshot.
+/// Per-asset compliance status snapshot for the regulator dashboard.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct AssetComplianceStatus {
+pub struct AssetComplianceSnapshot {
     /// Asset ID.
     pub asset_id: Uuid,
     /// Asset type (equity, bond, etc.).
@@ -144,7 +144,7 @@ pub struct AssetComplianceStatus {
     /// Jurisdiction.
     pub jurisdiction_id: String,
     /// Last known compliance status.
-    pub compliance_status: Option<String>,
+    pub compliance_status: AssetComplianceStatus,
     /// When compliance was last evaluated (from asset metadata).
     pub last_evaluated: Option<String>,
 }
@@ -213,7 +213,7 @@ pub struct SystemHealth {
     pub stale_draft_corridors: usize,
     /// Corridors in HALTED state.
     pub halted_corridors: usize,
-    /// Assets with compliance_status containing "blocking" or "non_compliant".
+    /// Assets with compliance_status of `NonCompliant`.
     pub assets_with_blocking_compliance: usize,
     /// Whether the zone signing key is ephemeral (dev mode).
     pub zone_key_ephemeral: bool,
@@ -353,13 +353,13 @@ async fn dashboard(
 
     // ── Compliance Posture ──────────────────────────────────────
     let assets_list = state.smart_assets.list();
-    let asset_statuses: Vec<AssetComplianceStatus> = assets_list
+    let asset_statuses: Vec<AssetComplianceSnapshot> = assets_list
         .iter()
-        .map(|a| AssetComplianceStatus {
+        .map(|a| AssetComplianceSnapshot {
             asset_id: a.id,
             asset_type: a.asset_type.clone(),
             jurisdiction_id: a.jurisdiction_id.clone(),
-            compliance_status: a.compliance_status.clone(),
+            compliance_status: a.compliance_status,
             last_evaluated: a
                 .metadata
                 .get("last_evaluated")
@@ -370,30 +370,19 @@ async fn dashboard(
 
     let fully_compliant_count = asset_statuses
         .iter()
-        .filter(|a| {
-            a.compliance_status
-                .as_deref()
-                .map(|s| s.eq_ignore_ascii_case("compliant"))
-                .unwrap_or(false)
-        })
+        .filter(|a| a.compliance_status == AssetComplianceStatus::Compliant)
         .count();
     let has_blocking_count = asset_statuses
         .iter()
-        .filter(|a| {
-            a.compliance_status
-                .as_deref()
-                .map(|s| {
-                    let lower = s.to_ascii_lowercase();
-                    lower.contains("blocking") || lower.contains("non_compliant")
-                })
-                .unwrap_or(false)
-        })
+        .filter(|a| a.compliance_status == AssetComplianceStatus::NonCompliant)
         .count();
     let all_pending_count = asset_statuses
         .iter()
-        .filter(|a| match a.compliance_status.as_deref() {
-            None => true,
-            Some(s) => s.eq_ignore_ascii_case("pending"),
+        .filter(|a| {
+            matches!(
+                a.compliance_status,
+                AssetComplianceStatus::Pending | AssetComplianceStatus::Unevaluated
+            )
         })
         .count();
 
@@ -906,7 +895,7 @@ mod tests {
             jurisdiction_id: "PK-PSEZ".to_string(),
             status: "ACTIVE".to_string(),
             genesis_digest: None,
-            compliance_status: Some("COMPLIANT".to_string()),
+            compliance_status: AssetComplianceStatus::Compliant,
             metadata: serde_json::json!({}),
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
@@ -1063,7 +1052,7 @@ mod tests {
             jurisdiction_id: "PK-PSEZ".to_string(),
             status: "ACTIVE".to_string(),
             genesis_digest: None,
-            compliance_status: Some("compliant".to_string()),
+            compliance_status: AssetComplianceStatus::Compliant,
             metadata: serde_json::json!({}),
             created_at: now,
             updated_at: now,
@@ -1076,7 +1065,7 @@ mod tests {
             jurisdiction_id: "AE-DIFC".to_string(),
             status: "ACTIVE".to_string(),
             genesis_digest: None,
-            compliance_status: Some("non_compliant".to_string()),
+            compliance_status: AssetComplianceStatus::NonCompliant,
             metadata: serde_json::json!({}),
             created_at: now,
             updated_at: now,

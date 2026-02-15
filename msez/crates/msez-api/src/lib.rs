@@ -75,6 +75,7 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::mass_proxy::router())
         // SEZ Stack native routes (genuinely this codebase's domain)
         .merge(routes::corridors::router())
+        .merge(routes::settlement::router())
         .merge(routes::smart_assets::router())
         .merge(routes::credentials::router())
         .merge(routes::regulator::router())

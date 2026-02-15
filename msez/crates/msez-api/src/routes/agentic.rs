@@ -322,8 +322,8 @@ async fn dispatch_corridor_transition(
     // Build the transition record.
     let now = Utc::now();
     let record = TransitionRecord {
-        from_state: corridor.state.as_str().to_string(),
-        to_state: target.as_str().to_string(),
+        from_state: corridor.state,
+        to_state: target,
         timestamp: now,
         evidence_digest,
     };
@@ -467,8 +467,8 @@ mod tests {
         // The transition log should have an entry with agentic evidence.
         assert!(!corridor.transition_log.is_empty());
         let last = corridor.transition_log.last().unwrap();
-        assert_eq!(last.from_state, "ACTIVE");
-        assert_eq!(last.to_state, "HALTED");
+        assert_eq!(last.from_state, DynCorridorState::Active);
+        assert_eq!(last.to_state, DynCorridorState::Halted);
         assert!(last.evidence_digest.is_some());
     }
 

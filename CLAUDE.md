@@ -106,9 +106,6 @@ These findings are from Architecture Audit v5.0. Address them in priority order.
 
 | ID | Defect | Location | Count |
 |----|--------|----------|-------|
-| P0-005 | `unwrap()` in HTTP server request paths | `msez-api/src/**` | 392 |
-| P0-006 | `unwrap()` in cryptographic code | `msez-crypto/src/**` | 157 |
-| P0-007 | `unwrap()` in foundation layer | `msez-core/src/**` | 139 |
 | P0-008 | No contract tests against live Mass API Swagger specs | `msez-mass-client/tests/` | — |
 
 ### P1 — Must Fix Before Production Traffic
@@ -127,7 +124,6 @@ These findings are from Architecture Audit v5.0. Address them in priority order.
 
 | ID | Defect | Location |
 |----|--------|----------|
-| P2-001 | `MsezError::NotImplemented` variant unused | `msez-core/src/error.rs` |
 | P2-002 | `msez-mass-client` does not share identifier types with `msez-core` | `msez-mass-client/Cargo.toml` |
 | P2-003 | `licensepack.rs` at 2,265 lines — needs submodule extraction | `msez-pack/src/licensepack.rs` |
 | P2-004 | Auth token stored as plain `Option<String>` | `msez-api/src/auth.rs` |
@@ -141,7 +137,11 @@ These findings are from Architecture Audit v5.0. Address them in priority order.
 | P0-002 | Non-constant-time bearer token comparison | **RESOLVED** — `subtle::ConstantTimeEq` confirmed |
 | P0-003 | `expect("store lock poisoned")` panics | **RESOLVED** — all `parking_lot::RwLock` (non-poisonable) |
 | P0-004 | `unimplemented!()` in production paths | **RESOLVED** — zero instances |
+| P0-005 | `unwrap()` in HTTP server request paths | **RESOLVED** — zero bare `.unwrap()` in production code; all 391 were in `#[cfg(test)]` modules |
+| P0-006 | `unwrap()` in cryptographic code | **RESOLVED** — zero bare `.unwrap()` in production code; all 157 were in `#[cfg(test)]` modules |
+| P0-007 | `unwrap()` in foundation layer | **RESOLVED** — zero bare `.unwrap()` in production code; all 139 were in `#[cfg(test)]` modules |
 | P1-001 | Rate limiter before authentication | **RESOLVED** — auth runs first |
+| P2-001 | `MsezError::NotImplemented` variant unused | **INCORRECT** — actively used in 10+ locations for Phase 2 stub endpoints |
 
 ---
 
@@ -156,7 +156,10 @@ When encountering any `unwrap()` call, categorize and fix:
 | **Static** — initialization of compile-time-known values | `Regex::new(r"...").unwrap()` | Replace with `expect("static regex — cannot fail")` |
 | **Bug** — will panic on production data | `request.body.unwrap()` on user input | Fix with proper `Option`/`Result` handling and typed error |
 
-**Priority**: `msez-api` (392) → `msez-crypto` (157) → `msez-core` (139) → `msez-pack` (311) → remainder.
+**Status (2026-02-15)**: Production code in msez-api, msez-crypto, and msez-core
+contains zero bare `.unwrap()` calls. All unwraps are in `#[cfg(test)]` modules.
+Remaining crates (msez-pack, msez-state, msez-corridor, etc.) should be audited
+to confirm the same pattern holds.
 
 ---
 

@@ -11,6 +11,7 @@ members = [
     "crates/msez-corridor",
     "crates/msez-agentic",
     "crates/msez-arbitration",
+    "crates/msez-compliance",
     "crates/msez-schema",
     "crates/msez-api",
     "crates/msez-mass-client",
@@ -37,6 +38,7 @@ msez-pack = { path = "crates/msez-pack" }
 msez-corridor = { path = "crates/msez-corridor" }
 msez-agentic = { path = "crates/msez-agentic" }
 msez-arbitration = { path = "crates/msez-arbitration" }
+msez-compliance = { path = "crates/msez-compliance" }
 msez-schema = { path = "crates/msez-schema" }
 msez-mass-client = { path = "crates/msez-mass-client" }
 

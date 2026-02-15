@@ -54,6 +54,7 @@ tracing-subscriber = { workspace = true }
 # Security
 subtle = { workspace = true }
 parking_lot = { workspace = true }
+zeroize = { workspace = true }
 
 # Database
 sqlx = { workspace = true }

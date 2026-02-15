@@ -1060,15 +1060,14 @@ fn serde_rt_jurisdiction_id_rejects_invalid() {
 // =========================================================================
 
 use msez_arbitration::dispute::{
-    ArbitrationInstitution, Claim, Dispute, FilingEvidence, Money, Party as ArbParty,
+    ArbitrationInstitution, Claim, Dispute, Money, Party as ArbParty,
 };
 use msez_arbitration::enforcement::{
-    EnforcementAction, EnforcementOrder, EnforcementPrecondition, EnforcementReceipt,
+    EnforcementAction, EnforcementOrder, EnforcementPrecondition,
 };
 use msez_arbitration::escrow::{EscrowAccount, EscrowTransaction, ReleaseCondition};
 use msez_arbitration::evidence::{
-    AuthenticityAttestation, AuthenticityType, ChainOfCustodyEntry, EvidenceItem, EvidenceItemId,
-    EvidencePackage, EvidencePackageId, EvidenceType,
+    AuthenticityAttestation, AuthenticityType, ChainOfCustodyEntry, EvidenceType,
 };
 use msez_core::Did;
 
@@ -1520,8 +1519,7 @@ fn serde_rt_settlement_plan_large_amounts() {
 
 use msez_pack::lawpack::{
     Lawpack, LawpackLock, LawpackLockComponents, LawpackLockProvenance, LawpackManifest,
-    LawpackRef, LawpackSource, ModuleDescriptor, NormalizationInfo, NormalizationInput,
-    SourcesDescriptor,
+    LawpackRef, LawpackSource, NormalizationInfo, NormalizationInput,
 };
 use std::collections::BTreeMap;
 

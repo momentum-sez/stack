@@ -1657,7 +1657,7 @@ fn licensepack_condition_date_comparison_malformed() {
 #[test]
 fn licensepack_is_expired_string_date_comparison() {
     // BUG-043 variant: License::is_expired() also uses string comparison
-    let jid = JurisdictionId::new("PK-PSEZ").unwrap();
+    let _jid = JurisdictionId::new("PK-PSEZ").unwrap();
     let license = License {
         license_id: "lic-001".to_string(),
         license_type_id: "type-a".to_string(),

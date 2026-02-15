@@ -21,7 +21,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|p| p.parse().ok())
         .unwrap_or(8080);
 
-    let auth_token = std::env::var("AUTH_TOKEN").ok();
+    let auth_token = std::env::var("AUTH_TOKEN")
+        .ok()
+        .map(msez_api::auth::SecretString::new);
     let config = AppConfig { port, auth_token };
 
     // Initialize database pool (optional — absent means in-memory only).

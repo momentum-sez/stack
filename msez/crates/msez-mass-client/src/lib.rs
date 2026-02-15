@@ -1,10 +1,10 @@
-//! # msez-mass-client — Typed Rust client for Mass Protocol APIs
+//! # msez-mass-client -- Typed Rust client for Mass Protocol APIs
 //!
 //! Provides ergonomic, typed access to the five Mass programmable primitives:
 //! - **Entities** via `organization-info.api.mass.inc`
-//! - **Ownership** via `investment-info`
+//! - **Ownership** via `consent.api.mass.inc` (cap tables) + `investment-info` (investments)
 //! - **Fiscal** via `treasury-info.api.mass.inc`
-//! - **Identity** via Mass identity services
+//! - **Identity** via aggregation of `organization-info` + `consent-info`
 //! - **Consent** via `consent.api.mass.inc`
 //!
 //! Plus the **Templating Engine** for document generation.
@@ -14,6 +14,12 @@
 //! This crate is the ONLY authorized path for the SEZ Stack to interact with
 //! Mass primitive data. Direct HTTP requests to Mass endpoints from any other
 //! crate are forbidden (see CLAUDE.md Section II).
+//!
+//! ## API Path Convention
+//!
+//! All Mass APIs are Spring Boot services with context paths. The full URL
+//! pattern is: `{base_url}/{context-path}/api/v1/{resource}`.
+//! For example: `https://consent.api.mass.inc/consent-info/api/v1/consents`.
 
 pub mod config;
 pub mod consent;
@@ -50,8 +56,13 @@ impl MassClient {
                 let mut headers = reqwest::header::HeaderMap::new();
                 headers.insert(
                     reqwest::header::AUTHORIZATION,
-                    reqwest::header::HeaderValue::from_str(&format!("Bearer {}", config.api_token))
-                        .map_err(|_| MassApiError::Config(config::ConfigError::MissingToken))?,
+                    reqwest::header::HeaderValue::from_str(&format!(
+                        "Bearer {}",
+                        config.api_token
+                    ))
+                    .map_err(|_| {
+                        MassApiError::Config(config::ConfigError::MissingToken)
+                    })?,
                 );
                 headers
             })
@@ -62,12 +73,31 @@ impl MassClient {
             })?;
 
         Ok(Self {
-            entities: entities::EntityClient::new(http.clone(), config.organization_info_url),
-            ownership: ownership::OwnershipClient::new(http.clone(), config.investment_info_url),
+            entities: entities::EntityClient::new(
+                http.clone(),
+                config.organization_info_url.clone(),
+            ),
+            // Ownership: cap tables live on consent-info, investments on investment-info.
+            ownership: ownership::OwnershipClient::new(
+                http.clone(),
+                config.consent_info_url.clone(),
+                config.investment_info_url,
+            ),
             fiscal: fiscal::FiscalClient::new(http.clone(), config.treasury_info_url),
-            identity: identity::IdentityClient::new(http.clone(), config.consent_info_url.clone()),
-            consent: consent::ConsentClient::new(http.clone(), config.consent_info_url),
-            templating: templating::TemplatingClient::new(http, config.templating_engine_url),
+            // Identity: aggregation facade across org-info and consent-info.
+            identity: identity::IdentityClient::new(
+                http.clone(),
+                config.organization_info_url,
+                config.consent_info_url.clone(),
+            ),
+            consent: consent::ConsentClient::new(
+                http.clone(),
+                config.consent_info_url,
+            ),
+            templating: templating::TemplatingClient::new(
+                http,
+                config.templating_engine_url,
+            ),
         })
     }
 
@@ -76,7 +106,7 @@ impl MassClient {
         &self.entities
     }
 
-    /// Access the ownership (investment-info) client.
+    /// Access the ownership (cap tables via consent-info, investments via investment-info) client.
     pub fn ownership(&self) -> &ownership::OwnershipClient {
         &self.ownership
     }
@@ -86,7 +116,7 @@ impl MassClient {
         &self.fiscal
     }
 
-    /// Access the identity client.
+    /// Access the identity client (aggregation facade).
     pub fn identity(&self) -> &identity::IdentityClient {
         &self.identity
     }

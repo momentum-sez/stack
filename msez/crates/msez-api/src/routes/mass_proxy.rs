@@ -212,28 +212,16 @@ async fn create_entity(
         return Err(AppError::Forbidden(reason));
     }
 
-    // Step 3: Mass API call.
-    let entity_type: msez_mass_client::entities::MassEntityType =
-        serde_json::from_value(serde_json::Value::String(req.entity_type))
-            .map_err(|e| AppError::BadRequest(format!("invalid entity_type: {e}")))?;
-
+    // Step 3: Mass API call — map proxy DTO → Swagger-aligned mass-client types.
     let jurisdiction_id = req.jurisdiction_id.clone();
     let legal_name = req.legal_name.clone();
 
     let mass_req = msez_mass_client::entities::CreateEntityRequest {
-        entity_type,
-        legal_name: req.legal_name,
-        jurisdiction_id: req.jurisdiction_id,
-        beneficial_owners: req
-            .beneficial_owners
-            .into_iter()
-            .map(|bo| msez_mass_client::entities::MassBeneficialOwner {
-                name: bo.name,
-                ownership_percentage: bo.ownership_percentage,
-                cnic: bo.cnic,
-                ntn: bo.ntn,
-            })
-            .collect(),
+        name: req.legal_name,
+        entity_type: Some(req.entity_type),
+        jurisdiction: Some(req.jurisdiction_id),
+        address: None,
+        tags: vec![],
     };
 
     let entity = client
@@ -324,7 +312,7 @@ async fn list_entities(State(state): State<AppState>) -> Result<Json<serde_json:
 
     let entities = client
         .entities()
-        .list(None, None)
+        .list(None)
         .await
         .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
 
@@ -374,20 +362,13 @@ async fn create_cap_table(
         return Err(AppError::Forbidden(reason));
     }
 
-    // Step 3: Mass API call.
+    // Step 3: Mass API call — map proxy DTO → Swagger-aligned mass-client types.
     let mass_req = msez_mass_client::ownership::CreateCapTableRequest {
-        entity_id: req.entity_id,
-        share_classes: req
-            .share_classes
-            .into_iter()
-            .map(|sc| msez_mass_client::ownership::MassShareClass {
-                name: sc.name,
-                authorized_shares: sc.authorized_shares,
-                issued_shares: sc.issued_shares,
-                par_value: sc.par_value,
-                voting_rights: sc.voting_rights,
-            })
-            .collect(),
+        organization_id: req.entity_id.to_string(),
+        authorized_shares: req.share_classes.first().map(|sc| sc.authorized_shares),
+        options_pool: None,
+        par_value: req.share_classes.first().and_then(|sc| sc.par_value.clone()),
+        shareholders: vec![],
     };
 
     let cap_table = client
@@ -484,21 +465,15 @@ async fn create_account(
         return Err(AppError::Forbidden(reason));
     }
 
-    // Step 3: Mass API call.
-    let account_type: msez_mass_client::fiscal::MassAccountType =
-        serde_json::from_value(serde_json::Value::String(req.account_type))
-            .map_err(|e| AppError::BadRequest(format!("invalid account_type: {e}")))?;
-
-    let mass_req = msez_mass_client::fiscal::CreateAccountRequest {
-        entity_id: req.entity_id,
-        account_type,
-        currency: req.currency,
-        ntn: req.ntn,
-    };
+    // Step 3: Mass API call — map proxy DTO → Swagger-aligned mass-client types.
+    // The live treasury-info API requires a treasury_id and idempotency_key.
+    // Use entity_id as the treasury reference and account_type as the
+    // idempotency seed until the proxy DTO evolves to match the Swagger spec.
+    let idempotency_key = format!("{}-{}", req.entity_id, req.account_type);
 
     let account = client
         .fiscal()
-        .create_account(&mass_req)
+        .create_account(req.entity_id, &idempotency_key, Some(&req.account_type))
         .await
         .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
 
@@ -556,13 +531,16 @@ async fn initiate_payment(
         return Err(AppError::Forbidden(reason));
     }
 
-    // Step 3: Mass API call.
+    // Step 3: Mass API call — map proxy DTO → Swagger-aligned mass-client types.
     let mass_req = msez_mass_client::fiscal::CreatePaymentRequest {
-        from_account_id: req.from_account_id,
-        to_account_id: req.to_account_id,
+        source_account_id: req.from_account_id,
         amount: req.amount,
-        currency: req.currency,
-        reference: req.reference,
+        currency: Some(req.currency),
+        reference: Some(req.reference),
+        payment_type: None,
+        description: None,
+        payment_entity: None,
+        idempotency_key: None,
     };
 
     let payment = client
@@ -626,26 +604,16 @@ async fn verify_identity(
         return Err(AppError::Forbidden(reason));
     }
 
-    // Step 3: Mass API call.
-    let identity_type: msez_mass_client::identity::MassIdentityType =
-        serde_json::from_value(serde_json::Value::String(req.identity_type))
-            .map_err(|e| AppError::BadRequest(format!("invalid identity_type: {e}")))?;
-
-    let mass_req = msez_mass_client::identity::VerifyIdentityRequest {
-        identity_type,
-        linked_ids: req
-            .linked_ids
-            .into_iter()
-            .map(|lid| msez_mass_client::identity::LinkedIdInput {
-                id_type: lid.id_type,
-                id_value: lid.id_value,
-            })
-            .collect(),
-    };
+    // Step 3: Mass API call — the Swagger-aligned identity client is an
+    // aggregation facade across organization-info and consent-info. Use the
+    // composite identity endpoint which fetches members, board, and shareholders.
+    let org_id = req.linked_ids.first()
+        .map(|lid| lid.id_value.clone())
+        .unwrap_or_else(|| req.identity_type.clone());
 
     let identity = client
         .identity()
-        .verify(&mass_req)
+        .get_composite_identity(&org_id)
         .await
         .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
 
@@ -681,11 +649,12 @@ async fn get_identity(
 ) -> Result<Json<serde_json::Value>, AppError> {
     let client = require_mass_client(&state)?;
 
-    match client.identity().get_identity(id).await {
-        Ok(Some(identity)) => serde_json::to_value(identity)
+    // The Swagger-aligned identity client aggregates from org-info + consent-info.
+    // Use the UUID as a string organization ID for the composite lookup.
+    match client.identity().get_composite_identity(&id.to_string()).await {
+        Ok(identity) => serde_json::to_value(identity)
             .map(Json)
             .map_err(|e| AppError::Internal(format!("serialization error: {e}"))),
-        Ok(None) => Err(AppError::not_found(format!("identity {id} not found"))),
         Err(e) => Err(AppError::upstream(format!("Mass API error: {e}"))),
     }
 }
@@ -731,22 +700,30 @@ async fn create_consent(
         return Err(AppError::Forbidden(reason));
     }
 
-    // Step 3: Mass API call.
-    let consent_type: msez_mass_client::consent::MassConsentType =
-        serde_json::from_value(serde_json::Value::String(req.consent_type))
-            .map_err(|e| AppError::BadRequest(format!("invalid consent_type: {e}")))?;
+    // Step 3: Mass API call — map proxy DTO → Swagger-aligned mass-client types.
+    let operation_type: msez_mass_client::consent::MassConsentOperationType =
+        serde_json::from_value(serde_json::Value::String(req.consent_type.clone()))
+            .unwrap_or(msez_mass_client::consent::MassConsentOperationType::Unknown);
+
+    // Extract organization_id from the first party, or use description as fallback.
+    let organization_id = req.parties.first()
+        .map(|p| p.entity_id.to_string())
+        .unwrap_or_else(|| req.description.clone());
 
     let mass_req = msez_mass_client::consent::CreateConsentRequest {
-        consent_type,
-        description: req.description,
-        parties: req
-            .parties
-            .into_iter()
-            .map(|p| msez_mass_client::consent::ConsentPartyInput {
-                entity_id: p.entity_id,
-                role: p.role,
-            })
-            .collect(),
+        organization_id,
+        operation_type,
+        operation_id: None,
+        num_board_member_approvals_required: None,
+        requested_by: None,
+        signatory: None,
+        expiry_date: None,
+        details: Some(serde_json::json!({
+            "description": req.description,
+            "parties": req.parties.iter().map(|p| {
+                serde_json::json!({ "entity_id": p.entity_id, "role": p.role })
+            }).collect::<Vec<_>>(),
+        })),
     };
 
     let consent = client

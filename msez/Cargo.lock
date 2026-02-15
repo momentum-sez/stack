@@ -1389,7 +1389,6 @@ dependencies = [
  "rand_core 0.6.4",
  "serde",
  "serde_json",
- "sha2",
  "sqlx",
  "subtle",
  "tempfile",
@@ -1534,6 +1533,7 @@ name = "msez-mass-client"
 version = "0.4.44"
 dependencies = [
  "chrono",
+ "msez-core",
  "reqwest",
  "serde",
  "serde_json",
@@ -1543,6 +1543,7 @@ dependencies = [
  "url",
  "uuid",
  "wiremock",
+ "zeroize",
 ]
 
 [[package]]

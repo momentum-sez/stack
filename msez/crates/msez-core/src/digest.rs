@@ -146,6 +146,32 @@ pub fn sha256_digest(canonical: &CanonicalBytes) -> ContentDigest {
     }
 }
 
+/// Compute a SHA-256 hex digest of raw bytes.
+///
+/// This is the **Tier 2** digest function for operations that legitimately
+/// hash raw byte streams (file contents, Merkle tree nodes, lockfile data)
+/// rather than serializable domain objects.
+///
+/// ## When to use `sha256_raw` vs `sha256_digest`
+///
+/// | Input type | Function | Example |
+/// |-----------|----------|---------|
+/// | `impl Serialize` (structs, enums, JSON) | [`sha256_digest`] via [`CanonicalBytes`] | Audit events, compliance tensors, VCs |
+/// | Raw `&[u8]` (file contents, concatenations) | `sha256_raw` | Pack file digests, lockfile hashes, MMR nodes |
+///
+/// ## Security Invariant
+///
+/// All SHA-256 in the codebase flows through `msez-core`. No other crate
+/// should directly `use sha2::{Digest, Sha256}` for single-shot hashing.
+/// The only exception is streaming/multi-part hashing (e.g., `digest_dir`
+/// in `msez-cli`) where the `sha2` streaming API is needed directly.
+pub fn sha256_raw(data: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    let result = hasher.finalize();
+    result.iter().map(|b| format!("{b:02x}")).collect()
+}
+
 /// Compute a Poseidon2 content digest from canonical bytes.
 ///
 /// **Phase 2 — not yet implemented.** This function is gated behind the

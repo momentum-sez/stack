@@ -902,7 +902,7 @@ async fn regulator_dashboard() {
 // =========================================================================
 
 #[tokio::test]
-async fn mass_proxy_update_entity_returns_501() {
+async fn mass_proxy_update_entity_returns_503_without_mass_client() {
     let app = test_app();
     let resp = app
         .oneshot(put_json(
@@ -911,7 +911,7 @@ async fn mass_proxy_update_entity_returns_501() {
         ))
         .await
         .unwrap();
-    assert_eq!(resp.status(), StatusCode::NOT_IMPLEMENTED);
+    assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
 // =========================================================================

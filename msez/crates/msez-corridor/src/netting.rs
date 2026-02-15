@@ -67,6 +67,23 @@ pub enum NettingError {
         /// Reason for infeasibility.
         reason: String,
     },
+
+    /// Obligation party identifiers are invalid (empty or self-referencing).
+    #[error("invalid obligation parties: {reason}")]
+    InvalidParties {
+        /// Reason for rejection.
+        reason: String,
+    },
+
+    /// Currency code is invalid (empty).
+    #[error("invalid currency code: must be non-empty")]
+    InvalidCurrency,
+
+    /// Arithmetic overflow during settlement computation.
+    #[error(
+        "arithmetic overflow computing settlement totals — obligation amounts exceed i64 range"
+    )]
+    ArithmeticOverflow,
 }
 
 /// A party in the settlement netting system.
@@ -91,7 +108,7 @@ pub struct Currency {
 ///
 /// Represents a directed payment obligation: `from_party` owes
 /// `amount` in `currency` to `to_party`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Obligation {
     /// The party that owes.
     pub from_party: String,
@@ -108,7 +125,7 @@ pub struct Obligation {
 }
 
 /// A computed net position for a party in a specific currency.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NetPosition {
     /// Party identifier.
     pub party_id: String,
@@ -123,7 +140,7 @@ pub struct NetPosition {
 }
 
 /// A settlement leg — a single payment in the settlement plan.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SettlementLeg {
     /// Paying party.
     pub from_party: String,
@@ -198,6 +215,28 @@ impl NettingEngine {
             });
         }
 
+        // BUG-020: Reject self-obligations (from_party == to_party).
+        if obligation.from_party == obligation.to_party {
+            return Err(NettingError::InvalidParties {
+                reason: format!(
+                    "from_party and to_party are identical: \"{}\"",
+                    obligation.from_party
+                ),
+            });
+        }
+
+        // BUG-021: Reject empty party IDs.
+        if obligation.from_party.trim().is_empty() || obligation.to_party.trim().is_empty() {
+            return Err(NettingError::InvalidParties {
+                reason: "party identifiers must be non-empty".to_string(),
+            });
+        }
+
+        // BUG-022: Reject empty currency codes.
+        if obligation.currency.trim().is_empty() {
+            return Err(NettingError::InvalidCurrency);
+        }
+
         let key = (
             obligation.from_party.clone(),
             obligation.to_party.clone(),
@@ -211,9 +250,7 @@ impl NettingEngine {
                 to_party: obligation.to_party,
                 amount: obligation.amount,
                 currency: obligation.currency,
-                corridor_id: obligation
-                    .corridor_id
-                    .unwrap_or_else(|| "none".to_string()),
+                corridor_id: obligation.corridor_id.unwrap_or_else(|| "none".to_string()),
             });
         }
 
@@ -338,8 +375,16 @@ impl NettingEngine {
         let net_positions = self.compute_net_positions();
         let settlement_legs = Self::generate_settlement_legs(&net_positions);
 
-        let gross_total: i64 = self.obligations.iter().map(|o| o.amount).sum();
-        let net_total: i64 = settlement_legs.iter().map(|l| l.amount).sum();
+        // BUG-018 fix: use checked arithmetic to prevent silent i64 overflow.
+        let gross_total: i64 = self
+            .obligations
+            .iter()
+            .try_fold(0i64, |acc, o| acc.checked_add(o.amount))
+            .ok_or(NettingError::ArithmeticOverflow)?;
+        let net_total: i64 = settlement_legs
+            .iter()
+            .try_fold(0i64, |acc, l| acc.checked_add(l.amount))
+            .ok_or(NettingError::ArithmeticOverflow)?;
 
         let reduction_percentage = if gross_total > 0 {
             (1.0 - (net_total as f64 / gross_total as f64)) * 100.0

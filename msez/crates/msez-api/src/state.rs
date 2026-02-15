@@ -9,6 +9,7 @@
 //! - **Corridors** — cross-border corridor lifecycle (SEZ Stack domain)
 //! - **Smart Assets** — smart asset lifecycle (SEZ Stack domain)
 //! - **Attestations** — compliance attestations for regulator queries (SEZ Stack domain)
+//! - **Tax Events** — tax collection pipeline events and withholding records (SEZ Stack domain)
 //! - **Mass API client** — typed client delegating primitive operations to live Mass APIs
 //!
 //! Entity, ownership, fiscal, identity, and consent data is NOT stored here.
@@ -19,12 +20,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
-use msez_agentic::PolicyEngine;
+use msez_agentic::{PolicyEngine, TaxPipeline};
 use msez_corridor::ReceiptChain;
 use msez_crypto::SigningKey;
 use msez_state::{DynCorridorState, TransitionRecord};
 use parking_lot::{Mutex, RwLock};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -331,6 +333,50 @@ pub struct AttestationRecord {
     pub details: serde_json::Value,
 }
 
+/// Tax event record stored by the tax collection pipeline.
+///
+/// Wraps a [`msez_agentic::TaxEvent`] with withholding results and pipeline
+/// status for API-layer persistence. Tax events are SEZ-Stack-owned data —
+/// they represent the jurisdictional tax awareness applied to Mass fiscal
+/// operations, not Mass fiscal CRUD.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct TaxEventRecord {
+    /// Unique identifier (matches the inner event_id).
+    pub id: Uuid,
+    /// Entity subject to this tax event.
+    pub entity_id: Uuid,
+    /// Event type classification.
+    pub event_type: String,
+    /// Tax category.
+    pub tax_category: String,
+    /// Jurisdiction where the tax obligation arises.
+    pub jurisdiction_id: String,
+    /// Gross amount of the economic activity.
+    pub gross_amount: String,
+    /// Total computed withholding amount.
+    pub withholding_amount: String,
+    /// Net amount after withholding.
+    pub net_amount: String,
+    /// Currency code.
+    pub currency: String,
+    /// Tax year.
+    pub tax_year: String,
+    /// Entity NTN, if registered.
+    pub ntn: Option<String>,
+    /// Filing status of the entity.
+    pub filer_status: String,
+    /// Statutory section reference.
+    pub statutory_section: Option<String>,
+    /// Whether withholding has been executed via Mass fiscal API.
+    pub withholding_executed: bool,
+    /// Reference to the originating Mass payment.
+    pub mass_payment_id: Option<Uuid>,
+    /// Number of withholding rules that matched.
+    pub rules_applied: usize,
+    /// When the event was recorded.
+    pub created_at: DateTime<Utc>,
+}
+
 // -- Application State --------------------------------------------------------
 
 /// Application configuration.
@@ -349,7 +395,10 @@ impl std::fmt::Debug for AppConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppConfig")
             .field("port", &self.port)
-            .field("auth_token", &self.auth_token.as_ref().map(|_| "[REDACTED]"))
+            .field(
+                "auth_token",
+                &self.auth_token.as_ref().map(|_| "[REDACTED]"),
+            )
             .finish()
     }
 }
@@ -448,6 +497,15 @@ pub struct AppState {
     pub corridors: Store<CorridorRecord>,
     pub smart_assets: Store<SmartAssetRecord>,
     pub attestations: Store<AttestationRecord>,
+    pub tax_events: Store<TaxEventRecord>,
+
+    // -- Tax collection pipeline --
+
+    /// The tax collection pipeline orchestrator. Contains the withholding
+    /// computation engine with jurisdiction-specific rules loaded from regpacks.
+    /// `parking_lot::Mutex` because the pipeline may be reconfigured at runtime
+    /// (e.g., when new SRO rates are loaded).
+    pub tax_pipeline: Arc<Mutex<TaxPipeline>>,
 
     /// Per-corridor receipt chains (append-only MMR accumulators).
     ///
@@ -456,11 +514,18 @@ pub struct AppState {
     /// is used instead. Keyed by corridor UUID — each corridor has exactly one chain.
     pub receipt_chains: Arc<RwLock<HashMap<Uuid, ReceiptChain>>>,
 
+    // -- Database persistence (optional) --
+
+    /// PostgreSQL connection pool for durable state persistence.
+    /// When `Some`, corridor, smart asset, attestation, and audit data is
+    /// persisted to Postgres in addition to the in-memory stores.
+    /// When `None`, the API operates in in-memory-only mode.
+    pub db_pool: Option<PgPool>,
+
     // -- Mass API client (delegates primitive operations to live Mass APIs) --
     pub mass_client: Option<msez_mass_client::MassClient>,
 
     // -- Zone identity --
-
     /// The zone operator's Ed25519 signing key.
     /// Used to sign Verifiable Credentials issued by this zone.
     /// Wrapped in `Arc` because `SigningKey` is not `Clone` (it contains
@@ -472,7 +537,6 @@ pub struct AppState {
     pub zone_did: String,
 
     // -- Agentic policy engine --
-
     /// The autonomous policy engine. `parking_lot::Mutex` because `PolicyEngine`
     /// is not `Sync` (it holds a mutable audit trail) and evaluation mutates
     /// internal state. `parking_lot::Mutex` never poisons on panic, eliminating
@@ -480,7 +544,6 @@ pub struct AppState {
     pub policy_engine: Arc<Mutex<PolicyEngine>>,
 
     // -- Zone context (from bootstrap) --
-
     /// Zone context, if bootstrapped from a zone manifest.
     /// When present, the server operates as a configured zone node.
     /// When absent (generic mode), endpoints use default behavior.
@@ -498,13 +561,13 @@ impl AppState {
     /// Panics if `ZONE_SIGNING_KEY_HEX` is set but contains invalid data.
     /// In production, prefer [`AppState::try_new`] for graceful error handling.
     pub fn new() -> Self {
-        Self::try_with_config(AppConfig::default(), None)
+        Self::try_with_config(AppConfig::default(), None, None)
             .expect("failed to initialize AppState (check ZONE_SIGNING_KEY_HEX)")
     }
 
     /// Create a new application state, returning `Err` if zone key loading fails.
     pub fn try_new() -> Result<Self, ZoneKeyError> {
-        Self::try_with_config(AppConfig::default(), None)
+        Self::try_with_config(AppConfig::default(), None, None)
     }
 
     /// Create a new application state with the given configuration and optional Mass client.
@@ -516,15 +579,16 @@ impl AppState {
         config: AppConfig,
         mass_client: Option<msez_mass_client::MassClient>,
     ) -> Self {
-        Self::try_with_config(config, mass_client)
+        Self::try_with_config(config, mass_client, None)
             .expect("failed to initialize AppState (check ZONE_SIGNING_KEY_HEX)")
     }
 
-    /// Create a new application state with the given configuration, returning `Err`
-    /// on zone key loading failures rather than panicking.
+    /// Create a new application state with the given configuration, optional Mass client,
+    /// and optional database pool, returning `Err` on zone key loading failures.
     pub fn try_with_config(
         config: AppConfig,
         mass_client: Option<msez_mass_client::MassClient>,
+        db_pool: Option<PgPool>,
     ) -> Result<Self, ZoneKeyError> {
         let zone_signing_key = load_or_generate_zone_key()?;
         let zone_did = format!(
@@ -536,7 +600,10 @@ impl AppState {
             corridors: Store::new(),
             smart_assets: Store::new(),
             attestations: Store::new(),
+            tax_events: Store::new(),
+            tax_pipeline: Arc::new(Mutex::new(TaxPipeline::pakistan())),
             receipt_chains: Arc::new(RwLock::new(HashMap::new())),
+            db_pool,
             mass_client,
             zone_signing_key: Arc::new(zone_signing_key),
             zone_did,
@@ -544,6 +611,54 @@ impl AppState {
             zone: None,
             config,
         })
+    }
+
+    /// Hydrate in-memory stores from the database.
+    ///
+    /// Called once on startup when a database pool is available. Loads all
+    /// persisted corridors, smart assets, and attestations into the in-memory
+    /// stores so that read operations remain fast and synchronous.
+    pub async fn hydrate_from_db(&self) -> Result<(), String> {
+        let pool = match &self.db_pool {
+            Some(pool) => pool,
+            None => return Ok(()),
+        };
+
+        // Load corridors
+        let corridors = crate::db::corridors::load_all(pool)
+            .await
+            .map_err(|e| format!("failed to load corridors: {e}"))?;
+        let corridor_count = corridors.len();
+        for record in corridors {
+            self.corridors.insert(record.id, record);
+        }
+
+        // Load smart assets
+        let assets = crate::db::smart_assets::load_all(pool)
+            .await
+            .map_err(|e| format!("failed to load smart assets: {e}"))?;
+        let asset_count = assets.len();
+        for record in assets {
+            self.smart_assets.insert(record.id, record);
+        }
+
+        // Load attestations
+        let attestations = crate::db::attestations::load_all(pool)
+            .await
+            .map_err(|e| format!("failed to load attestations: {e}"))?;
+        let attestation_count = attestations.len();
+        for record in attestations {
+            self.attestations.insert(record.id, record);
+        }
+
+        tracing::info!(
+            corridors = corridor_count,
+            smart_assets = asset_count,
+            attestations = attestation_count,
+            "Hydrated in-memory stores from database"
+        );
+
+        Ok(())
     }
 }
 
@@ -605,10 +720,7 @@ mod tests {
 
         store.insert(id, sample_corridor(id));
         let prev = store.insert(id, sample_corridor(id));
-        assert!(
-            prev.is_some(),
-            "second insert should return previous value"
-        );
+        assert!(prev.is_some(), "second insert should return previous value");
     }
 
     #[test]
@@ -746,6 +858,7 @@ mod tests {
         assert!(state.corridors.is_empty());
         assert!(state.smart_assets.is_empty());
         assert!(state.attestations.is_empty());
+        assert!(state.tax_events.is_empty());
         assert!(state.mass_client.is_none());
     }
 
@@ -773,10 +886,7 @@ mod tests {
         let default_state = AppState::default();
         let new_state = AppState::new();
         assert_eq!(default_state.config.port, new_state.config.port);
-        assert_eq!(
-            default_state.config.auth_token,
-            new_state.config.auth_token
-        );
+        assert_eq!(default_state.config.auth_token, new_state.config.auth_token);
     }
 
     #[test]

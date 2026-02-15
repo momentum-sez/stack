@@ -292,7 +292,10 @@ async fn query_attestations(
         .collect();
 
     let total = filtered.len();
-    let limit = req.limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT);
+    let limit = req
+        .limit
+        .unwrap_or(DEFAULT_QUERY_LIMIT)
+        .min(MAX_QUERY_LIMIT);
     let offset = req.offset.unwrap_or(0);
     let page: Vec<_> = filtered.into_iter().skip(offset).take(limit).collect();
     let count = page.len();
@@ -444,9 +447,7 @@ async fn dashboard(
     {
         let chains_guard = state.receipt_chains.read();
         for c in &corridors_list {
-            *by_state
-                .entry(c.state.as_str().to_string())
-                .or_insert(0) += 1;
+            *by_state.entry(c.state.as_str().to_string()).or_insert(0) += 1;
 
             let (chain_height, mmr_root) = match chains_guard.get(&c.id) {
                 Some(chain) => {
@@ -483,7 +484,7 @@ async fn dashboard(
     // ── Policy Activity ─────────────────────────────────────────
     let policy_activity = {
         let engine = state.policy_engine.lock();
-        let recent = engine.audit_trail.last_n(20);
+        let recent = engine.audit_trail.last_n(50);
         PolicyActivity {
             policy_count: engine.policy_count(),
             audit_trail_size: engine.audit_trail.len(),
@@ -901,9 +902,7 @@ mod tests {
             .method("POST")
             .uri("/v1/regulator/query/attestations")
             .header("content-type", "application/json")
-            .body(Body::from(
-                r#"{"attestation_type":"compliance_check"}"#,
-            ))
+            .body(Body::from(r#"{"attestation_type":"compliance_check"}"#))
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
@@ -923,7 +922,11 @@ mod tests {
                 entity_id: uuid::Uuid::new_v4(),
                 attestation_type: if i % 2 == 0 { "kyc" } else { "aml" }.to_string(),
                 issuer: "NADRA".to_string(),
-                status: if i < 3 { AttestationStatus::Active } else { AttestationStatus::Pending },
+                status: if i < 3 {
+                    AttestationStatus::Active
+                } else {
+                    AttestationStatus::Pending
+                },
                 jurisdiction_id: if i < 2 { "PK-PSEZ" } else { "AE-DIFC" }.to_string(),
                 issued_at: chrono::Utc::now(),
                 expires_at: None,
@@ -1124,7 +1127,9 @@ mod tests {
             created_at: now,
             updated_at: now,
         };
-        state.smart_assets.insert(compliant_asset.id, compliant_asset);
+        state
+            .smart_assets
+            .insert(compliant_asset.id, compliant_asset);
 
         let blocking_asset = crate::state::SmartAssetRecord {
             id: uuid::Uuid::new_v4(),

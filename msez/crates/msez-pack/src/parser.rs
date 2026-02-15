@@ -135,11 +135,13 @@ fn yaml_to_json_value(yaml: serde_yaml::Value) -> PackResult<Value> {
                         // Defensive: from_f64 only fails for NaN/Infinity, which
                         // is_finite() already excluded. Log if hit.
                         Ok(Value::Number(
-                            serde_json::Number::from_f64(f)
-                                .unwrap_or_else(|| {
-                                    tracing::warn!(value = f, "finite float could not be represented in JSON, substituting 0");
-                                    serde_json::Number::from(0)
-                                }),
+                            serde_json::Number::from_f64(f).unwrap_or_else(|| {
+                                tracing::warn!(
+                                    value = f,
+                                    "finite float could not be represented in JSON, substituting 0"
+                                );
+                                serde_json::Number::from(0)
+                            }),
                         ))
                     }
                 } else if !f.is_finite() {
@@ -154,11 +156,13 @@ fn yaml_to_json_value(yaml: serde_yaml::Value) -> PackResult<Value> {
                     // True float — pass through, canonicalization will reject if used for digest.
                     // from_f64 is infallible for finite values (NaN/Infinity rejected above).
                     Ok(Value::Number(
-                        serde_json::Number::from_f64(f)
-                            .unwrap_or_else(|| {
-                                tracing::warn!(value = f, "finite float could not be represented in JSON, substituting 0");
-                                serde_json::Number::from(0)
-                            }),
+                        serde_json::Number::from_f64(f).unwrap_or_else(|| {
+                            tracing::warn!(
+                                value = f,
+                                "finite float could not be represented in JSON, substituting 0"
+                            );
+                            serde_json::Number::from(0)
+                        }),
                     ))
                 }
             } else {

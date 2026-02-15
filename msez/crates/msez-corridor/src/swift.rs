@@ -69,7 +69,7 @@ pub enum SettlementRailError {
 }
 
 /// A settlement instruction to be sent over a settlement rail.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SettlementInstruction {
     /// Unique message identifier.
     pub message_id: String,

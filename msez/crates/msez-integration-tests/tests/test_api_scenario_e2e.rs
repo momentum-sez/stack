@@ -202,9 +202,7 @@ async fn scenario_pk_rsez_opens_corridor_to_ae_difc() {
         "Act 2: transition log must have exactly 2 entries"
     );
 
-    eprintln!(
-        "  \u{2713} Act 2: corridor transitioned DRAFT \u{2192} PENDING \u{2192} ACTIVE"
-    );
+    eprintln!("  \u{2713} Act 2: corridor transitioned DRAFT \u{2192} PENDING \u{2192} ACTIVE");
 
     // =====================================================================
     // Act 3: First receipt — a cross-border payment instruction
@@ -593,10 +591,7 @@ async fn scenario_pk_rsez_opens_corridor_to_ae_difc() {
         );
         // At least one action must have been executed (the corridor halt).
         let actions = trigger_resp["actions"].as_array().unwrap();
-        let executed_count = actions
-            .iter()
-            .filter(|a| a["status"] == "executed")
-            .count();
+        let executed_count = actions.iter().filter(|a| a["status"] == "executed").count();
         assert!(
             executed_count > 0,
             "Act 7: at least one action must be executed (the corridor halt)"
@@ -649,9 +644,7 @@ async fn scenario_pk_rsez_opens_corridor_to_ae_difc() {
             "Act 7b: agentic transition must include evidence digest"
         );
 
-        eprintln!(
-            "  \u{2713} Act 7b: corridor HALTED \u{2014} system reacted to sanctions update"
-        );
+        eprintln!("  \u{2713} Act 7b: corridor HALTED \u{2014} system reacted to sanctions update");
     }
 
     eprintln!("\n  === Scenario complete: all acts passed ===");

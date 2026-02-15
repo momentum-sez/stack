@@ -100,10 +100,7 @@ impl IdentityClient {
     /// Get an identity by ID.
     ///
     /// Calls `GET {base_url}/consent-info/identities/{id}`.
-    pub async fn get_identity(
-        &self,
-        id: Uuid,
-    ) -> Result<Option<MassIdentity>, MassApiError> {
+    pub async fn get_identity(&self, id: Uuid) -> Result<Option<MassIdentity>, MassApiError> {
         let endpoint = format!("GET /identities/{id}");
         let url = format!("{}consent-info/identities/{id}", self.base_url);
 
@@ -140,10 +137,7 @@ impl IdentityClient {
     /// Submit a verification request (KYC/KYB).
     ///
     /// Calls `POST {base_url}/consent-info/identities/verify`.
-    pub async fn verify(
-        &self,
-        req: &VerifyIdentityRequest,
-    ) -> Result<MassIdentity, MassApiError> {
+    pub async fn verify(&self, req: &VerifyIdentityRequest) -> Result<MassIdentity, MassApiError> {
         let endpoint = "POST /identities/verify";
         let url = format!("{}consent-info/identities/verify", self.base_url);
 
@@ -164,9 +158,11 @@ impl IdentityClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 }

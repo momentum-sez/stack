@@ -3,13 +3,9 @@
 //! End-to-end tests that exercise data flow across crate boundaries.
 //! These test the wiring between crates that was recently connected.
 
-use msez_core::{
-    CanonicalBytes, ComplianceDomain, ContentDigest, CorridorId, JurisdictionId,
-};
+use msez_core::{CanonicalBytes, ComplianceDomain, ContentDigest, CorridorId, JurisdictionId};
 use msez_crypto::{sha256_digest, ContentAddressedStore, MerkleMountainRange, SigningKey};
-use msez_vc::{
-    ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential,
-};
+use msez_vc::{ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential};
 use serde_json::json;
 
 // =========================================================================
@@ -34,9 +30,7 @@ fn canonical_to_cas_round_trip() {
     let digest = sha256_digest(&canonical);
 
     // 3. Store it in the CAS.
-    let artifact_ref = cas
-        .store("corridor-receipt", &value)
-        .expect("store in CAS");
+    let artifact_ref = cas.store("corridor-receipt", &value).expect("store in CAS");
 
     // 4. Resolve it from the CAS by the artifact ref.
     let resolved = cas
@@ -153,11 +147,7 @@ fn vc_sign_serialize_deserialize_verify() {
         "Verification should produce at least one result"
     );
     for r in &results {
-        assert!(
-            r.ok,
-            "Proof verification failed: {}",
-            r.error
-        );
+        assert!(r.ok, "Proof verification failed: {}", r.error);
     }
 
     // 7. Also test verify_all
@@ -194,10 +184,7 @@ fn vc_tampered_subject_fails_verification() {
 
     // Verification should fail
     let results = vc.verify(|_vm| Ok(vk.clone()));
-    assert!(
-        !results.is_empty(),
-        "Should still have proofs to verify"
-    );
+    assert!(!results.is_empty(), "Should still have proofs to verify");
     let any_failed = results.iter().any(|r| !r.ok);
     assert!(
         any_failed,
@@ -279,9 +266,7 @@ fn vc_signed_then_stored_in_cas_then_retrieved_and_verified() {
 // Pipeline 3: Corridor State Machine → Transition History → MMR
 // =========================================================================
 
-use msez_state::corridor::{
-    ActivationEvidence, Corridor, Draft, HaltReason, SubmissionEvidence,
-};
+use msez_state::corridor::{ActivationEvidence, Corridor, Draft, HaltReason, SubmissionEvidence};
 
 fn test_digest(label: &str) -> ContentDigest {
     let canonical = CanonicalBytes::new(&json!({"label": label})).unwrap();
@@ -495,10 +480,8 @@ fn compliance_tensor_commitment_digest_is_deterministic() {
         .map(|&d| (d, tensor2.get(d)))
         .collect();
 
-    let digest1 =
-        msez_tensor::commitment_digest("PK-RSEZ", &states).expect("commitment digest 1");
-    let digest2 =
-        msez_tensor::commitment_digest("PK-RSEZ", &states2).expect("commitment digest 2");
+    let digest1 = msez_tensor::commitment_digest("PK-RSEZ", &states).expect("commitment digest 1");
+    let digest2 = msez_tensor::commitment_digest("PK-RSEZ", &states2).expect("commitment digest 2");
 
     assert_eq!(
         digest1.to_hex(),
@@ -555,14 +538,22 @@ fn netting_to_swift_pipeline() {
     // 3. For each settlement leg, generate a SWIFT pacs.008 message.
     let swift = SwiftPacs008::new("MSEZSEXX");
     let party_bics: std::collections::HashMap<&str, (&str, &str, &str)> = [
-        ("CompanyA", ("DEUTDEFF", "DE89370400440532013000", "Company A GmbH")),
-        ("CompanyB", ("BKCHCNBJ", "CN12345678901234", "Company B Ltd")),
+        (
+            "CompanyA",
+            ("DEUTDEFF", "DE89370400440532013000", "Company A GmbH"),
+        ),
+        (
+            "CompanyB",
+            ("BKCHCNBJ", "CN12345678901234", "Company B Ltd"),
+        ),
     ]
     .into_iter()
     .collect();
 
     for (i, leg) in plan.settlement_legs.iter().enumerate() {
-        let from_info = party_bics.get(leg.from_party.as_str()).expect("known party");
+        let from_info = party_bics
+            .get(leg.from_party.as_str())
+            .expect("known party");
         let to_info = party_bics.get(leg.to_party.as_str()).expect("known party");
 
         let instruction = SettlementInstruction {
@@ -831,8 +822,8 @@ fn mmr_roots_are_valid_hex_for_cas_storage() {
 // Pipeline 7: Evidence Package → CAS → Verify Integrity
 // =========================================================================
 
-use msez_arbitration::evidence::{EvidenceItem, EvidencePackage, EvidenceType};
 use msez_arbitration::dispute::DisputeId;
+use msez_arbitration::evidence::{EvidenceItem, EvidencePackage, EvidenceType};
 use msez_core::Did;
 
 #[test]
@@ -887,12 +878,8 @@ fn evidence_package_add_item_updates_digest() {
     )
     .unwrap();
 
-    let mut package = EvidencePackage::new(
-        dispute_id,
-        Did::new("did:key:z6MkA").unwrap(),
-        vec![item1],
-    )
-    .unwrap();
+    let mut package =
+        EvidencePackage::new(dispute_id, Did::new("did:key:z6MkA").unwrap(), vec![item1]).unwrap();
 
     let digest_before = package.package_digest.to_hex();
 
@@ -1121,10 +1108,7 @@ fn policy_engine_corridor_trigger_to_vc() {
         )
         .unwrap();
 
-        assert!(
-            !vc.proof.is_empty(),
-            "Halt notice VC should be signed"
-        );
+        assert!(!vc.proof.is_empty(), "Halt notice VC should be signed");
     }
 }
 
@@ -1235,7 +1219,11 @@ fn vc_multi_proof_sign_and_verify_both() {
     .unwrap();
 
     // Should have two proofs
-    assert_eq!(vc.proof.as_list().len(), 2, "VC should have exactly 2 proofs");
+    assert_eq!(
+        vc.proof.as_list().len(),
+        2,
+        "VC should have exactly 2 proofs"
+    );
 
     // Verify with correct key resolver
     let vk1_c = vk1.clone();

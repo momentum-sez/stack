@@ -40,9 +40,7 @@ use msez_corridor::swift::SettlementInstruction;
 // msez-vc types
 // =========================================================================
 
-use msez_vc::credential::{
-    ContextValue, CredentialTypeValue, ProofValue, VerifiableCredential,
-};
+use msez_vc::credential::{ContextValue, CredentialTypeValue, ProofValue, VerifiableCredential};
 use msez_vc::proof::{Proof, ProofPurpose, ProofType};
 
 // =========================================================================
@@ -50,10 +48,10 @@ use msez_vc::proof::{Proof, ProofPurpose, ProofType};
 // =========================================================================
 
 use msez_arbitration::dispute::{DisputeId, DisputeState, DisputeType};
+use msez_arbitration::enforcement::{EnforcementOrderId, EnforcementReceiptId, EnforcementStatus};
 use msez_arbitration::escrow::{
     EscrowId, EscrowStatus, EscrowType, ReleaseConditionType, TransactionType,
 };
-use msez_arbitration::enforcement::{EnforcementOrderId, EnforcementReceiptId, EnforcementStatus};
 
 // =========================================================================
 // msez-agentic types
@@ -192,8 +190,7 @@ fn serde_rt_entity_lifecycle_state_all_variants() {
     ];
     for state in &states {
         let json = serde_json::to_string(state).expect("serialize");
-        let recovered: EntityLifecycleState =
-            serde_json::from_str(&json).expect("deserialize");
+        let recovered: EntityLifecycleState = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(*state, recovered);
     }
 }
@@ -495,10 +492,7 @@ fn serde_rt_proof() {
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: Proof = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(recovered.proof_type, ProofType::Ed25519Signature2020);
-    assert_eq!(
-        recovered.verification_method,
-        "did:key:z6MkTest#key-1"
-    );
+    assert_eq!(recovered.verification_method, "did:key:z6MkTest#key-1");
     assert_eq!(recovered.proof_value, "aa".repeat(64));
     // Verify W3C field names are used in JSON
     assert!(json.contains("\"type\""));
@@ -524,8 +518,7 @@ fn serde_rt_verifiable_credential_unsigned() {
         proof: ProofValue::default(),
     };
     let json = serde_json::to_string(&original).expect("serialize");
-    let recovered: VerifiableCredential =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: VerifiableCredential = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(recovered.issuer, original.issuer);
     assert_eq!(recovered.id, original.id);
     // Verify W3C field naming in JSON
@@ -553,8 +546,7 @@ fn serde_rt_verifiable_credential_with_expiration() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     assert!(json.contains("\"expirationDate\""));
-    let recovered: VerifiableCredential =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: VerifiableCredential = serde_json::from_str(&json).expect("deserialize");
     assert!(recovered.expiration_date.is_some());
 }
 
@@ -576,8 +568,7 @@ fn serde_rt_verifiable_credential_optional_id_absent() {
         !json.contains("\"id\""),
         "None id should be skipped: {json}"
     );
-    let recovered: VerifiableCredential =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: VerifiableCredential = serde_json::from_str(&json).expect("deserialize");
     assert!(recovered.id.is_none());
 }
 
@@ -709,8 +700,7 @@ fn serde_rt_release_condition_type_all_variants() {
     ];
     for rct in &types {
         let json = serde_json::to_string(rct).expect("serialize");
-        let recovered: ReleaseConditionType =
-            serde_json::from_str(&json).expect("deserialize");
+        let recovered: ReleaseConditionType = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(*rct, recovered);
     }
 }
@@ -743,8 +733,7 @@ fn serde_rt_enforcement_order_id() {
 fn serde_rt_enforcement_receipt_id() {
     let original = EnforcementReceiptId::new();
     let json = serde_json::to_string(&original).expect("serialize");
-    let recovered: EnforcementReceiptId =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: EnforcementReceiptId = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(original, recovered);
 }
 
@@ -759,8 +748,7 @@ fn serde_rt_enforcement_status_all_variants() {
     ];
     for es in &statuses {
         let json = serde_json::to_string(es).expect("serialize");
-        let recovered: EnforcementStatus =
-            serde_json::from_str(&json).expect("deserialize");
+        let recovered: EnforcementStatus = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(*es, recovered);
     }
 }
@@ -831,8 +819,7 @@ fn serde_rt_authorization_requirement_all_variants() {
     ];
     for ar in &reqs {
         let json = serde_json::to_string(ar).expect("serialize");
-        let recovered: AuthorizationRequirement =
-            serde_json::from_str(&json).expect("deserialize");
+        let recovered: AuthorizationRequirement = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(*ar, recovered);
     }
 }
@@ -1014,74 +1001,64 @@ fn serde_rt_tensor_cell_skip_empty_attestations() {
 }
 
 // =========================================================================
-// Cross-cutting: serde round-trip of serialized DID bypasses validation
+// BUG-013 through BUG-017 RESOLVED: Custom serde Deserialize impls
+// now route through validated constructors. Invalid values are rejected
+// at deserialization time.
 // =========================================================================
 
 #[test]
-fn serde_rt_did_bypasses_validation() {
-    // BUG-013: Did deserializes without validation. A malformed DID
-    // that was never constructed via Did::new() can be deserialized
-    // directly from JSON, bypassing the format validation.
-    // This is inherent to serde's Deserialize derive on newtype(String).
+fn serde_rt_did_rejects_invalid() {
+    // BUG-013 RESOLVED: Custom Deserialize validates via Did::new().
     let invalid_json = "\"not-a-did\"";
     let result: Result<msez_core::Did, _> = serde_json::from_str(invalid_json);
-    // If this succeeds, it means serde bypasses Did::new() validation
-    if result.is_ok() {
-        // This IS a bug: an invalid DID was deserialized successfully
-        // The type invariant (validated at construction) is violated.
-        let did = result.unwrap();
-        assert_eq!(did.as_str(), "not-a-did");
-        // BUG-013 confirmed: serde bypasses Did validation
-    }
-    // If it fails, the implementation has custom Deserialize — good.
+    assert!(
+        result.is_err(),
+        "invalid DID must be rejected at deserialization"
+    );
 }
 
 #[test]
-fn serde_rt_ntn_bypasses_validation() {
-    // BUG-014: Ntn deserializes without validation.
+fn serde_rt_ntn_rejects_invalid() {
+    // BUG-014 RESOLVED: Custom Deserialize validates via Ntn::new().
     let invalid_json = "\"12345\""; // Only 5 digits, should be 7
     let result: Result<msez_core::Ntn, _> = serde_json::from_str(invalid_json);
-    if result.is_ok() {
-        // BUG-014 confirmed: Ntn validation bypassed via serde
-        let ntn = result.unwrap();
-        assert_eq!(ntn.as_str(), "12345");
-    }
+    assert!(
+        result.is_err(),
+        "invalid NTN must be rejected at deserialization"
+    );
 }
 
 #[test]
-fn serde_rt_cnic_bypasses_validation() {
-    // BUG-015: Cnic deserializes without validation.
+fn serde_rt_cnic_rejects_invalid() {
+    // BUG-015 RESOLVED: Custom Deserialize validates via Cnic::new().
     let invalid_json = "\"123\""; // Only 3 digits, should be 13
     let result: Result<msez_core::Cnic, _> = serde_json::from_str(invalid_json);
-    if result.is_ok() {
-        // BUG-015 confirmed: Cnic validation bypassed via serde
-        let cnic = result.unwrap();
-        assert_eq!(cnic.as_str(), "123");
-    }
+    assert!(
+        result.is_err(),
+        "invalid CNIC must be rejected at deserialization"
+    );
 }
 
 #[test]
-fn serde_rt_passport_number_bypasses_validation() {
-    // BUG-016: PassportNumber deserializes without validation.
+fn serde_rt_passport_number_rejects_invalid() {
+    // BUG-016 RESOLVED: Custom Deserialize validates via PassportNumber::new().
     let invalid_json = "\"AB\""; // Only 2 chars, minimum is 5
     let result: Result<msez_core::PassportNumber, _> = serde_json::from_str(invalid_json);
-    if result.is_ok() {
-        // BUG-016 confirmed: PassportNumber validation bypassed via serde
-        let pp = result.unwrap();
-        assert_eq!(pp.as_str(), "AB");
-    }
+    assert!(
+        result.is_err(),
+        "invalid passport must be rejected at deserialization"
+    );
 }
 
 #[test]
-fn serde_rt_jurisdiction_id_bypasses_validation() {
-    // BUG-017: JurisdictionId deserializes without validation.
+fn serde_rt_jurisdiction_id_rejects_invalid() {
+    // BUG-017 RESOLVED: Custom Deserialize validates via JurisdictionId::new().
     let invalid_json = "\"\""; // Empty string, should be rejected
     let result: Result<JurisdictionId, _> = serde_json::from_str(invalid_json);
-    if result.is_ok() {
-        // BUG-017 confirmed: empty JurisdictionId via serde
-        let jid = result.unwrap();
-        assert_eq!(jid.as_str(), "");
-    }
+    assert!(
+        result.is_err(),
+        "empty JurisdictionId must be rejected at deserialization"
+    );
 }
 
 // =========================================================================
@@ -1091,10 +1068,10 @@ fn serde_rt_jurisdiction_id_bypasses_validation() {
 use msez_arbitration::dispute::{
     ArbitrationInstitution, Claim, Dispute, FilingEvidence, Money, Party as ArbParty,
 };
-use msez_arbitration::escrow::{EscrowAccount, EscrowTransaction, ReleaseCondition};
 use msez_arbitration::enforcement::{
     EnforcementAction, EnforcementOrder, EnforcementPrecondition, EnforcementReceipt,
 };
+use msez_arbitration::escrow::{EscrowAccount, EscrowTransaction, ReleaseCondition};
 use msez_arbitration::evidence::{
     AuthenticityAttestation, AuthenticityType, ChainOfCustodyEntry, EvidenceItem, EvidenceItemId,
     EvidencePackage, EvidencePackageId, EvidenceType,
@@ -1216,7 +1193,11 @@ fn serde_rt_enforcement_status_round_trip() {
     ] {
         let json = serde_json::to_string(&status).expect("serialize");
         let recovered: EnforcementStatus = serde_json::from_str(&json).expect("deserialize");
-        assert_eq!(status, recovered, "EnforcementStatus round-trip failed for {:?}", status);
+        assert_eq!(
+            status, recovered,
+            "EnforcementStatus round-trip failed for {:?}",
+            status
+        );
     }
 }
 
@@ -1347,20 +1328,14 @@ fn serde_rt_condition_all_variants() {
 #[test]
 fn serde_rt_condition_deeply_nested() {
     let deep = Condition::And {
-        conditions: vec![
-            Condition::Or {
-                conditions: vec![
-                    Condition::And {
-                        conditions: vec![
-                            Condition::Equals {
-                                field: "deep".to_string(),
-                                value: json!("value"),
-                            },
-                        ],
-                    },
-                ],
-            },
-        ],
+        conditions: vec![Condition::Or {
+            conditions: vec![Condition::And {
+                conditions: vec![Condition::Equals {
+                    field: "deep".to_string(),
+                    value: json!("value"),
+                }],
+            }],
+        }],
     };
     let json = serde_json::to_string(&deep).expect("serialize");
     let recovered: Condition = serde_json::from_str(&json).expect("deserialize");
@@ -1494,7 +1469,11 @@ fn serde_rt_dissolution_stage_all_variants() {
     for stage in DissolutionStage::all_stages() {
         let json = serde_json::to_string(stage).expect("serialize");
         let recovered: DissolutionStage = serde_json::from_str(&json).expect("deserialize");
-        assert_eq!(*stage, recovered, "DissolutionStage {:?} failed round-trip", stage);
+        assert_eq!(
+            *stage, recovered,
+            "DissolutionStage {:?} failed round-trip",
+            stage
+        );
     }
 }
 
@@ -1504,8 +1483,9 @@ fn serde_rt_dissolution_stage_all_variants() {
 
 #[test]
 fn serde_rt_settlement_plan_large_amounts() {
-    // BUG-018: gross_total computation uses i64::sum() which can overflow
-    // silently in release mode (wrapping arithmetic) or panic in debug mode.
+    // BUG-018 RESOLVED: gross_total now uses checked arithmetic.
+    // Overflow returns NettingError::ArithmeticOverflow instead of
+    // panicking or silently wrapping.
     let mut engine = NettingEngine::new();
     engine
         .add_obligation(Obligation {
@@ -1527,23 +1507,17 @@ fn serde_rt_settlement_plan_large_amounts() {
             priority: 0,
         })
         .unwrap();
-    // This should either:
-    // 1. Return an error (correct behavior)
-    // 2. Panic in debug mode (BUG-018 confirmed)
-    // 3. Silently wrap in release mode (BUG-018 confirmed, P0)
-    let result = std::panic::catch_unwind(|| engine.compute_plan());
-    if let Ok(Ok(plan)) = result {
-        // If it didn't panic and returned Ok, check if the sum wrapped
-        if plan.gross_total < 0 {
-            // BUG-018: i64 overflow wrapped to negative — P0 silent data corruption
-            panic!(
-                "BUG-018: gross_total overflowed to {} — silent financial corruption",
-                plan.gross_total
-            );
-        }
-    }
-    // If it panicked, that's also BUG-018 (panic in production) but less severe
-    // than silent corruption. We just note it.
+    // With checked arithmetic, this returns an error instead of overflowing.
+    let result = engine.compute_plan();
+    assert!(
+        result.is_err(),
+        "BUG-018 RESOLVED: overflow must return ArithmeticOverflow error"
+    );
+    let err_msg = format!("{}", result.unwrap_err());
+    assert!(
+        err_msg.contains("arithmetic overflow"),
+        "error should mention arithmetic overflow, got: {err_msg}"
+    );
 }
 
 // =========================================================================

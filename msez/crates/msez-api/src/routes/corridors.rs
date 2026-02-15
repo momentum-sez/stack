@@ -241,6 +241,13 @@ async fn create_corridor(
     let chain = ReceiptChain::new(CorridorId::from_uuid(id));
     state.receipt_chains.write().insert(id, chain);
 
+    // Persist to database (write-through).
+    if let Some(pool) = &state.db_pool {
+        if let Err(e) = crate::db::corridors::insert(pool, &record).await {
+            tracing::error!(corridor_id = %id, error = %e, "failed to persist corridor to database");
+        }
+    }
+
     Ok((axum::http::StatusCode::CREATED, Json(record)))
 }
 
@@ -320,12 +327,9 @@ async fn transition_corridor(
     let req = extract_validated_json(body)?;
 
     // Parse the target state.
-    let target: DynCorridorState = serde_json::from_value(serde_json::Value::String(
-        req.target_state.clone(),
-    ))
-    .map_err(|_| {
-        AppError::Validation(format!("unknown state: '{}'", req.target_state))
-    })?;
+    let target: DynCorridorState =
+        serde_json::from_value(serde_json::Value::String(req.target_state.clone()))
+            .map_err(|_| AppError::Validation(format!("unknown state: '{}'", req.target_state)))?;
 
     // Parse and validate evidence digest upfront (before acquiring the lock).
     let evidence_digest = if let Some(ref hex) = req.evidence_digest {
@@ -345,7 +349,7 @@ async fn transition_corridor(
     // Atomically read-validate-update under a single write lock.
     // This eliminates the TOCTOU race where another request could
     // transition the corridor between our read and write.
-    state
+    let updated = state
         .corridors
         .try_update(&id, |corridor| {
             let current = corridor.state;
@@ -381,8 +385,26 @@ async fn transition_corridor(
 
             Ok(corridor.clone())
         })
-        .ok_or_else(|| AppError::NotFound(format!("corridor {id} not found")))?
-        .map(Json)
+        .ok_or_else(|| AppError::NotFound(format!("corridor {id} not found")))?;
+
+    let corridor = updated?;
+
+    // Persist state change to database (write-through).
+    if let Some(pool) = &state.db_pool {
+        if let Err(e) = crate::db::corridors::update_state(
+            pool,
+            id,
+            &corridor.state,
+            &corridor.transition_log,
+            corridor.updated_at,
+        )
+        .await
+        {
+            tracing::error!(corridor_id = %id, error = %e, "failed to persist corridor transition to database");
+        }
+    }
+
+    Ok(Json(corridor))
 }
 
 /// POST /v1/corridors/state/propose — Propose a receipt.
@@ -727,10 +749,7 @@ mod tests {
             ruleset_digest_set: vec![],
         };
         let err = req.validate().unwrap_err();
-        assert!(
-            err.contains("null"),
-            "error should mention null: {err}"
-        );
+        assert!(err.contains("null"), "error should mention null: {err}");
     }
 
     // ── Router construction ───────────────────────────────────────
@@ -960,8 +979,14 @@ mod tests {
         let transitioned: CorridorRecord = body_json(transition_resp).await;
         assert_eq!(transitioned.state, DynCorridorState::Pending);
         assert_eq!(transitioned.transition_log.len(), 1);
-        assert_eq!(transitioned.transition_log[0].from_state, DynCorridorState::Draft);
-        assert_eq!(transitioned.transition_log[0].to_state, DynCorridorState::Pending);
+        assert_eq!(
+            transitioned.transition_log[0].from_state,
+            DynCorridorState::Draft
+        );
+        assert_eq!(
+            transitioned.transition_log[0].to_state,
+            DynCorridorState::Pending
+        );
         assert!(
             transitioned.transition_log[0].evidence_digest.is_some(),
             "transition to PENDING should carry evidence digest"
@@ -980,8 +1005,14 @@ mod tests {
         let transitioned2: CorridorRecord = body_json(transition_resp2).await;
         assert_eq!(transitioned2.state, DynCorridorState::Active);
         assert_eq!(transitioned2.transition_log.len(), 2);
-        assert_eq!(transitioned2.transition_log[1].from_state, DynCorridorState::Pending);
-        assert_eq!(transitioned2.transition_log[1].to_state, DynCorridorState::Active);
+        assert_eq!(
+            transitioned2.transition_log[1].from_state,
+            DynCorridorState::Pending
+        );
+        assert_eq!(
+            transitioned2.transition_log[1].to_state,
+            DynCorridorState::Active
+        );
         assert!(transitioned2.transition_log[1].evidence_digest.is_none());
     }
 

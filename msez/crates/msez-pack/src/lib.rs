@@ -28,7 +28,9 @@
 //! - **`regpack`**: Regpack descriptors, sanctions checking, domain validation.
 //! - **`licensepack`**: Licensepack descriptors, license lifecycle, compliance evaluation.
 //! - **`validation`**: Pack validation rules, zone validation, cross-reference integrity.
+//! - **`composition`**: Multi-jurisdiction zone composition engine (ported from Python P1-006).
 
+pub mod composition;
 pub mod error;
 pub mod lawpack;
 pub mod licensepack;
@@ -37,6 +39,7 @@ pub mod regpack;
 pub mod validation;
 
 // Re-export primary types.
+pub use composition::ZoneComposition;
 pub use error::{PackError, PackResult};
 pub use lawpack::Lawpack;
 pub use licensepack::Licensepack;

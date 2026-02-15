@@ -57,10 +57,7 @@ fn put_json(uri: &str, body: serde_json::Value) -> Request<Body> {
 
 /// GET helper.
 fn get(uri: &str) -> Request<Body> {
-    Request::builder()
-        .uri(uri)
-        .body(Body::empty())
-        .unwrap()
+    Request::builder().uri(uri).body(Body::empty()).unwrap()
 }
 
 /// DELETE helper.
@@ -167,9 +164,7 @@ async fn corridor_create_same_jurisdictions() {
 async fn corridor_get_nonexistent_returns_404() {
     let app = test_app();
     let resp = app
-        .oneshot(get(
-            "/v1/corridors/00000000-0000-0000-0000-000000000000",
-        ))
+        .oneshot(get("/v1/corridors/00000000-0000-0000-0000-000000000000"))
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
@@ -234,10 +229,7 @@ async fn corridor_create_missing_fields() {
 #[tokio::test]
 async fn corridor_get_invalid_uuid_returns_400() {
     let app = test_app();
-    let resp = app
-        .oneshot(get("/v1/corridors/not-a-uuid"))
-        .await
-        .unwrap();
+    let resp = app.oneshot(get("/v1/corridors/not-a-uuid")).await.unwrap();
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 }
 
@@ -462,9 +454,7 @@ async fn asset_create_jurisdiction_too_long() {
 async fn asset_get_nonexistent_returns_404() {
     let app = test_app();
     let resp = app
-        .oneshot(get(
-            "/v1/assets/00000000-0000-0000-0000-000000000000",
-        ))
+        .oneshot(get("/v1/assets/00000000-0000-0000-0000-000000000000"))
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
@@ -473,10 +463,7 @@ async fn asset_get_nonexistent_returns_404() {
 #[tokio::test]
 async fn asset_get_invalid_uuid_returns_400() {
     let app = test_app();
-    let resp = app
-        .oneshot(get("/v1/assets/not-a-uuid"))
-        .await
-        .unwrap();
+    let resp = app.oneshot(get("/v1/assets/not-a-uuid")).await.unwrap();
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 }
 
@@ -796,10 +783,7 @@ async fn settlement_instruct_empty_legs() {
 async fn trigger_submit_empty_type() {
     let app = test_app();
     let resp = app
-        .oneshot(post_json(
-            "/v1/triggers",
-            json!({"trigger_type": ""}),
-        ))
+        .oneshot(post_json("/v1/triggers", json!({"trigger_type": ""})))
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
@@ -810,10 +794,7 @@ async fn trigger_submit_type_too_long() {
     let long = "x".repeat(256);
     let app = test_app();
     let resp = app
-        .oneshot(post_json(
-            "/v1/triggers",
-            json!({"trigger_type": long}),
-        ))
+        .oneshot(post_json("/v1/triggers", json!({"trigger_type": long})))
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
@@ -896,10 +877,7 @@ async fn regulator_query_attestations_jurisdiction_too_long() {
 async fn regulator_query_attestations_valid_empty() {
     let app = test_app();
     let resp = app
-        .oneshot(post_json(
-            "/v1/regulator/query/attestations",
-            json!({}),
-        ))
+        .oneshot(post_json("/v1/regulator/query/attestations", json!({})))
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
@@ -912,10 +890,7 @@ async fn regulator_query_attestations_valid_empty() {
 #[tokio::test]
 async fn regulator_dashboard() {
     let app = test_app();
-    let resp = app
-        .oneshot(get("/v1/regulator/dashboard"))
-        .await
-        .unwrap();
+    let resp = app.oneshot(get("/v1/regulator/dashboard")).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let v = body_json(resp).await;
     // Dashboard should have structured sections
@@ -1147,8 +1122,11 @@ async fn settlement_compute_and_instruct_lifecycle() {
     let instructions = instr["instructions"].as_array().unwrap();
     assert!(!instructions.is_empty());
     let xml = instructions[0]["xml"].as_str().unwrap_or("");
-    assert!(xml.contains("pacs.008") || xml.contains("FIToFICstmrCdtTrf") || xml.contains("<?xml"),
-        "SWIFT instruction should contain XML content, got: {}", &xml[..xml.len().min(100)]);
+    assert!(
+        xml.contains("pacs.008") || xml.contains("FIToFICstmrCdtTrf") || xml.contains("<?xml"),
+        "SWIFT instruction should contain XML content, got: {}",
+        &xml[..xml.len().min(100)]
+    );
 }
 
 // =========================================================================
@@ -1168,9 +1146,15 @@ async fn error_response_has_correct_json_structure() {
     assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
     let v = body_json(resp).await;
     // Error response must have {error: {code, message}} structure
-    assert!(v["error"].is_object(), "error response must have 'error' key");
+    assert!(
+        v["error"].is_object(),
+        "error response must have 'error' key"
+    );
     assert!(v["error"]["code"].is_string(), "error must have 'code'");
-    assert!(v["error"]["message"].is_string(), "error must have 'message'");
+    assert!(
+        v["error"]["message"].is_string(),
+        "error must have 'message'"
+    );
     assert_eq!(v["error"]["code"], "VALIDATION_ERROR");
 }
 
@@ -1178,9 +1162,7 @@ async fn error_response_has_correct_json_structure() {
 async fn error_404_has_correct_json_structure() {
     let app = test_app();
     let resp = app
-        .oneshot(get(
-            "/v1/corridors/00000000-0000-0000-0000-000000000000",
-        ))
+        .oneshot(get("/v1/corridors/00000000-0000-0000-0000-000000000000"))
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
@@ -1299,20 +1281,14 @@ async fn corridor_deprecated_is_terminal() {
 #[tokio::test]
 async fn health_liveness_bypasses_auth() {
     let app = authed_app("secret-token");
-    let resp = app
-        .oneshot(get("/health/liveness"))
-        .await
-        .unwrap();
+    let resp = app.oneshot(get("/health/liveness")).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn health_readiness_bypasses_auth() {
     let app = authed_app("secret-token");
-    let resp = app
-        .oneshot(get("/health/readiness"))
-        .await
-        .unwrap();
+    let resp = app.oneshot(get("/health/readiness")).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
 }
 
@@ -1343,8 +1319,7 @@ async fn triggers_get_method_not_allowed() {
     let resp = app.oneshot(get("/v1/triggers")).await.unwrap();
     // GET /v1/triggers is not defined — only POST is
     assert!(
-        resp.status() == StatusCode::METHOD_NOT_ALLOWED
-            || resp.status() == StatusCode::NOT_FOUND,
+        resp.status() == StatusCode::METHOD_NOT_ALLOWED || resp.status() == StatusCode::NOT_FOUND,
         "GET /v1/triggers: expected 405 or 404, got {}",
         resp.status()
     );
@@ -1362,7 +1337,9 @@ async fn corridor_create_no_content_type() {
             Request::builder()
                 .method("POST")
                 .uri("/v1/corridors")
-                .body(Body::from(r#"{"jurisdiction_a":"PK-PSEZ","jurisdiction_b":"AE-DIFC"}"#))
+                .body(Body::from(
+                    r#"{"jurisdiction_a":"PK-PSEZ","jurisdiction_b":"AE-DIFC"}"#,
+                ))
                 .unwrap(),
         )
         .await
@@ -1386,7 +1363,9 @@ async fn corridor_create_wrong_content_type() {
                 .method("POST")
                 .uri("/v1/corridors")
                 .header("content-type", "text/plain")
-                .body(Body::from(r#"{"jurisdiction_a":"PK-PSEZ","jurisdiction_b":"AE-DIFC"}"#))
+                .body(Body::from(
+                    r#"{"jurisdiction_a":"PK-PSEZ","jurisdiction_b":"AE-DIFC"}"#,
+                ))
                 .unwrap(),
         )
         .await
@@ -1469,7 +1448,9 @@ async fn mass_proxy_treasury_create_without_client() {
 async fn mass_proxy_treasury_get_without_client() {
     let app = test_app();
     let resp = app
-        .oneshot(get("/v1/treasury/accounts/00000000-0000-0000-0000-000000000000"))
+        .oneshot(get(
+            "/v1/treasury/accounts/00000000-0000-0000-0000-000000000000",
+        ))
         .await
         .unwrap();
     assert!(
@@ -1665,7 +1646,8 @@ async fn settlement_compute_negative_amount() {
         resp.status() == StatusCode::UNPROCESSABLE_ENTITY
             || resp.status() == StatusCode::BAD_REQUEST
             || resp.status() == StatusCode::OK,
-        "Negative amount: got {}", resp.status()
+        "Negative amount: got {}",
+        resp.status()
     );
     // BUG-024: If server accepts negative amounts, that's a validation gap
 }
@@ -1690,7 +1672,8 @@ async fn settlement_compute_zero_amount() {
         resp.status() == StatusCode::UNPROCESSABLE_ENTITY
             || resp.status() == StatusCode::BAD_REQUEST
             || resp.status() == StatusCode::OK,
-        "Zero amount: got {}", resp.status()
+        "Zero amount: got {}",
+        resp.status()
     );
 }
 
@@ -1777,7 +1760,8 @@ async fn regulator_query_negative_limit() {
         resp.status() == StatusCode::UNPROCESSABLE_ENTITY
             || resp.status() == StatusCode::BAD_REQUEST
             || resp.status() == StatusCode::OK,
-        "Negative limit: got {}", resp.status()
+        "Negative limit: got {}",
+        resp.status()
     );
 }
 

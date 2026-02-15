@@ -221,7 +221,7 @@ pub enum EntityError {
 ///
 /// Tracks both the high-level lifecycle state and, when dissolving,
 /// the current dissolution stage (1-10).
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Entity {
     /// Unique entity identifier.
     pub id: EntityId,

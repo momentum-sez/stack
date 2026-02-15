@@ -10,17 +10,18 @@
 //!
 //! | Prefix               | Module                      | Domain              |
 //! |-----------------------|----------------------------|---------------------|
-//! | `/v1/entities/*`      | [`routes::mass_proxy`]     | Mass proxy (Entities) |
-//! | `/v1/ownership/*`     | [`routes::mass_proxy`]     | Mass proxy (Ownership) |
-//! | `/v1/fiscal/*`        | [`routes::mass_proxy`]     | Mass proxy (Fiscal) |
-//! | `/v1/identity/*`      | [`routes::mass_proxy`]     | Mass proxy (Identity) |
-//! | `/v1/consent/*`       | [`routes::mass_proxy`]     | Mass proxy (Consent) |
+//! | `/v1/entities/*`      | [`routes::mass_proxy`]     | Entities (orchestrated) |
+//! | `/v1/ownership/*`     | [`routes::mass_proxy`]     | Ownership (orchestrated) |
+//! | `/v1/fiscal/*`        | [`routes::mass_proxy`]     | Fiscal (orchestrated) |
+//! | `/v1/identity/*`      | [`routes::mass_proxy`]     | Identity (orchestrated) |
+//! | `/v1/consent/*`       | [`routes::mass_proxy`]     | Consent (orchestrated) |
 //! | `/v1/corridors/*`     | [`routes::corridors`]      | Corridors (SEZ)     |
 //! | `/v1/assets/*`        | [`routes::smart_assets`]   | Smart Assets (SEZ)  |
 //! | `/v1/assets/*/credentials/*` | [`routes::credentials`] | VC Issuance (SEZ) |
 //! | `/v1/credentials/*`  | [`routes::credentials`]    | VC Verification (SEZ) |
 //! | `/v1/triggers`        | [`routes::agentic`]        | Agentic Engine (SEZ)|
 //! | `/v1/policies/*`      | [`routes::agentic`]        | Policy Mgmt (SEZ)   |
+//! | `/v1/tax/*`           | [`routes::tax`]            | Tax Pipeline (SEZ)  |
 //! | `/v1/regulator/*`     | [`routes::regulator`]      | Regulator (SEZ)     |
 //!
 //! ## Middleware Stack (execution order)
@@ -36,10 +37,12 @@
 pub mod auth;
 pub mod bootstrap;
 pub mod compliance;
+pub mod db;
 pub mod error;
 pub mod extractors;
 pub mod middleware;
 pub mod openapi;
+pub mod orchestration;
 pub mod routes;
 pub mod state;
 
@@ -81,6 +84,7 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::credentials::router())
         .merge(routes::regulator::router())
         .merge(routes::agentic::router())
+        .merge(routes::tax::router())
         .merge(openapi::router())
         .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
         .layer(from_fn(auth::auth_middleware))
@@ -112,6 +116,7 @@ async fn liveness() -> &'static str {
 /// - Zone signing key is loaded (can derive verifying key).
 /// - Policy engine lock is acquirable (not deadlocked).
 /// - In-memory stores are accessible.
+/// - Database connection is healthy (when configured).
 ///
 /// Returns 200 "ready" or 503 with a diagnostic message.
 async fn readiness(State(state): State<AppState>) -> impl IntoResponse {
@@ -131,6 +136,14 @@ async fn readiness(State(state): State<AppState>) -> impl IntoResponse {
     let _ = state.corridors.len();
     let _ = state.smart_assets.len();
     let _ = state.attestations.len();
+
+    // Verify database connection (when configured).
+    if let Some(pool) = &state.db_pool {
+        if let Err(e) = sqlx::query("SELECT 1").execute(pool).await {
+            tracing::warn!("Database health check failed: {e}");
+            return (StatusCode::SERVICE_UNAVAILABLE, "database unreachable").into_response();
+        }
+    }
 
     (StatusCode::OK, "ready").into_response()
 }

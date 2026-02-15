@@ -3,10 +3,10 @@
 //! Simple token-bucket rate limiter keyed by jurisdiction ID.
 //! Phase 1: in-memory. Phase 2: Redis-backed distributed rate limiting.
 
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
-use parking_lot::RwLock;
 
 use axum::extract::Request;
 use axum::http::StatusCode;

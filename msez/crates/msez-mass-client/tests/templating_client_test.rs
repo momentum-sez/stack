@@ -24,7 +24,7 @@ async fn test_client(mock_server: &MockServer) -> MassClient {
         consent_info_url: "http://127.0.0.1:19003".parse().unwrap(),
         identity_info_url: None,
         templating_engine_url: mock_server.uri().parse().unwrap(),
-        api_token: "test-token".into(),
+        api_token: zeroize::Zeroizing::new("test-token".into()),
         timeout_secs: 5,
     };
     MassClient::new(config).unwrap()

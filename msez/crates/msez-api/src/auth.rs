@@ -29,9 +29,65 @@ use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
 use utoipa::ToSchema;
 use uuid::Uuid;
+use zeroize::Zeroize;
 
 use crate::error::{AppError, ErrorBody, ErrorDetail};
 use crate::state::SmartAssetRecord;
+
+// ── SecretString ──────────────────────────────────────────────────────────
+
+/// A string that holds sensitive data (tokens, secrets) and is zeroed on drop.
+///
+/// Prevents credential material from lingering in process memory after the
+/// value goes out of scope. Implements `Zeroize` + `Drop` for defense-in-depth
+/// against memory dump attacks. `Debug` and `Display` always print `[REDACTED]`.
+#[derive(Clone)]
+pub struct SecretString(String);
+
+impl SecretString {
+    /// Wrap a string as a secret.
+    pub fn new(s: impl Into<String>) -> Self {
+        Self(s.into())
+    }
+
+    /// Borrow the secret value. Use sparingly — only for comparison or hashing.
+    pub fn expose(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Zeroize for SecretString {
+    fn zeroize(&mut self) {
+        self.0.zeroize();
+    }
+}
+
+impl Drop for SecretString {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
+}
+
+impl std::fmt::Debug for SecretString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("[REDACTED]")
+    }
+}
+
+impl std::fmt::Display for SecretString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("[REDACTED]")
+    }
+}
+
+impl PartialEq for SecretString {
+    /// Constant-time equality for secret strings.
+    fn eq(&self, other: &Self) -> bool {
+        constant_time_token_eq(self.expose(), other.expose())
+    }
+}
+
+impl Eq for SecretString {}
 
 // ── Role ────────────────────────────────────────────────────────────────────
 
@@ -142,10 +198,12 @@ pub fn require_role(caller: &CallerIdentity, minimum: Role) -> Result<(), AppErr
 
 /// Auth configuration injected into request extensions.
 ///
-/// Custom `Debug` redacts the token value to prevent credential leakage in logs.
+/// The token is wrapped in [`SecretString`] which implements `Zeroize` on drop,
+/// preventing credential material from lingering in process memory. `Debug`
+/// redacts the token value to prevent credential leakage in logs.
 #[derive(Clone)]
 pub struct AuthConfig {
-    pub token: Option<String>,
+    pub token: Option<SecretString>,
 }
 
 impl std::fmt::Debug for AuthConfig {
@@ -255,7 +313,7 @@ pub async fn auth_middleware(mut request: Request, next: Next) -> Response {
             match auth_header {
                 Some(header_value) if header_value.starts_with("Bearer ") => {
                     let provided = &header_value[7..];
-                    match parse_bearer_token(provided, expected) {
+                    match parse_bearer_token(provided, expected.expose()) {
                         Ok(identity) => {
                             request.extensions_mut().insert(identity);
                             next.run(request).await
@@ -314,7 +372,9 @@ mod tests {
 
     /// Build a minimal router with the auth middleware and a simple handler.
     fn test_app(token: Option<String>) -> Router {
-        let auth_config = AuthConfig { token };
+        let auth_config = AuthConfig {
+            token: token.map(SecretString::new),
+        };
         Router::new()
             .route("/test", get(|| async { "ok" }))
             .layer(from_fn(auth_middleware))

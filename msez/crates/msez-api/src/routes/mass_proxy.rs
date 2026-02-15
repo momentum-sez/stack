@@ -451,28 +451,79 @@ async fn get_entity(
     }
 }
 
-/// PUT /v1/entities/{id} — Update an entity in Mass.
+/// PUT /v1/entities/{id} — Update an entity with compliance evaluation and VC issuance.
 ///
-/// Not yet implemented: the Mass organization-info API update endpoint
-/// is being finalized. Returns 501 until the EntityClient gains an
-/// `update` method.
+/// Orchestration pipeline:
+/// 1. Fetch existing entity from Mass (to determine jurisdiction)
+/// 2. Evaluate compliance tensor for that jurisdiction
+/// 3. Reject if sanctions domain is `NonCompliant` (hard block)
+/// 4. Update entity via Mass organization-info API
+/// 5. Issue a `MsezFormationComplianceCredential` VC
+/// 6. Store attestation record for regulator queries
 #[utoipa::path(
     put,
     path = "/v1/entities/:id",
     params(("id" = uuid::Uuid, Path, description = "Entity UUID")),
     responses(
-        (status = 501, description = "Not yet implemented"),
+        (status = 200, description = "Entity updated with compliance evaluation and VC"),
+        (status = 403, description = "Blocked by compliance hard-block (sanctions)"),
+        (status = 404, description = "Entity not found"),
+        (status = 502, description = "Mass API error"),
+        (status = 503, description = "Mass client not configured"),
     ),
     tag = "entities"
 )]
 async fn update_entity(
-    State(_state): State<AppState>,
-    Path(_id): Path<uuid::Uuid>,
-    Json(_body): Json<serde_json::Value>,
-) -> Result<Json<serde_json::Value>, AppError> {
-    Err(AppError::NotImplemented(
-        "entity update proxy: awaiting EntityClient.update() method".into(),
-    ))
+    State(state): State<AppState>,
+    Path(id): Path<uuid::Uuid>,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Json<OrchestrationEnvelope>, AppError> {
+    let client = require_mass_client(&state)?;
+
+    // Step 1: Fetch existing entity to determine jurisdiction.
+    let existing = client
+        .entities()
+        .get(id)
+        .await
+        .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?
+        .ok_or_else(|| AppError::not_found(format!("entity {id} not found")))?;
+
+    let jurisdiction_id = existing
+        .jurisdiction
+        .as_deref()
+        .unwrap_or("UNKNOWN");
+
+    // Step 2: Pre-flight compliance evaluation.
+    let (_tensor, pre_summary) = orchestration::evaluate_compliance(
+        jurisdiction_id,
+        &id.to_string(),
+        orchestration::entity_domains(),
+    );
+
+    // Step 3: Hard-block check (sanctions).
+    if let Some(reason) = orchestration::check_hard_blocks(&pre_summary) {
+        return Err(AppError::Forbidden(reason));
+    }
+
+    // Step 4: Mass API call — update entity.
+    let entity = client
+        .entities()
+        .update(id, &body)
+        .await
+        .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
+
+    let mass_response = serde_json::to_value(entity)
+        .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
+
+    // Step 5 & 6: Post-operation orchestration (VC issuance + attestation storage).
+    let envelope = orchestration::orchestrate_entity_update(
+        &state,
+        id,
+        jurisdiction_id,
+        mass_response,
+    );
+
+    Ok(Json(envelope))
 }
 
 /// GET /v1/entities — List entities from Mass (proxy, no orchestration).
@@ -530,9 +581,12 @@ async fn create_cap_table(
     let client = require_mass_client(&state)?;
 
     // Step 1: Pre-flight compliance evaluation.
+    // TODO(P1-004): The entity's jurisdiction should be fetched from Mass
+    // organization-info by entity_id. For now, ownership operations use
+    // global-scope evaluation until the entity lookup is integrated.
     let entity_id = req.entity_id;
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
-        "UNKNOWN",
+        "GLOBAL",
         &entity_id.to_string(),
         orchestration::ownership_domains(),
     );
@@ -629,13 +683,14 @@ async fn create_account(
     let client = require_mass_client(&state)?;
 
     // Step 1: Pre-flight compliance evaluation.
+    // Infer jurisdiction from the requested currency — this drives compliance
+    // tensor evaluation for the correct jurisdiction (PK, AE, US, CN, etc.).
     let entity_id = req.entity_id;
     let currency = req.currency.clone();
+    let inferred_jurisdiction =
+        orchestration::infer_jurisdiction(&currency);
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
-        orchestration::fiscal_account_domains()
-            .first()
-            .map(|_| "UNKNOWN")
-            .unwrap_or("UNKNOWN"),
+        inferred_jurisdiction,
         &entity_id.to_string(),
         orchestration::fiscal_account_domains(),
     );
@@ -695,10 +750,14 @@ async fn initiate_payment(
     let client = require_mass_client(&state)?;
 
     // Step 1: Pre-flight compliance evaluation.
+    // Infer jurisdiction from the payment currency for compliance tensor
+    // evaluation. Covers all deployment corridors (PAK↔UAE, PAK↔KSA, PAK↔CHN).
     let from_account_id = req.from_account_id;
     let currency = req.currency.clone();
+    let inferred_jurisdiction =
+        orchestration::infer_jurisdiction(&currency);
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
-        "UNKNOWN",
+        inferred_jurisdiction,
         &from_account_id.to_string(),
         orchestration::payment_domains(),
     );
@@ -1218,7 +1277,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_entity_returns_501() {
+    async fn update_entity_returns_503_without_mass_client() {
         let app = router().with_state(AppState::new());
         let req = Request::builder()
             .method("PUT")
@@ -1228,7 +1287,7 @@ mod tests {
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::NOT_IMPLEMENTED);
+        assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 
     #[tokio::test]

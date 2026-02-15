@@ -5,6 +5,7 @@
 //! construction for staging/testing.
 
 use url::Url;
+use zeroize::Zeroizing;
 
 /// Configuration for connecting to Mass API services.
 ///
@@ -32,7 +33,10 @@ pub struct MassApiConfig {
     /// Base URL for templating-engine.
     pub templating_engine_url: Url,
     /// Bearer token for API authentication.
-    pub api_token: String,
+    ///
+    /// Wrapped in [`Zeroizing`] so the token is scrubbed from process memory
+    /// on drop — defense-in-depth for sovereign infrastructure (P2-004).
+    pub api_token: Zeroizing<String>,
     /// Request timeout in seconds.
     pub timeout_secs: u64,
 }
@@ -65,7 +69,8 @@ impl MassApiConfig {
     /// - `MASS_API_TOKEN` (required)
     /// - `MASS_TIMEOUT_SECS` (default: 30)
     pub fn from_env() -> Result<Self, ConfigError> {
-        let api_token = std::env::var("MASS_API_TOKEN").map_err(|_| ConfigError::MissingToken)?;
+        let api_token =
+            Zeroizing::new(std::env::var("MASS_API_TOKEN").map_err(|_| ConfigError::MissingToken)?);
 
         let identity_info_url = match std::env::var("MASS_IDENTITY_INFO_URL") {
             Ok(raw) => Some(Url::parse(&raw).map_err(|e| {
@@ -119,7 +124,7 @@ impl MassApiConfig {
             consent_info_url: make_url(base_port + 3)?,
             identity_info_url: None,
             templating_engine_url: make_url(base_port + 4)?,
-            api_token: token.to_string(),
+            api_token: Zeroizing::new(token.to_string()),
             timeout_secs: 5,
         })
     }
@@ -146,7 +151,7 @@ mod tests {
     #[test]
     fn local_mock_builds_valid_config() {
         let cfg = MassApiConfig::local_mock(9000, "test-token").unwrap();
-        assert_eq!(cfg.api_token, "test-token");
+        assert_eq!(cfg.api_token.as_str(), "test-token");
         assert_eq!(cfg.timeout_secs, 5);
         assert_eq!(cfg.organization_info_url.as_str(), "http://127.0.0.1:9000/");
         assert_eq!(cfg.investment_info_url.as_str(), "http://127.0.0.1:9001/");

@@ -31,7 +31,7 @@ async fn test_client(mock_server: &MockServer) -> MassClient {
         consent_info_url: "http://127.0.0.1:19003".parse().unwrap(),
         identity_info_url: None,
         templating_engine_url: "http://127.0.0.1:19004".parse().unwrap(),
-        api_token: "test-token".into(),
+        api_token: zeroize::Zeroizing::new("test-token".into()),
         timeout_secs: 5,
     };
     MassClient::new(config).unwrap()
@@ -419,4 +419,92 @@ async fn entity_deserializes_with_missing_optional_fields() {
     assert!(entity.created_at.is_none());
     assert!(entity.board.is_none());
     assert!(entity.members.is_none());
+}
+
+// ── PUT /api/v1/organization/{id} ────────────────────────────────────
+
+#[tokio::test]
+async fn update_entity_sends_correct_path_and_returns_entity() {
+    let mock_server = MockServer::start().await;
+    let id = "550e8400-e29b-41d4-a716-446655440000";
+
+    Mock::given(method("PUT"))
+        .and(path(format!(
+            "/organization-info/api/v1/organization/{id}"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": id,
+            "name": "Updated Corp",
+            "jurisdiction": "pk-sez-01",
+            "status": "ACTIVE",
+            "tags": ["updated"],
+            "createdAt": "2026-01-15T12:00:00Z",
+            "updatedAt": "2026-02-15T10:00:00Z"
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let body = serde_json::json!({"name": "Updated Corp"});
+    let entity = client
+        .entities()
+        .update(id.parse().unwrap(), &body)
+        .await
+        .unwrap();
+    assert_eq!(entity.name, "Updated Corp");
+    assert_eq!(entity.jurisdiction.as_deref(), Some("pk-sez-01"));
+}
+
+#[tokio::test]
+async fn update_entity_returns_error_on_404() {
+    let mock_server = MockServer::start().await;
+    let id = "550e8400-e29b-41d4-a716-446655440099";
+
+    Mock::given(method("PUT"))
+        .and(path(format!(
+            "/organization-info/api/v1/organization/{id}"
+        )))
+        .respond_with(ResponseTemplate::new(404).set_body_string("Not Found"))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let body = serde_json::json!({"name": "Ghost Corp"});
+    let result = client.entities().update(id.parse().unwrap(), &body).await;
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        msez_mass_client::MassApiError::ApiError { status, .. } => {
+            assert_eq!(status, 404);
+        }
+        other => panic!("expected ApiError, got: {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn update_entity_returns_error_on_422() {
+    let mock_server = MockServer::start().await;
+    let id = "550e8400-e29b-41d4-a716-446655440000";
+
+    Mock::given(method("PUT"))
+        .and(path(format!(
+            "/organization-info/api/v1/organization/{id}"
+        )))
+        .respond_with(
+            ResponseTemplate::new(422).set_body_string("Validation failed: name is required"),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let body = serde_json::json!({});
+    let result = client.entities().update(id.parse().unwrap(), &body).await;
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        msez_mass_client::MassApiError::ApiError { status, body, .. } => {
+            assert_eq!(status, 422);
+            assert!(body.contains("Validation failed"));
+        }
+        other => panic!("expected ApiError, got: {other:?}"),
+    }
 }

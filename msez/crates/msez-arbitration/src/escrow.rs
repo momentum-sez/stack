@@ -501,7 +501,7 @@ impl EscrowAccount {
 /// or lead to incorrect settlement calculations.
 fn parse_amount(s: &str) -> Result<i64, ArbitrationError> {
     s.parse::<i64>()
-        .map_err(|_| ArbitrationError::InvalidAmount(s.to_string()))
+        .map_err(|e| ArbitrationError::InvalidAmount(format!("{s}: {e}")))
 }
 
 /// Format an i64 amount back to a string.

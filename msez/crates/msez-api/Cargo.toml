@@ -54,12 +54,10 @@ tracing-subscriber = { workspace = true }
 # Security
 subtle = { workspace = true }
 parking_lot = { workspace = true }
+zeroize = { workspace = true }
 
 # Database
 sqlx = { workspace = true }
-
-# Cryptography (SHA-256 for audit hash chain)
-sha2 = { workspace = true }
 
 # Error handling
 thiserror = { workspace = true }

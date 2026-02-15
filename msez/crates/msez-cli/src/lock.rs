@@ -15,7 +15,6 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
 use clap::Args;
-use sha2::{Digest, Sha256};
 
 use msez_core::CanonicalBytes;
 
@@ -321,17 +320,20 @@ fn sha256_file(path: &Path) -> Result<String> {
 }
 
 /// Compute SHA-256 hex digest of raw bytes.
+///
+/// Delegates to [`msez_core::sha256_raw`] — the sole raw-byte SHA-256
+/// implementation per CLAUDE.md §V.5.
 fn sha256_of_bytes(bytes: &[u8]) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(bytes);
-    let result = hasher.finalize();
-    result.iter().map(|b| format!("{b:02x}")).collect()
+    msez_core::sha256_raw(bytes)
 }
 
 /// Compute a deterministic digest over a directory's contents.
 ///
 /// Walks all files in sorted order, hashing their relative paths and contents.
+/// Uses raw `sha2` streaming API since this is a multi-part hash over file
+/// paths and contents — not a canonical domain object.
 fn digest_dir(dir: &Path) -> Result<String> {
+    use sha2::{Digest, Sha256};
     let mut hasher = Sha256::new();
     let mut paths: Vec<PathBuf> = Vec::new();
 

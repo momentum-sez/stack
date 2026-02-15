@@ -395,6 +395,38 @@ pub fn orchestrate_entity_creation(
     }
 }
 
+/// Run the full orchestration pipeline for an entity update.
+///
+/// Same pipeline as creation: compliance evaluation → VC issuance →
+/// attestation storage. Updates carry the same regulatory risk as creation
+/// (e.g., changing jurisdiction or beneficial owners triggers sanctions check).
+pub fn orchestrate_entity_update(
+    state: &AppState,
+    entity_id: uuid::Uuid,
+    jurisdiction_id: &str,
+    mass_response: serde_json::Value,
+) -> OrchestrationEnvelope {
+    let entity_id_str = entity_id.to_string();
+
+    let (_tensor, summary) = evaluate_compliance(jurisdiction_id, &entity_id_str, ENTITY_DOMAINS);
+
+    let (credential, attestation_id) = issue_and_store(
+        state,
+        vc_types::FORMATION_COMPLIANCE,
+        jurisdiction_id,
+        &entity_id_str,
+        &entity_id_str,
+        &summary,
+    );
+
+    OrchestrationEnvelope {
+        mass_response,
+        compliance: summary,
+        credential,
+        attestation_id,
+    }
+}
+
 /// Run the full orchestration pipeline for cap table creation.
 pub fn orchestrate_cap_table_creation(
     state: &AppState,
@@ -403,9 +435,10 @@ pub fn orchestrate_cap_table_creation(
 ) -> OrchestrationEnvelope {
     let entity_id_str = entity_id.to_string();
 
-    // Use a default jurisdiction since cap table requests don't carry one.
-    // In production, this would be looked up from the entity's jurisdiction.
-    let jurisdiction_id = "UNKNOWN";
+    // TODO(P1-004): Fetch entity's jurisdiction from Mass organization-info
+    // by entity_id. For now, ownership operations use GLOBAL-scope evaluation
+    // (same as the handler's pre-flight check in mass_proxy.rs).
+    let jurisdiction_id = "GLOBAL";
 
     let (_tensor, summary) =
         evaluate_compliance(jurisdiction_id, &entity_id_str, OWNERSHIP_DOMAINS);
@@ -609,14 +642,41 @@ fn issue_and_store(
 /// This is a heuristic for fiscal operations where the request doesn't
 /// carry an explicit jurisdiction. In production, the entity's registered
 /// jurisdiction should be fetched from Mass.
+///
+/// Coverage: all current and planned deployment corridors — USA, BVI,
+/// Cayman, UAE, Pakistan, China (Hainan), Seychelles, Kazakhstan, KSA,
+/// Hong Kong, and common international currencies.
+pub fn infer_jurisdiction(currency: &str) -> &str {
+    infer_jurisdiction_from_currency(currency)
+}
+
 fn infer_jurisdiction_from_currency(currency: &str) -> &str {
     match currency.to_uppercase().as_str() {
-        "PKR" => "PK",
-        "AED" => "AE",
-        "USD" => "US",
-        "GBP" => "GB",
-        "EUR" => "EU",
-        "SGD" => "SG",
+        // Active deployment targets
+        "PKR" => "PK",   // Pakistan
+        "AED" => "AE",   // UAE (ADGM, DIFC, 27 free zones)
+        "USD" => "US",   // United States (also used in BVI)
+        "GBP" => "GB",   // United Kingdom
+        "EUR" => "EU",   // European Union
+        "SGD" => "SG",   // Singapore
+        "CNY" | "RMB" => "CN", // China (Hainan SEZ)
+        "SAR" => "SA",   // Saudi Arabia (PAK↔KSA corridor)
+        "KYD" => "KY",   // Cayman Islands
+        "SCR" => "SC",   // Seychelles
+        "KZT" => "KZ",   // Kazakhstan (Alatau City / AIFC)
+        "HKD" => "HK",   // Hong Kong
+        // Additional corridors and common currencies
+        "BHD" => "BH",   // Bahrain
+        "OMR" => "OM",   // Oman
+        "QAR" => "QA",   // Qatar
+        "KWD" => "KW",   // Kuwait
+        "INR" => "IN",   // India
+        "JPY" => "JP",   // Japan
+        "CHF" => "CH",   // Switzerland
+        "CAD" => "CA",   // Canada
+        "AUD" => "AU",   // Australia
+        "MYR" => "MY",   // Malaysia
+        "TRY" => "TR",   // Türkiye
         _ => "UNKNOWN",
     }
 }
@@ -846,6 +906,30 @@ mod tests {
     fn infer_jurisdiction_pkr() {
         assert_eq!(infer_jurisdiction_from_currency("PKR"), "PK");
         assert_eq!(infer_jurisdiction_from_currency("pkr"), "PK");
+    }
+
+    #[test]
+    fn infer_jurisdiction_deployment_targets() {
+        // All active and planned deployment corridors must resolve.
+        assert_eq!(infer_jurisdiction_from_currency("AED"), "AE");
+        assert_eq!(infer_jurisdiction_from_currency("USD"), "US");
+        assert_eq!(infer_jurisdiction_from_currency("GBP"), "GB");
+        assert_eq!(infer_jurisdiction_from_currency("EUR"), "EU");
+        assert_eq!(infer_jurisdiction_from_currency("SGD"), "SG");
+        assert_eq!(infer_jurisdiction_from_currency("CNY"), "CN");
+        assert_eq!(infer_jurisdiction_from_currency("RMB"), "CN");
+        assert_eq!(infer_jurisdiction_from_currency("SAR"), "SA");
+        assert_eq!(infer_jurisdiction_from_currency("KYD"), "KY");
+        assert_eq!(infer_jurisdiction_from_currency("SCR"), "SC");
+        assert_eq!(infer_jurisdiction_from_currency("KZT"), "KZ");
+        assert_eq!(infer_jurisdiction_from_currency("HKD"), "HK");
+    }
+
+    #[test]
+    fn infer_jurisdiction_case_insensitive() {
+        assert_eq!(infer_jurisdiction_from_currency("cny"), "CN");
+        assert_eq!(infer_jurisdiction_from_currency("Sar"), "SA");
+        assert_eq!(infer_jurisdiction_from_currency("kyd"), "KY");
     }
 
     #[test]

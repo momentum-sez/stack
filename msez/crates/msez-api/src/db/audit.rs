@@ -35,18 +35,19 @@ pub async fn append(pool: &PgPool, event: AuditEvent) -> Result<Uuid, sqlx::Erro
         .as_deref()
         .unwrap_or("0000000000000000000000000000000000000000000000000000000000000000");
 
-    // Compute event hash via CanonicalBytes (the sole authorized SHA-256 path).
-    // The JSON structure ensures deterministic key ordering.
-    let hash_data = serde_json::json!({
-        "action": event.action,
-        "event_type": event.event_type,
+    // Compute event hash via CanonicalBytes — deterministic JSON canonicalization
+    // with sorted keys, not fragile string concatenation. Keys are alphabetically
+    // sorted in the json!() literal to match JCS output for readability.
+    let hash_object = serde_json::json!({
+        "action": &event.action,
+        "event_type": &event.event_type,
         "previous_hash": prev,
         "resource_id": event.resource_id.to_string(),
-        "resource_type": event.resource_type,
+        "resource_type": &event.resource_type,
     });
-    let canonical = msez_core::CanonicalBytes::new(&hash_data)
-        .expect("audit event hash input is always valid JSON");
-    let event_hash = msez_core::digest::sha256_digest(&canonical).to_hex();
+    let canonical = msez_core::CanonicalBytes::new(&hash_object)
+        .map_err(|e| sqlx::Error::Protocol(format!("canonical bytes error: {e}")))?;
+    let event_hash = msez_core::sha256_digest(&canonical).to_hex();
 
     sqlx::query(
         "INSERT INTO audit_events (id, event_type, actor_did, resource_type, resource_id,

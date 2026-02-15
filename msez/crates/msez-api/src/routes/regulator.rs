@@ -4,14 +4,19 @@
 //! to monitor zone activity, compliance status, and audit trails.
 //! Route structure based on apis/regulator-console.openapi.yaml.
 
+use std::collections::HashMap;
+
 use axum::extract::State;
 use axum::routing::{get, post};
-use axum::{Json, Router};
+use axum::{Extension, Json, Router};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
+use crate::middleware::metrics::ApiMetrics;
 use crate::state::{AppState, AttestationRecord};
 use axum::extract::rejection::JsonRejection;
 
@@ -50,11 +55,153 @@ pub struct ComplianceSummary {
     pub total_attestations: usize,
 }
 
+// ── Regulator Dashboard Types ───────────────────────────────────────────────
+
+/// Comprehensive zone operational dashboard.
+///
+/// Assembles zone identity, compliance posture, corridor health,
+/// agentic policy activity, and system health into a single response.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct RegulatorDashboard {
+    /// Zone identity and operational status.
+    pub zone: ZoneStatus,
+    /// Compliance posture across all assets.
+    pub compliance: CompliancePosture,
+    /// Corridor health and activity.
+    pub corridors: CorridorOverview,
+    /// Recent agentic policy activity.
+    pub policy_activity: PolicyActivity,
+    /// System health indicators.
+    pub health: SystemHealth,
+}
+
+/// Zone identity and counts.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ZoneStatus {
+    /// Zone operator's DID (from the zone signing key).
+    pub zone_did: String,
+    /// Zone operator's public key (hex).
+    pub zone_public_key: String,
+    /// Timestamp of this dashboard snapshot.
+    pub snapshot_at: DateTime<Utc>,
+    /// Number of unique entities known via attestations.
+    pub entity_count: usize,
+    /// Number of corridors.
+    pub corridor_count: usize,
+    /// Number of smart assets.
+    pub asset_count: usize,
+    /// Number of attestation records.
+    pub attestation_count: usize,
+}
+
+/// Aggregate compliance posture across all assets.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CompliancePosture {
+    /// Per-asset compliance summary.
+    pub assets: Vec<AssetComplianceStatus>,
+    /// Number of assets with all domains passing.
+    pub fully_compliant_count: usize,
+    /// Number of assets with at least one blocking domain.
+    pub has_blocking_count: usize,
+    /// Number of assets with all domains pending (or no status).
+    pub all_pending_count: usize,
+}
+
+/// Per-asset compliance status snapshot.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct AssetComplianceStatus {
+    /// Asset ID.
+    pub asset_id: Uuid,
+    /// Asset type (equity, bond, etc.).
+    pub asset_type: String,
+    /// Jurisdiction.
+    pub jurisdiction_id: String,
+    /// Last known compliance status.
+    pub compliance_status: Option<String>,
+    /// When compliance was last evaluated (from asset metadata).
+    pub last_evaluated: Option<String>,
+}
+
+/// Corridor health and activity overview.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CorridorOverview {
+    /// Per-corridor status.
+    pub corridors: Vec<CorridorStatus>,
+    /// Count by typestate (e.g. {"ACTIVE": 3, "HALTED": 1}).
+    #[schema(value_type = Object)]
+    pub by_state: HashMap<String, usize>,
+    /// Total receipts across all corridors.
+    pub total_receipts: usize,
+}
+
+/// Per-corridor status snapshot.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CorridorStatus {
+    /// Corridor ID.
+    pub corridor_id: Uuid,
+    /// Source jurisdiction.
+    pub jurisdiction_a: String,
+    /// Destination jurisdiction.
+    pub jurisdiction_b: String,
+    /// Current typestate (DRAFT, PENDING, ACTIVE, HALTED, SUSPENDED, DEPRECATED).
+    pub state: String,
+    /// Number of transitions in the corridor's log.
+    pub transition_count: usize,
+    /// Last transition timestamp (if any).
+    pub last_transition: Option<DateTime<Utc>>,
+    /// Receipt chain height (number of receipts), if receipt chain exists.
+    pub receipt_chain_height: Option<u64>,
+    /// Current MMR root hex, if receipt chain exists and non-empty.
+    pub mmr_root: Option<String>,
+}
+
+/// Recent agentic policy activity.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct PolicyActivity {
+    /// Number of registered policies.
+    pub policy_count: usize,
+    /// Number of audit trail entries.
+    pub audit_trail_size: usize,
+    /// Most recent audit entries (up to 20).
+    pub recent_entries: Vec<AuditEntrySummary>,
+}
+
+/// Audit trail entry summary.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct AuditEntrySummary {
+    /// Entry type (trigger_received, policy_evaluated, action_scheduled, etc.).
+    pub entry_type: String,
+    /// Timestamp.
+    pub timestamp: DateTime<Utc>,
+    /// Associated asset ID (if any).
+    pub asset_id: Option<String>,
+    /// Content digest of the entry (for tamper evidence).
+    pub digest: Option<String>,
+}
+
+/// System health indicators.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct SystemHealth {
+    /// Corridors stuck in DRAFT for more than 7 days.
+    pub stale_draft_corridors: usize,
+    /// Corridors in HALTED state.
+    pub halted_corridors: usize,
+    /// Assets with compliance_status containing "blocking" or "non_compliant".
+    pub assets_with_blocking_compliance: usize,
+    /// Whether the zone signing key is ephemeral (dev mode).
+    pub zone_key_ephemeral: bool,
+    /// API request count (from metrics middleware).
+    pub total_requests: u64,
+    /// API error count (from metrics middleware).
+    pub total_errors: u64,
+}
+
 /// Build the regulator router.
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/v1/regulator/query/attestations", post(query_attestations))
         .route("/v1/regulator/summary", get(compliance_summary))
+        .route("/v1/regulator/dashboard", get(dashboard))
 }
 
 /// POST /v1/regulator/query/attestations — Query attestations.
@@ -132,6 +279,201 @@ async fn compliance_summary(State(state): State<AppState>) -> Json<ComplianceSum
         total_corridors: state.corridors.list().len(),
         total_assets: state.smart_assets.list().len(),
         total_attestations: state.attestations.list().len(),
+    })
+}
+
+/// GET /v1/regulator/dashboard — Comprehensive zone operational dashboard.
+///
+/// Reads from all domain stores to assemble a complete picture of zone
+/// health, compliance posture, corridor activity, and policy operations.
+/// Read-only; computationally cheap (iterates in-memory stores).
+#[utoipa::path(
+    get,
+    path = "/v1/regulator/dashboard",
+    responses(
+        (status = 200, description = "Zone operational dashboard", body = RegulatorDashboard),
+    ),
+    tag = "regulator"
+)]
+async fn dashboard(
+    State(state): State<AppState>,
+    metrics: Option<Extension<ApiMetrics>>,
+) -> Json<RegulatorDashboard> {
+    let now = Utc::now();
+
+    // ── Zone Status ─────────────────────────────────────────────
+    let unique_entities: std::collections::HashSet<Uuid> = state
+        .attestations
+        .list()
+        .iter()
+        .map(|a| a.entity_id)
+        .collect();
+
+    let zone = ZoneStatus {
+        zone_did: state.zone_did.clone(),
+        zone_public_key: state.zone_signing_key.verifying_key().to_hex(),
+        snapshot_at: now,
+        entity_count: unique_entities.len(),
+        corridor_count: state.corridors.len(),
+        asset_count: state.smart_assets.len(),
+        attestation_count: state.attestations.len(),
+    };
+
+    // ── Compliance Posture ──────────────────────────────────────
+    let assets_list = state.smart_assets.list();
+    let asset_statuses: Vec<AssetComplianceStatus> = assets_list
+        .iter()
+        .map(|a| AssetComplianceStatus {
+            asset_id: a.id,
+            asset_type: a.asset_type.clone(),
+            jurisdiction_id: a.jurisdiction_id.clone(),
+            compliance_status: a.compliance_status.clone(),
+            last_evaluated: a
+                .metadata
+                .get("last_evaluated")
+                .and_then(|v| v.as_str())
+                .map(String::from),
+        })
+        .collect();
+
+    let fully_compliant_count = asset_statuses
+        .iter()
+        .filter(|a| {
+            a.compliance_status
+                .as_deref()
+                .map(|s| s.eq_ignore_ascii_case("compliant"))
+                .unwrap_or(false)
+        })
+        .count();
+    let has_blocking_count = asset_statuses
+        .iter()
+        .filter(|a| {
+            a.compliance_status
+                .as_deref()
+                .map(|s| {
+                    let lower = s.to_ascii_lowercase();
+                    lower.contains("blocking") || lower.contains("non_compliant")
+                })
+                .unwrap_or(false)
+        })
+        .count();
+    let all_pending_count = asset_statuses
+        .iter()
+        .filter(|a| match a.compliance_status.as_deref() {
+            None => true,
+            Some(s) => s.eq_ignore_ascii_case("pending"),
+        })
+        .count();
+
+    let compliance = CompliancePosture {
+        assets: asset_statuses,
+        fully_compliant_count,
+        has_blocking_count,
+        all_pending_count,
+    };
+
+    // ── Corridor Overview ───────────────────────────────────────
+    let corridors_list = state.corridors.list();
+    let mut by_state: HashMap<String, usize> = HashMap::new();
+    let mut total_receipts: usize = 0;
+    let mut corridor_statuses: Vec<CorridorStatus> = Vec::with_capacity(corridors_list.len());
+
+    {
+        let chains_guard = state.receipt_chains.read();
+        for c in &corridors_list {
+            *by_state
+                .entry(c.state.as_str().to_string())
+                .or_insert(0) += 1;
+
+            let (chain_height, mmr_root) = match chains_guard.get(&c.id) {
+                Some(chain) => {
+                    let h = chain.height();
+                    let root = chain.mmr_root().ok().filter(|s| !s.is_empty());
+                    (Some(h), root)
+                }
+                None => (None, None),
+            };
+
+            if let Some(h) = chain_height {
+                total_receipts += h as usize;
+            }
+
+            corridor_statuses.push(CorridorStatus {
+                corridor_id: c.id,
+                jurisdiction_a: c.jurisdiction_a.clone(),
+                jurisdiction_b: c.jurisdiction_b.clone(),
+                state: c.state.as_str().to_string(),
+                transition_count: c.transition_log.len(),
+                last_transition: c.transition_log.last().map(|t| t.timestamp),
+                receipt_chain_height: chain_height,
+                mmr_root,
+            });
+        }
+    }
+
+    let corridors_overview = CorridorOverview {
+        corridors: corridor_statuses,
+        by_state,
+        total_receipts,
+    };
+
+    // ── Policy Activity ─────────────────────────────────────────
+    let policy_activity = match state.policy_engine.lock() {
+        Ok(engine) => {
+            let recent = engine.audit_trail.last_n(20);
+            PolicyActivity {
+                policy_count: engine.policy_count(),
+                audit_trail_size: engine.audit_trail.len(),
+                recent_entries: recent
+                    .iter()
+                    .map(|entry| AuditEntrySummary {
+                        entry_type: entry.entry_type.as_str().to_string(),
+                        timestamp: entry.timestamp,
+                        asset_id: entry.asset_id.clone(),
+                        digest: entry.digest().map(|d| d.to_hex()),
+                    })
+                    .collect(),
+            }
+        }
+        Err(_) => PolicyActivity {
+            policy_count: 0,
+            audit_trail_size: 0,
+            recent_entries: vec![],
+        },
+    };
+
+    // ── System Health ───────────────────────────────────────────
+    let seven_days_ago = now - chrono::Duration::days(7);
+    let stale_drafts = corridors_list
+        .iter()
+        .filter(|c| c.state.as_str() == "DRAFT" && c.created_at < seven_days_ago)
+        .count();
+    let halted = corridors_list
+        .iter()
+        .filter(|c| c.state.as_str() == "HALTED")
+        .count();
+
+    let zone_key_ephemeral = std::env::var("ZONE_SIGNING_KEY_HEX").is_err();
+
+    let (total_requests, total_errors) = metrics
+        .map(|Extension(m)| (m.requests(), m.errors()))
+        .unwrap_or((0, 0));
+
+    let health = SystemHealth {
+        stale_draft_corridors: stale_drafts,
+        halted_corridors: halted,
+        assets_with_blocking_compliance: compliance.has_blocking_count,
+        zone_key_ephemeral,
+        total_requests,
+        total_errors,
+    };
+
+    Json(RegulatorDashboard {
+        zone,
+        compliance,
+        corridors: corridors_overview,
+        policy_activity,
+        health,
     })
 }
 
@@ -580,5 +922,278 @@ mod tests {
         let deserialized: QueryResultsResponse = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.count, 0);
         assert!(deserialized.results.is_empty());
+    }
+
+    // ── Dashboard tests ──────────────────────────────────────────
+
+    #[tokio::test]
+    async fn dashboard_empty_zone_returns_zeros() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/regulator/dashboard")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let db: RegulatorDashboard = body_json(resp).await;
+
+        // Zone identity is present.
+        assert!(db.zone.zone_did.starts_with("did:mass:zone:"));
+        assert_eq!(db.zone.zone_public_key.len(), 64);
+        assert_eq!(db.zone.entity_count, 0);
+        assert_eq!(db.zone.corridor_count, 0);
+        assert_eq!(db.zone.asset_count, 0);
+        assert_eq!(db.zone.attestation_count, 0);
+
+        // Compliance posture is empty.
+        assert!(db.compliance.assets.is_empty());
+        assert_eq!(db.compliance.fully_compliant_count, 0);
+        assert_eq!(db.compliance.has_blocking_count, 0);
+        assert_eq!(db.compliance.all_pending_count, 0);
+
+        // Corridors are empty.
+        assert!(db.corridors.corridors.is_empty());
+        assert!(db.corridors.by_state.is_empty());
+        assert_eq!(db.corridors.total_receipts, 0);
+
+        // Policy engine has extended policies registered by default.
+        assert!(db.policy_activity.policy_count > 0);
+
+        // Health is clean.
+        assert_eq!(db.health.stale_draft_corridors, 0);
+        assert_eq!(db.health.halted_corridors, 0);
+        assert_eq!(db.health.assets_with_blocking_compliance, 0);
+        assert!(db.health.zone_key_ephemeral); // no ZONE_SIGNING_KEY_HEX in test env
+    }
+
+    #[tokio::test]
+    async fn dashboard_reflects_populated_state() {
+        let state = AppState::new();
+        let now = chrono::Utc::now();
+
+        // 2 entities (via attestations with distinct entity_ids).
+        let entity1 = uuid::Uuid::new_v4();
+        let entity2 = uuid::Uuid::new_v4();
+        for (eid, atype) in [(entity1, "kyc"), (entity2, "aml")] {
+            let att = AttestationRecord {
+                id: uuid::Uuid::new_v4(),
+                entity_id: eid,
+                attestation_type: atype.to_string(),
+                issuer: "NADRA".to_string(),
+                status: "ACTIVE".to_string(),
+                jurisdiction_id: "PK-PSEZ".to_string(),
+                issued_at: now,
+                expires_at: None,
+                details: serde_json::json!({}),
+            };
+            state.attestations.insert(att.id, att);
+        }
+
+        // 3 corridors: 1 ACTIVE, 1 HALTED, 1 DRAFT.
+        for (cs, ja, jb) in [
+            (msez_state::DynCorridorState::Active, "PK-PSEZ", "AE-DIFC"),
+            (msez_state::DynCorridorState::Halted, "PK-PSEZ", "SA-NEOM"),
+            (msez_state::DynCorridorState::Draft, "AE-DIFC", "SA-NEOM"),
+        ] {
+            let c = crate::state::CorridorRecord {
+                id: uuid::Uuid::new_v4(),
+                jurisdiction_a: ja.to_string(),
+                jurisdiction_b: jb.to_string(),
+                state: cs,
+                transition_log: vec![],
+                created_at: now,
+                updated_at: now,
+            };
+            state.corridors.insert(c.id, c);
+        }
+
+        // 2 assets: 1 compliant, 1 non_compliant.
+        let compliant_asset = crate::state::SmartAssetRecord {
+            id: uuid::Uuid::new_v4(),
+            asset_type: "equity".to_string(),
+            jurisdiction_id: "PK-PSEZ".to_string(),
+            status: "ACTIVE".to_string(),
+            genesis_digest: None,
+            compliance_status: Some("compliant".to_string()),
+            metadata: serde_json::json!({}),
+            created_at: now,
+            updated_at: now,
+        };
+        state.smart_assets.insert(compliant_asset.id, compliant_asset);
+
+        let blocking_asset = crate::state::SmartAssetRecord {
+            id: uuid::Uuid::new_v4(),
+            asset_type: "bond".to_string(),
+            jurisdiction_id: "AE-DIFC".to_string(),
+            status: "ACTIVE".to_string(),
+            genesis_digest: None,
+            compliance_status: Some("non_compliant".to_string()),
+            metadata: serde_json::json!({}),
+            created_at: now,
+            updated_at: now,
+        };
+        state.smart_assets.insert(blocking_asset.id, blocking_asset);
+
+        let app = router().with_state(state);
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/regulator/dashboard")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let db: RegulatorDashboard = body_json(resp).await;
+
+        assert_eq!(db.zone.entity_count, 2);
+        assert_eq!(db.zone.corridor_count, 3);
+        assert_eq!(db.zone.asset_count, 2);
+        assert_eq!(db.zone.attestation_count, 2);
+
+        assert_eq!(db.corridors.by_state.get("ACTIVE"), Some(&1));
+        assert_eq!(db.corridors.by_state.get("HALTED"), Some(&1));
+        assert_eq!(db.corridors.by_state.get("DRAFT"), Some(&1));
+
+        assert_eq!(db.compliance.fully_compliant_count, 1);
+        assert_eq!(db.compliance.has_blocking_count, 1);
+        assert_eq!(db.compliance.all_pending_count, 0);
+        assert_eq!(db.compliance.assets.len(), 2);
+
+        assert_eq!(db.health.halted_corridors, 1);
+        assert_eq!(db.health.assets_with_blocking_compliance, 1);
+    }
+
+    #[tokio::test]
+    async fn dashboard_detects_stale_draft_corridor() {
+        let state = AppState::new();
+        let now = chrono::Utc::now();
+
+        // Stale: DRAFT created 8 days ago.
+        let stale = crate::state::CorridorRecord {
+            id: uuid::Uuid::new_v4(),
+            jurisdiction_a: "PK-PSEZ".to_string(),
+            jurisdiction_b: "AE-DIFC".to_string(),
+            state: msez_state::DynCorridorState::Draft,
+            transition_log: vec![],
+            created_at: now - chrono::Duration::days(8),
+            updated_at: now - chrono::Duration::days(8),
+        };
+        state.corridors.insert(stale.id, stale);
+
+        // Fresh: DRAFT created today.
+        let fresh = crate::state::CorridorRecord {
+            id: uuid::Uuid::new_v4(),
+            jurisdiction_a: "AE-DIFC".to_string(),
+            jurisdiction_b: "SA-NEOM".to_string(),
+            state: msez_state::DynCorridorState::Draft,
+            transition_log: vec![],
+            created_at: now,
+            updated_at: now,
+        };
+        state.corridors.insert(fresh.id, fresh);
+
+        let app = router().with_state(state);
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/regulator/dashboard")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let db: RegulatorDashboard = body_json(resp).await;
+        assert_eq!(db.health.stale_draft_corridors, 1);
+        assert_eq!(db.corridors.by_state.get("DRAFT"), Some(&2));
+    }
+
+    #[tokio::test]
+    async fn dashboard_policy_activity_after_trigger() {
+        let state = AppState::new();
+
+        // Fire a trigger through the policy engine directly.
+        {
+            let mut engine = state.policy_engine.lock().unwrap();
+            let trigger = msez_agentic::Trigger::new(
+                msez_agentic::TriggerType::SanctionsListUpdate,
+                serde_json::json!({"affected_parties": ["self"]}),
+            );
+            let _ = engine.process_trigger(&trigger, "asset-123", None);
+        }
+
+        let app = router().with_state(state);
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/regulator/dashboard")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let db: RegulatorDashboard = body_json(resp).await;
+        assert!(db.policy_activity.audit_trail_size > 0);
+        assert!(!db.policy_activity.recent_entries.is_empty());
+
+        // At least one entry should be a trigger_received.
+        let has_trigger = db
+            .policy_activity
+            .recent_entries
+            .iter()
+            .any(|e| e.entry_type == "trigger_received");
+        assert!(has_trigger, "expected a trigger_received audit entry");
+
+        // Each entry with a digest should have a 64-char hex string.
+        for entry in &db.policy_activity.recent_entries {
+            if let Some(ref d) = entry.digest {
+                assert_eq!(d.len(), 64, "digest should be 64 hex chars");
+                assert!(
+                    d.chars().all(|c| c.is_ascii_hexdigit()),
+                    "digest should be valid hex"
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn dashboard_corridor_receipt_chains_default_to_none() {
+        let state = AppState::new();
+        let now = chrono::Utc::now();
+
+        // Corridor with no receipt chain entry.
+        let c = crate::state::CorridorRecord {
+            id: uuid::Uuid::new_v4(),
+            jurisdiction_a: "PK-PSEZ".to_string(),
+            jurisdiction_b: "AE-DIFC".to_string(),
+            state: msez_state::DynCorridorState::Active,
+            transition_log: vec![],
+            created_at: now,
+            updated_at: now,
+        };
+        state.corridors.insert(c.id, c.clone());
+
+        let app = router().with_state(state);
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/regulator/dashboard")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let db: RegulatorDashboard = body_json(resp).await;
+        assert_eq!(db.corridors.corridors.len(), 1);
+
+        let cs = &db.corridors.corridors[0];
+        assert_eq!(cs.corridor_id, c.id);
+        assert_eq!(cs.state, "ACTIVE");
+        assert!(cs.receipt_chain_height.is_none());
+        assert!(cs.mmr_root.is_none());
+        assert_eq!(db.corridors.total_receipts, 0);
     }
 }

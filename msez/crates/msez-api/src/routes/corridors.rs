@@ -241,6 +241,13 @@ async fn create_corridor(
     let chain = ReceiptChain::new(CorridorId::from_uuid(id));
     state.receipt_chains.write().insert(id, chain);
 
+    // Persist to database (write-through).
+    if let Some(pool) = &state.db_pool {
+        if let Err(e) = crate::db::corridors::insert(pool, &record).await {
+            tracing::error!(corridor_id = %id, error = %e, "failed to persist corridor to database");
+        }
+    }
+
     Ok((axum::http::StatusCode::CREATED, Json(record)))
 }
 
@@ -345,7 +352,7 @@ async fn transition_corridor(
     // Atomically read-validate-update under a single write lock.
     // This eliminates the TOCTOU race where another request could
     // transition the corridor between our read and write.
-    state
+    let updated = state
         .corridors
         .try_update(&id, |corridor| {
             let current = corridor.state;
@@ -381,8 +388,26 @@ async fn transition_corridor(
 
             Ok(corridor.clone())
         })
-        .ok_or_else(|| AppError::NotFound(format!("corridor {id} not found")))?
-        .map(Json)
+        .ok_or_else(|| AppError::NotFound(format!("corridor {id} not found")))?;
+
+    let corridor = updated?;
+
+    // Persist state change to database (write-through).
+    if let Some(pool) = &state.db_pool {
+        if let Err(e) = crate::db::corridors::update_state(
+            pool,
+            id,
+            &corridor.state,
+            &corridor.transition_log,
+            corridor.updated_at,
+        )
+        .await
+        {
+            tracing::error!(corridor_id = %id, error = %e, "failed to persist corridor transition to database");
+        }
+    }
+
+    Ok(Json(corridor))
 }
 
 /// POST /v1/corridors/state/propose — Propose a receipt.

@@ -155,6 +155,14 @@ async fn create_asset(
     };
 
     state.smart_assets.insert(id, record.clone());
+
+    // Persist to database (write-through).
+    if let Some(pool) = &state.db_pool {
+        if let Err(e) = crate::db::smart_assets::insert(pool, &record).await {
+            tracing::error!(asset_id = %id, error = %e, "failed to persist smart asset to database");
+        }
+    }
+
     Ok((axum::http::StatusCode::CREATED, Json(record)))
 }
 

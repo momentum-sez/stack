@@ -651,10 +651,20 @@ impl AppState {
             self.attestations.insert(record.id, record);
         }
 
+        // Load tax events
+        let tax_events = crate::db::tax_events::load_all(pool)
+            .await
+            .map_err(|e| format!("failed to load tax events: {e}"))?;
+        let tax_event_count = tax_events.len();
+        for record in tax_events {
+            self.tax_events.insert(record.id, record);
+        }
+
         tracing::info!(
             corridors = corridor_count,
             smart_assets = asset_count,
             attestations = attestation_count,
+            tax_events = tax_event_count,
             "Hydrated in-memory stores from database"
         );
 

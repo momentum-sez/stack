@@ -3,27 +3,38 @@
 //! Shared state for the Axum application, passed to all route handlers
 //! via the `State` extractor.
 //!
-//! ## Phase 1: In-Memory Storage
+//! ## Architecture
 //!
-//! All data is stored in `Arc<RwLock<HashMap>>` behind a generic [`Store`].
-//! This provides thread-safe concurrent access without a database dependency.
-//! The storage layer is designed so that a `sqlx::PgPool`-backed implementation
-//! can replace it without changing route handler signatures.
+//! AppState holds only SEZ-Stack-owned concerns:
+//! - **Corridors** — cross-border corridor lifecycle (SEZ Stack domain)
+//! - **Smart Assets** — smart asset lifecycle (SEZ Stack domain)
+//! - **Attestations** — compliance attestations for regulator queries (SEZ Stack domain)
+//! - **Mass API client** — typed client delegating primitive operations to live Mass APIs
+//!
+//! Entity, ownership, fiscal, identity, and consent data is NOT stored here.
+//! That data lives in the Mass APIs and is accessed via `msez-mass-client`.
+//! See CLAUDE.md Section II.
 
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
+use msez_agentic::PolicyEngine;
+use msez_corridor::ReceiptChain;
+use msez_crypto::SigningKey;
+use msez_state::{DynCorridorState, TransitionRecord};
+use parking_lot::{Mutex, RwLock};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-// ── Generic In-Memory Store ─────────────────────────────────────────
+// -- Generic In-Memory Store --------------------------------------------------
 
 /// Thread-safe, cloneable in-memory key-value store.
 ///
-/// All operations are synchronous (the RwLock is `std::sync`, not `tokio::sync`)
-/// because we never hold the lock across `.await` points.
+/// All operations are synchronous (the RwLock is `parking_lot`, not `tokio::sync`)
+/// because we never hold the lock across `.await` points. `parking_lot::RwLock`
+/// is non-poisonable — a panicking writer does not permanently corrupt the store.
 #[derive(Debug)]
 pub struct Store<T: Clone + Send + Sync> {
     data: Arc<RwLock<HashMap<Uuid, T>>>,
@@ -47,34 +58,22 @@ impl<T: Clone + Send + Sync> Store<T> {
 
     /// Insert a record, returning the previous value if the key existed.
     pub fn insert(&self, id: Uuid, value: T) -> Option<T> {
-        self.data
-            .write()
-            .expect("store lock poisoned")
-            .insert(id, value)
+        self.data.write().insert(id, value)
     }
 
     /// Retrieve a record by ID.
     pub fn get(&self, id: &Uuid) -> Option<T> {
-        self.data
-            .read()
-            .expect("store lock poisoned")
-            .get(id)
-            .cloned()
+        self.data.read().get(id).cloned()
     }
 
     /// List all records.
     pub fn list(&self) -> Vec<T> {
-        self.data
-            .read()
-            .expect("store lock poisoned")
-            .values()
-            .cloned()
-            .collect()
+        self.data.read().values().cloned().collect()
     }
 
     /// Update a record in place. Returns the updated record, or `None` if not found.
     pub fn update(&self, id: &Uuid, f: impl FnOnce(&mut T)) -> Option<T> {
-        let mut guard = self.data.write().expect("store lock poisoned");
+        let mut guard = self.data.write();
         if let Some(entry) = guard.get_mut(id) {
             f(entry);
             Some(entry.clone())
@@ -83,25 +82,39 @@ impl<T: Clone + Send + Sync> Store<T> {
         }
     }
 
+    /// Atomically read-validate-update a record.
+    ///
+    /// The closure receives a `&mut T` and may inspect the current state,
+    /// validate preconditions, mutate the record, and return `Ok(R)` or
+    /// `Err(E)`. The entire operation runs under a single write lock,
+    /// eliminating TOCTOU races between read and update.
+    ///
+    /// Returns `None` if the record doesn't exist, or `Some(result)` with
+    /// the closure's `Result`.
+    pub fn try_update<R, E>(
+        &self,
+        id: &Uuid,
+        f: impl FnOnce(&mut T) -> Result<R, E>,
+    ) -> Option<Result<R, E>> {
+        self.data.write().get_mut(id).map(f)
+    }
+
     /// Remove a record by ID.
     #[allow(dead_code)]
     pub fn remove(&self, id: &Uuid) -> Option<T> {
-        self.data.write().expect("store lock poisoned").remove(id)
+        self.data.write().remove(id)
     }
 
     /// Check if a record exists.
     #[allow(dead_code)]
     pub fn contains(&self, id: &Uuid) -> bool {
-        self.data
-            .read()
-            .expect("store lock poisoned")
-            .contains_key(id)
+        self.data.read().contains_key(id)
     }
 
     /// Return the number of records.
     #[allow(dead_code)]
     pub fn len(&self) -> usize {
-        self.data.read().expect("store lock poisoned").len()
+        self.data.read().len()
     }
 
     /// Whether the store is empty.
@@ -117,188 +130,51 @@ impl<T: Clone + Send + Sync> Default for Store<T> {
     }
 }
 
-// ── Stored Record Types ─────────────────────────────────────────────
-
-/// Entity record in storage.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct EntityRecord {
-    pub id: Uuid,
-    pub entity_type: String,
-    pub legal_name: String,
-    pub jurisdiction_id: String,
-    pub status: String,
-    #[serde(default)]
-    pub beneficial_owners: Vec<BeneficialOwner>,
-    pub dissolution_stage: Option<u8>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-/// Beneficial owner of an entity.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct BeneficialOwner {
-    pub name: String,
-    pub ownership_percentage: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cnic: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub ntn: Option<String>,
-}
-
-/// Cap table record in storage.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct CapTableRecord {
-    pub id: Uuid,
-    pub entity_id: Uuid,
-    pub share_classes: Vec<ShareClass>,
-    pub transfers: Vec<OwnershipTransfer>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-/// Share class definition.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ShareClass {
-    pub name: String,
-    pub authorized_shares: u64,
-    pub issued_shares: u64,
-    pub par_value: Option<String>,
-    pub voting_rights: bool,
-}
-
-/// Ownership transfer event.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct OwnershipTransfer {
-    pub id: Uuid,
-    pub from_holder: String,
-    pub to_holder: String,
-    pub share_class: String,
-    pub quantity: u64,
-    pub price_per_share: Option<String>,
-    pub transferred_at: DateTime<Utc>,
-}
-
-/// Fiscal account record.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct FiscalAccountRecord {
-    pub id: Uuid,
-    pub entity_id: Uuid,
-    pub account_type: String,
-    pub currency: String,
-    pub balance: String,
-    pub ntn: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-/// Payment record.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct PaymentRecord {
-    pub id: Uuid,
-    pub from_account_id: Uuid,
-    pub to_account_id: Option<Uuid>,
-    pub amount: String,
-    pub currency: String,
-    pub reference: String,
-    pub status: String,
-    pub created_at: DateTime<Utc>,
-}
-
-/// Tax event record.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct TaxEventRecord {
-    pub id: Uuid,
-    pub entity_id: Uuid,
-    pub event_type: String,
-    pub amount: String,
-    pub currency: String,
-    pub tax_year: String,
-    pub details: serde_json::Value,
-    pub created_at: DateTime<Utc>,
-}
-
-/// Identity record.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct IdentityRecord {
-    pub id: Uuid,
-    pub identity_type: String,
-    pub status: String,
-    pub linked_ids: Vec<LinkedExternalId>,
-    pub attestations: Vec<IdentityAttestation>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-/// External ID linked to an identity.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct LinkedExternalId {
-    pub id_type: String,
-    pub id_value: String,
-    pub verified: bool,
-    pub linked_at: DateTime<Utc>,
-}
-
-/// Identity attestation.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct IdentityAttestation {
-    pub id: Uuid,
-    pub attestation_type: String,
-    pub issuer: String,
-    pub status: String,
-    pub issued_at: DateTime<Utc>,
-    pub expires_at: Option<DateTime<Utc>>,
-}
-
-/// Consent record.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ConsentRecord {
-    pub id: Uuid,
-    pub consent_type: String,
-    pub description: String,
-    pub parties: Vec<ConsentParty>,
-    pub status: String,
-    pub audit_trail: Vec<ConsentAuditEntry>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-/// Party involved in a consent request.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ConsentParty {
-    pub entity_id: Uuid,
-    pub role: String,
-    pub decision: Option<String>,
-    pub decided_at: Option<DateTime<Utc>>,
-}
-
-/// Audit trail entry for a consent.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ConsentAuditEntry {
-    pub action: String,
-    pub actor_id: Uuid,
-    pub timestamp: DateTime<Utc>,
-    pub details: Option<String>,
-}
+// -- SEZ-Stack-Owned Record Types ---------------------------------------------
+//
+// These types represent data that genuinely belongs to the SEZ Stack,
+// NOT Mass primitive data. Mass primitives are accessed via msez-mass-client.
 
 /// Corridor record (API-layer representation).
+///
+/// Uses [`DynCorridorState`] from `msez-state` for the corridor state, ensuring
+/// only spec-aligned state names are representable. The transition log uses
+/// [`TransitionRecord`] which carries `Option<ContentDigest>` evidence.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CorridorRecord {
     pub id: Uuid,
     pub jurisdiction_a: String,
     pub jurisdiction_b: String,
-    pub state: String,
-    pub transition_log: Vec<CorridorTransitionEntry>,
+    /// Current corridor lifecycle state (DRAFT, PENDING, ACTIVE, HALTED, SUSPENDED, DEPRECATED).
+    #[schema(value_type = String)]
+    pub state: DynCorridorState,
+    /// Audit trail of state transitions with evidence digests.
+    #[schema(value_type = Vec<Object>)]
+    pub transition_log: Vec<TransitionRecord>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
-/// Corridor transition log entry.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct CorridorTransitionEntry {
-    pub from_state: String,
-    pub to_state: String,
-    pub timestamp: DateTime<Utc>,
-    pub evidence_digest: Option<String>,
+/// Compliance status for a smart asset.
+///
+/// This is a simplified classification derived from the compliance tensor's
+/// [`ComplianceState`] lattice. The tensor performs algebraic evaluation across
+/// 20 compliance domains; this enum collapses that into an API-layer status
+/// suitable for storage and display. The conversion discards lattice semantics
+/// (meet, join, absorbing element) that are not needed at rest.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AssetComplianceStatus {
+    /// All applicable domains are passing.
+    Compliant,
+    /// Evaluation has not been performed or is incomplete.
+    Pending,
+    /// At least one domain is non-compliant.
+    NonCompliant,
+    /// At least one domain is pending but none are non-compliant.
+    PartiallyCompliant,
+    /// Compliance has not been evaluated for this asset.
+    Unevaluated,
 }
 
 /// Smart asset record.
@@ -309,8 +185,12 @@ pub struct SmartAssetRecord {
     pub jurisdiction_id: String,
     pub status: String,
     pub genesis_digest: Option<String>,
-    pub compliance_status: Option<String>,
+    pub compliance_status: AssetComplianceStatus,
     pub metadata: serde_json::Value,
+    /// The entity that created this asset. Used for IDOR protection.
+    /// `None` for assets created before RBAC was enabled (legacy).
+    #[serde(default)]
+    pub owner_entity_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -329,16 +209,27 @@ pub struct AttestationRecord {
     pub details: serde_json::Value,
 }
 
-// ── Application State ───────────────────────────────────────────────
+// -- Application State --------------------------------------------------------
 
 /// Application configuration.
-#[derive(Debug, Clone)]
+///
+/// Custom `Debug` redacts the `auth_token` to prevent credential leakage in logs.
+#[derive(Clone)]
 pub struct AppConfig {
     /// Port to bind the HTTP server to.
     pub port: u16,
     /// Static bearer token for Phase 1 authentication.
     /// If `None`, authentication is disabled.
     pub auth_token: Option<String>,
+}
+
+impl std::fmt::Debug for AppConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AppConfig")
+            .field("port", &self.port)
+            .field("auth_token", &self.auth_token.as_ref().map(|_| "[REDACTED]"))
+            .finish()
+    }
 }
 
 impl Default for AppConfig {
@@ -350,46 +241,187 @@ impl Default for AppConfig {
     }
 }
 
+/// Decode a hex string into bytes.
+fn hex_decode(s: &str) -> Result<Vec<u8>, String> {
+    let s = s.trim();
+    if s.len() % 2 != 0 {
+        return Err(format!("hex string has odd length: {}", s.len()));
+    }
+    (0..s.len())
+        .step_by(2)
+        .map(|i| {
+            u8::from_str_radix(&s[i..i + 2], 16)
+                .map_err(|e| format!("invalid hex at position {i}: {e}"))
+        })
+        .collect()
+}
+
+/// Error loading the zone signing key from the environment.
+#[derive(Debug)]
+pub enum ZoneKeyError {
+    /// `ZONE_SIGNING_KEY_HEX` contained invalid hex characters.
+    InvalidHex(String),
+    /// `ZONE_SIGNING_KEY_HEX` decoded to the wrong number of bytes.
+    InvalidLength { expected: usize, actual: usize },
+}
+
+impl std::fmt::Display for ZoneKeyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidHex(msg) => write!(f, "ZONE_SIGNING_KEY_HEX invalid hex: {msg}"),
+            Self::InvalidLength { expected, actual } => write!(
+                f,
+                "ZONE_SIGNING_KEY_HEX must be exactly {} hex chars ({expected} bytes), got {actual} bytes",
+                expected * 2
+            ),
+        }
+    }
+}
+
+impl std::error::Error for ZoneKeyError {}
+
+/// Load the zone signing key from the environment, or generate one for development.
+///
+/// In production, `ZONE_SIGNING_KEY_HEX` provides the 64-character hex-encoded
+/// Ed25519 private key (32 bytes). In development (when the variable is absent),
+/// a fresh key is generated and a warning is logged.
+///
+/// Returns `Err` if the environment variable is set but contains invalid data,
+/// rather than panicking the server on startup.
+fn load_or_generate_zone_key() -> Result<SigningKey, ZoneKeyError> {
+    if let Ok(hex) = std::env::var("ZONE_SIGNING_KEY_HEX") {
+        let bytes = hex_decode(&hex).map_err(ZoneKeyError::InvalidHex)?;
+        if bytes.len() != 32 {
+            return Err(ZoneKeyError::InvalidLength {
+                expected: 32,
+                actual: bytes.len(),
+            });
+        }
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&bytes);
+        Ok(SigningKey::from_bytes(&arr))
+    } else {
+        tracing::warn!(
+            "ZONE_SIGNING_KEY_HEX not set — generating ephemeral key. \
+             VCs signed with this key will not be verifiable after restart."
+        );
+        Ok(SigningKey::generate(&mut rand_core::OsRng))
+    }
+}
+
 /// Shared application state accessible to all route handlers.
 ///
-/// Contains in-memory stores for each domain primitive and application
-/// configuration. Clone-friendly via `Arc` internals in each `Store`.
+/// Contains SEZ-Stack-owned stores (corridors, smart assets, attestations),
+/// the Mass API client for primitive operations, the zone signing key for
+/// VC issuance, and application configuration.
+/// Clone-friendly via `Arc` internals in each `Store`.
+///
+/// ## What is NOT here
+///
+/// Entity, ownership, fiscal, identity, and consent stores have been removed.
+/// That data lives in the Mass APIs and is accessed via `state.mass_client`.
 #[derive(Debug, Clone)]
 pub struct AppState {
-    pub entities: Store<EntityRecord>,
-    pub cap_tables: Store<CapTableRecord>,
-    pub fiscal_accounts: Store<FiscalAccountRecord>,
-    pub payments: Store<PaymentRecord>,
-    pub tax_events: Store<TaxEventRecord>,
-    pub identities: Store<IdentityRecord>,
-    pub consents: Store<ConsentRecord>,
+    // -- SEZ Stack owned state --
     pub corridors: Store<CorridorRecord>,
     pub smart_assets: Store<SmartAssetRecord>,
     pub attestations: Store<AttestationRecord>,
+
+    /// Per-corridor receipt chains (append-only MMR accumulators).
+    ///
+    /// `ReceiptChain` is not `Clone` (it wraps a mutable `MerkleMountainRange`),
+    /// so it cannot use the generic `Store<T>`. A direct `Arc<RwLock<HashMap>>`
+    /// is used instead. Keyed by corridor UUID — each corridor has exactly one chain.
+    pub receipt_chains: Arc<RwLock<HashMap<Uuid, ReceiptChain>>>,
+
+    // -- Mass API client (delegates primitive operations to live Mass APIs) --
+    pub mass_client: Option<msez_mass_client::MassClient>,
+
+    // -- Zone identity --
+
+    /// The zone operator's Ed25519 signing key.
+    /// Used to sign Verifiable Credentials issued by this zone.
+    /// Wrapped in `Arc` because `SigningKey` is not `Clone` (it contains
+    /// sensitive key material that shouldn't be casually duplicated).
+    pub zone_signing_key: Arc<SigningKey>,
+
+    /// The zone operator's DID, derived from the public key.
+    /// Format: `"did:mass:zone:<hex-encoded-verifying-key>"`
+    pub zone_did: String,
+
+    // -- Agentic policy engine --
+
+    /// The autonomous policy engine. `parking_lot::Mutex` because `PolicyEngine`
+    /// is not `Sync` (it holds a mutable audit trail) and evaluation mutates
+    /// internal state. `parking_lot::Mutex` never poisons on panic, eliminating
+    /// the entire class of lock-poisoning runtime failures.
+    pub policy_engine: Arc<Mutex<PolicyEngine>>,
+
+    // -- Zone context (from bootstrap) --
+
+    /// Zone context, if bootstrapped from a zone manifest.
+    /// When present, the server operates as a configured zone node.
+    /// When absent (generic mode), endpoints use default behavior.
+    pub zone: Option<crate::bootstrap::ZoneContext>,
+
+    // -- Configuration --
     pub config: AppConfig,
 }
 
 impl AppState {
-    /// Create a new application state with default configuration.
+    /// Create a new application state with default configuration and no Mass client.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `ZONE_SIGNING_KEY_HEX` is set but contains invalid data.
+    /// In production, prefer [`AppState::try_new`] for graceful error handling.
     pub fn new() -> Self {
-        Self::with_config(AppConfig::default())
+        Self::try_with_config(AppConfig::default(), None)
+            .expect("failed to initialize AppState (check ZONE_SIGNING_KEY_HEX)")
     }
 
-    /// Create a new application state with the given configuration.
-    pub fn with_config(config: AppConfig) -> Self {
-        Self {
-            entities: Store::new(),
-            cap_tables: Store::new(),
-            fiscal_accounts: Store::new(),
-            payments: Store::new(),
-            tax_events: Store::new(),
-            identities: Store::new(),
-            consents: Store::new(),
+    /// Create a new application state, returning `Err` if zone key loading fails.
+    pub fn try_new() -> Result<Self, ZoneKeyError> {
+        Self::try_with_config(AppConfig::default(), None)
+    }
+
+    /// Create a new application state with the given configuration and optional Mass client.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `ZONE_SIGNING_KEY_HEX` is set but contains invalid data.
+    pub fn with_config(
+        config: AppConfig,
+        mass_client: Option<msez_mass_client::MassClient>,
+    ) -> Self {
+        Self::try_with_config(config, mass_client)
+            .expect("failed to initialize AppState (check ZONE_SIGNING_KEY_HEX)")
+    }
+
+    /// Create a new application state with the given configuration, returning `Err`
+    /// on zone key loading failures rather than panicking.
+    pub fn try_with_config(
+        config: AppConfig,
+        mass_client: Option<msez_mass_client::MassClient>,
+    ) -> Result<Self, ZoneKeyError> {
+        let zone_signing_key = load_or_generate_zone_key()?;
+        let zone_did = format!(
+            "did:mass:zone:{}",
+            zone_signing_key.verifying_key().to_hex()
+        );
+
+        Ok(Self {
             corridors: Store::new(),
             smart_assets: Store::new(),
             attestations: Store::new(),
+            receipt_chains: Arc::new(RwLock::new(HashMap::new())),
+            mass_client,
+            zone_signing_key: Arc::new(zone_signing_key),
+            zone_did,
+            policy_engine: Arc::new(Mutex::new(PolicyEngine::with_extended_policies())),
+            zone: None,
             config,
-        }
+        })
     }
 }
 
@@ -404,27 +436,25 @@ mod tests {
     use super::*;
     use uuid::Uuid;
 
-    /// Helper: create a minimal EntityRecord for store tests.
-    fn sample_entity(id: Uuid) -> EntityRecord {
+    /// Helper: create a minimal CorridorRecord for store tests.
+    fn sample_corridor(id: Uuid) -> CorridorRecord {
         let now = Utc::now();
-        EntityRecord {
+        CorridorRecord {
             id,
-            entity_type: "llc".to_string(),
-            legal_name: "Acme Corp".to_string(),
-            jurisdiction_id: "pk-sez-01".to_string(),
-            status: "active".to_string(),
-            beneficial_owners: vec![],
-            dissolution_stage: None,
+            jurisdiction_a: "PK-PSEZ".to_string(),
+            jurisdiction_b: "AE-DIFC".to_string(),
+            state: DynCorridorState::Pending,
+            transition_log: vec![],
             created_at: now,
             updated_at: now,
         }
     }
 
-    // ── Store tests ───────────────────────────────────────────────
+    // -- Store tests ----------------------------------------------------------
 
     #[test]
     fn store_new_creates_empty_store() {
-        let store: Store<EntityRecord> = Store::new();
+        let store: Store<CorridorRecord> = Store::new();
         assert!(store.is_empty());
         assert_eq!(store.len(), 0);
         assert!(store.list().is_empty());
@@ -434,16 +464,16 @@ mod tests {
     fn store_insert_and_get_roundtrip() {
         let store = Store::new();
         let id = Uuid::new_v4();
-        let entity = sample_entity(id);
+        let corridor = sample_corridor(id);
 
-        let prev = store.insert(id, entity.clone());
+        let prev = store.insert(id, corridor);
         assert!(prev.is_none(), "first insert should return None");
 
         let retrieved = store.get(&id);
         assert!(retrieved.is_some());
         let retrieved = retrieved.unwrap();
         assert_eq!(retrieved.id, id);
-        assert_eq!(retrieved.legal_name, "Acme Corp");
+        assert_eq!(retrieved.jurisdiction_a, "PK-PSEZ");
     }
 
     #[test]
@@ -451,9 +481,12 @@ mod tests {
         let store = Store::new();
         let id = Uuid::new_v4();
 
-        store.insert(id, sample_entity(id));
-        let prev = store.insert(id, sample_entity(id));
-        assert!(prev.is_some(), "second insert should return previous value");
+        store.insert(id, sample_corridor(id));
+        let prev = store.insert(id, sample_corridor(id));
+        assert!(
+            prev.is_some(),
+            "second insert should return previous value"
+        );
     }
 
     #[test]
@@ -463,14 +496,14 @@ mod tests {
         let id2 = Uuid::new_v4();
         let id3 = Uuid::new_v4();
 
-        store.insert(id1, sample_entity(id1));
-        store.insert(id2, sample_entity(id2));
-        store.insert(id3, sample_entity(id3));
+        store.insert(id1, sample_corridor(id1));
+        store.insert(id2, sample_corridor(id2));
+        store.insert(id3, sample_corridor(id3));
 
         let all = store.list();
         assert_eq!(all.len(), 3);
 
-        let ids: Vec<Uuid> = all.iter().map(|e| e.id).collect();
+        let ids: Vec<Uuid> = all.iter().map(|c| c.id).collect();
         assert!(ids.contains(&id1));
         assert!(ids.contains(&id2));
         assert!(ids.contains(&id3));
@@ -480,29 +513,26 @@ mod tests {
     fn store_update_modifies_existing() {
         let store = Store::new();
         let id = Uuid::new_v4();
-        store.insert(id, sample_entity(id));
+        store.insert(id, sample_corridor(id));
 
-        let updated = store.update(&id, |e| {
-            e.legal_name = "Updated Corp".to_string();
-            e.status = "suspended".to_string();
+        let updated = store.update(&id, |c| {
+            c.state = DynCorridorState::Active;
         });
 
         assert!(updated.is_some());
         let updated = updated.unwrap();
-        assert_eq!(updated.legal_name, "Updated Corp");
-        assert_eq!(updated.status, "suspended");
+        assert_eq!(updated.state, DynCorridorState::Active);
 
-        // Confirm the store itself reflects the change.
         let fetched = store.get(&id).unwrap();
-        assert_eq!(fetched.legal_name, "Updated Corp");
+        assert_eq!(fetched.state, DynCorridorState::Active);
     }
 
     #[test]
     fn store_update_returns_none_for_missing_key() {
-        let store: Store<EntityRecord> = Store::new();
+        let store: Store<CorridorRecord> = Store::new();
         let missing = Uuid::new_v4();
-        let result = store.update(&missing, |e| {
-            e.legal_name = "Ghost".to_string();
+        let result = store.update(&missing, |c| {
+            c.state = DynCorridorState::Active;
         });
         assert!(result.is_none());
     }
@@ -511,7 +541,7 @@ mod tests {
     fn store_remove_deletes_item() {
         let store = Store::new();
         let id = Uuid::new_v4();
-        store.insert(id, sample_entity(id));
+        store.insert(id, sample_corridor(id));
         assert_eq!(store.len(), 1);
 
         let removed = store.remove(&id);
@@ -524,7 +554,7 @@ mod tests {
 
     #[test]
     fn store_remove_returns_none_for_missing_key() {
-        let store: Store<EntityRecord> = Store::new();
+        let store: Store<CorridorRecord> = Store::new();
         let result = store.remove(&Uuid::new_v4());
         assert!(result.is_none());
     }
@@ -535,7 +565,7 @@ mod tests {
         let id = Uuid::new_v4();
         assert!(!store.contains(&id));
 
-        store.insert(id, sample_entity(id));
+        store.insert(id, sample_corridor(id));
         assert!(store.contains(&id));
 
         store.remove(&id);
@@ -550,11 +580,11 @@ mod tests {
 
         let id1 = Uuid::new_v4();
         let id2 = Uuid::new_v4();
-        store.insert(id1, sample_entity(id1));
+        store.insert(id1, sample_corridor(id1));
         assert!(!store.is_empty());
         assert_eq!(store.len(), 1);
 
-        store.insert(id2, sample_entity(id2));
+        store.insert(id2, sample_corridor(id2));
         assert_eq!(store.len(), 2);
 
         store.remove(&id1);
@@ -566,7 +596,7 @@ mod tests {
 
     #[test]
     fn store_default_is_empty() {
-        let store: Store<EntityRecord> = Store::default();
+        let store: Store<CorridorRecord> = Store::default();
         assert!(store.is_empty());
     }
 
@@ -574,7 +604,7 @@ mod tests {
     fn store_clone_shares_underlying_data() {
         let store = Store::new();
         let id = Uuid::new_v4();
-        store.insert(id, sample_entity(id));
+        store.insert(id, sample_corridor(id));
 
         let clone = store.clone();
         assert_eq!(clone.len(), 1);
@@ -582,25 +612,19 @@ mod tests {
 
         // Mutations through the clone are visible from the original.
         let id2 = Uuid::new_v4();
-        clone.insert(id2, sample_entity(id2));
+        clone.insert(id2, sample_corridor(id2));
         assert_eq!(store.len(), 2);
     }
 
-    // ── AppState tests ────────────────────────────────────────────
+    // -- AppState tests -------------------------------------------------------
 
     #[test]
     fn app_state_new_creates_empty_stores() {
         let state = AppState::new();
-        assert!(state.entities.is_empty());
-        assert!(state.cap_tables.is_empty());
-        assert!(state.fiscal_accounts.is_empty());
-        assert!(state.payments.is_empty());
-        assert!(state.tax_events.is_empty());
-        assert!(state.identities.is_empty());
-        assert!(state.consents.is_empty());
         assert!(state.corridors.is_empty());
         assert!(state.smart_assets.is_empty());
         assert!(state.attestations.is_empty());
+        assert!(state.mass_client.is_none());
     }
 
     #[test]
@@ -616,10 +640,10 @@ mod tests {
             port: 3000,
             auth_token: Some("secret-token".to_string()),
         };
-        let state = AppState::with_config(config);
+        let state = AppState::with_config(config, None);
         assert_eq!(state.config.port, 3000);
         assert_eq!(state.config.auth_token.as_deref(), Some("secret-token"));
-        assert!(state.entities.is_empty());
+        assert!(state.corridors.is_empty());
     }
 
     #[test]
@@ -627,6 +651,35 @@ mod tests {
         let default_state = AppState::default();
         let new_state = AppState::new();
         assert_eq!(default_state.config.port, new_state.config.port);
-        assert_eq!(default_state.config.auth_token, new_state.config.auth_token);
+        assert_eq!(
+            default_state.config.auth_token,
+            new_state.config.auth_token
+        );
+    }
+
+    #[test]
+    fn app_state_has_zone_signing_key() {
+        let state = AppState::new();
+        assert!(state.zone_did.starts_with("did:mass:zone:"));
+        // DID should contain a 64-char hex-encoded verifying key.
+        let hex_part = state.zone_did.strip_prefix("did:mass:zone:").unwrap();
+        assert_eq!(hex_part.len(), 64);
+        assert!(hex_part.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn hex_decode_valid() {
+        let result = super::hex_decode("deadbeef").unwrap();
+        assert_eq!(result, vec![0xde, 0xad, 0xbe, 0xef]);
+    }
+
+    #[test]
+    fn hex_decode_odd_length_fails() {
+        assert!(super::hex_decode("abc").is_err());
+    }
+
+    #[test]
+    fn hex_decode_invalid_chars_fails() {
+        assert!(super::hex_decode("zzzz").is_err());
     }
 }

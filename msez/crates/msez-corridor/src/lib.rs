@@ -45,7 +45,7 @@ pub use netting::{
     SettlementPlan,
 };
 pub use receipt::{Checkpoint, CorridorReceipt, ReceiptChain, ReceiptError};
-pub use swift::{SettlementRail, SwiftPacs008};
+pub use swift::{SettlementInstruction, SettlementRail, SettlementRailError, SwiftPacs008};
 
 use thiserror::Error;
 

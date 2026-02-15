@@ -1,7 +1,8 @@
 //! # Integration Tests for msez-api
 //!
-//! Tests each primitive's basic CRUD operations, corridor state transitions,
-//! authentication middleware, and OpenAPI spec generation.
+//! Tests corridor state transitions, smart asset operations, regulator console,
+//! Mass API proxy behavior (503 without client), authentication middleware,
+//! and OpenAPI spec generation.
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
@@ -10,7 +11,7 @@ use tower::ServiceExt;
 
 use msez_api::state::{AppConfig, AppState};
 
-/// Helper: build the test app with auth disabled.
+/// Helper: build the test app with auth disabled and no Mass client.
 fn test_app() -> axum::Router {
     let state = AppState::new();
     msez_api::app(state)
@@ -22,7 +23,7 @@ fn test_app_with_auth(token: &str) -> axum::Router {
         port: 8080,
         auth_token: Some(token.to_string()),
     };
-    let state = AppState::with_config(config);
+    let state = AppState::with_config(config, None);
     msez_api::app(state)
 }
 
@@ -32,7 +33,7 @@ async fn body_string(response: axum::http::Response<Body>) -> String {
     String::from_utf8(bytes.to_vec()).unwrap()
 }
 
-// ── Health Probes ───────────────────────────────────────────────────
+// -- Health Probes ------------------------------------------------------------
 
 #[tokio::test]
 async fn test_liveness_probe() {
@@ -68,10 +69,12 @@ async fn test_readiness_probe() {
     assert_eq!(body, "ready");
 }
 
-// ── Entities CRUD ───────────────────────────────────────────────────
+// -- Entity Proxy (Mass API delegation) ---------------------------------------
+//
+// Without a Mass client configured, entity endpoints return 503.
 
 #[tokio::test]
-async fn test_create_entity() {
+async fn test_create_entity_returns_503_without_mass_client() {
     let app = test_app();
     let response = app
         .oneshot(
@@ -91,16 +94,11 @@ async fn test_create_entity() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::CREATED);
-    let body = body_string(response).await;
-    let entity: serde_json::Value = serde_json::from_str(&body).unwrap();
-    assert_eq!(entity["legal_name"], "Test Corp");
-    assert_eq!(entity["status"], "APPLIED");
-    assert!(entity["id"].is_string());
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
 #[tokio::test]
-async fn test_list_entities_empty() {
+async fn test_list_entities_returns_503_without_mass_client() {
     let app = test_app();
     let response = app
         .oneshot(
@@ -111,14 +109,11 @@ async fn test_list_entities_empty() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-    let body = body_string(response).await;
-    let entities: Vec<serde_json::Value> = serde_json::from_str(&body).unwrap();
-    assert!(entities.is_empty());
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
 #[tokio::test]
-async fn test_entity_not_found() {
+async fn test_get_entity_returns_503_without_mass_client() {
     let app = test_app();
     let response = app
         .oneshot(
@@ -129,23 +124,26 @@ async fn test_entity_not_found() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
+// -- Ownership Proxy (Mass API delegation) ------------------------------------
+//
+// Without a Mass client configured, ownership endpoints return 503.
+
 #[tokio::test]
-async fn test_create_entity_validation_error() {
+async fn test_create_cap_table_returns_503_without_mass_client() {
     let app = test_app();
     let response = app
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/v1/entities")
+                .uri("/v1/ownership/cap-tables")
                 .header("content-type", "application/json")
                 .body(Body::from(
                     serde_json::to_string(&serde_json::json!({
-                        "entity_type": "",
-                        "legal_name": "Test",
-                        "jurisdiction_id": "PK-RSEZ"
+                        "entity_id": "00000000-0000-0000-0000-000000000000",
+                        "share_classes": []
                     }))
                     .unwrap(),
                 ))
@@ -153,45 +151,28 @@ async fn test_create_entity_validation_error() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
-// ── Ownership ───────────────────────────────────────────────────────
-
 #[tokio::test]
-async fn test_create_cap_table() {
+async fn test_get_cap_table_returns_503_without_mass_client() {
     let app = test_app();
-    let entity_id = uuid::Uuid::new_v4();
     let response = app
         .oneshot(
             Request::builder()
-                .method("POST")
-                .uri("/v1/ownership/cap-table")
-                .header("content-type", "application/json")
-                .body(Body::from(
-                    serde_json::to_string(&serde_json::json!({
-                        "entity_id": entity_id.to_string(),
-                        "share_classes": [{
-                            "name": "Common",
-                            "authorized_shares": 1000000,
-                            "issued_shares": 0,
-                            "par_value": "1.00",
-                            "voting_rights": true
-                        }]
-                    }))
-                    .unwrap(),
-                ))
+                .uri("/v1/ownership/cap-tables/00000000-0000-0000-0000-000000000000")
+                .body(Body::empty())
                 .unwrap(),
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::CREATED);
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
-// ── Fiscal ──────────────────────────────────────────────────────────
+// -- Fiscal Proxy (Mass API delegation) ---------------------------------------
 
 #[tokio::test]
-async fn test_create_fiscal_account() {
+async fn test_create_account_returns_503_without_mass_client() {
     let app = test_app();
     let response = app
         .oneshot(
@@ -201,10 +182,9 @@ async fn test_create_fiscal_account() {
                 .header("content-type", "application/json")
                 .body(Body::from(
                     serde_json::to_string(&serde_json::json!({
-                        "entity_id": uuid::Uuid::new_v4().to_string(),
-                        "account_type": "treasury",
-                        "currency": "PKR",
-                        "ntn": "1234567"
+                        "entity_id": "00000000-0000-0000-0000-000000000000",
+                        "account_type": "operating",
+                        "currency": "PKR"
                     }))
                     .unwrap(),
                 ))
@@ -212,24 +192,24 @@ async fn test_create_fiscal_account() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::CREATED);
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
 #[tokio::test]
-async fn test_fiscal_ntn_validation() {
+async fn test_initiate_payment_returns_503_without_mass_client() {
     let app = test_app();
     let response = app
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/v1/fiscal/accounts")
+                .uri("/v1/fiscal/payments")
                 .header("content-type", "application/json")
                 .body(Body::from(
                     serde_json::to_string(&serde_json::json!({
-                        "entity_id": uuid::Uuid::new_v4().to_string(),
-                        "account_type": "treasury",
+                        "from_account_id": "00000000-0000-0000-0000-000000000000",
+                        "amount": "5000.00",
                         "currency": "PKR",
-                        "ntn": "123"
+                        "reference": "INV-001"
                     }))
                     .unwrap(),
                 ))
@@ -237,13 +217,13 @@ async fn test_fiscal_ntn_validation() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
-// ── Identity ────────────────────────────────────────────────────────
+// -- Identity Proxy (Mass API delegation) -------------------------------------
 
 #[tokio::test]
-async fn test_identity_verify() {
+async fn test_verify_identity_returns_503_without_mass_client() {
     let app = test_app();
     let response = app
         .oneshot(
@@ -253,8 +233,8 @@ async fn test_identity_verify() {
                 .header("content-type", "application/json")
                 .body(Body::from(
                     serde_json::to_string(&serde_json::json!({
-                        "identity_type": "kyc",
-                        "details": {"name": "Test Person"}
+                        "identity_type": "individual",
+                        "linked_ids": [{"id_type": "CNIC", "id_value": "12345-1234567-1"}]
                     }))
                     .unwrap(),
                 ))
@@ -262,31 +242,40 @@ async fn test_identity_verify() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::CREATED);
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
-// ── Consent ─────────────────────────────────────────────────────────
+#[tokio::test]
+async fn test_get_identity_returns_503_without_mass_client() {
+    let app = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/identity/00000000-0000-0000-0000-000000000000")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+}
+
+// -- Consent Proxy (Mass API delegation) --------------------------------------
 
 #[tokio::test]
-async fn test_consent_lifecycle() {
+async fn test_create_consent_returns_503_without_mass_client() {
     let app = test_app();
-    let entity_a = uuid::Uuid::new_v4();
-    let entity_b = uuid::Uuid::new_v4();
-
     let response = app
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/v1/consent/request")
+                .uri("/v1/consent")
                 .header("content-type", "application/json")
                 .body(Body::from(
                     serde_json::to_string(&serde_json::json!({
-                        "consent_type": "tax_assessment",
-                        "description": "Annual tax assessment consent",
-                        "parties": [
-                            {"entity_id": entity_a.to_string(), "role": "taxpayer"},
-                            {"entity_id": entity_b.to_string(), "role": "assessor"}
-                        ]
+                        "consent_type": "board_resolution",
+                        "description": "Approve formation",
+                        "parties": [{"entity_id": "00000000-0000-0000-0000-000000000000", "role": "approver"}]
                     }))
                     .unwrap(),
                 ))
@@ -294,13 +283,44 @@ async fn test_consent_lifecycle() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::CREATED);
-    let body = body_string(response).await;
-    let consent: serde_json::Value = serde_json::from_str(&body).unwrap();
-    assert_eq!(consent["status"], "PENDING");
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
-// ── Corridors ───────────────────────────────────────────────────────
+#[tokio::test]
+async fn test_get_consent_returns_503_without_mass_client() {
+    let app = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/consent/00000000-0000-0000-0000-000000000000")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+}
+
+// -- Update Entity returns 501 (not implemented) ------------------------------
+
+#[tokio::test]
+async fn test_update_entity_returns_501() {
+    let app = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri("/v1/entities/00000000-0000-0000-0000-000000000000")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"legal_name":"Updated Corp"}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+}
+
+// -- Corridors (SEZ Stack domain) ---------------------------------------------
 
 #[tokio::test]
 async fn test_create_corridor() {
@@ -351,7 +371,7 @@ async fn test_corridor_same_jurisdiction_rejected() {
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 }
 
-// ── Smart Assets ────────────────────────────────────────────────────
+// -- Smart Assets (SEZ Stack domain) ------------------------------------------
 
 #[tokio::test]
 async fn test_create_smart_asset() {
@@ -377,7 +397,7 @@ async fn test_create_smart_asset() {
     assert_eq!(response.status(), StatusCode::CREATED);
 }
 
-// ── Regulator ───────────────────────────────────────────────────────
+// -- Regulator (SEZ Stack domain) ---------------------------------------------
 
 #[tokio::test]
 async fn test_regulator_summary() {
@@ -398,7 +418,7 @@ async fn test_regulator_summary() {
     assert_eq!(summary["total_corridors"], 0);
 }
 
-// ── Authentication ──────────────────────────────────────────────────
+// -- Authentication -----------------------------------------------------------
 
 #[tokio::test]
 async fn test_auth_rejects_unauthorized() {
@@ -428,7 +448,8 @@ async fn test_auth_accepts_valid_token() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
+    // 503 because no Mass client, but auth passed (not 401).
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
 #[tokio::test]
@@ -462,7 +483,374 @@ async fn test_health_bypasses_auth() {
     assert_eq!(response.status(), StatusCode::OK);
 }
 
-// ── OpenAPI ─────────────────────────────────────────────────────────
+// -- RBAC: Regulator Endpoint Access Control ----------------------------------
+
+#[tokio::test]
+async fn rbac_regulator_summary_rejected_for_entity_operator() {
+    let app = test_app_with_auth("my-secret");
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/v1/regulator/summary")
+        .header(
+            "Authorization",
+            "Bearer entity_operator:550e8400-e29b-41d4-a716-446655440000:my-secret",
+        )
+        .body(Body::empty())
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn rbac_regulator_summary_allowed_for_regulator() {
+    let app = test_app_with_auth("my-secret");
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/v1/regulator/summary")
+        .header("Authorization", "Bearer regulator::my-secret")
+        .body(Body::empty())
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn rbac_regulator_summary_allowed_for_zone_admin() {
+    let app = test_app_with_auth("my-secret");
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/v1/regulator/summary")
+        .header("Authorization", "Bearer zone_admin::my-secret")
+        .body(Body::empty())
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn rbac_regulator_query_attestations_rejected_for_entity_operator() {
+    let app = test_app_with_auth("my-secret");
+
+    let req = Request::builder()
+        .method("POST")
+        .uri("/v1/regulator/query/attestations")
+        .header(
+            "Authorization",
+            "Bearer entity_operator:550e8400-e29b-41d4-a716-446655440000:my-secret",
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(r#"{}"#))
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn rbac_regulator_dashboard_rejected_for_entity_operator() {
+    let app = test_app_with_auth("my-secret");
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/v1/regulator/dashboard")
+        .header(
+            "Authorization",
+            "Bearer entity_operator:550e8400-e29b-41d4-a716-446655440000:my-secret",
+        )
+        .body(Body::empty())
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn rbac_legacy_token_format_treated_as_zone_admin() {
+    let app = test_app_with_auth("my-secret");
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/v1/regulator/summary")
+        .header("Authorization", "Bearer my-secret")
+        .body(Body::empty())
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn rbac_unknown_role_in_token_rejected() {
+    let app = test_app_with_auth("secret");
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/v1/regulator/summary")
+        .header("Authorization", "Bearer superadmin::secret")
+        .body(Body::empty())
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn rbac_malformed_entity_id_in_token_rejected() {
+    let app = test_app_with_auth("secret");
+
+    let req = Request::builder()
+        .method("POST")
+        .uri("/v1/assets/genesis")
+        .header("Authorization", "Bearer entity_operator:not-a-uuid:secret")
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"asset_type":"bond","jurisdiction_id":"PK-PSEZ"}"#,
+        ))
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+}
+
+// -- IDOR: Smart Asset Ownership Protection -----------------------------------
+
+/// Helper: parse JSON from response body.
+async fn body_json(response: axum::http::Response<Body>) -> serde_json::Value {
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    serde_json::from_slice(&bytes).unwrap()
+}
+
+#[tokio::test]
+async fn idor_entity_cannot_access_another_entitys_asset() {
+    let app = test_app_with_auth("secret");
+
+    let entity_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+    let entity_b = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+
+    // Entity A creates an asset.
+    let create_req = Request::builder()
+        .method("POST")
+        .uri("/v1/assets/genesis")
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_a}:secret"),
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"asset_type":"bond","jurisdiction_id":"PK-PSEZ"}"#,
+        ))
+        .unwrap();
+    let create_resp = app.clone().oneshot(create_req).await.unwrap();
+    assert_eq!(create_resp.status(), StatusCode::CREATED);
+    let created = body_json(create_resp).await;
+    let asset_id = created["id"].as_str().unwrap();
+
+    // Entity B tries to read it — must get 404 (not 403).
+    let get_req = Request::builder()
+        .method("GET")
+        .uri(format!("/v1/assets/{asset_id}"))
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_b}:secret"),
+        )
+        .body(Body::empty())
+        .unwrap();
+    let get_resp = app.clone().oneshot(get_req).await.unwrap();
+    assert_eq!(get_resp.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn idor_entity_can_access_own_asset() {
+    let app = test_app_with_auth("secret");
+    let entity_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+
+    // Create asset as Entity A.
+    let create_req = Request::builder()
+        .method("POST")
+        .uri("/v1/assets/genesis")
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_a}:secret"),
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"asset_type":"bond","jurisdiction_id":"PK-PSEZ"}"#,
+        ))
+        .unwrap();
+    let create_resp = app.clone().oneshot(create_req).await.unwrap();
+    assert_eq!(create_resp.status(), StatusCode::CREATED);
+    let created = body_json(create_resp).await;
+    let asset_id = created["id"].as_str().unwrap();
+
+    // Read asset as Entity A — should succeed.
+    let get_req = Request::builder()
+        .method("GET")
+        .uri(format!("/v1/assets/{asset_id}"))
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_a}:secret"),
+        )
+        .body(Body::empty())
+        .unwrap();
+    let get_resp = app.oneshot(get_req).await.unwrap();
+    assert_eq!(get_resp.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn idor_regulator_can_read_any_entitys_asset() {
+    let app = test_app_with_auth("secret");
+    let entity_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+
+    // Entity A creates an asset.
+    let create_req = Request::builder()
+        .method("POST")
+        .uri("/v1/assets/genesis")
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_a}:secret"),
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"asset_type":"bond","jurisdiction_id":"PK-PSEZ"}"#,
+        ))
+        .unwrap();
+    let create_resp = app.clone().oneshot(create_req).await.unwrap();
+    assert_eq!(create_resp.status(), StatusCode::CREATED);
+    let created = body_json(create_resp).await;
+    let asset_id = created["id"].as_str().unwrap();
+
+    // Regulator reads it — should succeed.
+    let get_req = Request::builder()
+        .method("GET")
+        .uri(format!("/v1/assets/{asset_id}"))
+        .header("Authorization", "Bearer regulator::secret")
+        .body(Body::empty())
+        .unwrap();
+    let get_resp = app.oneshot(get_req).await.unwrap();
+    assert_eq!(get_resp.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn idor_on_compliance_evaluate_blocked() {
+    let app = test_app_with_auth("secret");
+    let entity_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+    let entity_b = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+
+    // Entity A creates an asset.
+    let create_req = Request::builder()
+        .method("POST")
+        .uri("/v1/assets/genesis")
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_a}:secret"),
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"asset_type":"equity","jurisdiction_id":"AE-DIFC"}"#,
+        ))
+        .unwrap();
+    let create_resp = app.clone().oneshot(create_req).await.unwrap();
+    assert_eq!(create_resp.status(), StatusCode::CREATED);
+    let created = body_json(create_resp).await;
+    let asset_id = created["id"].as_str().unwrap();
+
+    // Entity B tries to evaluate compliance — must get 404.
+    let eval_req = Request::builder()
+        .method("POST")
+        .uri(format!("/v1/assets/{asset_id}/compliance/evaluate"))
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_b}:secret"),
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(r#"{"domains":["aml"],"context":{}}"#))
+        .unwrap();
+    let eval_resp = app.oneshot(eval_req).await.unwrap();
+    assert_eq!(eval_resp.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn idor_on_anchor_verify_blocked() {
+    let app = test_app_with_auth("secret");
+    let entity_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+    let entity_b = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+
+    // Entity A creates an asset.
+    let create_req = Request::builder()
+        .method("POST")
+        .uri("/v1/assets/genesis")
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_a}:secret"),
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"asset_type":"bond","jurisdiction_id":"PK-PSEZ"}"#,
+        ))
+        .unwrap();
+    let create_resp = app.clone().oneshot(create_req).await.unwrap();
+    assert_eq!(create_resp.status(), StatusCode::CREATED);
+    let created = body_json(create_resp).await;
+    let asset_id = created["id"].as_str().unwrap();
+
+    // Entity B tries to verify anchor — must get 404.
+    let verify_req = Request::builder()
+        .method("POST")
+        .uri(format!("/v1/assets/{asset_id}/anchors/corridor/verify"))
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_b}:secret"),
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"anchor_digest":"sha256:deadbeef","chain":"ethereum"}"#,
+        ))
+        .unwrap();
+    let verify_resp = app.oneshot(verify_req).await.unwrap();
+    assert_eq!(verify_resp.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn idor_zone_admin_can_access_any_asset() {
+    let app = test_app_with_auth("secret");
+    let entity_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+
+    // Entity A creates an asset.
+    let create_req = Request::builder()
+        .method("POST")
+        .uri("/v1/assets/genesis")
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_a}:secret"),
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"asset_type":"bond","jurisdiction_id":"PK-PSEZ"}"#,
+        ))
+        .unwrap();
+    let create_resp = app.clone().oneshot(create_req).await.unwrap();
+    assert_eq!(create_resp.status(), StatusCode::CREATED);
+    let created = body_json(create_resp).await;
+    let asset_id = created["id"].as_str().unwrap();
+
+    // Zone admin reads it — should succeed.
+    let get_req = Request::builder()
+        .method("GET")
+        .uri(format!("/v1/assets/{asset_id}"))
+        .header("Authorization", "Bearer zone_admin::secret")
+        .body(Body::empty())
+        .unwrap();
+    let get_resp = app.oneshot(get_req).await.unwrap();
+    assert_eq!(get_resp.status(), StatusCode::OK);
+}
+
+// -- OpenAPI ------------------------------------------------------------------
 
 #[tokio::test]
 async fn test_openapi_spec_generation() {
@@ -479,11 +867,9 @@ async fn test_openapi_spec_generation() {
     assert_eq!(response.status(), StatusCode::OK);
     let body = body_string(response).await;
     let spec: serde_json::Value = serde_json::from_str(&body).unwrap();
-    // Verify it's a valid OpenAPI spec.
     assert!(spec["openapi"].is_string());
     assert!(spec["info"]["title"].is_string());
     assert!(spec["paths"].is_object());
-    // Verify key paths exist.
     assert!(spec["paths"]["/v1/entities"].is_object());
     assert!(spec["paths"]["/v1/corridors"].is_object());
     assert!(spec["paths"]["/v1/assets/genesis"].is_object());
@@ -506,12 +892,14 @@ async fn test_openapi_contains_all_routes() {
     let paths = spec["paths"].as_object().unwrap();
 
     // Check that all expected path prefixes are present.
+    // All five primitives are proxied to Mass APIs, plus SEZ Stack native routes.
     let expected_paths = [
         "/v1/entities",
-        "/v1/ownership/cap-table",
+        "/v1/ownership/cap-tables",
         "/v1/fiscal/accounts",
-        "/v1/identity/verify",
-        "/v1/consent/request",
+        "/v1/fiscal/payments",
+        "/v1/identity",
+        "/v1/consent",
         "/v1/corridors",
         "/v1/assets/genesis",
         "/v1/regulator/summary",

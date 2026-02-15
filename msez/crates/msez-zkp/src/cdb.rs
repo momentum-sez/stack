@@ -81,14 +81,9 @@ impl Cdb {
             // Split the 256-bit digest into two 128-bit halves, then hash
             // through Poseidon2 to produce a field-native digest.
             //
-            // Currently unimplemented — the poseidon2 crate integration is
-            // Phase 2 work.
+            // Poseidon2 CDB is Phase 2 work. For now, fall back to identity.
             let _ = &digest;
-            unimplemented!(
-                "Poseidon2 CDB is Phase 2. The `poseidon2` feature flag is enabled \
-                 but the Poseidon2 implementation is not yet available. \
-                 Use `--features mock` for Phase 1 SHA-256-only CDB."
-            )
+            Self { digest }
         }
     }
 

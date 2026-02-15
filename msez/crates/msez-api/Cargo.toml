@@ -1,6 +1,6 @@
 [package]
 name = "msez-api"
-description = "Axum API services for the SEZ Stack: five programmable primitives (Entities, Ownership, Fiscal, Identity, Consent), corridor operations, smart asset CRUD, and regulator console."
+description = "Axum API services for the SEZ Stack: orchestration layer above Mass APIs, corridor operations, smart asset lifecycle, compliance tensor, and regulator console."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -17,7 +17,18 @@ swagger = []
 [dependencies]
 # Internal crates
 msez-core = { workspace = true }
+msez-crypto = { workspace = true }
+msez-vc = { workspace = true }
+msez-tensor = { workspace = true }
+msez-corridor = { workspace = true }
 msez-state = { workspace = true }
+msez-mass-client = { workspace = true }
+msez-agentic = { workspace = true }
+msez-pack = { workspace = true }
+msez-compliance = { workspace = true }
+
+# Cryptography
+rand_core = { workspace = true }
 
 # Web framework
 axum = { workspace = true }
@@ -40,6 +51,10 @@ utoipa = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
+# Security
+subtle = { workspace = true }
+parking_lot = { workspace = true }
+
 # Error handling
 thiserror = { workspace = true }
 
@@ -47,3 +62,5 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 tower = { workspace = true }
 http-body-util = { workspace = true }
+rand_core = { workspace = true }
+tempfile = { workspace = true }

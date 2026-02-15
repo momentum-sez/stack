@@ -30,6 +30,9 @@ pub enum ProofError {
     /// Proof generation failed internally.
     #[error("proof generation failed: {0}")]
     GenerationFailed(String),
+    /// Feature is not yet implemented.
+    #[error("not implemented: {0}")]
+    NotImplemented(String),
 }
 
 /// Error during proof verification.
@@ -44,6 +47,9 @@ pub enum VerifyError {
     /// The proof is cryptographically invalid.
     #[error("proof verification failed: {0}")]
     VerificationFailed(String),
+    /// Feature is not yet implemented.
+    #[error("not implemented: {0}")]
+    NotImplemented(String),
 }
 
 /// Private module that seals the [`ProofSystem`] trait.

@@ -35,6 +35,10 @@ pub enum CryptoError {
     /// I/O error (CAS filesystem operations).
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
+
+    /// Feature is not yet implemented.
+    #[error("not implemented: {0}")]
+    NotImplemented(String),
 }
 
 #[cfg(test)]

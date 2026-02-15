@@ -12,9 +12,11 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+use crate::auth::CallerIdentity;
+use crate::compliance::{apply_attestations, build_evaluation_result, build_tensor, AttestationInput};
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
-use crate::state::{AppState, SmartAssetRecord};
+use crate::state::{AppState, AssetComplianceStatus, SmartAssetRecord};
 use axum::extract::rejection::JsonRejection;
 
 /// Request to create a smart asset genesis.
@@ -31,8 +33,14 @@ impl Validate for CreateAssetRequest {
         if self.asset_type.trim().is_empty() {
             return Err("asset_type must not be empty".to_string());
         }
+        if self.asset_type.len() > 255 {
+            return Err("asset_type must not exceed 255 characters".to_string());
+        }
         if self.jurisdiction_id.trim().is_empty() {
             return Err("jurisdiction_id must not be empty".to_string());
+        }
+        if self.jurisdiction_id.len() > 255 {
+            return Err("jurisdiction_id must not exceed 255 characters".to_string());
         }
         Ok(())
     }
@@ -41,12 +49,30 @@ impl Validate for CreateAssetRequest {
 /// Compliance evaluation request.
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct ComplianceEvalRequest {
+    /// Domains to evaluate (currently ignored — all 20 domains are always evaluated).
+    #[serde(default)]
     pub domains: Vec<String>,
+    /// Additional evaluation context.
+    #[serde(default)]
     pub context: serde_json::Value,
+    /// Attestation evidence per compliance domain.
+    #[serde(default)]
+    pub attestations: std::collections::HashMap<String, AttestationInput>,
 }
 
 impl Validate for ComplianceEvalRequest {
     fn validate(&self) -> Result<(), String> {
+        const MAX_ATTESTATIONS: usize = 100;
+        if self.attestations.len() > MAX_ATTESTATIONS {
+            return Err(format!(
+                "attestations must not exceed {MAX_ATTESTATIONS} entries"
+            ));
+        }
+        for key in self.attestations.keys() {
+            if key.len() > 100 {
+                return Err("attestation domain name must not exceed 100 characters".to_string());
+            }
+        }
         Ok(())
     }
 }
@@ -57,6 +83,9 @@ pub struct ComplianceEvalResponse {
     pub asset_id: Uuid,
     pub overall_status: String,
     pub domain_results: serde_json::Value,
+    pub domain_count: usize,
+    pub passing_domains: Vec<String>,
+    pub blocking_domains: Vec<String>,
     pub evaluated_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -104,6 +133,7 @@ pub fn router() -> Router<AppState> {
 )]
 async fn create_asset(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     body: Result<Json<CreateAssetRequest>, JsonRejection>,
 ) -> Result<(axum::http::StatusCode, Json<SmartAssetRecord>), AppError> {
     let req = extract_validated_json(body)?;
@@ -116,8 +146,9 @@ async fn create_asset(
         jurisdiction_id: req.jurisdiction_id,
         status: "GENESIS".to_string(),
         genesis_digest: None,
-        compliance_status: None,
+        compliance_status: AssetComplianceStatus::Unevaluated,
         metadata: req.metadata,
+        owner_entity_id: caller.entity_id,
         created_at: now,
         updated_at: now,
     };
@@ -155,13 +186,20 @@ async fn submit_registry(State(_state): State<AppState>) -> Json<serde_json::Val
 )]
 async fn get_asset(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Path(id): Path<Uuid>,
 ) -> Result<Json<SmartAssetRecord>, AppError> {
-    state
+    let asset = state
         .smart_assets
         .get(&id)
-        .map(Json)
-        .ok_or_else(|| AppError::NotFound(format!("asset {id} not found")))
+        .ok_or_else(|| AppError::NotFound(format!("asset {id} not found")))?;
+
+    if !caller.can_access_asset(&asset) {
+        // Return 404 instead of 403 to prevent UUID enumeration.
+        return Err(AppError::NotFound(format!("asset {id} not found")));
+    }
+
+    Ok(Json(asset))
 }
 
 /// POST /v1/assets/:id/compliance/evaluate — Evaluate compliance.
@@ -178,19 +216,35 @@ async fn get_asset(
 )]
 async fn evaluate_compliance(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Path(id): Path<Uuid>,
     body: Result<Json<ComplianceEvalRequest>, JsonRejection>,
 ) -> Result<Json<ComplianceEvalResponse>, AppError> {
-    let _req = extract_validated_json(body)?;
-    if !state.smart_assets.contains(&id) {
+    let req = extract_validated_json(body)?;
+
+    let asset = state
+        .smart_assets
+        .get(&id)
+        .ok_or_else(|| AppError::NotFound(format!("asset {id} not found")))?;
+
+    if !caller.can_access_asset(&asset) {
         return Err(AppError::NotFound(format!("asset {id} not found")));
     }
 
+    // Build and evaluate the compliance tensor using the shared logic.
+    let mut tensor = build_tensor(&asset.jurisdiction_id);
+    apply_attestations(&mut tensor, &req.attestations);
+    let eval = build_evaluation_result(&tensor, &asset, id);
+
     Ok(Json(ComplianceEvalResponse {
         asset_id: id,
-        overall_status: "PERMITTED".to_string(),
-        domain_results: serde_json::json!({}),
-        evaluated_at: Utc::now(),
+        overall_status: eval.overall_status,
+        domain_results: serde_json::to_value(&eval.domain_results)
+            .unwrap_or_else(|_| serde_json::json!({})),
+        domain_count: eval.domain_count,
+        passing_domains: eval.passing_domains,
+        blocking_domains: eval.blocking_domains,
+        evaluated_at: eval.evaluated_at,
     }))
 }
 
@@ -206,11 +260,22 @@ async fn evaluate_compliance(
     tag = "smart_assets"
 )]
 async fn verify_anchor(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
+    caller: CallerIdentity,
     Path(id): Path<Uuid>,
     body: Result<Json<AnchorVerifyRequest>, JsonRejection>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let req = extract_validated_json(body)?;
+
+    let asset = state
+        .smart_assets
+        .get(&id)
+        .ok_or_else(|| AppError::NotFound(format!("asset {id} not found")))?;
+
+    if !caller.can_access_asset(&asset) {
+        return Err(AppError::NotFound(format!("asset {id} not found")));
+    }
+
     Ok(Json(serde_json::json!({
         "asset_id": id,
         "anchor_digest": req.anchor_digest,
@@ -223,7 +288,17 @@ async fn verify_anchor(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::auth::{CallerIdentity, Role};
     use crate::extractors::Validate;
+
+    /// A zone admin identity for tests that need full access.
+    fn zone_admin() -> CallerIdentity {
+        CallerIdentity {
+            role: Role::ZoneAdmin,
+            entity_id: None,
+            jurisdiction_id: None,
+        }
+    }
 
     // ── CreateAssetRequest validation ─────────────────────────────
 
@@ -292,6 +367,7 @@ mod tests {
         let req = ComplianceEvalRequest {
             domains: vec!["aml".to_string(), "kyc".to_string()],
             context: serde_json::json!({"entity_id": "123"}),
+            attestations: std::collections::HashMap::new(),
         };
         assert!(req.validate().is_ok());
     }
@@ -301,6 +377,7 @@ mod tests {
         let req = ComplianceEvalRequest {
             domains: vec![],
             context: serde_json::json!({}),
+            attestations: std::collections::HashMap::new(),
         };
         // The current validation always returns Ok.
         assert!(req.validate().is_ok());
@@ -353,9 +430,19 @@ mod tests {
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
-    /// Helper: build the smart assets router with a fresh AppState.
+    /// Helper: build the smart assets router with a fresh AppState and
+    /// ZoneAdmin identity injected for full access.
     fn test_app() -> Router<()> {
-        router().with_state(AppState::new())
+        router()
+            .layer(axum::Extension(zone_admin()))
+            .with_state(AppState::new())
+    }
+
+    /// Helper: build the router with shared state and ZoneAdmin identity.
+    fn test_app_with_state(state: AppState) -> Router<()> {
+        router()
+            .layer(axum::Extension(zone_admin()))
+            .with_state(state)
     }
 
     /// Helper: read the response body as bytes and deserialize from JSON.
@@ -384,7 +471,7 @@ mod tests {
         assert_eq!(record.jurisdiction_id, "PK-PSEZ");
         assert_eq!(record.status, "GENESIS");
         assert!(record.genesis_digest.is_none());
-        assert!(record.compliance_status.is_none());
+        assert_eq!(record.compliance_status, AssetComplianceStatus::Unevaluated);
     }
 
     #[tokio::test]
@@ -450,7 +537,7 @@ mod tests {
     #[tokio::test]
     async fn handler_create_then_get_asset_returns_200() {
         let state = AppState::new();
-        let app = router().with_state(state.clone());
+        let app = test_app_with_state(state.clone());
 
         // Create an asset.
         let create_req = Request::builder()
@@ -501,7 +588,7 @@ mod tests {
     #[tokio::test]
     async fn handler_evaluate_compliance_returns_200() {
         let state = AppState::new();
-        let app = router().with_state(state.clone());
+        let app = test_app_with_state(state.clone());
 
         // Create an asset first.
         let create_req = Request::builder()
@@ -529,7 +616,10 @@ mod tests {
 
         let result: ComplianceEvalResponse = body_json(eval_resp).await;
         assert_eq!(result.asset_id, created.id);
-        assert_eq!(result.overall_status, "PERMITTED");
+        // Without attestations, all 20 domains are Pending → overall is "pending".
+        assert_eq!(result.overall_status, "pending");
+        assert_eq!(result.domain_count, 20);
+        assert_eq!(result.blocking_domains.len(), 20);
     }
 
     #[tokio::test]
@@ -564,11 +654,24 @@ mod tests {
 
     #[tokio::test]
     async fn handler_verify_anchor_returns_200() {
-        let app = test_app();
-        let id = Uuid::new_v4();
+        let state = AppState::new();
+        let app = test_app_with_state(state.clone());
+
+        // Create an asset first.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/assets/genesis")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"asset_type":"bond","jurisdiction_id":"PK-PSEZ"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: SmartAssetRecord = body_json(create_resp).await;
+
         let req = Request::builder()
             .method("POST")
-            .uri(format!("/v1/assets/{id}/anchors/corridor/verify"))
+            .uri(format!("/v1/assets/{}/anchors/corridor/verify", created.id))
             .header("content-type", "application/json")
             .body(Body::from(
                 r#"{"anchor_digest":"sha256:deadbeef","chain":"ethereum"}"#,
@@ -579,7 +682,7 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::OK);
 
         let body: serde_json::Value = body_json(resp).await;
-        assert_eq!(body["asset_id"], id.to_string());
+        assert_eq!(body["asset_id"], created.id.to_string());
         assert_eq!(body["anchor_digest"], "sha256:deadbeef");
         assert_eq!(body["chain"], "ethereum");
         assert_eq!(body["verified"], true);
@@ -587,11 +690,24 @@ mod tests {
 
     #[tokio::test]
     async fn handler_verify_anchor_empty_digest_returns_422() {
-        let app = test_app();
-        let id = Uuid::new_v4();
+        let state = AppState::new();
+        let app = test_app_with_state(state.clone());
+
+        // Create an asset first.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/assets/genesis")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"asset_type":"bond","jurisdiction_id":"PK-PSEZ"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: SmartAssetRecord = body_json(create_resp).await;
+
         let req = Request::builder()
             .method("POST")
-            .uri(format!("/v1/assets/{id}/anchors/corridor/verify"))
+            .uri(format!("/v1/assets/{}/anchors/corridor/verify", created.id))
             .header("content-type", "application/json")
             .body(Body::from(r#"{"anchor_digest":"","chain":"ethereum"}"#))
             .unwrap();
@@ -602,11 +718,24 @@ mod tests {
 
     #[tokio::test]
     async fn handler_verify_anchor_bad_json_returns_400() {
-        let app = test_app();
-        let id = Uuid::new_v4();
+        let state = AppState::new();
+        let app = test_app_with_state(state.clone());
+
+        // Create an asset first.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/assets/genesis")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"asset_type":"bond","jurisdiction_id":"PK-PSEZ"}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        let created: SmartAssetRecord = body_json(create_resp).await;
+
         let req = Request::builder()
             .method("POST")
-            .uri(format!("/v1/assets/{id}/anchors/corridor/verify"))
+            .uri(format!("/v1/assets/{}/anchors/corridor/verify", created.id))
             .header("content-type", "application/json")
             .body(Body::from(r#"broken"#))
             .unwrap();

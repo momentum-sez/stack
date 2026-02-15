@@ -67,6 +67,18 @@ pub enum AppError {
     /// Internal server error (500). Message is logged but not returned to client.
     #[error("internal error: {0}")]
     Internal(String),
+
+    /// Mass API returned an error or is unreachable (502).
+    #[error("upstream Mass API error: {0}")]
+    UpstreamError(String),
+
+    /// Service dependency not configured (503).
+    #[error("service unavailable: {0}")]
+    ServiceUnavailable(String),
+
+    /// Feature not yet implemented in this proxy layer (501).
+    #[error("not implemented: {0}")]
+    NotImplemented(String),
 }
 
 impl AppError {
@@ -80,7 +92,27 @@ impl AppError {
             Self::Forbidden(_) => (StatusCode::FORBIDDEN, "FORBIDDEN"),
             Self::Conflict(_) => (StatusCode::CONFLICT, "CONFLICT"),
             Self::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
+            Self::UpstreamError(_) => (StatusCode::BAD_GATEWAY, "UPSTREAM_ERROR"),
+            Self::ServiceUnavailable(_) => (StatusCode::SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE"),
+            Self::NotImplemented(_) => (StatusCode::NOT_IMPLEMENTED, "NOT_IMPLEMENTED"),
         }
+    }
+}
+
+impl AppError {
+    /// Construct an upstream error (502 Bad Gateway).
+    pub fn upstream(msg: String) -> Self {
+        Self::UpstreamError(msg)
+    }
+
+    /// Construct a service unavailable error (503).
+    pub fn service_unavailable(msg: &str) -> Self {
+        Self::ServiceUnavailable(msg.to_string())
+    }
+
+    /// Construct a not-found error (404).
+    pub fn not_found(msg: String) -> Self {
+        Self::NotFound(msg)
     }
 }
 
@@ -88,15 +120,20 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, code) = self.status_and_code();
 
-        // Never expose internal error messages to clients.
+        // Never expose internal/upstream error messages to clients.
         let message = match &self {
             Self::Internal(_) => "An internal error occurred".to_string(),
+            Self::UpstreamError(_) => "An upstream service error occurred".to_string(),
             other => other.to_string(),
         };
 
-        // Log internal errors for operator visibility.
-        if matches!(&self, Self::Internal(_)) {
-            tracing::error!(error = %self, "internal server error");
+        // Log server-side errors for operator visibility.
+        match &self {
+            Self::Internal(_) => tracing::error!(error = %self, "internal server error"),
+            Self::UpstreamError(_) => tracing::error!(error = %self, "upstream API error"),
+            Self::ServiceUnavailable(_) => tracing::warn!(error = %self, "service unavailable"),
+            Self::NotImplemented(_) => tracing::info!(error = %self, "not implemented"),
+            _ => {}
         }
 
         let body = ErrorBody {
@@ -190,6 +227,30 @@ mod tests {
         let (status, code) = err.status_and_code();
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
         assert_eq!(code, "INTERNAL_ERROR");
+    }
+
+    #[test]
+    fn upstream_error_status_code() {
+        let err = AppError::UpstreamError("Mass API timeout".to_string());
+        let (status, code) = err.status_and_code();
+        assert_eq!(status, StatusCode::BAD_GATEWAY);
+        assert_eq!(code, "UPSTREAM_ERROR");
+    }
+
+    #[test]
+    fn service_unavailable_status_code() {
+        let err = AppError::ServiceUnavailable("Mass client not configured".to_string());
+        let (status, code) = err.status_and_code();
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(code, "SERVICE_UNAVAILABLE");
+    }
+
+    #[test]
+    fn not_implemented_status_code() {
+        let err = AppError::NotImplemented("update entity".to_string());
+        let (status, code) = err.status_and_code();
+        assert_eq!(status, StatusCode::NOT_IMPLEMENTED);
+        assert_eq!(code, "NOT_IMPLEMENTED");
     }
 
     #[test]

@@ -22,6 +22,7 @@
 use ed25519_dalek::{Signer, Verifier};
 use msez_core::CanonicalBytes;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use zeroize::Zeroize;
 
 use crate::error::CryptoError;
 
@@ -125,6 +126,16 @@ pub struct SigningKey {
     inner: ed25519_dalek::SigningKey,
 }
 
+impl Zeroize for SigningKey {
+    fn zeroize(&mut self) {
+        // Extract key bytes, zeroize them, then overwrite inner with a zero-key.
+        // ed25519_dalek::SigningKey's own ZeroizeOnDrop provides additional defense.
+        let mut key_bytes = self.inner.to_bytes();
+        key_bytes.zeroize();
+        self.inner = ed25519_dalek::SigningKey::from_bytes(&[0u8; 32]);
+    }
+}
+
 impl SigningKey {
     /// Generate a new random Ed25519 signing key.
     ///
@@ -174,6 +185,12 @@ impl std::fmt::Debug for SigningKey {
         f.debug_struct("SigningKey")
             .field("public", &self.verifying_key().to_hex())
             .finish()
+    }
+}
+
+impl Drop for SigningKey {
+    fn drop(&mut self) {
+        self.zeroize();
     }
 }
 
@@ -439,6 +456,14 @@ mod tests {
         let sig1 = sk.sign(&data);
         let sig2 = sk.sign(&data);
         assert_eq!(sig1, sig2);
+    }
+
+    #[test]
+    fn signing_key_drops_without_panic() {
+        let mut rng = rand_core::OsRng;
+        let key = SigningKey::generate(&mut rng);
+        let _pub_key = key.verifying_key();
+        drop(key);
     }
 
     // ── Coverage expansion tests ─────────────────────────────────────

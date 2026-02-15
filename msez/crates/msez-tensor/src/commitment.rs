@@ -169,7 +169,13 @@ pub fn merkle_root(commitments: &[TensorCommitment]) -> Option<String> {
         let mut next_level = Vec::with_capacity(leaves.len() / 2);
         for chunk in leaves.chunks(2) {
             let combined = format!("{}{}", chunk[0], chunk[1]);
-            let canonical = CanonicalBytes::new(&combined).ok()?;
+            let canonical = match CanonicalBytes::new(&combined) {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::error!(error = %e, "tensor Merkle tree canonicalization failed");
+                    return None;
+                }
+            };
             let digest = sha256_digest(&canonical);
             next_level.push(digest.to_hex());
         }

@@ -3,7 +3,7 @@
 //! Starts the Axum HTTP server for the SEZ Stack API.
 //! Binds to configurable port (default 8080).
 
-use msez_api::state::{AppConfig, AppState};
+use msez_api::state::AppConfig;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,10 +22,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(8080);
 
     let auth_token = std::env::var("AUTH_TOKEN").ok();
-
     let config = AppConfig { port, auth_token };
 
-    let state = AppState::with_config(config);
+    // Attempt to create Mass API client from environment.
+    let mass_client = match msez_mass_client::MassApiConfig::from_env() {
+        Ok(mass_config) => {
+            tracing::info!("Mass API client configured");
+            match msez_mass_client::MassClient::new(mass_config) {
+                Ok(client) => Some(client),
+                Err(e) => {
+                    tracing::error!("Failed to create Mass API client: {e}");
+                    return Err(e.into());
+                }
+            }
+        }
+        Err(e) => {
+            tracing::warn!(
+                "Mass API client not configured: {e}. Primitive proxy endpoints will return 503."
+            );
+            None
+        }
+    };
+
+    // Bootstrap: load zone configuration if ZONE_CONFIG is set.
+    let state = msez_api::bootstrap::bootstrap(config, mass_client).map_err(|e| {
+        tracing::error!("Bootstrap failed: {e}");
+        e
+    })?;
+
     let app = msez_api::app(state);
 
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));

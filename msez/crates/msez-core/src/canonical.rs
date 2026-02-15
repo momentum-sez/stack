@@ -415,6 +415,39 @@ mod tests {
         let cb = CanonicalBytes::new(&value).unwrap();
         assert_eq!(std::str::from_utf8(cb.as_bytes()).unwrap(), "-42");
     }
+
+    /// CRITICAL: Verify serde_json::Map iterates keys in sorted order.
+    ///
+    /// If preserve_order is enabled, Map uses IndexMap (insertion order)
+    /// instead of BTreeMap (sorted order), silently corrupting every
+    /// content-addressed digest in the system.
+    ///
+    /// If this test fails, run: cargo tree -e features -i serde_json
+    #[test]
+    fn serde_json_map_must_use_sorted_order() {
+        let mut map = serde_json::Map::new();
+        map.insert("z".to_string(), serde_json::Value::Null);
+        map.insert("m".to_string(), serde_json::Value::Null);
+        map.insert("a".to_string(), serde_json::Value::Null);
+        let keys: Vec<&String> = map.keys().collect();
+        assert_eq!(
+            keys,
+            vec!["a", "m", "z"],
+            "CRITICAL: serde_json preserve_order is active — Map uses IndexMap not BTreeMap. \
+             This corrupts ALL digests. Run: cargo tree -e features -i serde_json"
+        );
+    }
+
+    /// End-to-end: canonical output has sorted keys from unsorted input.
+    #[test]
+    fn canonical_output_sorted_keys_from_reverse_input() {
+        let input = r#"{"zebra":1,"apple":2,"mango":3}"#;
+        let value: serde_json::Value = serde_json::from_str(input).unwrap();
+        let cb = CanonicalBytes::new(&value).unwrap();
+        let output = std::str::from_utf8(cb.as_bytes()).unwrap();
+        assert_eq!(output, r#"{"apple":2,"mango":3,"zebra":1}"#,
+            "Canonical output keys not sorted — preserve_order may be active");
+    }
 }
 
 /// Property-based tests using proptest.

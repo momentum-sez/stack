@@ -1014,74 +1014,49 @@ fn serde_rt_tensor_cell_skip_empty_attestations() {
 }
 
 // =========================================================================
-// Cross-cutting: serde round-trip of serialized DID bypasses validation
+// BUG-013 through BUG-017 RESOLVED: Custom serde Deserialize impls
+// now route through validated constructors. Invalid values are rejected
+// at deserialization time.
 // =========================================================================
 
 #[test]
-fn serde_rt_did_bypasses_validation() {
-    // BUG-013: Did deserializes without validation. A malformed DID
-    // that was never constructed via Did::new() can be deserialized
-    // directly from JSON, bypassing the format validation.
-    // This is inherent to serde's Deserialize derive on newtype(String).
+fn serde_rt_did_rejects_invalid() {
+    // BUG-013 RESOLVED: Custom Deserialize validates via Did::new().
     let invalid_json = "\"not-a-did\"";
     let result: Result<msez_core::Did, _> = serde_json::from_str(invalid_json);
-    // If this succeeds, it means serde bypasses Did::new() validation
-    if result.is_ok() {
-        // This IS a bug: an invalid DID was deserialized successfully
-        // The type invariant (validated at construction) is violated.
-        let did = result.unwrap();
-        assert_eq!(did.as_str(), "not-a-did");
-        // BUG-013 confirmed: serde bypasses Did validation
-    }
-    // If it fails, the implementation has custom Deserialize — good.
+    assert!(result.is_err(), "invalid DID must be rejected at deserialization");
 }
 
 #[test]
-fn serde_rt_ntn_bypasses_validation() {
-    // BUG-014: Ntn deserializes without validation.
+fn serde_rt_ntn_rejects_invalid() {
+    // BUG-014 RESOLVED: Custom Deserialize validates via Ntn::new().
     let invalid_json = "\"12345\""; // Only 5 digits, should be 7
     let result: Result<msez_core::Ntn, _> = serde_json::from_str(invalid_json);
-    if result.is_ok() {
-        // BUG-014 confirmed: Ntn validation bypassed via serde
-        let ntn = result.unwrap();
-        assert_eq!(ntn.as_str(), "12345");
-    }
+    assert!(result.is_err(), "invalid NTN must be rejected at deserialization");
 }
 
 #[test]
-fn serde_rt_cnic_bypasses_validation() {
-    // BUG-015: Cnic deserializes without validation.
+fn serde_rt_cnic_rejects_invalid() {
+    // BUG-015 RESOLVED: Custom Deserialize validates via Cnic::new().
     let invalid_json = "\"123\""; // Only 3 digits, should be 13
     let result: Result<msez_core::Cnic, _> = serde_json::from_str(invalid_json);
-    if result.is_ok() {
-        // BUG-015 confirmed: Cnic validation bypassed via serde
-        let cnic = result.unwrap();
-        assert_eq!(cnic.as_str(), "123");
-    }
+    assert!(result.is_err(), "invalid CNIC must be rejected at deserialization");
 }
 
 #[test]
-fn serde_rt_passport_number_bypasses_validation() {
-    // BUG-016: PassportNumber deserializes without validation.
+fn serde_rt_passport_number_rejects_invalid() {
+    // BUG-016 RESOLVED: Custom Deserialize validates via PassportNumber::new().
     let invalid_json = "\"AB\""; // Only 2 chars, minimum is 5
     let result: Result<msez_core::PassportNumber, _> = serde_json::from_str(invalid_json);
-    if result.is_ok() {
-        // BUG-016 confirmed: PassportNumber validation bypassed via serde
-        let pp = result.unwrap();
-        assert_eq!(pp.as_str(), "AB");
-    }
+    assert!(result.is_err(), "invalid passport must be rejected at deserialization");
 }
 
 #[test]
-fn serde_rt_jurisdiction_id_bypasses_validation() {
-    // BUG-017: JurisdictionId deserializes without validation.
+fn serde_rt_jurisdiction_id_rejects_invalid() {
+    // BUG-017 RESOLVED: Custom Deserialize validates via JurisdictionId::new().
     let invalid_json = "\"\""; // Empty string, should be rejected
     let result: Result<JurisdictionId, _> = serde_json::from_str(invalid_json);
-    if result.is_ok() {
-        // BUG-017 confirmed: empty JurisdictionId via serde
-        let jid = result.unwrap();
-        assert_eq!(jid.as_str(), "");
-    }
+    assert!(result.is_err(), "empty JurisdictionId must be rejected at deserialization");
 }
 
 // =========================================================================
@@ -1504,8 +1479,9 @@ fn serde_rt_dissolution_stage_all_variants() {
 
 #[test]
 fn serde_rt_settlement_plan_large_amounts() {
-    // BUG-018: gross_total computation uses i64::sum() which can overflow
-    // silently in release mode (wrapping arithmetic) or panic in debug mode.
+    // BUG-018 RESOLVED: gross_total now uses checked arithmetic.
+    // Overflow returns NettingError::ArithmeticOverflow instead of
+    // panicking or silently wrapping.
     let mut engine = NettingEngine::new();
     engine
         .add_obligation(Obligation {
@@ -1527,21 +1503,15 @@ fn serde_rt_settlement_plan_large_amounts() {
             priority: 0,
         })
         .unwrap();
-    // This should either:
-    // 1. Return an error (correct behavior)
-    // 2. Panic in debug mode (BUG-018 confirmed)
-    // 3. Silently wrap in release mode (BUG-018 confirmed, P0)
-    let result = std::panic::catch_unwind(|| engine.compute_plan());
-    if let Ok(Ok(plan)) = result {
-        // If it didn't panic and returned Ok, check if the sum wrapped
-        if plan.gross_total < 0 {
-            // BUG-018: i64 overflow wrapped to negative — P0 silent data corruption
-            panic!(
-                "BUG-018: gross_total overflowed to {} — silent financial corruption",
-                plan.gross_total
-            );
-        }
-    }
-    // If it panicked, that's also BUG-018 (panic in production) but less severe
-    // than silent corruption. We just note it.
+    // With checked arithmetic, this returns an error instead of overflowing.
+    let result = engine.compute_plan();
+    assert!(
+        result.is_err(),
+        "BUG-018 RESOLVED: overflow must return ArithmeticOverflow error"
+    );
+    let err_msg = format!("{}", result.unwrap_err());
+    assert!(
+        err_msg.contains("arithmetic overflow"),
+        "error should mention arithmetic overflow, got: {err_msg}"
+    );
 }

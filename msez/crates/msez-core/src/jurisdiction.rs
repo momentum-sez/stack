@@ -15,6 +15,18 @@ use uuid::Uuid;
 
 use crate::error::ValidationError;
 
+// -- Validating Deserialize for JurisdictionId --------------------------------
+
+impl<'de> Deserialize<'de> for JurisdictionId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let raw = String::deserialize(deserializer)?;
+        Self::new(raw).map_err(serde::de::Error::custom)
+    }
+}
+
 /// A jurisdiction identifier, typically an ISO 3166-1 code or a
 /// zone-specific identifier (e.g., "PK-RSEZ" for Pakistan Rashakai SEZ).
 ///
@@ -22,7 +34,7 @@ use crate::error::ValidationError;
 ///
 /// Must be a non-empty string. No further format restrictions are imposed
 /// because jurisdiction naming varies across SEZ configurations.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct JurisdictionId(String);
 
 impl JurisdictionId {

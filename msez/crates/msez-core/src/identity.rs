@@ -21,6 +21,24 @@ use uuid::Uuid;
 
 use crate::error::ValidationError;
 
+/// Helper macro to implement `Deserialize` for string newtypes that must
+/// validate their contents. Deserializes as a plain `String`, then routes
+/// through the type's `new()` constructor so that invalid values are
+/// rejected at deserialization time — not silently accepted.
+macro_rules! impl_validating_deserialize {
+    ($ty:ident) => {
+        impl<'de> Deserialize<'de> for $ty {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                let raw = String::deserialize(deserializer)?;
+                Self::new(raw).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+
 // ---------------------------------------------------------------------------
 // UUID-based identifiers (always valid by construction)
 // ---------------------------------------------------------------------------
@@ -142,8 +160,10 @@ impl std::fmt::Display for WatcherId {
 /// - Method-specific identifier must be non-empty
 ///
 /// Reference: <https://www.w3.org/TR/did-core/#did-syntax>
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct Did(String);
+
+impl_validating_deserialize!(Did);
 
 impl Did {
     /// Create a DID from a string, validating format.
@@ -226,8 +246,10 @@ impl std::fmt::Display for Did {
 ///
 /// - Must be exactly 7 digits (0-9)
 /// - Leading zeros are significant (e.g., "0012345" is valid)
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct Ntn(String);
+
+impl_validating_deserialize!(Ntn);
 
 impl Ntn {
     /// Create an NTN from a string value, validating the 7-digit format.
@@ -267,8 +289,10 @@ impl std::fmt::Display for Ntn {
 ///
 /// - Must be exactly 13 digits after stripping dashes
 /// - If dashes are present, must follow the 5-7-1 pattern
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct Cnic(String);
+
+impl_validating_deserialize!(Cnic);
 
 impl Cnic {
     /// Create a CNIC from a string value, validating format.
@@ -328,8 +352,10 @@ impl std::fmt::Display for Cnic {
 /// - Must be 5-20 characters
 /// - Must be alphanumeric (ASCII letters and digits only)
 /// - Stored in uppercase form for consistency
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct PassportNumber(String);
+
+impl_validating_deserialize!(PassportNumber);
 
 impl PassportNumber {
     /// Create a passport number, validating format.

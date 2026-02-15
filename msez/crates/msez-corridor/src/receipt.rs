@@ -88,7 +88,7 @@ pub enum ReceiptError {
 /// The `next_root` is the canonical digest of the receipt payload,
 /// computed via `CanonicalBytes::new()` → `sha256_digest()`. This ensures
 /// all digests use JCS-compatible canonicalization.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CorridorReceipt {
     /// Receipt type discriminator.
     #[serde(rename = "type")]
@@ -124,7 +124,7 @@ impl CorridorReceipt {
 ///
 /// Checkpoints are periodic snapshots of the receipt chain's MMR root,
 /// used for L1 anchoring and cross-corridor verification.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Checkpoint {
     /// The corridor this checkpoint belongs to.
     pub corridor_id: CorridorId,

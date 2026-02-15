@@ -21,7 +21,8 @@ use std::panic;
 
 #[test]
 fn netting_i64_max_overflow_two_obligations() {
-    // BUG-018: Two obligations that sum to > i64::MAX should not silently overflow
+    // BUG-018 RESOLVED: Two obligations that sum to > i64::MAX now return
+    // NettingError::ArithmeticOverflow instead of panicking or wrapping.
     let mut engine = NettingEngine::new();
     engine.add_obligation(Obligation {
         from_party: "A".to_string(),
@@ -40,38 +41,30 @@ fn netting_i64_max_overflow_two_obligations() {
         priority: 0,
     }).unwrap();
 
-    // This will either panic (debug mode) or overflow (release mode)
-    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| engine.compute_plan()));
-    match result {
-        Ok(Ok(plan)) => {
-            // BUG-018: If gross_total wrapped to negative, that's silent corruption
-            assert!(
-                plan.gross_total >= 0,
-                "BUG-018: gross_total overflowed to {} — silent data corruption",
-                plan.gross_total
-            );
-        }
-        Ok(Err(_)) => {} // Correct: returned error for overflow
-        Err(_) => {}      // Panicked: known defect in debug mode
-    }
+    let result = engine.compute_plan();
+    assert!(result.is_err(), "BUG-018 RESOLVED: overflow must return error");
+    let err_msg = format!("{}", result.unwrap_err());
+    assert!(err_msg.contains("arithmetic overflow"), "expected ArithmeticOverflow, got: {err_msg}");
 }
 
 #[test]
 fn netting_many_small_obligations_no_overflow() {
     let mut engine = NettingEngine::new();
-    // 1000 obligations of 1M each = 1B total, well within i64 range
+    // 1000 unique obligations well within i64 range.
+    // Use unique (from, to, amount) to avoid duplicate detection.
     for i in 0..1000 {
         engine.add_obligation(Obligation {
             from_party: format!("party_{}", i % 10),
             to_party: format!("party_{}", (i + 1) % 10),
-            amount: 1_000_000,
+            amount: 1_000_000 + i as i64, // unique amount per obligation
             currency: "USD".to_string(),
             corridor_id: None,
             priority: 0,
         }).unwrap();
     }
     let plan = engine.compute_plan().unwrap();
-    assert_eq!(plan.gross_total, 1_000_000_000);
+    // Sum of (1_000_000 + i) for i in 0..1000 = 1000*1_000_000 + 999*1000/2 = 1_000_499_500
+    assert_eq!(plan.gross_total, 1_000_499_500);
 }
 
 #[test]

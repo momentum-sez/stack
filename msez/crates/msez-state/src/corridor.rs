@@ -121,7 +121,7 @@ impl CorridorState for Deprecated {
 // ── Evidence Types ───────────────────────────────────────────────────
 
 /// Evidence required to submit a corridor from Draft to Pending.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SubmissionEvidence {
     /// Digest of the bilateral agreement between jurisdictions.
     pub bilateral_agreement_digest: ContentDigest,
@@ -130,7 +130,7 @@ pub struct SubmissionEvidence {
 }
 
 /// Evidence required to activate a corridor from Pending to Active.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ActivationEvidence {
     /// Regulatory approval digest from jurisdiction A.
     pub regulatory_approval_a: ContentDigest,
@@ -139,7 +139,7 @@ pub struct ActivationEvidence {
 }
 
 /// Reason for halting a corridor.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct HaltReason {
     /// Human-readable reason for the halt.
     pub reason: String,
@@ -150,7 +150,7 @@ pub struct HaltReason {
 }
 
 /// Reason for suspending a corridor.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SuspendReason {
     /// Human-readable reason for the suspension.
     pub reason: String,
@@ -159,14 +159,14 @@ pub struct SuspendReason {
 }
 
 /// Evidence required to resume a suspended corridor.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ResumeEvidence {
     /// Digest of the resolution attestation.
     pub resolution_attestation: ContentDigest,
 }
 
 /// Evidence required to deprecate a halted corridor.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DeprecationEvidence {
     /// Digest of the deprecation decision (e.g., bilateral agreement to sunset).
     pub deprecation_decision_digest: ContentDigest,
@@ -181,7 +181,7 @@ pub struct DeprecationEvidence {
 /// Every transition is logged with the source and target states, a
 /// timestamp, and the digest of the evidence that authorized it. This
 /// provides a complete audit trail for regulatory review.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TransitionRecord {
     /// State before the transition.
     pub from_state: DynCorridorState,
@@ -371,7 +371,7 @@ impl Corridor<Halted> {
 /// Use the typestate `Corridor<S>` for business logic where the state
 /// is known; use `DynCorridorData` for storage and API serialization
 /// where the state arrives as a string.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DynCorridorData {
     /// Unique corridor identifier.
     pub id: CorridorId,

@@ -143,17 +143,20 @@ fn did_new_two_colons_empty_id() {
 
 #[test]
 fn did_method_and_id_no_panic() {
-    // BUG-019: Did::method() and Did::method_specific_id() use expect("validated at construction")
-    // But serde can bypass construction validation (BUG-013).
-    // If a Did is deserialized without validation and then .method() is called,
-    // the expect will panic.
-    let invalid_did: Did = serde_json::from_str("\"not-a-did\"").unwrap();
-    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        let _ = invalid_did.method();
-    }));
-    if result.is_err() {
-        // BUG-019 confirmed: calling .method() on a deserialized invalid DID panics
-    }
+    // BUG-019 RESOLVED: Custom Deserialize now validates via Did::new().
+    // Invalid DIDs are rejected at deserialization time, so the panic
+    // path in Did::method() can never be reached via serde.
+    let result: Result<Did, _> = serde_json::from_str("\"not-a-did\"");
+    assert!(
+        result.is_err(),
+        "BUG-019/BUG-013 RESOLVED: invalid DID must be rejected at deserialization"
+    );
+
+    // Valid DIDs still work correctly through serde
+    let valid: Did = serde_json::from_str("\"did:web:example.com\"")
+        .expect("valid DID should deserialize");
+    assert_eq!(valid.method(), "web");
+    assert_eq!(valid.method_specific_id(), "example.com");
 }
 
 #[test]

@@ -86,7 +86,7 @@ pub struct ProofResult {
 ///
 /// Serde rename attributes map between Rust snake_case and the W3C VC
 /// JSON field names (camelCase / `@`-prefixed).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VerifiableCredential {
     /// JSON-LD context URIs.
     #[serde(rename = "@context")]
@@ -125,7 +125,7 @@ pub struct VerifiableCredential {
 }
 
 /// JSON-LD `@context` value — either a single string or an array.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ContextValue {
     /// Single context URI string.
@@ -143,7 +143,7 @@ impl Default for ContextValue {
 }
 
 /// Credential `type` value — either a single string or an array.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum CredentialTypeValue {
     /// Single type string.
@@ -167,7 +167,7 @@ impl CredentialTypeValue {
 /// The Python implementation normalizes proofs to a list internally
 /// (`_proofs_as_list`). This enum handles the JSON polymorphism at the
 /// serde level.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ProofValue {
     /// A single proof object.

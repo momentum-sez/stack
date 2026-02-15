@@ -19,6 +19,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
+use msez_corridor::ReceiptChain;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -201,6 +202,13 @@ pub struct AppState {
     pub smart_assets: Store<SmartAssetRecord>,
     pub attestations: Store<AttestationRecord>,
 
+    /// Per-corridor receipt chains (append-only MMR accumulators).
+    ///
+    /// `ReceiptChain` is not `Clone` (it wraps a mutable `MerkleMountainRange`),
+    /// so it cannot use the generic `Store<T>`. A direct `Arc<RwLock<HashMap>>`
+    /// is used instead. Keyed by corridor UUID — each corridor has exactly one chain.
+    pub receipt_chains: Arc<RwLock<HashMap<Uuid, ReceiptChain>>>,
+
     // -- Mass API client (delegates primitive operations to live Mass APIs) --
     pub mass_client: Option<msez_mass_client::MassClient>,
 
@@ -223,6 +231,7 @@ impl AppState {
             corridors: Store::new(),
             smart_assets: Store::new(),
             attestations: Store::new(),
+            receipt_chains: Arc::new(RwLock::new(HashMap::new())),
             mass_client,
             config,
         }

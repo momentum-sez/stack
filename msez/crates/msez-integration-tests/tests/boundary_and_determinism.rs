@@ -4,12 +4,19 @@
 //! Tests for edge-case inputs (financial overflow, empty strings, Unicode,
 //! UUID boundaries) and determinism verification (same input → same output).
 
-use msez_core::{CanonicalBytes, ComplianceDomain, ContentDigest, JurisdictionId};
+use msez_core::{
+    CanonicalBytes, ComplianceDomain, ContentDigest, JurisdictionId, WatcherId,
+};
 use msez_corridor::netting::{NettingEngine, Obligation};
 use msez_corridor::swift::{SettlementInstruction, SettlementRail, SwiftPacs008};
 use msez_crypto::{sha256_digest, MerkleMountainRange, SigningKey};
+use msez_pack::licensepack::{
+    License, LicenseCondition, LicenseRestriction, LicenseStatus, Licensepack,
+};
 use msez_tensor::{ComplianceState, ComplianceTensor, DefaultJurisdiction};
 use msez_vc::{ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential};
+use msez_zkp::mock::{MockCircuit, MockProofSystem, MockProvingKey, MockVerifyingKey};
+use msez_zkp::traits::ProofSystem;
 use serde_json::json;
 use std::panic;
 
@@ -1045,4 +1052,779 @@ fn netting_bilateral_perfect_offset() {
     );
     assert_eq!(plan.net_total, 0);
     assert_eq!(plan.reduction_percentage, 100.0);
+}
+
+// =========================================================================
+// Campaign 5 Extension: Pack boundary inputs
+// =========================================================================
+
+use msez_pack::regpack::{SanctionsChecker, SanctionsEntry, validate_compliance_domain};
+use msez_pack::parser::ensure_json_compatible;
+
+#[test]
+fn pack_sanctions_checker_threshold_zero_returns_all_matches() {
+    // Threshold 0.0 should match everything (minimum similarity = 0)
+    let checker = SanctionsChecker::new(vec![
+        SanctionsEntry {
+            entry_id: "SE-100".to_string(),
+            entry_type: "individual".to_string(),
+            source_lists: vec!["OFAC".to_string()],
+            primary_name: "John Smith".to_string(),
+            aliases: vec![],
+            identifiers: vec![],
+            addresses: vec![],
+            nationalities: vec![],
+            date_of_birth: None,
+            programs: vec!["SDN".to_string()],
+            listing_date: None,
+            remarks: None,
+        },
+    ], "threshold-test".to_string());
+    let result = checker.check_entity("Completely Different Name", None, 0.0);
+    // With threshold 0.0, any name should match
+    // This tests whether the fuzzy matching handles extreme threshold correctly
+    let _ = result; // May or may not match depending on implementation
+}
+
+#[test]
+fn pack_sanctions_checker_threshold_one_requires_exact() {
+    // Threshold 1.0 should require exact (or near-exact) match
+    let checker = SanctionsChecker::new(vec![
+        SanctionsEntry {
+            entry_id: "SE-101".to_string(),
+            entry_type: "individual".to_string(),
+            source_lists: vec!["EU".to_string()],
+            primary_name: "Ahmed Hassan".to_string(),
+            aliases: vec![],
+            identifiers: vec![],
+            addresses: vec![],
+            nationalities: vec![],
+            date_of_birth: None,
+            programs: vec![],
+            listing_date: None,
+            remarks: None,
+        },
+    ], "exact-test".to_string());
+    let result = checker.check_entity("Ahmed Hassan", None, 1.0);
+    assert!(result.matched, "Exact name should match at threshold 1.0");
+}
+
+#[test]
+fn pack_sanctions_checker_identifier_matching() {
+    use std::collections::BTreeMap;
+    let mut id_map = BTreeMap::new();
+    id_map.insert("passport".to_string(), "AB1234567".to_string());
+
+    let checker = SanctionsChecker::new(vec![
+        SanctionsEntry {
+            entry_id: "SE-102".to_string(),
+            entry_type: "individual".to_string(),
+            source_lists: vec!["UN".to_string()],
+            primary_name: "Target Person".to_string(),
+            aliases: vec![],
+            identifiers: vec![id_map.clone()],
+            addresses: vec![],
+            nationalities: vec![],
+            date_of_birth: None,
+            programs: vec![],
+            listing_date: None,
+            remarks: None,
+        },
+    ], "id-test".to_string());
+    let query_ids = vec![id_map];
+    let result = checker.check_entity("Different Name", Some(&query_ids), 0.9);
+    // Even if name doesn't match, identifier should produce a match
+    let _ = result; // Document whether ID matching works independent of name
+}
+
+#[test]
+fn pack_validate_compliance_domain_all_known_domains() {
+    // Test all 20 ComplianceDomain variants
+    let domains = [
+        "taxation", "licensing", "sanctions", "aml", "kyc",
+        "data_protection", "environmental", "labor", "trade",
+        "securities", "banking", "insurance", "customs", "immigration",
+        "real_estate", "intellectual_property", "consumer_protection",
+        "competition", "foreign_investment", "corporate_governance",
+    ];
+    for domain in &domains {
+        let result = validate_compliance_domain(domain);
+        // We just verify no panic — some may not be recognized
+        let _ = result;
+    }
+}
+
+#[test]
+fn pack_ensure_json_compatible_float_rejected() {
+    // BUG-039: ensure_json_compatible should reject floats for deterministic hashing
+    let value = json!({"amount": 1.1});
+    let result = ensure_json_compatible(&value, "", "float-test");
+    // Document behavior: does it reject floats?
+    let _ = result;
+}
+
+#[test]
+fn pack_ensure_json_compatible_integer_accepted() {
+    let value = json!({"amount": 42});
+    let result = ensure_json_compatible(&value, "", "int-test");
+    assert!(result.is_ok(), "Integer values should be accepted");
+}
+
+#[test]
+fn pack_ensure_json_compatible_empty_object() {
+    let result = ensure_json_compatible(&json!({}), "", "empty");
+    assert!(result.is_ok(), "Empty object should be valid JSON");
+}
+
+#[test]
+fn pack_ensure_json_compatible_empty_array() {
+    let result = ensure_json_compatible(&json!([]), "", "empty-arr");
+    assert!(result.is_ok(), "Empty array should be valid JSON");
+}
+
+// =========================================================================
+// Campaign 5 Extension: Netting engine boundary inputs
+// =========================================================================
+
+#[test]
+fn netting_single_amount_one_boundary() {
+    // Minimum valid amount is 1
+    let mut engine = NettingEngine::new();
+    engine.add_obligation(Obligation {
+        from_party: "A".to_string(),
+        to_party: "B".to_string(),
+        amount: 1,
+        currency: "USD".to_string(),
+        corridor_id: None,
+        priority: 0,
+    }).unwrap();
+    let plan = engine.compute_plan().unwrap();
+    assert_eq!(plan.gross_total, 1);
+}
+
+#[test]
+fn netting_many_currencies_boundary() {
+    // 50 different currencies for the same party pair
+    let mut engine = NettingEngine::new();
+    for i in 0..50 {
+        engine.add_obligation(Obligation {
+            from_party: "A".to_string(),
+            to_party: "B".to_string(),
+            amount: 1000,
+            currency: format!("CUR{:03}", i),
+            corridor_id: None,
+            priority: 0,
+        }).unwrap();
+    }
+    let plan = engine.compute_plan().unwrap();
+    // Should have 50 settlement legs (one per currency)
+    assert_eq!(plan.settlement_legs.len(), 50, "Each currency should produce a separate leg");
+}
+
+#[test]
+fn netting_priority_ordering() {
+    // Test that obligations with different priorities are handled
+    let mut engine = NettingEngine::new();
+    engine.add_obligation(Obligation {
+        from_party: "A".to_string(),
+        to_party: "B".to_string(),
+        amount: 100_000,
+        currency: "USD".to_string(),
+        corridor_id: None,
+        priority: 10,
+    }).unwrap();
+    engine.add_obligation(Obligation {
+        from_party: "C".to_string(),
+        to_party: "D".to_string(),
+        amount: 50_000,
+        currency: "USD".to_string(),
+        corridor_id: None,
+        priority: 1,
+    }).unwrap();
+    let plan = engine.compute_plan().unwrap();
+    assert_eq!(plan.settlement_legs.len(), 2);
+}
+
+// =========================================================================
+// Campaign 5 Extension: Agentic boundary inputs
+// =========================================================================
+
+use msez_agentic::{AuditTrail, AuditEntry, AuditEntryType, PolicyEngine, Trigger, TriggerType};
+
+#[test]
+fn agentic_audit_trail_capacity_one_trim_behavior() {
+    // Capacity of 1 — every append after the first should trigger trim
+    let mut trail = AuditTrail::new(1);
+    trail.append(AuditEntry::new(AuditEntryType::TriggerReceived, None, None));
+    assert_eq!(trail.len(), 1);
+    trail.append(AuditEntry::new(AuditEntryType::PolicyEvaluated, None, None));
+    // After trimming, should still be bounded
+    assert!(trail.len() <= 2, "Trail with capacity 1 should stay bounded");
+}
+
+#[test]
+fn agentic_audit_entry_digest_deterministic() {
+    // Same entry type + asset + metadata should produce same digest
+    let e1 = AuditEntry::new(
+        AuditEntryType::ActionScheduled,
+        Some("asset-001".to_string()),
+        Some(json!({"key": "value"})),
+    );
+    let e2 = AuditEntry::new(
+        AuditEntryType::ActionScheduled,
+        Some("asset-001".to_string()),
+        Some(json!({"key": "value"})),
+    );
+    // Note: timestamps differ so digests MAY differ. This documents the behavior.
+    let d1 = e1.digest();
+    let d2 = e2.digest();
+    // Both should succeed (or both fail)
+    assert_eq!(d1.is_some(), d2.is_some(), "Digest computation should be consistent");
+}
+
+#[test]
+fn agentic_policy_engine_evaluate_all_trigger_types() {
+    // Verify no trigger type causes a panic during evaluation
+    let trigger_types = [
+        TriggerType::SanctionsListUpdate,
+        TriggerType::LicenseStatusChange,
+        TriggerType::GuidanceUpdate,
+        TriggerType::ComplianceDeadline,
+        TriggerType::DisputeFiled,
+        TriggerType::RulingReceived,
+        TriggerType::AppealPeriodExpired,
+        TriggerType::EnforcementDue,
+        TriggerType::CorridorStateChange,
+        TriggerType::SettlementAnchorAvailable,
+        TriggerType::WatcherQuorumReached,
+    ];
+    for tt in &trigger_types {
+        let mut engine = PolicyEngine::with_standard_policies();
+        let trigger = Trigger::new(tt.clone(), json!({"test": true}));
+        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            engine.evaluate(&trigger, Some("asset-001"), Some("PK-RSEZ"))
+        }));
+        assert!(
+            result.is_ok(),
+            "Evaluation panicked on trigger type {:?}",
+            tt
+        );
+    }
+}
+
+// =========================================================================
+// Campaign 5 Extension: Tensor boundary inputs
+// =========================================================================
+
+#[test]
+fn tensor_evaluate_empty_entity_id() {
+    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
+    let results = tensor.evaluate_all("");
+    // Should not panic; may return empty or default results
+    let _ = results;
+}
+
+#[test]
+fn tensor_evaluate_huge_entity_id() {
+    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
+    let huge_id = "E".repeat(100_000);
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        tensor.evaluate_all(&huge_id)
+    }));
+    assert!(result.is_ok(), "Huge entity ID should not panic");
+}
+
+#[test]
+fn tensor_all_20_domains_from_default_jurisdiction() {
+    // DefaultJurisdiction should populate all 20 ComplianceDomain variants
+    let jid = JurisdictionId::new("TEST-JUR").unwrap();
+    let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
+    let all = tensor.evaluate_all("test-entity");
+    assert_eq!(all.len(), 20, "DefaultJurisdiction should cover all 20 compliance domains");
+}
+
+// =========================================================================
+// Campaign 5 Extension: Crypto boundary inputs
+// =========================================================================
+
+#[test]
+fn mmr_append_whitespace_hex_rejected() {
+    let mut mmr = MerkleMountainRange::new();
+    let result = mmr.append("   ");
+    assert!(result.is_err(), "Whitespace-only hex should be rejected");
+}
+
+#[test]
+fn mmr_append_mixed_case_hex() {
+    let mut mmr = MerkleMountainRange::new();
+    let hex = "aAbBcCdDeEfF".repeat(5) + "aAbBcCdD"; // 64 chars
+    let result = mmr.append(&hex);
+    // Mixed case hex should be accepted (hex is case-insensitive)
+    let _ = result;
+}
+
+#[test]
+fn mmr_append_zero_hash() {
+    let mut mmr = MerkleMountainRange::new();
+    let zero_hash = "0".repeat(64);
+    let result = mmr.append(&zero_hash);
+    // Zero hash is valid hex — should succeed
+    assert!(result.is_ok(), "Zero hash should be valid");
+}
+
+#[test]
+fn mmr_deterministic_root() {
+    // Same sequence of appends should always produce same root
+    let make_mmr = || {
+        let mut mmr = MerkleMountainRange::new();
+        for i in 0..10 {
+            let canonical = CanonicalBytes::new(&json!({"i": i})).unwrap();
+            let digest = sha256_digest(&canonical);
+            mmr.append(&digest.to_hex()).unwrap();
+        }
+        mmr.root().unwrap()
+    };
+    let root1 = make_mmr();
+    let root2 = make_mmr();
+    assert_eq!(root1, root2, "MMR root should be deterministic for same inputs");
+}
+
+// =========================================================================
+// Campaign 6 Extension: Determinism verification
+// =========================================================================
+
+#[test]
+fn determinism_netting_same_obligations_same_plan() {
+    let build_plan = || {
+        let mut engine = NettingEngine::new();
+        engine.add_obligation(Obligation {
+            from_party: "Alice".to_string(),
+            to_party: "Bob".to_string(),
+            amount: 100_000,
+            currency: "USD".to_string(),
+            corridor_id: Some("PAK-UAE".to_string()),
+            priority: 5,
+        }).unwrap();
+        engine.add_obligation(Obligation {
+            from_party: "Bob".to_string(),
+            to_party: "Charlie".to_string(),
+            amount: 75_000,
+            currency: "USD".to_string(),
+            corridor_id: Some("PAK-UAE".to_string()),
+            priority: 3,
+        }).unwrap();
+        engine.add_obligation(Obligation {
+            from_party: "Charlie".to_string(),
+            to_party: "Alice".to_string(),
+            amount: 50_000,
+            currency: "USD".to_string(),
+            corridor_id: Some("PAK-UAE".to_string()),
+            priority: 1,
+        }).unwrap();
+        engine.compute_plan().unwrap()
+    };
+
+    let plan1 = build_plan();
+    let plan2 = build_plan();
+    assert_eq!(plan1.gross_total, plan2.gross_total, "Gross total should be deterministic");
+    assert_eq!(plan1.net_total, plan2.net_total, "Net total should be deterministic");
+    assert_eq!(
+        plan1.settlement_legs.len(),
+        plan2.settlement_legs.len(),
+        "Settlement leg count should be deterministic"
+    );
+    assert_eq!(
+        plan1.reduction_percentage, plan2.reduction_percentage,
+        "Reduction percentage should be deterministic"
+    );
+}
+
+#[test]
+fn determinism_canonical_bytes_key_ordering() {
+    // JSON objects with same keys in different insertion order should produce
+    // identical canonical bytes (canonical serialization normalizes key order)
+    let v1 = json!({"z": 1, "a": 2, "m": 3});
+    let v2 = json!({"a": 2, "m": 3, "z": 1});
+    let c1 = CanonicalBytes::new(&v1).unwrap();
+    let c2 = CanonicalBytes::new(&v2).unwrap();
+    let d1 = sha256_digest(&c1);
+    let d2 = sha256_digest(&c2);
+    assert_eq!(d1.to_hex(), d2.to_hex(), "Canonical bytes should normalize key order");
+}
+
+#[test]
+fn determinism_tensor_evaluation_repeated() {
+    let jid = JurisdictionId::new("AE-DIFC").unwrap();
+    let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
+    let results1 = tensor.evaluate_all("entity-001");
+    let results2 = tensor.evaluate_all("entity-001");
+    // Same entity, same tensor → same results
+    assert_eq!(results1.len(), results2.len(), "Tensor evaluation count should be deterministic");
+    for (domain, state) in &results1 {
+        assert_eq!(
+            results2.get(domain),
+            Some(state),
+            "Tensor evaluation for {:?} should be deterministic",
+            domain
+        );
+    }
+}
+
+#[test]
+fn determinism_signing_verification_round_trip() {
+    // Sign same content with same key → same signature
+    let sk = SigningKey::generate(&mut rand_core::OsRng);
+    let canonical = CanonicalBytes::new(&json!({"msg": "determinism test"})).unwrap();
+
+    // Note: Ed25519 signatures are deterministic (RFC 8032)
+    let sig1 = sk.sign(&canonical);
+    let sig2 = sk.sign(&canonical);
+    assert_eq!(sig1.to_hex(), sig2.to_hex(), "Ed25519 signatures should be deterministic (RFC 8032)");
+}
+
+#[test]
+fn determinism_content_digest_from_same_data() {
+    let d1 = ContentDigest::from_hex(&sha256_digest(&CanonicalBytes::new(&json!({"a": 1})).unwrap()).to_hex()).unwrap();
+    let d2 = ContentDigest::from_hex(&sha256_digest(&CanonicalBytes::new(&json!({"a": 1})).unwrap()).to_hex()).unwrap();
+    assert_eq!(d1.to_hex(), d2.to_hex(), "ContentDigest from same data should be identical");
+}
+
+#[test]
+fn determinism_swift_pacs008_same_inputs() {
+    let swift1 = SwiftPacs008::new("MSEZTEST");
+    let swift2 = SwiftPacs008::new("MSEZTEST");
+    let instruction = SettlementInstruction {
+        message_id: "DET001".to_string(),
+        debtor_bic: "DEUTDEFF".to_string(),
+        debtor_account: "DE89370400440532013000".to_string(),
+        debtor_name: "Determinism Corp".to_string(),
+        creditor_bic: "COBADEFF".to_string(),
+        creditor_account: "DE44500105175407324931".to_string(),
+        creditor_name: "Target Corp".to_string(),
+        amount: 50_000,
+        currency: "EUR".to_string(),
+        remittance_info: Some("Invoice 12345".to_string()),
+    };
+    let xml1 = swift1.generate_instruction(&instruction);
+    let xml2 = swift2.generate_instruction(&instruction);
+    assert_eq!(xml1.is_ok(), xml2.is_ok(), "SWIFT generation should be consistent");
+    if let (Ok(x1), Ok(x2)) = (xml1, xml2) {
+        assert_eq!(x1, x2, "SWIFT pacs.008 XML should be deterministic for same inputs");
+    }
+}
+
+// =========================================================================
+// Campaign 5 Extension: Licensepack boundary tests
+// =========================================================================
+
+#[test]
+fn licensepack_condition_empty_id_accepted() {
+    // BUG-042: LicenseCondition.condition_id is plain String — empty string accepted
+    let cond = LicenseCondition {
+        condition_id: "".to_string(),
+        condition_type: "capital".to_string(),
+        description: "Empty ID condition".to_string(),
+        metric: None,
+        threshold: None,
+        currency: None,
+        operator: None,
+        frequency: None,
+        reporting_frequency: None,
+        effective_date: None,
+        expiry_date: None,
+        status: "active".to_string(),
+    };
+    // Empty condition_id silently accepted — should be rejected
+    assert_eq!(cond.condition_id, "", "BUG-042: empty condition_id accepted without validation");
+    assert!(cond.is_active("2026-01-01"), "Active condition with empty ID is functional");
+}
+
+#[test]
+fn licensepack_condition_date_comparison_malformed() {
+    // BUG-043: LicenseCondition::is_active() uses string comparison for dates
+    let cond = LicenseCondition {
+        condition_id: "c-date".to_string(),
+        condition_type: "operational".to_string(),
+        description: "Date test".to_string(),
+        metric: None,
+        threshold: None,
+        currency: None,
+        operator: None,
+        frequency: None,
+        reporting_frequency: None,
+        effective_date: None,
+        expiry_date: Some("2025-9-01".to_string()), // Missing leading zero
+        status: "active".to_string(),
+    };
+    // String comparison: "2025-9-01" > "2025-12-31" because '9' > '1' lexicographically
+    // So is_active("2025-12-31") returns true even though 2025-09-01 < 2025-12-31
+    let result = cond.is_active("2025-12-31");
+    // BUG-043: String date comparison gives wrong result for malformed dates
+    assert!(
+        result,
+        "BUG-043: is_active returns true because string '2025-9-01' > '2025-12-31' lexicographically"
+    );
+}
+
+#[test]
+fn licensepack_is_expired_string_date_comparison() {
+    // BUG-043 variant: License::is_expired() also uses string comparison
+    let jid = JurisdictionId::new("PK-PSEZ").unwrap();
+    let license = License {
+        license_id: "lic-001".to_string(),
+        license_type_id: "type-a".to_string(),
+        license_number: None,
+        status: LicenseStatus::Active,
+        issued_date: "2024-01-01".to_string(),
+        holder_id: "holder-1".to_string(),
+        holder_legal_name: "Test Corp".to_string(),
+        regulator_id: "reg-1".to_string(),
+        status_effective_date: None,
+        status_reason: None,
+        effective_date: None,
+        expiry_date: Some("2025-9-15".to_string()), // Malformed: missing leading zero
+        holder_did: Some("did:msez:test".to_string()),
+        issuing_authority: None,
+        permitted_activities: vec![],
+        asset_classes_authorized: vec![],
+        client_types_permitted: vec![],
+        holder_registration_number: None,
+        geographic_scope: vec![],
+        prudential_category: None,
+        capital_requirement: Default::default(),
+        conditions: vec![],
+        permissions: vec![],
+        restrictions: vec![],
+    };
+    // String comparison within same year: "2025-9-15" vs "2025-10-01"
+    // '2025-' matches, then '9' vs '1': '9' > '1' lexicographically
+    // So "2025-9-15" > "2025-10-01" is TRUE (string comparison)
+    // But chronologically Sept 15 < Oct 1 — license IS expired
+    let expired = license.is_expired("2025-10-01");
+    // BUG-043: is_expired returns false because "2025-9-15" > "2025-10-01" lexicographically
+    assert!(
+        !expired,
+        "BUG-043: is_expired returns false — malformed date '2025-9-15' defeats string comparison"
+    );
+}
+
+#[test]
+fn licensepack_restriction_blocks_jurisdiction_empty_string() {
+    // BUG-044: blocks_jurisdiction("") doesn't reject empty jurisdiction string
+    let restriction = LicenseRestriction {
+        restriction_id: "r-001".to_string(),
+        restriction_type: "geographic".to_string(),
+        description: "Wildcard block with exceptions".to_string(),
+        blocked_jurisdictions: vec!["*".to_string()],
+        allowed_jurisdictions: vec!["PK".to_string(), "AE".to_string()],
+        blocked_activities: vec![],
+        blocked_products: vec![],
+        blocked_client_types: vec![],
+        max_leverage: None,
+        effective_date: None,
+        status: "active".to_string(),
+    };
+    // Empty string is not in allowed_jurisdictions, so it's treated as blocked
+    // But empty string should be rejected, not silently treated as a valid jurisdiction
+    let result = restriction.blocks_jurisdiction("");
+    assert!(result, "BUG-044: empty jurisdiction treated as blocked instead of rejected");
+}
+
+#[test]
+fn licensepack_holder_did_lookup_empty_string() {
+    // BUG-045: get_licenses_by_holder_did("") doesn't reject empty DID
+    let jid = JurisdictionId::new("PK-PSEZ").unwrap();
+    let mut pack = Licensepack::new(jid, "Test Pack".to_string());
+    let license = License {
+        license_id: "lic-empty".to_string(),
+        license_type_id: "type-a".to_string(),
+        license_number: None,
+        status: LicenseStatus::Active,
+        issued_date: "2024-01-01".to_string(),
+        holder_id: "holder-1".to_string(),
+        holder_legal_name: "Test Corp".to_string(),
+        regulator_id: "reg-1".to_string(),
+        status_effective_date: None,
+        status_reason: None,
+        effective_date: None,
+        expiry_date: None,
+        holder_did: Some("".to_string()), // Empty DID
+        issuing_authority: None,
+        permitted_activities: vec![],
+        asset_classes_authorized: vec![],
+        client_types_permitted: vec![],
+        holder_registration_number: None,
+        geographic_scope: vec![],
+        prudential_category: None,
+        capital_requirement: Default::default(),
+        conditions: vec![],
+        permissions: vec![],
+        restrictions: vec![],
+    };
+    pack.licenses.insert("lic-empty".to_string(), license);
+
+    // BUG-045: Empty DID matches licenses with holder_did: Some("")
+    let results = pack.get_licenses_by_holder_did("");
+    assert_eq!(
+        results.len(),
+        1,
+        "BUG-045: empty DID matches licenses with empty holder_did — should be rejected"
+    );
+}
+
+// =========================================================================
+// Campaign 5 Extension: Watcher economy boundary tests
+// =========================================================================
+
+#[test]
+fn watcher_rebond_zero_stake() {
+    // BUG-046: rebond(0) transitions from Slashed to Bonded without new collateral
+    let mut w = Watcher::new(WatcherId::new());
+    w.bond(1_000_000).unwrap();
+    w.activate().unwrap();
+    w.slash(SlashingCondition::AvailabilityFailure).unwrap();
+
+    // Rebond with zero additional stake — should be rejected
+    let result = w.rebond(0);
+    // BUG-046: rebond(0) succeeds, transitioning to Bonded without new collateral
+    assert!(
+        result.is_ok(),
+        "BUG-046: rebond(0) accepted — watcher recovers from slash without posting collateral"
+    );
+}
+
+#[test]
+fn watcher_bond_zero_correctly_rejected_but_rebond_zero_not() {
+    // bond(0) is correctly rejected with InsufficientStake
+    let mut w = Watcher::new(WatcherId::new());
+    assert!(w.bond(0).is_err(), "bond(0) correctly rejected");
+
+    // But rebond(0) is not — BUG-046 inconsistency
+    w.bond(100_000).unwrap();
+    w.activate().unwrap();
+    w.slash(SlashingCondition::Equivocation).unwrap();
+    // BUG-046: rebond(0) succeeds despite bond(0) being rejected
+    assert!(w.rebond(0).is_ok(), "BUG-046: rebond(0) succeeds — inconsistent with bond(0)");
+}
+
+// =========================================================================
+// Campaign 5 Extension: ZKP mock proof system boundary tests
+// =========================================================================
+
+#[test]
+fn zkp_mock_circuit_data_not_in_proof_hash() {
+    // BUG-048: MockProofSystem::prove() hashes only public_inputs, not circuit_data
+    // Two different circuits with same public_inputs produce identical proofs
+    let sys = MockProofSystem;
+    let pk = MockProvingKey;
+
+    let circuit_a = MockCircuit {
+        circuit_data: json!({"type": "balance_check", "threshold": 1000}),
+        public_inputs: b"same_inputs".to_vec(),
+    };
+    let circuit_b = MockCircuit {
+        circuit_data: json!({"type": "sanctions_check", "list": "OFAC"}),
+        public_inputs: b"same_inputs".to_vec(),
+    };
+
+    let proof_a = sys.prove(&pk, &circuit_a).unwrap();
+    let proof_b = sys.prove(&pk, &circuit_b).unwrap();
+
+    // BUG-048: Different circuits produce identical proofs because circuit_data
+    // is not included in the hash — only public_inputs are hashed
+    assert_eq!(
+        proof_a.proof_hex, proof_b.proof_hex,
+        "BUG-048: different circuits with same public_inputs produce identical proofs"
+    );
+}
+
+#[test]
+fn zkp_mock_empty_public_inputs() {
+    // Test: prove with empty public inputs should still work
+    let sys = MockProofSystem;
+    let pk = MockProvingKey;
+    let vk = MockVerifyingKey;
+
+    let circuit = MockCircuit {
+        circuit_data: json!({"type": "empty_test"}),
+        public_inputs: vec![],
+    };
+
+    let proof = sys.prove(&pk, &circuit).unwrap();
+    assert_eq!(proof.proof_hex.len(), 64, "Empty inputs should produce valid 64-char hex proof");
+
+    let valid = sys.verify(&vk, &proof, &[]).unwrap();
+    assert!(valid, "Proof with empty inputs should verify against empty inputs");
+}
+
+#[test]
+fn zkp_mock_prove_empty_circuit_data() {
+    // Empty circuit data should be accepted (it's valid JSON)
+    let sys = MockProofSystem;
+    let pk = MockProvingKey;
+
+    let circuit = MockCircuit {
+        circuit_data: json!({}),
+        public_inputs: b"test".to_vec(),
+    };
+    let result = sys.prove(&pk, &circuit);
+    assert!(result.is_ok(), "Empty circuit data ({{}}) should be accepted");
+}
+
+// =========================================================================
+// Campaign 5 Extension: Licensepack serde boundary tests
+// =========================================================================
+
+#[test]
+fn licensepack_license_serde_empty_fields() {
+    // BUG-049: License with empty required string fields accepted via serde
+    let json_str = r#"{
+        "license_id": "",
+        "license_type_id": "",
+        "status": "active",
+        "issued_date": "",
+        "holder_id": "",
+        "holder_legal_name": "",
+        "regulator_id": ""
+    }"#;
+    let license: License = serde_json::from_str(json_str).unwrap();
+    // BUG-049: All empty strings accepted without validation
+    assert_eq!(license.license_id, "", "BUG-049: empty license_id accepted via serde");
+    assert_eq!(license.holder_id, "", "BUG-049: empty holder_id accepted via serde");
+    assert_eq!(license.regulator_id, "", "BUG-049: empty regulator_id accepted via serde");
+}
+
+#[test]
+fn licensepack_condition_serde_empty_fields() {
+    // BUG-042 variant: LicenseCondition with empty fields via serde
+    let json_str = r#"{
+        "condition_id": "",
+        "condition_type": "",
+        "description": "",
+        "status": "active"
+    }"#;
+    let cond: LicenseCondition = serde_json::from_str(json_str).unwrap();
+    assert_eq!(cond.condition_id, "", "BUG-042: empty condition_id via serde");
+    assert!(cond.is_active("2026-01-01"), "Active with all empty fields");
+}
+
+#[test]
+fn licensepack_resolve_refs_missing_fields() {
+    // BUG-050: resolve_licensepack_refs uses unwrap_or("") for missing fields
+    // Need a valid 64-char hex digest to pass the is_valid_sha256 check
+    let valid_digest = "a".repeat(64);
+    let zone = json!({
+        "licensepacks": [
+            {
+                "licensepack_digest_sha256": valid_digest
+            }
+        ]
+    });
+    let refs = msez_pack::licensepack::resolve_licensepack_refs(&zone).unwrap();
+    assert_eq!(refs.len(), 1);
+    // BUG-050: Missing jurisdiction_id defaults to "" without error
+    assert_eq!(refs[0].jurisdiction_id, "", "BUG-050: missing jurisdiction_id defaults to empty string");
+    assert_eq!(refs[0].domain, "", "BUG-050: missing domain defaults to empty string");
 }

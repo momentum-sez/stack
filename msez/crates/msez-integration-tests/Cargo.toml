@@ -22,6 +22,7 @@ msez-schema = { path = "../msez-schema" }
 msez-zkp = { path = "../msez-zkp" }
 msez-cli = { path = "../msez-cli" }
 msez-api = { path = "../msez-api" }
+msez-mass-client = { path = "../msez-mass-client" }
 
 serde = { workspace = true }
 serde_json = { workspace = true }

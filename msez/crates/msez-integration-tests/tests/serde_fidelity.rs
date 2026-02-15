@@ -1440,7 +1440,7 @@ fn serde_rt_anchor_commitment() {
 // msez-corridor: CorridorReceipt and Checkpoint round-trips
 // =========================================================================
 
-use msez_corridor::receipt::{Checkpoint, CorridorReceipt};
+use msez_corridor::receipt::CorridorReceipt;
 
 #[test]
 fn serde_rt_corridor_receipt() {
@@ -1518,4 +1518,1493 @@ fn serde_rt_settlement_plan_large_amounts() {
         err_msg.contains("arithmetic overflow"),
         "error should mention arithmetic overflow, got: {err_msg}"
     );
+}
+
+// =========================================================================
+// msez-pack: Lawpack types serde round-trips
+// =========================================================================
+
+use msez_pack::lawpack::{
+    Lawpack, LawpackLock, LawpackLockComponents, LawpackLockProvenance, LawpackManifest,
+    LawpackRef, LawpackSource, NormalizationInfo, NormalizationInput, ModuleDescriptor,
+    SourcesDescriptor,
+};
+use std::collections::BTreeMap;
+
+#[test]
+fn serde_rt_lawpack_ref() {
+    let original = LawpackRef {
+        jurisdiction_id: "PAK".to_string(),
+        domain: "corporate".to_string(),
+        lawpack_digest_sha256: "aa".repeat(32),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: LawpackRef = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(original, recovered);
+}
+
+#[test]
+fn serde_rt_lawpack_ref_empty_fields() {
+    // BUG-033: LawpackRef accepts empty strings for all fields via serde.
+    // This bypasses any validation that LawpackRef::parse() performs.
+    let json = r#"{"jurisdiction_id":"","domain":"","lawpack_digest_sha256":""}"#;
+    let result: Result<LawpackRef, _> = serde_json::from_str(json);
+    // It succeeds — empty lawpack refs can be deserialized.
+    // This is a validation bypass (compared to LawpackRef::parse which rejects empty).
+    assert!(result.is_ok(), "BUG-033: LawpackRef deserializes with empty fields");
+}
+
+#[test]
+fn serde_rt_lawpack_source() {
+    let original = LawpackSource {
+        source_id: "fbr-income-tax-2001".to_string(),
+        uri: Some("https://fbr.gov.pk/laws/income-tax-ordinance-2001".to_string()),
+        reference: Some("Income Tax Ordinance, 2001 (XLIX of 2001)".to_string()),
+        retrieved_at: Some("2026-01-15".to_string()),
+        sha256: Some("bb".repeat(32)),
+        media_type: Some("text/html".to_string()),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: LawpackSource = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.source_id, original.source_id);
+    assert_eq!(recovered.uri, original.uri);
+    assert_eq!(recovered.sha256, original.sha256);
+}
+
+#[test]
+fn serde_rt_normalization_info() {
+    let original = NormalizationInfo {
+        recipe_id: "akn-pak-v1".to_string(),
+        tool: "msez-normalize".to_string(),
+        tool_version: "0.4.44".to_string(),
+        inputs: vec![NormalizationInput {
+            module_id: "income-tax".to_string(),
+            module_version: "2001.1".to_string(),
+            sources_manifest_sha256: "cc".repeat(32),
+        }],
+        notes: "Normalized from FBR HTML".to_string(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: NormalizationInfo = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.recipe_id, original.recipe_id);
+    assert_eq!(recovered.tool, original.tool);
+    assert_eq!(recovered.inputs.len(), 1);
+}
+
+#[test]
+fn serde_rt_lawpack_manifest() {
+    let original = LawpackManifest {
+        lawpack_format_version: "1.0".to_string(),
+        jurisdiction_id: "PAK".to_string(),
+        domain: "corporate".to_string(),
+        as_of_date: "2026-01-15".to_string(),
+        sources: vec![json!({"source_id": "src-1", "uri": "https://example.com"})],
+        license: "CC-BY-4.0".to_string(),
+        normalization: None,
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: LawpackManifest = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.lawpack_format_version, "1.0");
+    assert_eq!(recovered.jurisdiction_id, "PAK");
+    assert_eq!(recovered.sources.len(), 1);
+}
+
+#[test]
+fn serde_rt_lawpack_lock_components() {
+    let mut akn_sha256 = BTreeMap::new();
+    akn_sha256.insert("income-tax.akn".to_string(), "ee".repeat(32));
+    akn_sha256.insert("sales-tax.akn".to_string(), "ff".repeat(32));
+
+    let original = LawpackLockComponents {
+        lawpack_yaml_sha256: "aa".repeat(32),
+        index_json_sha256: "bb".repeat(32),
+        akn_sha256,
+        sources_sha256: "cc".repeat(32),
+        module_manifest_sha256: Some("dd".repeat(32)),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: LawpackLockComponents = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.lawpack_yaml_sha256, original.lawpack_yaml_sha256);
+    assert_eq!(recovered.akn_sha256.len(), 2);
+}
+
+#[test]
+fn serde_rt_lawpack_lock() {
+    let mut akn_sha256 = BTreeMap::new();
+    akn_sha256.insert("mod.akn".to_string(), "ee".repeat(32));
+
+    let original = LawpackLock {
+        lawpack_digest_sha256: "aa".repeat(32),
+        jurisdiction_id: "PAK".to_string(),
+        domain: "corporate".to_string(),
+        as_of_date: "2026-01-15".to_string(),
+        artifact_path: "packs/PAK/corporate/".to_string(),
+        artifact_sha256: "bb".repeat(32),
+        components: LawpackLockComponents {
+            lawpack_yaml_sha256: "cc".repeat(32),
+            index_json_sha256: "dd".repeat(32),
+            akn_sha256,
+            sources_sha256: "ee".repeat(32),
+            module_manifest_sha256: None,
+        },
+        provenance: LawpackLockProvenance {
+            module_manifest_path: "manifest.yaml".to_string(),
+            sources_manifest_path: "sources.yaml".to_string(),
+            raw_sources: BTreeMap::new(),
+            normalization: None,
+        },
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: LawpackLock = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.lawpack_digest_sha256, original.lawpack_digest_sha256);
+    assert_eq!(recovered.jurisdiction_id, "PAK");
+}
+
+#[test]
+fn serde_rt_lawpack_full() {
+    let jid = JurisdictionId::new("PAK").unwrap();
+    let mut section_mappings = BTreeMap::new();
+    section_mappings.insert("s.1".to_string(), "rule-001".to_string());
+
+    let original = Lawpack {
+        jurisdiction: jid,
+        name: "Pakistan Corporate Law".to_string(),
+        domain: "corporate".to_string(),
+        version: "2026.1".to_string(),
+        digest: Some(test_digest()),
+        as_of_date: Some("2026-01-15".to_string()),
+        effective_date: Some("2001-07-01".to_string()),
+        section_mappings,
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: Lawpack = serde_json::from_str(&json).expect("deserialize");
+    // Lawpack does not derive PartialEq
+    assert_eq!(recovered.name, original.name);
+    assert_eq!(recovered.domain, original.domain);
+    assert!(recovered.digest.is_some());
+    assert_eq!(recovered.section_mappings.len(), 1);
+}
+
+#[test]
+fn serde_rt_lawpack_skip_serializing_if_empty() {
+    // Lawpack has skip_serializing_if for optional/empty fields.
+    // Verify omitted fields deserialize correctly via #[serde(default)].
+    let jid = JurisdictionId::new("AE").unwrap();
+    let original = Lawpack {
+        jurisdiction: jid,
+        name: "UAE Free Zone".to_string(),
+        domain: "financial".to_string(),
+        version: "1.0".to_string(),
+        digest: None,
+        as_of_date: None,
+        effective_date: None,
+        section_mappings: BTreeMap::new(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    // The JSON should NOT contain "digest", "as_of_date", "effective_date", "section_mappings"
+    assert!(!json.contains("digest"), "None digest should be omitted");
+    assert!(
+        !json.contains("section_mappings"),
+        "Empty section_mappings should be omitted"
+    );
+
+    let recovered: Lawpack = serde_json::from_str(&json).expect("deserialize");
+    assert!(recovered.digest.is_none());
+    assert!(recovered.section_mappings.is_empty());
+}
+
+// =========================================================================
+// msez-pack: Regpack types serde round-trips
+// =========================================================================
+
+use msez_pack::regpack::{
+    ComplianceDeadline, RegLicenseType, RegPackMetadata, Regpack, RegpackRef, RegulatorProfile,
+    ReportingRequirement, SanctionsCheckResult, SanctionsEntry, SanctionsMatch, SanctionsSnapshot,
+};
+
+#[test]
+fn serde_rt_regpack_ref() {
+    let original = RegpackRef {
+        jurisdiction_id: "PAK".to_string(),
+        domain: "financial".to_string(),
+        regpack_digest_sha256: "aa".repeat(32),
+        as_of_date: Some("2026-01-15".to_string()),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: RegpackRef = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(original, recovered);
+}
+
+#[test]
+fn serde_rt_sanctions_entry() {
+    let mut alias = BTreeMap::new();
+    alias.insert("name".to_string(), "Alias One".to_string());
+    let original = SanctionsEntry {
+        entry_id: "SDN-12345".to_string(),
+        entry_type: "individual".to_string(),
+        source_lists: vec!["OFAC-SDN".to_string(), "UN-1267".to_string()],
+        primary_name: "Test Person".to_string(),
+        aliases: vec![alias],
+        identifiers: vec![],
+        addresses: vec![],
+        nationalities: vec!["PK".to_string()],
+        date_of_birth: Some("1980-01-01".to_string()),
+        programs: vec!["SDGT".to_string()],
+        listing_date: Some("2020-06-15".to_string()),
+        remarks: Some("Test entry".to_string()),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: SanctionsEntry = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.entry_id, "SDN-12345");
+    assert_eq!(recovered.source_lists.len(), 2);
+    assert_eq!(recovered.aliases.len(), 1);
+}
+
+#[test]
+fn serde_rt_sanctions_snapshot() {
+    let original = SanctionsSnapshot {
+        snapshot_id: "snap-001".to_string(),
+        snapshot_timestamp: "2026-01-15T12:00:00Z".to_string(),
+        sources: BTreeMap::new(),
+        consolidated_counts: BTreeMap::new(),
+        delta_from_previous: None,
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: SanctionsSnapshot = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.snapshot_id, "snap-001");
+}
+
+#[test]
+fn serde_rt_sanctions_check_result() {
+    let original = SanctionsCheckResult {
+        query: "Test Person".to_string(),
+        checked_at: "2026-01-15T12:00:00Z".to_string(),
+        snapshot_id: "snap-001".to_string(),
+        matched: false,
+        matches: vec![],
+        match_score: 0.0,
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: SanctionsCheckResult = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.query, "Test Person");
+    assert!(!recovered.matched);
+}
+
+#[test]
+fn serde_rt_sanctions_check_result_with_match() {
+    let entry = SanctionsEntry {
+        entry_id: "SDN-99999".to_string(),
+        entry_type: "individual".to_string(),
+        source_lists: vec!["OFAC-SDN".to_string()],
+        primary_name: "Matched Person".to_string(),
+        aliases: vec![],
+        identifiers: vec![],
+        addresses: vec![],
+        nationalities: vec![],
+        date_of_birth: None,
+        programs: vec![],
+        listing_date: None,
+        remarks: None,
+    };
+    let original = SanctionsCheckResult {
+        query: "Matched Person".to_string(),
+        checked_at: "2026-01-15T12:00:00Z".to_string(),
+        snapshot_id: "snap-002".to_string(),
+        matched: true,
+        matches: vec![SanctionsMatch {
+            entry,
+            match_type: "exact".to_string(),
+            score: 1.0,
+            identifier_type: Some("name".to_string()),
+        }],
+        match_score: 1.0,
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: SanctionsCheckResult = serde_json::from_str(&json).expect("deserialize");
+    assert!(recovered.matched);
+    assert_eq!(recovered.matches.len(), 1);
+    assert_eq!(recovered.matches[0].entry.entry_id, "SDN-99999");
+}
+
+#[test]
+fn serde_rt_regulator_profile() {
+    let original = RegulatorProfile {
+        regulator_id: "FBR".to_string(),
+        name: "Federal Board of Revenue".to_string(),
+        jurisdiction_id: "PAK".to_string(),
+        parent_authority: Some("Ministry of Finance".to_string()),
+        scope: {
+            let mut m = BTreeMap::new();
+            m.insert("taxation".to_string(), vec!["income_tax".to_string(), "sales_tax".to_string()]);
+            m
+        },
+        contact: {
+            let mut m = BTreeMap::new();
+            m.insert("email".to_string(), "info@fbr.gov.pk".to_string());
+            m
+        },
+        api_capabilities: BTreeMap::new(),
+        timezone: "Asia/Karachi".to_string(),
+        business_days: vec!["Mon".to_string(), "Tue".to_string(), "Wed".to_string()],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: RegulatorProfile = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.regulator_id, "FBR");
+    assert_eq!(recovered.scope.len(), 1);
+    assert_eq!(recovered.scope["taxation"].len(), 2);
+}
+
+#[test]
+fn serde_rt_reg_license_type() {
+    let original = RegLicenseType {
+        license_type_id: "SECP-NBF".to_string(),
+        name: "Non-Banking Finance Company License".to_string(),
+        regulator_id: "SECP".to_string(),
+        requirements: {
+            let mut m = BTreeMap::new();
+            m.insert("min_capital".to_string(), json!("200000000"));
+            m
+        },
+        application: BTreeMap::new(),
+        ongoing_obligations: {
+            let mut m = BTreeMap::new();
+            m.insert("quarterly_returns".to_string(), json!(true));
+            m
+        },
+        validity_period_years: 5,
+        renewal_lead_time_days: 90,
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: RegLicenseType = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.license_type_id, "SECP-NBF");
+    assert_eq!(recovered.validity_period_years, 5);
+}
+
+#[test]
+fn serde_rt_reporting_requirement() {
+    let original = ReportingRequirement {
+        report_type_id: "FBR-WHT".to_string(),
+        name: "Withholding Tax Return".to_string(),
+        regulator_id: "FBR".to_string(),
+        applicable_to: vec!["all_entities".to_string()],
+        frequency: "monthly".to_string(),
+        deadlines: BTreeMap::new(),
+        submission: BTreeMap::new(),
+        late_penalty: BTreeMap::new(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: ReportingRequirement = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.report_type_id, "FBR-WHT");
+}
+
+#[test]
+fn serde_rt_compliance_deadline() {
+    let original = ComplianceDeadline {
+        deadline_id: "FBR-ANNUAL-2026".to_string(),
+        regulator_id: "FBR".to_string(),
+        deadline_type: "annual_return".to_string(),
+        description: "Annual income tax return filing".to_string(),
+        due_date: "2026-09-30".to_string(),
+        grace_period_days: 30,
+        applicable_license_types: vec!["SECP-COMPANY".to_string()],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: ComplianceDeadline = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.deadline_id, "FBR-ANNUAL-2026");
+    assert_eq!(recovered.grace_period_days, 30);
+}
+
+#[test]
+fn serde_rt_regpack_full() {
+    let jid = JurisdictionId::new("PAK").unwrap();
+    let original = Regpack {
+        jurisdiction: jid,
+        name: "Pakistan Financial Regulatory Pack".to_string(),
+        version: "2026.1".to_string(),
+        digest: Some(test_digest()),
+        metadata: Some(RegPackMetadata {
+            regpack_id: "pak-fin-2026".to_string(),
+            jurisdiction_id: "PAK".to_string(),
+            domain: "financial".to_string(),
+            as_of_date: "2026-01-15".to_string(),
+            snapshot_type: "full".to_string(),
+            sources: vec![json!("SBP"), json!("SECP")],
+            includes: BTreeMap::new(),
+            previous_regpack_digest: None,
+            created_at: Some("2026-01-15T00:00:00Z".to_string()),
+            expires_at: Some("2026-06-30T00:00:00Z".to_string()),
+            digest_sha256: Some("ff".repeat(32)),
+        }),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: Regpack = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.name, "Pakistan Financial Regulatory Pack");
+    assert!(recovered.metadata.is_some());
+}
+
+// =========================================================================
+// msez-pack: Licensepack types serde round-trips
+// =========================================================================
+
+use msez_pack::licensepack::{
+    License, LicenseComplianceState, LicenseCondition, LicenseDomain, LicenseHolder,
+    LicensePermission, LicenseRestriction, LicenseStatus, LicenseTypeDefinition, Licensepack,
+    LicensepackArtifactInfo, LicensepackLock, LicensepackLockInfo, LicensepackMetadata,
+    LicensepackRef, LicensepackRegulator,
+};
+
+#[test]
+fn serde_rt_license_status_all_variants() {
+    let variants = [
+        LicenseStatus::Active,
+        LicenseStatus::Suspended,
+        LicenseStatus::Revoked,
+        LicenseStatus::Expired,
+        LicenseStatus::Pending,
+        LicenseStatus::Surrendered,
+    ];
+    for v in &variants {
+        let json = serde_json::to_string(v).expect("serialize");
+        let recovered: LicenseStatus = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(*v, recovered, "LicenseStatus {:?} failed round-trip", v);
+    }
+}
+
+#[test]
+fn serde_rt_license_domain_all_variants() {
+    let variants = [
+        LicenseDomain::Financial,
+        LicenseDomain::Corporate,
+        LicenseDomain::Professional,
+        LicenseDomain::Trade,
+        LicenseDomain::Insurance,
+        LicenseDomain::Mixed,
+    ];
+    for v in &variants {
+        let json = serde_json::to_string(v).expect("serialize");
+        let recovered: LicenseDomain = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(*v, recovered, "LicenseDomain {:?} failed round-trip", v);
+    }
+}
+
+#[test]
+fn serde_rt_license_compliance_state_all_variants() {
+    let variants = [
+        LicenseComplianceState::Compliant,
+        LicenseComplianceState::NonCompliant,
+        LicenseComplianceState::Pending,
+        LicenseComplianceState::Suspended,
+        LicenseComplianceState::Unknown,
+    ];
+    for v in &variants {
+        let json = serde_json::to_string(v).expect("serialize");
+        let recovered: LicenseComplianceState =
+            serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(*v, recovered, "LicenseComplianceState {:?} round-trip", v);
+    }
+}
+
+#[test]
+fn serde_rt_license_condition() {
+    let original = LicenseCondition {
+        condition_id: "cond-001".to_string(),
+        condition_type: "capital_requirement".to_string(),
+        description: "Minimum paid-up capital".to_string(),
+        metric: Some("paid_up_capital".to_string()),
+        threshold: Some("200000000".to_string()),
+        currency: Some("PKR".to_string()),
+        operator: Some(">=".to_string()),
+        frequency: Some("continuous".to_string()),
+        reporting_frequency: Some("quarterly".to_string()),
+        effective_date: Some("2026-01-01".to_string()),
+        expiry_date: None,
+        status: "active".to_string(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: LicenseCondition = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.condition_id, "cond-001");
+    assert_eq!(recovered.status, "active");
+}
+
+#[test]
+fn serde_rt_license_permission() {
+    let original = LicensePermission {
+        permission_id: "perm-001".to_string(),
+        activity: "accept_deposits".to_string(),
+        scope: {
+            let mut m = BTreeMap::new();
+            m.insert("client_type".to_string(), json!("corporate"));
+            m
+        },
+        limits: {
+            let mut m = BTreeMap::new();
+            m.insert("max_deposit".to_string(), json!("1000000000"));
+            m
+        },
+        effective_date: Some("2026-01-01".to_string()),
+        status: "active".to_string(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: LicensePermission = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.permission_id, "perm-001");
+    assert_eq!(recovered.scope.len(), 1);
+}
+
+#[test]
+fn serde_rt_license_restriction() {
+    let original = LicenseRestriction {
+        restriction_id: "rest-001".to_string(),
+        restriction_type: "geographical".to_string(),
+        description: "Cannot operate in sanctioned jurisdictions".to_string(),
+        blocked_jurisdictions: vec!["KP".to_string(), "IR".to_string()],
+        allowed_jurisdictions: vec![],
+        blocked_activities: vec![],
+        blocked_products: vec![],
+        blocked_client_types: vec![],
+        max_leverage: None,
+        effective_date: Some("2026-01-01".to_string()),
+        status: "active".to_string(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: LicenseRestriction = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.restriction_id, "rest-001");
+    assert_eq!(recovered.blocked_jurisdictions.len(), 2);
+}
+
+#[test]
+fn serde_rt_license_holder() {
+    let original = LicenseHolder {
+        holder_id: "holder-001".to_string(),
+        entity_type: "company".to_string(),
+        legal_name: "Test Financial Services Pvt Ltd".to_string(),
+        trading_names: vec!["Test Finance".to_string()],
+        registration_number: Some("0123456".to_string()),
+        incorporation_date: Some("2020-01-01".to_string()),
+        jurisdiction_of_incorporation: Some("PAK".to_string()),
+        did: None,
+        registered_address: BTreeMap::new(),
+        contact: BTreeMap::new(),
+        controllers: vec![],
+        beneficial_owners: vec![],
+        group_structure: BTreeMap::new(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: LicenseHolder = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.holder_id, "holder-001");
+    assert_eq!(recovered.trading_names.len(), 1);
+}
+
+#[test]
+fn serde_rt_license_full() {
+    let original = License {
+        license_id: "lic-SECP-001".to_string(),
+        license_type_id: "SECP-NBF".to_string(),
+        license_number: Some("NBF-2024-001".to_string()),
+        status: LicenseStatus::Active,
+        issued_date: "2024-01-15".to_string(),
+        holder_id: "holder-001".to_string(),
+        holder_legal_name: "Test Corp".to_string(),
+        regulator_id: "SECP".to_string(),
+        status_effective_date: None,
+        status_reason: None,
+        effective_date: None,
+        expiry_date: Some("2029-01-15".to_string()),
+        holder_registration_number: None,
+        holder_did: None,
+        issuing_authority: None,
+        permitted_activities: vec!["deposit_taking".to_string()],
+        asset_classes_authorized: vec![],
+        client_types_permitted: vec![],
+        geographic_scope: vec![],
+        prudential_category: None,
+        capital_requirement: BTreeMap::new(),
+        conditions: vec![],
+        permissions: vec![],
+        restrictions: vec![],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: License = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.license_id, "lic-SECP-001");
+    assert_eq!(recovered.status, LicenseStatus::Active);
+}
+
+#[test]
+fn serde_rt_license_type_definition() {
+    let original = LicenseTypeDefinition {
+        license_type_id: "SECP-NBF".to_string(),
+        name: "Non-Banking Finance Company".to_string(),
+        description: "License for non-banking financial companies".to_string(),
+        regulator_id: "SECP".to_string(),
+        category: Some("financial".to_string()),
+        permitted_activities: vec!["lending".to_string()],
+        requirements: BTreeMap::new(),
+        application_fee: BTreeMap::new(),
+        annual_fee: BTreeMap::new(),
+        validity_period_years: Some(5),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: LicenseTypeDefinition = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.license_type_id, "SECP-NBF");
+}
+
+#[test]
+fn serde_rt_licensepack_regulator() {
+    let original = LicensepackRegulator {
+        regulator_id: "SECP".to_string(),
+        name: "Securities and Exchange Commission of Pakistan".to_string(),
+        jurisdiction_id: "PAK".to_string(),
+        registry_url: Some("https://secp.gov.pk".to_string()),
+        did: None,
+        api_capabilities: vec![],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: LicensepackRegulator = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.regulator_id, "SECP");
+}
+
+#[test]
+fn serde_rt_licensepack_metadata() {
+    let regulator = LicensepackRegulator {
+        regulator_id: "SECP".to_string(),
+        name: "SECP".to_string(),
+        jurisdiction_id: "PAK".to_string(),
+        registry_url: None,
+        did: None,
+        api_capabilities: vec![],
+    };
+    let original = LicensepackMetadata {
+        licensepack_id: "lp-pak-fin-2026".to_string(),
+        jurisdiction_id: "PAK".to_string(),
+        domain: "financial".to_string(),
+        as_of_date: "2026-01-15".to_string(),
+        snapshot_timestamp: "2026-01-15T00:00:00Z".to_string(),
+        snapshot_type: "full".to_string(),
+        regulator,
+        license: "CC-BY-4.0".to_string(),
+        sources: vec![],
+        includes: BTreeMap::new(),
+        normalization: BTreeMap::new(),
+        previous_licensepack_digest: None,
+        delta: None,
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: LicensepackMetadata = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.licensepack_id, "lp-pak-fin-2026");
+}
+
+#[test]
+fn serde_rt_licensepack_full() {
+    let jid = JurisdictionId::new("PAK").unwrap();
+    let lp = Licensepack::new(jid, "Pakistan License Registry".to_string());
+    let json = serde_json::to_string(&lp).expect("serialize");
+    let recovered: Licensepack = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.name, "Pakistan License Registry");
+}
+
+#[test]
+fn serde_rt_licensepack_ref() {
+    let original = LicensepackRef {
+        jurisdiction_id: "PAK".to_string(),
+        domain: "financial".to_string(),
+        licensepack_digest_sha256: "bb".repeat(32),
+        as_of_date: Some("2026-01-15".to_string()),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: LicensepackRef = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(original, recovered);
+}
+
+#[test]
+fn serde_rt_licensepack_lock() {
+    let original = LicensepackLock {
+        lock_version: "1.0".to_string(),
+        generated_at: "2026-01-15T00:00:00Z".to_string(),
+        generator: "msez-cli".to_string(),
+        generator_version: "0.4.44".to_string(),
+        licensepack: LicensepackLockInfo {
+            licensepack_id: "lp-001".to_string(),
+            jurisdiction_id: "PAK".to_string(),
+            domain: "financial".to_string(),
+            as_of_date: "2026-01-15".to_string(),
+            digest_sha256: "aa".repeat(32),
+        },
+        artifact: LicensepackArtifactInfo {
+            artifact_type: "licensepack-snapshot".to_string(),
+            digest_sha256: "bb".repeat(32),
+            uri: "packs/PAK/licenses/snapshot.json".to_string(),
+            media_type: "application/json".to_string(),
+            byte_length: 4096,
+        },
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: LicensepackLock = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.lock_version, "1.0");
+}
+
+// =========================================================================
+// msez-mass-client: Mass DTO serde round-trips
+// =========================================================================
+
+use msez_mass_client::consent::{
+    MassConsent, MassConsentAuditEntry, MassConsentParty, MassConsentStatus, MassConsentType,
+};
+use msez_mass_client::entities::{
+    MassBeneficialOwner, MassEntity, MassEntityStatus, MassEntityType,
+};
+use msez_mass_client::fiscal::{
+    MassAccountType, MassFiscalAccount, MassPayment, MassPaymentStatus, MassTaxEvent,
+};
+use msez_mass_client::identity::{
+    MassIdentity, MassIdentityAttestation, MassIdentityStatus, MassIdentityType,
+    MassLinkedExternalId,
+};
+use msez_mass_client::ownership::{MassCapTable, MassOwnershipTransfer, MassShareClass};
+
+#[test]
+fn serde_rt_mass_entity_type_all_variants() {
+    let variants = [
+        MassEntityType::Llc,
+        MassEntityType::Corporation,
+        MassEntityType::Company,
+        MassEntityType::Partnership,
+        MassEntityType::SoleProprietor,
+        MassEntityType::Trust,
+        MassEntityType::Unknown,
+    ];
+    for v in &variants {
+        let json = serde_json::to_string(v).expect("serialize");
+        let recovered: MassEntityType = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(*v, recovered, "MassEntityType {:?} round-trip failed", v);
+    }
+}
+
+#[test]
+fn serde_rt_mass_entity_status_all_variants() {
+    let variants = [
+        MassEntityStatus::Active,
+        MassEntityStatus::Inactive,
+        MassEntityStatus::Suspended,
+        MassEntityStatus::Dissolved,
+        MassEntityStatus::Unknown,
+    ];
+    for v in &variants {
+        let json = serde_json::to_string(v).expect("serialize");
+        let recovered: MassEntityStatus = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(*v, recovered, "MassEntityStatus {:?} round-trip failed", v);
+    }
+}
+
+#[test]
+fn serde_rt_mass_entity_full() {
+    let original = MassEntity {
+        id: uuid::Uuid::new_v4(),
+        entity_type: MassEntityType::Company,
+        legal_name: "Momentum Technologies Pvt Ltd".to_string(),
+        jurisdiction_id: "PAK-RSEZ".to_string(),
+        status: MassEntityStatus::Active,
+        beneficial_owners: vec![MassBeneficialOwner {
+            name: "Raeez Lorgat".to_string(),
+            ownership_percentage: "51.0".to_string(),
+            cnic: Some("3520112345678".to_string()),
+            ntn: Some("1234567".to_string()),
+        }],
+        created_at: Utc::now(),
+        updated_at: Utc::now(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: MassEntity = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.legal_name, original.legal_name);
+    assert_eq!(recovered.beneficial_owners.len(), 1);
+    assert_eq!(recovered.beneficial_owners[0].name, "Raeez Lorgat");
+}
+
+#[test]
+fn serde_rt_mass_consent_type_all_variants() {
+    let variants = [
+        MassConsentType::Approval,
+        MassConsentType::Formation,
+        MassConsentType::Transfer,
+        MassConsentType::Dissolution,
+        MassConsentType::Unknown,
+    ];
+    for v in &variants {
+        let json = serde_json::to_string(v).expect("serialize");
+        let recovered: MassConsentType = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(*v, recovered);
+    }
+}
+
+#[test]
+fn serde_rt_mass_consent_full() {
+    let original = MassConsent {
+        id: uuid::Uuid::new_v4(),
+        consent_type: MassConsentType::Formation,
+        description: "Entity formation consent".to_string(),
+        parties: vec![MassConsentParty {
+            entity_id: uuid::Uuid::new_v4(),
+            role: "director".to_string(),
+            decision: Some("approved".to_string()),
+            decided_at: Some(Utc::now()),
+        }],
+        status: MassConsentStatus::Approved,
+        audit_trail: vec![MassConsentAuditEntry {
+            action: "approved".to_string(),
+            actor_id: uuid::Uuid::new_v4(),
+            timestamp: Utc::now(),
+            details: Some("Approved by director".to_string()),
+        }],
+        created_at: Utc::now(),
+        updated_at: Utc::now(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: MassConsent = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.consent_type, MassConsentType::Formation);
+    assert_eq!(recovered.parties.len(), 1);
+}
+
+#[test]
+fn serde_rt_mass_fiscal_account() {
+    let original = MassFiscalAccount {
+        id: uuid::Uuid::new_v4(),
+        entity_id: uuid::Uuid::new_v4(),
+        account_type: MassAccountType::Operating,
+        currency: "PKR".to_string(),
+        balance: "50000000".to_string(),
+        ntn: Some("1234567".to_string()),
+        created_at: Utc::now(),
+        updated_at: Utc::now(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: MassFiscalAccount = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.account_type, MassAccountType::Operating);
+    assert_eq!(recovered.currency, "PKR");
+}
+
+#[test]
+fn serde_rt_mass_payment() {
+    let original = MassPayment {
+        id: uuid::Uuid::new_v4(),
+        from_account_id: uuid::Uuid::new_v4(),
+        to_account_id: Some(uuid::Uuid::new_v4()),
+        amount: "1000000".to_string(),
+        currency: "PKR".to_string(),
+        reference: "WHT-2026-Q1".to_string(),
+        status: MassPaymentStatus::Completed,
+        created_at: Utc::now(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: MassPayment = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.status, MassPaymentStatus::Completed);
+}
+
+#[test]
+fn serde_rt_mass_tax_event() {
+    let original = MassTaxEvent {
+        id: uuid::Uuid::new_v4(),
+        entity_id: uuid::Uuid::new_v4(),
+        event_type: "withholding_tax".to_string(),
+        amount: "150000".to_string(),
+        currency: "PKR".to_string(),
+        tax_year: "2026".to_string(),
+        details: json!({"section": "153", "rate": "4.5%"}),
+        created_at: Utc::now(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: MassTaxEvent = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.event_type, "withholding_tax");
+}
+
+#[test]
+fn serde_rt_mass_identity_type_all_variants() {
+    let variants = [
+        MassIdentityType::Individual,
+        MassIdentityType::Corporate,
+        MassIdentityType::Unknown,
+    ];
+    for v in &variants {
+        let json = serde_json::to_string(v).expect("serialize");
+        let recovered: MassIdentityType = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(*v, recovered);
+    }
+}
+
+#[test]
+fn serde_rt_mass_identity_full() {
+    let original = MassIdentity {
+        id: uuid::Uuid::new_v4(),
+        identity_type: MassIdentityType::Individual,
+        status: MassIdentityStatus::Verified,
+        linked_ids: vec![MassLinkedExternalId {
+            id_type: "CNIC".to_string(),
+            id_value: "3520112345678".to_string(),
+            verified: true,
+            linked_at: Utc::now(),
+        }],
+        attestations: vec![MassIdentityAttestation {
+            id: uuid::Uuid::new_v4(),
+            attestation_type: "kyc_verification".to_string(),
+            issuer: "NADRA".to_string(),
+            status: "valid".to_string(),
+            issued_at: Utc::now(),
+            expires_at: None,
+        }],
+        created_at: Utc::now(),
+        updated_at: Utc::now(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: MassIdentity = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.identity_type, MassIdentityType::Individual);
+    assert_eq!(recovered.linked_ids.len(), 1);
+}
+
+#[test]
+fn serde_rt_mass_cap_table() {
+    let original = MassCapTable {
+        id: uuid::Uuid::new_v4(),
+        entity_id: uuid::Uuid::new_v4(),
+        share_classes: vec![MassShareClass {
+            name: "Class A Common".to_string(),
+            authorized_shares: 10_000_000,
+            issued_shares: 5_000_000,
+            par_value: Some("1.00".to_string()),
+            voting_rights: true,
+        }],
+        created_at: Utc::now(),
+        updated_at: Utc::now(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: MassCapTable = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.share_classes.len(), 1);
+    assert_eq!(recovered.share_classes[0].authorized_shares, 10_000_000);
+}
+
+#[test]
+fn serde_rt_mass_ownership_transfer() {
+    let original = MassOwnershipTransfer {
+        id: uuid::Uuid::new_v4(),
+        from_holder: "holder-001".to_string(),
+        to_holder: "holder-002".to_string(),
+        share_class: "Class A Common".to_string(),
+        quantity: 100_000,
+        price_per_share: Some("2.50".to_string()),
+        transferred_at: Utc::now(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: MassOwnershipTransfer = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.quantity, 100_000);
+}
+
+#[test]
+fn serde_rt_mass_account_type_all_variants() {
+    let variants = [
+        MassAccountType::Operating,
+        MassAccountType::Escrow,
+        MassAccountType::Tax,
+        MassAccountType::Settlement,
+        MassAccountType::Unknown,
+    ];
+    for v in &variants {
+        let json = serde_json::to_string(v).expect("serialize");
+        let recovered: MassAccountType = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(*v, recovered);
+    }
+}
+
+#[test]
+fn serde_rt_mass_payment_status_all_variants() {
+    let variants = [
+        MassPaymentStatus::Pending,
+        MassPaymentStatus::Completed,
+        MassPaymentStatus::Failed,
+        MassPaymentStatus::Reversed,
+        MassPaymentStatus::Unknown,
+    ];
+    for v in &variants {
+        let json = serde_json::to_string(v).expect("serialize");
+        let recovered: MassPaymentStatus = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(*v, recovered);
+    }
+}
+
+// =========================================================================
+// msez-zkp: Circuit and proof type serde round-trips
+// =========================================================================
+
+use msez_zkp::circuits::compliance::{
+    BalanceSufficiencyCircuit, SanctionsClearanceCircuit, TensorInclusionCircuit,
+};
+use msez_zkp::circuits::identity::{
+    AttestationValidityCircuit, KycAttestationCircuit, ThresholdSignatureCircuit,
+};
+use msez_zkp::circuits::migration::{
+    CompensationRecord as ZkpCompensationRecord, CompensationValidityCircuit,
+    MigrationEvidenceCircuit, OwnershipChainCircuit, OwnershipEntry,
+};
+use msez_zkp::circuits::settlement::{
+    MerkleMembershipCircuit, NettingValidityCircuit, RangeProofCircuit,
+};
+use msez_zkp::mock::{MockCircuit, MockProof};
+
+#[test]
+fn serde_rt_mock_proof() {
+    let original = MockProof {
+        proof_hex: "abcdef1234567890".to_string(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: MockProof = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(original, recovered);
+}
+
+#[test]
+fn serde_rt_mock_circuit() {
+    let original = MockCircuit {
+        circuit_data: json!({"type": "test_circuit", "params": [1, 2, 3]}),
+        public_inputs: vec![0xaa, 0xbb, 0xcc],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: MockCircuit = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.public_inputs, original.public_inputs);
+}
+
+#[test]
+fn serde_rt_balance_sufficiency_circuit() {
+    let original = BalanceSufficiencyCircuit {
+        threshold: 1_000_000,
+        threshold_public: true,
+        result_commitment: [0xaa; 32],
+        balance: 5_000_000,
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: BalanceSufficiencyCircuit =
+        serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.threshold, 1_000_000);
+    assert_eq!(recovered.balance, 5_000_000);
+    assert_eq!(recovered.result_commitment, [0xaa; 32]);
+}
+
+#[test]
+fn serde_rt_sanctions_clearance_circuit() {
+    let original = SanctionsClearanceCircuit {
+        sanctions_root: [0xbb; 32],
+        verification_timestamp: 1_700_000_000,
+        entity_hash: [0xcc; 32],
+        merkle_proof: vec![[0xdd; 32], [0xee; 32]],
+        merkle_path_indices: vec![true, false],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: SanctionsClearanceCircuit =
+        serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.merkle_proof.len(), 2);
+    assert_eq!(recovered.merkle_path_indices, vec![true, false]);
+}
+
+#[test]
+fn serde_rt_tensor_inclusion_circuit() {
+    let original = TensorInclusionCircuit {
+        tensor_commitment: [0xaa; 32],
+        claimed_state: 1,
+        asset_id: "asset-001".to_string(),
+        jurisdiction_id: "PAK".to_string(),
+        domain: 3,
+        time_quantum: 1_700_000_000,
+        merkle_proof: vec![[0xbb; 32]],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: TensorInclusionCircuit =
+        serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.asset_id, "asset-001");
+}
+
+#[test]
+fn serde_rt_kyc_attestation_circuit() {
+    let original = KycAttestationCircuit {
+        approved_issuers_root: [0x11; 32],
+        min_kyc_level: 2,
+        verification_timestamp: 1_700_000_000,
+        attestation_hash: [0x22; 32],
+        issuer_signature: vec![0x33; 64],
+        issuer_pubkey: vec![0x44; 32],
+        kyc_level: 3,
+        issuer_merkle_proof: vec![[0x55; 32]],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: KycAttestationCircuit =
+        serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.kyc_level, 3);
+    assert_eq!(recovered.min_kyc_level, 2);
+}
+
+#[test]
+fn serde_rt_attestation_validity_circuit() {
+    let original = AttestationValidityCircuit {
+        attestation_commitment: [0xaa; 32],
+        current_timestamp: 1_700_000_000,
+        revocation_root: [0xbb; 32],
+        attestation_hash: [0xcc; 32],
+        expiry_timestamp: 1_800_000_000,
+        revocation_non_membership: vec![[0xdd; 32]],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: AttestationValidityCircuit =
+        serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.expiry_timestamp, 1_800_000_000);
+}
+
+#[test]
+fn serde_rt_threshold_signature_circuit() {
+    let original = ThresholdSignatureCircuit {
+        statement_hash: [0xaa; 32],
+        threshold: 3,
+        authorized_signers_root: [0xbb; 32],
+        signatures: vec![vec![0xcc; 64], vec![0xdd; 64]],
+        signer_pubkeys: vec![vec![0xee; 32], vec![0xff; 32]],
+        signer_merkle_proofs: vec![vec![[0x11; 32]], vec![[0x22; 32]]],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: ThresholdSignatureCircuit =
+        serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.threshold, 3);
+    assert_eq!(recovered.signatures.len(), 2);
+}
+
+#[test]
+fn serde_rt_migration_evidence_circuit() {
+    let original = MigrationEvidenceCircuit {
+        source_jurisdiction: [0x11; 32],
+        target_jurisdiction: [0x22; 32],
+        migration_id: [0x33; 32],
+        final_state_commitment: [0x44; 32],
+        phase_evidence: vec![[0x55; 32], [0x66; 32]],
+        transition_timestamps: vec![1_700_000_000, 1_700_001_000],
+        approval_signatures: vec![vec![0x77; 64]],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: MigrationEvidenceCircuit =
+        serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.phase_evidence.len(), 2);
+}
+
+#[test]
+fn serde_rt_ownership_chain_circuit() {
+    let original = OwnershipChainCircuit {
+        asset_digest: [0xaa; 32],
+        current_owner_commitment: [0xbb; 32],
+        chain_root: [0xcc; 32],
+        ownership_entries: vec![OwnershipEntry {
+            owner_hash: [0xdd; 32],
+            timestamp: 1_700_000_000,
+            evidence_hash: [0xee; 32],
+        }],
+        transfer_proofs: vec![vec![[0xff; 32]]],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: OwnershipChainCircuit =
+        serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.ownership_entries.len(), 1);
+}
+
+#[test]
+fn serde_rt_compensation_validity_circuit() {
+    let original = CompensationValidityCircuit {
+        migration_id: [0xaa; 32],
+        compensation_commitment: [0xbb; 32],
+        compensation_records: vec![ZkpCompensationRecord {
+            action_type: "rollback".to_string(),
+            success: true,
+            evidence_hash: [0xcc; 32],
+            timestamp: 1_700_000_000,
+        }],
+        failure_evidence: [0xdd; 32],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: CompensationValidityCircuit =
+        serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.compensation_records.len(), 1);
+}
+
+#[test]
+fn serde_rt_range_proof_circuit() {
+    let original = RangeProofCircuit {
+        lower_bound: 0,
+        upper_bound: 1_000_000_000,
+        value_commitment: [0xaa; 32],
+        value: 500_000,
+        blinding_factor: [0xbb; 32],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: RangeProofCircuit = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.value, 500_000);
+    assert_eq!(recovered.lower_bound, 0);
+}
+
+#[test]
+fn serde_rt_merkle_membership_circuit() {
+    let original = MerkleMembershipCircuit {
+        merkle_root: [0xaa; 32],
+        leaf_hash: [0xbb; 32],
+        merkle_proof: vec![[0xcc; 32], [0xdd; 32], [0xee; 32]],
+        path_indices: vec![true, false, true],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: MerkleMembershipCircuit =
+        serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.merkle_proof.len(), 3);
+    assert_eq!(recovered.path_indices.len(), 3);
+}
+
+#[test]
+fn serde_rt_netting_validity_circuit() {
+    let original = NettingValidityCircuit {
+        gross_positions_commitment: [0xaa; 32],
+        net_positions_commitment: [0xbb; 32],
+        participant_count: 5,
+        gross_positions: vec![100, 200, 300, 400, 500],
+        net_positions: vec![50, -50, 100, -100, 0],
+        netting_matrix: vec![0; 25],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: NettingValidityCircuit =
+        serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.participant_count, 5);
+    assert_eq!(recovered.gross_positions.len(), 5);
+}
+
+// =========================================================================
+// msez-arbitration: Complex struct serde round-trips
+// =========================================================================
+
+// Note: Dispute/Enforcement/Escrow/Evidence types already imported at top of file.
+// These tests use the existing imports plus new sub-types.
+
+#[test]
+fn serde_rt_claim_full_with_evidence() {
+    let original = Claim {
+        claim_id: "CLM-002".to_string(),
+        claim_type: DisputeType::BreachOfContract,
+        description: "Failure to deliver goods per corridor agreement".to_string(),
+        amount: Some(Money::new("500000", "USD").unwrap()),
+        supporting_evidence_digests: vec![test_digest()],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: Claim = serde_json::from_str(&json).expect("deserialize");
+    // BUG-034: Claim does not derive PartialEq — field-by-field check
+    assert_eq!(recovered.claim_id, "CLM-002");
+    assert_eq!(recovered.claim_type, DisputeType::BreachOfContract);
+    assert_eq!(recovered.supporting_evidence_digests.len(), 1);
+}
+
+#[test]
+fn serde_rt_arbitration_institution() {
+    let original = ArbitrationInstitution {
+        id: "SIAC".to_string(),
+        name: "Singapore International Arbitration Centre".to_string(),
+        jurisdiction_id: "SG".to_string(),
+        supported_dispute_types: vec![
+            DisputeType::BreachOfContract,
+            DisputeType::PaymentDefault,
+        ],
+        emergency_arbitrator: true,
+        expedited_procedure: true,
+        enforcement_jurisdictions: vec!["SG".to_string(), "PK".to_string(), "AE".to_string()],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: ArbitrationInstitution = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.id, "SIAC");
+    assert_eq!(recovered.supported_dispute_types.len(), 2);
+}
+
+#[test]
+fn serde_rt_dispute_full_roundtrip() {
+    let original = Dispute {
+        id: DisputeId::new(),
+        state: DisputeState::Filed,
+        dispute_type: DisputeType::PaymentDefault,
+        claimant: ArbParty {
+            did: msez_core::Did::new("did:key:z6MkClaimant").unwrap(),
+            legal_name: "Claimant Corp".to_string(),
+            jurisdiction_id: Some(JurisdictionId::new("PK").unwrap()),
+        },
+        respondent: ArbParty {
+            did: msez_core::Did::new("did:key:z6MkRespondent").unwrap(),
+            legal_name: "Respondent LLC".to_string(),
+            jurisdiction_id: Some(JurisdictionId::new("AE").unwrap()),
+        },
+        jurisdiction: JurisdictionId::new("SG").unwrap(),
+        corridor_id: Some(CorridorId::new()),
+        institution_id: "SIAC".to_string(),
+        claims: vec![Claim {
+            claim_id: "CLM-003".to_string(),
+            claim_type: DisputeType::PaymentDefault,
+            description: "Non-payment".to_string(),
+            amount: Some(Money::new("100000", "USD").unwrap()),
+            supporting_evidence_digests: vec![],
+        }],
+        filed_at: Timestamp::now(),
+        updated_at: Timestamp::now(),
+        transition_log: vec![],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: Dispute = serde_json::from_str(&json).expect("deserialize");
+    // BUG-035: Dispute does not derive PartialEq
+    assert_eq!(recovered.state, DisputeState::Filed);
+    assert_eq!(recovered.dispute_type, DisputeType::PaymentDefault);
+    assert_eq!(recovered.claims.len(), 1);
+}
+
+#[test]
+fn serde_rt_enforcement_precondition() {
+    let original = EnforcementPrecondition {
+        description: "Appeal period must expire".to_string(),
+        satisfied: false,
+        evidence_digest: Some(test_digest()),
+        checked_at: Some(Timestamp::now()),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: EnforcementPrecondition = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.description, "Appeal period must expire");
+    assert!(!recovered.satisfied);
+}
+
+#[test]
+fn serde_rt_enforcement_order_full_roundtrip() {
+    use msez_arbitration::enforcement::EnforcementAction;
+    let original = EnforcementOrder::new(
+        DisputeId::new(),
+        test_digest(),
+        vec![EnforcementAction::MonetaryPenalty {
+            party: msez_core::Did::new("did:key:z6MkPenalized").unwrap(),
+            amount: "50000".to_string(),
+            currency: "USD".to_string(),
+        }],
+        None, // appeal_deadline
+    );
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: EnforcementOrder = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.status, EnforcementStatus::Pending);
+    assert_eq!(recovered.actions.len(), 1);
+}
+
+#[test]
+fn serde_rt_release_condition() {
+    let original = ReleaseCondition {
+        condition_type: ReleaseConditionType::RulingEnforced,
+        evidence_digest: test_digest(),
+        satisfied_at: Timestamp::now(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: ReleaseCondition = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.condition_type, ReleaseConditionType::RulingEnforced);
+}
+
+#[test]
+fn serde_rt_escrow_transaction() {
+    let original = EscrowTransaction {
+        transaction_type: TransactionType::Deposit,
+        amount: "100000".to_string(),
+        currency: "USD".to_string(),
+        timestamp: Utc::now(),
+        evidence_digest: test_digest(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: EscrowTransaction = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.transaction_type, TransactionType::Deposit);
+    assert_eq!(recovered.amount, "100000");
+}
+
+#[test]
+fn serde_rt_escrow_account_full_roundtrip() {
+    let original = EscrowAccount::create(
+        DisputeId::new(),
+        EscrowType::SecurityDeposit,
+        "USD".to_string(),
+        None,
+    );
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: EscrowAccount = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.escrow_type, EscrowType::SecurityDeposit);
+    assert_eq!(recovered.status, EscrowStatus::Pending);
+}
+
+#[test]
+fn serde_rt_authenticity_attestation_roundtrip() {
+    use msez_arbitration::evidence::AuthenticityType;
+    let original = AuthenticityAttestation {
+        attestation_type: AuthenticityType::NotarizedDocument,
+        proof_digest: test_digest(),
+        attester: msez_core::Did::new("did:key:z6MkNotary").unwrap(),
+        attested_at: Timestamp::now(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: AuthenticityAttestation = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(
+        recovered.attestation_type,
+        AuthenticityType::NotarizedDocument
+    );
+}
+
+#[test]
+fn serde_rt_chain_of_custody_entry_roundtrip() {
+    let original = ChainOfCustodyEntry {
+        custodian: msez_core::Did::new("did:key:z6MkCustodian").unwrap(),
+        transferred_at: Timestamp::now(),
+        evidence_digest_at_transfer: test_digest(),
+        description: "Transferred to arbitration chamber".to_string(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: ChainOfCustodyEntry = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.description, "Transferred to arbitration chamber");
+}
+
+// =========================================================================
+// msez-corridor: Untested types
+// =========================================================================
+
+use msez_corridor::anchor::AnchorReceipt;
+use msez_corridor::fork::ForkBranch;
+use msez_corridor::receipt::Checkpoint;
+
+#[test]
+fn serde_rt_anchor_receipt() {
+    use msez_corridor::anchor::{AnchorCommitment, AnchorStatus};
+    let original = AnchorReceipt {
+        commitment: AnchorCommitment {
+            checkpoint_digest: test_digest(),
+            chain_id: Some("eth-mainnet".to_string()),
+            checkpoint_height: 100,
+        },
+        chain_id: "eth-mainnet".to_string(),
+        transaction_id: "0xabcdef1234567890".to_string(),
+        block_number: 19_000_000,
+        status: AnchorStatus::Confirmed,
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: AnchorReceipt = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.chain_id, "eth-mainnet");
+}
+
+#[test]
+fn serde_rt_fork_branch() {
+    let original = ForkBranch {
+        receipt_digest: test_digest(),
+        timestamp: Utc::now(),
+        attestation_count: 3,
+        next_root: "bb".repeat(32),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: ForkBranch = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.attestation_count, 3);
+}
+
+#[test]
+fn serde_rt_checkpoint_full() {
+    let original = Checkpoint {
+        corridor_id: CorridorId::new(),
+        height: 42,
+        mmr_root: "cc".repeat(32),
+        timestamp: Timestamp::now(),
+        checkpoint_digest: test_digest(),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: Checkpoint = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.height, 42);
 }

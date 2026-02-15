@@ -88,18 +88,25 @@ impl MassApiConfig {
     }
 
     /// Create a configuration pointing to local mock servers (for testing).
-    pub fn local_mock(base_port: u16, token: &str) -> Self {
-        let make_url =
-            |port: u16| Url::parse(&format!("http://127.0.0.1:{port}")).expect("valid URL");
-        Self {
-            organization_info_url: make_url(base_port),
-            investment_info_url: make_url(base_port + 1),
-            treasury_info_url: make_url(base_port + 2),
-            consent_info_url: make_url(base_port + 3),
-            templating_engine_url: make_url(base_port + 4),
+    ///
+    /// # Errors
+    ///
+    /// Returns `ConfigError::InvalidUrl` if the localhost URL cannot be parsed
+    /// (should not occur for valid port numbers, but avoids `expect()`).
+    pub fn local_mock(base_port: u16, token: &str) -> Result<Self, ConfigError> {
+        let make_url = |port: u16| -> Result<Url, ConfigError> {
+            Url::parse(&format!("http://127.0.0.1:{port}"))
+                .map_err(|e| ConfigError::InvalidUrl("localhost".to_string(), e.to_string()))
+        };
+        Ok(Self {
+            organization_info_url: make_url(base_port)?,
+            investment_info_url: make_url(base_port + 1)?,
+            treasury_info_url: make_url(base_port + 2)?,
+            consent_info_url: make_url(base_port + 3)?,
+            templating_engine_url: make_url(base_port + 4)?,
             api_token: token.to_string(),
             timeout_secs: 5,
-        }
+        })
     }
 }
 
@@ -123,7 +130,7 @@ mod tests {
 
     #[test]
     fn local_mock_builds_valid_config() {
-        let cfg = MassApiConfig::local_mock(9000, "test-token");
+        let cfg = MassApiConfig::local_mock(9000, "test-token").unwrap();
         assert_eq!(cfg.api_token, "test-token");
         assert_eq!(cfg.timeout_secs, 5);
         assert_eq!(

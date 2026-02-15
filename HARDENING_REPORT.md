@@ -1,11 +1,12 @@
 # Hardening Report — 2026-02-15
 
 ## Summary
-- Total defects cataloged across all sessions: 21
-- P0 (security/correctness): 6 total (4 resolved prior, 2 resolved this session)
-- P1 (reliability/safety): 11 total (5 resolved prior, 4 resolved this session, 2 remaining)
-- P2 (quality/hygiene): 9 total (2 resolved this session, 7 remaining)
-- All P0 defects resolved.
+- Total defects cataloged across all sessions: 22
+- P0 (security/correctness): 7 total — **all resolved**
+- P1 (reliability/safety): 11 total — **all resolved**
+- P2 (quality/hygiene): 9 total — **7 resolved, 2 remaining**
+- Schema violations: **14 → 0** (audit §3.1 fully remediated)
+- All P0 and P1 defects resolved. Workspace clean: zero test failures, zero clippy warnings.
 
 ## Previously Resolved Defects (confirmed during discovery)
 
@@ -126,27 +127,53 @@ These defects from CLAUDE.md were found already fixed in prior sessions:
 - **Commit:** 530074c
 - **Blast radius:** Test code only
 
-## Remaining Defects (for next session)
+## Remaining Defects
 
 | ID | Severity | Crate | Description |
 |----|----------|-------|-------------|
-| P1-MASS-002 | P1 | msez-mass-client | No retry logic or circuit breaker for transient failures |
-| P1-SCHEMA-001 | P1 | msez-schema | walk_for_modules silently swallows filesystem errors |
 | P2-MASS-003 | P2 | msez-mass-client | Financial amounts (balance, par_value) are untyped Strings — need Decimal newtype |
-| P2-CORRIDOR-001 | P2 | msez-corridor | No duplicate obligation detection in NettingEngine |
 | P2-VC-001 | P2 | msez-vc | Missing cross-language VC parity tests |
-| P2-CLI-002 | P2 | msez-cli | Silent file-not-found in lock.rs profile resolution |
-| P2-CLI-003 | P2 | msez-cli | O(n^2) duplicate detection in validate.rs |
-| P2-CRYPTO-005 | P2 | msez-crypto | ArtifactRef.artifact_type is public String field |
-| P2-API-001 | P2 | msez-api | asset_type in SmartAssetRecord remains String |
 
-## Session Results
+---
+
+## Session 3 Results (current)
+- Fixes applied: 11 (P0: 1, P1: 4, P2: 6) + 14 schema violations
+- Files changed: 32 (+626/-222 lines)
+- Defects remaining: 2 (P2 only)
+- Schema violations: 14 → **0**
+- Workspace status: `cargo test --workspace` **PASS** (1700+ tests), `cargo clippy --workspace` **PASS** (zero warnings)
+
+### Session 3 Fixes
+| ID | Severity | Crate | Description | Commit |
+|----|----------|-------|-------------|--------|
+| P0-ESCROW | P0 | msez-arbitration | parse_amount() unwrap_or(0) → Result with InvalidAmount error | 4c30ce9 |
+| P1-ZKP-002 | P1 | msez-zkp | MockProofSystem prove/verify asymmetry — aligned to hash only public_inputs | 4c30ce9 |
+| P1-MASS-002 | P1 | msez-mass-client | Added retry.rs with exponential backoff (200ms→400ms→800ms) across 6 clients | 4c30ce9 |
+| P1-SCHEMA-001 | P1 | msez-schema | walk_for_modules now returns Result instead of swallowing IO errors | 4c30ce9 |
+| P2-CORRIDOR-001 | P2 | msez-corridor | Duplicate obligation detection via BTreeSet in NettingEngine | 4c30ce9 |
+| P2-CLI-002 | P2 | msez-cli | Silent file-not-found → tracing::warn! in lock.rs profile resolution | 4c30ce9 |
+| P2-CLI-003 | P2 | msez-cli | O(n²) Vec::contains → HashSet dedup in validate.rs | 4c30ce9 |
+| P2-CRYPTO-005 | P2 | msez-crypto | ArtifactRef.artifact_type String → ArtifactType validated newtype | 4c30ce9 |
+| P2-API-001 | P2 | msez-api | SmartAssetRecord.asset_type String → SmartAssetType validated newtype | 4c30ce9 |
+| P1-ZKP-TEST | P1 | msez-integration-tests | Updated 2 integration tests for ZKP prove/verify symmetry fix | 4c30ce9 |
+| SCHEMA-§3.1 | P1 | schemas/ | Fixed all 14 additionalProperties violations across 7 schema files | 4c30ce9 |
+
+### Session 3 Schema Remediation (Audit §3.1)
+All 14 `additionalProperties: true` violations fixed to `false`:
+- **vc.smart-asset-registry**: quorum_policy, quorum_policy/default, ComplianceProfile, EnforcementProfile
+- **corridor.receipt**: zk, anchor
+- **corridor.checkpoint**: mmr, anchor (added missing anchor properties)
+- **corridor.fork-resolution**: candidates/items
+- **vc.corridor-fork-resolution**: candidates/items
+- **vc.dispute-claim**: forum (added structured properties)
+- **vc.arbitration-award**: forum, outcome, obligations/items (added structured properties)
+- **codegen.rs**: KNOWN_VIOLATION_COUNT 14 → 0, test now asserts zero violations
+
+## Session 2 Results
 - Fixes applied: 8 (P0: 2, P1: 4, P2: 2)
 - New enums added: 8 (MassEntityType, MassEntityStatus, MassConsentType, MassConsentStatus, MassIdentityType, MassIdentityStatus, MassAccountType, MassPaymentStatus)
-- Defects remaining: 9 (P1: 2, P2: 7)
-- Workspace status: `cargo test --workspace` **PASS**, `cargo clippy --workspace -- -D warnings` **PASS**
 
-### Fixes Applied
+### Session 2 Fixes
 | ID | Severity | Crate | Description | Commit |
 |----|----------|-------|-------------|--------|
 | P0-CRYPTO-001 | P0 | msez-crypto | Timing side-channel in MMR proof verification | 070c969 |

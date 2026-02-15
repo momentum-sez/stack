@@ -308,12 +308,22 @@ mod tests {
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
+    /// A zone admin identity for tests that need full access.
+    fn zone_admin() -> crate::auth::CallerIdentity {
+        crate::auth::CallerIdentity {
+            role: crate::auth::Role::ZoneAdmin,
+            entity_id: None,
+            jurisdiction_id: None,
+        }
+    }
+
     /// Build the full credentials + smart assets router for integration tests.
     fn test_app() -> Router<()> {
         let state = AppState::new();
         Router::new()
             .merge(crate::routes::smart_assets::router())
             .merge(router())
+            .layer(axum::Extension(zone_admin()))
             .with_state(state)
     }
 
@@ -322,6 +332,7 @@ mod tests {
         Router::new()
             .merge(crate::routes::smart_assets::router())
             .merge(router())
+            .layer(axum::Extension(zone_admin()))
             .with_state(state)
     }
 

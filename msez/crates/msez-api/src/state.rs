@@ -187,6 +187,10 @@ pub struct SmartAssetRecord {
     pub genesis_digest: Option<String>,
     pub compliance_status: AssetComplianceStatus,
     pub metadata: serde_json::Value,
+    /// The entity that created this asset. Used for IDOR protection.
+    /// `None` for assets created before RBAC was enabled (legacy).
+    #[serde(default)]
+    pub owner_entity_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

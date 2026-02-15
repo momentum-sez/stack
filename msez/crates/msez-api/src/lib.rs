@@ -17,6 +17,8 @@
 //! | `/v1/consent/*`       | [`routes::mass_proxy`]     | Mass proxy (Consent) |
 //! | `/v1/corridors/*`     | [`routes::corridors`]      | Corridors (SEZ)     |
 //! | `/v1/assets/*`        | [`routes::smart_assets`]   | Smart Assets (SEZ)  |
+//! | `/v1/assets/*/credentials/*` | [`routes::credentials`] | VC Issuance (SEZ) |
+//! | `/v1/credentials/*`  | [`routes::credentials`]    | VC Verification (SEZ) |
 //! | `/v1/regulator/*`     | [`routes::regulator`]      | Regulator (SEZ)     |
 //!
 //! ## Middleware Stack (execution order)
@@ -30,6 +32,7 @@
 //! Auto-generated OpenAPI 3.1 spec via utoipa derive macros at `/openapi.json`.
 
 pub mod auth;
+pub mod compliance;
 pub mod error;
 pub mod extractors;
 pub mod middleware;
@@ -64,6 +67,7 @@ pub fn app(state: AppState) -> Router {
         // SEZ Stack native routes (genuinely this codebase's domain)
         .merge(routes::corridors::router())
         .merge(routes::smart_assets::router())
+        .merge(routes::credentials::router())
         .merge(routes::regulator::router())
         .merge(openapi::router())
         .layer(from_fn(middleware::rate_limit::rate_limit_middleware))

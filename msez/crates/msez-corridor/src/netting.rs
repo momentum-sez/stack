@@ -272,6 +272,9 @@ impl NettingEngine {
     }
 
     /// Compute gross positions: total payables and receivables per party per currency.
+    ///
+    /// Uses saturating arithmetic to prevent silent i64 overflow when
+    /// many large obligations accumulate for the same party/currency pair.
     pub fn compute_gross_positions(&self) -> BTreeMap<(String, String), (i64, i64)> {
         let mut positions: BTreeMap<(String, String), (i64, i64)> = BTreeMap::new();
 
@@ -279,18 +282,21 @@ impl NettingEngine {
             // from_party: payable increases
             let from_key = (ob.from_party.clone(), ob.currency.clone());
             let from_entry = positions.entry(from_key).or_insert((0, 0));
-            from_entry.1 += ob.amount;
+            from_entry.1 = from_entry.1.saturating_add(ob.amount);
 
             // to_party: receivable increases
             let to_key = (ob.to_party.clone(), ob.currency.clone());
             let to_entry = positions.entry(to_key).or_insert((0, 0));
-            to_entry.0 += ob.amount;
+            to_entry.0 = to_entry.0.saturating_add(ob.amount);
         }
 
         positions
     }
 
     /// Compute net positions: receivables offset against payables.
+    ///
+    /// Uses saturating subtraction to prevent overflow when computing
+    /// the net from gross receivable and payable totals.
     pub fn compute_net_positions(&self) -> Vec<NetPosition> {
         let gross = self.compute_gross_positions();
         gross
@@ -301,7 +307,7 @@ impl NettingEngine {
                     currency,
                     receivable,
                     payable,
-                    net: receivable - payable,
+                    net: receivable.saturating_sub(payable),
                 },
             )
             .collect()

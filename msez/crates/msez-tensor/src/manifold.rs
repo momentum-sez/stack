@@ -25,7 +25,7 @@ use std::collections::{BinaryHeap, HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
-use msez_core::ComplianceDomain;
+use msez_core::{CanonicalBytes, ComplianceDomain};
 
 // ---------------------------------------------------------------------------
 // JurisdictionNode
@@ -93,13 +93,15 @@ pub struct CorridorEdge {
 impl CorridorEdge {
     /// Total time for this corridor (transfer + settlement).
     pub fn total_time_hours(&self) -> u32 {
-        self.estimated_transfer_hours + self.settlement_finality_hours
+        self.estimated_transfer_hours.saturating_add(self.settlement_finality_hours)
     }
 
     /// Transfer cost for a given asset value (USD).
+    ///
+    /// Uses u128 intermediate to prevent overflow on large asset values.
     pub fn transfer_cost(&self, asset_value_usd: u64) -> u64 {
-        let bps_cost = asset_value_usd * u64::from(self.transfer_fee_bps) / 10_000;
-        self.flat_fee_usd + bps_cost
+        let bps_cost = (u128::from(asset_value_usd) * u128::from(self.transfer_fee_bps) / 10_000) as u64;
+        self.flat_fee_usd.saturating_add(bps_cost)
     }
 }
 
@@ -608,7 +610,11 @@ impl ComplianceManifold {
         let mut total_time = 0u32;
 
         for (prev_jurisdiction, corridor_id) in &segments {
-            let corridor = &self.corridors[corridor_id];
+            // Defensive: skip if corridor was removed mid-operation (shouldn't happen
+            // but prevents panic from unchecked HashMap indexing).
+            let Some(corridor) = self.corridors.get(corridor_id.as_str()) else {
+                break;
+            };
             let target_id = if corridor.source_jurisdiction == *prev_jurisdiction {
                 &corridor.target_jurisdiction
             } else {
@@ -626,26 +632,28 @@ impl ComplianceManifold {
                 time_hours: hop_time,
             });
 
-            total_cost += hop_cost;
-            total_time += hop_time;
+            total_cost = total_cost.saturating_add(hop_cost);
+            total_time = total_time.saturating_add(hop_time);
         }
 
         // Deterministic path ID from corridor sequence.
-        let path_content = format!(
-            "{}:{}:{}",
-            source,
-            target,
-            hops.iter()
-                .map(|h| h.corridor_id.as_str())
-                .collect::<Vec<_>>()
-                .join(":")
-        );
-        let path_id = {
-            use sha2::{Digest, Sha256};
-            let mut hasher = Sha256::new();
-            hasher.update(path_content.as_bytes());
-            let result = hasher.finalize();
-            result.iter().take(8).map(|b| format!("{b:02x}")).collect()
+        // Uses CanonicalBytes pipeline per CLAUDE.md §VIII rule 5:
+        // "All SHA-256 computation flows through CanonicalBytes::new()."
+        let path_content = serde_json::json!({
+            "source": source,
+            "target": target,
+            "corridors": hops.iter().map(|h| h.corridor_id.as_str()).collect::<Vec<_>>()
+        });
+        let path_id = match CanonicalBytes::new(&path_content) {
+            Ok(canonical) => {
+                let digest = msez_core::sha256_digest(&canonical);
+                let hex = digest.to_string();
+                hex.get(..16).unwrap_or(&hex).to_string()
+            }
+            Err(_) => {
+                // Fallback: use source:target as path ID if canonicalization fails
+                format!("{}:{}", source, target)
+            }
         };
 
         MigrationPath {

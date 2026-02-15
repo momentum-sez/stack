@@ -57,10 +57,23 @@ impl RateLimiter {
         }
     }
 
+    /// Maximum number of unique keys before triggering a prune sweep.
+    /// Prevents unbounded memory growth from unique X-Jurisdiction-Id headers.
+    const MAX_BUCKETS: usize = 10_000;
+
     /// Check if a request from the given key should be allowed.
     fn check(&self, key: &str) -> bool {
         let mut buckets = self.buckets.write();
         let now = Instant::now();
+
+        // Prune stale entries when the map exceeds the size threshold
+        // to prevent unbounded memory growth (DoS vector).
+        if buckets.len() >= Self::MAX_BUCKETS {
+            let window = self.config.window_secs.max(1);
+            buckets.retain(|_, bucket| {
+                now.duration_since(bucket.window_start).as_secs() < window
+            });
+        }
 
         let bucket = buckets.entry(key.to_string()).or_insert(BucketState {
             count: 0,

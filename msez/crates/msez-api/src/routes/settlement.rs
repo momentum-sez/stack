@@ -37,6 +37,32 @@ pub struct SettlementComputeRequest {
     pub obligations: Vec<ObligationInput>,
 }
 
+impl Validate for SettlementComputeRequest {
+    fn validate(&self) -> Result<(), String> {
+        if self.obligations.len() > 10_000 {
+            return Err(format!(
+                "too many obligations: {} (max 10,000)",
+                self.obligations.len()
+            ));
+        }
+        for (i, ob) in self.obligations.iter().enumerate() {
+            if ob.from_party.trim().is_empty() || ob.to_party.trim().is_empty() {
+                return Err(format!("obligation {i}: party identifiers must be non-empty"));
+            }
+            if ob.from_party == ob.to_party {
+                return Err(format!("obligation {i}: from_party and to_party must differ"));
+            }
+            if ob.currency.trim().is_empty() {
+                return Err(format!("obligation {i}: currency must be non-empty"));
+            }
+            if ob.amount <= 0 {
+                return Err(format!("obligation {i}: amount must be positive, got {}", ob.amount));
+            }
+        }
+        Ok(())
+    }
+}
+
 /// A single obligation input for settlement computation.
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct ObligationInput {
@@ -147,6 +173,23 @@ impl Validate for InstructionRequest {
     fn validate(&self) -> Result<(), String> {
         if self.legs.is_empty() {
             return Err("at least one settlement leg is required".into());
+        }
+        if self.legs.len() > 1_000 {
+            return Err(format!("too many legs: {} (max 1,000)", self.legs.len()));
+        }
+        for (i, leg) in self.legs.iter().enumerate() {
+            if leg.from_party.trim().is_empty() || leg.to_party.trim().is_empty() {
+                return Err(format!("leg {i}: party identifiers must be non-empty"));
+            }
+            if leg.from_bic.len() > 11 || leg.to_bic.len() > 11 {
+                return Err(format!("leg {i}: BIC code must be at most 11 characters"));
+            }
+            if leg.amount <= 0 {
+                return Err(format!("leg {i}: amount must be positive, got {}", leg.amount));
+            }
+            if leg.currency.trim().is_empty() {
+                return Err(format!("leg {i}: currency must be non-empty"));
+            }
         }
         Ok(())
     }

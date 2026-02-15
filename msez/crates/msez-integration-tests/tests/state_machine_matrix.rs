@@ -1,0 +1,578 @@
+//! # Campaign 4: State Machine Transition Matrix
+//!
+//! Exhaustive NxN transition matrix tests for every state machine in the codebase.
+//! Valid transitions are tested with assert!(result.is_ok()).
+//! Invalid transitions are tested with assert!(result.is_err()).
+
+use msez_core::{EntityId, JurisdictionId};
+
+// =========================================================================
+// DynCorridorState — 6 states, 36 transitions
+// =========================================================================
+
+use msez_state::DynCorridorState;
+
+/// Returns true if the transition from → to is valid per the state machine spec.
+fn corridor_transition_valid(from: &DynCorridorState, to: &DynCorridorState) -> bool {
+    from.valid_transitions().contains(to)
+}
+
+#[test]
+fn corridor_transition_matrix_exhaustive() {
+    let states = [
+        DynCorridorState::Draft,
+        DynCorridorState::Pending,
+        DynCorridorState::Active,
+        DynCorridorState::Halted,
+        DynCorridorState::Suspended,
+        DynCorridorState::Deprecated,
+    ];
+
+    // Expected valid transitions:
+    // Draft → Pending
+    // Pending → Active
+    // Active → Halted, Suspended
+    // Halted → Deprecated
+    // Suspended → Active
+    // Deprecated → (none)
+    let expected_valid: Vec<(DynCorridorState, DynCorridorState)> = vec![
+        (DynCorridorState::Draft, DynCorridorState::Pending),
+        (DynCorridorState::Pending, DynCorridorState::Active),
+        (DynCorridorState::Active, DynCorridorState::Halted),
+        (DynCorridorState::Active, DynCorridorState::Suspended),
+        (DynCorridorState::Halted, DynCorridorState::Deprecated),
+        (DynCorridorState::Suspended, DynCorridorState::Active),
+    ];
+
+    for from in &states {
+        for to in &states {
+            let actual_valid = corridor_transition_valid(from, to);
+            let expected = expected_valid.contains(&(*from, *to));
+            assert_eq!(
+                actual_valid, expected,
+                "Corridor transition {:?} → {:?}: expected valid={}, got valid={}",
+                from, to, expected, actual_valid
+            );
+        }
+    }
+}
+
+#[test]
+fn corridor_terminal_states() {
+    assert!(DynCorridorState::Deprecated.is_terminal());
+    assert!(!DynCorridorState::Draft.is_terminal());
+    assert!(!DynCorridorState::Active.is_terminal());
+}
+
+#[test]
+fn corridor_state_round_trip_via_name() {
+    let states = [
+        DynCorridorState::Draft,
+        DynCorridorState::Pending,
+        DynCorridorState::Active,
+        DynCorridorState::Halted,
+        DynCorridorState::Suspended,
+        DynCorridorState::Deprecated,
+    ];
+    for state in &states {
+        let name = state.as_str();
+        let recovered = DynCorridorState::from_name(name);
+        assert_eq!(
+            recovered,
+            Some(*state),
+            "DynCorridorState::from_name({:?}) should return {:?}",
+            name,
+            state
+        );
+    }
+}
+
+// =========================================================================
+// EntityLifecycleState — 6 states, method-based transitions
+// =========================================================================
+
+use msez_state::{Entity, EntityLifecycleState};
+
+#[test]
+fn entity_transition_applied_to_active() {
+    let mut entity = Entity::new(EntityId::new());
+    assert!(entity.approve().is_ok());
+    assert_eq!(entity.state, EntityLifecycleState::Active);
+}
+
+#[test]
+fn entity_transition_applied_to_rejected() {
+    let mut entity = Entity::new(EntityId::new());
+    assert!(entity.reject().is_ok());
+    assert_eq!(entity.state, EntityLifecycleState::Rejected);
+}
+
+#[test]
+fn entity_invalid_applied_to_suspended() {
+    let mut entity = Entity::new(EntityId::new());
+    assert!(entity.suspend().is_err());
+}
+
+#[test]
+fn entity_invalid_applied_to_dissolving() {
+    let mut entity = Entity::new(EntityId::new());
+    assert!(entity.initiate_dissolution().is_err());
+}
+
+#[test]
+fn entity_transition_active_to_suspended() {
+    let mut entity = Entity::new(EntityId::new());
+    entity.approve().unwrap();
+    assert!(entity.suspend().is_ok());
+    assert_eq!(entity.state, EntityLifecycleState::Suspended);
+}
+
+#[test]
+fn entity_transition_suspended_to_active() {
+    let mut entity = Entity::new(EntityId::new());
+    entity.approve().unwrap();
+    entity.suspend().unwrap();
+    assert!(entity.reinstate().is_ok());
+    assert_eq!(entity.state, EntityLifecycleState::Active);
+}
+
+#[test]
+fn entity_invalid_active_to_rejected() {
+    let mut entity = Entity::new(EntityId::new());
+    entity.approve().unwrap();
+    assert!(entity.reject().is_err());
+}
+
+#[test]
+fn entity_invalid_active_to_applied() {
+    // No method to go back to Applied — this is by design
+    let mut entity = Entity::new(EntityId::new());
+    entity.approve().unwrap();
+    // Double-approve should fail
+    assert!(entity.approve().is_err());
+}
+
+#[test]
+fn entity_transition_active_to_dissolving() {
+    let mut entity = Entity::new(EntityId::new());
+    entity.approve().unwrap();
+    assert!(entity.initiate_dissolution().is_ok());
+    assert_eq!(entity.state, EntityLifecycleState::Dissolving);
+}
+
+#[test]
+fn entity_dissolution_requires_all_10_stages() {
+    let mut entity = Entity::new(EntityId::new());
+    entity.approve().unwrap();
+    entity.initiate_dissolution().unwrap();
+
+    // Advance through all 10 dissolution stages
+    for i in 0..10 {
+        let result = entity.advance_dissolution();
+        if i < 9 {
+            assert!(
+                result.is_ok(),
+                "Dissolution stage {} should succeed",
+                i + 1
+            );
+            assert_eq!(entity.state, EntityLifecycleState::Dissolving);
+        } else {
+            // Last stage should transition to Dissolved
+            assert!(result.is_ok());
+            assert_eq!(entity.state, EntityLifecycleState::Dissolved);
+        }
+    }
+}
+
+#[test]
+fn entity_rejected_is_terminal() {
+    let mut entity = Entity::new(EntityId::new());
+    entity.reject().unwrap();
+    // All transitions from Rejected should fail
+    assert!(entity.approve().is_err());
+    assert!(entity.suspend().is_err());
+    assert!(entity.reinstate().is_err());
+    assert!(entity.initiate_dissolution().is_err());
+    assert!(entity.advance_dissolution().is_err());
+}
+
+#[test]
+fn entity_dissolved_is_terminal() {
+    let mut entity = Entity::new(EntityId::new());
+    entity.approve().unwrap();
+    entity.initiate_dissolution().unwrap();
+    for _ in 0..10 {
+        entity.advance_dissolution().unwrap();
+    }
+    assert_eq!(entity.state, EntityLifecycleState::Dissolved);
+    // All transitions from Dissolved should fail
+    assert!(entity.approve().is_err());
+    assert!(entity.suspend().is_err());
+    assert!(entity.reinstate().is_err());
+    assert!(entity.initiate_dissolution().is_err());
+    assert!(entity.advance_dissolution().is_err());
+}
+
+// =========================================================================
+// DisputeState — 9 states, 81 transitions
+// =========================================================================
+
+use msez_arbitration::dispute::DisputeState;
+
+#[test]
+fn dispute_transition_matrix_exhaustive() {
+    let states = [
+        DisputeState::Filed,
+        DisputeState::UnderReview,
+        DisputeState::EvidenceCollection,
+        DisputeState::Hearing,
+        DisputeState::Decided,
+        DisputeState::Enforced,
+        DisputeState::Closed,
+        DisputeState::Settled,
+        DisputeState::Dismissed,
+    ];
+
+    // Expected valid transitions per valid_transitions() implementation:
+    let expected_valid: Vec<(DisputeState, DisputeState)> = vec![
+        (DisputeState::Filed, DisputeState::UnderReview),
+        (DisputeState::Filed, DisputeState::Settled),
+        (DisputeState::Filed, DisputeState::Dismissed),
+        (DisputeState::UnderReview, DisputeState::EvidenceCollection),
+        (DisputeState::UnderReview, DisputeState::Settled),
+        (DisputeState::UnderReview, DisputeState::Dismissed),
+        (DisputeState::EvidenceCollection, DisputeState::Hearing),
+        (DisputeState::EvidenceCollection, DisputeState::Settled),
+        (DisputeState::Hearing, DisputeState::Decided),
+        (DisputeState::Hearing, DisputeState::Settled),
+        (DisputeState::Decided, DisputeState::Enforced),
+        (DisputeState::Enforced, DisputeState::Closed),
+    ];
+
+    for from in &states {
+        for to in &states {
+            let actual_valid = from.valid_transitions().contains(to);
+            let expected = expected_valid.contains(&(*from, *to));
+            assert_eq!(
+                actual_valid, expected,
+                "Dispute transition {:?} → {:?}: expected valid={}, got valid={}",
+                from, to, expected, actual_valid
+            );
+        }
+    }
+}
+
+#[test]
+fn dispute_terminal_states() {
+    assert!(DisputeState::Closed.is_terminal());
+    assert!(DisputeState::Settled.is_terminal());
+    assert!(DisputeState::Dismissed.is_terminal());
+    assert!(!DisputeState::Filed.is_terminal());
+    assert!(!DisputeState::Decided.is_terminal());
+}
+
+// =========================================================================
+// LicenseState — 8 states, method-based transitions
+// =========================================================================
+
+use msez_state::{License, LicenseState};
+
+#[test]
+fn license_happy_path_applied_to_active() {
+    let mut license = License::new("LIC-001");
+    assert!(license.review().is_ok());
+    assert_eq!(license.state, LicenseState::UnderReview);
+    assert!(license.issue().is_ok());
+    assert_eq!(license.state, LicenseState::Active);
+}
+
+#[test]
+fn license_rejection_from_applied() {
+    let mut license = License::new("LIC-002");
+    assert!(license.reject("test rejection").is_ok());
+    assert_eq!(license.state, LicenseState::Rejected);
+}
+
+#[test]
+fn license_rejection_from_under_review() {
+    let mut license = License::new("LIC-003");
+    license.review().unwrap();
+    assert!(license.reject("test rejection").is_ok());
+    assert_eq!(license.state, LicenseState::Rejected);
+}
+
+#[test]
+fn license_suspend_and_reinstate() {
+    let mut license = License::new("LIC-004");
+    license.review().unwrap();
+    license.issue().unwrap();
+    assert!(license.suspend("test suspension").is_ok());
+    assert_eq!(license.state, LicenseState::Suspended);
+    assert!(license.reinstate().is_ok());
+    assert_eq!(license.state, LicenseState::Active);
+}
+
+#[test]
+fn license_revoke_from_active() {
+    let mut license = License::new("LIC-005");
+    license.review().unwrap();
+    license.issue().unwrap();
+    assert!(license.revoke("test revocation").is_ok());
+    assert_eq!(license.state, LicenseState::Revoked);
+}
+
+#[test]
+fn license_revoke_from_suspended() {
+    let mut license = License::new("LIC-006");
+    license.review().unwrap();
+    license.issue().unwrap();
+    license.suspend("test suspension").unwrap();
+    assert!(license.revoke("test revocation").is_ok());
+    assert_eq!(license.state, LicenseState::Revoked);
+}
+
+#[test]
+fn license_expire_from_active() {
+    let mut license = License::new("LIC-007");
+    license.review().unwrap();
+    license.issue().unwrap();
+    assert!(license.expire().is_ok());
+    assert_eq!(license.state, LicenseState::Expired);
+}
+
+#[test]
+fn license_surrender_from_active() {
+    let mut license = License::new("LIC-008");
+    license.review().unwrap();
+    license.issue().unwrap();
+    assert!(license.surrender().is_ok());
+    assert_eq!(license.state, LicenseState::Surrendered);
+}
+
+#[test]
+fn license_terminal_states_reject_all_transitions() {
+    let mut license = License::new("LIC-009");
+    license.review().unwrap();
+    license.issue().unwrap();
+    license.revoke("test revocation").unwrap();
+    assert_eq!(license.state, LicenseState::Revoked);
+    // All transitions from Revoked should fail
+    assert!(license.review().is_err());
+    assert!(license.issue().is_err());
+    assert!(license.suspend("test suspension").is_err());
+    assert!(license.reinstate().is_err());
+    assert!(license.expire().is_err());
+    assert!(license.surrender().is_err());
+}
+
+#[test]
+fn license_invalid_suspend_from_applied() {
+    let mut license = License::new("LIC-010");
+    assert!(license.suspend("test suspension").is_err());
+}
+
+#[test]
+fn license_invalid_issue_from_applied() {
+    let mut license = License::new("LIC-011");
+    assert!(license.issue().is_err());
+}
+
+#[test]
+fn license_invalid_reinstate_from_active() {
+    let mut license = License::new("LIC-012");
+    license.review().unwrap();
+    license.issue().unwrap();
+    // Reinstate only works from Suspended
+    assert!(license.reinstate().is_err());
+}
+
+// =========================================================================
+// WatcherState — 7 states, method-based transitions
+// =========================================================================
+
+use msez_state::{SlashingCondition, Watcher, WatcherState};
+
+#[test]
+fn watcher_happy_path_to_active() {
+    let mut watcher = Watcher::new(msez_core::WatcherId::new());
+    assert_eq!(watcher.state, WatcherState::Registered);
+    assert!(watcher.bond(100_000).is_ok());
+    assert_eq!(watcher.state, WatcherState::Bonded);
+    assert!(watcher.activate().is_ok());
+    assert_eq!(watcher.state, WatcherState::Active);
+}
+
+#[test]
+fn watcher_slash_and_rebond() {
+    let mut watcher = Watcher::new(msez_core::WatcherId::new());
+    watcher.bond(100_000).unwrap();
+    watcher.activate().unwrap();
+    assert!(watcher.slash(SlashingCondition::AvailabilityFailure).is_ok());
+    assert_eq!(watcher.state, WatcherState::Slashed);
+    // Rebond after slash
+    assert!(watcher.rebond(100_000).is_ok());
+    assert_eq!(watcher.state, WatcherState::Bonded);
+}
+
+#[test]
+fn watcher_unbond_and_deactivate() {
+    let mut watcher = Watcher::new(msez_core::WatcherId::new());
+    watcher.bond(100_000).unwrap();
+    watcher.activate().unwrap();
+    assert!(watcher.unbond().is_ok());
+    assert_eq!(watcher.state, WatcherState::Unbonding);
+    assert!(watcher.complete_unbond().is_ok());
+    assert_eq!(watcher.state, WatcherState::Deactivated);
+}
+
+#[test]
+fn watcher_collusion_leads_to_ban() {
+    let mut watcher = Watcher::new(msez_core::WatcherId::new());
+    watcher.bond(100_000).unwrap();
+    watcher.activate().unwrap();
+    assert!(watcher.slash(SlashingCondition::Collusion).is_ok());
+    assert_eq!(watcher.state, WatcherState::Banned);
+}
+
+#[test]
+fn watcher_banned_is_terminal() {
+    let mut watcher = Watcher::new(msez_core::WatcherId::new());
+    watcher.bond(100_000).unwrap();
+    watcher.activate().unwrap();
+    watcher.slash(SlashingCondition::Collusion).unwrap();
+    assert_eq!(watcher.state, WatcherState::Banned);
+    // All transitions should fail
+    assert!(watcher.bond(100_000).is_err());
+    assert!(watcher.activate().is_err());
+    assert!(watcher.unbond().is_err());
+    assert!(watcher.rebond(100_000).is_err());
+}
+
+#[test]
+fn watcher_deactivated_is_terminal() {
+    let mut watcher = Watcher::new(msez_core::WatcherId::new());
+    watcher.bond(100_000).unwrap();
+    watcher.activate().unwrap();
+    watcher.unbond().unwrap();
+    watcher.complete_unbond().unwrap();
+    assert_eq!(watcher.state, WatcherState::Deactivated);
+    // All transitions should fail
+    assert!(watcher.bond(100_000).is_err());
+    assert!(watcher.activate().is_err());
+    assert!(watcher.unbond().is_err());
+}
+
+#[test]
+fn watcher_invalid_activate_from_registered() {
+    let mut watcher = Watcher::new(msez_core::WatcherId::new());
+    assert!(watcher.activate().is_err());
+}
+
+#[test]
+fn watcher_invalid_unbond_from_registered() {
+    let mut watcher = Watcher::new(msez_core::WatcherId::new());
+    assert!(watcher.unbond().is_err());
+}
+
+#[test]
+fn watcher_invalid_slash_from_registered() {
+    let mut watcher = Watcher::new(msez_core::WatcherId::new());
+    assert!(watcher.slash(SlashingCondition::Equivocation).is_err());
+}
+
+// =========================================================================
+// MigrationState — 11 states, saga-based transitions
+// =========================================================================
+
+use msez_state::{MigrationBuilder, MigrationState};
+
+fn future_deadline() -> chrono::DateTime<chrono::Utc> {
+    chrono::Utc::now() + chrono::Duration::hours(24)
+}
+
+fn build_test_saga() -> msez_state::MigrationSaga {
+    MigrationBuilder::new(msez_core::MigrationId::new())
+        .source(JurisdictionId::new("PK-RSEZ").unwrap())
+        .destination(JurisdictionId::new("AE-DIFC").unwrap())
+        .deadline(future_deadline())
+        .build()
+}
+
+#[test]
+fn migration_saga_forward_path() {
+    let mut saga = build_test_saga();
+    assert_eq!(saga.state, MigrationState::Initiated);
+
+    saga.advance().unwrap();
+    assert_eq!(saga.state, MigrationState::ComplianceCheck);
+
+    saga.advance().unwrap();
+    assert_eq!(saga.state, MigrationState::AttestationGathering);
+
+    saga.advance().unwrap();
+    assert_eq!(saga.state, MigrationState::SourceLocked);
+
+    saga.advance().unwrap();
+    assert_eq!(saga.state, MigrationState::InTransit);
+
+    saga.advance().unwrap();
+    assert_eq!(saga.state, MigrationState::DestinationVerification);
+
+    saga.advance().unwrap();
+    assert_eq!(saga.state, MigrationState::DestinationUnlock);
+
+    saga.advance().unwrap();
+    assert_eq!(saga.state, MigrationState::Completed);
+}
+
+#[test]
+fn migration_saga_cancel_before_transit() {
+    let mut saga = build_test_saga();
+    saga.advance().unwrap(); // ComplianceCheck
+    saga.cancel().unwrap();
+    assert_eq!(saga.state, MigrationState::Cancelled);
+}
+
+#[test]
+fn migration_saga_completed_is_terminal() {
+    let mut saga = build_test_saga();
+    // Advance through all phases to Completed (7 advances: Initiated→...→Completed)
+    for _ in 0..7 {
+        saga.advance().unwrap();
+    }
+    assert_eq!(saga.state, MigrationState::Completed);
+    // Advance from Completed should fail
+    assert!(saga.advance().is_err());
+}
+
+#[test]
+fn migration_saga_cancelled_is_terminal() {
+    let mut saga = build_test_saga();
+    saga.cancel().unwrap();
+    assert_eq!(saga.state, MigrationState::Cancelled);
+    assert!(saga.advance().is_err());
+}
+
+#[test]
+fn migration_saga_cancel_not_allowed_after_transit() {
+    let mut saga = build_test_saga();
+    // Advance to InTransit (4 advances)
+    for _ in 0..4 {
+        saga.advance().unwrap();
+    }
+    assert_eq!(saga.state, MigrationState::InTransit);
+    // Cancel should fail after InTransit
+    assert!(saga.cancel().is_err());
+}
+
+#[test]
+fn migration_saga_compensate_from_in_transit() {
+    let mut saga = build_test_saga();
+    for _ in 0..4 {
+        saga.advance().unwrap();
+    }
+    assert_eq!(saga.state, MigrationState::InTransit);
+    // Compensation should work from InTransit
+    saga.compensate("force majeure").unwrap();
+    assert_eq!(saga.state, MigrationState::Compensated);
+}

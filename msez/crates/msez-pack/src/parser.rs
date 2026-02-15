@@ -145,11 +145,11 @@ fn yaml_to_json_value(yaml: serde_yaml::Value) -> PackResult<Value> {
                 } else if !f.is_finite() {
                     // NaN and Infinity cannot be represented in JSON.
                     // Silently substituting 0 would corrupt regulatory data.
-                    return Err(PackError::JsonIncompatible {
+                    Err(PackError::JsonIncompatible {
                         context: "yaml_to_json".to_string(),
                         path: String::new(),
                         detail: format!("non-finite float value: {f}"),
-                    });
+                    })
                 } else {
                     // True float — pass through, canonicalization will reject if used for digest.
                     // from_f64 is infallible for finite values (NaN/Infinity rejected above).

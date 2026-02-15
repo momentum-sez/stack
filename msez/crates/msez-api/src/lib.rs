@@ -10,14 +10,14 @@
 //!
 //! | Prefix               | Module                      | Domain              |
 //! |-----------------------|----------------------------|---------------------|
-//! | `/v1/entities/*`      | [`routes::mass_proxy`]     | Mass proxy (Entities) |
-//! | `/v1/ownership/*`     | [`routes::mass_proxy`]     | Mass proxy (Ownership) |
-//! | `/v1/fiscal/*`        | [`routes::mass_proxy`]     | Mass proxy (Fiscal) |
-//! | `/v1/identity/*`      | [`routes::mass_proxy`]     | Mass proxy (Identity — passthrough) |
-//! | `/v1/identity/cnic/*` | [`routes::identity`]       | Identity orchestration (NADRA) |
-//! | `/v1/identity/ntn/*`  | [`routes::identity`]       | Identity orchestration (FBR IRIS) |
+//! | `/v1/entities/*`      | [`routes::mass_proxy`]     | Entities (orchestrated) |
+//! | `/v1/ownership/*`     | [`routes::mass_proxy`]     | Ownership (orchestrated) |
+//! | `/v1/fiscal/*`        | [`routes::mass_proxy`]     | Fiscal (orchestrated) |
+//! | `/v1/identity/*`      | [`routes::mass_proxy`]     | Identity (orchestrated) |
+//! | `/v1/identity/cnic/*` | [`routes::identity`]       | NADRA CNIC verification |
+//! | `/v1/identity/ntn/*`  | [`routes::identity`]       | FBR IRIS NTN verification |
 //! | `/v1/identity/entity/*` | [`routes::identity`]     | Consolidated identity |
-//! | `/v1/consent/*`       | [`routes::mass_proxy`]     | Mass proxy (Consent) |
+//! | `/v1/consent/*`       | [`routes::mass_proxy`]     | Consent (orchestrated) |
 //! | `/v1/tax/*`           | [`routes::tax`]            | Tax pipeline (SEZ)  |
 //! | `/v1/corridors/*`     | [`routes::corridors`]      | Corridors (SEZ)     |
 //! | `/v1/assets/*`        | [`routes::smart_assets`]   | Smart Assets (SEZ)  |
@@ -40,10 +40,12 @@
 pub mod auth;
 pub mod bootstrap;
 pub mod compliance;
+pub mod db;
 pub mod error;
 pub mod extractors;
 pub mod middleware;
 pub mod openapi;
+pub mod orchestration;
 pub mod routes;
 pub mod state;
 
@@ -122,6 +124,7 @@ async fn liveness() -> &'static str {
 /// - Zone signing key is loaded (can derive verifying key).
 /// - Policy engine lock is acquirable (not deadlocked).
 /// - In-memory stores are accessible.
+/// - Database connection is healthy (when configured).
 ///
 /// Returns 200 "ready" or 503 with a diagnostic message.
 async fn readiness(State(state): State<AppState>) -> impl IntoResponse {
@@ -141,6 +144,14 @@ async fn readiness(State(state): State<AppState>) -> impl IntoResponse {
     let _ = state.corridors.len();
     let _ = state.smart_assets.len();
     let _ = state.attestations.len();
+
+    // Verify database connection (when configured).
+    if let Some(pool) = &state.db_pool {
+        if let Err(e) = sqlx::query("SELECT 1").execute(pool).await {
+            tracing::warn!("Database health check failed: {e}");
+            return (StatusCode::SERVICE_UNAVAILABLE, "database unreachable").into_response();
+        }
+    }
 
     (StatusCode::OK, "ready").into_response()
 }

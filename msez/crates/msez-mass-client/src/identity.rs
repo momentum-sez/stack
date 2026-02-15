@@ -243,10 +243,7 @@ impl IdentityClient {
     /// Get an identity by ID.
     ///
     /// Routes to dedicated identity-info if configured, otherwise consent-info.
-    pub async fn get_identity(
-        &self,
-        id: Uuid,
-    ) -> Result<Option<MassIdentity>, MassApiError> {
+    pub async fn get_identity(&self, id: Uuid) -> Result<Option<MassIdentity>, MassApiError> {
         let base = self.identity_base_url();
         let endpoint = format!("GET /identities/{id}");
 
@@ -290,10 +287,7 @@ impl IdentityClient {
     /// Submit a verification request (KYC/KYB).
     ///
     /// Routes to dedicated identity-info if configured, otherwise consent-info.
-    pub async fn verify(
-        &self,
-        req: &VerifyIdentityRequest,
-    ) -> Result<MassIdentity, MassApiError> {
+    pub async fn verify(&self, req: &VerifyIdentityRequest) -> Result<MassIdentity, MassApiError> {
         let base = self.identity_base_url();
         let endpoint = "POST /identities/verify";
 
@@ -321,10 +315,12 @@ impl IdentityClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// Verify a CNIC number against NADRA records.

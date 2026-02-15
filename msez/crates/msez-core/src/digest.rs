@@ -155,7 +155,9 @@ pub fn sha256_digest(canonical: &CanonicalBytes) -> ContentDigest {
 /// inside arithmetic circuits. It will be used for zero-knowledge proof
 /// generation in the Phase 2 ZKP layer.
 #[cfg(feature = "poseidon2")]
-pub fn poseidon2_digest(_canonical: &CanonicalBytes) -> Result<ContentDigest, crate::error::MsezError> {
+pub fn poseidon2_digest(
+    _canonical: &CanonicalBytes,
+) -> Result<ContentDigest, crate::error::MsezError> {
     Err(crate::error::MsezError::NotImplemented(
         "Poseidon2 digest available in Phase 2".into(),
     ))

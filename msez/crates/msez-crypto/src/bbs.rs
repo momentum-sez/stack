@@ -91,7 +91,10 @@ pub struct BbsVerifyingKey {
 ///
 /// Each message must be [`CanonicalBytes`] to maintain the
 /// canonicalization invariant across the entire stack.
-pub fn bbs_sign(_key: &BbsSigningKey, _messages: &[CanonicalBytes]) -> Result<BbsSignature, crate::error::CryptoError> {
+pub fn bbs_sign(
+    _key: &BbsSigningKey,
+    _messages: &[CanonicalBytes],
+) -> Result<BbsSignature, crate::error::CryptoError> {
     Err(crate::error::CryptoError::NotImplemented(
         "BBS+ signing available in Phase 4".into(),
     ))

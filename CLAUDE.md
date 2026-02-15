@@ -116,7 +116,7 @@ These findings are from Architecture Audit v5.0. Address them in priority order.
 | P1-005 | Identity primitive split across services | `msez-mass-client/src/identity.rs` |
 | P1-006 | ~~Composition engine exists only in Python~~ | **RESOLVED** — ported to `msez-pack/src/composition.rs` |
 | P1-007 | ~~Several CLI commands Python-only~~ | **RESOLVED** — Python removed, core commands in `msez-cli` |
-| P1-008 | No database persistence (in-memory only) | `msez-api/src/state.rs` |
+| P1-008 | ~~No database persistence (in-memory only)~~ | **RESOLVED** — SQLx + PgPool in `msez-api/src/db/`, migration, write-through, startup hydration |
 | P1-009 | Tax collection pipeline not implemented | N/A |
 | P1-010 | CanonicalBytes bypass verification needed | All crates |
 

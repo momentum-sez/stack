@@ -50,10 +50,7 @@ impl TemplatingClient {
         req: &GenerateDocumentRequest,
     ) -> Result<GeneratedDocument, MassApiError> {
         let endpoint = "POST /documents/generate";
-        let url = format!(
-            "{}templating-engine/documents/generate",
-            self.base_url
-        );
+        let url = format!("{}templating-engine/documents/generate", self.base_url);
 
         let resp = crate::retry::retry_send(|| self.http.post(&url).json(req).send())
             .await
@@ -72,9 +69,11 @@ impl TemplatingClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 }

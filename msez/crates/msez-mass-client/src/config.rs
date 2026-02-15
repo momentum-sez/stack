@@ -65,8 +65,7 @@ impl MassApiConfig {
     /// - `MASS_API_TOKEN` (required)
     /// - `MASS_TIMEOUT_SECS` (default: 30)
     pub fn from_env() -> Result<Self, ConfigError> {
-        let api_token =
-            std::env::var("MASS_API_TOKEN").map_err(|_| ConfigError::MissingToken)?;
+        let api_token = std::env::var("MASS_API_TOKEN").map_err(|_| ConfigError::MissingToken)?;
 
         let identity_info_url = match std::env::var("MASS_IDENTITY_INFO_URL") {
             Ok(raw) => Some(
@@ -89,10 +88,7 @@ impl MassApiConfig {
                 "MASS_TREASURY_INFO_URL",
                 "https://treasury-info.api.mass.inc",
             )?,
-            consent_info_url: env_url(
-                "MASS_CONSENT_INFO_URL",
-                "https://consent.api.mass.inc",
-            )?,
+            consent_info_url: env_url("MASS_CONSENT_INFO_URL", "https://consent.api.mass.inc")?,
             identity_info_url,
             templating_engine_url: env_url(
                 "MASS_TEMPLATING_URL",
@@ -153,10 +149,7 @@ mod tests {
         let cfg = MassApiConfig::local_mock(9000, "test-token").unwrap();
         assert_eq!(cfg.api_token, "test-token");
         assert_eq!(cfg.timeout_secs, 5);
-        assert_eq!(
-            cfg.organization_info_url.as_str(),
-            "http://127.0.0.1:9000/"
-        );
+        assert_eq!(cfg.organization_info_url.as_str(), "http://127.0.0.1:9000/");
         assert_eq!(cfg.investment_info_url.as_str(), "http://127.0.0.1:9001/");
     }
 

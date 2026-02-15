@@ -50,13 +50,8 @@ impl MassClient {
                 let mut headers = reqwest::header::HeaderMap::new();
                 headers.insert(
                     reqwest::header::AUTHORIZATION,
-                    reqwest::header::HeaderValue::from_str(&format!(
-                        "Bearer {}",
-                        config.api_token
-                    ))
-                    .map_err(|_| {
-                        MassApiError::Config(config::ConfigError::MissingToken)
-                    })?,
+                    reqwest::header::HeaderValue::from_str(&format!("Bearer {}", config.api_token))
+                        .map_err(|_| MassApiError::Config(config::ConfigError::MissingToken))?,
                 );
                 headers
             })
@@ -67,14 +62,8 @@ impl MassClient {
             })?;
 
         Ok(Self {
-            entities: entities::EntityClient::new(
-                http.clone(),
-                config.organization_info_url.clone(),
-            ),
-            ownership: ownership::OwnershipClient::new(
-                http.clone(),
-                config.investment_info_url,
-            ),
+            entities: entities::EntityClient::new(http.clone(), config.organization_info_url.clone()),
+            ownership: ownership::OwnershipClient::new(http.clone(), config.investment_info_url),
             fiscal: fiscal::FiscalClient::new(http.clone(), config.treasury_info_url),
             identity: identity::IdentityClient::new(
                 http.clone(),
@@ -82,14 +71,8 @@ impl MassClient {
                 config.organization_info_url,
                 config.identity_info_url,
             ),
-            consent: consent::ConsentClient::new(
-                http.clone(),
-                config.consent_info_url,
-            ),
-            templating: templating::TemplatingClient::new(
-                http,
-                config.templating_engine_url,
-            ),
+            consent: consent::ConsentClient::new(http.clone(), config.consent_info_url),
+            templating: templating::TemplatingClient::new(http, config.templating_engine_url),
         })
     }
 

@@ -25,6 +25,7 @@ use msez_crypto::SigningKey;
 use msez_state::{DynCorridorState, TransitionRecord};
 use parking_lot::{Mutex, RwLock};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -349,7 +350,10 @@ impl std::fmt::Debug for AppConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppConfig")
             .field("port", &self.port)
-            .field("auth_token", &self.auth_token.as_ref().map(|_| "[REDACTED]"))
+            .field(
+                "auth_token",
+                &self.auth_token.as_ref().map(|_| "[REDACTED]"),
+            )
             .finish()
     }
 }
@@ -456,11 +460,18 @@ pub struct AppState {
     /// is used instead. Keyed by corridor UUID — each corridor has exactly one chain.
     pub receipt_chains: Arc<RwLock<HashMap<Uuid, ReceiptChain>>>,
 
+    // -- Database persistence (optional) --
+
+    /// PostgreSQL connection pool for durable state persistence.
+    /// When `Some`, corridor, smart asset, attestation, and audit data is
+    /// persisted to Postgres in addition to the in-memory stores.
+    /// When `None`, the API operates in in-memory-only mode.
+    pub db_pool: Option<PgPool>,
+
     // -- Mass API client (delegates primitive operations to live Mass APIs) --
     pub mass_client: Option<msez_mass_client::MassClient>,
 
     // -- Zone identity --
-
     /// The zone operator's Ed25519 signing key.
     /// Used to sign Verifiable Credentials issued by this zone.
     /// Wrapped in `Arc` because `SigningKey` is not `Clone` (it contains
@@ -472,7 +483,6 @@ pub struct AppState {
     pub zone_did: String,
 
     // -- Agentic policy engine --
-
     /// The autonomous policy engine. `parking_lot::Mutex` because `PolicyEngine`
     /// is not `Sync` (it holds a mutable audit trail) and evaluation mutates
     /// internal state. `parking_lot::Mutex` never poisons on panic, eliminating
@@ -480,7 +490,6 @@ pub struct AppState {
     pub policy_engine: Arc<Mutex<PolicyEngine>>,
 
     // -- Zone context (from bootstrap) --
-
     /// Zone context, if bootstrapped from a zone manifest.
     /// When present, the server operates as a configured zone node.
     /// When absent (generic mode), endpoints use default behavior.
@@ -498,13 +507,13 @@ impl AppState {
     /// Panics if `ZONE_SIGNING_KEY_HEX` is set but contains invalid data.
     /// In production, prefer [`AppState::try_new`] for graceful error handling.
     pub fn new() -> Self {
-        Self::try_with_config(AppConfig::default(), None)
+        Self::try_with_config(AppConfig::default(), None, None)
             .expect("failed to initialize AppState (check ZONE_SIGNING_KEY_HEX)")
     }
 
     /// Create a new application state, returning `Err` if zone key loading fails.
     pub fn try_new() -> Result<Self, ZoneKeyError> {
-        Self::try_with_config(AppConfig::default(), None)
+        Self::try_with_config(AppConfig::default(), None, None)
     }
 
     /// Create a new application state with the given configuration and optional Mass client.
@@ -516,15 +525,16 @@ impl AppState {
         config: AppConfig,
         mass_client: Option<msez_mass_client::MassClient>,
     ) -> Self {
-        Self::try_with_config(config, mass_client)
+        Self::try_with_config(config, mass_client, None)
             .expect("failed to initialize AppState (check ZONE_SIGNING_KEY_HEX)")
     }
 
-    /// Create a new application state with the given configuration, returning `Err`
-    /// on zone key loading failures rather than panicking.
+    /// Create a new application state with the given configuration, optional Mass client,
+    /// and optional database pool, returning `Err` on zone key loading failures.
     pub fn try_with_config(
         config: AppConfig,
         mass_client: Option<msez_mass_client::MassClient>,
+        db_pool: Option<PgPool>,
     ) -> Result<Self, ZoneKeyError> {
         let zone_signing_key = load_or_generate_zone_key()?;
         let zone_did = format!(
@@ -537,6 +547,7 @@ impl AppState {
             smart_assets: Store::new(),
             attestations: Store::new(),
             receipt_chains: Arc::new(RwLock::new(HashMap::new())),
+            db_pool,
             mass_client,
             zone_signing_key: Arc::new(zone_signing_key),
             zone_did,
@@ -544,6 +555,54 @@ impl AppState {
             zone: None,
             config,
         })
+    }
+
+    /// Hydrate in-memory stores from the database.
+    ///
+    /// Called once on startup when a database pool is available. Loads all
+    /// persisted corridors, smart assets, and attestations into the in-memory
+    /// stores so that read operations remain fast and synchronous.
+    pub async fn hydrate_from_db(&self) -> Result<(), String> {
+        let pool = match &self.db_pool {
+            Some(pool) => pool,
+            None => return Ok(()),
+        };
+
+        // Load corridors
+        let corridors = crate::db::corridors::load_all(pool)
+            .await
+            .map_err(|e| format!("failed to load corridors: {e}"))?;
+        let corridor_count = corridors.len();
+        for record in corridors {
+            self.corridors.insert(record.id, record);
+        }
+
+        // Load smart assets
+        let assets = crate::db::smart_assets::load_all(pool)
+            .await
+            .map_err(|e| format!("failed to load smart assets: {e}"))?;
+        let asset_count = assets.len();
+        for record in assets {
+            self.smart_assets.insert(record.id, record);
+        }
+
+        // Load attestations
+        let attestations = crate::db::attestations::load_all(pool)
+            .await
+            .map_err(|e| format!("failed to load attestations: {e}"))?;
+        let attestation_count = attestations.len();
+        for record in attestations {
+            self.attestations.insert(record.id, record);
+        }
+
+        tracing::info!(
+            corridors = corridor_count,
+            smart_assets = asset_count,
+            attestations = attestation_count,
+            "Hydrated in-memory stores from database"
+        );
+
+        Ok(())
     }
 }
 
@@ -605,10 +664,7 @@ mod tests {
 
         store.insert(id, sample_corridor(id));
         let prev = store.insert(id, sample_corridor(id));
-        assert!(
-            prev.is_some(),
-            "second insert should return previous value"
-        );
+        assert!(prev.is_some(), "second insert should return previous value");
     }
 
     #[test]
@@ -773,10 +829,7 @@ mod tests {
         let default_state = AppState::default();
         let new_state = AppState::new();
         assert_eq!(default_state.config.port, new_state.config.port);
-        assert_eq!(
-            default_state.config.auth_token,
-            new_state.config.auth_token
-        );
+        assert_eq!(default_state.config.auth_token, new_state.config.auth_token);
     }
 
     #[test]

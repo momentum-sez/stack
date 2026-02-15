@@ -271,10 +271,7 @@ impl JurisdictionLayer {
         }
 
         if self.domains.is_empty() {
-            errors.push(format!(
-                "Layer {} has no domains",
-                self.jurisdiction_id
-            ));
+            errors.push(format!("Layer {} has no domains", self.jurisdiction_id));
         }
 
         for lp in &self.lawpacks {
@@ -477,8 +474,7 @@ impl ZoneComposition {
 
         // Arbitration
         if let Some(arb) = &self.arbitration {
-            zone["arbitration"] =
-                serde_json::to_value(arb).expect("static struct — cannot fail");
+            zone["arbitration"] = serde_json::to_value(arb).expect("static struct — cannot fail");
         }
 
         // Corridors
@@ -725,12 +721,11 @@ pub fn load_composition_from_yaml(path: &Path) -> PackResult<ZoneComposition> {
         }
     })?;
 
-    let data: serde_json::Value = serde_yaml::from_str(&content).map_err(|e| {
-        PackError::YamlParseStr {
+    let data: serde_json::Value =
+        serde_yaml::from_str(&content).map_err(|e| PackError::YamlParseStr {
             path: path.to_path_buf(),
             detail: e.to_string(),
-        }
-    })?;
+        })?;
 
     load_composition_from_value(&data)
 }
@@ -740,11 +735,9 @@ pub fn load_composition_from_yaml(path: &Path) -> PackResult<ZoneComposition> {
 /// Handles both direct deserialization and manual field extraction
 /// for compatibility with varying YAML structures.
 pub fn load_composition_from_value(data: &serde_json::Value) -> PackResult<ZoneComposition> {
-    let obj = data
-        .as_object()
-        .ok_or_else(|| PackError::SchemaViolation {
-            message: "composition must be a YAML/JSON object".to_string(),
-        })?;
+    let obj = data.as_object().ok_or_else(|| PackError::SchemaViolation {
+        message: "composition must be a YAML/JSON object".to_string(),
+    })?;
 
     let zone_id = obj
         .get("zone_id")
@@ -780,13 +773,13 @@ pub fn load_composition_from_value(data: &serde_json::Value) -> PackResult<ZoneC
 
     // Parse arbitration
     let arbitration = match obj.get("arbitration") {
-        Some(v) if !v.is_null() => {
-            Some(serde_json::from_value::<ArbitrationConfig>(v.clone()).map_err(|e| {
+        Some(v) if !v.is_null() => Some(
+            serde_json::from_value::<ArbitrationConfig>(v.clone()).map_err(|e| {
                 PackError::SchemaViolation {
                     message: format!("invalid arbitration config: {e}"),
                 }
-            })?)
-        }
+            })?,
+        ),
         _ => None,
     };
 
@@ -835,11 +828,10 @@ fn parse_layer(value: &serde_json::Value) -> PackResult<JurisdictionLayer> {
             .iter()
             .filter_map(|v| v.as_str())
             .map(|s| {
-                s.parse::<ComplianceDomain>().map_err(|e| {
-                    PackError::SchemaViolation {
+                s.parse::<ComplianceDomain>()
+                    .map_err(|e| PackError::SchemaViolation {
                         message: format!("invalid domain '{s}': {e}"),
-                    }
-                })
+                    })
             })
             .collect::<PackResult<Vec<_>>>()?,
         _ => Vec::new(),
@@ -955,7 +947,11 @@ mod tests {
     #[test]
     fn single_layer_composition_validates() {
         let zone = ZoneCompositionBuilder::new("test.zone", "Test Zone")
-            .layer("us-de", &[ComplianceDomain::Corporate], "Delaware corporate")
+            .layer(
+                "us-de",
+                &[ComplianceDomain::Corporate],
+                "Delaware corporate",
+            )
             .build()
             .unwrap();
 
@@ -967,7 +963,11 @@ mod tests {
     #[test]
     fn multi_layer_composition_validates() {
         let zone = ZoneCompositionBuilder::new("momentum.demo.hybrid", "Hybrid Demo")
-            .layer("us-de", &[ComplianceDomain::Corporate], "Delaware corporate")
+            .layer(
+                "us-de",
+                &[ComplianceDomain::Corporate],
+                "Delaware corporate",
+            )
             .layer(
                 "ae-abudhabi-adgm",
                 &[
@@ -1003,7 +1003,10 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         let msg = err.to_string();
-        assert!(msg.contains("corporate"), "Error should mention domain: {msg}");
+        assert!(
+            msg.contains("corporate"),
+            "Error should mention domain: {msg}"
+        );
     }
 
     #[test]
@@ -1146,11 +1149,7 @@ mod tests {
     fn load_composition_from_value_roundtrip() {
         let zone = ZoneCompositionBuilder::new("test.zone", "Test Zone")
             .layer("us-de", &[ComplianceDomain::Corporate], "Delaware")
-            .layer(
-                "ae-abudhabi-adgm",
-                &[ComplianceDomain::Securities],
-                "ADGM",
-            )
+            .layer("ae-abudhabi-adgm", &[ComplianceDomain::Securities], "ADGM")
             .build()
             .unwrap();
 

@@ -90,10 +90,12 @@ impl OwnershipClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// Get a cap table by entity ID.
@@ -104,10 +106,7 @@ impl OwnershipClient {
         entity_id: Uuid,
     ) -> Result<Option<MassCapTable>, MassApiError> {
         let endpoint = format!("GET /cap-tables/{entity_id}");
-        let url = format!(
-            "{}investment-info/cap-tables/{entity_id}",
-            self.base_url
-        );
+        let url = format!("{}investment-info/cap-tables/{entity_id}", self.base_url);
 
         let resp = crate::retry::retry_send(|| self.http.get(&url).send())
             .await

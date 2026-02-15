@@ -24,6 +24,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let auth_token = std::env::var("AUTH_TOKEN").ok();
     let config = AppConfig { port, auth_token };
 
+    // Initialize database pool (optional — absent means in-memory only).
+    let db_pool = msez_api::db::init_pool().await.map_err(|e| {
+        tracing::error!("Database initialization failed: {e}");
+        e
+    })?;
+
     // Attempt to create Mass API client from environment.
     let mass_client = match msez_mass_client::MassApiConfig::from_env() {
         Ok(mass_config) => {
@@ -45,8 +51,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Bootstrap: load zone configuration if ZONE_CONFIG is set.
-    let state = msez_api::bootstrap::bootstrap(config, mass_client).map_err(|e| {
+    let state = msez_api::bootstrap::bootstrap(config, mass_client, db_pool).map_err(|e| {
         tracing::error!("Bootstrap failed: {e}");
+        e
+    })?;
+
+    // Hydrate in-memory stores from database (if connected).
+    state.hydrate_from_db().await.map_err(|e| {
+        tracing::error!("Database hydration failed: {e}");
         e
     })?;
 

@@ -13,10 +13,14 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::auth::CallerIdentity;
-use crate::compliance::{apply_attestations, build_evaluation_result, build_tensor, AttestationInput};
+use crate::compliance::{
+    apply_attestations, build_evaluation_result, build_tensor, AttestationInput,
+};
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
-use crate::state::{AppState, AssetComplianceStatus, AssetStatus, SmartAssetRecord, SmartAssetType};
+use crate::state::{
+    AppState, AssetComplianceStatus, AssetStatus, SmartAssetRecord, SmartAssetType,
+};
 use axum::extract::rejection::JsonRejection;
 
 /// Request to create a smart asset genesis.
@@ -155,6 +159,14 @@ async fn create_asset(
     };
 
     state.smart_assets.insert(id, record.clone());
+
+    // Persist to database (write-through).
+    if let Some(pool) = &state.db_pool {
+        if let Err(e) = crate::db::smart_assets::insert(pool, &record).await {
+            tracing::error!(asset_id = %id, error = %e, "failed to persist smart asset to database");
+        }
+    }
+
     Ok((axum::http::StatusCode::CREATED, Json(record)))
 }
 

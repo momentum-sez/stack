@@ -170,11 +170,7 @@ fn entity_dissolution_requires_all_10_stages() {
     for i in 0..10 {
         let result = entity.advance_dissolution();
         if i < 9 {
-            assert!(
-                result.is_ok(),
-                "Dissolution stage {} should succeed",
-                i + 1
-            );
+            assert!(result.is_ok(), "Dissolution stage {} should succeed", i + 1);
             assert_eq!(entity.state, EntityLifecycleState::Dissolving);
         } else {
             // Last stage should transition to Dissolved
@@ -407,7 +403,9 @@ fn watcher_slash_and_rebond() {
     let mut watcher = Watcher::new(msez_core::WatcherId::new());
     watcher.bond(100_000).unwrap();
     watcher.activate().unwrap();
-    assert!(watcher.slash(SlashingCondition::AvailabilityFailure).is_ok());
+    assert!(watcher
+        .slash(SlashingCondition::AvailabilityFailure)
+        .is_ok());
     assert_eq!(watcher.state, WatcherState::Slashed);
     // Rebond after slash
     assert!(watcher.rebond(100_000).is_ok());
@@ -517,7 +515,9 @@ fn escrow_transition_pending_to_funded() {
         None,
     );
     assert_eq!(escrow.status, EscrowStatus::Pending);
-    assert!(escrow.deposit("10000".to_string(), test_digest_sm("dep")).is_ok());
+    assert!(escrow
+        .deposit("10000".to_string(), test_digest_sm("dep"))
+        .is_ok());
     assert_eq!(escrow.status, EscrowStatus::Funded);
 }
 
@@ -529,7 +529,9 @@ fn escrow_transition_funded_to_fully_released() {
         "USD".to_string(),
         None,
     );
-    escrow.deposit("10000".to_string(), test_digest_sm("dep")).unwrap();
+    escrow
+        .deposit("10000".to_string(), test_digest_sm("dep"))
+        .unwrap();
     assert!(escrow.full_release(make_release_condition()).is_ok());
     assert_eq!(escrow.status, EscrowStatus::FullyReleased);
 }
@@ -542,8 +544,12 @@ fn escrow_transition_funded_to_partially_released() {
         "USD".to_string(),
         None,
     );
-    escrow.deposit("20000".to_string(), test_digest_sm("dep")).unwrap();
-    assert!(escrow.partial_release("5000".to_string(), make_release_condition()).is_ok());
+    escrow
+        .deposit("20000".to_string(), test_digest_sm("dep"))
+        .unwrap();
+    assert!(escrow
+        .partial_release("5000".to_string(), make_release_condition())
+        .is_ok());
     assert_eq!(escrow.status, EscrowStatus::PartiallyReleased);
 }
 
@@ -555,7 +561,9 @@ fn escrow_transition_funded_to_forfeited() {
         "SGD".to_string(),
         None,
     );
-    escrow.deposit("25000".to_string(), test_digest_sm("dep")).unwrap();
+    escrow
+        .deposit("25000".to_string(), test_digest_sm("dep"))
+        .unwrap();
     assert!(escrow.forfeit(test_digest_sm("forfeit")).is_ok());
     assert_eq!(escrow.status, EscrowStatus::Forfeited);
 }
@@ -568,12 +576,16 @@ fn escrow_fully_released_is_terminal() {
         "USD".to_string(),
         None,
     );
-    escrow.deposit("10000".to_string(), test_digest_sm("dep")).unwrap();
+    escrow
+        .deposit("10000".to_string(), test_digest_sm("dep"))
+        .unwrap();
     escrow.full_release(make_release_condition()).unwrap();
     assert_eq!(escrow.status, EscrowStatus::FullyReleased);
     assert!(EscrowStatus::FullyReleased.is_terminal());
     // All transitions should fail
-    assert!(escrow.deposit("1000".to_string(), test_digest_sm("dep2")).is_err());
+    assert!(escrow
+        .deposit("1000".to_string(), test_digest_sm("dep2"))
+        .is_err());
     assert!(escrow.forfeit(test_digest_sm("f")).is_err());
 }
 
@@ -585,10 +597,14 @@ fn escrow_forfeited_is_terminal() {
         "USD".to_string(),
         None,
     );
-    escrow.deposit("50000".to_string(), test_digest_sm("dep")).unwrap();
+    escrow
+        .deposit("50000".to_string(), test_digest_sm("dep"))
+        .unwrap();
     escrow.forfeit(test_digest_sm("forfeit")).unwrap();
     assert!(EscrowStatus::Forfeited.is_terminal());
-    assert!(escrow.deposit("1000".to_string(), test_digest_sm("dep2")).is_err());
+    assert!(escrow
+        .deposit("1000".to_string(), test_digest_sm("dep2"))
+        .is_err());
     assert!(escrow.full_release(make_release_condition()).is_err());
 }
 
@@ -623,12 +639,7 @@ use msez_core::Did;
 
 #[test]
 fn enforcement_transition_pending_to_in_progress() {
-    let mut order = EnforcementOrder::new(
-        DisputeId::new(),
-        test_digest_sm("award"),
-        vec![],
-        None,
-    );
+    let mut order = EnforcementOrder::new(DisputeId::new(), test_digest_sm("award"), vec![], None);
     assert_eq!(order.status, EnforcementStatus::Pending);
     assert!(order.begin_enforcement().is_ok());
     assert_eq!(order.status, EnforcementStatus::InProgress);
@@ -636,12 +647,7 @@ fn enforcement_transition_pending_to_in_progress() {
 
 #[test]
 fn enforcement_transition_in_progress_to_completed() {
-    let mut order = EnforcementOrder::new(
-        DisputeId::new(),
-        test_digest_sm("award"),
-        vec![],
-        None,
-    );
+    let mut order = EnforcementOrder::new(DisputeId::new(), test_digest_sm("award"), vec![], None);
     order.begin_enforcement().unwrap();
     assert!(order.complete().is_ok());
     assert_eq!(order.status, EnforcementStatus::Completed);
@@ -649,12 +655,7 @@ fn enforcement_transition_in_progress_to_completed() {
 
 #[test]
 fn enforcement_transition_pending_to_cancelled() {
-    let mut order = EnforcementOrder::new(
-        DisputeId::new(),
-        test_digest_sm("award"),
-        vec![],
-        None,
-    );
+    let mut order = EnforcementOrder::new(DisputeId::new(), test_digest_sm("award"), vec![], None);
     assert!(order.cancel().is_ok());
     assert_eq!(order.status, EnforcementStatus::Cancelled);
 }
@@ -663,36 +664,24 @@ fn enforcement_transition_pending_to_cancelled() {
 fn enforcement_transition_pending_to_blocked() {
     // BUG-023: block() only works from Pending, not InProgress.
     // The state machine forbids blocking an already-started enforcement.
-    let mut order = EnforcementOrder::new(
-        DisputeId::new(),
-        test_digest_sm("award"),
-        vec![],
-        None,
-    );
+    let mut order = EnforcementOrder::new(DisputeId::new(), test_digest_sm("award"), vec![], None);
     assert!(order.block("Appeal filed").is_ok());
     assert_eq!(order.status, EnforcementStatus::Blocked);
 }
 
 #[test]
 fn enforcement_block_rejected_from_in_progress() {
-    let mut order = EnforcementOrder::new(
-        DisputeId::new(),
-        test_digest_sm("award"),
-        vec![],
-        None,
-    );
+    let mut order = EnforcementOrder::new(DisputeId::new(), test_digest_sm("award"), vec![], None);
     order.begin_enforcement().unwrap();
-    assert!(order.block("Appeal filed").is_err(), "Cannot block from InProgress");
+    assert!(
+        order.block("Appeal filed").is_err(),
+        "Cannot block from InProgress"
+    );
 }
 
 #[test]
 fn enforcement_completed_is_terminal() {
-    let mut order = EnforcementOrder::new(
-        DisputeId::new(),
-        test_digest_sm("award"),
-        vec![],
-        None,
-    );
+    let mut order = EnforcementOrder::new(DisputeId::new(), test_digest_sm("award"), vec![], None);
     order.begin_enforcement().unwrap();
     order.complete().unwrap();
     assert!(EnforcementStatus::Completed.is_terminal());
@@ -703,12 +692,7 @@ fn enforcement_completed_is_terminal() {
 
 #[test]
 fn enforcement_cancelled_is_terminal() {
-    let mut order = EnforcementOrder::new(
-        DisputeId::new(),
-        test_digest_sm("award"),
-        vec![],
-        None,
-    );
+    let mut order = EnforcementOrder::new(DisputeId::new(), test_digest_sm("award"), vec![], None);
     order.cancel().unwrap();
     assert!(EnforcementStatus::Cancelled.is_terminal());
     assert!(order.begin_enforcement().is_err());
@@ -717,13 +701,11 @@ fn enforcement_cancelled_is_terminal() {
 
 #[test]
 fn enforcement_invalid_complete_from_pending() {
-    let mut order = EnforcementOrder::new(
-        DisputeId::new(),
-        test_digest_sm("award"),
-        vec![],
-        None,
+    let mut order = EnforcementOrder::new(DisputeId::new(), test_digest_sm("award"), vec![], None);
+    assert!(
+        order.complete().is_err(),
+        "Complete from Pending should fail"
     );
-    assert!(order.complete().is_err(), "Complete from Pending should fail");
 }
 
 #[test]
@@ -757,8 +739,8 @@ fn enforcement_record_action_result() {
 // ActionStatus — Scheduler state machine
 // =========================================================================
 
-use msez_agentic::scheduler::{ActionScheduler, ActionStatus, ScheduledAction as SchedAction2};
 use msez_agentic::policy::{AuthorizationRequirement, PolicyAction};
+use msez_agentic::scheduler::{ActionScheduler, ActionStatus, ScheduledAction as SchedAction2};
 
 #[test]
 fn action_scheduler_lifecycle_pending_to_completed() {
@@ -786,7 +768,8 @@ fn action_scheduler_lifecycle_pending_to_failed() {
         PolicyAction::Resume,
         "policy-002".to_string(),
         AuthorizationRequirement::Quorum,
-    ).with_max_retries(0);
+    )
+    .with_max_retries(0);
     let id = scheduler.schedule(action);
     assert!(scheduler.mark_executing(&id));
     assert!(scheduler.mark_failed(&id, "Network timeout".to_string()));
@@ -803,23 +786,33 @@ fn action_scheduler_retry_before_terminal_failure() {
         PolicyAction::Resume,
         "policy-003".to_string(),
         AuthorizationRequirement::Quorum,
-    ).with_max_retries(2);
+    )
+    .with_max_retries(2);
     let id = scheduler.schedule(action);
 
     // First attempt: fail → goes back to Pending
     assert!(scheduler.mark_executing(&id));
     assert!(scheduler.mark_failed(&id, "Attempt 1 fail".to_string()));
-    assert_eq!(scheduler.get_action(&id).unwrap().status, ActionStatus::Pending);
+    assert_eq!(
+        scheduler.get_action(&id).unwrap().status,
+        ActionStatus::Pending
+    );
 
     // Second attempt: fail → goes back to Pending
     assert!(scheduler.mark_executing(&id));
     assert!(scheduler.mark_failed(&id, "Attempt 2 fail".to_string()));
-    assert_eq!(scheduler.get_action(&id).unwrap().status, ActionStatus::Pending);
+    assert_eq!(
+        scheduler.get_action(&id).unwrap().status,
+        ActionStatus::Pending
+    );
 
     // Third attempt: fail → terminal Failed (no retries left)
     assert!(scheduler.mark_executing(&id));
     assert!(scheduler.mark_failed(&id, "Attempt 3 fail".to_string()));
-    assert_eq!(scheduler.get_action(&id).unwrap().status, ActionStatus::Failed);
+    assert_eq!(
+        scheduler.get_action(&id).unwrap().status,
+        ActionStatus::Failed
+    );
 }
 
 #[test]

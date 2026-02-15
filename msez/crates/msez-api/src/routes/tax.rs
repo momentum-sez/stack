@@ -8,10 +8,10 @@
 //!
 //! ```text
 //! Economic Activity (payment, formation, dividend)
-//!   → SEZ Stack: determine applicable tax obligations
+//!   → SEZ Stack: evaluate compliance tensor (fiscal account domains)
 //!   → SEZ Stack: compute withholding at source (from regpack rates)
 //!   → Mass treasury-info: record tax event
-//!   → SEZ Stack: record attestation for regulator queries
+//!   → SEZ Stack: store attestation via orchestration module
 //!   → Agentic: WithholdingDue / TaxYearEnd triggers for automated actions
 //!   → FBR IRIS: reporting (via organization-info integration point)
 //! ```
@@ -35,7 +35,8 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::AppError;
-use crate::state::{AppState, AttestationRecord, AttestationStatus};
+use crate::orchestration;
+use crate::state::AppState;
 
 /// Build the tax pipeline router.
 pub fn router() -> Router<AppState> {
@@ -242,10 +243,10 @@ pub struct FbrReportResponse {
 /// POST /v1/tax/events — Record a tax event with compliance tracking.
 ///
 /// Orchestration flow:
-/// 1. Validate tax event data
+/// 1. Evaluate compliance tensor across fiscal account domains
 /// 2. Record the event in Mass treasury-info
-/// 3. Record attestation in SEZ Stack for regulator queries
-/// 4. Return enriched response
+/// 3. Store attestation via orchestration module
+/// 4. Return enriched response with compliance status
 #[utoipa::path(
     post,
     path = "/v1/tax/events",
@@ -262,6 +263,16 @@ async fn record_tax_event(
     Json(req): Json<RecordTaxEventRequest>,
 ) -> Result<(axum::http::StatusCode, Json<TaxEventResponse>), AppError> {
     let client = require_mass_client(&state)?;
+
+    let jurisdiction = req.jurisdiction_id.as_deref().unwrap_or("PK");
+    let entity_ref = req.entity_id.to_string();
+
+    // Evaluate compliance tensor across fiscal account domains.
+    let (_tensor, summary) = orchestration::evaluate_compliance(
+        jurisdiction,
+        &entity_ref,
+        orchestration::fiscal_account_domains(),
+    );
 
     // Parse the event type for Mass.
     let event_type: msez_mass_client::fiscal::TaxEventType =
@@ -285,27 +296,22 @@ async fn record_tax_event(
         .await
         .map_err(|e| AppError::upstream(format!("Mass treasury-info error: {e}")))?;
 
-    // Record attestation for regulator visibility.
-    let att_id = Uuid::new_v4();
-    let attestation = AttestationRecord {
-        id: att_id,
-        entity_id: req.entity_id,
-        attestation_type: format!("TAX_EVENT_{}", req.event_type.to_uppercase()),
-        issuer: "SEZ_TAX_PIPELINE".to_string(),
-        status: AttestationStatus::Active,
-        jurisdiction_id: req.jurisdiction_id.as_deref().unwrap_or("PK").to_string(),
-        issued_at: Utc::now(),
-        expires_at: None,
-        details: serde_json::json!({
+    // Store attestation via orchestration module.
+    let att_id = orchestration::store_attestation(
+        &state,
+        req.entity_id,
+        &format!("TAX_EVENT_{}", req.event_type.to_uppercase()),
+        jurisdiction,
+        serde_json::json!({
             "tax_event_id": tax_event.id,
             "event_type": req.event_type,
             "amount": req.amount,
             "currency": req.currency,
             "tax_year": req.tax_year,
             "source_transaction_id": req.source_transaction_id,
+            "overall_compliance": summary.overall_status,
         }),
-    };
-    state.attestations.insert(att_id, attestation);
+    );
 
     Ok((
         axum::http::StatusCode::CREATED,
@@ -317,7 +323,7 @@ async fn record_tax_event(
             currency: tax_event.currency,
             tax_year: tax_event.tax_year,
             attestation_id: Some(att_id),
-            compliance_status: "TAX_RECORDED".to_string(),
+            compliance_status: summary.overall_status,
             created_at: tax_event.created_at.to_rfc3339(),
         }),
     ))
@@ -330,7 +336,7 @@ async fn record_tax_event(
 /// - Entity's NTN status (filer vs non-filer → different rates)
 /// - Jurisdiction-specific rules from the regpack
 ///
-/// Records an attestation for the computation.
+/// Evaluates compliance tensor and stores attestation for the computation.
 #[utoipa::path(
     post,
     path = "/v1/tax/withholding/compute",
@@ -363,18 +369,13 @@ async fn compute_withholding(
         .await
         .map_err(|e| AppError::upstream(format!("Withholding computation error: {e}")))?;
 
-    // Record attestation for the computation.
-    let att_id = Uuid::new_v4();
-    let attestation = AttestationRecord {
-        id: att_id,
-        entity_id: req.entity_id,
-        attestation_type: "WITHHOLDING_COMPUTATION".to_string(),
-        issuer: "SEZ_TAX_PIPELINE".to_string(),
-        status: AttestationStatus::Active,
-        jurisdiction_id: req.jurisdiction_id.clone(),
-        issued_at: Utc::now(),
-        expires_at: None,
-        details: serde_json::json!({
+    // Store attestation via orchestration module.
+    let att_id = orchestration::store_attestation(
+        &state,
+        req.entity_id,
+        "WITHHOLDING_COMPUTATION",
+        &req.jurisdiction_id,
+        serde_json::json!({
             "gross_amount": result.gross_amount,
             "withholding_amount": result.withholding_amount,
             "withholding_rate": result.withholding_rate,
@@ -382,10 +383,9 @@ async fn compute_withholding(
             "transaction_type": req.transaction_type,
             "ntn_status": result.ntn_status,
         }),
-    };
-    state.attestations.insert(att_id, attestation);
+    );
 
-    // Determine withholding section from transaction type.
+    // Determine withholding section from transaction type (ITO 2001).
     let withholding_section = match req.transaction_type.as_str() {
         "services" => "153(1)(a)",
         "goods" => "153(1)(b)",
@@ -558,26 +558,20 @@ async fn submit_fbr_report(
 
     let report_id = Uuid::new_v4();
 
-    // Record attestation for the FBR report submission.
-    let att_id = Uuid::new_v4();
-    let attestation = AttestationRecord {
-        id: att_id,
-        entity_id: req.entity_id,
-        attestation_type: "FBR_REPORT".to_string(),
-        issuer: "SEZ_TAX_PIPELINE".to_string(),
-        status: AttestationStatus::Pending,
-        jurisdiction_id: "PK".to_string(),
-        issued_at: Utc::now(),
-        expires_at: None,
-        details: serde_json::json!({
+    // Store attestation via orchestration module.
+    let att_id = orchestration::store_attestation(
+        &state,
+        req.entity_id,
+        "FBR_REPORT",
+        "PK",
+        serde_json::json!({
             "report_id": report_id,
             "ntn": req.ntn,
             "tax_year": req.tax_year,
             "report_type": req.report_type,
             "report_data": req.report_data,
         }),
-    };
-    state.attestations.insert(att_id, attestation);
+    );
 
     Ok((
         axum::http::StatusCode::CREATED,

@@ -2,8 +2,10 @@
 //!
 //! Route modules for the SEZ Stack API surface:
 //!
-//! - `mass_proxy` — Thin proxy to Mass APIs for primitive operations (entities,
-//!   ownership, fiscal, identity, consent) via `msez-mass-client`.
+//! - `mass_proxy` — Orchestration endpoints for all five Mass primitives
+//!   (entities, ownership, fiscal, identity, consent). Write endpoints compose
+//!   compliance tensor evaluation + Mass API delegation + VC issuance. Read
+//!   endpoints proxy through to Mass APIs via `msez-mass-client`.
 //! - `identity` — Identity orchestration endpoints (CNIC/NTN verification,
 //!   consolidated identity views) — P1-005.
 //! - `tax` — Tax collection pipeline (withholding computation, FBR IRIS

@@ -59,7 +59,9 @@ impl Poseidon2Digest {
 ///
 /// The input must be [`CanonicalBytes`] to maintain the same
 /// canonicalization invariant as SHA-256 digest computation.
-pub fn poseidon2_digest(_data: &CanonicalBytes) -> Result<Poseidon2Digest, crate::error::CryptoError> {
+pub fn poseidon2_digest(
+    _data: &CanonicalBytes,
+) -> Result<Poseidon2Digest, crate::error::CryptoError> {
     Err(crate::error::CryptoError::NotImplemented(
         "Poseidon2 digest available in Phase 4".into(),
     ))
@@ -71,7 +73,10 @@ pub fn poseidon2_digest(_data: &CanonicalBytes) -> Result<Poseidon2Digest, crate
 ///
 /// This is the ZK-friendly equivalent of the SHA-256 node hash used
 /// in MMR construction.
-pub fn poseidon2_node_hash(_left: &[u8; 32], _right: &[u8; 32]) -> Result<Poseidon2Digest, crate::error::CryptoError> {
+pub fn poseidon2_node_hash(
+    _left: &[u8; 32],
+    _right: &[u8; 32],
+) -> Result<Poseidon2Digest, crate::error::CryptoError> {
     Err(crate::error::CryptoError::NotImplemented(
         "Poseidon2 node hashing available in Phase 4".into(),
     ))

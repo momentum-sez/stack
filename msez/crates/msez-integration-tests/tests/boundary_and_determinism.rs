@@ -4,12 +4,10 @@
 //! Tests for edge-case inputs (financial overflow, empty strings, Unicode,
 //! UUID boundaries) and determinism verification (same input → same output).
 
-use msez_core::{
-    CanonicalBytes, ComplianceDomain, ContentDigest, JurisdictionId,
-};
-use msez_crypto::{sha256_digest, MerkleMountainRange, SigningKey};
+use msez_core::{CanonicalBytes, ComplianceDomain, ContentDigest, JurisdictionId};
 use msez_corridor::netting::{NettingEngine, Obligation};
 use msez_corridor::swift::{SettlementInstruction, SettlementRail, SwiftPacs008};
+use msez_crypto::{sha256_digest, MerkleMountainRange, SigningKey};
 use msez_tensor::{ComplianceState, ComplianceTensor, DefaultJurisdiction};
 use msez_vc::{ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential};
 use serde_json::json;
@@ -24,27 +22,37 @@ fn netting_i64_max_overflow_two_obligations() {
     // BUG-018 RESOLVED: Two obligations that sum to > i64::MAX now return
     // NettingError::ArithmeticOverflow instead of panicking or wrapping.
     let mut engine = NettingEngine::new();
-    engine.add_obligation(Obligation {
-        from_party: "A".to_string(),
-        to_party: "B".to_string(),
-        amount: i64::MAX / 2 + 1,
-        currency: "USD".to_string(),
-        corridor_id: None,
-        priority: 0,
-    }).unwrap();
-    engine.add_obligation(Obligation {
-        from_party: "C".to_string(),
-        to_party: "D".to_string(),
-        amount: i64::MAX / 2 + 1,
-        currency: "USD".to_string(),
-        corridor_id: None,
-        priority: 0,
-    }).unwrap();
+    engine
+        .add_obligation(Obligation {
+            from_party: "A".to_string(),
+            to_party: "B".to_string(),
+            amount: i64::MAX / 2 + 1,
+            currency: "USD".to_string(),
+            corridor_id: None,
+            priority: 0,
+        })
+        .unwrap();
+    engine
+        .add_obligation(Obligation {
+            from_party: "C".to_string(),
+            to_party: "D".to_string(),
+            amount: i64::MAX / 2 + 1,
+            currency: "USD".to_string(),
+            corridor_id: None,
+            priority: 0,
+        })
+        .unwrap();
 
     let result = engine.compute_plan();
-    assert!(result.is_err(), "BUG-018 RESOLVED: overflow must return error");
+    assert!(
+        result.is_err(),
+        "BUG-018 RESOLVED: overflow must return error"
+    );
     let err_msg = format!("{}", result.unwrap_err());
-    assert!(err_msg.contains("arithmetic overflow"), "expected ArithmeticOverflow, got: {err_msg}");
+    assert!(
+        err_msg.contains("arithmetic overflow"),
+        "expected ArithmeticOverflow, got: {err_msg}"
+    );
 }
 
 #[test]
@@ -53,14 +61,16 @@ fn netting_many_small_obligations_no_overflow() {
     // 1000 unique obligations well within i64 range.
     // Use unique (from, to, amount) to avoid duplicate detection.
     for i in 0..1000 {
-        engine.add_obligation(Obligation {
-            from_party: format!("party_{}", i % 10),
-            to_party: format!("party_{}", (i + 1) % 10),
-            amount: 1_000_000 + i as i64, // unique amount per obligation
-            currency: "USD".to_string(),
-            corridor_id: None,
-            priority: 0,
-        }).unwrap();
+        engine
+            .add_obligation(Obligation {
+                from_party: format!("party_{}", i % 10),
+                to_party: format!("party_{}", (i + 1) % 10),
+                amount: 1_000_000 + i as i64, // unique amount per obligation
+                currency: "USD".to_string(),
+                corridor_id: None,
+                priority: 0,
+            })
+            .unwrap();
     }
     let plan = engine.compute_plan().unwrap();
     // Sum of (1_000_000 + i) for i in 0..1000 = 1000*1_000_000 + 999*1000/2 = 1_000_499_500
@@ -70,14 +80,16 @@ fn netting_many_small_obligations_no_overflow() {
 #[test]
 fn netting_single_obligation_amount_1() {
     let mut engine = NettingEngine::new();
-    engine.add_obligation(Obligation {
-        from_party: "A".to_string(),
-        to_party: "B".to_string(),
-        amount: 1,
-        currency: "USD".to_string(),
-        corridor_id: None,
-        priority: 0,
-    }).unwrap();
+    engine
+        .add_obligation(Obligation {
+            from_party: "A".to_string(),
+            to_party: "B".to_string(),
+            amount: 1,
+            currency: "USD".to_string(),
+            corridor_id: None,
+            priority: 0,
+        })
+        .unwrap();
     let plan = engine.compute_plan().unwrap();
     assert_eq!(plan.gross_total, 1);
     assert_eq!(plan.net_total, 1);
@@ -100,7 +112,10 @@ fn swift_i64_max_amount_no_panic() {
     };
     // Should not panic even with huge amount
     let result = swift.generate_instruction(&instruction);
-    assert!(result.is_ok(), "i64::MAX amount should generate XML without error");
+    assert!(
+        result.is_ok(),
+        "i64::MAX amount should generate XML without error"
+    );
 }
 
 // =========================================================================
@@ -148,14 +163,16 @@ fn canonical_bytes_sql_injection_no_interpretation() {
 #[test]
 fn netting_unicode_party_ids() {
     let mut engine = NettingEngine::new();
-    engine.add_obligation(Obligation {
-        from_party: "企業A".to_string(),
-        to_party: "企業B".to_string(),
-        amount: 100,
-        currency: "JPY".to_string(),
-        corridor_id: None,
-        priority: 0,
-    }).unwrap();
+    engine
+        .add_obligation(Obligation {
+            from_party: "企業A".to_string(),
+            to_party: "企業B".to_string(),
+            amount: 100,
+            currency: "JPY".to_string(),
+            corridor_id: None,
+            priority: 0,
+        })
+        .unwrap();
     let plan = engine.compute_plan().unwrap();
     assert_eq!(plan.gross_total, 100);
 }
@@ -165,14 +182,16 @@ fn netting_very_long_party_ids() {
     let mut engine = NettingEngine::new();
     let long_a = "A".repeat(10_000);
     let long_b = "B".repeat(10_000);
-    engine.add_obligation(Obligation {
-        from_party: long_a,
-        to_party: long_b,
-        amount: 100,
-        currency: "USD".to_string(),
-        corridor_id: None,
-        priority: 0,
-    }).unwrap();
+    engine
+        .add_obligation(Obligation {
+            from_party: long_a,
+            to_party: long_b,
+            amount: 100,
+            currency: "USD".to_string(),
+            corridor_id: None,
+            priority: 0,
+        })
+        .unwrap();
     let plan = engine.compute_plan().unwrap();
     assert_eq!(plan.gross_total, 100);
 }
@@ -185,8 +204,7 @@ fn netting_very_long_party_ids() {
 fn entity_id_nil_uuid() {
     // EntityId::new() generates a random UUID, but we can test nil UUID via serde
     let nil_uuid = "00000000-0000-0000-0000-000000000000";
-    let result: Result<msez_core::EntityId, _> =
-        serde_json::from_str(&format!("\"{}\"", nil_uuid));
+    let result: Result<msez_core::EntityId, _> = serde_json::from_str(&format!("\"{}\"", nil_uuid));
     // Nil UUID should be accepted or explicitly rejected, never panic
     let _ = result;
 }
@@ -267,11 +285,24 @@ fn tensor_set_then_overwrite_domain() {
     let jid = JurisdictionId::new("PK-RSEZ").unwrap();
     let mut tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
 
-    tensor.set(ComplianceDomain::Kyc, ComplianceState::Compliant, vec![], None);
-    assert_eq!(tensor.get(ComplianceDomain::Kyc), ComplianceState::Compliant);
+    tensor.set(
+        ComplianceDomain::Kyc,
+        ComplianceState::Compliant,
+        vec![],
+        None,
+    );
+    assert_eq!(
+        tensor.get(ComplianceDomain::Kyc),
+        ComplianceState::Compliant
+    );
 
     // Overwrite to NonCompliant
-    tensor.set(ComplianceDomain::Kyc, ComplianceState::NonCompliant, vec![], None);
+    tensor.set(
+        ComplianceDomain::Kyc,
+        ComplianceState::NonCompliant,
+        vec![],
+        None,
+    );
     assert_eq!(
         tensor.get(ComplianceDomain::Kyc),
         ComplianceState::NonCompliant,
@@ -316,30 +347,36 @@ fn netting_deterministic_same_order_100_runs() {
     let mut plans = Vec::new();
     for _ in 0..100 {
         let mut engine = NettingEngine::new();
-        engine.add_obligation(Obligation {
-            from_party: "A".to_string(),
-            to_party: "B".to_string(),
-            amount: 500_000,
-            currency: "USD".to_string(),
-            corridor_id: None,
-            priority: 0,
-        }).unwrap();
-        engine.add_obligation(Obligation {
-            from_party: "B".to_string(),
-            to_party: "C".to_string(),
-            amount: 300_000,
-            currency: "USD".to_string(),
-            corridor_id: None,
-            priority: 0,
-        }).unwrap();
-        engine.add_obligation(Obligation {
-            from_party: "C".to_string(),
-            to_party: "A".to_string(),
-            amount: 200_000,
-            currency: "USD".to_string(),
-            corridor_id: None,
-            priority: 0,
-        }).unwrap();
+        engine
+            .add_obligation(Obligation {
+                from_party: "A".to_string(),
+                to_party: "B".to_string(),
+                amount: 500_000,
+                currency: "USD".to_string(),
+                corridor_id: None,
+                priority: 0,
+            })
+            .unwrap();
+        engine
+            .add_obligation(Obligation {
+                from_party: "B".to_string(),
+                to_party: "C".to_string(),
+                amount: 300_000,
+                currency: "USD".to_string(),
+                corridor_id: None,
+                priority: 0,
+            })
+            .unwrap();
+        engine
+            .add_obligation(Obligation {
+                from_party: "C".to_string(),
+                to_party: "A".to_string(),
+                amount: 200_000,
+                currency: "USD".to_string(),
+                corridor_id: None,
+                priority: 0,
+            })
+            .unwrap();
         let plan = engine.compute_plan().unwrap();
         plans.push((plan.gross_total, plan.net_total, plan.settlement_legs.len()));
     }
@@ -356,14 +393,16 @@ fn netting_deterministic_different_insertion_order() {
     let make_plan = |obligations: Vec<(String, String, i64)>| {
         let mut engine = NettingEngine::new();
         for (from, to, amount) in obligations {
-            engine.add_obligation(Obligation {
-                from_party: from,
-                to_party: to,
-                amount,
-                currency: "USD".to_string(),
-                corridor_id: None,
-                priority: 0,
-            }).unwrap();
+            engine
+                .add_obligation(Obligation {
+                    from_party: from,
+                    to_party: to,
+                    amount,
+                    currency: "USD".to_string(),
+                    corridor_id: None,
+                    priority: 0,
+                })
+                .unwrap();
         }
         engine.compute_plan().unwrap()
     };
@@ -393,36 +432,60 @@ fn netting_deterministic_different_insertion_order() {
     assert_eq!(plan2.net_total, plan3.net_total);
 
     // Net positions should have the same values (may be in different order)
-    let mut nets1: Vec<(String, i64)> = plan1.net_positions.iter()
+    let mut nets1: Vec<(String, i64)> = plan1
+        .net_positions
+        .iter()
         .map(|p| (p.party_id.clone(), p.net))
         .collect();
-    let mut nets2: Vec<(String, i64)> = plan2.net_positions.iter()
+    let mut nets2: Vec<(String, i64)> = plan2
+        .net_positions
+        .iter()
         .map(|p| (p.party_id.clone(), p.net))
         .collect();
-    let mut nets3: Vec<(String, i64)> = plan3.net_positions.iter()
+    let mut nets3: Vec<(String, i64)> = plan3
+        .net_positions
+        .iter()
         .map(|p| (p.party_id.clone(), p.net))
         .collect();
     nets1.sort();
     nets2.sort();
     nets3.sort();
-    assert_eq!(nets1, nets2, "Net positions differ between insertion orders 1 and 2");
-    assert_eq!(nets2, nets3, "Net positions differ between insertion orders 2 and 3");
+    assert_eq!(
+        nets1, nets2,
+        "Net positions differ between insertion orders 1 and 2"
+    );
+    assert_eq!(
+        nets2, nets3,
+        "Net positions differ between insertion orders 2 and 3"
+    );
 
     // Settlement legs should be equivalent (same amounts, possibly different order)
-    let mut legs1: Vec<(String, String, i64)> = plan1.settlement_legs.iter()
+    let mut legs1: Vec<(String, String, i64)> = plan1
+        .settlement_legs
+        .iter()
         .map(|l| (l.from_party.clone(), l.to_party.clone(), l.amount))
         .collect();
-    let mut legs2: Vec<(String, String, i64)> = plan2.settlement_legs.iter()
+    let mut legs2: Vec<(String, String, i64)> = plan2
+        .settlement_legs
+        .iter()
         .map(|l| (l.from_party.clone(), l.to_party.clone(), l.amount))
         .collect();
-    let mut legs3: Vec<(String, String, i64)> = plan3.settlement_legs.iter()
+    let mut legs3: Vec<(String, String, i64)> = plan3
+        .settlement_legs
+        .iter()
         .map(|l| (l.from_party.clone(), l.to_party.clone(), l.amount))
         .collect();
     legs1.sort();
     legs2.sort();
     legs3.sort();
-    assert_eq!(legs1, legs2, "BUG-024: Settlement legs differ between insertion orders 1 and 2");
-    assert_eq!(legs2, legs3, "BUG-024: Settlement legs differ between insertion orders 2 and 3");
+    assert_eq!(
+        legs1, legs2,
+        "BUG-024: Settlement legs differ between insertion orders 1 and 2"
+    );
+    assert_eq!(
+        legs2, legs3,
+        "BUG-024: Settlement legs differ between insertion orders 2 and 3"
+    );
 }
 
 #[test]
@@ -497,9 +560,7 @@ fn vc_signing_deterministic() {
             &sk,
             "did:key:z6MkDeterminism#key-1".to_string(),
             ProofType::Ed25519Signature2020,
-            Some(
-                msez_core::Timestamp::from_rfc3339("2026-01-15T12:00:00Z").unwrap(),
-            ),
+            Some(msez_core::Timestamp::from_rfc3339("2026-01-15T12:00:00Z").unwrap()),
         )
         .unwrap();
         serde_json::to_string(&vc).unwrap()
@@ -591,8 +652,8 @@ fn canonical_bytes_array_with_mixed_types() {
 // Campaign 5: Bridge routing boundaries
 // =========================================================================
 
-use msez_corridor::bridge::{BridgeEdge, CorridorBridge};
 use msez_core::CorridorId;
+use msez_corridor::bridge::{BridgeEdge, CorridorBridge};
 
 #[test]
 fn bridge_route_disconnected_graph() {
@@ -603,16 +664,25 @@ fn bridge_route_disconnected_graph() {
     let us = JurisdictionId::new("US").unwrap();
     // Two disconnected components: PK↔AE and SG↔US
     bridge.add_edge(BridgeEdge {
-        from: pk.clone(), to: ae.clone(),
-        corridor_id: CorridorId::new(), fee_bps: 50, settlement_time_secs: 3600,
+        from: pk.clone(),
+        to: ae.clone(),
+        corridor_id: CorridorId::new(),
+        fee_bps: 50,
+        settlement_time_secs: 3600,
     });
     bridge.add_edge(BridgeEdge {
-        from: sg.clone(), to: us.clone(),
-        corridor_id: CorridorId::new(), fee_bps: 30, settlement_time_secs: 1800,
+        from: sg.clone(),
+        to: us.clone(),
+        corridor_id: CorridorId::new(),
+        fee_bps: 30,
+        settlement_time_secs: 1800,
     });
     // Route from PK to US should not exist
     let route = bridge.find_route(&pk, &us);
-    assert!(route.is_none(), "Route across disconnected components should not exist");
+    assert!(
+        route.is_none(),
+        "Route across disconnected components should not exist"
+    );
 }
 
 #[test]
@@ -678,7 +748,10 @@ fn receipt_chain_many_appends() {
     }
     assert_eq!(chain.height(), 50, "Chain should have 50 receipts");
     let root = chain.mmr_root();
-    assert!(root.is_ok(), "MMR root should be computable after 50 appends");
+    assert!(
+        root.is_ok(),
+        "MMR root should be computable after 50 appends"
+    );
 }
 
 #[test]
@@ -690,18 +763,23 @@ fn receipt_chain_checkpoint_on_nonempty() {
         let c = CanonicalBytes::new(&json!({"data": "test"})).unwrap();
         sha256_digest(&c).to_hex()
     };
-    chain.append(CorridorReceipt {
-        receipt_type: "state_transition".to_string(),
-        corridor_id: corridor_id.clone(),
-        sequence: 0,
-        timestamp: Timestamp::now(),
-        prev_root,
-        next_root,
-        lawpack_digest_set: vec![],
-        ruleset_digest_set: vec![],
-    }).unwrap();
+    chain
+        .append(CorridorReceipt {
+            receipt_type: "state_transition".to_string(),
+            corridor_id: corridor_id.clone(),
+            sequence: 0,
+            timestamp: Timestamp::now(),
+            prev_root,
+            next_root,
+            lawpack_digest_set: vec![],
+            ruleset_digest_set: vec![],
+        })
+        .unwrap();
     let checkpoint = chain.create_checkpoint();
-    assert!(checkpoint.is_ok(), "Checkpoint on non-empty chain should succeed");
+    assert!(
+        checkpoint.is_ok(),
+        "Checkpoint on non-empty chain should succeed"
+    );
 }
 
 // =========================================================================
@@ -724,7 +802,9 @@ fn watcher_slash_availability_1_percent() {
     let mut watcher = Watcher::new(msez_core::WatcherId::new());
     watcher.bond(100_000).unwrap();
     watcher.activate().unwrap();
-    let slashed = watcher.slash(SlashingCondition::AvailabilityFailure).unwrap();
+    let slashed = watcher
+        .slash(SlashingCondition::AvailabilityFailure)
+        .unwrap();
     assert_eq!(slashed, 1_000, "AvailabilityFailure should slash 1%");
 }
 
@@ -872,7 +952,10 @@ fn canonical_bytes_rejects_float() {
     let result = CanonicalBytes::new(&json!({"amount": 3.14}));
     // Per CLAUDE.md: floats not representable as i64/u64 should be rejected
     // The coercion rules say: "Reject floats — Numbers not representable as i64/u64"
-    assert!(result.is_err(), "BUG-025: CanonicalBytes should reject float values like 3.14");
+    assert!(
+        result.is_err(),
+        "BUG-025: CanonicalBytes should reject float values like 3.14"
+    );
 }
 
 #[test]
@@ -895,26 +978,38 @@ fn canonical_bytes_accepts_negative_integer() {
 #[test]
 fn netting_multi_currency_separate_legs() {
     let mut engine = NettingEngine::new();
-    engine.add_obligation(Obligation {
-        from_party: "A".to_string(),
-        to_party: "B".to_string(),
-        amount: 100_000,
-        currency: "USD".to_string(),
-        corridor_id: None,
-        priority: 0,
-    }).unwrap();
-    engine.add_obligation(Obligation {
-        from_party: "A".to_string(),
-        to_party: "B".to_string(),
-        amount: 50_000,
-        currency: "PKR".to_string(),
-        corridor_id: None,
-        priority: 0,
-    }).unwrap();
+    engine
+        .add_obligation(Obligation {
+            from_party: "A".to_string(),
+            to_party: "B".to_string(),
+            amount: 100_000,
+            currency: "USD".to_string(),
+            corridor_id: None,
+            priority: 0,
+        })
+        .unwrap();
+    engine
+        .add_obligation(Obligation {
+            from_party: "A".to_string(),
+            to_party: "B".to_string(),
+            amount: 50_000,
+            currency: "PKR".to_string(),
+            corridor_id: None,
+            priority: 0,
+        })
+        .unwrap();
     let plan = engine.compute_plan().unwrap();
     // Should have separate legs for each currency
-    let usd_legs: Vec<_> = plan.settlement_legs.iter().filter(|l| l.currency == "USD").collect();
-    let pkr_legs: Vec<_> = plan.settlement_legs.iter().filter(|l| l.currency == "PKR").collect();
+    let usd_legs: Vec<_> = plan
+        .settlement_legs
+        .iter()
+        .filter(|l| l.currency == "USD")
+        .collect();
+    let pkr_legs: Vec<_> = plan
+        .settlement_legs
+        .iter()
+        .filter(|l| l.currency == "PKR")
+        .collect();
     assert!(!usd_legs.is_empty(), "Should have USD settlement legs");
     assert!(!pkr_legs.is_empty(), "Should have PKR settlement legs");
 }
@@ -923,22 +1018,26 @@ fn netting_multi_currency_separate_legs() {
 fn netting_bilateral_perfect_offset() {
     // A→B: 100, B→A: 100 — should net to zero legs
     let mut engine = NettingEngine::new();
-    engine.add_obligation(Obligation {
-        from_party: "A".to_string(),
-        to_party: "B".to_string(),
-        amount: 100_000,
-        currency: "USD".to_string(),
-        corridor_id: None,
-        priority: 0,
-    }).unwrap();
-    engine.add_obligation(Obligation {
-        from_party: "B".to_string(),
-        to_party: "A".to_string(),
-        amount: 100_000,
-        currency: "USD".to_string(),
-        corridor_id: None,
-        priority: 0,
-    }).unwrap();
+    engine
+        .add_obligation(Obligation {
+            from_party: "A".to_string(),
+            to_party: "B".to_string(),
+            amount: 100_000,
+            currency: "USD".to_string(),
+            corridor_id: None,
+            priority: 0,
+        })
+        .unwrap();
+    engine
+        .add_obligation(Obligation {
+            from_party: "B".to_string(),
+            to_party: "A".to_string(),
+            amount: 100_000,
+            currency: "USD".to_string(),
+            corridor_id: None,
+            priority: 0,
+        })
+        .unwrap();
     let plan = engine.compute_plan().unwrap();
     assert!(
         plan.settlement_legs.is_empty(),

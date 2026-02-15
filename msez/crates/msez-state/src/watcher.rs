@@ -510,7 +510,10 @@ mod tests {
     fn slashing_condition_percentages() {
         // These are exact literal returns, so assert_eq! is correct.
         assert_eq!(SlashingCondition::Equivocation.slash_percentage(), 1.00);
-        assert_eq!(SlashingCondition::AvailabilityFailure.slash_percentage(), 0.01);
+        assert_eq!(
+            SlashingCondition::AvailabilityFailure.slash_percentage(),
+            0.01
+        );
         assert_eq!(SlashingCondition::FalseAttestation.slash_percentage(), 0.50);
         assert_eq!(SlashingCondition::Collusion.slash_percentage(), 1.00);
     }

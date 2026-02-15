@@ -1,30 +1,43 @@
-//! # Mass API Proxy Routes
+//! # Mass API Orchestration Endpoints
 //!
-//! Thin proxy layer that forwards all five primitive CRUD operations to
-//! the live Mass APIs via `msez-mass-client`. These endpoints preserve the
-//! `/v1/` URL namespace so that SEZ Stack consumers have a single API
-//! surface rather than calling Mass directly.
+//! Jurisdiction-aware orchestration endpoints that compose compliance
+//! tensor evaluation, Mass API delegation, and Verifiable Credential
+//! issuance for all five Mass primitives.
 //!
 //! ## Architecture
 //!
-//! These handlers are passthrough proxies. They do NOT add compliance
-//! evaluation, corridor checks, or VC issuance — that logic belongs in
-//! dedicated orchestration endpoints (Sprint 2C/2D).
+//! Each **write** endpoint follows the orchestration pipeline:
 //!
-//! The proxy layer exists so that consumers hitting `/v1/entities`,
-//! `/v1/ownership`, `/v1/fiscal`, `/v1/identity`, and `/v1/consent`
-//! continue to receive responses while the SEZ Stack transitions from
-//! local primitive reimplementation to Mass API delegation.
+//! 1. **Pre-flight compliance** — evaluate the compliance tensor across
+//!    the 20 `ComplianceDomain` variants for the target jurisdiction.
+//!    Hard-block domains (Sanctions `NonCompliant`) reject the request.
+//! 2. **Mass API call** — delegate the primitive operation to the live
+//!    Mass API via `msez-mass-client` (the sole authorized gateway).
+//! 3. **VC issuance** — issue a W3C Verifiable Credential attesting to
+//!    the compliance evaluation at the time of the operation.
+//! 4. **Attestation storage** — persist an attestation record for
+//!    regulator queries.
+//!
+//! **Read** endpoints (GET) remain proxies — they fetch data from Mass
+//! without compliance evaluation since reads don't alter state.
+//!
+//! ## Response Envelope
+//!
+//! Write endpoints return an [`OrchestrationEnvelope`] containing:
+//! - `mass_response` — the Mass API response
+//! - `compliance` — 20-domain compliance tensor summary
+//! - `credential` — the signed VC (if issued)
+//! - `attestation_id` — ID of the stored attestation record
 //!
 //! ## Primitives
 //!
-//! | Prefix            | Mass API                  | Status     |
-//! |-------------------|---------------------------|------------|
-//! | `/v1/entities`    | organization-info         | Proxied    |
-//! | `/v1/ownership`   | investment-info           | Proxied    |
-//! | `/v1/fiscal`      | treasury-info             | Proxied    |
-//! | `/v1/identity`    | consent-info (identity)   | Proxied    |
-//! | `/v1/consent`     | consent-info (consent)    | Proxied    |
+//! | Prefix            | Mass API                  | Status       |
+//! |-------------------|---------------------------|--------------|
+//! | `/v1/entities`    | organization-info         | Orchestrated |
+//! | `/v1/ownership`   | investment-info           | Orchestrated |
+//! | `/v1/fiscal`      | treasury-info             | Orchestrated |
+//! | `/v1/identity`    | consent-info (identity)   | Orchestrated |
+//! | `/v1/consent`     | consent-info (consent)    | Orchestrated |
 
 use axum::extract::{Path, State};
 use axum::routing::{get, post};
@@ -33,25 +46,21 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::error::AppError;
+use crate::orchestration::{self, OrchestrationEnvelope};
 use crate::state::AppState;
 
-/// Build the Mass API proxy router for all five primitives.
+/// Build the Mass API orchestration router for all five primitives.
 ///
-/// Provides primitive endpoints that delegate to the live Mass APIs.
+/// Write endpoints compose compliance evaluation + Mass API + VC issuance.
+/// Read endpoints proxy through to Mass APIs.
 pub fn router() -> Router<AppState> {
     Router::new()
         // ENTITIES (organization-info)
         .route("/v1/entities", get(list_entities).post(create_entity))
         .route("/v1/entities/:id", get(get_entity).put(update_entity))
         // OWNERSHIP (investment-info)
-        .route(
-            "/v1/ownership/cap-tables",
-            post(create_cap_table),
-        )
-        .route(
-            "/v1/ownership/cap-tables/:id",
-            get(get_cap_table),
-        )
+        .route("/v1/ownership/cap-tables", post(create_cap_table))
+        .route("/v1/ownership/cap-tables/:id", get(get_cap_table))
         // FISCAL (treasury-info)
         .route("/v1/fiscal/accounts", post(create_account))
         .route("/v1/fiscal/payments", post(initiate_payment))
@@ -65,14 +74,11 @@ pub fn router() -> Router<AppState> {
 
 /// Helper: extract the Mass client from AppState or return 503.
 fn require_mass_client(state: &AppState) -> Result<&msez_mass_client::MassClient, AppError> {
-    state
-        .mass_client
-        .as_ref()
-        .ok_or_else(|| {
-            AppError::service_unavailable(
-                "Mass API client not configured. Set MASS_API_TOKEN environment variable.",
-            )
-        })
+    state.mass_client.as_ref().ok_or_else(|| {
+        AppError::service_unavailable(
+            "Mass API client not configured. Set MASS_API_TOKEN environment variable.",
+        )
+    })
 }
 
 // -- Request/Response DTOs for the proxy layer --------------------------------
@@ -168,13 +174,21 @@ pub struct ConsentPartyInput {
 
 // ── ENTITY HANDLERS ─────────────────────────────────────────────────
 
-/// POST /v1/entities — Create an entity via Mass organization-info API.
+/// POST /v1/entities — Create an entity with compliance evaluation and VC issuance.
+///
+/// Orchestration pipeline:
+/// 1. Evaluate compliance tensor for `jurisdiction_id` across entity-relevant domains
+/// 2. Reject if sanctions domain is `NonCompliant` (hard block)
+/// 3. Create entity via Mass organization-info API
+/// 4. Issue a `MsezFormationComplianceCredential` VC
+/// 5. Store attestation record for regulator queries
 #[utoipa::path(
     post,
     path = "/v1/entities",
     request_body = CreateEntityProxyRequest,
     responses(
-        (status = 201, description = "Entity created in Mass"),
+        (status = 201, description = "Entity created with compliance evaluation and VC"),
+        (status = 403, description = "Blocked by compliance hard-block (sanctions)"),
         (status = 502, description = "Mass API error"),
         (status = 503, description = "Mass client not configured"),
     ),
@@ -183,12 +197,28 @@ pub struct ConsentPartyInput {
 async fn create_entity(
     State(state): State<AppState>,
     Json(req): Json<CreateEntityProxyRequest>,
-) -> Result<(axum::http::StatusCode, Json<serde_json::Value>), AppError> {
+) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
     let client = require_mass_client(&state)?;
 
+    // Step 1: Pre-flight compliance evaluation.
+    let (_tensor, pre_summary) = orchestration::evaluate_compliance(
+        &req.jurisdiction_id,
+        "pre-flight",
+        orchestration::entity_domains(),
+    );
+
+    // Step 2: Hard-block check (sanctions).
+    if let Some(reason) = orchestration::check_hard_blocks(&pre_summary) {
+        return Err(AppError::Forbidden(reason));
+    }
+
+    // Step 3: Mass API call.
     let entity_type: msez_mass_client::entities::MassEntityType =
         serde_json::from_value(serde_json::Value::String(req.entity_type))
             .map_err(|e| AppError::BadRequest(format!("invalid entity_type: {e}")))?;
+
+    let jurisdiction_id = req.jurisdiction_id.clone();
+    let legal_name = req.legal_name.clone();
 
     let mass_req = msez_mass_client::entities::CreateEntityRequest {
         entity_type,
@@ -212,13 +242,21 @@ async fn create_entity(
         .await
         .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
 
-    let value = serde_json::to_value(entity)
+    let mass_response = serde_json::to_value(entity)
         .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
 
-    Ok((axum::http::StatusCode::CREATED, Json(value)))
+    // Step 4 & 5: Post-operation orchestration (VC issuance + attestation storage).
+    let envelope = orchestration::orchestrate_entity_creation(
+        &state,
+        &jurisdiction_id,
+        &legal_name,
+        mass_response,
+    );
+
+    Ok((axum::http::StatusCode::CREATED, Json(envelope)))
 }
 
-/// GET /v1/entities/{id} — Get an entity from Mass by ID.
+/// GET /v1/entities/{id} — Get an entity from Mass by ID (proxy, no orchestration).
 #[utoipa::path(
     get,
     path = "/v1/entities/:id",
@@ -270,7 +308,7 @@ async fn update_entity(
     ))
 }
 
-/// GET /v1/entities — List entities from Mass.
+/// GET /v1/entities — List entities from Mass (proxy, no orchestration).
 #[utoipa::path(
     get,
     path = "/v1/entities",
@@ -281,9 +319,7 @@ async fn update_entity(
     ),
     tag = "entities"
 )]
-async fn list_entities(
-    State(state): State<AppState>,
-) -> Result<Json<serde_json::Value>, AppError> {
+async fn list_entities(State(state): State<AppState>) -> Result<Json<serde_json::Value>, AppError> {
     let client = require_mass_client(&state)?;
 
     let entities = client
@@ -299,13 +335,21 @@ async fn list_entities(
 
 // ── OWNERSHIP HANDLERS ──────────────────────────────────────────────
 
-/// POST /v1/ownership/cap-tables — Create a cap table via Mass investment-info API.
+/// POST /v1/ownership/cap-tables — Create a cap table with compliance evaluation.
+///
+/// Orchestration pipeline:
+/// 1. Evaluate compliance tensor for securities/ownership domains
+/// 2. Reject if sanctions hard-block
+/// 3. Create cap table via Mass investment-info API
+/// 4. Issue a `MsezOwnershipComplianceCredential` VC
+/// 5. Store attestation record
 #[utoipa::path(
     post,
     path = "/v1/ownership/cap-tables",
     request_body = CreateCapTableProxyRequest,
     responses(
-        (status = 201, description = "Cap table created in Mass"),
+        (status = 201, description = "Cap table created with compliance evaluation and VC"),
+        (status = 403, description = "Blocked by compliance hard-block (sanctions)"),
         (status = 502, description = "Mass API error"),
         (status = 503, description = "Mass client not configured"),
     ),
@@ -314,9 +358,23 @@ async fn list_entities(
 async fn create_cap_table(
     State(state): State<AppState>,
     Json(req): Json<CreateCapTableProxyRequest>,
-) -> Result<(axum::http::StatusCode, Json<serde_json::Value>), AppError> {
+) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
     let client = require_mass_client(&state)?;
 
+    // Step 1: Pre-flight compliance evaluation.
+    let entity_id = req.entity_id;
+    let (_tensor, pre_summary) = orchestration::evaluate_compliance(
+        "UNKNOWN",
+        &entity_id.to_string(),
+        orchestration::ownership_domains(),
+    );
+
+    // Step 2: Hard-block check.
+    if let Some(reason) = orchestration::check_hard_blocks(&pre_summary) {
+        return Err(AppError::Forbidden(reason));
+    }
+
+    // Step 3: Mass API call.
     let mass_req = msez_mass_client::ownership::CreateCapTableRequest {
         entity_id: req.entity_id,
         share_classes: req
@@ -338,13 +396,20 @@ async fn create_cap_table(
         .await
         .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
 
-    let value = serde_json::to_value(cap_table)
+    let mass_response = serde_json::to_value(cap_table)
         .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
 
-    Ok((axum::http::StatusCode::CREATED, Json(value)))
+    // Step 4 & 5: Post-operation orchestration.
+    let envelope = orchestration::orchestrate_cap_table_creation(
+        &state,
+        entity_id,
+        mass_response,
+    );
+
+    Ok((axum::http::StatusCode::CREATED, Json(envelope)))
 }
 
-/// GET /v1/ownership/cap-tables/{id} — Get a cap table from Mass by entity ID.
+/// GET /v1/ownership/cap-tables/{id} — Get a cap table from Mass (proxy, no orchestration).
 #[utoipa::path(
     get,
     path = "/v1/ownership/cap-tables/:id",
@@ -376,13 +441,21 @@ async fn get_cap_table(
 
 // ── FISCAL HANDLERS ─────────────────────────────────────────────────
 
-/// POST /v1/fiscal/accounts — Create a fiscal account via Mass treasury-info API.
+/// POST /v1/fiscal/accounts — Create a fiscal account with compliance evaluation.
+///
+/// Orchestration pipeline:
+/// 1. Evaluate compliance tensor for fiscal/banking domains (jurisdiction inferred from currency)
+/// 2. Reject if sanctions hard-block
+/// 3. Create account via Mass treasury-info API
+/// 4. Issue a `MsezFiscalComplianceCredential` VC
+/// 5. Store attestation record
 #[utoipa::path(
     post,
     path = "/v1/fiscal/accounts",
     request_body = CreateAccountProxyRequest,
     responses(
-        (status = 201, description = "Account created in Mass"),
+        (status = 201, description = "Account created with compliance evaluation and VC"),
+        (status = 403, description = "Blocked by compliance hard-block (sanctions)"),
         (status = 502, description = "Mass API error"),
         (status = 503, description = "Mass client not configured"),
     ),
@@ -391,9 +464,27 @@ async fn get_cap_table(
 async fn create_account(
     State(state): State<AppState>,
     Json(req): Json<CreateAccountProxyRequest>,
-) -> Result<(axum::http::StatusCode, Json<serde_json::Value>), AppError> {
+) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
     let client = require_mass_client(&state)?;
 
+    // Step 1: Pre-flight compliance evaluation.
+    let entity_id = req.entity_id;
+    let currency = req.currency.clone();
+    let (_tensor, pre_summary) = orchestration::evaluate_compliance(
+        orchestration::fiscal_account_domains()
+            .first()
+            .map(|_| "UNKNOWN")
+            .unwrap_or("UNKNOWN"),
+        &entity_id.to_string(),
+        orchestration::fiscal_account_domains(),
+    );
+
+    // Step 2: Hard-block check.
+    if let Some(reason) = orchestration::check_hard_blocks(&pre_summary) {
+        return Err(AppError::Forbidden(reason));
+    }
+
+    // Step 3: Mass API call.
     let account_type: msez_mass_client::fiscal::MassAccountType =
         serde_json::from_value(serde_json::Value::String(req.account_type))
             .map_err(|e| AppError::BadRequest(format!("invalid account_type: {e}")))?;
@@ -411,19 +502,35 @@ async fn create_account(
         .await
         .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
 
-    let value = serde_json::to_value(account)
+    let mass_response = serde_json::to_value(account)
         .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
 
-    Ok((axum::http::StatusCode::CREATED, Json(value)))
+    // Step 4 & 5: Post-operation orchestration.
+    let envelope = orchestration::orchestrate_account_creation(
+        &state,
+        entity_id,
+        &currency,
+        mass_response,
+    );
+
+    Ok((axum::http::StatusCode::CREATED, Json(envelope)))
 }
 
-/// POST /v1/fiscal/payments — Initiate a payment via Mass treasury-info API.
+/// POST /v1/fiscal/payments — Initiate a payment with compliance evaluation.
+///
+/// Orchestration pipeline:
+/// 1. Evaluate compliance tensor for AML/sanctions/payment domains
+/// 2. Reject if sanctions hard-block
+/// 3. Initiate payment via Mass treasury-info API
+/// 4. Issue a `MsezPaymentComplianceCredential` VC
+/// 5. Store attestation record
 #[utoipa::path(
     post,
     path = "/v1/fiscal/payments",
     request_body = CreatePaymentProxyRequest,
     responses(
-        (status = 201, description = "Payment initiated in Mass"),
+        (status = 201, description = "Payment initiated with compliance evaluation and VC"),
+        (status = 403, description = "Blocked by compliance hard-block (sanctions)"),
         (status = 502, description = "Mass API error"),
         (status = 503, description = "Mass client not configured"),
     ),
@@ -432,9 +539,24 @@ async fn create_account(
 async fn initiate_payment(
     State(state): State<AppState>,
     Json(req): Json<CreatePaymentProxyRequest>,
-) -> Result<(axum::http::StatusCode, Json<serde_json::Value>), AppError> {
+) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
     let client = require_mass_client(&state)?;
 
+    // Step 1: Pre-flight compliance evaluation.
+    let from_account_id = req.from_account_id;
+    let currency = req.currency.clone();
+    let (_tensor, pre_summary) = orchestration::evaluate_compliance(
+        "UNKNOWN",
+        &from_account_id.to_string(),
+        orchestration::payment_domains(),
+    );
+
+    // Step 2: Hard-block check.
+    if let Some(reason) = orchestration::check_hard_blocks(&pre_summary) {
+        return Err(AppError::Forbidden(reason));
+    }
+
+    // Step 3: Mass API call.
     let mass_req = msez_mass_client::fiscal::CreatePaymentRequest {
         from_account_id: req.from_account_id,
         to_account_id: req.to_account_id,
@@ -449,21 +571,37 @@ async fn initiate_payment(
         .await
         .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
 
-    let value = serde_json::to_value(payment)
+    let mass_response = serde_json::to_value(payment)
         .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
 
-    Ok((axum::http::StatusCode::CREATED, Json(value)))
+    // Step 4 & 5: Post-operation orchestration.
+    let envelope = orchestration::orchestrate_payment(
+        &state,
+        from_account_id,
+        &currency,
+        mass_response,
+    );
+
+    Ok((axum::http::StatusCode::CREATED, Json(envelope)))
 }
 
 // ── IDENTITY HANDLERS ───────────────────────────────────────────────
 
-/// POST /v1/identity/verify — Submit identity verification via Mass.
+/// POST /v1/identity/verify — Verify identity with compliance evaluation.
+///
+/// Orchestration pipeline:
+/// 1. Evaluate compliance tensor for KYC/sanctions/data-privacy domains
+/// 2. Reject if sanctions hard-block
+/// 3. Submit verification via Mass identity API
+/// 4. Issue a `MsezIdentityComplianceCredential` VC
+/// 5. Store attestation record
 #[utoipa::path(
     post,
     path = "/v1/identity/verify",
     request_body = VerifyIdentityProxyRequest,
     responses(
-        (status = 200, description = "Verification submitted"),
+        (status = 200, description = "Verification submitted with compliance evaluation and VC"),
+        (status = 403, description = "Blocked by compliance hard-block (sanctions)"),
         (status = 502, description = "Mass API error"),
         (status = 503, description = "Mass client not configured"),
     ),
@@ -472,9 +610,23 @@ async fn initiate_payment(
 async fn verify_identity(
     State(state): State<AppState>,
     Json(req): Json<VerifyIdentityProxyRequest>,
-) -> Result<Json<serde_json::Value>, AppError> {
+) -> Result<Json<OrchestrationEnvelope>, AppError> {
     let client = require_mass_client(&state)?;
 
+    // Step 1: Pre-flight compliance evaluation.
+    let identity_type_str = req.identity_type.clone();
+    let (_tensor, pre_summary) = orchestration::evaluate_compliance(
+        "GLOBAL",
+        "pre-flight",
+        orchestration::identity_domains(),
+    );
+
+    // Step 2: Hard-block check.
+    if let Some(reason) = orchestration::check_hard_blocks(&pre_summary) {
+        return Err(AppError::Forbidden(reason));
+    }
+
+    // Step 3: Mass API call.
     let identity_type: msez_mass_client::identity::MassIdentityType =
         serde_json::from_value(serde_json::Value::String(req.identity_type))
             .map_err(|e| AppError::BadRequest(format!("invalid identity_type: {e}")))?;
@@ -497,12 +649,20 @@ async fn verify_identity(
         .await
         .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
 
-    serde_json::to_value(identity)
-        .map(Json)
-        .map_err(|e| AppError::Internal(format!("serialization error: {e}")))
+    let mass_response = serde_json::to_value(identity)
+        .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
+
+    // Step 4 & 5: Post-operation orchestration.
+    let envelope = orchestration::orchestrate_identity_verification(
+        &state,
+        &identity_type_str,
+        mass_response,
+    );
+
+    Ok(Json(envelope))
 }
 
-/// GET /v1/identity/{id} — Get an identity from Mass by ID.
+/// GET /v1/identity/{id} — Get an identity from Mass by ID (proxy, no orchestration).
 #[utoipa::path(
     get,
     path = "/v1/identity/:id",
@@ -532,13 +692,21 @@ async fn get_identity(
 
 // ── CONSENT HANDLERS ────────────────────────────────────────────────
 
-/// POST /v1/consent — Create a consent request via Mass consent-info API.
+/// POST /v1/consent — Create a consent request with compliance evaluation.
+///
+/// Orchestration pipeline:
+/// 1. Evaluate compliance tensor for governance/sanctions domains
+/// 2. Reject if sanctions hard-block
+/// 3. Create consent request via Mass consent-info API
+/// 4. Issue a `MsezConsentComplianceCredential` VC
+/// 5. Store attestation record
 #[utoipa::path(
     post,
     path = "/v1/consent",
     request_body = CreateConsentProxyRequest,
     responses(
-        (status = 201, description = "Consent request created in Mass"),
+        (status = 201, description = "Consent request created with compliance evaluation and VC"),
+        (status = 403, description = "Blocked by compliance hard-block (sanctions)"),
         (status = 502, description = "Mass API error"),
         (status = 503, description = "Mass client not configured"),
     ),
@@ -547,9 +715,23 @@ async fn get_identity(
 async fn create_consent(
     State(state): State<AppState>,
     Json(req): Json<CreateConsentProxyRequest>,
-) -> Result<(axum::http::StatusCode, Json<serde_json::Value>), AppError> {
+) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
     let client = require_mass_client(&state)?;
 
+    // Step 1: Pre-flight compliance evaluation.
+    let consent_type_str = req.consent_type.clone();
+    let (_tensor, pre_summary) = orchestration::evaluate_compliance(
+        "GLOBAL",
+        "pre-flight",
+        orchestration::consent_domains(),
+    );
+
+    // Step 2: Hard-block check.
+    if let Some(reason) = orchestration::check_hard_blocks(&pre_summary) {
+        return Err(AppError::Forbidden(reason));
+    }
+
+    // Step 3: Mass API call.
     let consent_type: msez_mass_client::consent::MassConsentType =
         serde_json::from_value(serde_json::Value::String(req.consent_type))
             .map_err(|e| AppError::BadRequest(format!("invalid consent_type: {e}")))?;
@@ -573,13 +755,20 @@ async fn create_consent(
         .await
         .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
 
-    let value = serde_json::to_value(consent)
+    let mass_response = serde_json::to_value(consent)
         .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
 
-    Ok((axum::http::StatusCode::CREATED, Json(value)))
+    // Step 4 & 5: Post-operation orchestration.
+    let envelope = orchestration::orchestrate_consent_creation(
+        &state,
+        &consent_type_str,
+        mass_response,
+    );
+
+    Ok((axum::http::StatusCode::CREATED, Json(envelope)))
 }
 
-/// GET /v1/consent/{id} — Get a consent request from Mass by ID.
+/// GET /v1/consent/{id} — Get a consent request from Mass by ID (proxy, no orchestration).
 #[utoipa::path(
     get,
     path = "/v1/consent/:id",

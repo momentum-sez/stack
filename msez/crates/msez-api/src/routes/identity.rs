@@ -5,15 +5,16 @@
 //!
 //! ## Architecture
 //!
-//! These routes supersede the thin identity passthrough in `mass_proxy.rs`.
-//! The passthrough routes remain for backward compatibility but will be deprecated.
+//! These routes extend the generic identity orchestration in `mass_proxy.rs`
+//! with Pakistan GovOS-specific verification flows: CNIC (NADRA) and NTN
+//! (FBR IRIS). Each write operation follows the orchestration pipeline
+//! defined in [`crate::orchestration`]:
 //!
-//! Each orchestration endpoint:
-//! 1. Validates the request
-//! 2. Evaluates KYC/KYB compliance via the compliance tensor
-//! 3. Delegates identity operations to Mass via `IdentityClient`
-//! 4. Records attestation for regulator queries
-//! 5. Returns enriched response with compliance status
+//! 1. Validate the request (format checks)
+//! 2. Evaluate compliance tensor across identity-relevant domains
+//! 3. Delegate to Mass via `IdentityClient` (aggregation facade)
+//! 4. Store attestation via [`crate::orchestration::store_attestation`]
+//! 5. Return enriched response with compliance summary
 //!
 //! ## Integration Points
 //!
@@ -33,7 +34,8 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::AppError;
-use crate::state::{AppState, AttestationRecord, AttestationStatus};
+use crate::orchestration;
+use crate::state::AppState;
 
 /// Build the identity orchestration router.
 ///
@@ -83,7 +85,7 @@ pub struct CnicVerifyRequest {
     /// Entity ID to bind the verified CNIC to.
     #[serde(default)]
     pub entity_id: Option<Uuid>,
-    /// Jurisdiction for compliance evaluation.
+    /// Jurisdiction for compliance evaluation (default: "PK").
     #[serde(default)]
     pub jurisdiction_id: Option<String>,
 }
@@ -104,7 +106,7 @@ pub struct CnicVerifyResponse {
     /// Attestation record ID in the SEZ Stack.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attestation_id: Option<Uuid>,
-    /// KYC compliance status from tensor evaluation.
+    /// Compliance status from 20-domain tensor evaluation.
     pub compliance_status: String,
     /// Timestamp of verification.
     pub verified_at: String,
@@ -120,7 +122,7 @@ pub struct NtnVerifyRequest {
     /// Entity ID to bind the verified NTN to.
     #[serde(default)]
     pub entity_id: Option<Uuid>,
-    /// Jurisdiction for compliance evaluation.
+    /// Jurisdiction for compliance evaluation (default: "PK").
     #[serde(default)]
     pub jurisdiction_id: Option<String>,
 }
@@ -144,7 +146,7 @@ pub struct NtnVerifyResponse {
     /// Attestation record ID in the SEZ Stack.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attestation_id: Option<Uuid>,
-    /// Tax compliance status from tensor evaluation.
+    /// Compliance status from 20-domain tensor evaluation.
     pub compliance_status: String,
     /// Timestamp of verification.
     pub verified_at: String,
@@ -183,10 +185,11 @@ pub struct IdentityServiceStatus {
 /// POST /v1/identity/cnic/verify — Verify a CNIC number with KYC compliance.
 ///
 /// Orchestration flow:
-/// 1. Validate CNIC format
-/// 2. Call Mass identity client for NADRA verification
-/// 3. Record attestation in SEZ Stack
-/// 4. Return enriched response with compliance status
+/// 1. Validate CNIC format (13 digits)
+/// 2. Evaluate compliance tensor across identity-relevant domains
+/// 3. Delegate NADRA verification to Mass via `IdentityClient`
+/// 4. Store attestation via orchestration module
+/// 5. Return enriched response with compliance status
 #[utoipa::path(
     post,
     path = "/v1/identity/cnic/verify",
@@ -214,6 +217,17 @@ async fn verify_cnic(
         )));
     }
 
+    let jurisdiction = req.jurisdiction_id.as_deref().unwrap_or("PK");
+    let entity_id = req.entity_id.unwrap_or_else(Uuid::new_v4);
+    let entity_ref = entity_id.to_string();
+
+    // Evaluate compliance tensor across identity-relevant domains.
+    let (_tensor, summary) = orchestration::evaluate_compliance(
+        jurisdiction,
+        &entity_ref,
+        orchestration::identity_domains(),
+    );
+
     // Delegate to Mass identity client for NADRA verification.
     let mass_req = msez_mass_client::identity::CnicVerificationRequest {
         cnic: req.cnic.clone(),
@@ -228,33 +242,22 @@ async fn verify_cnic(
         .await
         .map_err(|e| AppError::upstream(format!("NADRA verification error: {e}")))?;
 
-    // Record attestation in SEZ Stack for regulator queries.
+    // Store attestation via the orchestration module for regulator queries.
     let attestation_id = if result.verified {
-        let att_id = Uuid::new_v4();
-        let attestation = AttestationRecord {
-            id: att_id,
-            entity_id: req.entity_id.unwrap_or_else(Uuid::new_v4),
-            attestation_type: "CNIC_VERIFICATION".to_string(),
-            issuer: "NADRA".to_string(),
-            status: AttestationStatus::Active,
-            jurisdiction_id: req.jurisdiction_id.as_deref().unwrap_or("PK").to_string(),
-            issued_at: Utc::now(),
-            expires_at: None,
-            details: serde_json::json!({
+        Some(orchestration::store_attestation(
+            &state,
+            entity_id,
+            "CNIC_VERIFICATION",
+            jurisdiction,
+            serde_json::json!({
                 "cnic": req.cnic,
                 "verified_name": result.full_name,
+                "issuer": "NADRA",
+                "overall_compliance": summary.overall_status,
             }),
-        };
-        state.attestations.insert(att_id, attestation);
-        Some(att_id)
+        ))
     } else {
         None
-    };
-
-    let compliance_status = if result.verified {
-        "KYC_VERIFIED"
-    } else {
-        "KYC_PENDING"
     };
 
     Ok(Json(CnicVerifyResponse {
@@ -263,7 +266,7 @@ async fn verify_cnic(
         full_name: result.full_name,
         identity_id: result.identity_id,
         attestation_id,
-        compliance_status: compliance_status.to_string(),
+        compliance_status: summary.overall_status,
         verified_at: result.verification_timestamp.to_rfc3339(),
     }))
 }
@@ -271,10 +274,11 @@ async fn verify_cnic(
 /// POST /v1/identity/ntn/verify — Verify an NTN number with tax compliance.
 ///
 /// Orchestration flow:
-/// 1. Validate NTN format
-/// 2. Call Mass identity client for FBR IRIS verification
-/// 3. Record attestation in SEZ Stack
-/// 4. Return enriched response with tax compliance status
+/// 1. Validate NTN format (7 digits)
+/// 2. Evaluate compliance tensor across identity-relevant domains
+/// 3. Delegate FBR IRIS verification to Mass via `IdentityClient`
+/// 4. Store attestation via orchestration module
+/// 5. Return enriched response with compliance status
 #[utoipa::path(
     post,
     path = "/v1/identity/ntn/verify",
@@ -302,6 +306,17 @@ async fn verify_ntn(
         )));
     }
 
+    let jurisdiction = req.jurisdiction_id.as_deref().unwrap_or("PK");
+    let entity_id = req.entity_id.unwrap_or_else(Uuid::new_v4);
+    let entity_ref = entity_id.to_string();
+
+    // Evaluate compliance tensor across identity-relevant domains.
+    let (_tensor, summary) = orchestration::evaluate_compliance(
+        jurisdiction,
+        &entity_ref,
+        orchestration::identity_domains(),
+    );
+
     // Delegate to Mass identity client for FBR IRIS verification.
     let mass_req = msez_mass_client::identity::NtnVerificationRequest {
         ntn: req.ntn.clone(),
@@ -315,34 +330,23 @@ async fn verify_ntn(
         .await
         .map_err(|e| AppError::upstream(format!("FBR IRIS verification error: {e}")))?;
 
-    // Record attestation for regulator queries.
+    // Store attestation via the orchestration module for regulator queries.
     let attestation_id = if result.verified {
-        let att_id = Uuid::new_v4();
-        let attestation = AttestationRecord {
-            id: att_id,
-            entity_id: req.entity_id.unwrap_or_else(Uuid::new_v4),
-            attestation_type: "NTN_VERIFICATION".to_string(),
-            issuer: "FBR_IRIS".to_string(),
-            status: AttestationStatus::Active,
-            jurisdiction_id: req.jurisdiction_id.as_deref().unwrap_or("PK").to_string(),
-            issued_at: Utc::now(),
-            expires_at: None,
-            details: serde_json::json!({
+        Some(orchestration::store_attestation(
+            &state,
+            entity_id,
+            "NTN_VERIFICATION",
+            jurisdiction,
+            serde_json::json!({
                 "ntn": req.ntn,
                 "registered_name": result.registered_name,
                 "tax_status": result.tax_status,
+                "issuer": "FBR_IRIS",
+                "overall_compliance": summary.overall_status,
             }),
-        };
-        state.attestations.insert(att_id, attestation);
-        Some(att_id)
+        ))
     } else {
         None
-    };
-
-    let compliance_status = if result.verified {
-        "TAX_REGISTERED"
-    } else {
-        "TAX_UNREGISTERED"
     };
 
     Ok(Json(NtnVerifyResponse {
@@ -352,7 +356,7 @@ async fn verify_ntn(
         tax_status: result.tax_status,
         identity_id: result.identity_id,
         attestation_id,
-        compliance_status: compliance_status.to_string(),
+        compliance_status: summary.overall_status,
         verified_at: result.verification_timestamp.to_rfc3339(),
     }))
 }

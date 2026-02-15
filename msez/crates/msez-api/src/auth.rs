@@ -299,11 +299,20 @@ pub async fn auth_middleware(mut request: Request, next: Next) -> Response {
                             request.extensions_mut().insert(identity);
                             next.run(request).await
                         }
-                        Err(msg) => unauthorized_response(&msg),
+                        Err(msg) => {
+                            tracing::warn!(reason = %msg, "authentication failed: invalid bearer token");
+                            unauthorized_response(&msg)
+                        }
                     }
                 }
-                Some(_) => unauthorized_response("authorization header must use Bearer scheme"),
-                None => unauthorized_response("missing authorization header"),
+                Some(_) => {
+                    tracing::warn!("authentication failed: non-Bearer authorization scheme");
+                    unauthorized_response("authorization header must use Bearer scheme")
+                }
+                None => {
+                    tracing::warn!("authentication failed: missing authorization header");
+                    unauthorized_response("missing authorization header")
+                }
             }
         }
         _ => {

@@ -143,7 +143,7 @@ async fn test_create_cap_table_returns_503_without_mass_client() {
                 .body(Body::from(
                     serde_json::to_string(&serde_json::json!({
                         "entity_id": "00000000-0000-0000-0000-000000000000",
-                        "share_classes": []
+                        "share_classes": [{"name":"Common","authorized_shares":1000000,"issued_shares":100000,"par_value":"0.01","voting_rights":true}]
                     }))
                     .unwrap(),
                 ))

@@ -328,6 +328,16 @@ impl VerifiableCredential {
     where
         F: Fn(&str) -> Result<VerifyingKey, String>,
     {
+        // Check expiration before spending CPU on signature verification.
+        // An expired credential is invalid regardless of signature validity.
+        if let Some(expiration) = self.expiration_date {
+            if expiration < Utc::now() {
+                return Err(VcError::VerificationFailed(format!(
+                    "credential expired at {expiration}"
+                )));
+            }
+        }
+
         let results = self.verify(resolve_key);
         if results.is_empty() {
             return Err(VcError::NoProofs);

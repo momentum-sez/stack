@@ -483,6 +483,373 @@ async fn test_health_bypasses_auth() {
     assert_eq!(response.status(), StatusCode::OK);
 }
 
+// -- RBAC: Regulator Endpoint Access Control ----------------------------------
+
+#[tokio::test]
+async fn rbac_regulator_summary_rejected_for_entity_operator() {
+    let app = test_app_with_auth("my-secret");
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/v1/regulator/summary")
+        .header(
+            "Authorization",
+            "Bearer entity_operator:550e8400-e29b-41d4-a716-446655440000:my-secret",
+        )
+        .body(Body::empty())
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn rbac_regulator_summary_allowed_for_regulator() {
+    let app = test_app_with_auth("my-secret");
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/v1/regulator/summary")
+        .header("Authorization", "Bearer regulator::my-secret")
+        .body(Body::empty())
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn rbac_regulator_summary_allowed_for_zone_admin() {
+    let app = test_app_with_auth("my-secret");
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/v1/regulator/summary")
+        .header("Authorization", "Bearer zone_admin::my-secret")
+        .body(Body::empty())
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn rbac_regulator_query_attestations_rejected_for_entity_operator() {
+    let app = test_app_with_auth("my-secret");
+
+    let req = Request::builder()
+        .method("POST")
+        .uri("/v1/regulator/query/attestations")
+        .header(
+            "Authorization",
+            "Bearer entity_operator:550e8400-e29b-41d4-a716-446655440000:my-secret",
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(r#"{}"#))
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn rbac_regulator_dashboard_rejected_for_entity_operator() {
+    let app = test_app_with_auth("my-secret");
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/v1/regulator/dashboard")
+        .header(
+            "Authorization",
+            "Bearer entity_operator:550e8400-e29b-41d4-a716-446655440000:my-secret",
+        )
+        .body(Body::empty())
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn rbac_legacy_token_format_treated_as_zone_admin() {
+    let app = test_app_with_auth("my-secret");
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/v1/regulator/summary")
+        .header("Authorization", "Bearer my-secret")
+        .body(Body::empty())
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn rbac_unknown_role_in_token_rejected() {
+    let app = test_app_with_auth("secret");
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/v1/regulator/summary")
+        .header("Authorization", "Bearer superadmin::secret")
+        .body(Body::empty())
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn rbac_malformed_entity_id_in_token_rejected() {
+    let app = test_app_with_auth("secret");
+
+    let req = Request::builder()
+        .method("POST")
+        .uri("/v1/assets/genesis")
+        .header("Authorization", "Bearer entity_operator:not-a-uuid:secret")
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"asset_type":"bond","jurisdiction_id":"PK-PSEZ"}"#,
+        ))
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+}
+
+// -- IDOR: Smart Asset Ownership Protection -----------------------------------
+
+/// Helper: parse JSON from response body.
+async fn body_json(response: axum::http::Response<Body>) -> serde_json::Value {
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    serde_json::from_slice(&bytes).unwrap()
+}
+
+#[tokio::test]
+async fn idor_entity_cannot_access_another_entitys_asset() {
+    let app = test_app_with_auth("secret");
+
+    let entity_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+    let entity_b = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+
+    // Entity A creates an asset.
+    let create_req = Request::builder()
+        .method("POST")
+        .uri("/v1/assets/genesis")
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_a}:secret"),
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"asset_type":"bond","jurisdiction_id":"PK-PSEZ"}"#,
+        ))
+        .unwrap();
+    let create_resp = app.clone().oneshot(create_req).await.unwrap();
+    assert_eq!(create_resp.status(), StatusCode::CREATED);
+    let created = body_json(create_resp).await;
+    let asset_id = created["id"].as_str().unwrap();
+
+    // Entity B tries to read it — must get 404 (not 403).
+    let get_req = Request::builder()
+        .method("GET")
+        .uri(format!("/v1/assets/{asset_id}"))
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_b}:secret"),
+        )
+        .body(Body::empty())
+        .unwrap();
+    let get_resp = app.clone().oneshot(get_req).await.unwrap();
+    assert_eq!(get_resp.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn idor_entity_can_access_own_asset() {
+    let app = test_app_with_auth("secret");
+    let entity_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+
+    // Create asset as Entity A.
+    let create_req = Request::builder()
+        .method("POST")
+        .uri("/v1/assets/genesis")
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_a}:secret"),
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"asset_type":"bond","jurisdiction_id":"PK-PSEZ"}"#,
+        ))
+        .unwrap();
+    let create_resp = app.clone().oneshot(create_req).await.unwrap();
+    assert_eq!(create_resp.status(), StatusCode::CREATED);
+    let created = body_json(create_resp).await;
+    let asset_id = created["id"].as_str().unwrap();
+
+    // Read asset as Entity A — should succeed.
+    let get_req = Request::builder()
+        .method("GET")
+        .uri(format!("/v1/assets/{asset_id}"))
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_a}:secret"),
+        )
+        .body(Body::empty())
+        .unwrap();
+    let get_resp = app.oneshot(get_req).await.unwrap();
+    assert_eq!(get_resp.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn idor_regulator_can_read_any_entitys_asset() {
+    let app = test_app_with_auth("secret");
+    let entity_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+
+    // Entity A creates an asset.
+    let create_req = Request::builder()
+        .method("POST")
+        .uri("/v1/assets/genesis")
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_a}:secret"),
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"asset_type":"bond","jurisdiction_id":"PK-PSEZ"}"#,
+        ))
+        .unwrap();
+    let create_resp = app.clone().oneshot(create_req).await.unwrap();
+    assert_eq!(create_resp.status(), StatusCode::CREATED);
+    let created = body_json(create_resp).await;
+    let asset_id = created["id"].as_str().unwrap();
+
+    // Regulator reads it — should succeed.
+    let get_req = Request::builder()
+        .method("GET")
+        .uri(format!("/v1/assets/{asset_id}"))
+        .header("Authorization", "Bearer regulator::secret")
+        .body(Body::empty())
+        .unwrap();
+    let get_resp = app.oneshot(get_req).await.unwrap();
+    assert_eq!(get_resp.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn idor_on_compliance_evaluate_blocked() {
+    let app = test_app_with_auth("secret");
+    let entity_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+    let entity_b = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+
+    // Entity A creates an asset.
+    let create_req = Request::builder()
+        .method("POST")
+        .uri("/v1/assets/genesis")
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_a}:secret"),
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"asset_type":"equity","jurisdiction_id":"AE-DIFC"}"#,
+        ))
+        .unwrap();
+    let create_resp = app.clone().oneshot(create_req).await.unwrap();
+    assert_eq!(create_resp.status(), StatusCode::CREATED);
+    let created = body_json(create_resp).await;
+    let asset_id = created["id"].as_str().unwrap();
+
+    // Entity B tries to evaluate compliance — must get 404.
+    let eval_req = Request::builder()
+        .method("POST")
+        .uri(format!("/v1/assets/{asset_id}/compliance/evaluate"))
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_b}:secret"),
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(r#"{"domains":["aml"],"context":{}}"#))
+        .unwrap();
+    let eval_resp = app.oneshot(eval_req).await.unwrap();
+    assert_eq!(eval_resp.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn idor_on_anchor_verify_blocked() {
+    let app = test_app_with_auth("secret");
+    let entity_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+    let entity_b = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+
+    // Entity A creates an asset.
+    let create_req = Request::builder()
+        .method("POST")
+        .uri("/v1/assets/genesis")
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_a}:secret"),
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"asset_type":"bond","jurisdiction_id":"PK-PSEZ"}"#,
+        ))
+        .unwrap();
+    let create_resp = app.clone().oneshot(create_req).await.unwrap();
+    assert_eq!(create_resp.status(), StatusCode::CREATED);
+    let created = body_json(create_resp).await;
+    let asset_id = created["id"].as_str().unwrap();
+
+    // Entity B tries to verify anchor — must get 404.
+    let verify_req = Request::builder()
+        .method("POST")
+        .uri(format!("/v1/assets/{asset_id}/anchors/corridor/verify"))
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_b}:secret"),
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"anchor_digest":"sha256:deadbeef","chain":"ethereum"}"#,
+        ))
+        .unwrap();
+    let verify_resp = app.oneshot(verify_req).await.unwrap();
+    assert_eq!(verify_resp.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn idor_zone_admin_can_access_any_asset() {
+    let app = test_app_with_auth("secret");
+    let entity_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+
+    // Entity A creates an asset.
+    let create_req = Request::builder()
+        .method("POST")
+        .uri("/v1/assets/genesis")
+        .header(
+            "Authorization",
+            format!("Bearer entity_operator:{entity_a}:secret"),
+        )
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"asset_type":"bond","jurisdiction_id":"PK-PSEZ"}"#,
+        ))
+        .unwrap();
+    let create_resp = app.clone().oneshot(create_req).await.unwrap();
+    assert_eq!(create_resp.status(), StatusCode::CREATED);
+    let created = body_json(create_resp).await;
+    let asset_id = created["id"].as_str().unwrap();
+
+    // Zone admin reads it — should succeed.
+    let get_req = Request::builder()
+        .method("GET")
+        .uri(format!("/v1/assets/{asset_id}"))
+        .header("Authorization", "Bearer zone_admin::secret")
+        .body(Body::empty())
+        .unwrap();
+    let get_resp = app.oneshot(get_req).await.unwrap();
+    assert_eq!(get_resp.status(), StatusCode::OK);
+}
+
 // -- OpenAPI ------------------------------------------------------------------
 
 #[tokio::test]

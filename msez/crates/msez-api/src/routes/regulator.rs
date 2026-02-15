@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+use crate::auth::{require_role, CallerIdentity, Role};
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
 use crate::middleware::metrics::ApiMetrics;
@@ -255,8 +256,10 @@ pub fn router() -> Router<AppState> {
 )]
 async fn query_attestations(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     body: Result<Json<QueryAttestationsRequest>, JsonRejection>,
 ) -> Result<Json<QueryResultsResponse>, AppError> {
+    require_role(&caller, Role::Regulator)?;
     let req = extract_validated_json(body)?;
     let all = state.attestations.list();
     let filtered: Vec<_> = all
@@ -307,7 +310,11 @@ async fn query_attestations(
     ),
     tag = "regulator"
 )]
-async fn compliance_summary(State(state): State<AppState>) -> Json<ComplianceSummary> {
+async fn compliance_summary(
+    State(state): State<AppState>,
+    caller: CallerIdentity,
+) -> Result<Json<ComplianceSummary>, AppError> {
+    require_role(&caller, Role::Regulator)?;
     // Entity count is no longer stored locally — entities live in Mass APIs.
     // The regulator summary reports SEZ-Stack-owned counts plus attestation-derived
     // entity count (unique entity_ids across attestations).
@@ -318,12 +325,12 @@ async fn compliance_summary(State(state): State<AppState>) -> Json<ComplianceSum
         .map(|a| a.entity_id)
         .collect();
 
-    Json(ComplianceSummary {
+    Ok(Json(ComplianceSummary {
         total_entities: unique_entities.len(),
         total_corridors: state.corridors.list().len(),
         total_assets: state.smart_assets.list().len(),
         total_attestations: state.attestations.list().len(),
-    })
+    }))
 }
 
 /// GET /v1/regulator/dashboard — Comprehensive zone operational dashboard.
@@ -341,8 +348,10 @@ async fn compliance_summary(State(state): State<AppState>) -> Json<ComplianceSum
 )]
 async fn dashboard(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     metrics: Option<Extension<ApiMetrics>>,
-) -> Json<RegulatorDashboard> {
+) -> Result<Json<RegulatorDashboard>, AppError> {
+    require_role(&caller, Role::Regulator)?;
     let now = Utc::now();
 
     // ── Zone Status ─────────────────────────────────────────────
@@ -517,18 +526,19 @@ async fn dashboard(
         total_errors,
     };
 
-    Json(RegulatorDashboard {
+    Ok(Json(RegulatorDashboard {
         zone,
         compliance,
         corridors: corridors_overview,
         policy_activity,
         health,
-    })
+    }))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::auth::CallerIdentity;
     use crate::extractors::Validate;
 
     // ── QueryAttestationsRequest validation ───────────────────────
@@ -599,9 +609,28 @@ mod tests {
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
-    /// Helper: build the regulator router with a fresh AppState.
+    /// A zone admin identity for tests that need full access.
+    fn zone_admin() -> CallerIdentity {
+        CallerIdentity {
+            role: Role::ZoneAdmin,
+            entity_id: None,
+            jurisdiction_id: None,
+        }
+    }
+
+    /// Helper: build the regulator router with a fresh AppState and
+    /// ZoneAdmin identity injected for full access.
     fn test_app() -> Router<()> {
-        router().with_state(AppState::new())
+        router()
+            .layer(axum::Extension(zone_admin()))
+            .with_state(AppState::new())
+    }
+
+    /// Helper: build the router with shared state and ZoneAdmin identity.
+    fn test_app_with_state(state: AppState) -> Router<()> {
+        router()
+            .layer(axum::Extension(zone_admin()))
+            .with_state(state)
     }
 
     /// Helper: read the response body as bytes and deserialize from JSON.
@@ -677,7 +706,7 @@ mod tests {
         state.attestations.insert(att1.id, att1.clone());
         state.attestations.insert(att2.id, att2.clone());
 
-        let app = router().with_state(state.clone());
+        let app = test_app_with_state(state.clone());
 
         // Query filtering by jurisdiction_id.
         let req = Request::builder()
@@ -756,7 +785,7 @@ mod tests {
         };
         state.corridors.insert(corridor.id, corridor);
 
-        let app = router().with_state(state.clone());
+        let app = test_app_with_state(state.clone());
 
         let req = Request::builder()
             .method("GET")
@@ -820,7 +849,7 @@ mod tests {
         state.attestations.insert(att1.id, att1);
         state.attestations.insert(att2.id, att2);
 
-        let app = router().with_state(state);
+        let app = test_app_with_state(state);
         let body = serde_json::json!({ "entity_id": target_entity });
         let req = Request::builder()
             .method("POST")
@@ -865,7 +894,7 @@ mod tests {
         state.attestations.insert(att1.id, att1);
         state.attestations.insert(att2.id, att2);
 
-        let app = router().with_state(state);
+        let app = test_app_with_state(state);
         let req = Request::builder()
             .method("POST")
             .uri("/v1/regulator/query/attestations")
@@ -901,7 +930,7 @@ mod tests {
             state.attestations.insert(att.id, att);
         }
 
-        let app = router().with_state(state);
+        let app = test_app_with_state(state);
         let req = Request::builder()
             .method("POST")
             .uri("/v1/regulator/query/attestations")
@@ -931,6 +960,7 @@ mod tests {
             genesis_digest: None,
             compliance_status: AssetComplianceStatus::Compliant,
             metadata: serde_json::json!({}),
+            owner_entity_id: None,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
         };
@@ -950,7 +980,7 @@ mod tests {
         };
         state.attestations.insert(att.id, att);
 
-        let app = router().with_state(state);
+        let app = test_app_with_state(state);
         let req = Request::builder()
             .method("GET")
             .uri("/v1/regulator/summary")
@@ -1088,6 +1118,7 @@ mod tests {
             genesis_digest: None,
             compliance_status: AssetComplianceStatus::Compliant,
             metadata: serde_json::json!({}),
+            owner_entity_id: None,
             created_at: now,
             updated_at: now,
         };
@@ -1101,12 +1132,13 @@ mod tests {
             genesis_digest: None,
             compliance_status: AssetComplianceStatus::NonCompliant,
             metadata: serde_json::json!({}),
+            owner_entity_id: None,
             created_at: now,
             updated_at: now,
         };
         state.smart_assets.insert(blocking_asset.id, blocking_asset);
 
-        let app = router().with_state(state);
+        let app = test_app_with_state(state);
         let req = Request::builder()
             .method("GET")
             .uri("/v1/regulator/dashboard")
@@ -1165,7 +1197,7 @@ mod tests {
         };
         state.corridors.insert(fresh.id, fresh);
 
-        let app = router().with_state(state);
+        let app = test_app_with_state(state);
         let req = Request::builder()
             .method("GET")
             .uri("/v1/regulator/dashboard")
@@ -1194,7 +1226,7 @@ mod tests {
             let _ = engine.process_trigger(&trigger, "asset-123", None);
         }
 
-        let app = router().with_state(state);
+        let app = test_app_with_state(state);
         let req = Request::builder()
             .method("GET")
             .uri("/v1/regulator/dashboard")
@@ -1245,7 +1277,7 @@ mod tests {
         };
         state.corridors.insert(c.id, c.clone());
 
-        let app = router().with_state(state);
+        let app = test_app_with_state(state);
         let req = Request::builder()
             .method("GET")
             .uri("/v1/regulator/dashboard")

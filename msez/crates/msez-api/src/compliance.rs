@@ -238,6 +238,7 @@ mod tests {
             genesis_digest: None,
             compliance_status: AssetComplianceStatus::Unevaluated,
             metadata: serde_json::json!({}),
+            owner_entity_id: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };

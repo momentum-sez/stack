@@ -20,6 +20,7 @@ use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use msez_corridor::ReceiptChain;
+use msez_state::{DynCorridorState, TransitionRecord};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -116,24 +117,23 @@ impl<T: Clone + Send + Sync> Default for Store<T> {
 // NOT Mass primitive data. Mass primitives are accessed via msez-mass-client.
 
 /// Corridor record (API-layer representation).
+///
+/// Uses [`DynCorridorState`] from `msez-state` for the corridor state, ensuring
+/// only spec-aligned state names are representable. The transition log uses
+/// [`TransitionRecord`] which carries `Option<ContentDigest>` evidence.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CorridorRecord {
     pub id: Uuid,
     pub jurisdiction_a: String,
     pub jurisdiction_b: String,
-    pub state: String,
-    pub transition_log: Vec<CorridorTransitionEntry>,
+    /// Current corridor lifecycle state (DRAFT, PENDING, ACTIVE, HALTED, SUSPENDED, DEPRECATED).
+    #[schema(value_type = String)]
+    pub state: DynCorridorState,
+    /// Audit trail of state transitions with evidence digests.
+    #[schema(value_type = Vec<Object>)]
+    pub transition_log: Vec<TransitionRecord>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-/// Corridor transition log entry.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct CorridorTransitionEntry {
-    pub from_state: String,
-    pub to_state: String,
-    pub timestamp: DateTime<Utc>,
-    pub evidence_digest: Option<String>,
 }
 
 /// Smart asset record.
@@ -256,7 +256,7 @@ mod tests {
             id,
             jurisdiction_a: "PK-PSEZ".to_string(),
             jurisdiction_b: "AE-DIFC".to_string(),
-            state: "PENDING".to_string(),
+            state: DynCorridorState::Pending,
             transition_log: vec![],
             created_at: now,
             updated_at: now,
@@ -329,15 +329,15 @@ mod tests {
         store.insert(id, sample_corridor(id));
 
         let updated = store.update(&id, |c| {
-            c.state = "ACTIVE".to_string();
+            c.state = DynCorridorState::Active;
         });
 
         assert!(updated.is_some());
         let updated = updated.unwrap();
-        assert_eq!(updated.state, "ACTIVE");
+        assert_eq!(updated.state, DynCorridorState::Active);
 
         let fetched = store.get(&id).unwrap();
-        assert_eq!(fetched.state, "ACTIVE");
+        assert_eq!(fetched.state, DynCorridorState::Active);
     }
 
     #[test]
@@ -345,7 +345,7 @@ mod tests {
         let store: Store<CorridorRecord> = Store::new();
         let missing = Uuid::new_v4();
         let result = store.update(&missing, |c| {
-            c.state = "GHOST".to_string();
+            c.state = DynCorridorState::Active;
         });
         assert!(result.is_none());
     }

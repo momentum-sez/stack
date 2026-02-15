@@ -8,8 +8,7 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
-use sha2::{Digest as _, Sha256};
-
+use msez_core::digest::Sha256Accumulator;
 use msez_core::{CanonicalBytes, ContentDigest, JurisdictionId};
 
 use super::components::LicenseHolder;
@@ -152,24 +151,24 @@ impl Licensepack {
     /// Produces a deterministic SHA-256 hex string by canonicalizing all
     /// components in a fixed order (BTreeMap guarantees sorted iteration).
     pub fn compute_digest(&self) -> PackResult<String> {
-        let mut hasher = Sha256::new();
-        hasher.update(LICENSEPACK_DIGEST_PREFIX);
+        let mut acc = Sha256Accumulator::new();
+        acc.update(LICENSEPACK_DIGEST_PREFIX);
 
         // Add metadata
         if let Some(ref meta) = self.metadata {
             let meta_value = serde_json::to_value(meta)?;
             let meta_canonical = CanonicalBytes::from_value(meta_value)?;
-            hasher.update(meta_canonical.as_bytes());
-            hasher.update(b"\0");
+            acc.update(meta_canonical.as_bytes());
+            acc.update(b"\0");
         }
 
         // Add license types (sorted by key — BTreeMap guarantees this)
         for (type_id, lt) in &self.license_types {
             let lt_value = serde_json::to_value(lt)?;
             let lt_canonical = CanonicalBytes::from_value(lt_value)?;
-            hasher.update(format!("license-types/{type_id}\0").as_bytes());
-            hasher.update(lt_canonical.as_bytes());
-            hasher.update(b"\0");
+            acc.update(format!("license-types/{type_id}\0").as_bytes());
+            acc.update(lt_canonical.as_bytes());
+            acc.update(b"\0");
         }
 
         // Add licenses (sorted by key)
@@ -178,9 +177,9 @@ impl Licensepack {
             // which are added separately to match Python structure)
             let lic_value = serde_json::to_value(lic)?;
             let lic_canonical = CanonicalBytes::from_value(lic_value)?;
-            hasher.update(format!("licenses/{license_id}\0").as_bytes());
-            hasher.update(lic_canonical.as_bytes());
-            hasher.update(b"\0");
+            acc.update(format!("licenses/{license_id}\0").as_bytes());
+            acc.update(lic_canonical.as_bytes());
+            acc.update(b"\0");
 
             // Add conditions (sorted by condition_id)
             let mut sorted_conditions = lic.conditions.clone();
@@ -188,11 +187,11 @@ impl Licensepack {
             for cond in &sorted_conditions {
                 let cond_value = serde_json::to_value(cond)?;
                 let cond_canonical = CanonicalBytes::from_value(cond_value)?;
-                hasher.update(
+                acc.update(
                     format!("licenses/{license_id}/conditions/{}\0", cond.condition_id).as_bytes(),
                 );
-                hasher.update(cond_canonical.as_bytes());
-                hasher.update(b"\0");
+                acc.update(cond_canonical.as_bytes());
+                acc.update(b"\0");
             }
 
             // Add permissions (sorted by permission_id)
@@ -201,12 +200,12 @@ impl Licensepack {
             for perm in &sorted_permissions {
                 let perm_value = serde_json::to_value(perm)?;
                 let perm_canonical = CanonicalBytes::from_value(perm_value)?;
-                hasher.update(
+                acc.update(
                     format!("licenses/{license_id}/permissions/{}\0", perm.permission_id)
                         .as_bytes(),
                 );
-                hasher.update(perm_canonical.as_bytes());
-                hasher.update(b"\0");
+                acc.update(perm_canonical.as_bytes());
+                acc.update(b"\0");
             }
 
             // Add restrictions (sorted by restriction_id)
@@ -215,15 +214,15 @@ impl Licensepack {
             for rest in &sorted_restrictions {
                 let rest_value = serde_json::to_value(rest)?;
                 let rest_canonical = CanonicalBytes::from_value(rest_value)?;
-                hasher.update(
+                acc.update(
                     format!(
                         "licenses/{license_id}/restrictions/{}\0",
                         rest.restriction_id
                     )
                     .as_bytes(),
                 );
-                hasher.update(rest_canonical.as_bytes());
-                hasher.update(b"\0");
+                acc.update(rest_canonical.as_bytes());
+                acc.update(b"\0");
             }
         }
 
@@ -231,13 +230,12 @@ impl Licensepack {
         for (holder_id, holder) in &self.holders {
             let holder_value = serde_json::to_value(holder)?;
             let holder_canonical = CanonicalBytes::from_value(holder_value)?;
-            hasher.update(format!("holders/{holder_id}\0").as_bytes());
-            hasher.update(holder_canonical.as_bytes());
-            hasher.update(b"\0");
+            acc.update(format!("holders/{holder_id}\0").as_bytes());
+            acc.update(holder_canonical.as_bytes());
+            acc.update(b"\0");
         }
 
-        let result = hasher.finalize();
-        Ok(result.iter().map(|b| format!("{b:02x}")).collect())
+        Ok(acc.finalize_hex())
     }
 
     /// Compute delta from a previous licensepack.

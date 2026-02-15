@@ -146,6 +146,63 @@ pub fn sha256_digest(canonical: &CanonicalBytes) -> ContentDigest {
     }
 }
 
+/// Incremental SHA-256 accumulator for multi-part digest computation.
+///
+/// Use this for hash computations that combine multiple data chunks
+/// (e.g., domain-prefixed pack digests, directory content hashes).
+/// All SHA-256 computation in the SEZ Stack must flow through `msez-core`,
+/// either via [`sha256_digest`] for canonicalized structured data or via
+/// this accumulator for multi-part binary data.
+///
+/// # Example
+///
+/// ```
+/// use msez_core::digest::Sha256Accumulator;
+///
+/// let mut acc = Sha256Accumulator::new();
+/// acc.update(b"prefix\0");
+/// acc.update(b"content");
+/// let hex = acc.finalize_hex();
+/// assert_eq!(hex.len(), 64);
+/// ```
+pub struct Sha256Accumulator {
+    hasher: Sha256,
+}
+
+impl Sha256Accumulator {
+    /// Create a new empty accumulator.
+    pub fn new() -> Self {
+        Self {
+            hasher: Sha256::new(),
+        }
+    }
+
+    /// Feed data into the accumulator.
+    pub fn update(&mut self, data: &[u8]) {
+        Digest::update(&mut self.hasher, data);
+    }
+
+    /// Consume the accumulator and return a [`ContentDigest`].
+    pub fn finalize(self) -> ContentDigest {
+        let result = self.hasher.finalize();
+        ContentDigest {
+            algorithm: DigestAlgorithm::Sha256,
+            bytes: result.into(),
+        }
+    }
+
+    /// Consume the accumulator and return the hex-encoded digest string.
+    pub fn finalize_hex(self) -> String {
+        self.finalize().to_hex()
+    }
+}
+
+impl Default for Sha256Accumulator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Compute a SHA-256 hex digest of raw bytes.
 ///
 /// This is the **Tier 2** digest function for operations that legitimately
@@ -166,10 +223,9 @@ pub fn sha256_digest(canonical: &CanonicalBytes) -> ContentDigest {
 /// The only exception is streaming/multi-part hashing (e.g., `digest_dir`
 /// in `msez-cli`) where the `sha2` streaming API is needed directly.
 pub fn sha256_raw(data: &[u8]) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(data);
-    let result = hasher.finalize();
-    result.iter().map(|b| format!("{b:02x}")).collect()
+    let mut acc = Sha256Accumulator::new();
+    acc.update(data);
+    acc.finalize_hex()
 }
 
 /// Compute a Poseidon2 content digest from canonical bytes.

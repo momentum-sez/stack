@@ -28,7 +28,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
-use sha2::{Digest as _, Sha256};
+use msez_core::digest::Sha256Accumulator;
 
 use msez_core::{CanonicalBytes, ComplianceDomain, ContentDigest, JurisdictionId};
 
@@ -536,19 +536,19 @@ pub fn compute_regpack_digest(
     regulators: Option<&[RegulatorProfile]>,
     deadlines: Option<&[ComplianceDeadline]>,
 ) -> PackResult<String> {
-    let mut hasher = Sha256::new();
-    hasher.update(b"msez-regpack-v1\0");
+    let mut acc = Sha256Accumulator::new();
+    acc.update(b"msez-regpack-v1\0");
 
     // Add metadata
     let meta_value = serde_json::to_value(metadata)?;
     let meta_canonical = CanonicalBytes::from_value(meta_value)?;
-    hasher.update(meta_canonical.as_bytes());
+    acc.update(meta_canonical.as_bytes());
 
     // Add sanctions snapshot metadata
     if let Some(snap) = sanctions {
         let snap_value = serde_json::to_value(snap)?;
         let snap_canonical = CanonicalBytes::from_value(snap_value)?;
-        hasher.update(snap_canonical.as_bytes());
+        acc.update(snap_canonical.as_bytes());
     }
 
     // Add regulators (sorted by ID)
@@ -557,7 +557,7 @@ pub fn compute_regpack_digest(
         ids.sort();
         let reg_index = serde_json::json!({"regulators": ids});
         let reg_canonical = CanonicalBytes::from_value(reg_index)?;
-        hasher.update(reg_canonical.as_bytes());
+        acc.update(reg_canonical.as_bytes());
     }
 
     // Add deadlines
@@ -570,11 +570,10 @@ pub fn compute_regpack_digest(
             .collect();
         let dl_data = serde_json::json!({"deadlines": dl_values});
         let dl_canonical = CanonicalBytes::from_value(dl_data)?;
-        hasher.update(dl_canonical.as_bytes());
+        acc.update(dl_canonical.as_bytes());
     }
 
-    let result = hasher.finalize();
-    Ok(result.iter().map(|b| format!("{b:02x}")).collect())
+    Ok(acc.finalize_hex())
 }
 
 // ---------------------------------------------------------------------------

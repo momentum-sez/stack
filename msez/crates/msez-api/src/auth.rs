@@ -29,7 +29,7 @@ use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
 use utoipa::ToSchema;
 use uuid::Uuid;
-use zeroize::Zeroize;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::error::{AppError, ErrorBody, ErrorDetail};
 use crate::state::SmartAssetRecord;
@@ -39,9 +39,10 @@ use crate::state::SmartAssetRecord;
 /// A string that holds sensitive data (tokens, secrets) and is zeroed on drop.
 ///
 /// Prevents credential material from lingering in process memory after the
-/// value goes out of scope. Implements `Zeroize` + `Drop` for defense-in-depth
-/// against memory dump attacks. `Debug` and `Display` always print `[REDACTED]`.
-#[derive(Clone)]
+/// value goes out of scope. Uses `#[derive(Zeroize, ZeroizeOnDrop)]` for
+/// defense-in-depth against memory dump attacks. `Debug` and `Display`
+/// always print `[REDACTED]`.
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct SecretString(String);
 
 impl SecretString {
@@ -53,18 +54,6 @@ impl SecretString {
     /// Borrow the secret value. Use sparingly — only for comparison or hashing.
     pub fn expose(&self) -> &str {
         &self.0
-    }
-}
-
-impl Zeroize for SecretString {
-    fn zeroize(&mut self) {
-        self.0.zeroize();
-    }
-}
-
-impl Drop for SecretString {
-    fn drop(&mut self) {
-        self.zeroize();
     }
 }
 
@@ -198,20 +187,12 @@ pub fn require_role(caller: &CallerIdentity, minimum: Role) -> Result<(), AppErr
 
 /// Auth configuration injected into request extensions.
 ///
-/// The token is wrapped in [`SecretString`] which implements `Zeroize` on drop,
+/// The token is wrapped in [`SecretString`] which derives `Zeroize`/`ZeroizeOnDrop`,
 /// preventing credential material from lingering in process memory. `Debug`
-/// redacts the token value to prevent credential leakage in logs.
-#[derive(Clone)]
+/// on `SecretString` automatically redacts the value.
+#[derive(Clone, Debug)]
 pub struct AuthConfig {
     pub token: Option<SecretString>,
-}
-
-impl std::fmt::Debug for AuthConfig {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("AuthConfig")
-            .field("token", &self.token.as_ref().map(|_| "[REDACTED]"))
-            .finish()
-    }
 }
 
 // ── Token Validation ────────────────────────────────────────────────────────
@@ -303,7 +284,7 @@ pub async fn auth_middleware(mut request: Request, next: Next) -> Response {
 
     match expected_token {
         Some(AuthConfig {
-            token: Some(ref expected),
+            token: Some(ref expected_token),
         }) => {
             let auth_header = request
                 .headers()
@@ -313,7 +294,7 @@ pub async fn auth_middleware(mut request: Request, next: Next) -> Response {
             match auth_header {
                 Some(header_value) if header_value.starts_with("Bearer ") => {
                     let provided = &header_value[7..];
-                    match parse_bearer_token(provided, expected.expose()) {
+                    match parse_bearer_token(provided, expected_token.expose()) {
                         Ok(identity) => {
                             request.extensions_mut().insert(identity);
                             next.run(request).await

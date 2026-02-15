@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
 use clap::Args;
-
+use msez_core::digest::Sha256Accumulator;
 use msez_core::CanonicalBytes;
 
 /// Arguments for the `msez lock` subcommand.
@@ -333,8 +333,7 @@ fn sha256_of_bytes(bytes: &[u8]) -> String {
 /// Uses raw `sha2` streaming API since this is a multi-part hash over file
 /// paths and contents — not a canonical domain object.
 fn digest_dir(dir: &Path) -> Result<String> {
-    use sha2::{Digest, Sha256};
-    let mut hasher = Sha256::new();
+    let mut acc = Sha256Accumulator::new();
     let mut paths: Vec<PathBuf> = Vec::new();
 
     for entry in walkdir_recursive(dir) {
@@ -351,14 +350,13 @@ fn digest_dir(dir: &Path) -> Result<String> {
         let content = std::fs::read(&full)?;
         // Use forward slashes for cross-platform determinism.
         let path_str = rel_path.to_string_lossy().replace('\\', "/");
-        hasher.update(path_str.as_bytes());
-        hasher.update(b"\0");
-        hasher.update(&content);
-        hasher.update(b"\0");
+        acc.update(path_str.as_bytes());
+        acc.update(b"\0");
+        acc.update(&content);
+        acc.update(b"\0");
     }
 
-    let result = hasher.finalize();
-    Ok(result.iter().map(|b| format!("{b:02x}")).collect())
+    Ok(acc.finalize_hex())
 }
 
 /// Recursively walk a directory, returning all file paths sorted.

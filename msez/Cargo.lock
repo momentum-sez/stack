@@ -1362,7 +1362,6 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
- "sha2",
  "thiserror 1.0.69",
  "tracing",
  "uuid",
@@ -1432,7 +1431,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "sha2",
  "tempfile",
  "tracing",
  "tracing-subscriber",
@@ -1555,7 +1553,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "sha2",
  "tempfile",
  "thiserror 1.0.69",
  "tracing",
@@ -1596,7 +1593,6 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
- "sha2",
  "thiserror 1.0.69",
  "tracing",
 ]
@@ -1625,7 +1621,6 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
- "sha2",
  "thiserror 1.0.69",
 ]
 

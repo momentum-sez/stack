@@ -270,11 +270,13 @@ impl SanctionsChecker {
             }
         }
 
-        // Fuzzy match (only if no exact match)
+        // Fuzzy match (only if no exact match).
+        // SECURITY: must return ALL entries at or above threshold, not just the
+        // highest scorer. For sanctions screening, false negatives are dangerous.
         if max_score < 1.0 {
             for (norm_target, indices) in &self.name_index {
                 let score = Self::fuzzy_score(name, norm_target);
-                if score >= threshold && score > max_score {
+                if score >= threshold {
                     for &idx in indices {
                         matches.push(SanctionsMatch {
                             entry: self.entries[idx].clone(),

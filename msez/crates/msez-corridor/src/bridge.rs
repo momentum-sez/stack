@@ -210,7 +210,7 @@ impl CorridorBridge {
             if let Some(edges) = self.adjacency.get(&current_key) {
                 for (edge_idx, edge) in edges.iter().enumerate() {
                     let next_key = edge.to.as_str().to_string();
-                    let next_cost = cost + u64::from(edge.fee_bps);
+                    let next_cost = cost.saturating_add(u64::from(edge.fee_bps));
 
                     if next_cost < *dist.get(&next_key).unwrap_or(&u64::MAX) {
                         dist.insert(next_key.clone(), next_cost);
@@ -231,14 +231,20 @@ impl CorridorBridge {
         let mut hops = Vec::new();
         let mut current_key = target_key;
         while let Some((pred_key, edge_idx)) = prev.get(&current_key) {
-            let edge = &self.adjacency[pred_key][*edge_idx];
+            // Defensive: use .get() to avoid panic on missing key/index.
+            let Some(edges) = self.adjacency.get(pred_key) else {
+                break;
+            };
+            let Some(edge) = edges.get(*edge_idx) else {
+                break;
+            };
             hops.push(edge.clone());
             current_key = pred_key.clone();
         }
         hops.reverse();
 
-        let total_fee_bps: u64 = hops.iter().map(|h| u64::from(h.fee_bps)).sum();
-        let total_settlement_time_secs: u64 = hops.iter().map(|h| h.settlement_time_secs).sum();
+        let total_fee_bps: u64 = hops.iter().map(|h| u64::from(h.fee_bps)).fold(0u64, u64::saturating_add);
+        let total_settlement_time_secs: u64 = hops.iter().map(|h| h.settlement_time_secs).fold(0u64, u64::saturating_add);
 
         Some(BridgeRoute {
             hops,
@@ -277,7 +283,7 @@ impl CorridorBridge {
             if let Some(edges) = self.adjacency.get(&current_key) {
                 for edge in edges {
                     let next_key = edge.to.as_str().to_string();
-                    let next_cost = cost + u64::from(edge.fee_bps);
+                    let next_cost = cost.saturating_add(u64::from(edge.fee_bps));
                     if next_cost < *dist.get(&next_key).unwrap_or(&u64::MAX) {
                         dist.insert(next_key.clone(), next_cost);
                         heap.push(DijkstraNode {

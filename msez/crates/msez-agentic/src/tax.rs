@@ -1009,15 +1009,15 @@ pub fn generate_report(params: &ReportParams, results: &[WithholdingResult]) -> 
         let gross = parse_amount(&r.gross_amount).unwrap_or(0);
         let wht = parse_amount(&r.withholding_amount).unwrap_or(0);
 
-        total_gross_cents += gross;
-        total_wht_cents += wht;
+        total_gross_cents = total_gross_cents.saturating_add(gross);
+        total_wht_cents = total_wht_cents.saturating_add(wht);
 
         let entry = aggregated
             .entry(r.statutory_section.clone())
             .or_insert_with(|| (r.tax_category, 0, 0, 0, r.rate_percent.clone()));
-        entry.1 += 1;
-        entry.2 += gross;
-        entry.3 += wht;
+        entry.1 = entry.1.saturating_add(1);
+        entry.2 = entry.2.saturating_add(gross);
+        entry.3 = entry.3.saturating_add(wht);
     }
 
     let line_items: Vec<ReportLineItem> = aggregated
@@ -1152,10 +1152,10 @@ pub fn parse_amount(s: &str) -> Option<i64> {
             1
         };
 
-        Some(sign * (integer_part.abs() * 100 + frac_cents))
+        Some(sign.saturating_mul(integer_part.abs().saturating_mul(100).saturating_add(frac_cents)))
     } else {
         // No decimal point — treat as whole units, convert to cents.
-        s.parse::<i64>().ok().map(|v| v * 100)
+        s.parse::<i64>().ok().map(|v| v.saturating_mul(100))
     }
 }
 
@@ -1172,9 +1172,9 @@ fn parse_rate_bps(rate_str: &str) -> i64 {
             1 => frac_str.parse::<i64>().unwrap_or(0) * 10,
             _ => frac_str[..2].parse::<i64>().unwrap_or(0),
         };
-        integer_part * 100 + frac
+        integer_part.saturating_mul(100).saturating_add(frac)
     } else {
-        rate_str.parse::<i64>().unwrap_or(0) * 100
+        rate_str.parse::<i64>().unwrap_or(0).saturating_mul(100)
     }
 }
 

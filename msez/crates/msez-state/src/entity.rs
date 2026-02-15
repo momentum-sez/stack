@@ -347,7 +347,10 @@ impl Entity {
             }
             None => {
                 // Stage 10 completed → entity is dissolved.
+                // Clear dissolution_stage to prevent stale stage data
+                // on dissolved entities.
                 self.state = EntityLifecycleState::Dissolved;
+                self.dissolution_stage = None;
                 Ok(())
             }
         }

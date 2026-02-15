@@ -113,6 +113,20 @@ impl SlashingCondition {
         }
     }
 
+    /// The slash amount in basis points (10_000 = 100%).
+    ///
+    /// Uses integer arithmetic to avoid floating-point precision loss on
+    /// large bond values (>2^53). This is the method used for actual
+    /// slashing computation.
+    pub fn slash_bps(&self) -> u64 {
+        match self {
+            Self::Equivocation => 10_000,      // 100%
+            Self::AvailabilityFailure => 100,   // 1%
+            Self::FalseAttestation => 5_000,    // 50%
+            Self::Collusion => 10_000,          // 100%
+        }
+    }
+
     /// Whether this condition results in a permanent ban.
     pub fn causes_ban(&self) -> bool {
         matches!(self, Self::Collusion)
@@ -261,10 +275,12 @@ impl Watcher {
             });
         }
 
-        let slash_amount = ((self.bonded_stake as f64) * condition.slash_percentage()) as u64;
+        // Use integer basis-point arithmetic to avoid floating-point precision
+        // loss on large bond values (>2^53). u128 intermediate prevents overflow.
+        let slash_amount = (u128::from(self.bonded_stake) * u128::from(condition.slash_bps()) / 10_000) as u64;
         let actual_slash = slash_amount.min(self.available_stake());
-        self.slashed_amount += actual_slash;
-        self.slash_count += 1;
+        self.slashed_amount = self.slashed_amount.saturating_add(actual_slash);
+        self.slash_count = self.slash_count.saturating_add(1);
 
         if condition.causes_ban() {
             self.state = WatcherState::Banned;
@@ -292,7 +308,7 @@ impl Watcher {
                 available: 0,
             });
         }
-        self.bonded_stake += additional_stake;
+        self.bonded_stake = self.bonded_stake.saturating_add(additional_stake);
         self.state = WatcherState::Bonded;
         Ok(())
     }
@@ -332,7 +348,7 @@ impl Watcher {
 
     /// Record a successful attestation.
     pub fn record_attestation(&mut self) {
-        self.attestation_count += 1;
+        self.attestation_count = self.attestation_count.saturating_add(1);
     }
 }
 

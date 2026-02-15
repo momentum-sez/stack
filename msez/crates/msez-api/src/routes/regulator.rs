@@ -204,7 +204,7 @@ pub struct PolicyActivity {
     pub policy_count: usize,
     /// Number of audit trail entries.
     pub audit_trail_size: usize,
-    /// Most recent audit entries (up to 20).
+    /// Most recent audit entries (up to 50).
     pub recent_entries: Vec<AuditEntrySummary>,
 }
 

@@ -14,7 +14,11 @@
 //! | `/v1/ownership/*`     | [`routes::mass_proxy`]     | Ownership (orchestrated) |
 //! | `/v1/fiscal/*`        | [`routes::mass_proxy`]     | Fiscal (orchestrated) |
 //! | `/v1/identity/*`      | [`routes::mass_proxy`]     | Identity (orchestrated) |
+//! | `/v1/identity/cnic/*` | [`routes::identity`]       | NADRA CNIC verification |
+//! | `/v1/identity/ntn/*`  | [`routes::identity`]       | FBR IRIS NTN verification |
+//! | `/v1/identity/entity/*` | [`routes::identity`]     | Consolidated identity |
 //! | `/v1/consent/*`       | [`routes::mass_proxy`]     | Consent (orchestrated) |
+//! | `/v1/tax/*`           | [`routes::tax`]            | Tax pipeline (SEZ)  |
 //! | `/v1/corridors/*`     | [`routes::corridors`]      | Corridors (SEZ)     |
 //! | `/v1/assets/*`        | [`routes::smart_assets`]   | Smart Assets (SEZ)  |
 //! | `/v1/assets/*/credentials/*` | [`routes::credentials`] | VC Issuance (SEZ) |
@@ -77,6 +81,12 @@ pub fn app(state: AppState) -> Router {
     let api = Router::new()
         // Mass API proxy (all five primitives via Mass client)
         .merge(routes::mass_proxy::router())
+        // Identity orchestration — P1-005: CNIC/NTN verification,
+        // consolidated entity identity, service status.
+        .merge(routes::identity::router())
+        // Tax collection pipeline — P1-009: withholding computation,
+        // tax event recording, FBR IRIS reporting.
+        .merge(routes::tax::router())
         // SEZ Stack native routes (genuinely this codebase's domain)
         .merge(routes::corridors::router())
         .merge(routes::settlement::router())
@@ -84,7 +94,6 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::credentials::router())
         .merge(routes::regulator::router())
         .merge(routes::agentic::router())
-        .merge(routes::tax::router())
         .merge(openapi::router())
         .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
         .layer(from_fn(auth::auth_middleware))

@@ -22,6 +22,7 @@ async fn test_client(mock_server: &MockServer) -> MassClient {
         investment_info_url: "http://127.0.0.1:19001".parse().unwrap(),
         treasury_info_url: "http://127.0.0.1:19002".parse().unwrap(),
         consent_info_url: "http://127.0.0.1:19003".parse().unwrap(),
+        identity_info_url: None,
         templating_engine_url: mock_server.uri().parse().unwrap(),
         api_token: "test-token".into(),
         timeout_secs: 5,

@@ -923,10 +923,28 @@ pub fn extended_policies() -> BTreeMap<String, Policy> {
         .with_priority(55),
     );
 
-    // === Tax Collection Pipeline Policies ===
+    // === Tax Collection Pipeline Policies (P1-009) ===
     //
     // These policies implement the tax pipeline's reactive behavior:
     // tax year end → compliance evaluation, withholding due → execute withholding.
+
+    policies.insert(
+        "tax_year_end_halt".into(),
+        Policy::new(
+            "tax_year_end_halt",
+            TriggerType::TaxYearEnd,
+            PolicyAction::Halt,
+        )
+        .with_description(
+            "Halt asset operations at tax year end until annual assessment completes",
+        )
+        .with_condition(Condition::Equals {
+            field: "assessment_status".into(),
+            value: serde_json::Value::String("pending".into()),
+        })
+        .with_authorization(AuthorizationRequirement::Quorum)
+        .with_priority(75),
+    );
 
     policies.insert(
         "tax_year_end_assessment".into(),
@@ -977,6 +995,24 @@ pub fn extended_policies() -> BTreeMap<String, Policy> {
         })
         .with_authorization(AuthorizationRequirement::Quorum)
         .with_priority(85),
+    );
+
+    policies.insert(
+        "withholding_high_value_quorum".into(),
+        Policy::new(
+            "withholding_high_value_quorum",
+            TriggerType::WithholdingDue,
+            PolicyAction::UpdateManifest,
+        )
+        .with_description(
+            "Require quorum approval for withholding on high-value transactions (>10M PKR)",
+        )
+        .with_condition(Condition::Threshold {
+            field: "transaction_amount".into(),
+            threshold: serde_json::json!(10_000_000),
+        })
+        .with_authorization(AuthorizationRequirement::Quorum)
+        .with_priority(90),
     );
 
     policies
@@ -1149,7 +1185,7 @@ mod tests {
 
     #[test]
     fn extended_policies_count() {
-        assert!(extended_policies().len() >= 10);
+        assert!(extended_policies().len() >= 15);
     }
 
     #[test]

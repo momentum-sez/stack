@@ -21,6 +21,14 @@ pub struct MassApiConfig {
     pub treasury_info_url: Url,
     /// Base URL for consent-info (CONSENT primitive).
     pub consent_info_url: Url,
+    /// Base URL for a dedicated identity-info service (IDENTITY primitive).
+    ///
+    /// When `Some`, the `IdentityClient` routes requests to this dedicated
+    /// service instead of splitting across consent-info and organization-info.
+    /// This field supports the migration path from the current split architecture
+    /// to a dedicated `identity-info.api.mass.inc` recommended for the Pakistan
+    /// GovOS deployment (see CLAUDE.md §II, P1-005).
+    pub identity_info_url: Option<Url>,
     /// Base URL for templating-engine.
     pub templating_engine_url: Url,
     /// Bearer token for API authentication.
@@ -36,6 +44,7 @@ impl std::fmt::Debug for MassApiConfig {
             .field("investment_info_url", &self.investment_info_url)
             .field("treasury_info_url", &self.treasury_info_url)
             .field("consent_info_url", &self.consent_info_url)
+            .field("identity_info_url", &self.identity_info_url)
             .field("templating_engine_url", &self.templating_engine_url)
             .field("api_token", &"[REDACTED]")
             .field("timeout_secs", &self.timeout_secs)
@@ -51,11 +60,20 @@ impl MassApiConfig {
     /// - `MASS_INVESTMENT_INFO_URL` (default: `https://investment-info-production-4f3779c81425.herokuapp.com`)
     /// - `MASS_TREASURY_INFO_URL` (default: `https://treasury-info.api.mass.inc`)
     /// - `MASS_CONSENT_INFO_URL` (default: `https://consent.api.mass.inc`)
+    /// - `MASS_IDENTITY_INFO_URL` (optional — dedicated identity-info service)
     /// - `MASS_TEMPLATING_URL` (default: `https://templating-engine-prod-5edc768c1f80.herokuapp.com`)
     /// - `MASS_API_TOKEN` (required)
     /// - `MASS_TIMEOUT_SECS` (default: 30)
     pub fn from_env() -> Result<Self, ConfigError> {
         let api_token = std::env::var("MASS_API_TOKEN").map_err(|_| ConfigError::MissingToken)?;
+
+        let identity_info_url = match std::env::var("MASS_IDENTITY_INFO_URL") {
+            Ok(raw) => Some(
+                Url::parse(&raw)
+                    .map_err(|e| ConfigError::InvalidUrl("MASS_IDENTITY_INFO_URL".into(), e.to_string()))?,
+            ),
+            Err(_) => None,
+        };
 
         Ok(Self {
             organization_info_url: env_url(
@@ -71,6 +89,7 @@ impl MassApiConfig {
                 "https://treasury-info.api.mass.inc",
             )?,
             consent_info_url: env_url("MASS_CONSENT_INFO_URL", "https://consent.api.mass.inc")?,
+            identity_info_url,
             templating_engine_url: env_url(
                 "MASS_TEMPLATING_URL",
                 "https://templating-engine-prod-5edc768c1f80.herokuapp.com",
@@ -99,6 +118,7 @@ impl MassApiConfig {
             investment_info_url: make_url(base_port + 1)?,
             treasury_info_url: make_url(base_port + 2)?,
             consent_info_url: make_url(base_port + 3)?,
+            identity_info_url: None,
             templating_engine_url: make_url(base_port + 4)?,
             api_token: token.to_string(),
             timeout_secs: 5,

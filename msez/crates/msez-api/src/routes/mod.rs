@@ -6,6 +6,10 @@
 //!   (entities, ownership, fiscal, identity, consent). Write endpoints compose
 //!   compliance tensor evaluation + Mass API delegation + VC issuance. Read
 //!   endpoints proxy through to Mass APIs via `msez-mass-client`.
+//! - `identity` — Identity orchestration endpoints (CNIC/NTN verification,
+//!   consolidated identity views) — P1-005.
+//! - `tax` — Tax collection pipeline (withholding computation, FBR IRIS
+//!   reporting, tax event recording) — P1-009.
 //! - `corridors` — Cross-border corridor lifecycle (SEZ Stack domain).
 //! - `smart_assets` — Smart asset lifecycle (SEZ Stack domain).
 //! - `credentials` — VC issuance on compliance evaluation, VC verification.
@@ -18,6 +22,7 @@
 pub mod agentic;
 pub mod corridors;
 pub mod credentials;
+pub mod identity;
 pub mod mass_proxy;
 pub mod regulator;
 pub mod settlement;

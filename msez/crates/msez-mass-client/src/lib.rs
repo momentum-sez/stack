@@ -84,11 +84,13 @@ impl MassClient {
                 config.investment_info_url,
             ),
             fiscal: fiscal::FiscalClient::new(http.clone(), config.treasury_info_url),
-            // Identity: aggregation facade across org-info and consent-info.
+            // Identity: aggregation facade across org-info and consent-info,
+            // with optional dedicated identity-info service for Pakistan GovOS (P1-005).
             identity: identity::IdentityClient::new(
                 http.clone(),
                 config.organization_info_url,
                 config.consent_info_url.clone(),
+                config.identity_info_url,
             ),
             consent: consent::ConsentClient::new(
                 http.clone(),

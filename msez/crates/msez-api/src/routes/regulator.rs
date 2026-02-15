@@ -31,10 +31,34 @@ pub struct QueryAttestationsRequest {
     pub attestation_type: Option<String>,
     #[serde(default)]
     pub status: Option<String>,
+    /// Maximum number of results to return (default: 100, max: 1000).
+    #[serde(default)]
+    pub limit: Option<usize>,
+    /// Number of results to skip (default: 0).
+    #[serde(default)]
+    pub offset: Option<usize>,
 }
+
+const DEFAULT_QUERY_LIMIT: usize = 100;
+const MAX_QUERY_LIMIT: usize = 1000;
 
 impl Validate for QueryAttestationsRequest {
     fn validate(&self) -> Result<(), String> {
+        if let Some(limit) = self.limit {
+            if limit > MAX_QUERY_LIMIT {
+                return Err(format!("limit must be <= {MAX_QUERY_LIMIT}"));
+            }
+        }
+        if let Some(ref jid) = self.jurisdiction_id {
+            if jid.len() > 255 {
+                return Err("jurisdiction_id must not exceed 255 characters".to_string());
+            }
+        }
+        if let Some(ref at) = self.attestation_type {
+            if at.len() > 255 {
+                return Err("attestation_type must not exceed 255 characters".to_string());
+            }
+        }
         Ok(())
     }
 }
@@ -42,7 +66,10 @@ impl Validate for QueryAttestationsRequest {
 /// Query results response.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct QueryResultsResponse {
+    /// Number of results in this page.
     pub count: usize,
+    /// Total number of matching results (before pagination).
+    pub total: usize,
     pub results: Vec<AttestationRecord>,
 }
 
@@ -247,10 +274,15 @@ async fn query_attestations(
         })
         .collect();
 
-    let count = filtered.len();
+    let total = filtered.len();
+    let limit = req.limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT);
+    let offset = req.offset.unwrap_or(0);
+    let page: Vec<_> = filtered.into_iter().skip(offset).take(limit).collect();
+    let count = page.len();
     Ok(Json(QueryResultsResponse {
         count,
-        results: filtered,
+        total,
+        results: page,
     }))
 }
 
@@ -485,6 +517,8 @@ mod tests {
             entity_id: None,
             attestation_type: None,
             status: None,
+            limit: None,
+            offset: None,
         };
         assert!(req.validate().is_ok());
     }
@@ -496,6 +530,8 @@ mod tests {
             entity_id: Some(uuid::Uuid::new_v4()),
             attestation_type: Some("identity_verification".to_string()),
             status: Some("ACTIVE".to_string()),
+            limit: None,
+            offset: None,
         };
         assert!(req.validate().is_ok());
     }
@@ -507,8 +543,23 @@ mod tests {
             entity_id: None,
             attestation_type: None,
             status: Some("PENDING".to_string()),
+            limit: None,
+            offset: None,
         };
         assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_query_attestations_request_limit_too_high() {
+        let req = QueryAttestationsRequest {
+            jurisdiction_id: None,
+            entity_id: None,
+            attestation_type: None,
+            status: None,
+            limit: Some(5000),
+            offset: None,
+        };
+        assert!(req.validate().is_err());
     }
 
     // ── Router construction ───────────────────────────────────────
@@ -910,6 +961,7 @@ mod tests {
     fn query_results_response_serialization() {
         let resp = QueryResultsResponse {
             count: 0,
+            total: 0,
             results: vec![],
         };
         let json = serde_json::to_string(&resp).unwrap();

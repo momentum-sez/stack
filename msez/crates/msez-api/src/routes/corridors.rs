@@ -56,6 +56,12 @@ impl Validate for CreateCorridorRequest {
         if self.jurisdiction_a.trim().is_empty() || self.jurisdiction_b.trim().is_empty() {
             return Err("both jurisdiction IDs must be non-empty".to_string());
         }
+        if self.jurisdiction_a.len() > 255 {
+            return Err("jurisdiction_a must not exceed 255 characters".to_string());
+        }
+        if self.jurisdiction_b.len() > 255 {
+            return Err("jurisdiction_b must not exceed 255 characters".to_string());
+        }
         if self.jurisdiction_a == self.jurisdiction_b {
             return Err("jurisdiction_a and jurisdiction_b must differ".to_string());
         }
@@ -321,8 +327,13 @@ async fn transition_corridor(
         AppError::Validation(format!("unknown state: '{}'", req.target_state))
     })?;
 
-    // Parse evidence digest upfront (before acquiring the lock).
+    // Parse and validate evidence digest upfront (before acquiring the lock).
     let evidence_digest = if let Some(ref hex) = req.evidence_digest {
+        if hex.len() != 64 {
+            return Err(AppError::Validation(
+                "evidence_digest must be exactly 64 hex characters (SHA-256)".to_string(),
+            ));
+        }
         Some(
             ContentDigest::from_hex(hex)
                 .map_err(|e| AppError::Validation(format!("invalid evidence_digest: {e}")))?,

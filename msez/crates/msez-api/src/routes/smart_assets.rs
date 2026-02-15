@@ -32,8 +32,14 @@ impl Validate for CreateAssetRequest {
         if self.asset_type.trim().is_empty() {
             return Err("asset_type must not be empty".to_string());
         }
+        if self.asset_type.len() > 255 {
+            return Err("asset_type must not exceed 255 characters".to_string());
+        }
         if self.jurisdiction_id.trim().is_empty() {
             return Err("jurisdiction_id must not be empty".to_string());
+        }
+        if self.jurisdiction_id.len() > 255 {
+            return Err("jurisdiction_id must not exceed 255 characters".to_string());
         }
         Ok(())
     }
@@ -55,6 +61,17 @@ pub struct ComplianceEvalRequest {
 
 impl Validate for ComplianceEvalRequest {
     fn validate(&self) -> Result<(), String> {
+        const MAX_ATTESTATIONS: usize = 100;
+        if self.attestations.len() > MAX_ATTESTATIONS {
+            return Err(format!(
+                "attestations must not exceed {MAX_ATTESTATIONS} entries"
+            ));
+        }
+        for key in self.attestations.keys() {
+            if key.len() > 100 {
+                return Err("attestation domain name must not exceed 100 characters".to_string());
+            }
+        }
         Ok(())
     }
 }

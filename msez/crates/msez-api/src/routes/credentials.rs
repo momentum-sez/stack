@@ -137,6 +137,21 @@ async fn issue_compliance_credential(
     let req: ComplianceCredentialRequest = serde_json::from_value(body.0)
         .map_err(|e| AppError::BadRequest(format!("invalid request body: {e}")))?;
 
+    // Validate attestation bounds.
+    const MAX_ATTESTATIONS: usize = 100;
+    if req.attestations.len() > MAX_ATTESTATIONS {
+        return Err(AppError::Validation(format!(
+            "attestations must not exceed {MAX_ATTESTATIONS} entries"
+        )));
+    }
+    for key in req.attestations.keys() {
+        if key.len() > 100 {
+            return Err(AppError::Validation(
+                "attestation domain name must not exceed 100 characters".to_string(),
+            ));
+        }
+    }
+
     // ── Act 1: Evaluate ─────────────────────────────────────────
     let asset = state
         .smart_assets

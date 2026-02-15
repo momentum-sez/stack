@@ -52,6 +52,14 @@ impl Validate for TriggerRequest {
         if self.trigger_type.trim().is_empty() {
             return Err("trigger_type must not be empty".to_string());
         }
+        if self.trigger_type.len() > 255 {
+            return Err("trigger_type must not exceed 255 characters".to_string());
+        }
+        if let Some(ref j) = self.jurisdiction {
+            if j.len() > 255 {
+                return Err("jurisdiction must not exceed 255 characters".to_string());
+            }
+        }
         Ok(())
     }
 }
@@ -124,12 +132,8 @@ async fn submit_trigger(
     ))
     .map_err(|_| {
         AppError::Validation(format!(
-            "unknown trigger type: '{}'. Valid types: {:?}",
+            "unknown trigger type: '{}'",
             req.trigger_type,
-            TriggerType::all()
-                .iter()
-                .map(|t| t.as_str())
-                .collect::<Vec<_>>(),
         ))
     })?;
 

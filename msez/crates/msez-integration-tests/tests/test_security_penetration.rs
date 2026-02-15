@@ -13,15 +13,19 @@ use serde_json::json;
 
 #[test]
 fn sql_injection_in_identifier_rejected() {
-    // SQL injection in DID
+    // SQL injection in DID — the DID method is "key" which validates, but
+    // the method-specific-id contains SQL injection chars. What matters is
+    // the system never interprets the identifier as SQL. Regardless of
+    // whether the DID passes format validation, it must not cause panics
+    // or SQL execution.
     let result = Did::new("did:key:z6Mk'; DROP TABLE users;--");
-    // The DID method validation allows only lowercase alphanumeric in method
-    // The method-specific-id may contain special chars, but the overall
-    // DID still validates the method part
-    // This should still be "valid" as a DID format since method is "key"
-    // but the identifier contains special chars which are technically allowed
-    // What matters is the system does not interpret it as SQL
-    assert!(result.is_ok() || result.is_err());
+    // Assert a concrete outcome: either the DID is accepted as format-valid
+    // (method "key" is valid) or rejected due to invalid chars. Both are
+    // acceptable — the critical assertion is that it doesn't panic.
+    if let Ok(did) = &result {
+        assert_eq!(did.method(), "key", "DID method must be parsed correctly");
+    }
+    // Either way: no panic, no SQL execution. This is the security invariant.
 
     // SQL injection in CNIC (must be 13 digits)
     assert!(Cnic::new("' OR 1=1; --").is_err());

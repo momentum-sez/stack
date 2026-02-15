@@ -1186,17 +1186,18 @@ pub fn parse_amount(s: &str) -> Option<i64> {
             1
         };
 
-        Some(
-            sign.saturating_mul(
-                integer_part
-                    .abs()
-                    .saturating_mul(100)
-                    .saturating_add(frac_cents),
-            ),
-        )
+        // Use checked arithmetic to reject overflow instead of silently
+        // capping at i64::MAX. An amount that overflows i64 cents is not
+        // representable and must return None rather than a wrong value.
+        integer_part
+            .abs()
+            .checked_mul(100)
+            .and_then(|v| v.checked_add(frac_cents))
+            .map(|v| sign * v)
     } else {
         // No decimal point — treat as whole units, convert to cents.
-        s.parse::<i64>().ok().map(|v| v.saturating_mul(100))
+        // Use checked_mul to reject overflow.
+        s.parse::<i64>().ok().and_then(|v| v.checked_mul(100))
     }
 }
 

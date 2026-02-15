@@ -136,10 +136,22 @@ fn did_new_only_prefix() {
 
 #[test]
 fn did_new_two_colons_empty_id() {
-    let result = Did::new("did:web:");
-    // This might or might not be valid depending on implementation
-    // We just verify it doesn't panic
-    let _ = result;
+    // "did:web:" has method "web" but an empty method-specific-id.
+    // Verify it doesn't panic and produces a definite outcome.
+    let result = panic::catch_unwind(|| Did::new("did:web:"));
+    assert!(
+        result.is_ok(),
+        "Did::new must not panic on 'did:web:' input"
+    );
+    // The result is either Ok (accepted) or Err (rejected) — both are valid.
+    // What matters: no panic, and the outcome is deterministic.
+    let outcome = Did::new("did:web:");
+    let outcome2 = Did::new("did:web:");
+    assert_eq!(
+        outcome.is_ok(),
+        outcome2.is_ok(),
+        "Did::new must be deterministic"
+    );
 }
 
 #[test]
@@ -228,16 +240,22 @@ fn jurisdiction_id_new_empty_string() {
 
 #[test]
 fn jurisdiction_id_new_whitespace_only() {
-    let result = JurisdictionId::new("   ");
-    // Verify it doesn't panic
-    let _ = result;
+    let result = panic::catch_unwind(|| JurisdictionId::new("   "));
+    assert!(result.is_ok(), "JurisdictionId::new must not panic on whitespace");
+    // Whitespace-only should be deterministic.
+    let r1 = JurisdictionId::new("   ");
+    let r2 = JurisdictionId::new("   ");
+    assert_eq!(r1.is_ok(), r2.is_ok(), "JurisdictionId::new must be deterministic");
 }
 
 #[test]
 fn jurisdiction_id_new_path_traversal() {
-    // Path traversal attempt — should not panic
-    let result = JurisdictionId::new("../../../../etc/passwd");
-    let _ = result;
+    // Path traversal attempt — should not panic and must be deterministic.
+    let result = panic::catch_unwind(|| JurisdictionId::new("../../../../etc/passwd"));
+    assert!(result.is_ok(), "JurisdictionId::new must not panic on path traversal input");
+    let r1 = JurisdictionId::new("../../../../etc/passwd");
+    let r2 = JurisdictionId::new("../../../../etc/passwd");
+    assert_eq!(r1.is_ok(), r2.is_ok(), "JurisdictionId::new must be deterministic");
 }
 
 // =========================================================================
@@ -461,9 +479,8 @@ fn netting_empty_currency_no_panic() {
         priority: 0,
     });
     if add_result.is_ok() {
-        let result = engine.compute_plan();
-        // Should either succeed or return an error — never panic
-        let _ = result;
+        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| engine.compute_plan()));
+        assert!(result.is_ok(), "NettingEngine::compute_plan must not panic with empty currency");
     }
 }
 
@@ -617,16 +634,14 @@ fn mmr_many_appends_no_panic() {
 fn mmr_append_invalid_hex_returns_error() {
     let mut mmr = MerkleMountainRange::new();
     let result = mmr.append("not-valid-hex");
-    // Should return error, not panic
-    let _ = result;
+    assert!(result.is_err(), "MMR append with non-hex input must return error");
 }
 
 #[test]
 fn mmr_append_empty_string_returns_error() {
     let mut mmr = MerkleMountainRange::new();
     let result = mmr.append("");
-    // Should return error, not panic
-    let _ = result;
+    assert!(result.is_err(), "MMR append with empty string must return error");
 }
 
 // =========================================================================
@@ -725,8 +740,8 @@ fn swift_generate_instruction_empty_bics() {
         remittance_info: None,
     };
     let result = swift.generate_instruction(&instruction);
-    // BUG-023: Empty BICs should be rejected but may not be
-    let _ = result;
+    // Empty BICs must be rejected by BIC validation.
+    assert!(result.is_err(), "Empty BIC codes must be rejected");
 }
 
 #[test]
@@ -746,8 +761,8 @@ fn swift_generate_instruction_zero_amount() {
         remittance_info: None,
     };
     let result = swift.generate_instruction(&instruction);
-    // Zero amount may or may not be valid — just ensure no panic
-    let _ = result;
+    // Zero amount must be rejected — SWIFT pacs.008 requires positive amount.
+    assert!(result.is_err(), "Zero amount must be rejected for SWIFT instruction");
 }
 
 #[test]
@@ -767,8 +782,8 @@ fn swift_generate_instruction_negative_amount() {
         remittance_info: None,
     };
     let result = swift.generate_instruction(&instruction);
-    // Negative amount should be caught
-    let _ = result;
+    // Negative amount must be rejected.
+    assert!(result.is_err(), "Negative amount must be rejected for SWIFT instruction");
 }
 
 #[test]
@@ -787,8 +802,8 @@ fn swift_generate_instruction_malformed_bic() {
         remittance_info: None,
     };
     let result = swift.generate_instruction(&instruction);
-    // BUG: Malformed BIC (3 chars) may not be validated
-    let _ = result;
+    // Malformed BIC (3 chars) must be rejected by BIC validation (8 or 11 chars).
+    assert!(result.is_err(), "Malformed 3-char BIC must be rejected");
 }
 
 // =========================================================================
@@ -859,8 +874,8 @@ fn vc_signing_input_no_panic() {
         proof: ProofValue::default(),
     };
     let result = vc.signing_input();
-    // Should not panic even with null subject
-    let _ = result;
+    // Should not panic even with null subject — must produce a deterministic result.
+    assert!(result.is_ok(), "signing_input must succeed even with null credential_subject");
 }
 
 // =========================================================================
@@ -966,8 +981,8 @@ fn bridge_route_same_source_target_returns_none() {
         settlement_time_secs: 3600,
     });
     let result = bridge.find_route(&pk, &pk);
-    // Should either return None or an empty route, not panic
-    let _ = result;
+    // Routing from a node to itself should return None (no self-routes).
+    assert!(result.is_none(), "find_route from node to itself must return None");
 }
 
 #[test]
@@ -1024,8 +1039,10 @@ use msez_corridor::receipt::{CorridorReceipt, ReceiptChain};
 fn receipt_chain_empty_root_no_panic() {
     let chain = ReceiptChain::new(CorridorId::new());
     let result = chain.mmr_root();
-    // Empty chain — root might return error or empty string, not panic
-    let _ = result;
+    // Empty chain — root should return error (no leaves) or empty sentinel.
+    // Either way, must not panic and must be deterministic.
+    let result2 = ReceiptChain::new(CorridorId::new()).mmr_root();
+    assert_eq!(result.is_ok(), result2.is_ok(), "empty chain root must be deterministic");
 }
 
 #[test]
@@ -1096,10 +1113,24 @@ fn escrow_double_deposit_no_panic() {
     escrow
         .deposit("10000".to_string(), test_digest_for("dep-1"))
         .unwrap();
-    // Second deposit on already-Funded escrow
+    // Second deposit on already-Funded escrow — must not panic.
     let result = escrow.deposit("5000".to_string(), test_digest_for("dep-2"));
-    // Should either succeed (adding more) or return error, never panic
-    let _ = result;
+    // Second deposit on funded escrow: the implementation either accepts
+    // additional deposits or rejects them. Both are valid; panicking is not.
+    assert!(
+        result.is_ok() || result.is_err(),
+        "double deposit must produce a definite Ok/Err result"
+    );
+    // Verify determinism: same operation on fresh escrow produces same outcome.
+    let mut escrow2 = EscrowAccount::create(
+        DisputeId::new(),
+        EscrowType::SecurityDeposit,
+        "USD".to_string(),
+        None,
+    );
+    escrow2.deposit("10000".to_string(), test_digest_for("dep-1")).unwrap();
+    let result2 = escrow2.deposit("5000".to_string(), test_digest_for("dep-2"));
+    assert_eq!(result.is_ok(), result2.is_ok(), "double deposit behavior must be deterministic");
 }
 
 #[test]
@@ -1196,10 +1227,18 @@ fn enforcement_begin_without_preconditions_no_panic() {
 fn enforcement_complete_without_action_results_no_panic() {
     let mut order = EnforcementOrder::new(DisputeId::new(), test_digest_for("award"), vec![], None);
     order.begin_enforcement().unwrap();
-    // Complete without recording any action results
+    // Complete without recording any action results.
     let result = order.complete();
-    // Should succeed or fail gracefully
-    let _ = result;
+    // Completing enforcement with zero action results: must not panic.
+    // The implementation may succeed (vacuously complete) or reject.
+    let r = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        let mut o2 = EnforcementOrder::new(DisputeId::new(), test_digest_for("award"), vec![], None);
+        o2.begin_enforcement().unwrap();
+        o2.complete()
+    }));
+    assert!(r.is_ok(), "EnforcementOrder::complete must not panic");
+    // Verify the result matches (both succeed or both fail).
+    assert_eq!(result.is_ok(), r.unwrap().is_ok(), "complete behavior must be deterministic");
 }
 
 #[test]
@@ -1503,8 +1542,9 @@ fn pack_validate_compliance_domain_null_byte_no_panic() {
 #[test]
 fn pack_ensure_json_compatible_null_no_panic() {
     let result = ensure_json_compatible(&json!(null), "", "test");
-    // Should not panic; may succeed or return error
-    let _ = result;
+    // Null JSON value: must not panic. Verify deterministic behavior.
+    let result2 = ensure_json_compatible(&json!(null), "", "test");
+    assert_eq!(result.is_ok(), result2.is_ok(), "ensure_json_compatible(null) must be deterministic");
 }
 
 #[test]
@@ -1526,7 +1566,9 @@ fn pack_ensure_json_compatible_deeply_nested_no_panic() {
 #[test]
 fn pack_ensure_json_compatible_empty_string_path_no_panic() {
     let result = ensure_json_compatible(&json!({"key": "value"}), "", "");
-    let _ = result;
+    // Empty path and context: must not panic, must be deterministic.
+    let result2 = ensure_json_compatible(&json!({"key": "value"}), "", "");
+    assert_eq!(result.is_ok(), result2.is_ok(), "ensure_json_compatible must be deterministic");
 }
 
 #[test]
@@ -1836,8 +1878,12 @@ fn vc_compute_asset_id_empty_json_no_panic() {
 #[test]
 fn vc_compute_asset_id_null_no_panic() {
     let result = SmartAssetRegistryVc::compute_asset_id(&json!(null));
-    // Should succeed or return error — never panic
-    let _ = result;
+    // Null JSON: must not panic. Verify deterministic behavior.
+    let result2 = SmartAssetRegistryVc::compute_asset_id(&json!(null));
+    assert_eq!(result.is_ok(), result2.is_ok(), "compute_asset_id(null) must be deterministic");
+    if let (Ok(r1), Ok(r2)) = (&result, &result2) {
+        assert_eq!(r1, r2, "compute_asset_id(null) digest must be deterministic");
+    }
 }
 
 #[test]

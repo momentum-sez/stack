@@ -16,7 +16,7 @@ use crate::auth::CallerIdentity;
 use crate::compliance::{apply_attestations, build_evaluation_result, build_tensor, AttestationInput};
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
-use crate::state::{AppState, AssetComplianceStatus, SmartAssetRecord};
+use crate::state::{AppState, AssetComplianceStatus, AssetStatus, SmartAssetRecord};
 use axum::extract::rejection::JsonRejection;
 
 /// Request to create a smart asset genesis.
@@ -144,7 +144,7 @@ async fn create_asset(
         id,
         asset_type: req.asset_type,
         jurisdiction_id: req.jurisdiction_id,
-        status: "GENESIS".to_string(),
+        status: AssetStatus::Genesis,
         genesis_digest: None,
         compliance_status: AssetComplianceStatus::Unevaluated,
         metadata: req.metadata,
@@ -469,7 +469,7 @@ mod tests {
         let record: SmartAssetRecord = body_json(resp).await;
         assert_eq!(record.asset_type, "bond");
         assert_eq!(record.jurisdiction_id, "PK-PSEZ");
-        assert_eq!(record.status, "GENESIS");
+        assert_eq!(record.status, AssetStatus::Genesis);
         assert!(record.genesis_digest.is_none());
         assert_eq!(record.compliance_status, AssetComplianceStatus::Unevaluated);
     }

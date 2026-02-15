@@ -18,7 +18,9 @@ use crate::auth::{require_role, CallerIdentity, Role};
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
 use crate::middleware::metrics::ApiMetrics;
-use crate::state::{AppState, AssetComplianceStatus, AttestationRecord};
+use crate::state::{AppState, AssetComplianceStatus, AttestationRecord, AttestationStatus};
+#[cfg(test)]
+use crate::state::AssetStatus;
 use axum::extract::rejection::JsonRejection;
 
 /// Query attestations request.
@@ -31,7 +33,7 @@ pub struct QueryAttestationsRequest {
     #[serde(default)]
     pub attestation_type: Option<String>,
     #[serde(default)]
-    pub status: Option<String>,
+    pub status: Option<AttestationStatus>,
     /// Maximum number of results to return (default: 100, max: 1000).
     #[serde(default)]
     pub limit: Option<usize>,
@@ -562,7 +564,7 @@ mod tests {
             jurisdiction_id: Some("PK-PSEZ".to_string()),
             entity_id: Some(uuid::Uuid::new_v4()),
             attestation_type: Some("identity_verification".to_string()),
-            status: Some("ACTIVE".to_string()),
+            status: Some(AttestationStatus::Active),
             limit: None,
             offset: None,
         };
@@ -575,7 +577,7 @@ mod tests {
             jurisdiction_id: Some("AE-DIFC".to_string()),
             entity_id: None,
             attestation_type: None,
-            status: Some("PENDING".to_string()),
+            status: Some(AttestationStatus::Pending),
             limit: None,
             offset: None,
         };
@@ -686,7 +688,7 @@ mod tests {
             entity_id: uuid::Uuid::new_v4(),
             attestation_type: "identity_verification".to_string(),
             issuer: "NADRA".to_string(),
-            status: "ACTIVE".to_string(),
+            status: AttestationStatus::Active,
             jurisdiction_id: "PK-PSEZ".to_string(),
             issued_at: chrono::Utc::now(),
             expires_at: None,
@@ -697,7 +699,7 @@ mod tests {
             entity_id: uuid::Uuid::new_v4(),
             attestation_type: "compliance_check".to_string(),
             issuer: "FBR".to_string(),
-            status: "PENDING".to_string(),
+            status: AttestationStatus::Pending,
             jurisdiction_id: "AE-DIFC".to_string(),
             issued_at: chrono::Utc::now(),
             expires_at: None,
@@ -766,7 +768,7 @@ mod tests {
             entity_id,
             attestation_type: "kyc".to_string(),
             issuer: "NADRA".to_string(),
-            status: "ACTIVE".to_string(),
+            status: AttestationStatus::Active,
             jurisdiction_id: "PK-PSEZ".to_string(),
             issued_at: chrono::Utc::now(),
             expires_at: None,
@@ -829,7 +831,7 @@ mod tests {
             entity_id: target_entity,
             attestation_type: "kyc".to_string(),
             issuer: "NADRA".to_string(),
-            status: "ACTIVE".to_string(),
+            status: AttestationStatus::Active,
             jurisdiction_id: "PK-PSEZ".to_string(),
             issued_at: chrono::Utc::now(),
             expires_at: None,
@@ -840,7 +842,7 @@ mod tests {
             entity_id: uuid::Uuid::new_v4(),
             attestation_type: "kyc".to_string(),
             issuer: "FBR".to_string(),
-            status: "ACTIVE".to_string(),
+            status: AttestationStatus::Active,
             jurisdiction_id: "PK-PSEZ".to_string(),
             issued_at: chrono::Utc::now(),
             expires_at: None,
@@ -874,7 +876,7 @@ mod tests {
             entity_id: uuid::Uuid::new_v4(),
             attestation_type: "identity_verification".to_string(),
             issuer: "NADRA".to_string(),
-            status: "ACTIVE".to_string(),
+            status: AttestationStatus::Active,
             jurisdiction_id: "PK-PSEZ".to_string(),
             issued_at: chrono::Utc::now(),
             expires_at: None,
@@ -885,7 +887,7 @@ mod tests {
             entity_id: uuid::Uuid::new_v4(),
             attestation_type: "compliance_check".to_string(),
             issuer: "FBR".to_string(),
-            status: "ACTIVE".to_string(),
+            status: AttestationStatus::Active,
             jurisdiction_id: "PK-PSEZ".to_string(),
             issued_at: chrono::Utc::now(),
             expires_at: None,
@@ -921,7 +923,7 @@ mod tests {
                 entity_id: uuid::Uuid::new_v4(),
                 attestation_type: if i % 2 == 0 { "kyc" } else { "aml" }.to_string(),
                 issuer: "NADRA".to_string(),
-                status: if i < 3 { "ACTIVE" } else { "PENDING" }.to_string(),
+                status: if i < 3 { AttestationStatus::Active } else { AttestationStatus::Pending },
                 jurisdiction_id: if i < 2 { "PK-PSEZ" } else { "AE-DIFC" }.to_string(),
                 issued_at: chrono::Utc::now(),
                 expires_at: None,
@@ -956,7 +958,7 @@ mod tests {
             id: uuid::Uuid::new_v4(),
             asset_type: "CapTable".to_string(),
             jurisdiction_id: "PK-PSEZ".to_string(),
-            status: "ACTIVE".to_string(),
+            status: AssetStatus::Active,
             genesis_digest: None,
             compliance_status: AssetComplianceStatus::Compliant,
             metadata: serde_json::json!({}),
@@ -972,7 +974,7 @@ mod tests {
             entity_id: uuid::Uuid::new_v4(),
             attestation_type: "kyc".to_string(),
             issuer: "NADRA".to_string(),
-            status: "ACTIVE".to_string(),
+            status: AttestationStatus::Active,
             jurisdiction_id: "PK-PSEZ".to_string(),
             issued_at: chrono::Utc::now(),
             expires_at: None,
@@ -1082,7 +1084,7 @@ mod tests {
                 entity_id: eid,
                 attestation_type: atype.to_string(),
                 issuer: "NADRA".to_string(),
-                status: "ACTIVE".to_string(),
+                status: AttestationStatus::Active,
                 jurisdiction_id: "PK-PSEZ".to_string(),
                 issued_at: now,
                 expires_at: None,
@@ -1114,7 +1116,7 @@ mod tests {
             id: uuid::Uuid::new_v4(),
             asset_type: "equity".to_string(),
             jurisdiction_id: "PK-PSEZ".to_string(),
-            status: "ACTIVE".to_string(),
+            status: AssetStatus::Active,
             genesis_digest: None,
             compliance_status: AssetComplianceStatus::Compliant,
             metadata: serde_json::json!({}),
@@ -1128,7 +1130,7 @@ mod tests {
             id: uuid::Uuid::new_v4(),
             asset_type: "bond".to_string(),
             jurisdiction_id: "AE-DIFC".to_string(),
-            status: "ACTIVE".to_string(),
+            status: AssetStatus::Active,
             genesis_digest: None,
             compliance_status: AssetComplianceStatus::NonCompliant,
             metadata: serde_json::json!({}),

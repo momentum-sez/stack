@@ -353,9 +353,12 @@ async fn create_cap_table(
     let client = require_mass_client(&state)?;
 
     // Step 1: Pre-flight compliance evaluation.
+    // TODO(P1-004): The entity's jurisdiction should be fetched from Mass
+    // organization-info by entity_id. For now, ownership operations use
+    // global-scope evaluation until the entity lookup is integrated.
     let entity_id = req.entity_id;
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
-        "UNKNOWN",
+        "GLOBAL",
         &entity_id.to_string(),
         orchestration::ownership_domains(),
     );
@@ -451,13 +454,14 @@ async fn create_account(
     let client = require_mass_client(&state)?;
 
     // Step 1: Pre-flight compliance evaluation.
+    // Infer jurisdiction from the requested currency — this drives compliance
+    // tensor evaluation for the correct jurisdiction (PK, AE, US, CN, etc.).
     let entity_id = req.entity_id;
     let currency = req.currency.clone();
+    let inferred_jurisdiction =
+        orchestration::infer_jurisdiction(&currency);
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
-        orchestration::fiscal_account_domains()
-            .first()
-            .map(|_| "UNKNOWN")
-            .unwrap_or("UNKNOWN"),
+        inferred_jurisdiction,
         &entity_id.to_string(),
         orchestration::fiscal_account_domains(),
     );
@@ -516,10 +520,14 @@ async fn initiate_payment(
     let client = require_mass_client(&state)?;
 
     // Step 1: Pre-flight compliance evaluation.
+    // Infer jurisdiction from the payment currency for compliance tensor
+    // evaluation. Covers all deployment corridors (PAK↔UAE, PAK↔KSA, PAK↔CHN).
     let from_account_id = req.from_account_id;
     let currency = req.currency.clone();
+    let inferred_jurisdiction =
+        orchestration::infer_jurisdiction(&currency);
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
-        "UNKNOWN",
+        inferred_jurisdiction,
         &from_account_id.to_string(),
         orchestration::payment_domains(),
     );

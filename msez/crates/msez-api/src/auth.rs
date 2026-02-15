@@ -34,41 +34,49 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 use crate::error::{AppError, ErrorBody, ErrorDetail};
 use crate::state::SmartAssetRecord;
 
-// ── SecretToken ──────────────────────────────────────────────────────────────
+// ── SecretString ──────────────────────────────────────────────────────────
 
-/// A bearer token that is zeroized from memory on drop.
+/// A string that holds sensitive data (tokens, secrets) and is zeroed on drop.
 ///
-/// Defense-in-depth: prevents credential material from lingering in process
-/// memory after the token is no longer needed. Custom `Debug` redacts the
-/// value to prevent credential leakage in logs.
+/// Prevents credential material from lingering in process memory after the
+/// value goes out of scope. Uses `#[derive(Zeroize, ZeroizeOnDrop)]` for
+/// defense-in-depth against memory dump attacks. `Debug` and `Display`
+/// always print `[REDACTED]`.
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
-pub struct SecretToken(String);
+pub struct SecretString(String);
 
-impl SecretToken {
-    /// Wrap a raw token string.
-    pub fn new(s: String) -> Self {
-        Self(s)
+impl SecretString {
+    /// Wrap a string as a secret.
+    pub fn new(s: impl Into<String>) -> Self {
+        Self(s.into())
     }
 
-    /// Borrow the token value for comparison.
-    pub fn as_str(&self) -> &str {
+    /// Borrow the secret value. Use sparingly — only for comparison or hashing.
+    pub fn expose(&self) -> &str {
         &self.0
     }
 }
 
-impl std::fmt::Debug for SecretToken {
+impl std::fmt::Debug for SecretString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("[REDACTED]")
     }
 }
 
-impl PartialEq for SecretToken {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
+impl std::fmt::Display for SecretString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("[REDACTED]")
     }
 }
 
-impl Eq for SecretToken {}
+impl PartialEq for SecretString {
+    /// Constant-time equality for secret strings.
+    fn eq(&self, other: &Self) -> bool {
+        constant_time_token_eq(self.expose(), other.expose())
+    }
+}
+
+impl Eq for SecretString {}
 
 // ── Role ────────────────────────────────────────────────────────────────────
 
@@ -179,12 +187,12 @@ pub fn require_role(caller: &CallerIdentity, minimum: Role) -> Result<(), AppErr
 
 /// Auth configuration injected into request extensions.
 ///
-/// Uses [`SecretToken`] to ensure token material is zeroized from memory
-/// on drop. Custom `Debug` redacts the token value to prevent credential
-/// leakage in logs.
+/// The token is wrapped in [`SecretString`] which derives `Zeroize`/`ZeroizeOnDrop`,
+/// preventing credential material from lingering in process memory. `Debug`
+/// on `SecretString` automatically redacts the value.
 #[derive(Clone, Debug)]
 pub struct AuthConfig {
-    pub token: Option<SecretToken>,
+    pub token: Option<SecretString>,
 }
 
 // ── Token Validation ────────────────────────────────────────────────────────
@@ -286,7 +294,7 @@ pub async fn auth_middleware(mut request: Request, next: Next) -> Response {
             match auth_header {
                 Some(header_value) if header_value.starts_with("Bearer ") => {
                     let provided = &header_value[7..];
-                    match parse_bearer_token(provided, expected_token.as_str()) {
+                    match parse_bearer_token(provided, expected_token.expose()) {
                         Ok(identity) => {
                             request.extensions_mut().insert(identity);
                             next.run(request).await
@@ -337,7 +345,7 @@ mod tests {
     /// Build a minimal router with the auth middleware and a simple handler.
     fn test_app(token: Option<String>) -> Router {
         let auth_config = AuthConfig {
-            token: token.map(SecretToken::new),
+            token: token.map(SecretString::new),
         };
         Router::new()
             .route("/test", get(|| async { "ok" }))

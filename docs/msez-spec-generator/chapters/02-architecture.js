@@ -76,6 +76,11 @@ module.exports = function build_chapter02() {
         ["msez-agentic", "~1,800", "Automation: trigger taxonomy (20 types \u00d7 5 domains), policy evaluation, autonomous actions"],
         ["msez-arbitration", "~1,500", "Disputes: evidence packages, ruling enforcement via VCs, escrow"],
         ["msez-mass-client", "~2,100", "Typed HTTP client for all five Mass primitives. Sole authorized path to Mass APIs."],
+        ["msez-schema", "~1,200", "JSON Schema validation: 116 schemas covering all artifact types, pack formats, and API payloads"],
+        ["msez-zkp", "~3,400", "Zero-knowledge proofs: sealed ProofSystem trait, 12 circuit definitions, Plonky3 + Groth16 backends"],
+        ["msez-compliance", "~1,100", "Compliance orchestration: composes tensor evaluation with pack checking and credential issuance"],
+        ["msez-api", "~4,800", "HTTP server: Axum routes, mass proxy, corridor/asset/regulator/agentic/settlement endpoints, Postgres persistence"],
+        ["msez-cli", "~2,600", "CLI: zone validation, build, sign, verify, artifact graph operations, deployment commands"],
       ],
       [3000, 1200, 5160]
     ),

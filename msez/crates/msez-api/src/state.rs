@@ -381,17 +381,17 @@ pub struct TaxEventRecord {
 
 /// Application configuration.
 ///
-/// Uses [`SecretToken`] for the auth token to ensure credential material
-/// is zeroized from memory on drop. Custom `Debug` on `SecretToken`
-/// automatically redacts the value in logs.
+/// The token is wrapped in [`crate::auth::SecretString`] which derives
+/// `Zeroize`/`ZeroizeOnDrop`, preventing credential material from lingering
+/// in memory. `SecretString`'s `Debug` impl automatically redacts the value.
 #[derive(Clone, Debug)]
 pub struct AppConfig {
     /// Port to bind the HTTP server to.
     pub port: u16,
     /// Static bearer token for Phase 1 authentication.
     /// If `None`, authentication is disabled.
-    /// Wrapped in [`SecretToken`] for automatic memory zeroization on drop.
-    pub auth_token: Option<crate::auth::SecretToken>,
+    /// Wrapped in `SecretString` for automatic zeroization on drop.
+    pub auth_token: Option<crate::auth::SecretString>,
 }
 
 impl Default for AppConfig {
@@ -870,15 +870,15 @@ mod tests {
 
     #[test]
     fn app_state_with_config_applies_custom_config() {
-        use crate::auth::SecretToken;
+        use crate::auth::SecretString;
         let config = AppConfig {
             port: 3000,
-            auth_token: Some(SecretToken::new("secret-token".to_string())),
+            auth_token: Some(SecretString::new("secret-token")),
         };
         let state = AppState::with_config(config, None);
         assert_eq!(state.config.port, 3000);
         assert_eq!(
-            state.config.auth_token.as_ref().map(|t| t.as_str()),
+            state.config.auth_token.as_ref().map(|s| s.expose()),
             Some("secret-token")
         );
         assert!(state.corridors.is_empty());
@@ -889,7 +889,6 @@ mod tests {
         let default_state = AppState::default();
         let new_state = AppState::new();
         assert_eq!(default_state.config.port, new_state.config.port);
-        // Both should be None — verify auth tokens are consistent.
         assert!(default_state.config.auth_token.is_none());
         assert!(new_state.config.auth_token.is_none());
     }

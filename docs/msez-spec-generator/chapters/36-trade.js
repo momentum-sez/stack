@@ -10,7 +10,7 @@ module.exports = function build_chapter36() {
 
     // --- 36.1 Module Overview ---
     h2("36.1 Module Overview"),
-    p("The Trade and Commerce module family provides infrastructure for international trade operations including letters of credit, trade document management, supply chain finance, customs integration, and trade insurance. Each module leverages the corridor system for cross-jurisdictional trade flows and the compliance tensor for trade compliance verification."),
+    p("The Trade and Commerce module family provides infrastructure for international trade operations including letters of credit, trade document management, supply chain finance, customs integration, and trade insurance. Each module uses the corridor system for cross-jurisdictional trade flows and the compliance tensor for trade compliance verification."),
 
     // --- 36.2 Letters of Credit Module ---
     h2("36.2 Letters of Credit Module"),
@@ -51,7 +51,7 @@ module.exports = function build_chapter36() {
 
     // --- 36.4 Supply Chain Finance Module ---
     h2("36.4 Supply Chain Finance Module"),
-    p("The Supply Chain Finance Module provides invoice financing, reverse factoring, and dynamic discounting. It leverages verified trade documents and corridor state to assess financing eligibility. The module integrates with treasury-info.api.mass.inc for disbursement and collection, and issues financing Verifiable Credentials that serve as proof of receivable assignment."),
+    p("The Supply Chain Finance Module provides invoice financing, reverse factoring, and dynamic discounting. It uses verified trade documents and corridor state to assess financing eligibility. The module integrates with treasury-info.api.mass.inc for disbursement and collection, and issues financing Verifiable Credentials that serve as proof of receivable assignment."),
     p_runs([bold("SCF Program Types."), " The module supports the following supply chain finance programs. Each program type defines eligibility criteria based on verified trade documents, corridor state, and counterparty creditworthiness."]),
     table(
       ["Program", "Mechanism", "Trigger", "Risk Bearer"],

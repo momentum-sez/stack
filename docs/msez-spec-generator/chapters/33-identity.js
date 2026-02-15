@@ -33,7 +33,7 @@ module.exports = function build_chapter33() {
       ["DID Method", "Format", "Description", "Use Case"],
       [
         ["did:msez", "did:msez:<zone>:<id>", "Native Mass/SEZ method anchored to the corridor receipt chain. Provides the strongest binding to jurisdictional context and compliance state. Resolution requires access to the SEZ Stack.", "Primary method for all entities formed through the SEZ Stack. Required for corridor participation and compliance attestation."],
-        ["did:web", "did:web:<domain>:<path>", "Web-based DID resolved via HTTPS to a DID Document hosted at the specified domain. Leverages existing PKI infrastructure and DNS for discoverability.", "Institutional identities, government agencies, and regulated entities that require web-discoverable identity documents."],
+        ["did:web", "did:web:<domain>:<path>", "Web-based DID resolved via HTTPS to a DID Document hosted at the specified domain. Uses existing PKI infrastructure and DNS for discoverability.", "Institutional identities, government agencies, and regulated entities that require web-discoverable identity documents."],
         ["did:key", "did:key:z<multibase>", "Self-certifying DID derived directly from a public key with no external resolution required. Compact and ephemeral, suitable for offline verification.", "Ephemeral sessions, offline credential verification, device-level key identifiers, and test environments."],
         ["did:ion", "did:ion:<long-form>", "Decentralized DID anchored to a Layer 1 blockchain via the ION network. Provides maximum censorship resistance and long-term persistence independent of any single operator.", "Long-lived identities requiring maximum decentralization, cross-platform portability, and independence from SEZ Stack availability."],
       ],
@@ -43,9 +43,9 @@ module.exports = function build_chapter33() {
 
     // --- 33.3 Progressive KYC Tiers ---
     h2("33.3 Progressive KYC Tiers"),
-    p("Progressive KYC allows users to start with minimal identity verification and incrementally increase their verification level as needed. Each tier unlocks additional capabilities and higher transaction limits. Tier advancement is non-destructive: all prior credentials remain valid while new attestations are added. The system supports jurisdiction-specific KYC requirements through the compliance tensor."),
+    p("Progressive KYC allows users to start with minimal identity verification and incrementally increase their verification level as needed. Each tier enables additional capabilities and higher transaction limits. Tier advancement is non-destructive: all prior credentials remain valid while new attestations are added. The system supports jurisdiction-specific KYC requirements through the compliance tensor."),
     h3("33.3.1 Per-Tier Capabilities"),
-    p("Each KYC tier unlocks a specific set of operational capabilities within the SEZ Stack. The compliance tensor evaluates tier requirements per jurisdiction, meaning the same tier may grant different capabilities depending on the applicable regulatory framework."),
+    p("Each KYC tier grants a specific set of operational capabilities within the SEZ Stack. The compliance tensor evaluates tier requirements per jurisdiction, meaning the same tier may grant different capabilities depending on the applicable regulatory framework."),
     table(
       ["Tier", "Permitted Operations", "Credential Types Issued", "Compliance Scope"],
       [

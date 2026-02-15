@@ -203,25 +203,37 @@ impl Default for Sha256Accumulator {
     }
 }
 
+/// Compute a SHA-256 digest of raw bytes, returning the raw 32-byte array.
+///
+/// Use this for operations that need binary `[u8; 32]` output — Merkle tree
+/// node concatenation, MMR leaf/node hashing, binary protocol fields.
+///
+/// This eliminates the need for any crate (including `msez-crypto`) to import
+/// `sha2` directly for raw-byte hashing.
+pub fn sha256_raw_bytes(data: &[u8]) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    hasher.finalize().into()
+}
+
 /// Compute a SHA-256 hex digest of raw bytes.
 ///
 /// This is the **Tier 2** digest function for operations that legitimately
 /// hash raw byte streams (file contents, Merkle tree nodes, lockfile data)
 /// rather than serializable domain objects.
 ///
-/// ## When to use `sha256_raw` vs `sha256_digest`
+/// ## When to use which function
 ///
-/// | Input type | Function | Example |
-/// |-----------|----------|---------|
-/// | `impl Serialize` (structs, enums, JSON) | [`sha256_digest`] via [`CanonicalBytes`] | Audit events, compliance tensors, VCs |
-/// | Raw `&[u8]` (file contents, concatenations) | `sha256_raw` | Pack file digests, lockfile hashes, MMR nodes |
+/// | Input type | Function | Output | Example |
+/// |-----------|----------|--------|---------|
+/// | `impl Serialize` (structs, enums, JSON) | [`sha256_digest`] via [`CanonicalBytes`] | `ContentDigest` | Audit events, compliance tensors, VCs |
+/// | Raw `&[u8]` needing hex string | `sha256_raw` | `String` | Pack file digests, lockfile hashes |
+/// | Raw `&[u8]` needing binary | [`sha256_raw_bytes`] | `[u8; 32]` | MMR nodes, Merkle tree concatenation |
 ///
 /// ## Security Invariant
 ///
 /// All SHA-256 in the codebase flows through `msez-core`. No other crate
-/// should directly `use sha2::{Digest, Sha256}` for single-shot hashing.
-/// The only exception is streaming/multi-part hashing (e.g., `digest_dir`
-/// in `msez-cli`) where the `sha2` streaming API is needed directly.
+/// should directly `use sha2::{Digest, Sha256}`.
 pub fn sha256_raw(data: &[u8]) -> String {
     let mut acc = Sha256Accumulator::new();
     acc.update(data);

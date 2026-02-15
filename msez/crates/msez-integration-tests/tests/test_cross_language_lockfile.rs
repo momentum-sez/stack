@@ -15,9 +15,8 @@
 //!    are verified by `test_cross_language_canonical_bytes.rs` against hardcoded
 //!    test vectors.
 
-use msez_core::CanonicalBytes;
+use msez_core::{CanonicalBytes, Sha256Accumulator};
 use serde_json::json;
-use sha2::{Digest, Sha256};
 
 /// The lawpack digest v1 prefix.
 ///
@@ -44,8 +43,8 @@ fn lawpack_digest_v1_protocol_deterministic() {
     ];
 
     // Compute digest using the v1 protocol.
-    let mut hasher = Sha256::new();
-    hasher.update(LAWPACK_DIGEST_V1_PREFIX);
+    let mut acc = Sha256Accumulator::new();
+    acc.update(LAWPACK_DIGEST_V1_PREFIX);
 
     // Sort paths (already sorted in this case, but enforce it).
     let mut sorted_files = files.clone();
@@ -53,27 +52,25 @@ fn lawpack_digest_v1_protocol_deterministic() {
 
     for (path, content) in &sorted_files {
         let canonical = CanonicalBytes::new(content).unwrap();
-        hasher.update(path.as_bytes());
-        hasher.update(b"\0");
-        hasher.update(canonical.as_bytes());
-        hasher.update(b"\0");
+        acc.update(path.as_bytes());
+        acc.update(b"\0");
+        acc.update(canonical.as_bytes());
+        acc.update(b"\0");
     }
 
-    let digest: [u8; 32] = hasher.finalize().into();
-    let hex: String = digest.iter().map(|b| format!("{b:02x}")).collect();
+    let hex = acc.finalize_hex();
 
     // Re-run to verify determinism.
-    let mut hasher2 = Sha256::new();
-    hasher2.update(LAWPACK_DIGEST_V1_PREFIX);
+    let mut acc2 = Sha256Accumulator::new();
+    acc2.update(LAWPACK_DIGEST_V1_PREFIX);
     for (path, content) in &sorted_files {
         let canonical = CanonicalBytes::new(content).unwrap();
-        hasher2.update(path.as_bytes());
-        hasher2.update(b"\0");
-        hasher2.update(canonical.as_bytes());
-        hasher2.update(b"\0");
+        acc2.update(path.as_bytes());
+        acc2.update(b"\0");
+        acc2.update(canonical.as_bytes());
+        acc2.update(b"\0");
     }
-    let digest2: [u8; 32] = hasher2.finalize().into();
-    let hex2: String = digest2.iter().map(|b| format!("{b:02x}")).collect();
+    let hex2 = acc2.finalize_hex();
 
     assert_eq!(hex, hex2, "Lawpack digest v1 is not deterministic");
     assert_eq!(hex.len(), 64, "Digest should be 64 hex chars");
@@ -87,17 +84,16 @@ fn lawpack_digest_v1_path_order_matters() {
     let file_b = ("b.json", json!({"id": "b"}));
 
     let compute_digest = |files: &[(&str, serde_json::Value)]| -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(LAWPACK_DIGEST_V1_PREFIX);
+        let mut acc = Sha256Accumulator::new();
+        acc.update(LAWPACK_DIGEST_V1_PREFIX);
         for (path, content) in files {
             let canonical = CanonicalBytes::new(content).unwrap();
-            hasher.update(path.as_bytes());
-            hasher.update(b"\0");
-            hasher.update(canonical.as_bytes());
-            hasher.update(b"\0");
+            acc.update(path.as_bytes());
+            acc.update(b"\0");
+            acc.update(canonical.as_bytes());
+            acc.update(b"\0");
         }
-        let digest: [u8; 32] = hasher.finalize().into();
-        digest.iter().map(|b| format!("{b:02x}")).collect()
+        acc.finalize_hex()
     };
 
     // Compute with files in two different orders.
@@ -130,15 +126,14 @@ fn lawpack_digest_v1_uses_canonical_bytes() {
     );
 
     // Use it in a digest computation.
-    let mut hasher = Sha256::new();
-    hasher.update(LAWPACK_DIGEST_V1_PREFIX);
-    hasher.update(b"test.json\0");
-    hasher.update(canonical.as_bytes());
-    hasher.update(b"\0");
-    let digest: [u8; 32] = hasher.finalize().into();
+    let mut acc = Sha256Accumulator::new();
+    acc.update(LAWPACK_DIGEST_V1_PREFIX);
+    acc.update(b"test.json\0");
+    acc.update(canonical.as_bytes());
+    acc.update(b"\0");
 
     // Verify it's deterministic and valid.
-    let hex: String = digest.iter().map(|b| format!("{b:02x}")).collect();
+    let hex = acc.finalize_hex();
     assert_eq!(hex.len(), 64);
     assert!(hex.chars().all(|c| c.is_ascii_hexdigit()));
 }
@@ -146,19 +141,17 @@ fn lawpack_digest_v1_uses_canonical_bytes() {
 /// Verify that empty lawpack produces a valid digest (edge case).
 #[test]
 fn lawpack_digest_v1_empty_lawpack() {
-    let mut hasher = Sha256::new();
-    hasher.update(LAWPACK_DIGEST_V1_PREFIX);
+    let mut acc = Sha256Accumulator::new();
+    acc.update(LAWPACK_DIGEST_V1_PREFIX);
     // No files — just the prefix.
-    let digest: [u8; 32] = hasher.finalize().into();
-    let hex: String = digest.iter().map(|b| format!("{b:02x}")).collect();
+    let hex = acc.finalize_hex();
 
     // SHA256 of just the prefix should be a known, stable value.
     assert_eq!(hex.len(), 64);
 
     // Verify determinism.
-    let mut hasher2 = Sha256::new();
-    hasher2.update(LAWPACK_DIGEST_V1_PREFIX);
-    let digest2: [u8; 32] = hasher2.finalize().into();
-    let hex2: String = digest2.iter().map(|b| format!("{b:02x}")).collect();
+    let mut acc2 = Sha256Accumulator::new();
+    acc2.update(LAWPACK_DIGEST_V1_PREFIX);
+    let hex2 = acc2.finalize_hex();
     assert_eq!(hex, hex2);
 }

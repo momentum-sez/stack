@@ -27,6 +27,7 @@ pub mod entities;
 pub mod error;
 pub mod fiscal;
 pub mod identity;
+pub mod nadra;
 pub mod ownership;
 pub(crate) mod retry;
 pub mod templating;

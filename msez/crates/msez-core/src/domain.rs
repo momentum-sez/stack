@@ -103,7 +103,24 @@ impl ComplianceDomain {
     }
 
     /// The total number of compliance domains.
+    ///
+    /// Compile-time assertion (M-003): the `all()` array must have exactly
+    /// this many elements. If a variant is added to the enum without updating
+    /// `all()`, the build breaks.
     pub const COUNT: usize = 20;
+
+    /// Compile-time assertion that `COUNT` matches the actual variant list.
+    ///
+    /// This is a const evaluated at compile time — if someone adds a 21st
+    /// variant and updates `all()` without bumping `COUNT`, or bumps `COUNT`
+    /// without extending `all()`, the build fails.
+    const _ASSERT_COUNT: () = {
+        const ALL_LEN: usize = 20;
+        assert!(
+            ALL_LEN == ComplianceDomain::COUNT,
+            "ComplianceDomain::COUNT does not match the number of variants in all()"
+        );
+    };
 
     /// Return the snake_case string representation of this domain.
     ///

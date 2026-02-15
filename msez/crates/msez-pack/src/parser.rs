@@ -132,19 +132,38 @@ fn yaml_to_json_value(yaml: serde_yaml::Value) -> PackResult<Value> {
                     } else if f >= i64::MIN as f64 && f <= i64::MAX as f64 {
                         Ok(Value::Number(serde_json::Number::from(f as i64)))
                     } else {
+                        // Defensive: from_f64 only fails for NaN/Infinity, which
+                        // is_finite() already excluded. Log if hit.
                         Ok(Value::Number(
                             serde_json::Number::from_f64(f)
-                                .unwrap_or_else(|| serde_json::Number::from(0)),
+                                .unwrap_or_else(|| {
+                                    tracing::warn!(value = f, "finite float could not be represented in JSON, substituting 0");
+                                    serde_json::Number::from(0)
+                                }),
                         ))
                     }
+                } else if !f.is_finite() {
+                    // NaN and Infinity cannot be represented in JSON.
+                    // Silently substituting 0 would corrupt regulatory data.
+                    return Err(PackError::JsonIncompatible {
+                        context: "yaml_to_json".to_string(),
+                        path: String::new(),
+                        detail: format!("non-finite float value: {f}"),
+                    });
                 } else {
-                    // True float — pass through, canonicalization will reject if used for digest
+                    // True float — pass through, canonicalization will reject if used for digest.
+                    // from_f64 is infallible for finite values (NaN/Infinity rejected above).
                     Ok(Value::Number(
                         serde_json::Number::from_f64(f)
-                            .unwrap_or_else(|| serde_json::Number::from(0)),
+                            .unwrap_or_else(|| {
+                                tracing::warn!(value = f, "finite float could not be represented in JSON, substituting 0");
+                                serde_json::Number::from(0)
+                            }),
                     ))
                 }
             } else {
+                // YAML number with no i64/u64/f64 representation — should not occur.
+                tracing::warn!("YAML number has no representable value, substituting 0");
                 Ok(Value::Number(serde_json::Number::from(0)))
             }
         }

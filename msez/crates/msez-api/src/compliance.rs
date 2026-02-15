@@ -111,7 +111,10 @@ pub fn build_evaluation_result(
 ) -> ComplianceEvalResult {
     let slice = tensor.full_slice();
     let aggregate = slice.aggregate_state();
-    let commitment = tensor.commit().ok();
+    let commitment = tensor.commit().map_err(|e| {
+        tracing::warn!(error = %e, "tensor commitment failed — response will omit commitment");
+        e
+    }).ok();
 
     let mut domain_results = HashMap::new();
     let mut passing_domains = Vec::new();

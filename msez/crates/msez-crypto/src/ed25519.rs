@@ -126,6 +126,16 @@ pub struct SigningKey {
     inner: ed25519_dalek::SigningKey,
 }
 
+impl Zeroize for SigningKey {
+    fn zeroize(&mut self) {
+        // Extract key bytes, zeroize them, then overwrite inner with a zero-key.
+        // ed25519_dalek::SigningKey's own ZeroizeOnDrop provides additional defense.
+        let mut key_bytes = self.inner.to_bytes();
+        key_bytes.zeroize();
+        self.inner = ed25519_dalek::SigningKey::from_bytes(&[0u8; 32]);
+    }
+}
+
 impl SigningKey {
     /// Generate a new random Ed25519 signing key.
     ///
@@ -180,14 +190,7 @@ impl std::fmt::Debug for SigningKey {
 
 impl Drop for SigningKey {
     fn drop(&mut self) {
-        // Extract key bytes, explicitly zeroize them, then overwrite the inner key.
-        // Three layers of defense:
-        //   1. Our explicit Zeroize call on extracted bytes.
-        //   2. Our overwrite of inner key with zero-key.
-        //   3. ed25519_dalek::SigningKey's own ZeroizeOnDrop (via cargo feature).
-        let mut key_bytes = self.inner.to_bytes();
-        key_bytes.zeroize();
-        self.inner = ed25519_dalek::SigningKey::from_bytes(&[0u8; 32]);
+        self.zeroize();
     }
 }
 

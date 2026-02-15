@@ -1224,6 +1224,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "msez-compliance"
+version = "0.4.44"
+dependencies = [
+ "chrono",
+ "msez-core",
+ "msez-pack",
+ "msez-tensor",
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
 name = "msez-core"
 version = "0.4.44"
 dependencies = [

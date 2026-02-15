@@ -175,7 +175,7 @@ pub enum WatcherError {
 /// Tracks the watcher's lifecycle state, bonded stake, and slashing
 /// history. Stake-based transitions enforce that bonding requires
 /// sufficient collateral and slashing reduces the available stake.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Watcher {
     /// Unique watcher identifier.
     pub id: WatcherId,

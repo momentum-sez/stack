@@ -88,7 +88,7 @@ impl JurisdictionConfig for DefaultJurisdiction {
 /// Each cell stores the compliance state for one domain, along with
 /// the evidentiary basis (attestations) and metadata about when and
 /// why the state was determined.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TensorCell {
     /// The compliance state for this domain.
     pub state: ComplianceState,

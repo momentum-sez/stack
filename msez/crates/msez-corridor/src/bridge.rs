@@ -35,7 +35,7 @@ use msez_core::{CorridorId, JurisdictionId};
 /// time metadata. Edges are directional — a corridor between PK-RSEZ and
 /// AE-DIFC produces two edges (one in each direction) if fees differ by
 /// direction, or two identical edges for symmetric corridors.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BridgeEdge {
     /// Source jurisdiction.
     pub from: JurisdictionId,
@@ -53,7 +53,7 @@ pub struct BridgeEdge {
 ///
 /// Contains the ordered list of hops from source to target, with
 /// accumulated fee and settlement time totals.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BridgeRoute {
     /// Ordered list of edges from source to target.
     pub hops: Vec<BridgeEdge>,

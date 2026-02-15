@@ -107,7 +107,7 @@ pub enum LicenseError {
 /// Tracks the state of a business license, professional certification,
 /// or regulatory authorization. Each transition is validated to ensure
 /// only legal state progressions occur.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct License {
     /// The current lifecycle state.
     pub state: LicenseState,

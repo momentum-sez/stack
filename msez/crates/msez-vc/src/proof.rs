@@ -98,7 +98,7 @@ impl std::fmt::Display for ProofPurpose {
 ///
 /// Implements the proof object from `tools/vc.py:add_ed25519_proof()` and
 /// `tools/vc.py:_validate_proof_object()`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Proof {
     /// The proof type (Ed25519, BBS+).
     #[serde(rename = "type")]

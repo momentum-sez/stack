@@ -1,6 +1,6 @@
-# Getting Started
+# Getting started
 
-This guide walks you through setting up the MSEZ Stack, running your first validation, and understanding the core concepts.
+Build the workspace, run tests, start the API server, use the CLI.
 
 ---
 
@@ -8,168 +8,198 @@ This guide walks you through setting up the MSEZ Stack, running your first valid
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| **Rust** | 1.75+ | Crate workspace: core protocol, API server, CLI |
-| **Python** | 3.10+ | PHOENIX layer, reference CLI, test suite |
-| **Git** | 2.30+ | Repository management |
+| **Rust** | 1.75+ | Workspace: 16 crates, API server, CLI |
+| **Git** | 2.30+ | Clone and contribute |
+
+Optional for deployment:
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| **Docker** | 24+ | Container deployment |
+| **kubectl** | 1.28+ | Kubernetes deployment |
+| **Terraform** | 1.5+ | AWS infrastructure provisioning |
 
 ---
 
-## Installation
+## Clone and build
 
 ```bash
 git clone https://github.com/momentum-sez/stack.git
-cd stack
-```
+cd stack/msez
 
-### Rust Workspace
-
-```bash
-cd msez
-
-# Build all 14 crates
+# Build all 16 crates
 cargo build --workspace
 
-# Verify: run the full test suite (2,580+ tests)
+# Run the full test suite (2,580+ tests)
 cargo test --workspace
 
-# Verify: zero clippy warnings
+# Lint with zero warnings
 cargo clippy --workspace -- -D warnings
-```
 
-### Python Toolchain
-
-```bash
-cd stack  # repository root
-pip install -r tools/requirements.txt
-
-# Verify: validate all modules
-python -m tools.msez validate --all-modules
+# Generate rustdoc
+cargo doc --workspace --no-deps --open
 ```
 
 ---
 
-## Repository Layout
-
-The MSEZ Stack is structured as a **specification + library**:
+## Repository layout
 
 | Directory | Purpose |
 |-----------|---------|
-| `spec/` | **Normative**: 25 specification chapters defining how the system works |
-| `schemas/` | **Contracts**: 116 JSON schemas (Draft 2020-12) defining the public API surface |
-| `modules/` | **Building blocks**: 146 reusable zone modules across 16 families |
-| `msez/` | **Rust workspace**: 14 crates implementing the core protocol (70K lines) |
-| `tools/` | **Python toolchain**: Reference CLI + PHOENIX execution layer |
-| `tests/` | **Conformance**: 294 Python tests validating spec compliance |
-| `deploy/` | **Infrastructure**: Docker, Terraform, Kubernetes manifests |
-| `governance/` | **State machines**: Corridor lifecycle definitions |
+| `msez/` | **Rust workspace** -- 16 crates implementing the protocol |
+| `modules/` | 146 zone modules across 16 families |
+| `schemas/` | 116 JSON Schema files (Draft 2020-12) |
+| `spec/` | 25 normative specification chapters |
+| `apis/` | OpenAPI 3.x specifications |
+| `deploy/` | Docker, Kubernetes, Terraform manifests |
+| `contexts/` | Zone composition contexts |
+| `jurisdictions/` | Zone configuration files |
+| `dist/artifacts/` | CAS-indexed built artifacts |
+| `governance/` | Governance state machines |
+| `docs/` | This documentation |
 
 ---
 
-## Core Concepts
+## Core concepts
 
 ### Zones
 
-A **zone** is a deployable Special Economic Zone defined by a `zone.yaml` file. It specifies which jurisdictions provide which legal/regulatory/financial capabilities.
+A **zone** is a deployable Special Economic Zone defined by a `zone.yaml` file. It selects which jurisdictions provide which legal, regulatory, and financial capabilities.
 
 ### Modules
 
-**Modules** are the building blocks. Each module implements one capability (e.g., "AML screening", "entity formation", "SWIFT settlement"). Modules are organized into 16 families.
-
-### Profiles
-
-**Profiles** are pre-configured bundles of modules for common use cases:
-- `digital-financial-center` — Fintech, digital assets, modern financial services
-- `trade-playbook` — International trade, logistics, supply chain finance
-- `charter-city` — Comprehensive civic infrastructure for physical zones
+**Modules** are the building blocks. Each module implements one capability (entity formation, AML screening, SWIFT settlement, etc.). 146 modules across 16 families.
 
 ### Corridors
 
-**Corridors** are bilateral trade channels between jurisdictions. They handle settlement, receipts, fork resolution, and L1 anchoring.
+**Corridors** are bilateral trade channels between jurisdictions. They manage settlement, receipt chains (MMR-backed), fork resolution, and optional L1 anchoring.
+
+### Compliance Tensor
+
+The **Compliance Tensor** evaluates an entity's compliance state across 20 regulatory domains (AML, KYC, Sanctions, Tax, Securities, etc.) per jurisdiction. It produces a 5-state lattice value per domain: `Compliant`, `Pending`, `NonCompliant`, `Exempt`, `NotApplicable`.
 
 ### Smart Assets
 
-**Smart Assets** are assets with embedded compliance intelligence. They carry a Compliance Tensor (4D sparse structure) that tracks compliance state across jurisdictions, domains, and time.
+A **Smart Asset** is an asset with embedded compliance intelligence. It carries a compliance tensor, can identify missing attestations, and migrates across jurisdictions via the compliance manifold.
+
+### Mass APIs
+
+The five **Mass primitives** (Entities, Ownership, Fiscal, Identity, Consent) are live API services operated by Mass. The SEZ Stack orchestrates these primitives through the `msez-mass-client` crate -- it never stores primitive data directly.
 
 ---
 
-## First Steps
+## First steps
 
-### 1. Validate All Modules
+### 1. Validate all modules
 
 ```bash
-# Python CLI
-python -m tools.msez validate --all-modules
-
-# Rust CLI
 cargo run -p msez-cli -- validate --all-modules
 ```
 
-This validates all 146 module descriptors against their JSON schemas and verifies artifact references.
+Validates all 146 module YAML descriptors against their JSON schemas and verifies artifact references.
 
-### 2. Validate a Zone
+### 2. Validate a zone
 
 ```bash
-python -m tools.msez validate --all-zones
+cargo run -p msez-cli -- validate jurisdictions/_starter/zone.yaml
 ```
 
-### 3. Generate a Lockfile
+### 3. Generate a lockfile
 
 ```bash
-python -m tools.msez lock jurisdictions/_starter/zone.yaml
+cargo run -p msez-cli -- lock jurisdictions/_starter/zone.yaml
 ```
 
 The lockfile (`stack.lock`) contains cryptographic hashes of every module, ensuring reproducible deployments.
 
-### 4. Check Lockfile Integrity
+### 4. Check lockfile integrity
 
 ```bash
-python -m tools.msez lock jurisdictions/_starter/zone.yaml --check
+cargo run -p msez-cli -- lock jurisdictions/_starter/zone.yaml --check
 ```
 
-### 5. Start the API Server
+### 5. Start the API server
 
 ```bash
-cd msez
 cargo run -p msez-api
 # Listening on 0.0.0.0:3000
 # OpenAPI spec at http://localhost:3000/openapi.json
 ```
 
-The API server exposes five programmable primitives: Entities, Ownership, Fiscal, Identity, and Consent.
+The API server exposes corridor operations, smart asset management, compliance evaluation, settlement, VC issuance, agentic policy triggers, and regulator queries. Mass primitive routes (`/v1/entities/*`, `/v1/fiscal/*`, etc.) proxy through to the live Mass APIs via `msez-mass-client`.
 
-### 6. Run the Test Suite
+### 6. Generate Ed25519 keys
 
 ```bash
-# Rust tests (2,580+)
-cd msez && cargo test --workspace
+cargo run -p msez-cli -- vc keygen --output keys/ --prefix dev
+# Creates keys/dev.priv.json and keys/dev.pub.json
+```
 
-# Python tests (294)
-cd stack && pytest tests/ -q
+### 7. Sign a document
+
+```bash
+cargo run -p msez-cli -- vc sign --key keys/dev.priv.json document.json
+```
+
+### 8. Run individual crate tests
+
+```bash
+# Run tests for a specific crate
+cargo test -p msez-corridor
+cargo test -p msez-tensor
+cargo test -p msez-agentic
+
+# Run integration tests
+cargo test -p msez-integration-tests
+
+# Run with output
+cargo test -p msez-crypto -- --nocapture
 ```
 
 ---
 
-## How to Adopt
+## Configuration
 
-1. **Choose a profile** from `profiles/` or compose your own
-2. **Create a jurisdiction folder** at `jurisdictions/<your-id>/`
-3. **Add overlays** at `jurisdictions/<your-id>/overlays/` rather than editing upstream modules
-4. **Generate lockfile**: `python -m tools.msez lock jurisdictions/<your-id>/zone.yaml`
-5. **Commit** `zone.yaml` + `stack.lock`
-6. **Deploy** using Docker, Kubernetes, or Terraform (see `deploy/`)
+### API server environment variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `MSEZ_PORT` | `3000` | HTTP listen port |
+| `MSEZ_AUTH_TOKEN` | *(none)* | Bearer token for authenticated routes |
+| `MASS_API_TOKEN` | *(none)* | Authentication token for Mass APIs |
+| `MASS_ORG_INFO_URL` | `https://organization-info.api.mass.inc` | Mass Entities endpoint |
+| `MASS_TREASURY_INFO_URL` | `https://treasury-info.api.mass.inc` | Mass Fiscal endpoint |
+| `MASS_CONSENT_INFO_URL` | `https://consent.api.mass.inc` | Mass Consent endpoint |
+| `MASS_INV_INFO_URL` | *(heroku)* | Mass Ownership endpoint |
+| `MASS_TEMPLATING_URL` | *(heroku)* | Mass Templating endpoint |
+| `RUST_LOG` | `info` | Log level (tracing) |
 
 ---
 
-## Next Steps
+## Docker quickstart
+
+```bash
+cd deploy/docker
+docker-compose up -d
+
+# Services:
+#   msez-api    → port 8080
+#   postgres    → port 5432
+#   prometheus  → port 9090
+#   grafana     → port 3000
+```
+
+---
+
+## Next steps
 
 | Topic | Document |
 |-------|----------|
-| System architecture | [docs/ARCHITECTURE.md](./ARCHITECTURE.md) |
+| Architecture deep dive | [docs/architecture/OVERVIEW.md](./architecture/OVERVIEW.md) |
+| Per-crate API reference | [docs/architecture/CRATE-REFERENCE.md](./architecture/CRATE-REFERENCE.md) |
 | Security model | [docs/architecture/SECURITY-MODEL.md](./architecture/SECURITY-MODEL.md) |
-| Creating modules | [docs/authoring/modules.md](./authoring/modules.md) |
-| Forming corridors | [docs/authoring/corridors.md](./authoring/corridors.md) |
-| Deploying a zone | [docs/operators/ZONE-DEPLOYMENT-GUIDE.md](./operators/ZONE-DEPLOYMENT-GUIDE.md) |
-| Incident response | [docs/operators/INCIDENT-RESPONSE.md](./operators/INCIDENT-RESPONSE.md) |
+| Zone deployment | [docs/operators/ZONE-DEPLOYMENT-GUIDE.md](./operators/ZONE-DEPLOYMENT-GUIDE.md) |
+| Corridor formation | [docs/operators/CORRIDOR-FORMATION-GUIDE.md](./operators/CORRIDOR-FORMATION-GUIDE.md) |
+| Module authoring | [docs/authoring/modules.md](./authoring/modules.md) |
 | Error codes | [docs/ERRORS.md](./ERRORS.md) |
-| Rust crate details | [msez/README.md](../msez/README.md) |
 | Spec-to-code mapping | [docs/traceability-matrix.md](./traceability-matrix.md) |

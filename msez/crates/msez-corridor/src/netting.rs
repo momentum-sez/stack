@@ -46,6 +46,21 @@ pub enum NettingError {
         amount: i64,
     },
 
+    /// Duplicate obligation detected.
+    #[error("duplicate obligation: {from_party} -> {to_party} for {amount} {currency} (corridor: {corridor_id})")]
+    DuplicateObligation {
+        /// The from party.
+        from_party: String,
+        /// The to party.
+        to_party: String,
+        /// The amount.
+        amount: i64,
+        /// The currency.
+        currency: String,
+        /// The corridor ID (or "none").
+        corridor_id: String,
+    },
+
     /// Netting is infeasible under the given constraints.
     #[error("netting infeasible: {reason}")]
     Infeasible {
@@ -148,9 +163,17 @@ pub struct SettlementPlan {
 /// All internal operations use BTreeMap/BTreeSet for deterministic
 /// ordering. Party IDs and currency codes are sorted lexicographically.
 /// Two runs with the same input produce byte-identical output.
+///
+/// ## Duplicate Detection
+///
+/// Obligations are deduplicated by (from_party, to_party, amount, currency,
+/// corridor_id) to prevent double-settlement. Adding a duplicate obligation
+/// returns [`NettingError::DuplicateObligation`].
 #[derive(Debug, Default)]
 pub struct NettingEngine {
     obligations: Vec<Obligation>,
+    /// Tracks seen obligation keys for O(1) duplicate detection.
+    seen: BTreeSet<(String, String, i64, String, String)>,
 }
 
 impl NettingEngine {
@@ -158,10 +181,14 @@ impl NettingEngine {
     pub fn new() -> Self {
         Self {
             obligations: Vec::new(),
+            seen: BTreeSet::new(),
         }
     }
 
     /// Add an obligation to the netting set.
+    ///
+    /// Rejects duplicate obligations (same from_party, to_party, amount,
+    /// currency, corridor_id) to prevent double-settlement.
     pub fn add_obligation(&mut self, obligation: Obligation) -> Result<(), NettingError> {
         if obligation.amount <= 0 {
             return Err(NettingError::InvalidAmount {
@@ -170,6 +197,26 @@ impl NettingEngine {
                 amount: obligation.amount,
             });
         }
+
+        let key = (
+            obligation.from_party.clone(),
+            obligation.to_party.clone(),
+            obligation.amount,
+            obligation.currency.clone(),
+            obligation.corridor_id.clone().unwrap_or_default(),
+        );
+        if !self.seen.insert(key) {
+            return Err(NettingError::DuplicateObligation {
+                from_party: obligation.from_party,
+                to_party: obligation.to_party,
+                amount: obligation.amount,
+                currency: obligation.currency,
+                corridor_id: obligation
+                    .corridor_id
+                    .unwrap_or_else(|| "none".to_string()),
+            });
+        }
+
         self.obligations.push(obligation);
         Ok(())
     }
@@ -313,6 +360,7 @@ impl NettingEngine {
     /// Clear all obligations and start fresh.
     pub fn clear(&mut self) {
         self.obligations.clear();
+        self.seen.clear();
     }
 }
 
@@ -717,6 +765,45 @@ mod tests {
         assert!(currencies.contains("USD"));
         assert!(currencies.contains("PKR"));
         assert!(currencies.contains("AED"));
+    }
+
+    #[test]
+    fn duplicate_obligation_rejected() {
+        let mut engine = NettingEngine::new();
+        engine
+            .add_obligation(obligation("A", "B", 100, "USD"))
+            .unwrap();
+        let result = engine.add_obligation(obligation("A", "B", 100, "USD"));
+        assert!(
+            matches!(result, Err(NettingError::DuplicateObligation { .. })),
+            "duplicate obligation should be rejected"
+        );
+        assert_eq!(engine.obligation_count(), 1);
+    }
+
+    #[test]
+    fn different_amounts_not_duplicate() {
+        let mut engine = NettingEngine::new();
+        engine
+            .add_obligation(obligation("A", "B", 100, "USD"))
+            .unwrap();
+        // Same parties, different amount → not a duplicate
+        engine
+            .add_obligation(obligation("A", "B", 200, "USD"))
+            .unwrap();
+        assert_eq!(engine.obligation_count(), 2);
+    }
+
+    #[test]
+    fn different_currencies_not_duplicate() {
+        let mut engine = NettingEngine::new();
+        engine
+            .add_obligation(obligation("A", "B", 100, "USD"))
+            .unwrap();
+        engine
+            .add_obligation(obligation("A", "B", 100, "PKR"))
+            .unwrap();
+        assert_eq!(engine.obligation_count(), 2);
     }
 
     #[test]

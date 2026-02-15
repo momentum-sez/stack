@@ -114,12 +114,20 @@
         },
         "notes": {"type": "string"}
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "anchor": {
       "type": "object",
       "description": "Optional anchoring metadata for external chain commitments.",
-      "additionalProperties": true
+      "properties": {
+        "chain_id": {"type": "string"},
+        "method": {"type": "string"},
+        "tx_hash": {"type": "string"},
+        "block_number": {"type": "integer"},
+        "anchored_root": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "anchored_at": {"type": "string", "format": "date-time"}
+      },
+      "additionalProperties": false
     },
     "proof": {
       "description": "One or more cryptographic proofs over the checkpoint payload (excluding the proof field).",

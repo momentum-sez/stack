@@ -32,7 +32,7 @@ pub mod poseidon;
 pub mod bbs;
 
 // Re-export primary types.
-pub use cas::{ArtifactRef, ContentAddressedStore};
+pub use cas::{ArtifactRef, ArtifactType, ContentAddressedStore};
 pub use ed25519::{Ed25519Signature, SigningKey, VerifyingKey};
 pub use error::CryptoError;
 pub use mmr::MerkleMountainRange;

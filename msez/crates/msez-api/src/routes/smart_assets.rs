@@ -16,7 +16,7 @@ use crate::auth::CallerIdentity;
 use crate::compliance::{apply_attestations, build_evaluation_result, build_tensor, AttestationInput};
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
-use crate::state::{AppState, AssetComplianceStatus, AssetStatus, SmartAssetRecord};
+use crate::state::{AppState, AssetComplianceStatus, AssetStatus, SmartAssetRecord, SmartAssetType};
 use axum::extract::rejection::JsonRejection;
 
 /// Request to create a smart asset genesis.
@@ -140,9 +140,10 @@ async fn create_asset(
     let now = Utc::now();
     let id = Uuid::new_v4();
 
+    let asset_type = SmartAssetType::new(req.asset_type).map_err(AppError::Validation)?;
     let record = SmartAssetRecord {
         id,
-        asset_type: req.asset_type,
+        asset_type,
         jurisdiction_id: req.jurisdiction_id,
         status: AssetStatus::Genesis,
         genesis_digest: None,

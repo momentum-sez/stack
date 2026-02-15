@@ -220,11 +220,55 @@ impl std::fmt::Display for AssetStatus {
     }
 }
 
+/// Validated smart asset type.
+///
+/// Serializes/deserializes as a plain string for backward compatibility.
+/// Validated on construction via [`SmartAssetType::new`] to ensure non-empty
+/// and within length limits (max 255 characters).
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, ToSchema)]
+#[serde(transparent)]
+#[schema(value_type = String)]
+pub struct SmartAssetType(String);
+
+impl SmartAssetType {
+    /// Create a validated smart asset type.
+    ///
+    /// Returns an error if the string is empty or exceeds 255 characters.
+    pub fn new(s: impl Into<String>) -> Result<Self, String> {
+        let s = s.into();
+        let trimmed = s.trim().to_string();
+        if trimmed.is_empty() {
+            return Err("asset_type must not be empty".to_string());
+        }
+        if trimmed.len() > 255 {
+            return Err("asset_type must not exceed 255 characters".to_string());
+        }
+        Ok(Self(trimmed))
+    }
+
+    /// Return the asset type as a string slice.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for SmartAssetType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl PartialEq<&str> for SmartAssetType {
+    fn eq(&self, other: &&str) -> bool {
+        self.0 == *other
+    }
+}
+
 /// Smart asset record.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct SmartAssetRecord {
     pub id: Uuid,
-    pub asset_type: String,
+    pub asset_type: SmartAssetType,
     pub jurisdiction_id: String,
     pub status: AssetStatus,
     pub genesis_digest: Option<String>,

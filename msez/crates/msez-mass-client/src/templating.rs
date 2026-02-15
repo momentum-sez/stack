@@ -55,11 +55,7 @@ impl TemplatingClient {
             self.base_url
         );
 
-        let resp = self
-            .http
-            .post(&url)
-            .json(req)
-            .send()
+        let resp = crate::retry::retry_send(|| self.http.post(&url).json(req).send())
             .await
             .map_err(|e| MassApiError::Http {
                 endpoint: endpoint.into(),

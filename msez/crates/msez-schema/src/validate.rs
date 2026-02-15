@@ -408,15 +408,19 @@ impl SchemaValidator {
     /// Find all module directories under a `modules/` directory.
     ///
     /// Returns paths to directories containing a `module.yaml` file.
-    pub fn find_all_modules(modules_dir: &Path) -> Vec<PathBuf> {
+    /// Returns an error if the directory cannot be read, rather than
+    /// silently returning an empty list.
+    pub fn find_all_modules(
+        modules_dir: &Path,
+    ) -> Result<Vec<PathBuf>, SchemaValidationError> {
         if !modules_dir.is_dir() {
-            return Vec::new();
+            return Ok(Vec::new());
         }
 
         let mut result = Vec::new();
-        Self::walk_for_modules(modules_dir, &mut result);
+        Self::walk_for_modules(modules_dir, &mut result)?;
         result.sort();
-        result
+        Ok(result)
     }
 
     /// Validate all module descriptors found under a `modules/` directory.
@@ -427,7 +431,20 @@ impl SchemaValidator {
     /// This matches the behavior of `msez validate --all-modules` from the
     /// Python CLI.
     pub fn validate_all_modules(&self, modules_dir: &Path) -> ModuleValidationReport {
-        let module_dirs = Self::find_all_modules(modules_dir);
+        let module_dirs = match Self::find_all_modules(modules_dir) {
+            Ok(dirs) => dirs,
+            Err(e) => {
+                return ModuleValidationReport {
+                    total: 0,
+                    passed: 0,
+                    failed: 1,
+                    failures: vec![ModuleFailure {
+                        module_dir: modules_dir.to_path_buf(),
+                        error: e,
+                    }],
+                };
+            }
+        };
         let total = module_dirs.len();
         let mut passed = 0usize;
         let mut failures: Vec<ModuleFailure> = Vec::new();
@@ -479,21 +496,28 @@ impl SchemaValidator {
         Ok(())
     }
 
-    fn walk_for_modules(dir: &Path, acc: &mut Vec<PathBuf>) {
-        let Ok(entries) = std::fs::read_dir(dir) else {
-            return;
-        };
-        for entry in entries.flatten() {
+    fn walk_for_modules(dir: &Path, acc: &mut Vec<PathBuf>) -> Result<(), SchemaValidationError> {
+        let entries = std::fs::read_dir(dir).map_err(|e| {
+            SchemaValidationError::DocumentLoadError {
+                path: dir.display().to_string(),
+                reason: format!("failed to read directory: {e}"),
+            }
+        })?;
+        for entry in entries {
+            let entry = entry.map_err(|e| SchemaValidationError::DocumentLoadError {
+                path: dir.display().to_string(),
+                reason: format!("failed to read directory entry: {e}"),
+            })?;
             let path = entry.path();
             if path.is_dir() {
-                // Check if this dir has a module.yaml
                 let module_yaml = path.join("module.yaml");
                 if module_yaml.exists() {
                     acc.push(path.clone());
                 }
-                Self::walk_for_modules(&path, acc);
+                Self::walk_for_modules(&path, acc)?;
             }
         }
+        Ok(())
     }
 }
 
@@ -711,7 +735,8 @@ mod tests {
     fn test_find_all_modules() {
         let modules_dir = repo_root().join("modules");
         if modules_dir.is_dir() {
-            let modules = SchemaValidator::find_all_modules(&modules_dir);
+            let modules = SchemaValidator::find_all_modules(&modules_dir)
+                .expect("find_all_modules should not fail on valid directory");
             // The repo claims ~119 module.yaml files.
             assert!(
                 modules.len() >= 50,
@@ -894,7 +919,8 @@ mod tests {
     #[test]
     fn test_find_all_modules_nonexistent_dir() {
         let modules =
-            SchemaValidator::find_all_modules(Path::new("/tmp/no-such-modules-dir-12345"));
+            SchemaValidator::find_all_modules(Path::new("/tmp/no-such-modules-dir-12345"))
+                .expect("non-existent dir should return Ok(empty)");
         assert!(modules.is_empty());
     }
 
@@ -1013,7 +1039,8 @@ mod tests {
         if !modules_dir.is_dir() {
             return;
         }
-        let all_modules = SchemaValidator::find_all_modules(&modules_dir);
+        let all_modules = SchemaValidator::find_all_modules(&modules_dir)
+            .expect("find_all_modules should succeed");
         if let Some(module_dir) = all_modules.first() {
             // Calling validate_module with a directory exercises the is_dir() branch
             let result = validator.validate_module(module_dir);
@@ -1030,7 +1057,8 @@ mod tests {
         if !modules_dir.is_dir() {
             return;
         }
-        let all_modules = SchemaValidator::find_all_modules(&modules_dir);
+        let all_modules = SchemaValidator::find_all_modules(&modules_dir)
+            .expect("find_all_modules should succeed");
         if let Some(module_dir) = all_modules.first() {
             let module_yaml = module_dir.join("module.yaml");
             if module_yaml.exists() {

@@ -20,7 +20,7 @@ use crate::extractors::{extract_validated_json, Validate};
 use crate::middleware::metrics::ApiMetrics;
 use crate::state::{AppState, AssetComplianceStatus, AttestationRecord, AttestationStatus};
 #[cfg(test)]
-use crate::state::AssetStatus;
+use crate::state::{AssetStatus, SmartAssetType};
 use axum::extract::rejection::JsonRejection;
 
 /// Query attestations request.
@@ -399,7 +399,7 @@ async fn dashboard(
         .iter()
         .map(|a| AssetComplianceSnapshot {
             asset_id: a.id,
-            asset_type: a.asset_type.clone(),
+            asset_type: a.asset_type.to_string(),
             jurisdiction_id: a.jurisdiction_id.clone(),
             compliance_status: a.compliance_status,
             last_evaluated: a
@@ -956,7 +956,7 @@ mod tests {
         // Add a smart asset
         let asset = crate::state::SmartAssetRecord {
             id: uuid::Uuid::new_v4(),
-            asset_type: "CapTable".to_string(),
+            asset_type: SmartAssetType::new("CapTable").expect("valid"),
             jurisdiction_id: "PK-PSEZ".to_string(),
             status: AssetStatus::Active,
             genesis_digest: None,
@@ -1114,7 +1114,7 @@ mod tests {
         // 2 assets: 1 compliant, 1 non_compliant.
         let compliant_asset = crate::state::SmartAssetRecord {
             id: uuid::Uuid::new_v4(),
-            asset_type: "equity".to_string(),
+            asset_type: SmartAssetType::new("equity").expect("valid"),
             jurisdiction_id: "PK-PSEZ".to_string(),
             status: AssetStatus::Active,
             genesis_digest: None,
@@ -1128,7 +1128,7 @@ mod tests {
 
         let blocking_asset = crate::state::SmartAssetRecord {
             id: uuid::Uuid::new_v4(),
-            asset_type: "bond".to_string(),
+            asset_type: SmartAssetType::new("bond").expect("valid"),
             jurisdiction_id: "AE-DIFC".to_string(),
             status: AssetStatus::Active,
             genesis_digest: None,

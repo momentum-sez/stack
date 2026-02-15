@@ -70,7 +70,13 @@
             },
             "forum": {
               "type": "object",
-              "additionalProperties": true
+              "description": "Dispute resolution forum details.",
+              "properties": {
+                "jurisdiction_id": {"type": "string", "description": "Jurisdiction governing the forum."},
+                "name": {"type": "string", "description": "Name of the dispute resolution body."},
+                "rules_uri": {"type": "string", "description": "URI to the governing rules or policy document."}
+              },
+              "additionalProperties": false
             },
             "claim": {
               "type": "string"

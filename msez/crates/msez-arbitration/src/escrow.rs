@@ -367,8 +367,8 @@ impl EscrowAccount {
             });
         }
 
-        let held = parse_amount(&self.held_amount);
-        let release = parse_amount(&amount);
+        let held = parse_amount(&self.held_amount)?;
+        let release = parse_amount(&amount)?;
         if release > held {
             return Err(ArbitrationError::InsufficientEscrowBalance {
                 escrow_id: self.id.to_string(),
@@ -460,11 +460,13 @@ impl EscrowAccount {
 
 /// Parse an amount string to an i64 (in smallest currency units).
 ///
-/// For simplicity, this treats the amount as an integer. Decimal amounts
-/// would require a proper decimal library, but the escrow system operates
-/// in smallest currency units (cents/paise).
-fn parse_amount(s: &str) -> i64 {
-    s.parse::<i64>().unwrap_or(0)
+/// The escrow system operates in smallest currency units (cents/paise).
+/// Invalid amount strings are rejected with [`ArbitrationError::InvalidAmount`]
+/// rather than silently defaulting to zero, which could mask data corruption
+/// or lead to incorrect settlement calculations.
+fn parse_amount(s: &str) -> Result<i64, ArbitrationError> {
+    s.parse::<i64>()
+        .map_err(|_| ArbitrationError::InvalidAmount(s.to_string()))
 }
 
 /// Format an i64 amount back to a string.
@@ -950,9 +952,17 @@ mod tests {
     }
 
     #[test]
-    fn parse_amount_invalid_returns_zero() {
-        assert_eq!(parse_amount("abc"), 0);
-        assert_eq!(parse_amount(""), 0);
+    fn parse_amount_invalid_returns_error() {
+        assert!(parse_amount("abc").is_err());
+        assert!(parse_amount("").is_err());
+        assert!(parse_amount("12.34").is_err());
+    }
+
+    #[test]
+    fn parse_amount_valid() {
+        assert_eq!(parse_amount("0").unwrap(), 0);
+        assert_eq!(parse_amount("12345").unwrap(), 12345);
+        assert_eq!(parse_amount("-100").unwrap(), -100);
     }
 
     #[test]
@@ -960,6 +970,20 @@ mod tests {
         assert_eq!(format_amount(12345), "12345");
         assert_eq!(format_amount(0), "0");
         assert_eq!(format_amount(-100), "-100");
+    }
+
+    #[test]
+    fn partial_release_with_invalid_amount_returns_error() {
+        let mut escrow = funded_escrow();
+        let result = escrow.partial_release(
+            "not_a_number".to_string(),
+            ReleaseCondition {
+                condition_type: ReleaseConditionType::InstitutionOrder,
+                evidence_digest: test_digest(),
+                satisfied_at: Timestamp::now(),
+            },
+        );
+        assert!(result.is_err());
     }
 
     #[test]

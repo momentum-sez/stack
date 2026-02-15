@@ -54,17 +54,38 @@
             },
             "forum": {
               "type": "object",
-              "additionalProperties": true
+              "description": "Dispute resolution forum details.",
+              "properties": {
+                "jurisdiction_id": {"type": "string", "description": "Jurisdiction governing the forum."},
+                "name": {"type": "string", "description": "Name of the dispute resolution body."},
+                "rules_uri": {"type": "string", "description": "URI to the governing rules or policy document."}
+              },
+              "additionalProperties": false
             },
             "outcome": {
               "type": "object",
-              "additionalProperties": true
+              "description": "Arbitration outcome details.",
+              "properties": {
+                "status": {"type": "string", "enum": ["awarded", "dismissed", "settled", "withdrawn"], "description": "Result status of the arbitration."},
+                "ruling_summary": {"type": "string", "description": "Brief description of the ruling."},
+                "relief_granted": {"type": "string", "description": "Description of the relief granted, if any."}
+              },
+              "additionalProperties": false
             },
             "obligations": {
               "type": "array",
               "items": {
                 "type": "object",
-                "additionalProperties": true
+                "description": "An obligation imposed by the arbitration award.",
+                "properties": {
+                  "obligor_id": {"type": "string", "description": "Entity that must fulfill the obligation."},
+                  "obligation_type": {"type": "string", "description": "Category of obligation (e.g., payment, action, restraint)."},
+                  "description": {"type": "string", "description": "Details of what must be fulfilled."},
+                  "due_by": {"type": "string", "format": "date-time", "description": "Deadline for fulfillment."},
+                  "amount": {"type": "string", "description": "Monetary amount if applicable."},
+                  "currency": {"type": "string", "description": "Currency code if amount is specified."}
+                },
+                "additionalProperties": false
               }
             },
             "attachments": {

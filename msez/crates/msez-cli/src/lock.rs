@@ -253,12 +253,30 @@ fn find_profile(profiles_dir: &Path, profile_id: &str) -> Result<serde_json::Val
 
     for entry in walkdir_recursive(profiles_dir) {
         if entry.file_name().and_then(|f| f.to_str()) == Some("profile.yaml") {
-            if let Ok(content) = std::fs::read_to_string(&entry) {
-                if let Ok(profile) = serde_yaml::from_str::<serde_json::Value>(&content) {
-                    if profile.get("profile_id").and_then(|v| v.as_str()) == Some(profile_id) {
-                        return Ok(profile);
-                    }
+            let content = match std::fs::read_to_string(&entry) {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::warn!(
+                        path = %entry.display(),
+                        error = %e,
+                        "failed to read profile.yaml — file may be corrupted or inaccessible"
+                    );
+                    continue;
                 }
+            };
+            let profile: serde_json::Value = match serde_yaml::from_str(&content) {
+                Ok(p) => p,
+                Err(e) => {
+                    tracing::warn!(
+                        path = %entry.display(),
+                        error = %e,
+                        "failed to parse profile.yaml — file contains invalid YAML"
+                    );
+                    continue;
+                }
+            };
+            if profile.get("profile_id").and_then(|v| v.as_str()) == Some(profile_id) {
+                return Ok(profile);
             }
         }
     }
@@ -350,10 +368,29 @@ fn walkdir_recursive(dir: &Path) -> Vec<PathBuf> {
 }
 
 fn walk_recursive_inner(dir: &Path, acc: &mut Vec<PathBuf>) {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
+    let entries = match std::fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(e) => {
+            tracing::warn!(
+                dir = %dir.display(),
+                error = %e,
+                "failed to read directory during recursive walk"
+            );
+            return;
+        }
     };
-    for entry in entries.flatten() {
+    for entry in entries {
+        let entry = match entry {
+            Ok(e) => e,
+            Err(e) => {
+                tracing::warn!(
+                    dir = %dir.display(),
+                    error = %e,
+                    "failed to read directory entry"
+                );
+                continue;
+            }
+        };
         let path = entry.path();
         if path.is_dir() {
             walk_recursive_inner(&path, acc);

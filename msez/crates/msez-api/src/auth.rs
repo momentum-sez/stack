@@ -291,7 +291,7 @@ fn unauthorized_response(message: &str) -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::SmartAssetRecord;
+    use crate::state::{SmartAssetRecord, SmartAssetType};
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use axum::middleware::from_fn;
@@ -499,7 +499,7 @@ mod tests {
         };
         let asset = SmartAssetRecord {
             id: Uuid::new_v4(),
-            asset_type: "bond".to_string(),
+            asset_type: SmartAssetType::new("bond").expect("valid"),
             jurisdiction_id: "PK-PSEZ".to_string(),
             status: crate::state::AssetStatus::Genesis,
             genesis_digest: None,
@@ -521,7 +521,7 @@ mod tests {
         };
         let asset = SmartAssetRecord {
             id: Uuid::new_v4(),
-            asset_type: "equity".to_string(),
+            asset_type: SmartAssetType::new("equity").expect("valid"),
             jurisdiction_id: "AE-DIFC".to_string(),
             status: crate::state::AssetStatus::Genesis,
             genesis_digest: None,
@@ -544,7 +544,7 @@ mod tests {
         };
         let asset = SmartAssetRecord {
             id: Uuid::new_v4(),
-            asset_type: "bond".to_string(),
+            asset_type: SmartAssetType::new("bond").expect("valid"),
             jurisdiction_id: "PK-PSEZ".to_string(),
             status: crate::state::AssetStatus::Genesis,
             genesis_digest: None,
@@ -566,7 +566,7 @@ mod tests {
         };
         let asset = SmartAssetRecord {
             id: Uuid::new_v4(),
-            asset_type: "bond".to_string(),
+            asset_type: SmartAssetType::new("bond").expect("valid"),
             jurisdiction_id: "PK-PSEZ".to_string(),
             status: crate::state::AssetStatus::Genesis,
             genesis_digest: None,
@@ -588,7 +588,7 @@ mod tests {
         };
         let asset = SmartAssetRecord {
             id: Uuid::new_v4(),
-            asset_type: "bond".to_string(),
+            asset_type: SmartAssetType::new("bond").expect("valid"),
             jurisdiction_id: "PK-PSEZ".to_string(),
             status: crate::state::AssetStatus::Genesis,
             genesis_digest: None,

@@ -88,6 +88,47 @@ fn validate_digest_hex(digest_hex: &str) -> Result<String, CryptoError> {
 // ArtifactRef
 // ---------------------------------------------------------------------------
 
+/// A validated artifact type string.
+///
+/// Wraps a `String` that has been validated against the CAS naming
+/// convention: `^[a-z0-9][a-z0-9-]{0,63}$`. The inner value cannot be
+/// mutated after construction, guaranteeing the invariant holds.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ArtifactType(String);
+
+impl ArtifactType {
+    /// Create a new validated artifact type.
+    ///
+    /// Returns an error if the string doesn't match `^[a-z0-9][a-z0-9-]{0,63}$`.
+    pub fn new(s: &str) -> Result<Self, CryptoError> {
+        let validated = validate_artifact_type(s)?;
+        Ok(Self(validated))
+    }
+
+    /// Return the artifact type as a string slice.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for ArtifactType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl PartialEq<&str> for ArtifactType {
+    fn eq(&self, other: &&str) -> bool {
+        self.0 == *other
+    }
+}
+
+impl PartialEq<str> for ArtifactType {
+    fn eq(&self, other: &str) -> bool {
+        self.0 == other
+    }
+}
+
 /// A reference to a content-addressed artifact.
 ///
 /// Combines the artifact type (e.g., `"lawpack"`, `"receipt"`, `"vc"`) with
@@ -95,8 +136,8 @@ fn validate_digest_hex(digest_hex: &str) -> Result<String, CryptoError> {
 /// and determines its storage path: `{base_dir}/{artifact_type}/{digest_hex}.json`.
 #[derive(Debug, Clone)]
 pub struct ArtifactRef {
-    /// The artifact type (e.g., "lawpack", "receipt", "vc").
-    pub artifact_type: String,
+    /// The validated artifact type (e.g., "lawpack", "receipt", "vc").
+    pub artifact_type: ArtifactType,
     /// The content digest of the artifact.
     pub digest: ContentDigest,
 }
@@ -106,7 +147,7 @@ impl ArtifactRef {
     ///
     /// Validates the artifact type against the CAS naming convention.
     pub fn new(artifact_type: &str, digest: ContentDigest) -> Result<Self, CryptoError> {
-        let t = validate_artifact_type(artifact_type)?;
+        let t = ArtifactType::new(artifact_type)?;
         Ok(Self {
             artifact_type: t,
             digest,
@@ -116,7 +157,7 @@ impl ArtifactRef {
     /// Return the filesystem path for this artifact relative to a CAS base directory.
     pub fn path_in(&self, base_dir: &Path) -> PathBuf {
         base_dir
-            .join(&self.artifact_type)
+            .join(self.artifact_type.as_str())
             .join(format!("{}.json", self.digest.to_hex()))
     }
 }
@@ -179,7 +220,7 @@ impl ContentAddressedStore {
         artifact_type: &str,
         data: &impl Serialize,
     ) -> Result<ArtifactRef, CryptoError> {
-        let t = validate_artifact_type(artifact_type)?;
+        let t = ArtifactType::new(artifact_type)?;
         let canonical = CanonicalBytes::new(data)
             .map_err(|e| CryptoError::Cas(format!("canonicalization failed: {e}")))?;
         let digest = sha256_digest(&canonical);
@@ -188,7 +229,7 @@ impl ContentAddressedStore {
             digest,
         };
 
-        let dir = self.base_dir.join(&t);
+        let dir = self.base_dir.join(t.as_str());
         fs::create_dir_all(&dir)?;
 
         let path = artifact_ref.path_in(&self.base_dir);
@@ -213,13 +254,13 @@ impl ContentAddressedStore {
         digest: &ContentDigest,
         bytes: &[u8],
     ) -> Result<ArtifactRef, CryptoError> {
-        let t = validate_artifact_type(artifact_type)?;
+        let t = ArtifactType::new(artifact_type)?;
         let artifact_ref = ArtifactRef {
             artifact_type: t.clone(),
             digest: digest.clone(),
         };
 
-        let dir = self.base_dir.join(&t);
+        let dir = self.base_dir.join(t.as_str());
         fs::create_dir_all(&dir)?;
 
         let path = artifact_ref.path_in(&self.base_dir);
@@ -245,9 +286,9 @@ impl ContentAddressedStore {
         artifact_type: &str,
         digest: &ContentDigest,
     ) -> Result<Option<Vec<u8>>, CryptoError> {
-        let t = validate_artifact_type(artifact_type)?;
+        let t = ArtifactType::new(artifact_type)?;
         let hex = digest.to_hex();
-        let path = self.base_dir.join(&t).join(format!("{hex}.json"));
+        let path = self.base_dir.join(t.as_str()).join(format!("{hex}.json"));
 
         if !path.exists() {
             return Ok(None);
@@ -289,7 +330,7 @@ impl ContentAddressedStore {
     ///
     /// Convenience wrapper around [`resolve()`](ContentAddressedStore::resolve).
     pub fn resolve_ref(&self, artifact_ref: &ArtifactRef) -> Result<Option<Vec<u8>>, CryptoError> {
-        self.resolve(&artifact_ref.artifact_type, &artifact_ref.digest)
+        self.resolve(artifact_ref.artifact_type.as_str(), &artifact_ref.digest)
     }
 
     /// Check whether an artifact exists in the store.
@@ -298,10 +339,10 @@ impl ContentAddressedStore {
         artifact_type: &str,
         digest: &ContentDigest,
     ) -> Result<bool, CryptoError> {
-        let t = validate_artifact_type(artifact_type)?;
+        let t = ArtifactType::new(artifact_type)?;
         let path = self
             .base_dir
-            .join(&t)
+            .join(t.as_str())
             .join(format!("{}.json", digest.to_hex()));
         Ok(path.exists())
     }
@@ -311,8 +352,8 @@ impl ContentAddressedStore {
     /// Returns hex digest strings extracted from filenames matching
     /// `{artifact_type}/*.json`.
     pub fn list_digests(&self, artifact_type: &str) -> Result<Vec<String>, CryptoError> {
-        let t = validate_artifact_type(artifact_type)?;
-        let dir = self.base_dir.join(&t);
+        let t = ArtifactType::new(artifact_type)?;
+        let dir = self.base_dir.join(t.as_str());
 
         if !dir.exists() {
             return Ok(Vec::new());

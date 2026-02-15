@@ -300,11 +300,16 @@ mod tests {
 
     #[test]
     fn test_audit_current_schema_state() {
-        // This test documents the CURRENT state of the security-critical schemas.
-        // Per audit §3.1, some schemas currently have additionalProperties: true
-        // at the envelope level. This test reports but does not fail — the fix
-        // is tracked in the audit remediation plan.
-        let mut total_violations = 0;
+        // Tracks the KNOWN count of additionalProperties violations in
+        // security-critical schemas. These are documented findings per audit
+        // §3.1 — the schemas themselves need fixing (tracked separately).
+        //
+        // This test prevents REGRESSIONS: if new violations appear beyond
+        // the known count, the test fails. As violations are fixed, reduce
+        // KNOWN_VIOLATION_COUNT toward zero.
+        const KNOWN_VIOLATION_COUNT: usize = 14;
+
+        let mut all_violations = Vec::new();
         for filename in SECURITY_CRITICAL_SCHEMAS {
             let path = repo_root().join("schemas").join(filename);
             if !path.exists() {
@@ -313,22 +318,20 @@ mod tests {
 
             let schema = load_schema(filename);
             let violations = check_additional_properties_policy(filename, &schema);
-            if !violations.is_empty() {
-                eprintln!(
-                    "Schema {filename} has {} policy violations:",
-                    violations.len()
-                );
-                for v in &violations {
-                    eprintln!("  {v}");
-                }
-                total_violations += violations.len();
-            }
+            all_violations.extend(violations);
         }
 
-        if total_violations > 0 {
-            eprintln!("\nTotal additionalProperties policy violations: {total_violations}");
-            eprintln!("These are documented findings per audit §3.1.");
-        }
+        assert!(
+            all_violations.len() <= KNOWN_VIOLATION_COUNT,
+            "New additionalProperties violations introduced! \
+             Expected at most {KNOWN_VIOLATION_COUNT}, found {}:\n{}",
+            all_violations.len(),
+            all_violations
+                .iter()
+                .map(|v| v.to_string())
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
     }
 
     #[test]

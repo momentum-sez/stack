@@ -4,7 +4,7 @@
 //! Mass organization-info API, replacing the in-process CRUD tests that
 //! previously lived in msez-api/src/routes/entities.rs.
 
-use msez_mass_client::entities::CreateEntityRequest;
+use msez_mass_client::entities::{CreateEntityRequest, MassEntityType, MassEntityStatus};
 use msez_mass_client::{MassApiConfig, MassClient};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -45,7 +45,7 @@ async fn create_entity_returns_created_entity() {
     let client = test_client(&mock_server).await;
 
     let req = CreateEntityRequest {
-        entity_type: "llc".into(),
+        entity_type: MassEntityType::Llc,
         legal_name: "Test Corp".into(),
         jurisdiction_id: "pk-sez-01".into(),
         beneficial_owners: vec![],
@@ -54,8 +54,8 @@ async fn create_entity_returns_created_entity() {
     let entity = client.entities().create(&req).await.unwrap();
     assert_eq!(entity.legal_name, "Test Corp");
     assert_eq!(entity.jurisdiction_id, "pk-sez-01");
-    assert_eq!(entity.entity_type, "llc");
-    assert_eq!(entity.status, "active");
+    assert_eq!(entity.entity_type, MassEntityType::Llc);
+    assert_eq!(entity.status, MassEntityStatus::Active);
 }
 
 #[tokio::test]
@@ -167,7 +167,7 @@ async fn create_entity_handles_api_error() {
     let client = test_client(&mock_server).await;
 
     let req = CreateEntityRequest {
-        entity_type: "".into(),
+        entity_type: MassEntityType::Llc,
         legal_name: "".into(),
         jurisdiction_id: "".into(),
         beneficial_owners: vec![],
@@ -214,7 +214,7 @@ async fn create_entity_with_beneficial_owners() {
     let client = test_client(&mock_server).await;
 
     let req = CreateEntityRequest {
-        entity_type: "llc".into(),
+        entity_type: MassEntityType::Llc,
         legal_name: "Owner Corp".into(),
         jurisdiction_id: "pk-sez-01".into(),
         beneficial_owners: vec![msez_mass_client::entities::MassBeneficialOwner {

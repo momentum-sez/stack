@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use clap::{Args, Subcommand};
 
-use msez_core::{CanonicalBytes, ContentDigest};
+use msez_core::ContentDigest;
 use msez_crypto::ContentAddressedStore;
 
 /// Arguments for the `msez artifact` subcommand.
@@ -112,10 +112,6 @@ fn cmd_store(
 
 /// Resolve an artifact by type and digest.
 fn cmd_resolve(cas: &ContentAddressedStore, artifact_type: &str, digest_hex: &str) -> Result<u8> {
-    let canonical = CanonicalBytes::new(&serde_json::json!({"_placeholder": digest_hex}))
-        .context("canonicalization failed")?;
-    let _ = canonical; // Just for the import
-
     // Build a ContentDigest from the hex string.
     let digest = parse_digest_hex(digest_hex)?;
 

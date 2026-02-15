@@ -552,15 +552,16 @@ async fn fork_resolve(
     post,
     path = "/v1/corridors/state/anchor",
     responses(
-        (status = 200, description = "Anchor commitment recorded"),
+        (status = 501, description = "Not implemented — Phase 2 feature"),
     ),
     tag = "corridors"
 )]
-async fn anchor_commitment(State(_state): State<AppState>) -> Json<serde_json::Value> {
-    Json(serde_json::json!({
-        "status": "anchored",
-        "message": "L1 anchoring is a Phase 2 feature"
-    }))
+async fn anchor_commitment(
+    State(_state): State<AppState>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    Err(AppError::NotImplemented(
+        "L1 anchoring is a Phase 2 feature".to_string(),
+    ))
 }
 
 /// POST /v1/corridors/state/finality-status — Compute finality status.
@@ -568,16 +569,16 @@ async fn anchor_commitment(State(_state): State<AppState>) -> Json<serde_json::V
     post,
     path = "/v1/corridors/state/finality-status",
     responses(
-        (status = 200, description = "Finality status computed"),
+        (status = 501, description = "Not implemented — Phase 2 feature"),
     ),
     tag = "corridors"
 )]
-async fn finality_status(State(_state): State<AppState>) -> Json<serde_json::Value> {
-    Json(serde_json::json!({
-        "status": "pending",
-        "confirmations": 0,
-        "message": "Finality computation is a Phase 2 feature"
-    }))
+async fn finality_status(
+    State(_state): State<AppState>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    Err(AppError::NotImplemented(
+        "Finality computation is a Phase 2 feature".to_string(),
+    ))
 }
 
 #[cfg(test)]
@@ -1327,7 +1328,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handler_anchor_commitment_returns_200() {
+    async fn handler_anchor_commitment_returns_501() {
         let app = test_app();
         let req = Request::builder()
             .method("POST")
@@ -1336,14 +1337,11 @@ mod tests {
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
-
-        let body: serde_json::Value = body_json(resp).await;
-        assert_eq!(body["status"], "anchored");
+        assert_eq!(resp.status(), StatusCode::NOT_IMPLEMENTED);
     }
 
     #[tokio::test]
-    async fn handler_finality_status_returns_200() {
+    async fn handler_finality_status_returns_501() {
         let app = test_app();
         let req = Request::builder()
             .method("POST")
@@ -1352,11 +1350,7 @@ mod tests {
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
-
-        let body: serde_json::Value = body_json(resp).await;
-        assert_eq!(body["status"], "pending");
-        assert_eq!(body["confirmations"], 0);
+        assert_eq!(resp.status(), StatusCode::NOT_IMPLEMENTED);
     }
 
     #[tokio::test]

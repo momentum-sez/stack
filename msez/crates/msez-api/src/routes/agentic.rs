@@ -77,6 +77,20 @@ pub struct TriggerResponse {
     pub audit_entries: usize,
 }
 
+/// Execution status of a dispatched policy action.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ActionStatus {
+    /// Action was executed successfully (e.g., corridor transitioned).
+    Executed,
+    /// Action was recorded for future execution by a domain executor.
+    Scheduled,
+    /// Action was skipped (target not found, invalid transition, etc.).
+    Skipped,
+    /// Action execution failed with an error.
+    Failed,
+}
+
 /// Result of dispatching a single action.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ActionResult {
@@ -84,8 +98,8 @@ pub struct ActionResult {
     pub action_id: String,
     /// Action type (e.g., "halt", "resume", "update_manifest").
     pub action_type: String,
-    /// Execution status: "executed", "scheduled", "skipped", "failed".
-    pub status: String,
+    /// Execution status.
+    pub status: ActionStatus,
     /// Human-readable detail about the action outcome.
     pub detail: Option<String>,
     /// Resource affected by the action (corridor UUID, asset ID, etc.).
@@ -234,7 +248,7 @@ async fn dispatch_action(state: &AppState, action: &ScheduledAction) -> ActionRe
             ActionResult {
                 action_id: action.action_id.clone(),
                 action_type: action.action.as_str().to_string(),
-                status: "scheduled".to_string(),
+                status: ActionStatus::Scheduled,
                 detail: Some(format!(
                     "action '{}' recorded but no executor wired yet",
                     action.action.as_str()
@@ -261,7 +275,7 @@ async fn dispatch_corridor_transition(
             return ActionResult {
                 action_id: action.action_id.clone(),
                 action_type: action.action.as_str().to_string(),
-                status: "skipped".to_string(),
+                status: ActionStatus::Skipped,
                 detail: Some(format!(
                     "asset_id '{}' is not a valid corridor UUID",
                     action.asset_id
@@ -278,7 +292,7 @@ async fn dispatch_corridor_transition(
             return ActionResult {
                 action_id: action.action_id.clone(),
                 action_type: action.action.as_str().to_string(),
-                status: "skipped".to_string(),
+                status: ActionStatus::Skipped,
                 detail: Some(format!("corridor {} not found", corridor_id)),
                 affected_resource: None,
             };
@@ -291,7 +305,7 @@ async fn dispatch_corridor_transition(
         return ActionResult {
             action_id: action.action_id.clone(),
             action_type: action.action.as_str().to_string(),
-            status: "skipped".to_string(),
+            status: ActionStatus::Skipped,
             detail: Some(format!(
                 "corridor {} cannot transition from {} to {} (valid: [{}])",
                 corridor_id,
@@ -339,7 +353,7 @@ async fn dispatch_corridor_transition(
         Some(_) => ActionResult {
             action_id: action.action_id.clone(),
             action_type: action.action.as_str().to_string(),
-            status: "executed".to_string(),
+            status: ActionStatus::Executed,
             detail: Some(format!(
                 "corridor {} transitioned to {}",
                 corridor_id,
@@ -350,7 +364,7 @@ async fn dispatch_corridor_transition(
         None => ActionResult {
             action_id: action.action_id.clone(),
             action_type: action.action.as_str().to_string(),
-            status: "failed".to_string(),
+            status: ActionStatus::Failed,
             detail: Some(format!(
                 "corridor {} disappeared during transition",
                 corridor_id
@@ -457,7 +471,7 @@ mod tests {
         assert!(resp.actions_produced > 0, "expected actions from sanctions trigger");
 
         // At least one action should have been executed (the halt).
-        let executed: Vec<_> = resp.actions.iter().filter(|a| a.status == "executed").collect();
+        let executed: Vec<_> = resp.actions.iter().filter(|a| a.status == ActionStatus::Executed).collect();
         assert!(!executed.is_empty(), "expected at least one executed action");
 
         // The corridor should now be HALTED.
@@ -500,7 +514,7 @@ mod tests {
         let resp: TriggerResponse = body_json(response).await;
 
         // Action should be "skipped" because DRAFT cannot transition to HALTED.
-        let skipped: Vec<_> = resp.actions.iter().filter(|a| a.status == "skipped").collect();
+        let skipped: Vec<_> = resp.actions.iter().filter(|a| a.status == ActionStatus::Skipped).collect();
         assert!(!skipped.is_empty(), "expected skipped action for DRAFT corridor");
 
         // Corridor should still be DRAFT.
@@ -531,7 +545,7 @@ mod tests {
 
         let resp: TriggerResponse = body_json(response).await;
         // Actions should exist but be skipped (corridor not found).
-        let skipped: Vec<_> = resp.actions.iter().filter(|a| a.status == "skipped").collect();
+        let skipped: Vec<_> = resp.actions.iter().filter(|a| a.status == ActionStatus::Skipped).collect();
         assert!(
             !skipped.is_empty(),
             "expected skipped action for nonexistent corridor"
@@ -561,7 +575,7 @@ mod tests {
 
         let resp: TriggerResponse = body_json(response).await;
         // Halt actions should be skipped (invalid UUID).
-        let skipped: Vec<_> = resp.actions.iter().filter(|a| a.status == "skipped").collect();
+        let skipped: Vec<_> = resp.actions.iter().filter(|a| a.status == ActionStatus::Skipped).collect();
         assert!(!skipped.is_empty(), "expected skipped action for non-UUID asset_id");
     }
 
@@ -660,8 +674,9 @@ mod tests {
         for action in &resp.actions {
             if action.action_type != "halt" && action.action_type != "resume" {
                 assert_eq!(
-                    action.status, "scheduled",
-                    "non-halt/resume action should be scheduled, got: {}",
+                    action.status,
+                    ActionStatus::Scheduled,
+                    "non-halt/resume action should be scheduled, got: {:?}",
                     action.status
                 );
             }
@@ -790,10 +805,10 @@ mod tests {
             let resp: TriggerResponse = body_json(response).await;
 
             // Collect (action_type, status) pairs for comparison.
-            let set: Vec<(String, String)> = resp
+            let set: Vec<(String, ActionStatus)> = resp
                 .actions
                 .iter()
-                .map(|a| (a.action_type.clone(), a.status.clone()))
+                .map(|a| (a.action_type.clone(), a.status))
                 .collect();
             action_sets.push(set);
         }

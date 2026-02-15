@@ -9,16 +9,48 @@ use uuid::Uuid;
 
 use crate::error::MassApiError;
 
+// -- Typed enums matching Mass API values ------------------------------------
+
+/// Entity type as defined by the Mass organization-info API.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MassEntityType {
+    Llc,
+    Corporation,
+    Company,
+    Partnership,
+    #[serde(rename = "sole_proprietor")]
+    SoleProprietor,
+    Trust,
+    /// Forward-compatible catch-all for entity types the Mass API introduces
+    /// after this client version is deployed.
+    #[serde(other)]
+    Unknown,
+}
+
+/// Entity status as defined by the Mass organization-info API.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MassEntityStatus {
+    Active,
+    Inactive,
+    Suspended,
+    Dissolved,
+    /// Forward-compatible catch-all.
+    #[serde(other)]
+    Unknown,
+}
+
 // -- Request/Response types matching Mass API schemas -------------------------
 
 /// Entity as returned by the Mass organization-info API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MassEntity {
     pub id: Uuid,
-    pub entity_type: String,
+    pub entity_type: MassEntityType,
     pub legal_name: String,
     pub jurisdiction_id: String,
-    pub status: String,
+    pub status: MassEntityStatus,
     #[serde(default)]
     pub beneficial_owners: Vec<MassBeneficialOwner>,
     pub created_at: DateTime<Utc>,
@@ -37,7 +69,7 @@ pub struct MassBeneficialOwner {
 /// Request to create an entity via Mass.
 #[derive(Debug, Serialize)]
 pub struct CreateEntityRequest {
-    pub entity_type: String,
+    pub entity_type: MassEntityType,
     pub legal_name: String,
     pub jurisdiction_id: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]

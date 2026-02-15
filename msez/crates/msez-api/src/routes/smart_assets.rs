@@ -16,7 +16,7 @@ use crate::auth::CallerIdentity;
 use crate::compliance::{apply_attestations, build_evaluation_result, build_tensor, AttestationInput};
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
-use crate::state::{AppState, AssetComplianceStatus, SmartAssetRecord};
+use crate::state::{AppState, AssetComplianceStatus, AssetStatus, SmartAssetRecord};
 use axum::extract::rejection::JsonRejection;
 
 /// Request to create a smart asset genesis.
@@ -144,7 +144,7 @@ async fn create_asset(
         id,
         asset_type: req.asset_type,
         jurisdiction_id: req.jurisdiction_id,
-        status: "GENESIS".to_string(),
+        status: AssetStatus::Genesis,
         genesis_digest: None,
         compliance_status: AssetComplianceStatus::Unevaluated,
         metadata: req.metadata,
@@ -166,11 +166,12 @@ async fn create_asset(
     ),
     tag = "smart_assets"
 )]
-async fn submit_registry(State(_state): State<AppState>) -> Json<serde_json::Value> {
-    Json(serde_json::json!({
-        "status": "submitted",
-        "message": "Registry VC submission recorded"
-    }))
+async fn submit_registry(
+    State(_state): State<AppState>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    Err(AppError::NotImplemented(
+        "Registry VC submission is a Phase 2 feature".to_string(),
+    ))
 }
 
 /// GET /v1/assets/:id — Get a smart asset.
@@ -276,13 +277,12 @@ async fn verify_anchor(
         return Err(AppError::NotFound(format!("asset {id} not found")));
     }
 
-    Ok(Json(serde_json::json!({
-        "asset_id": id,
-        "anchor_digest": req.anchor_digest,
-        "chain": req.chain,
-        "verified": true,
-        "message": "Anchor verification is a Phase 2 feature — returning stub"
-    })))
+    // Phase 2: anchor verification will cross-reference the on-chain
+    // commitment with the corridor receipt chain. Until then, return 501.
+    let _ = (id, req);
+    Err(AppError::NotImplemented(
+        "Anchor verification is a Phase 2 feature".to_string(),
+    ))
 }
 
 #[cfg(test)]
@@ -469,7 +469,7 @@ mod tests {
         let record: SmartAssetRecord = body_json(resp).await;
         assert_eq!(record.asset_type, "bond");
         assert_eq!(record.jurisdiction_id, "PK-PSEZ");
-        assert_eq!(record.status, "GENESIS");
+        assert_eq!(record.status, AssetStatus::Genesis);
         assert!(record.genesis_digest.is_none());
         assert_eq!(record.compliance_status, AssetComplianceStatus::Unevaluated);
     }
@@ -570,7 +570,7 @@ mod tests {
     // ── Additional handler coverage ───────────────────────────────
 
     #[tokio::test]
-    async fn handler_submit_registry_returns_200() {
+    async fn handler_submit_registry_returns_501() {
         let app = test_app();
         let req = Request::builder()
             .method("POST")
@@ -579,10 +579,7 @@ mod tests {
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
-
-        let body: serde_json::Value = body_json(resp).await;
-        assert_eq!(body["status"], "submitted");
+        assert_eq!(resp.status(), StatusCode::NOT_IMPLEMENTED);
     }
 
     #[tokio::test]
@@ -653,7 +650,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handler_verify_anchor_returns_200() {
+    async fn handler_verify_anchor_returns_501() {
         let state = AppState::new();
         let app = test_app_with_state(state.clone());
 
@@ -679,13 +676,7 @@ mod tests {
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
-
-        let body: serde_json::Value = body_json(resp).await;
-        assert_eq!(body["asset_id"], created.id.to_string());
-        assert_eq!(body["anchor_digest"], "sha256:deadbeef");
-        assert_eq!(body["chain"], "ethereum");
-        assert_eq!(body["verified"], true);
+        assert_eq!(resp.status(), StatusCode::NOT_IMPLEMENTED);
     }
 
     #[tokio::test]

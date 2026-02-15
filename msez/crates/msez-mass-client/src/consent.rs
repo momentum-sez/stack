@@ -8,16 +8,44 @@ use uuid::Uuid;
 
 use crate::error::MassApiError;
 
+// -- Typed enums matching Mass API values ------------------------------------
+
+/// Consent type as defined by the Mass consent-info API.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MassConsentType {
+    Approval,
+    Formation,
+    Transfer,
+    Dissolution,
+    /// Forward-compatible catch-all.
+    #[serde(other)]
+    Unknown,
+}
+
+/// Consent status as defined by the Mass consent-info API.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MassConsentStatus {
+    Pending,
+    Approved,
+    Rejected,
+    Expired,
+    /// Forward-compatible catch-all.
+    #[serde(other)]
+    Unknown,
+}
+
 // -- Types matching Mass API schemas ------------------------------------------
 
 /// Consent record from Mass.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MassConsent {
     pub id: Uuid,
-    pub consent_type: String,
+    pub consent_type: MassConsentType,
     pub description: String,
     pub parties: Vec<MassConsentParty>,
-    pub status: String,
+    pub status: MassConsentStatus,
     pub audit_trail: Vec<MassConsentAuditEntry>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -44,7 +72,7 @@ pub struct MassConsentAuditEntry {
 /// Request to create a consent request.
 #[derive(Debug, Serialize)]
 pub struct CreateConsentRequest {
-    pub consent_type: String,
+    pub consent_type: MassConsentType,
     pub description: String,
     pub parties: Vec<ConsentPartyInput>,
 }

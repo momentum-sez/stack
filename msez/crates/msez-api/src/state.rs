@@ -177,13 +177,56 @@ pub enum AssetComplianceStatus {
     Unevaluated,
 }
 
+/// Smart asset lifecycle status.
+///
+/// Represents the stages of a smart asset's lifecycle from genesis through
+/// retirement. Uses `SCREAMING_CASE` for serialization to match the API
+/// contract and prevent the defective-string problem that plagued corridor
+/// states in the Python v1 implementation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AssetStatus {
+    /// Initial creation — genesis document submitted.
+    Genesis,
+    /// Registry VC bound to the asset.
+    Registered,
+    /// Asset is operational and actively managed.
+    Active,
+    /// Awaiting compliance evaluation or other prerequisite.
+    Pending,
+    /// Temporarily suspended (compliance hold, dispute, etc.).
+    Suspended,
+    /// End of lifecycle — asset decommissioned.
+    Retired,
+}
+
+impl AssetStatus {
+    /// Return the string representation of this status.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Genesis => "GENESIS",
+            Self::Registered => "REGISTERED",
+            Self::Active => "ACTIVE",
+            Self::Pending => "PENDING",
+            Self::Suspended => "SUSPENDED",
+            Self::Retired => "RETIRED",
+        }
+    }
+}
+
+impl std::fmt::Display for AssetStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// Smart asset record.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct SmartAssetRecord {
     pub id: Uuid,
     pub asset_type: String,
     pub jurisdiction_id: String,
-    pub status: String,
+    pub status: AssetStatus,
     pub genesis_digest: Option<String>,
     pub compliance_status: AssetComplianceStatus,
     pub metadata: serde_json::Value,
@@ -195,6 +238,41 @@ pub struct SmartAssetRecord {
     pub updated_at: DateTime<Utc>,
 }
 
+/// Attestation lifecycle status.
+///
+/// Represents the state of a compliance attestation throughout its
+/// validity period. Prevents invalid string values from being stored.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AttestationStatus {
+    /// Attestation is current and valid.
+    Active,
+    /// Attestation is awaiting verification or issuance.
+    Pending,
+    /// Attestation has been explicitly revoked.
+    Revoked,
+    /// Attestation has passed its expiry date.
+    Expired,
+}
+
+impl AttestationStatus {
+    /// Return the string representation of this status.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Active => "ACTIVE",
+            Self::Pending => "PENDING",
+            Self::Revoked => "REVOKED",
+            Self::Expired => "EXPIRED",
+        }
+    }
+}
+
+impl std::fmt::Display for AttestationStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// Attestation record for regulator queries.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AttestationRecord {
@@ -202,7 +280,7 @@ pub struct AttestationRecord {
     pub entity_id: Uuid,
     pub attestation_type: String,
     pub issuer: String,
-    pub status: String,
+    pub status: AttestationStatus,
     pub jurisdiction_id: String,
     pub issued_at: DateTime<Utc>,
     pub expires_at: Option<DateTime<Utc>>,

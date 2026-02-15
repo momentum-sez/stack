@@ -23,6 +23,7 @@
 //! document Part IV (receipt chain + MMR).
 
 use sha2::{Digest, Sha256};
+use subtle::ConstantTimeEq;
 
 use crate::error::CryptoError;
 
@@ -509,7 +510,18 @@ pub fn verify_inclusion_proof(proof: &MmrInclusionProof) -> bool {
     };
 
     match bag_peaks(&peaks2) {
-        Ok(computed_root) => computed_root == proof.root,
+        Ok(computed_root) => {
+            // Constant-time comparison to prevent timing side-channel
+            // on the MMR root digest. Both values are 64-char hex strings
+            // encoding 32-byte SHA-256 digests.
+            let Ok(computed_bytes) = from_hex(&computed_root) else {
+                return false;
+            };
+            let Ok(proof_bytes) = from_hex(&proof.root) else {
+                return false;
+            };
+            computed_bytes.ct_eq(&proof_bytes).into()
+        }
         Err(_) => false,
     }
 }
@@ -1283,10 +1295,14 @@ mod tests {
 
     #[test]
     fn mmr_leaf_hash_accepts_uppercase_hex() {
-        // is_hex_32 checks c.is_ascii_hexdigit() which accepts A-F
+        // is_hex_32 checks c.is_ascii_hexdigit() which accepts A-F.
+        // from_hex lowercases before decode, so uppercase input produces
+        // the same hash as the equivalent lowercase input.
         let nr = "FEA5396A7F4325C408B1B65B33A4D77BA5486CEBA941804D8889A8546CFBAB96";
-        // from_hex lowercases, so this should work
-        let result = mmr_leaf_hash(nr);
-        assert!(result.is_ok());
+        let hash = mmr_leaf_hash(nr).expect("uppercase hex should be accepted");
+        assert_eq!(
+            hash,
+            "29534994a3ad2af6dd418f46d4093897971cd14bea312167ad82c4b31dbbfcec"
+        );
     }
 }

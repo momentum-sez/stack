@@ -93,14 +93,16 @@ pub struct CorridorEdge {
 impl CorridorEdge {
     /// Total time for this corridor (transfer + settlement).
     pub fn total_time_hours(&self) -> u32 {
-        self.estimated_transfer_hours.saturating_add(self.settlement_finality_hours)
+        self.estimated_transfer_hours
+            .saturating_add(self.settlement_finality_hours)
     }
 
     /// Transfer cost for a given asset value (USD).
     ///
     /// Uses u128 intermediate to prevent overflow on large asset values.
     pub fn transfer_cost(&self, asset_value_usd: u64) -> u64 {
-        let bps_cost = (u128::from(asset_value_usd) * u128::from(self.transfer_fee_bps) / 10_000) as u64;
+        let bps_cost =
+            (u128::from(asset_value_usd) * u128::from(self.transfer_fee_bps) / 10_000) as u64;
         self.flat_fee_usd.saturating_add(bps_cost)
     }
 }

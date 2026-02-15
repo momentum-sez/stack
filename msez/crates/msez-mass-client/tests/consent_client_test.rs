@@ -236,11 +236,7 @@ async fn reject_consent_returns_vote_response() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let vote = client
-        .consent()
-        .reject(id.parse().unwrap())
-        .await
-        .unwrap();
+    let vote = client.consent().reject(id.parse().unwrap()).await.unwrap();
     assert_eq!(vote.consent_id.to_string(), id);
     assert_eq!(vote.majority_reached, Some(false));
 }

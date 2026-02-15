@@ -588,7 +588,10 @@ impl EnforcementOrder {
     /// Returns [`ArbitrationError::EnforcementPreconditionFailed`] if the
     /// order is not in Pending status.
     pub fn block(&mut self, reason: &str) -> Result<(), ArbitrationError> {
-        if !matches!(self.status, EnforcementStatus::Pending | EnforcementStatus::InProgress) {
+        if !matches!(
+            self.status,
+            EnforcementStatus::Pending | EnforcementStatus::InProgress
+        ) {
             return Err(ArbitrationError::EnforcementPreconditionFailed {
                 order_id: self.id.to_string(),
                 reason: format!(
@@ -1109,7 +1112,9 @@ mod tests {
     fn block_from_in_progress() {
         let mut order = basic_order();
         order.begin_enforcement().unwrap();
-        order.block("precondition discovered during execution").unwrap();
+        order
+            .block("precondition discovered during execution")
+            .unwrap();
         assert_eq!(order.status, EnforcementStatus::Blocked);
     }
 

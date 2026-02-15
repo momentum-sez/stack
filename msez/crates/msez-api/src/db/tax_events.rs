@@ -42,25 +42,17 @@ pub async fn insert(pool: &PgPool, record: &TaxEventRecord) -> Result<(), sqlx::
 }
 
 /// Mark a tax event as having had its withholding executed via Mass fiscal API.
-pub async fn mark_withholding_executed(
-    pool: &PgPool,
-    id: Uuid,
-) -> Result<bool, sqlx::Error> {
-    let result = sqlx::query(
-        "UPDATE tax_events SET withholding_executed = true WHERE id = $1",
-    )
-    .bind(id)
-    .execute(pool)
-    .await?;
+pub async fn mark_withholding_executed(pool: &PgPool, id: Uuid) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query("UPDATE tax_events SET withholding_executed = true WHERE id = $1")
+        .bind(id)
+        .execute(pool)
+        .await?;
 
     Ok(result.rows_affected() > 0)
 }
 
 /// Fetch a tax event by ID.
-pub async fn get_by_id(
-    pool: &PgPool,
-    id: Uuid,
-) -> Result<Option<TaxEventRecord>, sqlx::Error> {
+pub async fn get_by_id(pool: &PgPool, id: Uuid) -> Result<Option<TaxEventRecord>, sqlx::Error> {
     let row = sqlx::query_as::<_, TaxEventRow>(
         "SELECT id, entity_id, event_type, tax_category, jurisdiction_id,
          gross_amount, withholding_amount, net_amount, currency, tax_year,

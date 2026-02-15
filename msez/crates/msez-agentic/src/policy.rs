@@ -935,9 +935,7 @@ pub fn extended_policies() -> BTreeMap<String, Policy> {
             TriggerType::TaxYearEnd,
             PolicyAction::Halt,
         )
-        .with_description(
-            "Halt asset operations at tax year end until annual assessment completes",
-        )
+        .with_description("Halt asset operations at tax year end until annual assessment completes")
         .with_condition(Condition::Equals {
             field: "assessment_status".into(),
             value: serde_json::Value::String("pending".into()),

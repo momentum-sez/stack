@@ -47,16 +47,23 @@ impl Validate for SettlementComputeRequest {
         }
         for (i, ob) in self.obligations.iter().enumerate() {
             if ob.from_party.trim().is_empty() || ob.to_party.trim().is_empty() {
-                return Err(format!("obligation {i}: party identifiers must be non-empty"));
+                return Err(format!(
+                    "obligation {i}: party identifiers must be non-empty"
+                ));
             }
             if ob.from_party == ob.to_party {
-                return Err(format!("obligation {i}: from_party and to_party must differ"));
+                return Err(format!(
+                    "obligation {i}: from_party and to_party must differ"
+                ));
             }
             if ob.currency.trim().is_empty() {
                 return Err(format!("obligation {i}: currency must be non-empty"));
             }
             if ob.amount <= 0 {
-                return Err(format!("obligation {i}: amount must be positive, got {}", ob.amount));
+                return Err(format!(
+                    "obligation {i}: amount must be positive, got {}",
+                    ob.amount
+                ));
             }
         }
         Ok(())
@@ -185,7 +192,10 @@ impl Validate for InstructionRequest {
                 return Err(format!("leg {i}: BIC code must be at most 11 characters"));
             }
             if leg.amount <= 0 {
-                return Err(format!("leg {i}: amount must be positive, got {}", leg.amount));
+                return Err(format!(
+                    "leg {i}: amount must be positive, got {}",
+                    leg.amount
+                ));
             }
             if leg.currency.trim().is_empty() {
                 return Err(format!("leg {i}: currency must be non-empty"));

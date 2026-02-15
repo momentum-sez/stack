@@ -542,18 +542,12 @@ impl WithholdingEngine {
     /// Check whether a rule applies to a given event.
     fn rule_matches(&self, rule: &WithholdingRule, event: &TaxEvent, gross: i64) -> bool {
         // Event type must match.
-        if !rule
-            .applicable_event_types
-            .contains(&event.event_type)
-        {
+        if !rule.applicable_event_types.contains(&event.event_type) {
             return false;
         }
 
         // Filer status must match.
-        if !rule
-            .applicable_filer_status
-            .contains(&event.filer_status)
-        {
+        if !rule.applicable_filer_status.contains(&event.filer_status) {
             return false;
         }
 
@@ -708,7 +702,11 @@ pub fn pakistan_standard_rules() -> Vec<WithholdingRule> {
         WithholdingRule {
             rule_id: "PAK-ITO2001-S149-SALARY-FILER".into(),
             applicable_event_types: vec![TaxEventType::SalaryPayment],
-            applicable_filer_status: vec![FilerStatus::Filer, FilerStatus::LateFiler, FilerStatus::NonFiler],
+            applicable_filer_status: vec![
+                FilerStatus::Filer,
+                FilerStatus::LateFiler,
+                FilerStatus::NonFiler,
+            ],
             tax_category: TaxCategory::IncomeTax,
             rate_percent: "5.0".into(),
             threshold_min: "5000000".into(),
@@ -813,7 +811,11 @@ pub fn pakistan_standard_rules() -> Vec<WithholdingRule> {
         WithholdingRule {
             rule_id: "PAK-ITO2001-S152-CROSSBORDER".into(),
             applicable_event_types: vec![TaxEventType::CrossBorderPayment],
-            applicable_filer_status: vec![FilerStatus::Filer, FilerStatus::NonFiler, FilerStatus::LateFiler],
+            applicable_filer_status: vec![
+                FilerStatus::Filer,
+                FilerStatus::NonFiler,
+                FilerStatus::LateFiler,
+            ],
             tax_category: TaxCategory::IncomeTax,
             rate_percent: "20.0".into(),
             threshold_min: "0".into(),
@@ -828,7 +830,11 @@ pub fn pakistan_standard_rules() -> Vec<WithholdingRule> {
         WithholdingRule {
             rule_id: "PAK-STA1990-STANDARD-GOODS".into(),
             applicable_event_types: vec![TaxEventType::SupplyOfGoods],
-            applicable_filer_status: vec![FilerStatus::Filer, FilerStatus::NonFiler, FilerStatus::LateFiler],
+            applicable_filer_status: vec![
+                FilerStatus::Filer,
+                FilerStatus::NonFiler,
+                FilerStatus::LateFiler,
+            ],
             tax_category: TaxCategory::SalesTax,
             rate_percent: "18.0".into(),
             threshold_min: "0".into(),
@@ -843,7 +849,11 @@ pub fn pakistan_standard_rules() -> Vec<WithholdingRule> {
         WithholdingRule {
             rule_id: "PAK-STA1990-STANDARD-SERVICES".into(),
             applicable_event_types: vec![TaxEventType::SupplyOfServices],
-            applicable_filer_status: vec![FilerStatus::Filer, FilerStatus::NonFiler, FilerStatus::LateFiler],
+            applicable_filer_status: vec![
+                FilerStatus::Filer,
+                FilerStatus::NonFiler,
+                FilerStatus::LateFiler,
+            ],
             tax_category: TaxCategory::SalesTax,
             rate_percent: "18.0".into(),
             threshold_min: "0".into(),
@@ -1022,14 +1032,16 @@ pub fn generate_report(params: &ReportParams, results: &[WithholdingResult]) -> 
 
     let line_items: Vec<ReportLineItem> = aggregated
         .into_iter()
-        .map(|(section, (category, count, gross, wht, rate))| ReportLineItem {
-            statutory_section: section,
-            tax_category: category,
-            event_count: count,
-            total_gross: format_amount(gross),
-            total_withholding: format_amount(wht),
-            rate_percent: rate,
-        })
+        .map(
+            |(section, (category, count, gross, wht, rate))| ReportLineItem {
+                statutory_section: section,
+                tax_category: category,
+                event_count: count,
+                total_gross: format_amount(gross),
+                total_withholding: format_amount(wht),
+                rate_percent: rate,
+            },
+        )
         .collect();
 
     TaxReport {
@@ -1152,7 +1164,14 @@ pub fn parse_amount(s: &str) -> Option<i64> {
             1
         };
 
-        Some(sign.saturating_mul(integer_part.abs().saturating_mul(100).saturating_add(frac_cents)))
+        Some(
+            sign.saturating_mul(
+                integer_part
+                    .abs()
+                    .saturating_mul(100)
+                    .saturating_add(frac_cents),
+            ),
+        )
     } else {
         // No decimal point — treat as whole units, convert to cents.
         s.parse::<i64>().ok().map(|v| v.saturating_mul(100))
@@ -1532,20 +1551,27 @@ mod tests {
         let mut engine = WithholdingEngine::new();
         assert_eq!(engine.rule_count(), 0);
 
-        engine.load_rules("AE", vec![WithholdingRule {
-            rule_id: "AE-VAT-5".into(),
-            applicable_event_types: vec![TaxEventType::SupplyOfGoods],
-            applicable_filer_status: vec![FilerStatus::Filer, FilerStatus::NonFiler, FilerStatus::LateFiler],
-            tax_category: TaxCategory::SalesTax,
-            rate_percent: "5.0".into(),
-            threshold_min: "0".into(),
-            threshold_max: None,
-            statutory_section: "UAE VAT Federal Decree-Law No. 8".into(),
-            description: "UAE VAT at 5%".into(),
-            effective_from: "2018-01-01".into(),
-            effective_until: None,
-            is_final_tax: true,
-        }]);
+        engine.load_rules(
+            "AE",
+            vec![WithholdingRule {
+                rule_id: "AE-VAT-5".into(),
+                applicable_event_types: vec![TaxEventType::SupplyOfGoods],
+                applicable_filer_status: vec![
+                    FilerStatus::Filer,
+                    FilerStatus::NonFiler,
+                    FilerStatus::LateFiler,
+                ],
+                tax_category: TaxCategory::SalesTax,
+                rate_percent: "5.0".into(),
+                threshold_min: "0".into(),
+                threshold_max: None,
+                statutory_section: "UAE VAT Federal Decree-Law No. 8".into(),
+                description: "UAE VAT at 5%".into(),
+                effective_from: "2018-01-01".into(),
+                effective_until: None,
+                is_final_tax: true,
+            }],
+        );
 
         assert_eq!(engine.rule_count(), 1);
 

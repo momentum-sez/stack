@@ -192,19 +192,18 @@ impl OwnershipClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// Get a cap table by its ID.
     ///
     /// Calls `GET {consent_base}/consent-info/api/v1/capTables/{id}`.
-    pub async fn get_cap_table(
-        &self,
-        id: Uuid,
-    ) -> Result<Option<MassCapTable>, MassApiError> {
+    pub async fn get_cap_table(&self, id: Uuid) -> Result<Option<MassCapTable>, MassApiError> {
         let endpoint = format!("GET /capTables/{id}");
         let url = format!(
             "{}{}/capTables/{id}",
@@ -314,9 +313,11 @@ impl OwnershipClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint,
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint,
+                source: e,
+            })
     }
 }

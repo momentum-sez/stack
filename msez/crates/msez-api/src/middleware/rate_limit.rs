@@ -70,9 +70,7 @@ impl RateLimiter {
         // to prevent unbounded memory growth (DoS vector).
         if buckets.len() >= Self::MAX_BUCKETS {
             let window = self.config.window_secs.max(1);
-            buckets.retain(|_, bucket| {
-                now.duration_since(bucket.window_start).as_secs() < window
-            });
+            buckets.retain(|_, bucket| now.duration_since(bucket.window_start).as_secs() < window);
         }
 
         let bucket = buckets.entry(key.to_string()).or_insert(BucketState {

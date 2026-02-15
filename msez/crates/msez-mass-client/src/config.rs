@@ -68,10 +68,9 @@ impl MassApiConfig {
         let api_token = std::env::var("MASS_API_TOKEN").map_err(|_| ConfigError::MissingToken)?;
 
         let identity_info_url = match std::env::var("MASS_IDENTITY_INFO_URL") {
-            Ok(raw) => Some(
-                Url::parse(&raw)
-                    .map_err(|e| ConfigError::InvalidUrl("MASS_IDENTITY_INFO_URL".into(), e.to_string()))?,
-            ),
+            Ok(raw) => Some(Url::parse(&raw).map_err(|e| {
+                ConfigError::InvalidUrl("MASS_IDENTITY_INFO_URL".into(), e.to_string())
+            })?),
             Err(_) => None,
         };
 

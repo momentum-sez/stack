@@ -500,7 +500,6 @@ pub struct AppState {
     pub tax_events: Store<TaxEventRecord>,
 
     // -- Tax collection pipeline --
-
     /// The tax collection pipeline orchestrator. Contains the withholding
     /// computation engine with jurisdiction-specific rules loaded from regpacks.
     /// `parking_lot::Mutex` because the pipeline may be reconfigured at runtime
@@ -515,7 +514,6 @@ pub struct AppState {
     pub receipt_chains: Arc<RwLock<HashMap<Uuid, ReceiptChain>>>,
 
     // -- Database persistence (optional) --
-
     /// PostgreSQL connection pool for durable state persistence.
     /// When `Some`, corridor, smart asset, attestation, and audit data is
     /// persisted to Postgres in addition to the in-memory stores.

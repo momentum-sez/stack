@@ -46,10 +46,7 @@ pub async fn update_status(
 }
 
 /// Fetch an attestation by ID.
-pub async fn get_by_id(
-    pool: &PgPool,
-    id: Uuid,
-) -> Result<Option<AttestationRecord>, sqlx::Error> {
+pub async fn get_by_id(pool: &PgPool, id: Uuid) -> Result<Option<AttestationRecord>, sqlx::Error> {
     let row = sqlx::query_as::<_, AttestationRow>(
         "SELECT id, entity_id, attestation_type, issuer, status,
          jurisdiction_id, issued_at, expires_at, details

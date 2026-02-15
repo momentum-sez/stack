@@ -173,10 +173,7 @@ impl ConsentClient {
     /// Create a consent request.
     ///
     /// Calls `POST {base_url}/consent-info/api/v1/consents`.
-    pub async fn create(
-        &self,
-        req: &CreateConsentRequest,
-    ) -> Result<MassConsent, MassApiError> {
+    pub async fn create(&self, req: &CreateConsentRequest) -> Result<MassConsent, MassApiError> {
         let endpoint = "POST /consents";
         let url = format!("{}{}/consents", self.base_url, API_PREFIX);
 
@@ -197,10 +194,12 @@ impl ConsentClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// Get a consent by ID.
@@ -272,19 +271,18 @@ impl ConsentClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint,
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint,
+                source: e,
+            })
     }
 
     /// Reject a consent request.
     ///
     /// Calls `POST {base_url}/consent-info/api/v1/consents/reject/{id}`.
-    pub async fn reject(
-        &self,
-        id: Uuid,
-    ) -> Result<MassConsentVoteResponse, MassApiError> {
+    pub async fn reject(&self, id: Uuid) -> Result<MassConsentVoteResponse, MassApiError> {
         let endpoint = format!("POST /consents/reject/{id}");
         let url = format!("{}{}/consents/reject/{id}", self.base_url, API_PREFIX);
 
@@ -305,10 +303,12 @@ impl ConsentClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint,
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint,
+                source: e,
+            })
     }
 
     /// Get all consents for an organization.
@@ -341,10 +341,12 @@ impl ConsentClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint,
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint,
+                source: e,
+            })
     }
 
     /// Cancel a consent request.

@@ -278,7 +278,9 @@ impl IdentityClient {
     /// Return the base URL for identity verification operations.
     /// Uses the dedicated service if configured, otherwise consent-info.
     fn identity_base_url(&self) -> &url::Url {
-        self.dedicated_url.as_ref().unwrap_or(&self.consent_base_url)
+        self.dedicated_url
+            .as_ref()
+            .unwrap_or(&self.consent_base_url)
     }
 
     /// Return the base URL for entity-level identity operations (CNIC/NTN).
@@ -317,10 +319,12 @@ impl IdentityClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint,
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint,
+                source: e,
+            })
     }
 
     /// Get board of directors for an organization.
@@ -353,10 +357,12 @@ impl IdentityClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint,
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint,
+                source: e,
+            })
     }
 
     /// Get shareholders for an organization.
@@ -389,10 +395,12 @@ impl IdentityClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint,
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint,
+                source: e,
+            })
     }
 
     /// Assemble a composite identity for an organization by calling
@@ -450,10 +458,12 @@ impl IdentityClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// Verify an NTN number against FBR IRIS records.
@@ -490,20 +500,19 @@ impl IdentityClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// List all identity records associated with an entity.
     ///
     /// When using the dedicated service, fetches from a single endpoint.
     /// When split, queries consent-info for identity records.
-    pub async fn list_by_entity(
-        &self,
-        entity_id: Uuid,
-    ) -> Result<Vec<MassIdentity>, MassApiError> {
+    pub async fn list_by_entity(&self, entity_id: Uuid) -> Result<Vec<MassIdentity>, MassApiError> {
         let base = self.identity_base_url();
         let endpoint = format!("GET /identities?entity_id={entity_id}");
 
@@ -512,9 +521,7 @@ impl IdentityClient {
         } else {
             "consent-info"
         };
-        let url = format!(
-            "{base}{service_path}/identities?entity_id={entity_id}"
-        );
+        let url = format!("{base}{service_path}/identities?entity_id={entity_id}");
 
         let resp = crate::retry::retry_send(|| self.http.get(&url).send())
             .await
@@ -533,10 +540,12 @@ impl IdentityClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint,
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint,
+                source: e,
+            })
     }
 
     /// Whether the client is configured with a dedicated identity-info service.

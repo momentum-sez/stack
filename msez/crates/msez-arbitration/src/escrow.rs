@@ -372,9 +372,9 @@ impl EscrowAccount {
         // Reject non-positive amounts: a zero release would create a spurious
         // PartiallyReleased state, and a negative release would inflate the balance.
         if release <= 0 {
-            return Err(ArbitrationError::InvalidAmount(
-                format!("partial release amount must be positive, got {release}"),
-            ));
+            return Err(ArbitrationError::InvalidAmount(format!(
+                "partial release amount must be positive, got {release}"
+            )));
         }
         if release > held {
             return Err(ArbitrationError::InsufficientEscrowBalance {

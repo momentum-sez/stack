@@ -370,7 +370,10 @@ async fn create_cap_table(
         organization_id: req.entity_id.to_string(),
         authorized_shares: req.share_classes.first().map(|sc| sc.authorized_shares),
         options_pool: None,
-        par_value: req.share_classes.first().and_then(|sc| sc.par_value.clone()),
+        par_value: req
+            .share_classes
+            .first()
+            .and_then(|sc| sc.par_value.clone()),
         shareholders: vec![],
     };
 
@@ -384,11 +387,7 @@ async fn create_cap_table(
         .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
 
     // Step 4 & 5: Post-operation orchestration.
-    let envelope = orchestration::orchestrate_cap_table_creation(
-        &state,
-        entity_id,
-        mass_response,
-    );
+    let envelope = orchestration::orchestrate_cap_table_creation(&state, entity_id, mass_response);
 
     Ok((axum::http::StatusCode::CREATED, Json(envelope)))
 }
@@ -484,12 +483,8 @@ async fn create_account(
         .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
 
     // Step 4 & 5: Post-operation orchestration.
-    let envelope = orchestration::orchestrate_account_creation(
-        &state,
-        entity_id,
-        &currency,
-        mass_response,
-    );
+    let envelope =
+        orchestration::orchestrate_account_creation(&state, entity_id, &currency, mass_response);
 
     Ok((axum::http::StatusCode::CREATED, Json(envelope)))
 }
@@ -556,12 +551,8 @@ async fn initiate_payment(
         .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
 
     // Step 4 & 5: Post-operation orchestration.
-    let envelope = orchestration::orchestrate_payment(
-        &state,
-        from_account_id,
-        &currency,
-        mass_response,
-    );
+    let envelope =
+        orchestration::orchestrate_payment(&state, from_account_id, &currency, mass_response);
 
     // Step 6: Auto-generate tax event for the payment.
     //
@@ -619,7 +610,8 @@ async fn generate_payment_tax_event(
     let gross_cents = parse_amount(amount).unwrap_or(0);
     let mut total_wht_cents: i64 = 0;
     for w in &withholdings {
-        total_wht_cents = total_wht_cents.saturating_add(parse_amount(&w.withholding_amount).unwrap_or(0));
+        total_wht_cents =
+            total_wht_cents.saturating_add(parse_amount(&w.withholding_amount).unwrap_or(0));
     }
     let net_cents = gross_cents.saturating_sub(total_wht_cents);
 
@@ -710,7 +702,9 @@ async fn verify_identity(
     // Step 3: Mass API call — the Swagger-aligned identity client is an
     // aggregation facade across organization-info and consent-info. Use the
     // composite identity endpoint which fetches members, board, and shareholders.
-    let org_id = req.linked_ids.first()
+    let org_id = req
+        .linked_ids
+        .first()
         .map(|lid| lid.id_value.clone())
         .unwrap_or_else(|| req.identity_type.clone());
 
@@ -724,11 +718,8 @@ async fn verify_identity(
         .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
 
     // Step 4 & 5: Post-operation orchestration.
-    let envelope = orchestration::orchestrate_identity_verification(
-        &state,
-        &identity_type_str,
-        mass_response,
-    );
+    let envelope =
+        orchestration::orchestrate_identity_verification(&state, &identity_type_str, mass_response);
 
     Ok(Json(envelope))
 }
@@ -754,7 +745,11 @@ async fn get_identity(
 
     // The Swagger-aligned identity client aggregates from org-info + consent-info.
     // Use the UUID as a string organization ID for the composite lookup.
-    match client.identity().get_composite_identity(&id.to_string()).await {
+    match client
+        .identity()
+        .get_composite_identity(&id.to_string())
+        .await
+    {
         Ok(identity) => serde_json::to_value(identity)
             .map(Json)
             .map_err(|e| AppError::Internal(format!("serialization error: {e}"))),
@@ -809,7 +804,9 @@ async fn create_consent(
             .unwrap_or(msez_mass_client::consent::MassConsentOperationType::Unknown);
 
     // Extract organization_id from the first party, or use description as fallback.
-    let organization_id = req.parties.first()
+    let organization_id = req
+        .parties
+        .first()
         .map(|p| p.entity_id.to_string())
         .unwrap_or_else(|| req.description.clone());
 
@@ -839,11 +836,8 @@ async fn create_consent(
         .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
 
     // Step 4 & 5: Post-operation orchestration.
-    let envelope = orchestration::orchestrate_consent_creation(
-        &state,
-        &consent_type_str,
-        mass_response,
-    );
+    let envelope =
+        orchestration::orchestrate_consent_creation(&state, &consent_type_str, mass_response);
 
     Ok((axum::http::StatusCode::CREATED, Json(envelope)))
 }

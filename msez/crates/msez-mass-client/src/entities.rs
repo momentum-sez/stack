@@ -177,10 +177,12 @@ impl EntityClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// Get an organization by ID from Mass.
@@ -223,10 +225,7 @@ impl EntityClient {
     /// List organizations by IDs from Mass.
     ///
     /// Calls `GET {base_url}/organization-info/api/v1/organization?ids={ids}`.
-    pub async fn list(
-        &self,
-        ids: Option<&[Uuid]>,
-    ) -> Result<Vec<MassEntity>, MassApiError> {
+    pub async fn list(&self, ids: Option<&[Uuid]>) -> Result<Vec<MassEntity>, MassApiError> {
         let endpoint = "GET /organization";
         let mut url = format!("{}{}/organization", self.base_url, API_PREFIX);
 
@@ -254,10 +253,12 @@ impl EntityClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// Search organizations with pagination.
@@ -287,10 +288,12 @@ impl EntityClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// Delete an organization by ID.
@@ -347,9 +350,11 @@ impl EntityClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 }

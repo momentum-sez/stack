@@ -80,9 +80,7 @@ async fn create_entity_handles_422_validation_error() {
 
     Mock::given(method("POST"))
         .and(path("/organization-info/api/v1/organization/create"))
-        .respond_with(
-            ResponseTemplate::new(422).set_body_string(r#"{"error":"name is required"}"#),
-        )
+        .respond_with(ResponseTemplate::new(422).set_body_string(r#"{"error":"name is required"}"#))
         .mount(&mock_server)
         .await;
 
@@ -98,9 +96,7 @@ async fn create_entity_handles_422_validation_error() {
     let result = client.entities().create(&req).await;
     assert!(result.is_err());
     match result.unwrap_err() {
-        msez_mass_client::MassApiError::ApiError {
-            status, body, ..
-        } => {
+        msez_mass_client::MassApiError::ApiError { status, body, .. } => {
             assert_eq!(status, 422);
             assert!(body.contains("name is required"));
         }
@@ -154,9 +150,7 @@ async fn get_entity_returns_entity_when_found() {
     let id = "550e8400-e29b-41d4-a716-446655440000";
 
     Mock::given(method("GET"))
-        .and(path(format!(
-            "/organization-info/api/v1/organization/{id}"
-        )))
+        .and(path(format!("/organization-info/api/v1/organization/{id}")))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "id": id,
             "name": "Fetched Corp",
@@ -184,9 +178,7 @@ async fn get_entity_returns_none_when_not_found() {
     let id = "550e8400-e29b-41d4-a716-446655440001";
 
     Mock::given(method("GET"))
-        .and(path(format!(
-            "/organization-info/api/v1/organization/{id}"
-        )))
+        .and(path(format!("/organization-info/api/v1/organization/{id}")))
         .respond_with(ResponseTemplate::new(404))
         .mount(&mock_server)
         .await;
@@ -202,9 +194,7 @@ async fn get_entity_returns_error_on_500() {
     let id = "550e8400-e29b-41d4-a716-446655440001";
 
     Mock::given(method("GET"))
-        .and(path(format!(
-            "/organization-info/api/v1/organization/{id}"
-        )))
+        .and(path(format!("/organization-info/api/v1/organization/{id}")))
         .respond_with(ResponseTemplate::new(500).set_body_string("Internal Server Error"))
         .mount(&mock_server)
         .await;
@@ -263,11 +253,13 @@ async fn list_entities_by_ids() {
 
     Mock::given(method("GET"))
         .and(path("/organization-info/api/v1/organization"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([{
-            "id": "550e8400-e29b-41d4-a716-446655440000",
-            "name": "Corp A",
-            "tags": []
-        }])))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "name": "Corp A",
+                "tags": []
+            }])),
+        )
         .mount(&mock_server)
         .await;
 
@@ -321,9 +313,7 @@ async fn delete_entity_succeeds() {
     let id = "550e8400-e29b-41d4-a716-446655440000";
 
     Mock::given(method("DELETE"))
-        .and(path(format!(
-            "/organization-info/api/v1/organization/{id}"
-        )))
+        .and(path(format!("/organization-info/api/v1/organization/{id}")))
         .respond_with(ResponseTemplate::new(200))
         .expect(1)
         .mount(&mock_server)
@@ -340,9 +330,7 @@ async fn delete_entity_returns_error_on_404() {
     let id = "550e8400-e29b-41d4-a716-446655440000";
 
     Mock::given(method("DELETE"))
-        .and(path(format!(
-            "/organization-info/api/v1/organization/{id}"
-        )))
+        .and(path(format!("/organization-info/api/v1/organization/{id}")))
         .respond_with(ResponseTemplate::new(404).set_body_string("not found"))
         .mount(&mock_server)
         .await;
@@ -382,9 +370,7 @@ async fn entity_deserializes_with_unknown_fields() {
     let id = "550e8400-e29b-41d4-a716-446655440000";
 
     Mock::given(method("GET"))
-        .and(path(format!(
-            "/organization-info/api/v1/organization/{id}"
-        )))
+        .and(path(format!("/organization-info/api/v1/organization/{id}")))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "id": id,
             "name": "Forward Corp",
@@ -410,9 +396,7 @@ async fn entity_deserializes_with_missing_optional_fields() {
     let id = "550e8400-e29b-41d4-a716-446655440000";
 
     Mock::given(method("GET"))
-        .and(path(format!(
-            "/organization-info/api/v1/organization/{id}"
-        )))
+        .and(path(format!("/organization-info/api/v1/organization/{id}")))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "id": id,
             "name": "Minimal Corp"

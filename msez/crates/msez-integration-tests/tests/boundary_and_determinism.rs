@@ -4,9 +4,7 @@
 //! Tests for edge-case inputs (financial overflow, empty strings, Unicode,
 //! UUID boundaries) and determinism verification (same input → same output).
 
-use msez_core::{
-    CanonicalBytes, ComplianceDomain, ContentDigest, JurisdictionId, WatcherId,
-};
+use msez_core::{CanonicalBytes, ComplianceDomain, ContentDigest, JurisdictionId, WatcherId};
 use msez_corridor::netting::{NettingEngine, Obligation};
 use msez_corridor::swift::{SettlementInstruction, SettlementRail, SwiftPacs008};
 use msez_crypto::{sha256_digest, MerkleMountainRange, SigningKey};
@@ -1058,14 +1056,14 @@ fn netting_bilateral_perfect_offset() {
 // Campaign 5 Extension: Pack boundary inputs
 // =========================================================================
 
-use msez_pack::regpack::{SanctionsChecker, SanctionsEntry, validate_compliance_domain};
 use msez_pack::parser::ensure_json_compatible;
+use msez_pack::regpack::{validate_compliance_domain, SanctionsChecker, SanctionsEntry};
 
 #[test]
 fn pack_sanctions_checker_threshold_zero_returns_all_matches() {
     // Threshold 0.0 should match everything (minimum similarity = 0)
-    let checker = SanctionsChecker::new(vec![
-        SanctionsEntry {
+    let checker = SanctionsChecker::new(
+        vec![SanctionsEntry {
             entry_id: "SE-100".to_string(),
             entry_type: "individual".to_string(),
             source_lists: vec!["OFAC".to_string()],
@@ -1078,8 +1076,9 @@ fn pack_sanctions_checker_threshold_zero_returns_all_matches() {
             programs: vec!["SDN".to_string()],
             listing_date: None,
             remarks: None,
-        },
-    ], "threshold-test".to_string());
+        }],
+        "threshold-test".to_string(),
+    );
     let result = checker.check_entity("Completely Different Name", None, 0.0);
     // With threshold 0.0, any name should match
     // This tests whether the fuzzy matching handles extreme threshold correctly
@@ -1089,8 +1088,8 @@ fn pack_sanctions_checker_threshold_zero_returns_all_matches() {
 #[test]
 fn pack_sanctions_checker_threshold_one_requires_exact() {
     // Threshold 1.0 should require exact (or near-exact) match
-    let checker = SanctionsChecker::new(vec![
-        SanctionsEntry {
+    let checker = SanctionsChecker::new(
+        vec![SanctionsEntry {
             entry_id: "SE-101".to_string(),
             entry_type: "individual".to_string(),
             source_lists: vec!["EU".to_string()],
@@ -1103,8 +1102,9 @@ fn pack_sanctions_checker_threshold_one_requires_exact() {
             programs: vec![],
             listing_date: None,
             remarks: None,
-        },
-    ], "exact-test".to_string());
+        }],
+        "exact-test".to_string(),
+    );
     let result = checker.check_entity("Ahmed Hassan", None, 1.0);
     assert!(result.matched, "Exact name should match at threshold 1.0");
 }
@@ -1115,8 +1115,8 @@ fn pack_sanctions_checker_identifier_matching() {
     let mut id_map = BTreeMap::new();
     id_map.insert("passport".to_string(), "AB1234567".to_string());
 
-    let checker = SanctionsChecker::new(vec![
-        SanctionsEntry {
+    let checker = SanctionsChecker::new(
+        vec![SanctionsEntry {
             entry_id: "SE-102".to_string(),
             entry_type: "individual".to_string(),
             source_lists: vec!["UN".to_string()],
@@ -1129,8 +1129,9 @@ fn pack_sanctions_checker_identifier_matching() {
             programs: vec![],
             listing_date: None,
             remarks: None,
-        },
-    ], "id-test".to_string());
+        }],
+        "id-test".to_string(),
+    );
     let query_ids = vec![id_map];
     let result = checker.check_entity("Different Name", Some(&query_ids), 0.9);
     // Even if name doesn't match, identifier should produce a match
@@ -1141,11 +1142,26 @@ fn pack_sanctions_checker_identifier_matching() {
 fn pack_validate_compliance_domain_all_known_domains() {
     // Test all 20 ComplianceDomain variants
     let domains = [
-        "taxation", "licensing", "sanctions", "aml", "kyc",
-        "data_protection", "environmental", "labor", "trade",
-        "securities", "banking", "insurance", "customs", "immigration",
-        "real_estate", "intellectual_property", "consumer_protection",
-        "competition", "foreign_investment", "corporate_governance",
+        "taxation",
+        "licensing",
+        "sanctions",
+        "aml",
+        "kyc",
+        "data_protection",
+        "environmental",
+        "labor",
+        "trade",
+        "securities",
+        "banking",
+        "insurance",
+        "customs",
+        "immigration",
+        "real_estate",
+        "intellectual_property",
+        "consumer_protection",
+        "competition",
+        "foreign_investment",
+        "corporate_governance",
     ];
     for domain in &domains {
         let result = validate_compliance_domain(domain);
@@ -1190,14 +1206,16 @@ fn pack_ensure_json_compatible_empty_array() {
 fn netting_single_amount_one_boundary() {
     // Minimum valid amount is 1
     let mut engine = NettingEngine::new();
-    engine.add_obligation(Obligation {
-        from_party: "A".to_string(),
-        to_party: "B".to_string(),
-        amount: 1,
-        currency: "USD".to_string(),
-        corridor_id: None,
-        priority: 0,
-    }).unwrap();
+    engine
+        .add_obligation(Obligation {
+            from_party: "A".to_string(),
+            to_party: "B".to_string(),
+            amount: 1,
+            currency: "USD".to_string(),
+            corridor_id: None,
+            priority: 0,
+        })
+        .unwrap();
     let plan = engine.compute_plan().unwrap();
     assert_eq!(plan.gross_total, 1);
 }
@@ -1207,40 +1225,50 @@ fn netting_many_currencies_boundary() {
     // 50 different currencies for the same party pair
     let mut engine = NettingEngine::new();
     for i in 0..50 {
-        engine.add_obligation(Obligation {
-            from_party: "A".to_string(),
-            to_party: "B".to_string(),
-            amount: 1000,
-            currency: format!("CUR{:03}", i),
-            corridor_id: None,
-            priority: 0,
-        }).unwrap();
+        engine
+            .add_obligation(Obligation {
+                from_party: "A".to_string(),
+                to_party: "B".to_string(),
+                amount: 1000,
+                currency: format!("CUR{:03}", i),
+                corridor_id: None,
+                priority: 0,
+            })
+            .unwrap();
     }
     let plan = engine.compute_plan().unwrap();
     // Should have 50 settlement legs (one per currency)
-    assert_eq!(plan.settlement_legs.len(), 50, "Each currency should produce a separate leg");
+    assert_eq!(
+        plan.settlement_legs.len(),
+        50,
+        "Each currency should produce a separate leg"
+    );
 }
 
 #[test]
 fn netting_priority_ordering() {
     // Test that obligations with different priorities are handled
     let mut engine = NettingEngine::new();
-    engine.add_obligation(Obligation {
-        from_party: "A".to_string(),
-        to_party: "B".to_string(),
-        amount: 100_000,
-        currency: "USD".to_string(),
-        corridor_id: None,
-        priority: 10,
-    }).unwrap();
-    engine.add_obligation(Obligation {
-        from_party: "C".to_string(),
-        to_party: "D".to_string(),
-        amount: 50_000,
-        currency: "USD".to_string(),
-        corridor_id: None,
-        priority: 1,
-    }).unwrap();
+    engine
+        .add_obligation(Obligation {
+            from_party: "A".to_string(),
+            to_party: "B".to_string(),
+            amount: 100_000,
+            currency: "USD".to_string(),
+            corridor_id: None,
+            priority: 10,
+        })
+        .unwrap();
+    engine
+        .add_obligation(Obligation {
+            from_party: "C".to_string(),
+            to_party: "D".to_string(),
+            amount: 50_000,
+            currency: "USD".to_string(),
+            corridor_id: None,
+            priority: 1,
+        })
+        .unwrap();
     let plan = engine.compute_plan().unwrap();
     assert_eq!(plan.settlement_legs.len(), 2);
 }
@@ -1249,7 +1277,7 @@ fn netting_priority_ordering() {
 // Campaign 5 Extension: Agentic boundary inputs
 // =========================================================================
 
-use msez_agentic::{AuditTrail, AuditEntry, AuditEntryType, PolicyEngine, Trigger, TriggerType};
+use msez_agentic::{AuditEntry, AuditEntryType, AuditTrail, PolicyEngine, Trigger, TriggerType};
 
 #[test]
 fn agentic_audit_trail_capacity_one_trim_behavior() {
@@ -1259,7 +1287,10 @@ fn agentic_audit_trail_capacity_one_trim_behavior() {
     assert_eq!(trail.len(), 1);
     trail.append(AuditEntry::new(AuditEntryType::PolicyEvaluated, None, None));
     // After trimming, should still be bounded
-    assert!(trail.len() <= 2, "Trail with capacity 1 should stay bounded");
+    assert!(
+        trail.len() <= 2,
+        "Trail with capacity 1 should stay bounded"
+    );
 }
 
 #[test]
@@ -1279,7 +1310,11 @@ fn agentic_audit_entry_digest_deterministic() {
     let d1 = e1.digest();
     let d2 = e2.digest();
     // Both should succeed (or both fail)
-    assert_eq!(d1.is_some(), d2.is_some(), "Digest computation should be consistent");
+    assert_eq!(
+        d1.is_some(),
+        d2.is_some(),
+        "Digest computation should be consistent"
+    );
 }
 
 #[test]
@@ -1330,9 +1365,7 @@ fn tensor_evaluate_huge_entity_id() {
     let jid = JurisdictionId::new("PK-RSEZ").unwrap();
     let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
     let huge_id = "E".repeat(100_000);
-    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        tensor.evaluate_all(&huge_id)
-    }));
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| tensor.evaluate_all(&huge_id)));
     assert!(result.is_ok(), "Huge entity ID should not panic");
 }
 
@@ -1342,7 +1375,11 @@ fn tensor_all_20_domains_from_default_jurisdiction() {
     let jid = JurisdictionId::new("TEST-JUR").unwrap();
     let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
     let all = tensor.evaluate_all("test-entity");
-    assert_eq!(all.len(), 20, "DefaultJurisdiction should cover all 20 compliance domains");
+    assert_eq!(
+        all.len(),
+        20,
+        "DefaultJurisdiction should cover all 20 compliance domains"
+    );
 }
 
 // =========================================================================
@@ -1388,7 +1425,10 @@ fn mmr_deterministic_root() {
     };
     let root1 = make_mmr();
     let root2 = make_mmr();
-    assert_eq!(root1, root2, "MMR root should be deterministic for same inputs");
+    assert_eq!(
+        root1, root2,
+        "MMR root should be deterministic for same inputs"
+    );
 }
 
 // =========================================================================
@@ -1399,37 +1439,49 @@ fn mmr_deterministic_root() {
 fn determinism_netting_same_obligations_same_plan() {
     let build_plan = || {
         let mut engine = NettingEngine::new();
-        engine.add_obligation(Obligation {
-            from_party: "Alice".to_string(),
-            to_party: "Bob".to_string(),
-            amount: 100_000,
-            currency: "USD".to_string(),
-            corridor_id: Some("PAK-UAE".to_string()),
-            priority: 5,
-        }).unwrap();
-        engine.add_obligation(Obligation {
-            from_party: "Bob".to_string(),
-            to_party: "Charlie".to_string(),
-            amount: 75_000,
-            currency: "USD".to_string(),
-            corridor_id: Some("PAK-UAE".to_string()),
-            priority: 3,
-        }).unwrap();
-        engine.add_obligation(Obligation {
-            from_party: "Charlie".to_string(),
-            to_party: "Alice".to_string(),
-            amount: 50_000,
-            currency: "USD".to_string(),
-            corridor_id: Some("PAK-UAE".to_string()),
-            priority: 1,
-        }).unwrap();
+        engine
+            .add_obligation(Obligation {
+                from_party: "Alice".to_string(),
+                to_party: "Bob".to_string(),
+                amount: 100_000,
+                currency: "USD".to_string(),
+                corridor_id: Some("PAK-UAE".to_string()),
+                priority: 5,
+            })
+            .unwrap();
+        engine
+            .add_obligation(Obligation {
+                from_party: "Bob".to_string(),
+                to_party: "Charlie".to_string(),
+                amount: 75_000,
+                currency: "USD".to_string(),
+                corridor_id: Some("PAK-UAE".to_string()),
+                priority: 3,
+            })
+            .unwrap();
+        engine
+            .add_obligation(Obligation {
+                from_party: "Charlie".to_string(),
+                to_party: "Alice".to_string(),
+                amount: 50_000,
+                currency: "USD".to_string(),
+                corridor_id: Some("PAK-UAE".to_string()),
+                priority: 1,
+            })
+            .unwrap();
         engine.compute_plan().unwrap()
     };
 
     let plan1 = build_plan();
     let plan2 = build_plan();
-    assert_eq!(plan1.gross_total, plan2.gross_total, "Gross total should be deterministic");
-    assert_eq!(plan1.net_total, plan2.net_total, "Net total should be deterministic");
+    assert_eq!(
+        plan1.gross_total, plan2.gross_total,
+        "Gross total should be deterministic"
+    );
+    assert_eq!(
+        plan1.net_total, plan2.net_total,
+        "Net total should be deterministic"
+    );
     assert_eq!(
         plan1.settlement_legs.len(),
         plan2.settlement_legs.len(),
@@ -1451,7 +1503,11 @@ fn determinism_canonical_bytes_key_ordering() {
     let c2 = CanonicalBytes::new(&v2).unwrap();
     let d1 = sha256_digest(&c1);
     let d2 = sha256_digest(&c2);
-    assert_eq!(d1.to_hex(), d2.to_hex(), "Canonical bytes should normalize key order");
+    assert_eq!(
+        d1.to_hex(),
+        d2.to_hex(),
+        "Canonical bytes should normalize key order"
+    );
 }
 
 #[test]
@@ -1461,7 +1517,11 @@ fn determinism_tensor_evaluation_repeated() {
     let results1 = tensor.evaluate_all("entity-001");
     let results2 = tensor.evaluate_all("entity-001");
     // Same entity, same tensor → same results
-    assert_eq!(results1.len(), results2.len(), "Tensor evaluation count should be deterministic");
+    assert_eq!(
+        results1.len(),
+        results2.len(),
+        "Tensor evaluation count should be deterministic"
+    );
     for (domain, state) in &results1 {
         assert_eq!(
             results2.get(domain),
@@ -1481,14 +1541,28 @@ fn determinism_signing_verification_round_trip() {
     // Note: Ed25519 signatures are deterministic (RFC 8032)
     let sig1 = sk.sign(&canonical);
     let sig2 = sk.sign(&canonical);
-    assert_eq!(sig1.to_hex(), sig2.to_hex(), "Ed25519 signatures should be deterministic (RFC 8032)");
+    assert_eq!(
+        sig1.to_hex(),
+        sig2.to_hex(),
+        "Ed25519 signatures should be deterministic (RFC 8032)"
+    );
 }
 
 #[test]
 fn determinism_content_digest_from_same_data() {
-    let d1 = ContentDigest::from_hex(&sha256_digest(&CanonicalBytes::new(&json!({"a": 1})).unwrap()).to_hex()).unwrap();
-    let d2 = ContentDigest::from_hex(&sha256_digest(&CanonicalBytes::new(&json!({"a": 1})).unwrap()).to_hex()).unwrap();
-    assert_eq!(d1.to_hex(), d2.to_hex(), "ContentDigest from same data should be identical");
+    let d1 = ContentDigest::from_hex(
+        &sha256_digest(&CanonicalBytes::new(&json!({"a": 1})).unwrap()).to_hex(),
+    )
+    .unwrap();
+    let d2 = ContentDigest::from_hex(
+        &sha256_digest(&CanonicalBytes::new(&json!({"a": 1})).unwrap()).to_hex(),
+    )
+    .unwrap();
+    assert_eq!(
+        d1.to_hex(),
+        d2.to_hex(),
+        "ContentDigest from same data should be identical"
+    );
 }
 
 #[test]
@@ -1509,9 +1583,16 @@ fn determinism_swift_pacs008_same_inputs() {
     };
     let xml1 = swift1.generate_instruction(&instruction);
     let xml2 = swift2.generate_instruction(&instruction);
-    assert_eq!(xml1.is_ok(), xml2.is_ok(), "SWIFT generation should be consistent");
+    assert_eq!(
+        xml1.is_ok(),
+        xml2.is_ok(),
+        "SWIFT generation should be consistent"
+    );
     if let (Ok(x1), Ok(x2)) = (xml1, xml2) {
-        assert_eq!(x1, x2, "SWIFT pacs.008 XML should be deterministic for same inputs");
+        assert_eq!(
+            x1, x2,
+            "SWIFT pacs.008 XML should be deterministic for same inputs"
+        );
     }
 }
 
@@ -1537,8 +1618,14 @@ fn licensepack_condition_empty_id_accepted() {
         status: "active".to_string(),
     };
     // Empty condition_id silently accepted — should be rejected
-    assert_eq!(cond.condition_id, "", "BUG-042: empty condition_id accepted without validation");
-    assert!(cond.is_active("2026-01-01"), "Active condition with empty ID is functional");
+    assert_eq!(
+        cond.condition_id, "",
+        "BUG-042: empty condition_id accepted without validation"
+    );
+    assert!(
+        cond.is_active("2026-01-01"),
+        "Active condition with empty ID is functional"
+    );
 }
 
 #[test]
@@ -1624,7 +1711,10 @@ fn licensepack_restriction_blocks_jurisdiction_empty_string() {
     };
     // BUG-044 RESOLVED: blocks_jurisdiction("") now returns false for empty input
     let result = restriction.blocks_jurisdiction("");
-    assert!(!result, "BUG-044 RESOLVED: empty jurisdiction correctly returns false");
+    assert!(
+        !result,
+        "BUG-044 RESOLVED: empty jurisdiction correctly returns false"
+    );
 }
 
 #[test]
@@ -1699,7 +1789,10 @@ fn watcher_bond_zero_correctly_rejected_and_rebond_zero_also() {
     w.activate().unwrap();
     w.slash(SlashingCondition::Equivocation).unwrap();
     // BUG-046 RESOLVED: rebond(0) now also correctly rejected, consistent with bond(0)
-    assert!(w.rebond(0).is_err(), "BUG-046 RESOLVED: rebond(0) correctly rejected — consistent with bond(0)");
+    assert!(
+        w.rebond(0).is_err(),
+        "BUG-046 RESOLVED: rebond(0) correctly rejected — consistent with bond(0)"
+    );
 }
 
 // =========================================================================
@@ -1748,13 +1841,25 @@ fn zkp_mock_empty_public_inputs() {
     };
 
     let proof = sys.prove(&pk, &circuit).unwrap();
-    assert_eq!(proof.proof_hex.len(), 64, "Empty inputs should produce valid 64-char hex proof");
+    assert_eq!(
+        proof.proof_hex.len(),
+        64,
+        "Empty inputs should produce valid 64-char hex proof"
+    );
 
     // Verify requires canonical(circuit_data) || public_inputs
     let canonical = CanonicalBytes::from_value(circuit.circuit_data.clone()).unwrap();
-    let verify_input: Vec<u8> = canonical.as_bytes().iter().chain(circuit.public_inputs.iter()).copied().collect();
+    let verify_input: Vec<u8> = canonical
+        .as_bytes()
+        .iter()
+        .chain(circuit.public_inputs.iter())
+        .copied()
+        .collect();
     let valid = sys.verify(&vk, &proof, &verify_input).unwrap();
-    assert!(valid, "Proof with empty inputs should verify when canonical circuit data is included");
+    assert!(
+        valid,
+        "Proof with empty inputs should verify when canonical circuit data is included"
+    );
 }
 
 #[test]
@@ -1768,7 +1873,10 @@ fn zkp_mock_prove_empty_circuit_data() {
         public_inputs: b"test".to_vec(),
     };
     let result = sys.prove(&pk, &circuit);
-    assert!(result.is_ok(), "Empty circuit data ({{}}) should be accepted");
+    assert!(
+        result.is_ok(),
+        "Empty circuit data ({{}}) should be accepted"
+    );
 }
 
 // =========================================================================
@@ -1789,9 +1897,18 @@ fn licensepack_license_serde_empty_fields() {
     }"#;
     let license: License = serde_json::from_str(json_str).unwrap();
     // BUG-049: All empty strings accepted without validation
-    assert_eq!(license.license_id, "", "BUG-049: empty license_id accepted via serde");
-    assert_eq!(license.holder_id, "", "BUG-049: empty holder_id accepted via serde");
-    assert_eq!(license.regulator_id, "", "BUG-049: empty regulator_id accepted via serde");
+    assert_eq!(
+        license.license_id, "",
+        "BUG-049: empty license_id accepted via serde"
+    );
+    assert_eq!(
+        license.holder_id, "",
+        "BUG-049: empty holder_id accepted via serde"
+    );
+    assert_eq!(
+        license.regulator_id, "",
+        "BUG-049: empty regulator_id accepted via serde"
+    );
 }
 
 #[test]
@@ -1804,7 +1921,10 @@ fn licensepack_condition_serde_empty_fields() {
         "status": "active"
     }"#;
     let cond: LicenseCondition = serde_json::from_str(json_str).unwrap();
-    assert_eq!(cond.condition_id, "", "BUG-042: empty condition_id via serde");
+    assert_eq!(
+        cond.condition_id, "",
+        "BUG-042: empty condition_id via serde"
+    );
     assert!(cond.is_active("2026-01-01"), "Active with all empty fields");
 }
 
@@ -1821,5 +1941,9 @@ fn licensepack_resolve_refs_missing_fields() {
     });
     let refs = msez_pack::licensepack::resolve_licensepack_refs(&zone).unwrap();
     // BUG-050 RESOLVED: entry with missing required fields is skipped
-    assert_eq!(refs.len(), 0, "BUG-050 RESOLVED: entries with missing fields are skipped");
+    assert_eq!(
+        refs.len(),
+        0,
+        "BUG-050 RESOLVED: entries with missing fields are skipped"
+    );
 }

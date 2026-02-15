@@ -378,13 +378,16 @@ pub struct TaxEventRecord {
 /// Application configuration.
 ///
 /// Custom `Debug` redacts the `auth_token` to prevent credential leakage in logs.
+/// The token is wrapped in [`crate::auth::SecretString`] which implements
+/// `Zeroize` on drop, preventing credential material from lingering in memory.
 #[derive(Clone)]
 pub struct AppConfig {
     /// Port to bind the HTTP server to.
     pub port: u16,
     /// Static bearer token for Phase 1 authentication.
     /// If `None`, authentication is disabled.
-    pub auth_token: Option<String>,
+    /// Wrapped in `SecretString` for automatic zeroization on drop.
+    pub auth_token: Option<crate::auth::SecretString>,
 }
 
 impl std::fmt::Debug for AppConfig {
@@ -877,11 +880,14 @@ mod tests {
     fn app_state_with_config_applies_custom_config() {
         let config = AppConfig {
             port: 3000,
-            auth_token: Some("secret-token".to_string()),
+            auth_token: Some(crate::auth::SecretString::new("secret-token")),
         };
         let state = AppState::with_config(config, None);
         assert_eq!(state.config.port, 3000);
-        assert_eq!(state.config.auth_token.as_deref(), Some("secret-token"));
+        assert_eq!(
+            state.config.auth_token.as_ref().map(|s| s.expose()),
+            Some("secret-token")
+        );
         assert!(state.corridors.is_empty());
     }
 
@@ -890,7 +896,8 @@ mod tests {
         let default_state = AppState::default();
         let new_state = AppState::new();
         assert_eq!(default_state.config.port, new_state.config.port);
-        assert_eq!(default_state.config.auth_token, new_state.config.auth_token);
+        assert!(default_state.config.auth_token.is_none());
+        assert!(new_state.config.auth_token.is_none());
     }
 
     #[test]

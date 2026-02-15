@@ -22,6 +22,9 @@
 //! - **SWIFT** ([`swift`]): SWIFT pacs.008 payment instruction adapter
 //!   for traditional settlement rails.
 //!
+//! - **Payment Rails** ([`payment_rail`]): Generic [`PaymentRailAdapter`]
+//!   trait with stub implementations for SBP Raast, RTGS, and Circle USDC.
+//!
 //! ## Spec Reference
 //!
 //! Implements protocols from `spec/40-corridors.md`, including:
@@ -33,6 +36,7 @@ pub mod anchor;
 pub mod bridge;
 pub mod fork;
 pub mod netting;
+pub mod payment_rail;
 pub mod receipt;
 pub mod swift;
 
@@ -46,6 +50,10 @@ pub use netting::{
 };
 pub use receipt::{Checkpoint, CorridorReceipt, ReceiptChain, ReceiptError};
 pub use swift::{SettlementInstruction, SettlementRail, SettlementRailError, SwiftPacs008};
+pub use payment_rail::{
+    CircleUsdcAdapter, PaymentInstruction, PaymentRailAdapter, PaymentRailError, PaymentResult,
+    PaymentStatus, RaastAdapter, RtgsAdapter,
+};
 
 use thiserror::Error;
 

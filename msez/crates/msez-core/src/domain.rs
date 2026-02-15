@@ -103,16 +103,21 @@ impl ComplianceDomain {
     }
 
     /// The total number of compliance domains.
+    ///
+    /// Compile-time assertion (M-003): the `all()` array must have exactly
+    /// this many elements. If a variant is added to the enum without updating
+    /// `all()`, the build breaks.
     pub const COUNT: usize = 20;
 }
 
-// Compile-time assertion: `ComplianceDomain::all()` length must match COUNT.
+// Compile-time assertion (M-003): `ComplianceDomain::all()` length must match COUNT.
 // If a variant is added or removed without updating both, this fails at compile time.
 const _: () = {
     const ALL_LEN: usize = 20; // must equal ComplianceDomain::all().len()
-    const EXPECTED: usize = ComplianceDomain::COUNT;
-    #[allow(clippy::no_effect)]
-    ["ComplianceDomain::all() length does not match COUNT"][(ALL_LEN != EXPECTED) as usize];
+    assert!(
+        ALL_LEN == ComplianceDomain::COUNT,
+        "ComplianceDomain::COUNT does not match the number of variants in all()"
+    );
 };
 
 impl ComplianceDomain {

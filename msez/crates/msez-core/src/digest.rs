@@ -228,12 +228,13 @@ impl Default for Sha256Accumulator {
 /// hash raw byte streams (file contents, Merkle tree nodes, lockfile data)
 /// rather than serializable domain objects.
 ///
-/// ## When to use `sha256_raw` vs `sha256_digest`
+/// ## When to use which function
 ///
-/// | Input type | Function | Example |
-/// |-----------|----------|---------|
-/// | `impl Serialize` (structs, enums, JSON) | [`sha256_digest`] via [`CanonicalBytes`] | Audit events, compliance tensors, VCs |
-/// | Raw `&[u8]` (file contents, concatenations) | `sha256_raw` | Pack file digests, lockfile hashes, MMR nodes |
+/// | Input type | Function | Output | Example |
+/// |-----------|----------|--------|---------|
+/// | `impl Serialize` (structs, enums, JSON) | [`sha256_digest`] via [`CanonicalBytes`] | `ContentDigest` | Audit events, compliance tensors, VCs |
+/// | Raw `&[u8]` needing hex string | `sha256_raw` | `String` | Pack file digests, lockfile hashes |
+/// | Raw `&[u8]` needing binary | [`sha256_bytes`] | `[u8; 32]` | MMR nodes, Merkle tree concatenation |
 ///
 /// ## Security Invariant
 ///

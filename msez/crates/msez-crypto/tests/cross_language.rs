@@ -31,7 +31,6 @@ use msez_crypto::mmr::{
     mmr_root_from_next_roots, verify_inclusion_proof, MerkleMountainRange,
 };
 use serde_json::json;
-use sha2::{Digest, Sha256};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -40,10 +39,7 @@ use sha2::{Digest, Sha256};
 /// Matches Python's `hashlib.sha256(f"receipt-{i}".encode("utf-8")).hexdigest()`.
 fn receipt_hash(i: usize) -> String {
     let data = format!("receipt-{i}");
-    let mut hasher = Sha256::new();
-    hasher.update(data.as_bytes());
-    let result = hasher.finalize();
-    result.iter().map(|b| format!("{b:02x}")).collect()
+    msez_core::sha256_raw(data.as_bytes())
 }
 
 // ===========================================================================

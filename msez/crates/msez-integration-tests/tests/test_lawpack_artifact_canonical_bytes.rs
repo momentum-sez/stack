@@ -4,29 +4,22 @@
 //! digests through the canonical bytes pipeline. Uses the same lawpack
 //! digest protocol as `tools/lawpack.py`.
 
-use msez_core::{sha256_digest, CanonicalBytes};
+use msez_core::{sha256_digest, CanonicalBytes, Sha256Accumulator};
 use serde_json::json;
-use sha2::{Digest as _, Sha256};
 use std::collections::BTreeMap;
-
-mod hex_util {
-    pub fn encode(bytes: impl AsRef<[u8]>) -> String {
-        bytes.as_ref().iter().map(|b| format!("{b:02x}")).collect()
-    }
-}
 
 /// Compute lawpack digest using the v1 protocol.
 fn compute_lawpack_digest(paths_data: &BTreeMap<&str, serde_json::Value>) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(b"msez-lawpack-v1\0");
+    let mut acc = Sha256Accumulator::new();
+    acc.update(b"msez-lawpack-v1\0");
     for (path, data) in paths_data {
-        hasher.update(path.as_bytes());
-        hasher.update(b"\0");
+        acc.update(path.as_bytes());
+        acc.update(b"\0");
         let canonical = CanonicalBytes::new(data).unwrap();
-        hasher.update(canonical.as_bytes());
-        hasher.update(b"\0");
+        acc.update(canonical.as_bytes());
+        acc.update(b"\0");
     }
-    hex_util::encode(hasher.finalize())
+    acc.finalize_hex()
 }
 
 // ---------------------------------------------------------------------------

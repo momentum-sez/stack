@@ -20,8 +20,8 @@ use msez_crypto::mmr::{
     bag_peaks, build_inclusion_proof, build_peaks, mmr_leaf_hash, mmr_node_hash,
     mmr_root_from_next_roots, verify_inclusion_proof, MerkleMountainRange,
 };
+use msez_core::sha256_raw;
 use serde::Deserialize;
-use sha2::{Digest, Sha256};
 
 const FIXTURE_PATH: &str = "tests/fixtures/mmr_roots.json";
 
@@ -82,8 +82,7 @@ fn load_fixtures() -> MmrFixtures {
 /// Helper matching Python `SHA256("receipt-{i}".encode())`.
 fn receipt_hash(i: usize) -> String {
     let data = format!("receipt-{i}");
-    let result = Sha256::digest(data.as_bytes());
-    result.iter().map(|b| format!("{b:02x}")).collect()
+    sha256_raw(data.as_bytes())
 }
 
 /// Verify that our receipt hash generation matches the Python fixture's

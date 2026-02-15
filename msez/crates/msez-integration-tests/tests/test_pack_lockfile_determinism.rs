@@ -7,7 +7,7 @@
 //! Also tests that the pack trilogy (lawpack, regpack, licensepack)
 //! all produce stable, content-addressed identifiers.
 
-use msez_core::{sha256_digest, CanonicalBytes};
+use msez_core::{sha256_digest, CanonicalBytes, Sha256Accumulator};
 use msez_pack::lawpack::LawpackRef;
 use serde_json::json;
 use std::collections::BTreeMap;
@@ -21,8 +21,6 @@ fn lawpack_digest_is_deterministic() {
     // Simulate the lawpack digest protocol:
     // SHA256( b"msez-lawpack-v1\0" + for each path in sorted(paths):
     //     path.encode("utf-8") + b"\0" + canonical_bytes + b"\0" )
-    use sha2::{Digest, Sha256};
-
     let mut paths_data: BTreeMap<&str, serde_json::Value> = BTreeMap::new();
     paths_data.insert(
         "modules/tax/withholding.yaml",
@@ -38,17 +36,16 @@ fn lawpack_digest_is_deterministic() {
     );
 
     let compute_digest = || {
-        let mut hasher = Sha256::new();
-        hasher.update(b"msez-lawpack-v1\0");
+        let mut acc = Sha256Accumulator::new();
+        acc.update(b"msez-lawpack-v1\0");
         for (path, data) in &paths_data {
-            hasher.update(path.as_bytes());
-            hasher.update(b"\0");
+            acc.update(path.as_bytes());
+            acc.update(b"\0");
             let canonical = CanonicalBytes::new(data).unwrap();
-            hasher.update(canonical.as_bytes());
-            hasher.update(b"\0");
+            acc.update(canonical.as_bytes());
+            acc.update(b"\0");
         }
-        let result = hasher.finalize();
-        hex::encode(result)
+        acc.finalize_hex()
     };
 
     // Compute twice — must be identical
@@ -56,13 +53,6 @@ fn lawpack_digest_is_deterministic() {
     let d2 = compute_digest();
     assert_eq!(d1, d2, "lawpack digest must be deterministic across runs");
     assert_eq!(d1.len(), 64);
-}
-
-/// Hex encoding helper (avoiding external `hex` crate)
-mod hex {
-    pub fn encode(bytes: impl AsRef<[u8]>) -> String {
-        bytes.as_ref().iter().map(|b| format!("{b:02x}")).collect()
-    }
 }
 
 // ---------------------------------------------------------------------------

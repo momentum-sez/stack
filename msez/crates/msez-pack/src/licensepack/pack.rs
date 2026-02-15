@@ -150,6 +150,13 @@ impl Licensepack {
     ///
     /// Produces a deterministic SHA-256 hex string by canonicalizing all
     /// components in a fixed order (BTreeMap guarantees sorted iteration).
+    ///
+    /// # SHA-256 exception: composite domain-prefixed digest
+    ///
+    /// Uses `Sha256Accumulator` instead of `sha256_digest(&CanonicalBytes)`
+    /// because this computes a composite digest over a domain prefix + multiple
+    /// individually canonicalized components. Each component goes through
+    /// `CanonicalBytes` before being fed to the hasher.
     pub fn compute_digest(&self) -> PackResult<String> {
         let mut acc = Sha256Accumulator::new();
         acc.update(LICENSEPACK_DIGEST_PREFIX);

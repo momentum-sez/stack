@@ -198,6 +198,71 @@ impl Validate for VerifyIdentityProxyRequest {
     }
 }
 
+impl Validate for UpdateEntityProxyRequest {
+    fn validate(&self) -> Result<(), String> {
+        // At least one field must be provided.
+        let has_content = self.legal_name.is_some()
+            || self.entity_type.is_some()
+            || self.jurisdiction_id.is_some()
+            || self.beneficial_owners.is_some()
+            || self.address.is_some()
+            || self.tags.is_some();
+        if !has_content {
+            return Err("at least one field must be provided for update".into());
+        }
+        if let Some(ref name) = self.legal_name {
+            if name.trim().is_empty() {
+                return Err("legal_name must not be empty when provided".into());
+            }
+            if name.len() > 1000 {
+                return Err("legal_name must not exceed 1000 characters".into());
+            }
+        }
+        if let Some(ref et) = self.entity_type {
+            if et.trim().is_empty() {
+                return Err("entity_type must not be empty when provided".into());
+            }
+            if et.len() > 100 {
+                return Err("entity_type must not exceed 100 characters".into());
+            }
+        }
+        if let Some(ref jid) = self.jurisdiction_id {
+            if jid.trim().is_empty() {
+                return Err("jurisdiction_id must not be empty when provided".into());
+            }
+            if jid.len() > 100 {
+                return Err("jurisdiction_id must not exceed 100 characters".into());
+            }
+        }
+        if let Some(ref owners) = self.beneficial_owners {
+            if owners.len() > 100 {
+                return Err("beneficial_owners must not exceed 100 entries".into());
+            }
+            for (i, bo) in owners.iter().enumerate() {
+                if bo.name.trim().is_empty() {
+                    return Err(format!("beneficial_owners[{i}].name must not be empty"));
+                }
+                if bo.name.len() > 500 {
+                    return Err(format!(
+                        "beneficial_owners[{i}].name must not exceed 500 characters"
+                    ));
+                }
+            }
+        }
+        if let Some(ref addr) = self.address {
+            if addr.len() > 2000 {
+                return Err("address must not exceed 2000 characters".into());
+            }
+        }
+        if let Some(ref tags) = self.tags {
+            if tags.len() > 50 {
+                return Err("tags must not exceed 50 entries".into());
+            }
+        }
+        Ok(())
+    }
+}
+
 impl Validate for CreateConsentProxyRequest {
     fn validate(&self) -> Result<(), String> {
         if self.consent_type.trim().is_empty() {
@@ -269,6 +334,32 @@ pub struct CreateEntityProxyRequest {
     pub jurisdiction_id: String,
     #[serde(default)]
     pub beneficial_owners: Vec<BeneficialOwnerInput>,
+}
+
+/// Request to update an entity via the Mass API proxy.
+///
+/// Accepts the same fields as creation, all optional. At least one field
+/// must be provided (an empty update is semantically meaningless).
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+pub struct UpdateEntityProxyRequest {
+    /// New legal name for the entity.
+    #[serde(default)]
+    pub legal_name: Option<String>,
+    /// New entity type.
+    #[serde(default)]
+    pub entity_type: Option<String>,
+    /// New jurisdiction ID.
+    #[serde(default)]
+    pub jurisdiction_id: Option<String>,
+    /// Updated beneficial owners (replaces the full list).
+    #[serde(default)]
+    pub beneficial_owners: Option<Vec<BeneficialOwnerInput>>,
+    /// New address.
+    #[serde(default)]
+    pub address: Option<String>,
+    /// New tags.
+    #[serde(default)]
+    pub tags: Option<Vec<String>>,
 }
 
 /// Beneficial owner input.
@@ -464,10 +555,12 @@ async fn get_entity(
     put,
     path = "/v1/entities/:id",
     params(("id" = uuid::Uuid, Path, description = "Entity UUID")),
+    request_body = UpdateEntityProxyRequest,
     responses(
         (status = 200, description = "Entity updated with compliance evaluation and VC"),
         (status = 403, description = "Blocked by compliance hard-block (sanctions)"),
         (status = 404, description = "Entity not found"),
+        (status = 422, description = "Validation error"),
         (status = 502, description = "Mass API error"),
         (status = 503, description = "Mass client not configured"),
     ),
@@ -476,8 +569,9 @@ async fn get_entity(
 async fn update_entity(
     State(state): State<AppState>,
     Path(id): Path<uuid::Uuid>,
-    Json(body): Json<serde_json::Value>,
+    Json(req): Json<UpdateEntityProxyRequest>,
 ) -> Result<Json<OrchestrationEnvelope>, AppError> {
+    req.validate().map_err(AppError::Validation)?;
     let client = require_mass_client(&state)?;
 
     // Step 1: Fetch existing entity to determine jurisdiction.
@@ -488,10 +582,14 @@ async fn update_entity(
         .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?
         .ok_or_else(|| AppError::not_found(format!("entity {id} not found")))?;
 
-    let jurisdiction_id = existing
-        .jurisdiction
+    // Use the request's jurisdiction if provided, else the existing entity's,
+    // else GLOBAL scope (consistent with cap table/consent patterns).
+    let jurisdiction_id = req
+        .jurisdiction_id
         .as_deref()
-        .unwrap_or("UNKNOWN");
+        .or(existing.jurisdiction.as_deref())
+        .filter(|j| !j.is_empty())
+        .unwrap_or("GLOBAL");
 
     // Step 2: Pre-flight compliance evaluation.
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
@@ -505,7 +603,9 @@ async fn update_entity(
         return Err(AppError::Forbidden(reason));
     }
 
-    // Step 4: Mass API call — update entity.
+    // Step 4: Mass API call — convert typed request to JSON for the Mass update endpoint.
+    let body = serde_json::to_value(&req)
+        .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
     let entity = client
         .entities()
         .update(id, &body)

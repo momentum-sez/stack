@@ -25,6 +25,7 @@
 //! | KYC/KYB | consent-info or identity-info |
 //! | Entity identity | Consolidated view across services |
 
+use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -34,6 +35,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::AppError;
+use crate::extractors::{extract_validated_json, Validate};
 use crate::orchestration;
 use crate::state::AppState;
 
@@ -173,6 +175,63 @@ pub struct IdentityServiceStatus {
 }
 
 // ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+
+impl Validate for CnicVerifyRequest {
+    fn validate(&self) -> Result<(), String> {
+        let digits: String = self.cnic.chars().filter(|c| c.is_ascii_digit()).collect();
+        if digits.len() != 13 {
+            return Err(format!(
+                "CNIC must be exactly 13 digits, got {}",
+                digits.len()
+            ));
+        }
+        if self.full_name.trim().is_empty() {
+            return Err("full_name must not be empty".into());
+        }
+        if self.full_name.len() > 500 {
+            return Err("full_name must not exceed 500 characters".into());
+        }
+        if let Some(ref dob) = self.date_of_birth {
+            if dob.trim().is_empty() {
+                return Err("date_of_birth must not be empty when provided".into());
+            }
+        }
+        if let Some(ref jid) = self.jurisdiction_id {
+            if jid.trim().is_empty() {
+                return Err("jurisdiction_id must not be empty when provided".into());
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Validate for NtnVerifyRequest {
+    fn validate(&self) -> Result<(), String> {
+        let digits: String = self.ntn.chars().filter(|c| c.is_ascii_digit()).collect();
+        if digits.len() != 7 {
+            return Err(format!(
+                "NTN must be exactly 7 digits, got {}",
+                digits.len()
+            ));
+        }
+        if self.entity_name.trim().is_empty() {
+            return Err("entity_name must not be empty".into());
+        }
+        if self.entity_name.len() > 1000 {
+            return Err("entity_name must not exceed 1000 characters".into());
+        }
+        if let Some(ref jid) = self.jurisdiction_id {
+            if jid.trim().is_empty() {
+                return Err("jurisdiction_id must not be empty when provided".into());
+            }
+        }
+        Ok(())
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
 
@@ -198,18 +257,10 @@ pub struct IdentityServiceStatus {
 )]
 async fn verify_cnic(
     State(state): State<AppState>,
-    Json(req): Json<CnicVerifyRequest>,
+    body: Result<Json<CnicVerifyRequest>, JsonRejection>,
 ) -> Result<Json<CnicVerifyResponse>, AppError> {
+    let req = extract_validated_json(body)?;
     let client = require_mass_client(&state)?;
-
-    // Validate CNIC format: 13 digits, optionally with dashes.
-    let cnic_digits: String = req.cnic.chars().filter(|c| c.is_ascii_digit()).collect();
-    if cnic_digits.len() != 13 {
-        return Err(AppError::BadRequest(format!(
-            "CNIC must be exactly 13 digits, got {}",
-            cnic_digits.len()
-        )));
-    }
 
     let jurisdiction = req.jurisdiction_id.as_deref().unwrap_or("PK");
     let entity_id = req.entity_id.unwrap_or_else(Uuid::new_v4);
@@ -287,18 +338,10 @@ async fn verify_cnic(
 )]
 async fn verify_ntn(
     State(state): State<AppState>,
-    Json(req): Json<NtnVerifyRequest>,
+    body: Result<Json<NtnVerifyRequest>, JsonRejection>,
 ) -> Result<Json<NtnVerifyResponse>, AppError> {
+    let req = extract_validated_json(body)?;
     let client = require_mass_client(&state)?;
-
-    // Validate NTN format: 7 digits.
-    let ntn_digits: String = req.ntn.chars().filter(|c| c.is_ascii_digit()).collect();
-    if ntn_digits.len() != 7 {
-        return Err(AppError::BadRequest(format!(
-            "NTN must be exactly 7 digits, got {}",
-            ntn_digits.len()
-        )));
-    }
 
     let jurisdiction = req.jurisdiction_id.as_deref().unwrap_or("PK");
     let entity_id = req.entity_id.unwrap_or_else(Uuid::new_v4);

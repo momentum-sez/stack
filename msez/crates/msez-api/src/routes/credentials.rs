@@ -15,6 +15,7 @@
 
 use std::collections::HashMap;
 
+use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, State};
 use axum::routing::post;
 use axum::{Json, Router};
@@ -30,6 +31,7 @@ use crate::compliance::{
     ComplianceEvalResult,
 };
 use crate::error::AppError;
+use crate::extractors::{extract_validated_json, Validate};
 use crate::state::AppState;
 
 // ---------------------------------------------------------------------------
@@ -87,6 +89,32 @@ pub struct ProofVerificationResult {
 }
 
 // ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+
+impl Validate for ComplianceCredentialRequest {
+    fn validate(&self) -> Result<(), String> {
+        if self.attestations.len() > 100 {
+            return Err(format!(
+                "attestations must not exceed 100 entries, got {}",
+                self.attestations.len()
+            ));
+        }
+        for key in self.attestations.keys() {
+            if key.len() > 100 {
+                return Err(
+                    "attestation domain name must not exceed 100 characters".to_string(),
+                );
+            }
+            if key.trim().is_empty() {
+                return Err("attestation domain name must not be empty".to_string());
+            }
+        }
+        Ok(())
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 
@@ -129,26 +157,9 @@ pub fn router() -> Router<AppState> {
 async fn issue_compliance_credential(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
-    body: Json<serde_json::Value>,
+    body: Result<Json<ComplianceCredentialRequest>, JsonRejection>,
 ) -> Result<Json<ComplianceCredentialResponse>, AppError> {
-    // Parse the request body manually to give better error messages.
-    let req: ComplianceCredentialRequest = serde_json::from_value(body.0)
-        .map_err(|e| AppError::BadRequest(format!("invalid request body: {e}")))?;
-
-    // Validate attestation bounds.
-    const MAX_ATTESTATIONS: usize = 100;
-    if req.attestations.len() > MAX_ATTESTATIONS {
-        return Err(AppError::Validation(format!(
-            "attestations must not exceed {MAX_ATTESTATIONS} entries"
-        )));
-    }
-    for key in req.attestations.keys() {
-        if key.len() > 100 {
-            return Err(AppError::Validation(
-                "attestation domain name must not exceed 100 characters".to_string(),
-            ));
-        }
-    }
+    let req = extract_validated_json(body)?;
 
     // ── Act 1: Evaluate ─────────────────────────────────────────
     let asset = state
@@ -247,8 +258,11 @@ async fn issue_compliance_credential(
 )]
 async fn verify_credential(
     State(state): State<AppState>,
-    Json(body): Json<serde_json::Value>,
+    body: Result<Json<serde_json::Value>, JsonRejection>,
 ) -> Result<Json<VerificationResponse>, AppError> {
+    let body = body
+        .map(|Json(v)| v)
+        .map_err(|e| AppError::BadRequest(e.body_text()))?;
     let vc: VerifiableCredential = serde_json::from_value(body)
         .map_err(|e| AppError::BadRequest(format!("invalid VC: {e}")))?;
 
@@ -256,6 +270,7 @@ async fn verify_credential(
     let zone_vk = state.zone_signing_key.verifying_key();
     let zone_did = state.zone_did.clone();
 
+    // Collect detailed per-proof results for the response.
     let results = vc.verify(|verification_method| {
         if verification_method.starts_with(&zone_did) {
             Ok(zone_vk.clone())
@@ -265,9 +280,16 @@ async fn verify_credential(
             ))
         }
     });
-
-    let all_ok = results.iter().all(|r| r.ok);
     let proof_count = results.len();
+
+    // Apply the same holistic checks that verify_all() enforces:
+    // (a) reject credentials with zero proofs (vacuously-true iterator bug),
+    // (b) reject expired credentials regardless of signature validity.
+    let proofs_ok = !results.is_empty() && results.iter().all(|r| r.ok);
+    let expired = vc
+        .expiration_date
+        .is_some_and(|exp| exp < chrono::Utc::now());
+    let all_ok = proofs_ok && !expired;
 
     let credential_type = match &vc.credential_type {
         CredentialTypeValue::Single(s) => s.clone(),

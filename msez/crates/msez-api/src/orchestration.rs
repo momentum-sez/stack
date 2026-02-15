@@ -941,6 +941,22 @@ mod tests {
     }
 
     #[test]
+    fn infer_jurisdiction_additional_corridors() {
+        // Additional currencies added for broader corridor coverage.
+        assert_eq!(infer_jurisdiction_from_currency("BHD"), "BH");
+        assert_eq!(infer_jurisdiction_from_currency("OMR"), "OM");
+        assert_eq!(infer_jurisdiction_from_currency("QAR"), "QA");
+        assert_eq!(infer_jurisdiction_from_currency("KWD"), "KW");
+        assert_eq!(infer_jurisdiction_from_currency("INR"), "IN");
+        assert_eq!(infer_jurisdiction_from_currency("JPY"), "JP");
+        assert_eq!(infer_jurisdiction_from_currency("CHF"), "CH");
+        assert_eq!(infer_jurisdiction_from_currency("CAD"), "CA");
+        assert_eq!(infer_jurisdiction_from_currency("AUD"), "AU");
+        assert_eq!(infer_jurisdiction_from_currency("MYR"), "MY");
+        assert_eq!(infer_jurisdiction_from_currency("TRY"), "TR");
+    }
+
+    #[test]
     fn infer_jurisdiction_case_insensitive() {
         assert_eq!(infer_jurisdiction_from_currency("cny"), "CN");
         assert_eq!(infer_jurisdiction_from_currency("Sar"), "SA");

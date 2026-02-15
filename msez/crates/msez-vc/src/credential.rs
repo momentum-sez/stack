@@ -275,8 +275,11 @@ impl VerifiableCredential {
 
     /// Verify all Ed25519 proofs on this credential.
     ///
-    /// Returns a [`ProofResult`] for each proof, matching the Python
-    /// implementation in `tools/vc.py:verify_credential()`.
+    /// Returns a [`ProofResult`] for each proof. Checks expiration first:
+    /// an expired credential yields all-failed results without performing
+    /// signature verification. A credential with zero proofs returns an
+    /// empty `Vec`, which callers must treat as verification failure (not
+    /// vacuously-true success).
     ///
     /// # Arguments
     ///
@@ -286,6 +289,22 @@ impl VerifiableCredential {
     where
         F: Fn(&str) -> Result<VerifyingKey, String>,
     {
+        // Check expiration before spending CPU on signature verification.
+        if let Some(expiration) = self.expiration_date {
+            if expiration < Utc::now() {
+                return self
+                    .proof
+                    .as_list()
+                    .iter()
+                    .map(|p| ProofResult {
+                        verification_method: p.verification_method.clone(),
+                        ok: false,
+                        error: format!("credential expired at {expiration}"),
+                    })
+                    .collect();
+            }
+        }
+
         let canonical = match self.signing_input() {
             Ok(c) => c,
             Err(e) => {

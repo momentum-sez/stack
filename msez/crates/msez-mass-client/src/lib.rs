@@ -38,7 +38,7 @@ pub use error::MassApiError;
 pub use types::MassEntityId;
 
 // Re-export msez-core identifier newtypes for callers that need type-safe
-// identifiers when working with Mass API data. Per CLAUDE.md §VIII, this
+// identifiers when working with Mass API data. Per CLAUDE.md §V.2, this
 // crate depends on msez-core ONLY for these identifier types.
 pub use msez_core::{Cnic, Did, EntityId, JurisdictionId, Ntn};
 

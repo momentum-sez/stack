@@ -3,7 +3,7 @@
 //! Starts the Axum HTTP server for the SEZ Stack API.
 //! Binds to configurable port (default 8080).
 
-use msez_api::state::{AppConfig, AppState};
+use msez_api::state::AppConfig;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -44,10 +44,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let state = AppState::try_with_config(config, mass_client).map_err(|e| {
-        tracing::error!("Failed to initialize application state: {e}");
+    // Bootstrap: load zone configuration if ZONE_CONFIG is set.
+    let state = msez_api::bootstrap::bootstrap(config, mass_client).map_err(|e| {
+        tracing::error!("Bootstrap failed: {e}");
         e
     })?;
+
     let app = msez_api::app(state);
 
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));

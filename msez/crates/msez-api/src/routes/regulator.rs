@@ -105,12 +105,24 @@ pub struct RegulatorDashboard {
 /// Zone identity and counts.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ZoneStatus {
+    /// Zone identifier (from zone manifest, if bootstrapped).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub zone_id: Option<String>,
+    /// Jurisdiction identifier (from zone manifest, if bootstrapped).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub jurisdiction_id: Option<String>,
     /// Zone operator's DID (from the zone signing key).
     pub zone_did: String,
     /// Zone operator's public key (hex).
     pub zone_public_key: String,
     /// Timestamp of this dashboard snapshot.
     pub snapshot_at: DateTime<Utc>,
+    /// Number of applicable compliance domains (from zone manifest).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub domain_count: Option<usize>,
+    /// Applicable compliance domain names.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub applicable_domains: Option<Vec<String>>,
     /// Number of unique entities known via attestations.
     pub entity_count: usize,
     /// Number of corridors.
@@ -341,10 +353,29 @@ async fn dashboard(
         .map(|a| a.entity_id)
         .collect();
 
+    let (zone_id, jurisdiction_id, domain_count, applicable_domains) = match &state.zone {
+        Some(zc) => (
+            Some(zc.zone_id.clone()),
+            Some(zc.jurisdiction_id.clone()),
+            Some(zc.applicable_domains.len()),
+            Some(
+                zc.applicable_domains
+                    .iter()
+                    .map(|d| d.as_str().to_string())
+                    .collect(),
+            ),
+        ),
+        None => (None, None, None, None),
+    };
+
     let zone = ZoneStatus {
+        zone_id,
+        jurisdiction_id,
         zone_did: state.zone_did.clone(),
         zone_public_key: state.zone_signing_key.verifying_key().to_hex(),
         snapshot_at: now,
+        domain_count,
+        applicable_domains,
         entity_count: unique_entities.len(),
         corridor_count: state.corridors.len(),
         asset_count: state.smart_assets.len(),
@@ -468,7 +499,10 @@ async fn dashboard(
         .filter(|c| c.state.as_str() == "HALTED")
         .count();
 
-    let zone_key_ephemeral = std::env::var("ZONE_SIGNING_KEY_HEX").is_err();
+    let zone_key_ephemeral = match &state.zone {
+        Some(zc) => zc.key_ephemeral,
+        None => std::env::var("ZONE_SIGNING_KEY_HEX").is_err(),
+    };
 
     let (total_requests, total_errors) = metrics
         .map(|Extension(m)| (m.requests(), m.errors()))

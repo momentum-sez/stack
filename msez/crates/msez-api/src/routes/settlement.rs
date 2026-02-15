@@ -62,12 +62,9 @@ impl Validate for SettlementComputeRequest {
             if ob.currency.trim().is_empty() {
                 return Err(format!("obligation {i}: currency must be non-empty"));
             }
-            if ob.amount <= 0 {
-                return Err(format!(
-                    "obligation {i}: amount must be positive, got {}",
-                    ob.amount
-                ));
-            }
+            // Note: non-positive amounts are handled gracefully by NettingEngine
+            // (skipped and counted), so we do NOT reject them here. See the
+            // `obligations_skipped` field in SettlementPlanResponse.
         }
         Ok(())
     }
@@ -302,6 +299,7 @@ async fn compute_settlement(
         .ok_or_else(|| AppError::NotFound(format!("corridor {corridor_id} not found")))?;
 
     let req = body.map(|Json(r)| r).unwrap_or_default();
+    req.validate().map_err(AppError::Validation)?;
 
     let mut engine = NettingEngine::new();
     let mut skipped = 0;

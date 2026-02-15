@@ -127,6 +127,199 @@ async fn test_get_entity_returns_503_without_mass_client() {
     assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
+// -- Ownership Proxy (Mass API delegation) ------------------------------------
+//
+// Without a Mass client configured, ownership endpoints return 503.
+
+#[tokio::test]
+async fn test_create_cap_table_returns_503_without_mass_client() {
+    let app = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/ownership/cap-tables")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_string(&serde_json::json!({
+                        "entity_id": "00000000-0000-0000-0000-000000000000",
+                        "share_classes": []
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+}
+
+#[tokio::test]
+async fn test_get_cap_table_returns_503_without_mass_client() {
+    let app = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/ownership/cap-tables/00000000-0000-0000-0000-000000000000")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+}
+
+// -- Fiscal Proxy (Mass API delegation) ---------------------------------------
+
+#[tokio::test]
+async fn test_create_account_returns_503_without_mass_client() {
+    let app = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/fiscal/accounts")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_string(&serde_json::json!({
+                        "entity_id": "00000000-0000-0000-0000-000000000000",
+                        "account_type": "operating",
+                        "currency": "PKR"
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+}
+
+#[tokio::test]
+async fn test_initiate_payment_returns_503_without_mass_client() {
+    let app = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/fiscal/payments")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_string(&serde_json::json!({
+                        "from_account_id": "00000000-0000-0000-0000-000000000000",
+                        "amount": "5000.00",
+                        "currency": "PKR",
+                        "reference": "INV-001"
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+}
+
+// -- Identity Proxy (Mass API delegation) -------------------------------------
+
+#[tokio::test]
+async fn test_verify_identity_returns_503_without_mass_client() {
+    let app = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/identity/verify")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_string(&serde_json::json!({
+                        "identity_type": "individual",
+                        "linked_ids": [{"id_type": "CNIC", "id_value": "12345-1234567-1"}]
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+}
+
+#[tokio::test]
+async fn test_get_identity_returns_503_without_mass_client() {
+    let app = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/identity/00000000-0000-0000-0000-000000000000")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+}
+
+// -- Consent Proxy (Mass API delegation) --------------------------------------
+
+#[tokio::test]
+async fn test_create_consent_returns_503_without_mass_client() {
+    let app = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/consent")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_string(&serde_json::json!({
+                        "consent_type": "board_resolution",
+                        "description": "Approve formation",
+                        "parties": [{"entity_id": "00000000-0000-0000-0000-000000000000", "role": "approver"}]
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+}
+
+#[tokio::test]
+async fn test_get_consent_returns_503_without_mass_client() {
+    let app = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/consent/00000000-0000-0000-0000-000000000000")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+}
+
+// -- Update Entity returns 501 (not implemented) ------------------------------
+
+#[tokio::test]
+async fn test_update_entity_returns_501() {
+    let app = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri("/v1/entities/00000000-0000-0000-0000-000000000000")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"legal_name":"Updated Corp"}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+}
+
 // -- Corridors (SEZ Stack domain) ---------------------------------------------
 
 #[tokio::test]
@@ -332,10 +525,14 @@ async fn test_openapi_contains_all_routes() {
     let paths = spec["paths"].as_object().unwrap();
 
     // Check that all expected path prefixes are present.
-    // Note: ownership, fiscal, identity, consent routes have been removed
-    // (those primitives are now proxied to Mass APIs via /v1/entities).
+    // All five primitives are proxied to Mass APIs, plus SEZ Stack native routes.
     let expected_paths = [
         "/v1/entities",
+        "/v1/ownership/cap-tables",
+        "/v1/fiscal/accounts",
+        "/v1/fiscal/payments",
+        "/v1/identity",
+        "/v1/consent",
         "/v1/corridors",
         "/v1/assets/genesis",
         "/v1/regulator/summary",

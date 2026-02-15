@@ -20,10 +20,23 @@ use crate::state::AppState;
         license(name = "BUSL-1.1")
     ),
     paths(
-        // Mass API proxy (entities)
+        // Mass API proxy — entities (organization-info)
         crate::routes::mass_proxy::create_entity,
         crate::routes::mass_proxy::get_entity,
+        crate::routes::mass_proxy::update_entity,
         crate::routes::mass_proxy::list_entities,
+        // Mass API proxy — ownership (investment-info)
+        crate::routes::mass_proxy::create_cap_table,
+        crate::routes::mass_proxy::get_cap_table,
+        // Mass API proxy — fiscal (treasury-info)
+        crate::routes::mass_proxy::create_account,
+        crate::routes::mass_proxy::initiate_payment,
+        // Mass API proxy — identity
+        crate::routes::mass_proxy::verify_identity,
+        crate::routes::mass_proxy::get_identity,
+        // Mass API proxy — consent (consent-info)
+        crate::routes::mass_proxy::create_consent,
+        crate::routes::mass_proxy::get_consent,
         // Corridors
         crate::routes::corridors::create_corridor,
         crate::routes::corridors::list_corridors,
@@ -52,9 +65,21 @@ use crate::state::AppState;
         // Error types
         crate::error::ErrorBody,
         crate::error::ErrorDetail,
-        // Mass proxy DTOs
+        // Mass proxy DTOs — entities
         crate::routes::mass_proxy::CreateEntityProxyRequest,
         crate::routes::mass_proxy::BeneficialOwnerInput,
+        // Mass proxy DTOs — ownership
+        crate::routes::mass_proxy::CreateCapTableProxyRequest,
+        crate::routes::mass_proxy::ShareClassInput,
+        // Mass proxy DTOs — fiscal
+        crate::routes::mass_proxy::CreateAccountProxyRequest,
+        crate::routes::mass_proxy::CreatePaymentProxyRequest,
+        // Mass proxy DTOs — identity
+        crate::routes::mass_proxy::VerifyIdentityProxyRequest,
+        crate::routes::mass_proxy::LinkedIdInput,
+        // Mass proxy DTOs — consent
+        crate::routes::mass_proxy::CreateConsentProxyRequest,
+        crate::routes::mass_proxy::ConsentPartyInput,
         // Corridor DTOs
         crate::routes::corridors::CreateCorridorRequest,
         crate::routes::corridors::TransitionCorridorRequest,
@@ -72,6 +97,10 @@ use crate::state::AppState;
     )),
     tags(
         (name = "entities", description = "ENTITIES primitive — proxied to Mass organization-info API"),
+        (name = "ownership", description = "OWNERSHIP primitive — proxied to Mass investment-info API"),
+        (name = "fiscal", description = "FISCAL primitive — proxied to Mass treasury-info API"),
+        (name = "identity", description = "IDENTITY primitive — proxied to Mass identity services"),
+        (name = "consent", description = "CONSENT primitive — proxied to Mass consent-info API"),
         (name = "corridors", description = "Corridor Operations API (SEZ Stack domain)"),
         (name = "smart_assets", description = "Smart Asset API (SEZ Stack domain)"),
         (name = "regulator", description = "Regulator Console API (SEZ Stack domain)"),

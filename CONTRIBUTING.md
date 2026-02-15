@@ -1,65 +1,94 @@
-# Contributing to Momentum SEZ Stack
+# Contributing to the Momentum SEZ Stack
 
-Thank you for your interest in contributing to the Momentum SEZ Stack. This document provides guidelines for contributing to the project.
-
-## Getting Started
-
-### Prerequisites
-
-Ensure you have Python 3.10 or higher installed, then set up your development environment:
+## Getting started
 
 ```bash
 git clone https://github.com/momentum-sez/stack.git
-cd stack
-pip install -r tools/requirements.txt
-pytest -q
+cd stack/msez
+
+# Build all 16 crates
+cargo build --workspace
+
+# Run the full test suite (2,580+ tests)
+cargo test --workspace
+
+# Lint — zero warnings required
+cargo clippy --workspace -- -D warnings
+
+# Format check
+cargo fmt --all -- --check
 ```
 
-### Running Tests
+## Before submitting changes
 
-Before submitting any changes, ensure all tests pass:
+All of these must pass:
 
 ```bash
-# Run all tests
-pytest -q
-
-# Run specific test file
-pytest tests/test_mass_primitives.py -v
-
-# Run with coverage
-pytest --cov=tools tests/
+cargo fmt --all -- --check
+cargo clippy --workspace -- -D warnings
+cargo test --workspace
 ```
 
-## Contribution Guidelines
+## Code standards
 
-### Code Style
+### Error handling
 
-The project follows standard Python conventions with particular attention to documentation and type hints. All public functions should include docstrings referencing the relevant MASS Protocol specification section where applicable.
+- No `unwrap()` in library crates. Use `thiserror` for error types, propagate via `Result`.
+- No `expect()` in production paths. Replace `std::sync::RwLock` panics with `parking_lot::RwLock`.
+- No `unimplemented!()` in production paths. Return proper errors.
 
-### Commit Messages
+### Cryptographic safety
 
-Write clear, descriptive commit messages that explain what changed and why. For version bumps, follow the format established in the repository (see the git history for examples).
+- All digest computation goes through `CanonicalBytes::new()` (in `msez-core`).
+- All signing requires `&CanonicalBytes`.
+- Private key types must implement `Zeroize` + `ZeroizeOnDrop`.
+- Private key types must **not** implement `Serialize`.
+- Bearer token comparison must use `subtle::ConstantTimeEq`.
 
-### Pull Request Process
+### Type system
 
-Before submitting a pull request, ensure your changes pass all existing tests and include new tests for any new functionality. Update relevant documentation including the README, CHANGELOG, and any affected specification documents. Reference any related issues in your pull request description.
+- Use identifier newtypes (`EntityId`, `CorridorId`, etc.) -- not raw `String` or `Uuid`.
+- Use exhaustive `match` on all enums. No wildcard `_` patterns that silently ignore new variants.
+- Typestate machines: each state is a distinct ZST. Invalid transitions should not compile.
 
-### Specification Compliance
+### Mass API boundary
 
-When implementing features from the MASS Protocol specification, include the relevant Definition, Protocol, Theorem, or Lemma reference in code comments and docstrings. This ensures traceability between the implementation and the formal specification.
+- All Mass API calls go through `msez-mass-client`. Direct `reqwest` to Mass endpoints from other crates is forbidden.
+- The SEZ Stack does not store entity records, cap tables, payment records, identity records, or consent records. Those belong in Mass.
 
-### Schema Changes
+### Schema changes
 
-When adding or modifying JSON schemas, ensure the schema validates correctly and update the schema count in documentation if adding new schemas. All schemas should be placed in the `schemas/` directory with appropriate naming conventions.
+- Place new schemas in `schemas/` with the naming convention `<domain>.<type>.schema.json`.
+- Security-critical schemas must have `additionalProperties: false`.
+- Update the schema count in documentation if adding new schemas.
 
-## Reporting Issues
+## Commit messages
 
-When reporting bugs, include the version of the stack you're using, steps to reproduce the issue, expected behavior versus actual behavior, and any relevant error messages or logs.
+Write clear, descriptive commit messages. Use conventional commit prefixes:
 
-## Questions
+- `feat(crate):` New feature
+- `fix(crate):` Bug fix
+- `refactor(crate):` Code restructuring
+- `test(crate):` Test additions
+- `docs:` Documentation changes
 
-For questions about the project or specification, please open a GitHub issue with the "question" label.
+## Pull request process
+
+1. Ensure all tests pass (`cargo test --workspace`)
+2. Ensure zero clippy warnings (`cargo clippy --workspace -- -D warnings`)
+3. Ensure formatting is correct (`cargo fmt --all -- --check`)
+4. Include tests for new functionality
+5. Update relevant documentation
+6. Reference related issues in the PR description
+
+## Specification compliance
+
+When implementing features from the protocol specification (`spec/`), include the relevant spec section reference in code comments. This ensures traceability between the implementation and the normative specification.
+
+## Reporting issues
+
+Include: version, steps to reproduce, expected vs. actual behavior, and error messages.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the same terms as the project (see `LICENSES/` directory).
+By contributing, you agree that your contributions will be licensed under BUSL-1.1 (see `LICENSES/`).

@@ -1,436 +1,348 @@
-# PHOENIX Architecture
+# Architecture
 
-## Smart Asset Operating System
+## Momentum SEZ Stack -- Rust Workspace
 
-Version 0.4.44 GENESIS
+**v0.4.44** -- 16 crates, ~48K lines of Rust
 
-This document describes the architectural foundations of the PHOENIX system, the core infrastructure enabling autonomous Smart Assets to operate across programmable jurisdictions.
+This document describes the architectural foundations of the SEZ Stack: a compliance orchestration layer built in Rust that sits above the live Mass APIs and provides the intelligence that primitive CRUD operations alone cannot express.
 
----
-
-## Foundational Premise
-
-Traditional assets are bound to territorial sovereignty. Their compliance is verified by human auditors, their movement requires bilateral agreements between financial institutions, and their settlement depends on correspondent banking relationships that take months to establish. Cross-border movement involves navigating 195+ incompatible regulatory regimes, each with its own documentation requirements.
-
-Smart Assets transcend these limitations through three fundamental capabilities.
-
-**Embedded Compliance Intelligence.** The asset carries its compliance state as an intrinsic property, represented as a 4-dimensional tensor that can be evaluated against any jurisdiction's requirements. The asset knows whether it is compliant, can identify what attestations are missing, and can compute optimal migration paths.
-
-**Autonomous Migration.** When regulatory conditions change—a license expires, a sanctions list updates, a corridor closes—the asset responds without human intervention. It can lock itself, migrate to compliant jurisdictions, or halt operations as required by policy.
-
-**Cryptographic Verification.** Every state transition produces verifiable proof. Attestations are signed by bonded watchers. Receipts chain cryptographically. Settlement is anchored to public blockchains. Trust is verified, never assumed.
+For the crate-by-crate API reference, see [Crate Reference](./architecture/CRATE-REFERENCE.md).
+For the system overview, see [Architecture Overview](./architecture/OVERVIEW.md).
 
 ---
 
-## System Architecture
+## Foundational premise
 
-The PHOENIX stack is organized into three layers, each building on the capabilities of the layer below.
+Traditional Special Economic Zones take 3-7 years and $50-200M to establish. They require bilateral treaties, regulatory frameworks, banking relationships, corporate registries, dispute resolution, and licensing regimes.
+
+The SEZ Stack reduces this to configuration files backed by a Rust workspace that provides:
+
+- **Type-level correctness**: Invalid state transitions don't compile. Identifier types can't mix. Proof backends are sealed.
+- **Cryptographic integrity**: Every state transition produces verifiable proof via Ed25519 signatures, MMR-backed receipt chains, and W3C Verifiable Credentials.
+- **Compliance intelligence**: A 20-domain compliance tensor evaluates regulatory state per entity/jurisdiction pair, with Dijkstra-optimized migration paths across the jurisdiction graph.
+- **Autonomous policy execution**: 20 trigger types drive deterministic policy evaluation with formal conflict resolution guarantees (Theorem 17.1).
+
+---
+
+## System layers
+
+The workspace is organized around distinct concerns, each implemented by one or more crates:
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                              │
-│                          LAYER 3: NETWORK COORDINATION                       │
-│                                                                              │
-│    Economic accountability and security infrastructure ensuring honest       │
-│    behavior across the decentralized network of watchers and corridors.      │
-│                                                                              │
-│    ┌────────────────┐  ┌────────────────┐  ┌────────────────┐              │
-│    │    Watcher     │  │    Security    │  │   Hardening    │              │
-│    │    Economy     │  │     Layer      │  │     Layer      │              │
-│    │                │  │                │  │                │              │
-│    │  Bonds         │  │  Nonces        │  │  Validation    │              │
-│    │  Slashing      │  │  Time Locks    │  │  Thread Safety │              │
-│    │  Reputation    │  │  Audit Logs    │  │  Rate Limits   │              │
-│    └────────────────┘  └────────────────┘  └────────────────┘              │
-│                                                                              │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│                     LAYER 2: JURISDICTIONAL INFRASTRUCTURE                   │
-│                                                                              │
-│    Path planning, migration execution, and settlement finality enabling      │
-│    cross-border asset movement through corridor networks.                    │
-│                                                                              │
-│    ┌────────────────┐  ┌────────────────┐  ┌────────────────┐              │
-│    │   Compliance   │  │   Migration    │  │   Corridor     │              │
-│    │    Manifold    │  │    Protocol    │  │    Bridge      │              │
-│    │                │  │                │  │                │              │
-│    │  Dijkstra      │  │  Saga FSM      │  │  Two-Phase     │              │
-│    │  Path Planning │  │  Compensation  │  │  Commit        │              │
-│    └────────────────┘  └────────────────┘  └────────────────┘              │
-│                              │                     │                         │
-│                              └─────────┬───────────┘                         │
-│                                        ▼                                     │
-│                            ┌────────────────────┐                           │
-│                            │     L1 Anchor      │                           │
-│                            │      Network       │                           │
-│                            │                    │                           │
-│                            │  Ethereum · L2s    │                           │
-│                            │  Cross-Chain       │                           │
-│                            │  Settlement        │                           │
-│                            └────────────────────┘                           │
-│                                                                              │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│                          LAYER 1: ASSET INTELLIGENCE                         │
-│                                                                              │
-│    Core computational substrate providing compliance state representation,   │
-│    privacy-preserving verification, and deterministic execution.             │
-│                                                                              │
-│    ┌────────────────┐  ┌────────────────┐  ┌────────────────┐              │
-│    │   Compliance   │  │    ZK Proof    │  │   Smart Asset  │              │
-│    │    Tensor      │  │ Infrastructure │  │       VM       │              │
-│    │                │  │                │  │                │              │
-│    │  4D Sparse     │  │  Groth16       │  │  256-bit Stack │              │
-│    │  Lattice       │  │  PLONK         │  │  Coprocessors  │              │
-│    │  Merkleized    │  │  STARK         │  │  Gas Metering  │              │
-│    └────────────────┘  └────────────────┘  └────────────────┘              │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                        HTTP BOUNDARY                                │
+│  msez-api: Axum server, auth, rate limiting, OpenAPI generation     │
+│  msez-cli: Offline zone management, validation, signing            │
+├─────────────────────────────────────────────────────────────────────┤
+│                     ORCHESTRATION LAYER                              │
+│  msez-agentic:     20 triggers, policy engine, audit trail          │
+│  msez-arbitration: Dispute lifecycle, evidence, escrow              │
+│  msez-compliance:  Regpack → tensor bridge                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                   DOMAIN INTELLIGENCE                               │
+│  msez-tensor:  Compliance Tensor V2 (20 domains, 5-state lattice)  │
+│  msez-corridor: Receipt chains, fork resolution, netting, SWIFT     │
+│  msez-state:   Typestate machines (corridor, entity, migration)     │
+│  msez-pack:    Lawpack, regpack, licensepack (Pack Trilogy)          │
+├─────────────────────────────────────────────────────────────────────┤
+│                  CRYPTOGRAPHIC FOUNDATION                           │
+│  msez-vc:     W3C Verifiable Credentials, Ed25519 proofs            │
+│  msez-crypto: Ed25519 (zeroize), MMR, CAS, SHA-256                 │
+│  msez-zkp:    Sealed ProofSystem trait, 12 circuits, CDB bridge     │
+│  msez-core:   CanonicalBytes, ComplianceDomain(20), ID newtypes     │
+├─────────────────────────────────────────────────────────────────────┤
+│                    EXTERNAL INTEGRATION                             │
+│  msez-mass-client: Typed HTTP client for 5 Mass API primitives      │
+│  msez-schema:      116 JSON Schema (Draft 2020-12) validation       │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Layer 1: Asset Intelligence
+## Smart Assets
+
+A **Smart Asset** is an asset with embedded compliance intelligence. It carries a compliance tensor that tracks its regulatory state across all applicable domains and jurisdictions. The asset knows:
+
+- Whether it is compliant in a given jurisdiction
+- What attestations are missing
+- The optimal migration path to a target jurisdiction (via the compliance manifold)
+
+Smart Assets are the SEZ Stack's programmable substrate. An entity IS a Smart Asset. An ownership position IS a Smart Asset. The SEZ Stack manages their compliance lifecycle; Mass manages the underlying primitive data.
 
 ### Compliance Tensor
 
-The Compliance Tensor is the mathematical core of Smart Asset autonomy. It represents the multi-dimensional compliance state of an asset across all bound jurisdictions as a single, cryptographically committable object.
-
-**Mathematical Definition**
+The compliance tensor is a function:
 
 ```
-C: AssetID × JurisdictionID × ComplianceDomain × TimeQuantum → ComplianceState
-
-where:
-    AssetID ∈ {SHA256(genesis_document)}
-    JurisdictionID ∈ {uae-difc, kz-aifc, us-delaware, ...}
-    ComplianceDomain ∈ {AML, KYC, SANCTIONS, TAX, SECURITIES, CORPORATE, CUSTODY}
-    TimeQuantum ∈ ℤ (block height or timestamp modulo period)
-    ComplianceState ∈ {COMPLIANT, NON_COMPLIANT, PENDING, UNKNOWN, EXEMPT, EXPIRED}
+T(entity, jurisdiction) : ComplianceDomain → ComplianceState
 ```
 
-**Lattice Algebra**
-
-Compliance states form a bounded lattice under the compliance ordering:
+20 regulatory domains, each producing a 5-state lattice value:
 
 ```
-            COMPLIANT
-               /\
-              /  \
-           EXEMPT  \
-            /       \
-           /    PENDING
-          /        /
-         /        /
-    UNKNOWN ────
-        \       \
-         \       \
-          \   NON_COMPLIANT
-           \     /
-            \   /
-           EXPIRED
+NotApplicable > Exempt > Compliant > Pending > NonCompliant
 ```
 
-The meet operation (∧) returns the least compliant of two states, ensuring pessimistic composition. If any domain is NON_COMPLIANT, the aggregate is NON_COMPLIANT. This fail-safe behavior is critical for regulatory safety.
-
-**Cryptographic Commitment**
-
-The tensor generates a Merkle commitment over all populated cells, enabling efficient proof that a specific (asset, jurisdiction, domain, time) coordinate has a claimed compliance state. The commitment uses deterministic cell ordering (sorted by coordinate) to ensure reproducibility.
-
-### Zero-Knowledge Proofs
-
-The ZK infrastructure enables privacy-preserving compliance verification. An asset can prove it is compliant without revealing the underlying evidence, transaction history, or beneficial ownership.
-
-**Standard Circuits**
-
-The circuit registry includes four pre-built circuits for common compliance operations.
-
-Balance Sufficiency proves that a balance exceeds a threshold without revealing the exact amount. The circuit accepts (balance, threshold) as private inputs and outputs a single bit indicating sufficiency.
-
-Sanctions Clearance proves non-membership in a sanctions set using a Merkle non-membership proof. The circuit accepts (entity_hash, sanctions_merkle_root, non_membership_proof) as private inputs and outputs a bit indicating clearance.
-
-KYC Attestation proves that a valid KYC attestation exists from an approved issuer without revealing the attestation details. The circuit accepts (attestation_digest, issuer_signature, approved_issuers_merkle_root) as private inputs.
-
-Compliance Tensor Inclusion proves that a specific tensor coordinate has a claimed compliance state. This enables selective disclosure of compliance status for specific jurisdictions without revealing the full tensor.
-
-**Proof Systems**
-
-The infrastructure supports three proof systems, each with different tradeoffs.
-
-Groth16 provides constant-size proofs (192 bytes) with fast verification but requires a trusted setup per circuit.
-
-PLONK provides universal trusted setup (one setup for all circuits) with slightly larger proofs and slower verification.
-
-STARK provides post-quantum security with no trusted setup but larger proofs (tens of kilobytes).
-
-### Smart Asset VM
-
-The Smart Asset Virtual Machine provides deterministic execution of compliance operations across the decentralized network. The VM is specifically designed for Smart Asset operations, with coprocessors for compliance tensor access and migration protocol execution.
-
-**Architecture**
-
-The VM provides a 256-slot stack where each slot holds a 256-bit word, matching Ethereum's word size for compatibility. Memory is expandable up to 64KB with byte-level addressability. Storage is Merkleized for efficient state proofs.
-
-**Instruction Set**
-
-The instruction set comprises 60+ opcodes organized into ten categories.
-
-Stack operations (0x00-0x0F) include PUSH variants for 1, 2, 4, 8, and 32 bytes, POP, DUP at various depths, and SWAP at various depths.
-
-Arithmetic operations (0x10-0x1F) include ADD, SUB, MUL, DIV, and MOD, all operating on 256-bit unsigned integers with modular arithmetic.
-
-Comparison operations (0x20-0x2F) include EQ, NE, LT, GT, LE, GE returning 1 or 0, and boolean operators AND, OR, NOT, XOR.
-
-Memory operations (0x30-0x3F) include MLOAD (32-byte read), MSTORE (32-byte write), MSTORE8 (single byte), and MSIZE.
-
-Storage operations (0x40-0x4F) include SLOAD and SSTORE for persistent Merkleized storage.
-
-Control flow operations (0x50-0x5F) include JUMP (unconditional), JUMPI (conditional), JUMPDEST (marker), RETURN, and REVERT.
-
-Context operations (0x60-0x6F) provide access to execution context: CALLER, ORIGIN, JURISDICTION, TIMESTAMP, BLOCK_HEIGHT, ASSET_ID, GAS, GASPRICE.
-
-Compliance operations (0x70-0x7F) provide tensor access: TENSOR_GET, TENSOR_SET, TENSOR_EVAL, TENSOR_COMMIT, ATTEST, VERIFY_ATTEST, VERIFY_ZK.
-
-Migration operations (0x80-0x8F) provide protocol access: LOCK, UNLOCK, TRANSIT_BEGIN, TRANSIT_END, SETTLE, COMPENSATE.
-
-Crypto operations (0x90-0x9F) provide hash and signature functions: SHA256, KECCAK256, VERIFY_SIG, MERKLE_ROOT, MERKLE_VERIFY.
-
-**Gas Metering**
-
-Every operation has an associated gas cost, preventing infinite loops and enabling resource pricing. Storage operations cost significantly more than arithmetic (SSTORE costs 20,000 gas versus ADD at 3 gas). Compliance coprocessor operations are priced to reflect their computational complexity.
-
-**Coprocessors**
-
-The Compliance Coprocessor provides direct access to the compliance tensor, enabling contracts to query and update compliance state atomically with other operations.
-
-The Migration Coprocessor provides access to the migration protocol state machine, enabling contracts to lock assets, initiate transit, and settle transfers.
-
----
-
-## Layer 2: Jurisdictional Infrastructure
+The `msez-tensor` crate implements this with pluggable `DomainEvaluator` instances per domain, parameterized by a `JurisdictionConfig` that determines which domains apply.
 
 ### Compliance Manifold
 
-The Compliance Manifold models the jurisdictional landscape as a graph where nodes are jurisdictions and edges are corridors. It computes optimal migration paths considering compliance requirements, fees, time, and attestation gaps.
+The `ComplianceManifold` models jurisdictions as nodes and corridors as weighted edges. Each edge carries a `ComplianceDistance` (fee, time, risk). Dijkstra shortest-path computes optimal migration routes subject to constraints:
 
-**Graph Structure**
-
-Each jurisdiction node contains entry requirements (required attestations for inbound assets), supported asset classes (which asset types the jurisdiction accepts), licensing requirements, and regulatory classifications.
-
-Each corridor edge contains bilateral compliance requirements, fee schedules (typically 10-100 basis points), settlement time (hours to days), watcher quorum requirements, and liquidity constraints.
-
-**Path Planning**
-
-Given a source jurisdiction, target jurisdiction, and asset with its current compliance tensor, the manifold computes the optimal path using Dijkstra's algorithm with compliance-aware edge weights.
-
-The weight function combines fees, time, and attestation difficulty:
-
-```
-weight(corridor) = fee_bps + time_hours × time_weight + attestation_gap × gap_weight
+```rust
+manifold.shortest_path(
+    &from_jurisdiction,
+    &to_jurisdiction,
+    &[PathConstraint::MaxFee(1000.into()), PathConstraint::MaxDays(30)]
+) // → Option<MigrationPath>
 ```
 
-The attestation gap is computed by comparing the asset's current attestations against the corridor's requirements.
+### Tensor Commitment
 
-**Attestation Gap Analysis**
-
-For a given path, the manifold produces an attestation gap report listing every attestation the asset needs to acquire before migration can proceed. This enables proactive compliance—the asset can begin gathering attestations before initiating migration.
-
-### Migration Protocol
-
-The Migration Protocol implements cross-jurisdictional asset movement as a saga-based state machine with compensation for failures.
-
-**State Machine**
-
-The migration progresses through eight states:
-
-INITIATED marks the request received with parameters validated. COMPLIANCE_CHECK verifies source compliance is valid. ATTESTATION_GATHERING collects any missing attestations. SOURCE_LOCK locks the asset at source jurisdiction. TRANSIT moves the asset through corridor network. DESTINATION_VERIFICATION verifies destination compliance. DESTINATION_UNLOCK unlocks the asset at destination. COMPLETED marks migration successful.
-
-**Compensation**
-
-If any state fails, the protocol executes compensating actions to restore consistency:
-
-If SOURCE_LOCK fails, no action is needed as the asset was never locked. If TRANSIT fails, the protocol unlocks at source and returns to INITIATED. If DESTINATION_VERIFICATION fails, the protocol reverses transit and unlocks at source. If DESTINATION_UNLOCK fails, the protocol initiates dispute resolution.
-
-**Evidence Bundle**
-
-Throughout migration, the protocol collects a comprehensive evidence bundle including source tensor commitment, all gathered attestations, lock receipt with lock ID and timestamp, transit proof with corridor signatures, destination tensor commitment, and unlock receipt.
-
-This bundle provides non-repudiable proof of the complete migration for audit and dispute resolution.
-
-### Corridor Bridge
-
-The Corridor Bridge orchestrates multi-hop transfers through intermediate jurisdictions using a two-phase commit protocol.
-
-**Protocol Phases**
-
-Phase 1 (PREPARE) locks the asset at each hop along the path. The bridge contacts each corridor in sequence, requesting a lock. Each corridor returns a prepare receipt containing lock_id, locked_amount, lock_expiry, and signatures from both the source jurisdiction and the corridor operator. If any prepare fails, all previous locks are released.
-
-Phase 2 (COMMIT) executes the transfers atomically. The bridge contacts each corridor with the prepare receipts, authorizing transfer execution. Each corridor returns a commit receipt containing settlement_tx_id, settlement_block, and signatures. If any commit fails after a threshold, the protocol enters dispute resolution.
-
-**Receipt Chain**
-
-The bridge maintains an immutable receipt chain for each migration. The chain contains all prepare and commit receipts, enabling reconstruction of the complete transfer path for audit.
-
-### L1 Anchor Network
-
-The L1 Anchor Network provides settlement finality by checkpointing corridor state to Ethereum and L2 networks.
-
-**Supported Chains**
-
-Ethereum Mainnet (chain_id: 1) requires 64-block finality at approximately 13 minutes and provides maximum security with the highest gas costs.
-
-Arbitrum One (chain_id: 42161) requires 1-block finality and provides Ethereum security with significantly lower costs.
-
-Base (chain_id: 8453) requires 1-block finality and provides Ethereum security with low costs.
-
-Polygon PoS (chain_id: 137) requires 256-block finality at approximately 9 minutes and provides lower security but very low costs.
-
-**Checkpoint Structure**
-
-A corridor checkpoint contains the corridor_id, checkpoint_height (monotonically increasing), receipt_merkle_root (root of all receipts since last checkpoint), state_root (corridor state commitment), timestamp, and watcher_signatures (threshold of corridor watchers).
-
-**Inclusion Proofs**
-
-Given an anchored checkpoint, any receipt can prove its inclusion via a Merkle path from the receipt to the receipt_merkle_root. This enables trustless verification that a specific transfer was included in a finalized checkpoint.
-
-**Cross-Chain Verification**
-
-For high-value transfers, the anchor network supports cross-chain verification where the same checkpoint is anchored to multiple chains. Verification succeeds only if all chains confirm the checkpoint, providing defense-in-depth against chain-specific attacks.
+Tensor state is Merkle-committed via `TensorCommitment`. This allows:
+- Anchoring compliance state to L1 chains
+- Including compliance snapshots in Verifiable Credentials
+- Auditable proof of compliance evaluation at a point in time
 
 ---
 
-## Layer 3: Network Coordination
+## Corridors
 
-### Watcher Economy
+A **corridor** is a bilateral trade channel between two jurisdictions. It provides:
 
-The Watcher Economy provides economic accountability for corridor attestations. Watchers must stake collateral to participate, and misbehavior results in slashing.
+- **Receipt chain**: Append-only sequence of signed receipts backed by a Merkle Mountain Range (MMR). Each receipt commits to `prev_root` and `next_root`, forming a tamper-evident chain.
+- **Fork detection**: Watchers monitor the receipt chain. Forks are detected when two receipts share the same `prev_root` but different `next_root`.
+- **Fork resolution**: 3-level deterministic ordering (timestamp → attestation count → digest).
+- **Netting**: Bilateral and multilateral settlement compression via `NettingEngine`.
+- **SWIFT pacs.008**: ISO 20022 payment instruction generation via `SwiftPacs008`.
+- **L1 anchoring**: Optional anchoring of checkpoints to external chains.
 
-**Bond Structure**
+### Corridor lifecycle
 
-A watcher bond contains the watcher identity (DID and public key), collateral amount and currency, collateral custody address, bond status (active, suspended, withdrawn), attestation volume limit (proportional to collateral), and expiration time.
+The corridor lifecycle is enforced at the type level via the typestate pattern:
 
-**Attestation Limits**
+```
+Draft ──submit──> Pending ──activate──> Active ──halt──> Halted ──deprecate──> Deprecated
+                                          │
+                                          └──suspend──> Suspended ──resume──> Active
+```
 
-A watcher can only attest to transactions up to 10× their bonded collateral. This limit prevents under-collateralized attestations that could enable profitable misbehavior.
-
-**Slashing Conditions**
-
-Equivocation (100% slash) occurs when the watcher signs conflicting attestations for the same event. Equivocation is trivially provable by presenting both signatures.
-
-False Attestation (50% slash) occurs when the watcher attests to an invalid state that is later proven incorrect. Proving false attestation requires presenting the incorrect attestation and evidence of the true state.
-
-Availability Failure (1% slash) occurs when the watcher fails to attest within required time bounds. This encourages reliable participation.
-
-Collusion (100% slash + permanent ban) occurs when multiple watchers coordinate to attest to false state. Detection requires multiple false attestations from different watchers for the same event.
-
-**Reputation**
-
-Beyond slashing, watchers accumulate reputation based on accuracy rate (correct attestations divided by total), availability rate (timely attestations divided by required), total volume attested, and age of participation. Reputation affects corridor selection—high-reputation watchers receive priority for high-value transfers.
-
-### Security Layer
-
-The Security Layer provides defense-in-depth protection against common attack vectors.
-
-**Replay Prevention**
-
-Every operation includes a nonce that is registered in a NonceRegistry. The registry tracks seen nonces with expiration times (default 7 days). Attempting to reuse a nonce fails with a replay-detected error.
-
-**TOCTOU Protection**
-
-Critical state is stored in VersionedStore, which provides compare-and-swap operations. Any update must specify the expected version; if the actual version differs (indicating concurrent modification), the update fails.
-
-**Front-Running Prevention**
-
-Sensitive operations like withdrawals require time locks. The operator announces the operation commitment (hash of operation details), waits for the delay period (7 days for withdrawals), then reveals the operation data for execution. This gives other participants time to respond to announced operations.
-
-**Audit Logging**
-
-All security-relevant events are logged to the AuditLogger, which maintains a hash chain. Each event includes the previous event's digest, enabling detection of log tampering. The log supports queries by actor, event type, resource, and time range.
-
-### Hardening Layer
-
-The Hardening Layer provides production-grade utilities for validation, thread safety, and economic attack prevention.
-
-**Input Validation**
-
-The Validators class provides comprehensive validation for strings (length, pattern, allowed characters), digests (64-char hex SHA256), addresses (Ethereum 0x + 40 hex), amounts (Decimal with bounds checking), timestamps (ISO8601 with freshness checking), and bytes (length bounds, hex decoding).
-
-**Thread Safety**
-
-ThreadSafeDict wraps a dictionary with RLock protection for all operations. AtomicCounter provides atomic increment/decrement with compare-and-set. The atomic decorator wraps any function with lock acquisition.
-
-**Economic Guards**
-
-EconomicGuard enforces limits against economic attacks. Attestation values cannot exceed 10× bond collateral. Minimum bond collateral is enforced. Slash rates are capped at 50% per epoch to prevent rapid draining. Whale concentration is detected when any operator exceeds 33% of total stake.
+`Corridor<Draft>` has a `.submit()` method but no `.halt()` method. Attempting to halt a draft corridor is a compile error, not a runtime error.
 
 ---
 
-## Design Principles
+## Agentic policy engine
 
-Eight core principles guide every architectural decision in PHOENIX.
+The agentic engine executes autonomous policies in response to environmental triggers. When a sanctions list updates, the engine evaluates all affected corridors and freezes non-compliant ones. When a license expires, the engine suspends the entity. These policies operate ACROSS Mass primitives.
 
-**Fail-Safe Defaults.** The system fails closed, never open. Unknown compliance states are treated as non-compliant. Missing attestations invalidate compliance. Expired credentials are treated as absent. When in doubt, deny.
+### 20 trigger types
 
-**Cryptographic Integrity.** Every state transition produces verifiable proof. Tensor commitments are Merkle roots over canonical cell representations. Attestations are content-addressed by their digest. Receipts chain cryptographically. Nothing is trusted without verification.
+| Category | Triggers |
+|----------|----------|
+| Regulatory | `SanctionsListUpdate`, `LicenseStatusChange`, `GuidanceUpdate`, `ComplianceDeadline` |
+| Arbitration | `DisputeFiled`, `RulingReceived`, `AppealPeriodExpired`, `EnforcementDue` |
+| Corridors | `CorridorStateChange`, `SettlementAnchorAvailable`, `WatcherQuorumReached` |
+| Assets | `CheckpointDue`, `KeyRotationDue`, `GovernanceVoteResolved` |
+| Fiscal | `TaxYearEnd`, `WithholdingDue` |
+| Entity | `EntityDissolution`, `PackUpdated`, `AssetTransferInitiated`, `MigrationDeadline` |
 
-**Atomic Operations.** There are no partial states. Migrations either complete fully or compensate entirely. Two-phase commit ensures all-or-nothing semantics. Saga patterns handle distributed failures with coordinated rollback.
+### Determinism guarantee (Theorem 17.1)
 
-**Economic Accountability.** Watchers stake real collateral for their attestations. Misbehavior is slashed automatically and provably. Reputation affects future opportunities. Incentives are designed to align with honest behavior.
-
-**Privacy by Design.** Zero-knowledge proofs enable compliance verification without disclosure. Selective tensor slices reveal only necessary state. Range proofs hide exact amounts while proving sufficiency. Privacy is the default, not an afterthought.
-
-**Defense in Depth.** Multiple layers protect against each threat class. Nonces prevent replay at the application layer. Time locks prevent front-running at the economic layer. Cross-chain verification prevents chain-specific attacks at the settlement layer.
-
-**Zero Trust.** All inputs are untrusted until validated. External data is sanitized before use. Signatures are verified, not trusted. Digests are recomputed, not assumed correct. Trust is earned through cryptographic verification.
-
-**Deterministic Execution.** The VM produces identical results across all nodes. No floating point operations (all arithmetic is integer). No randomness in execution (deterministic gas). No external state access (all state is explicit). Consensus is achievable.
-
----
-
-## Security Considerations
-
-### Threat Model
-
-The PHOENIX system is designed to be secure against the following threat classes.
-
-**Malicious Watchers.** A watcher may attempt to attest to false state for profit. Defense: slashing conditions with sufficient collateral to make attacks unprofitable.
-
-**Network Partitions.** A network partition may cause conflicting attestations. Defense: equivocation detection with 100% slashing prevents rational actors from exploiting partitions.
-
-**Front-Running.** An attacker may observe pending operations and act on them first. Defense: time-locked operations with commit-delay-reveal pattern.
-
-**Replay Attacks.** An attacker may replay valid messages in new contexts. Defense: nonce registry with message freshness validation.
-
-**State Manipulation.** An attacker may attempt to modify historical state. Defense: Merkle commitments anchored to L1 chains.
-
-### Security Boundaries
-
-The system maintains clear security boundaries.
-
-**Trust Boundary 1:** All external input crosses a validation boundary implemented in the hardening layer.
-
-**Trust Boundary 2:** All attestations require verification of watcher signatures and bond validity.
-
-**Trust Boundary 3:** All state claims require Merkle proof verification against anchored commitments.
-
-**Trust Boundary 4:** All cross-chain claims require verification on all configured chains.
+Given identical trigger events and policy state, evaluation produces identical scheduled actions. Enforced by:
+- `BTreeMap` for policy storage (deterministic iteration order)
+- Pure condition evaluation (no external state, no randomness)
+- Conflict resolution: Priority → Jurisdiction specificity → Policy ID
 
 ---
 
-## Future Work
+## Arbitration
 
-The architecture is designed to support several planned extensions.
+The arbitration system manages dispute resolution through a 7-phase lifecycle:
 
-**Governance Framework.** Protocol parameters (slashing percentages, time lock durations, fee schedules) will be governable through a token-weighted voting mechanism with time-locked execution.
+```
+Filed → EvidencePhase → HearingScheduled → UnderDecision → Decided → EnforcementInitiated
+                                                            │
+                                                            └→ Settled
+                                                            └→ DismissedOrWithdrawn
+                                                            └→ ReviewInitiated
+```
 
-**Cross-Corridor Liquidity.** A liquidity aggregation layer will enable efficient routing across multiple corridors based on available liquidity, reducing settlement times and fees.
-
-**Real-Time Compliance Monitoring.** Integration with regulatory data feeds will enable real-time updates to compliance state as sanctions lists change, licenses expire, or regulatory guidance evolves.
-
-**Production ZK Backend.** The mock ZK implementation will be replaced with production backends (Gnark for Groth16/PLONK, StarkWare for STARK) enabling actual cryptographic verification.
+Key capabilities:
+- **Evidence management**: Content-addressed evidence items with authenticity attestations and chain-of-custody tracking
+- **Escrow**: Held funds with configurable release conditions (dispute resolved, time elapsed, ruling enforced)
+- **Enforcement**: Ordered actions (`PayAmount`, `TransferAsset`, `FreezeAsset`, `UpdateCompliance`) executed via VC-triggered state transitions
 
 ---
 
-Copyright © 2026 Momentum. All rights reserved.
+## Pack Trilogy
 
-Contact: engineering@momentum.inc
+The Pack Trilogy provides jurisdictional configuration:
+
+| Pack | Source format | What it configures |
+|------|---------------|-------------------|
+| **Lawpack** | Akoma Ntoso XML | Statutory corpus: enabling acts, tax law, corporate law |
+| **Regpack** | YAML/JSON | Regulatory requirements: sanctions lists, reporting obligations, compliance calendars |
+| **Licensepack** | YAML/JSON | License registry: license types, issuing authorities, validity periods, renewal windows |
+
+Each pack is content-addressed (SHA-256 digest via `CanonicalBytes`) and version-controlled. The `SanctionsChecker` in `msez-pack` provides fuzzy name matching against OFAC/UN/EU sanctions lists with configurable confidence thresholds.
+
+---
+
+## Zero-knowledge proofs
+
+The `msez-zkp` crate defines a **sealed** `ProofSystem` trait that external crates cannot implement. This prevents unauthorized proof backends from entering the system.
+
+### Phase 1 (current)
+
+`MockProofSystem`: Deterministic SHA-256 mock. All 12 circuit types produce transparent, reproducible proofs. Used for development, testing, and cross-language parity verification.
+
+### Phase 2 (feature-gated)
+
+| Backend | Feature flag | Framework |
+|---------|-------------|-----------|
+| Groth16 SNARK | `groth16` | arkworks |
+| PLONK | `plonk` | halo2 |
+| Poseidon2 in CDB | `poseidon2` | *(built-in)* |
+
+### Canonical Digest Bridge (CDB)
+
+The CDB transformation bridges between SHA-256 (used everywhere in the stack) and ZK-friendly hashing:
+
+```
+CDB(A) = Poseidon2(Split256(SHA256(JCS(A))))
+```
+
+Phase 1: Poseidon2 is an identity transform. Phase 2: Poseidon2 is activated for efficient in-circuit verification.
+
+### 12 circuit types
+
+Compliance: `BalanceSufficiency`, `SanctionsClearance`, `TensorInclusion`
+Migration: `MigrationEvidence`, `OwnershipChain`, `CompensationValidity`
+Identity: `KycAttestation`, `AttestationValidity`, `ThresholdSignature`
+Settlement: `RangeProof`, `MerkleMembership`, `NettingValidity`
+
+---
+
+## Mass API integration
+
+The SEZ Stack does not reimplement Mass primitives. It orchestrates them.
+
+| Mass Primitive | Mass API Endpoint | SEZ Stack adds |
+|----------------|-------------------|----------------|
+| Entities | `organization-info.api.mass.inc` | Compliance tensor evaluation, VC issuance, state machine lifecycle |
+| Ownership | `investment-info` | Smart asset binding, corridor-aware transfer validation |
+| Fiscal | `treasury-info.api.mass.inc` | Tax withholding computation (regpack rates), settlement netting, SWIFT instruction generation |
+| Identity | *(embedded)* | KYC attestation VCs, sanctions screening (regpack checker) |
+| Consent | `consent.api.mass.inc` | Multi-party corridor activation, governance-gated state transitions |
+
+The `msez-mass-client` crate provides typed Rust HTTP clients for each primitive. All other crates are forbidden from making direct HTTP requests to Mass endpoints.
+
+---
+
+## Watcher economy
+
+Watchers are bonded attestors that monitor corridor receipt chains for integrity. The watcher lifecycle uses the typestate pattern:
+
+```
+Bonding → Active → Slashed → Unbonding
+```
+
+Slashing conditions:
+- `InvalidProof`: Watcher submitted a proof that fails verification
+- `EquivocationDetected`: Watcher signed conflicting attestations
+- `InactivityViolation`: Watcher failed to attest within the required window
+- `PerjuryDetected`: Watcher attested to a false receipt chain state
+
+Fork detection relies on watcher attestation quorum. A fork alarm is raised when watchers report conflicting head roots for the same corridor.
+
+---
+
+## Security model
+
+### What cryptography guarantees
+
+- **Integrity**: Content-addressed artifacts are verified by digest. Receipts chain via `prev_root` → `next_root`.
+- **Authorship**: Ed25519 signatures verify the signer's key.
+- **Causality**: MMR receipt chains enforce append-only ordering.
+
+### What cryptography does not guarantee
+
+- **Legal force** of a lawpack digest (requires governance)
+- **Social legitimacy** of an authority registry (requires operational controls)
+- **Availability** of artifacts (requires redundancy and monitoring)
+
+### Mitigations
+
+| Attack | Mitigation |
+|--------|-----------|
+| Receipt chain fork | Watcher attestation quorum + 3-level fork resolution |
+| Trust anchor circularity | Authority registry chaining (treaty → national → zone), pinned by digest |
+| Artifact withholding | CAS completeness checks, `--require-artifacts` strict mode |
+| Timing side-channel | `subtle::ConstantTimeEq` for bearer token comparison |
+| Key material in memory | `Zeroize` + `ZeroizeOnDrop` on `SigningKey` |
+| Serialization divergence | `CanonicalBytes` as sole digest path, `preserve_order` guard |
+
+See [Security Model](./architecture/SECURITY-MODEL.md) for the full threat model.
+
+---
+
+## Deployment architecture
+
+### Docker Compose (development)
+
+```
+msez-api (Rust binary) ──> PostgreSQL 16
+                        ──> Prometheus
+                        ──> Grafana
+```
+
+### Kubernetes (production)
+
+- 2 replicas with rolling updates
+- Non-root security context, read-only filesystem
+- Liveness, readiness, and startup probes
+- Resource limits: 250m-1000m CPU, 256Mi-512Mi memory
+
+### AWS (Terraform)
+
+- EKS with auto-scaling node groups
+- RDS PostgreSQL (Multi-AZ)
+- ElastiCache Redis
+- S3 for artifact storage
+- KMS for key management
+- ALB with TLS termination
+
+---
+
+## Design principles
+
+| Principle | Enforcement |
+|-----------|------------|
+| **The type system does the work** | Typestate machines, sealed traits, identifier newtypes, exhaustive matching |
+| **Single source of truth** | `CanonicalBytes` for digests, `ComplianceDomain` enum for all 20 domains, Mass APIs for primitive data |
+| **Fail closed** | Unknown = `NonCompliant`. Missing attestations invalidate. System fails safe. |
+| **No magic** | No floating point. No randomness in evaluation. No external state in condition evaluation. BTreeMap for deterministic iteration. |
+| **Defense in depth** | Zeroize on key drop. Constant-time auth. Rate limit after auth. Schema validation at boundary. |
+| **Verify, never trust** | All inputs validated. Signatures verified. Digests recomputed. Receipt chains verified. |
+
+---
+
+## Key external dependencies
+
+| Crate | Purpose |
+|-------|---------|
+| `serde` / `serde_json` | Serialization (with `preserve_order` guard) |
+| `axum` / `tokio` / `tower` | HTTP server and async runtime |
+| `ed25519-dalek` | Ed25519 signing with zeroize support |
+| `sha2` | SHA-256 digest computation |
+| `chrono` | Timestamp handling |
+| `clap` | CLI argument parsing |
+| `tracing` | Structured logging and distributed tracing |
+| `reqwest` | HTTP client (used only in `msez-mass-client`) |
+| `sqlx` | PostgreSQL driver (async, compile-time query checking) |
+| `utoipa` | OpenAPI spec generation |
+| `proptest` | Property-based testing |
+| `parking_lot` | Non-poisoning RwLock |
+| `subtle` | Constant-time operations |
+| `zeroize` | Memory scrubbing for key material |
+| `uuid` | UUID v4 generation for identifiers |

@@ -164,7 +164,7 @@ async fn get_entity_returns_entity_when_found() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let entity = client.entities().get(id.parse().unwrap()).await.unwrap();
+    let entity = client.entities().get(id.parse::<uuid::Uuid>().unwrap()).await.unwrap();
 
     assert!(entity.is_some());
     let entity = entity.unwrap();
@@ -184,7 +184,7 @@ async fn get_entity_returns_none_when_not_found() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let entity = client.entities().get(id.parse().unwrap()).await.unwrap();
+    let entity = client.entities().get(id.parse::<uuid::Uuid>().unwrap()).await.unwrap();
     assert!(entity.is_none());
 }
 
@@ -200,7 +200,7 @@ async fn get_entity_returns_error_on_500() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.entities().get(id.parse().unwrap()).await;
+    let result = client.entities().get(id.parse::<uuid::Uuid>().unwrap()).await;
     assert!(result.is_err());
     match result.unwrap_err() {
         msez_mass_client::MassApiError::ApiError { status, .. } => {
@@ -320,7 +320,7 @@ async fn delete_entity_succeeds() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.entities().delete(id.parse().unwrap()).await;
+    let result = client.entities().delete(id.parse::<uuid::Uuid>().unwrap()).await;
     assert!(result.is_ok());
 }
 
@@ -336,7 +336,7 @@ async fn delete_entity_returns_error_on_404() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.entities().delete(id.parse().unwrap()).await;
+    let result = client.entities().delete(id.parse::<uuid::Uuid>().unwrap()).await;
     assert!(result.is_err());
 }
 
@@ -382,7 +382,7 @@ async fn entity_deserializes_with_unknown_fields() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let entity = client.entities().get(id.parse().unwrap()).await.unwrap();
+    let entity = client.entities().get(id.parse::<uuid::Uuid>().unwrap()).await.unwrap();
     assert!(entity.is_some());
     let entity = entity.unwrap();
     assert_eq!(entity.name, "Forward Corp");
@@ -407,7 +407,7 @@ async fn entity_deserializes_with_missing_optional_fields() {
     let client = test_client(&mock_server).await;
     let entity = client
         .entities()
-        .get(id.parse().unwrap())
+        .get(id.parse::<uuid::Uuid>().unwrap())
         .await
         .unwrap()
         .unwrap();

@@ -346,6 +346,13 @@ pub struct Lawpack {
 ///
 /// This matches Python `tools/lawpack.py:compute_lawpack_digest()`.
 ///
+/// # SHA-256 exception: composite domain-prefixed digest
+///
+/// Uses `Sha256Accumulator` instead of `sha256_digest(&CanonicalBytes)` because
+/// this computes a composite digest over a domain prefix + file paths + raw file
+/// content bytes. The inputs include non-JSON data (XML, YAML files) that
+/// cannot be canonicalized through the JSON-oriented `CanonicalBytes` pipeline.
+///
 /// # Arguments
 ///
 /// * `canonical_files` - Map from relative path (e.g., "lawpack.yaml", "akn/doc.xml")

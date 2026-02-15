@@ -2288,7 +2288,7 @@ fn serde_rt_mass_entity_status_all_variants() {
 #[test]
 fn serde_rt_mass_entity_full() {
     let original = MassEntity {
-        id: uuid::Uuid::new_v4(),
+        id: msez_core::EntityId::from(uuid::Uuid::new_v4()),
         name: "Momentum Technologies Pvt Ltd".to_string(),
         jurisdiction: Some("PAK-RSEZ".to_string()),
         status: Some(MassEntityStatus::Active),

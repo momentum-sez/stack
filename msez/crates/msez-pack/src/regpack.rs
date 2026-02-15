@@ -530,6 +530,14 @@ pub struct RegpackRef {
 ///
 /// Follows a similar pattern to lawpack digests:
 /// SHA256( b"msez-regpack-v1\0" + canonical(metadata) + canonical(components)... )
+///
+/// # SHA-256 exception: composite domain-prefixed digest
+///
+/// Uses `Sha256Accumulator` instead of `sha256_digest(&CanonicalBytes)` because
+/// this computes a composite digest over a domain prefix + multiple individually
+/// canonicalized components. Each component goes through `CanonicalBytes`
+/// before being fed to the hasher; the accumulator is needed to combine
+/// them under a domain separation prefix.
 pub fn compute_regpack_digest(
     metadata: &RegPackMetadata,
     sanctions: Option<&SanctionsSnapshot>,

@@ -18,6 +18,7 @@
 //! | GET    | `/api/v1/organization/supported-jurisdictions` | List jurisdictions |
 
 use chrono::{DateTime, Utc};
+use msez_core::EntityId;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -68,7 +69,9 @@ pub enum MassEntityStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MassEntity {
-    pub id: Uuid,
+    /// Entity identifier, shared with [`msez_core::EntityId`] for type safety
+    /// across the Mass/SEZ boundary (P2-002).
+    pub id: EntityId,
     /// Organization name (mapped from `name` in the live API).
     #[serde(alias = "legal_name")]
     pub name: String,
@@ -188,7 +191,10 @@ impl EntityClient {
     /// Get an organization by ID from Mass.
     ///
     /// Calls `GET {base_url}/organization-info/api/v1/organization/{id}`.
-    pub async fn get(&self, id: Uuid) -> Result<Option<MassEntity>, MassApiError> {
+    ///
+    /// Accepts any type convertible to [`EntityId`], including raw [`Uuid`].
+    pub async fn get(&self, id: impl Into<EntityId>) -> Result<Option<MassEntity>, MassApiError> {
+        let id = id.into();
         let endpoint = format!("GET /organization/{id}");
         let url = format!("{}{}/organization/{id}", self.base_url, API_PREFIX);
 
@@ -225,6 +231,9 @@ impl EntityClient {
     /// List organizations by IDs from Mass.
     ///
     /// Calls `GET {base_url}/organization-info/api/v1/organization?ids={ids}`.
+    ///
+    /// Accepts entity IDs as raw [`Uuid`] slices for ergonomic use from HTTP
+    /// handlers that extract `Uuid` from path parameters.
     pub async fn list(&self, ids: Option<&[Uuid]>) -> Result<Vec<MassEntity>, MassApiError> {
         let endpoint = "GET /organization";
         let mut url = format!("{}{}/organization", self.base_url, API_PREFIX);
@@ -335,7 +344,10 @@ impl EntityClient {
     /// Delete an organization by ID.
     ///
     /// Calls `DELETE {base_url}/organization-info/api/v1/organization/{id}`.
-    pub async fn delete(&self, id: Uuid) -> Result<(), MassApiError> {
+    ///
+    /// Accepts any type convertible to [`EntityId`], including raw [`Uuid`].
+    pub async fn delete(&self, id: impl Into<EntityId>) -> Result<(), MassApiError> {
+        let id = id.into();
         let endpoint = format!("DELETE /organization/{id}");
         let url = format!("{}{}/organization/{id}", self.base_url, API_PREFIX);
 

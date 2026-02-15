@@ -71,9 +71,23 @@ impl Default for EntityId {
     }
 }
 
+impl From<Uuid> for EntityId {
+    fn from(id: Uuid) -> Self {
+        Self(id)
+    }
+}
+
 impl std::fmt::Display for EntityId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl std::str::FromStr for EntityId {
+    type Err = uuid::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Uuid::from_str(s).map(Self)
     }
 }
 

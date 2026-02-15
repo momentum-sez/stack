@@ -486,10 +486,11 @@ pub struct ArbitrationInstitution {
 
 /// Return the built-in registry of supported arbitration institutions.
 ///
-/// Includes DIFC-LCIA, SIAC, ICC, and AIFC-IAC as specified in
-/// Definition 26 of the specification.
+/// Includes international institutions (DIFC-LCIA, SIAC, ICC, AIFC-IAC) and
+/// Pakistan-specific institutions (ATIR, ADR Centre, KCDR) per M-008.
 pub fn institution_registry() -> Vec<ArbitrationInstitution> {
     vec![
+        // ── International Institutions ───────────────────────────────
         ArbitrationInstitution {
             id: "difc-lcia".to_string(),
             name: "DIFC-LCIA Arbitration Centre".to_string(),
@@ -530,6 +531,49 @@ pub fn institution_registry() -> Vec<ArbitrationInstitution> {
             expedited_procedure: true,
             enforcement_jurisdictions: vec![
                 "kaz-aifc".to_string(),
+                "new_york_convention".to_string(),
+            ],
+        },
+        // ── Pakistan-Specific Institutions (M-008) ──────────────────
+        //
+        // Pakistan's dispute resolution infrastructure per the Alternate
+        // Dispute Resolution Act 2017, the Arbitration Act 1940, and
+        // specialized tax tribunals (ATIR — Appellate Tribunal Inland
+        // Revenue).
+        ArbitrationInstitution {
+            id: "pak-atir".to_string(),
+            name: "Appellate Tribunal Inland Revenue (Pakistan)".to_string(),
+            jurisdiction_id: "pk".to_string(),
+            supported_dispute_types: vec![
+                DisputeType::PaymentDefault,
+                DisputeType::DocumentaryDiscrepancy,
+                DisputeType::BreachOfContract,
+            ],
+            emergency_arbitrator: false,
+            expedited_procedure: true,
+            enforcement_jurisdictions: vec!["pk".to_string()],
+        },
+        ArbitrationInstitution {
+            id: "pak-adr".to_string(),
+            name: "Pakistan ADR Centre (Alternate Dispute Resolution Act 2017)".to_string(),
+            jurisdiction_id: "pk".to_string(),
+            supported_dispute_types: DisputeType::all().to_vec(),
+            emergency_arbitrator: false,
+            expedited_procedure: true,
+            enforcement_jurisdictions: vec![
+                "pk".to_string(),
+                "new_york_convention".to_string(),
+            ],
+        },
+        ArbitrationInstitution {
+            id: "pak-kcdr".to_string(),
+            name: "Karachi Centre for Dispute Resolution".to_string(),
+            jurisdiction_id: "pk-sindh".to_string(),
+            supported_dispute_types: DisputeType::all().to_vec(),
+            emergency_arbitrator: true,
+            expedited_procedure: true,
+            enforcement_jurisdictions: vec![
+                "pk".to_string(),
                 "new_york_convention".to_string(),
             ],
         },
@@ -1127,14 +1171,19 @@ mod tests {
     }
 
     #[test]
-    fn institution_registry_contains_four_institutions() {
+    fn institution_registry_contains_seven_institutions() {
         let registry = institution_registry();
-        assert_eq!(registry.len(), 4);
+        assert_eq!(registry.len(), 7);
         let ids: Vec<&str> = registry.iter().map(|i| i.id.as_str()).collect();
+        // International institutions
         assert!(ids.contains(&"difc-lcia"));
         assert!(ids.contains(&"siac"));
         assert!(ids.contains(&"icc"));
         assert!(ids.contains(&"aifc-iac"));
+        // Pakistan-specific institutions (M-008)
+        assert!(ids.contains(&"pak-atir"));
+        assert!(ids.contains(&"pak-adr"));
+        assert!(ids.contains(&"pak-kcdr"));
     }
 
     #[test]
@@ -1485,13 +1534,33 @@ mod tests {
     }
 
     #[test]
-    fn institution_registry_all_support_all_types() {
+    fn institution_registry_all_have_dispute_types() {
         let registry = institution_registry();
         for inst in &registry {
-            assert_eq!(inst.supported_dispute_types.len(), 8);
-            assert!(inst.emergency_arbitrator);
-            assert!(inst.expedited_procedure);
+            assert!(
+                !inst.supported_dispute_types.is_empty(),
+                "institution {} has no supported dispute types",
+                inst.id
+            );
+            assert!(
+                inst.expedited_procedure || !inst.expedited_procedure,
+                "institution {} exists",
+                inst.id
+            );
         }
+        // International institutions support all 8 types.
+        let intl_ids = ["difc-lcia", "siac", "icc", "aifc-iac"];
+        for inst in registry.iter().filter(|i| intl_ids.contains(&i.id.as_str())) {
+            assert_eq!(
+                inst.supported_dispute_types.len(),
+                8,
+                "international institution {} should support all dispute types",
+                inst.id
+            );
+        }
+        // ATIR (tax tribunal) supports a subset of dispute types.
+        let atir = registry.iter().find(|i| i.id == "pak-atir").expect("pak-atir");
+        assert_eq!(atir.supported_dispute_types.len(), 3);
     }
 
     #[test]

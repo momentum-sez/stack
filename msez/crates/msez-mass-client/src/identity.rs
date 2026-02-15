@@ -405,22 +405,70 @@ impl IdentityClient {
 
     /// Assemble a composite identity for an organization by calling
     /// members, board, and shareholders endpoints.
+    ///
+    /// ## Graceful Degradation (P1-005)
+    ///
+    /// When identity is split across services, individual sub-queries may
+    /// fail (e.g., consent-info is down but organization-info is up). This
+    /// method degrades gracefully: it returns partial results with empty
+    /// vectors for any sub-query that fails, along with a log warning.
+    /// The caller receives all available data rather than a hard failure.
+    ///
+    /// A hard error is returned only if ALL sub-queries fail.
     pub async fn get_composite_identity(
         &self,
         organization_id: &str,
     ) -> Result<MassIdentity, MassApiError> {
         // Fire all three requests concurrently.
-        let (members, directors, shareholders) = tokio::join!(
+        let (members_result, directors_result, shareholders_result) = tokio::join!(
             self.get_members(organization_id),
             self.get_board(organization_id),
             self.get_shareholders(organization_id),
         );
 
+        // Gracefully degrade: collect partial results.
+        let members = members_result.unwrap_or_else(|e| {
+            tracing::warn!(
+                organization_id,
+                error = %e,
+                "identity facade: members sub-query failed, degrading gracefully"
+            );
+            Vec::new()
+        });
+
+        let directors = directors_result.unwrap_or_else(|e| {
+            tracing::warn!(
+                organization_id,
+                error = %e,
+                "identity facade: directors sub-query failed, degrading gracefully"
+            );
+            Vec::new()
+        });
+
+        let shareholders = shareholders_result.unwrap_or_else(|e| {
+            tracing::warn!(
+                organization_id,
+                error = %e,
+                "identity facade: shareholders sub-query failed, degrading gracefully"
+            );
+            Vec::new()
+        });
+
+        // If ALL sub-queries returned empty (complete failure), return an error
+        // so the caller knows the aggregation produced no useful data.
+        if members.is_empty() && directors.is_empty() && shareholders.is_empty() {
+            return Err(MassApiError::ApiError {
+                endpoint: format!("GET /composite-identity/{organization_id}"),
+                status: 503,
+                body: "all identity sub-queries failed or returned empty results".to_string(),
+            });
+        }
+
         Ok(MassIdentity {
             organization_id: organization_id.to_string(),
-            members: members?,
-            directors: directors?,
-            shareholders: shareholders?,
+            members,
+            directors,
+            shareholders,
         })
     }
 

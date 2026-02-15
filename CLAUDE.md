@@ -180,7 +180,7 @@ These findings are from Architecture Audit v6.0. Address in priority order.
 | ID | Defect | Location | Status |
 |----|--------|----------|--------|
 | P1-004 | ~~Mass proxy routes need full orchestration on all write paths.~~ | `msez-api/src/routes/mass_proxy.rs` | **RESOLVED** — All 5 primitives orchestrated on write paths (compliance → Mass API → VC → attestation). Entity update (`PUT`) now fully orchestrated with jurisdiction inference from existing entity. All write endpoints return `OrchestrationEnvelope`. Jurisdiction inference expanded to 22 currencies covering all deployment corridors. |
-| P1-005 | Identity primitive split across services. Need aggregation facade that gracefully degrades when dedicated identity-info service is unavailable. | `msez-mass-client/src/identity.rs` | **OPEN** — facade exists but needs error handling for split-service mode |
+| P1-005 | ~~Identity primitive split across services. Need aggregation facade that gracefully degrades when dedicated identity-info service is unavailable.~~ | `msez-mass-client/src/identity.rs` | **RESOLVED** — `get_composite_identity()` now degrades gracefully: individual sub-queries (members, directors, shareholders) may fail independently, returning partial results with warnings. Complete failures (all empty) return error. NADRA adapter (`verify_cnic`) and FBR IRIS adapter (`verify_ntn`) route via `dedicated_url` when identity-info service is deployed. |
 | P1-009 | Tax collection pipeline (the 10.3→15% GDP target). Every transaction must generate a tax event, compute withholding, and report to FBR IRIS. | `msez-api/src/routes/tax.rs`, `msez-agentic/src/tax.rs` | **RESOLVED** — `TaxPipeline` in AppState, `WithholdingEngine` with Pakistan rules, FBR IRIS reporting, wired to payment orchestration |
 | P1-010 | ~~CanonicalBytes bypass verification.~~ | All crates | **RESOLVED** — Three-tier model: (1) serializable domain objects → `CanonicalBytes::new()` + `sha256_digest()`, (2) raw bytes → `msez_core::sha256_raw()`, (3) streaming multi-part → `Sha256Accumulator`. Audit hash chain routed through CanonicalBytes. `sha2` removed from `msez-api`, `msez-pack`, `msez-cli`, `msez-zkp`, `msez-agentic`, `msez-tensor` deps. Streaming exceptions documented (MMR in `msez-crypto`). |
 
@@ -214,6 +214,21 @@ These findings are from Architecture Audit v6.0. Address in priority order.
 | P2-003 | licensepack.rs at 2,265 lines | Extracted to `msez-pack/src/licensepack/` submodule (5 files) |
 | P2-004 | Auth token stored as plain `Option<String>` | `SecretString` newtype with `Zeroize`+`Drop`, constant-time `PartialEq`, redacted `Debug`/`Display` |
 | P2-005 | 45K lines Python in tools/ | All Python removed. Codebase is pure Rust (101K lines, 243 source files). |
+
+### Resolved (v7.0 Audit Cycle)
+
+| ID | Description | Evidence |
+|----|-------------|---------|
+| B-003 | Tax pipeline not end-to-end integrated | `test_tax_pipeline_e2e.rs`: 5 tests covering goods/salary/supply payment → withholding → FBR IRIS report generation |
+| B-005 | CanonicalBytes bypass risk unverified | `test_sha256_enforcement.rs`: automated test verifies `sha2` dependency and `sha2::` usage only in allowed files (msez-core, msez-crypto) |
+| M-004 | Corridor FSM needs formal verification | `test_corridor_fsm_properties.rs`: 10 tests verifying lifecycle transitions, state names vs spec, terminal states, DynCorridorState valid_transitions |
+| M-008 | Arbitration module missing Pakistan institutions | 3 Pakistan institutions added: ATIR (tax tribunal), ADR Centre (Act 2017), KCDR (Karachi). Registry now has 7 institutions. |
+| M-011 | NADRA integration adapter missing | Already implemented via `IdentityClient::verify_cnic()` and `IdentityClient::verify_ntn()` with dedicated service routing |
+| M-012 | No programmatic data sovereignty enforcement | `msez-core/src/sovereignty.rs`: `SovereigntyPolicy`, `SovereigntyEnforcer`, `DataCategory` (8 categories). Pakistan GovOS policy confines PII/financial/tax/key material. Integration tests in `test_sovereignty_enforcement.rs`. |
+| P1-005 | Identity facade hard-fails on partial service failure | Graceful degradation: partial results returned with warnings, hard error only on total failure |
+| S-008 | Rate limiting configuration undocumented | Per-category configs documented: reads (1000/min), writes (200/min), tax (500/min), compliance (100/min) |
+| S-014 | Corridor netting untested | `test_netting_settlement.rs`: 7 tests covering bilateral, multilateral, determinism, edge cases |
+| S-019 | Trigger taxonomy unvalidated | `test_trigger_taxonomy_validation.rs`: 12 tests covering 20 trigger types, serde, determinism, domain classification |
 
 ---
 

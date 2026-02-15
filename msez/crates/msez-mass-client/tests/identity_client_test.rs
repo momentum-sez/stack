@@ -250,9 +250,14 @@ async fn get_composite_identity_propagates_partial_failures() {
         .get_composite_identity("org-001")
         .await;
 
-    // Partial service failures must propagate — silent data loss is unacceptable
-    // for an identity aggregation facade in a compliance-critical system.
-    assert!(result.is_err());
+    // Graceful degradation (P1-005): when some sub-queries fail, the facade
+    // returns partial results rather than a hard failure. This allows callers
+    // to serve available data while logging warnings for the failed sub-queries.
+    // Complete failures (all sub-queries empty) still return an error.
+    let identity = result.expect("partial success should return Ok with available data");
+    assert_eq!(identity.members.len(), 1, "members sub-query succeeded");
+    assert!(identity.directors.is_empty(), "directors sub-query failed gracefully");
+    assert!(identity.shareholders.is_empty(), "shareholders sub-query failed gracefully");
 }
 
 // ── Forward compatibility ────────────────────────────────────────────

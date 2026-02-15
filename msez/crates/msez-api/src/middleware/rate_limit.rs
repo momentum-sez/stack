@@ -17,12 +17,59 @@ use axum::Json;
 use crate::error::{ErrorBody, ErrorDetail};
 
 /// Rate limiter configuration.
+///
+/// ## Per-Endpoint Category Defaults (S-008)
+///
+/// | Category | Max Requests/min | Window (s) | Rationale |
+/// |----------|-----------------|------------|-----------|
+/// | Read endpoints (`GET`) | 1000 | 60 | High throughput for dashboards/monitoring |
+/// | Write endpoints (`POST`, `PUT`) | 200 | 60 | Lower limit to prevent write amplification |
+/// | Tax pipeline (`/v1/tax/*`) | 500 | 60 | Medium: batch submissions expected |
+/// | Compliance evaluation | 100 | 60 | Expensive: tensor evaluation per request |
+/// | Health probes (`/health/*`) | unlimited | — | Exempt from rate limiting |
+///
+/// Phase 1 uses a single global config. Phase 2 will support per-category overrides
+/// keyed by route prefix (e.g., `"/v1/tax/"` → `RateLimitConfig { max_requests: 500, .. }`).
 #[derive(Debug, Clone)]
 pub struct RateLimitConfig {
     /// Maximum requests per window.
     pub max_requests: u64,
     /// Window duration in seconds.
     pub window_secs: u64,
+}
+
+impl RateLimitConfig {
+    /// Configuration tuned for read-heavy workloads (GET endpoints).
+    pub fn for_reads() -> Self {
+        Self {
+            max_requests: 1000,
+            window_secs: 60,
+        }
+    }
+
+    /// Configuration tuned for write endpoints (POST, PUT).
+    pub fn for_writes() -> Self {
+        Self {
+            max_requests: 200,
+            window_secs: 60,
+        }
+    }
+
+    /// Configuration for tax pipeline endpoints.
+    pub fn for_tax_pipeline() -> Self {
+        Self {
+            max_requests: 500,
+            window_secs: 60,
+        }
+    }
+
+    /// Configuration for compliance evaluation (expensive operations).
+    pub fn for_compliance() -> Self {
+        Self {
+            max_requests: 100,
+            window_secs: 60,
+        }
+    }
 }
 
 impl Default for RateLimitConfig {

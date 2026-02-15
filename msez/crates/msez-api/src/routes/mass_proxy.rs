@@ -45,9 +45,12 @@ use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
+use chrono::Utc;
+use uuid::Uuid;
+
 use crate::error::AppError;
 use crate::orchestration::{self, OrchestrationEnvelope};
-use crate::state::AppState;
+use crate::state::{AppState, TaxEventRecord};
 
 /// Build the Mass API orchestration router for all five primitives.
 ///
@@ -582,7 +585,107 @@ async fn initiate_payment(
         mass_response,
     );
 
+    // Step 6: Auto-generate tax event for the payment.
+    //
+    // Every economic activity flowing through the SEZ Stack generates a tax
+    // event — this is the core bridge between Mass fiscal operations and the
+    // jurisdictional tax pipeline.
+    generate_payment_tax_event(
+        &state,
+        from_account_id,
+        &mass_req.amount,
+        &currency,
+        &envelope.compliance.jurisdiction_id,
+        &mass_req.reference,
+    )
+    .await;
+
     Ok((axum::http::StatusCode::CREATED, Json(envelope)))
+}
+
+// ── TAX EVENT BRIDGE ────────────────────────────────────────────────
+
+/// Generate a tax event record for a payment that flowed through orchestration.
+///
+/// This is the bridge between Mass fiscal operations and the SEZ tax pipeline.
+/// The generated event runs through the withholding engine to compute applicable
+/// withholdings, then is stored in both the in-memory store and the database.
+///
+/// Failures are logged but never block the payment — tax event generation is
+/// a post-operation side effect, not a gate.
+async fn generate_payment_tax_event(
+    state: &AppState,
+    from_account_id: uuid::Uuid,
+    amount: &str,
+    currency: &str,
+    jurisdiction_id: &str,
+    reference: &str,
+) {
+    use msez_agentic::tax::{format_amount, parse_amount, FilerStatus, TaxEvent, TaxEventType};
+
+    let event = TaxEvent::new(
+        from_account_id,
+        TaxEventType::PaymentForGoods,
+        jurisdiction_id,
+        amount,
+        currency,
+        // Default to current fiscal year (Jul-Jun for PK).
+        "2025-2026",
+    );
+
+    let withholdings = {
+        let pipeline = state.tax_pipeline.lock();
+        pipeline.process_event(&event)
+    };
+
+    let gross_cents = parse_amount(amount).unwrap_or(0);
+    let mut total_wht_cents: i64 = 0;
+    for w in &withholdings {
+        total_wht_cents += parse_amount(&w.withholding_amount).unwrap_or(0);
+    }
+    let net_cents = gross_cents - total_wht_cents;
+
+    let record = TaxEventRecord {
+        id: Uuid::new_v4(),
+        entity_id: from_account_id,
+        event_type: "payment_for_goods".to_string(),
+        tax_category: withholdings
+            .first()
+            .map(|w| w.tax_category.to_string())
+            .unwrap_or_else(|| "income_tax".to_string()),
+        jurisdiction_id: jurisdiction_id.to_string(),
+        gross_amount: amount.to_string(),
+        withholding_amount: format_amount(total_wht_cents),
+        net_amount: format_amount(net_cents),
+        currency: currency.to_string(),
+        tax_year: "2025-2026".to_string(),
+        ntn: None,
+        filer_status: FilerStatus::NonFiler.to_string(),
+        statutory_section: withholdings.first().map(|w| w.statutory_section.clone()),
+        withholding_executed: false,
+        mass_payment_id: None,
+        rules_applied: withholdings.len(),
+        created_at: Utc::now(),
+    };
+
+    tracing::info!(
+        tax_event_id = %record.id,
+        entity_id = %from_account_id,
+        jurisdiction = %jurisdiction_id,
+        gross = %amount,
+        withholding = %record.withholding_amount,
+        reference = %reference,
+        "auto-generated tax event from payment orchestration"
+    );
+
+    state.tax_events.insert(record.id, record.clone());
+
+    // Persist to database (write-through).
+    if let Some(pool) = &state.db_pool {
+        if let Err(e) = crate::db::tax_events::insert(pool, &record).await {
+            tracing::error!(tax_event_id = %record.id, error = %e, "failed to persist auto-generated tax event");
+        }
+    }
 }
 
 // ── IDENTITY HANDLERS ───────────────────────────────────────────────

@@ -26,7 +26,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::Utc;
 use msez_agentic::tax::{
-    self, FilerStatus, TaxEvent, TaxEventType, WithholdingResult,
+    self, format_amount, parse_amount, FilerStatus, TaxEvent, TaxEventType, WithholdingResult,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -364,6 +364,13 @@ async fn create_tax_event(
 
     state.tax_events.insert(record.id, record.clone());
 
+    // Persist to database (write-through).
+    if let Some(pool) = &state.db_pool {
+        if let Err(e) = crate::db::tax_events::insert(pool, &record).await {
+            tracing::error!(tax_event_id = %record.id, error = %e, "failed to persist tax event to database");
+        }
+    }
+
     Ok(Json(TaxEventResponse {
         event: record,
         withholdings: withholding_responses,
@@ -509,8 +516,8 @@ async fn get_tax_obligations(
             jurisdiction_id.clone_from(&e.jurisdiction_id);
         }
 
-        let gross = parse_amount_cents(&e.gross_amount);
-        let wht = parse_amount_cents(&e.withholding_amount);
+        let gross = parse_amount_or_zero(&e.gross_amount);
+        let wht = parse_amount_or_zero(&e.withholding_amount);
 
         total_gross_cents += gross;
         total_wht_cents += wht;
@@ -528,8 +535,8 @@ async fn get_tax_obligations(
         .map(|(cat, (count, gross, wht))| CategorySummary {
             tax_category: cat,
             event_count: count,
-            total_gross: format_cents(gross),
-            total_withholding: format_cents(wht),
+            total_gross: format_amount(gross),
+            total_withholding: format_amount(wht),
         })
         .collect();
 
@@ -537,8 +544,8 @@ async fn get_tax_obligations(
         entity_id,
         jurisdiction_id,
         total_events: entity_events.len(),
-        total_gross: format_cents(total_gross_cents),
-        total_withholding: format_cents(total_wht_cents),
+        total_gross: format_amount(total_gross_cents),
+        total_withholding: format_amount(total_wht_cents),
         currency,
         by_category: category_summaries,
     }))
@@ -726,42 +733,21 @@ fn aggregate_withholdings(withholdings: &[WithholdingResult], gross: &str) -> (S
 
     let mut total_wht_cents: i64 = 0;
     for w in withholdings {
-        total_wht_cents += parse_amount_cents(&w.withholding_amount);
+        total_wht_cents += parse_amount_or_zero(&w.withholding_amount);
     }
 
-    let gross_cents = parse_amount_cents(gross);
+    let gross_cents = parse_amount_or_zero(gross);
     let net_cents = gross_cents - total_wht_cents;
 
-    (format_cents(total_wht_cents), format_cents(net_cents))
+    (format_amount(total_wht_cents), format_amount(net_cents))
 }
 
-/// Parse a string amount into cents.
-fn parse_amount_cents(s: &str) -> i64 {
-    let s = s.trim();
-    if s.is_empty() {
-        return 0;
-    }
-
-    if let Some(dot_pos) = s.find('.') {
-        let integer_part = s[..dot_pos].parse::<i64>().unwrap_or(0);
-        let frac_str = &s[dot_pos + 1..];
-        let frac = match frac_str.len() {
-            0 => 0i64,
-            1 => frac_str.parse::<i64>().unwrap_or(0) * 10,
-            2 => frac_str.parse::<i64>().unwrap_or(0),
-            _ => frac_str[..2].parse::<i64>().unwrap_or(0),
-        };
-        integer_part * 100 + frac
-    } else {
-        s.parse::<i64>().unwrap_or(0) * 100
-    }
-}
-
-/// Format cents into a string with 2 decimal places.
-fn format_cents(cents: i64) -> String {
-    let sign = if cents < 0 { "-" } else { "" };
-    let abs = cents.abs();
-    format!("{}{}.{:02}", sign, abs / 100, abs % 100)
+/// Parse a string amount into cents, returning 0 for unparseable input.
+///
+/// Delegates to [`msez_agentic::tax::parse_amount`] — the canonical
+/// fixed-precision parser — with a fallback of 0 for invalid strings.
+fn parse_amount_or_zero(s: &str) -> i64 {
+    parse_amount(s).unwrap_or(0)
 }
 
 // ---------------------------------------------------------------------------
@@ -1111,11 +1097,11 @@ mod tests {
 
     #[test]
     fn amount_parsing_and_formatting() {
-        assert_eq!(parse_amount_cents("100000"), 10_000_000);
-        assert_eq!(parse_amount_cents("4500.00"), 450_000);
-        assert_eq!(parse_amount_cents("0.01"), 1);
-        assert_eq!(format_cents(450_000), "4500.00");
-        assert_eq!(format_cents(0), "0.00");
+        assert_eq!(parse_amount_or_zero("100000"), 10_000_000);
+        assert_eq!(parse_amount_or_zero("4500.00"), 450_000);
+        assert_eq!(parse_amount_or_zero("0.01"), 1);
+        assert_eq!(format_amount(450_000), "4500.00");
+        assert_eq!(format_amount(0), "0.00");
     }
 
     #[test]

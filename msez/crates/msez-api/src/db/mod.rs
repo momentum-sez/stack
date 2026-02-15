@@ -22,10 +22,11 @@
 //! Entity, ownership, fiscal, identity, and consent data lives in the
 //! Mass APIs and is accessed via `msez-mass-client`. See CLAUDE.md Section II.
 
-pub mod corridors;
-pub mod smart_assets;
 pub mod attestations;
 pub mod audit;
+pub mod corridors;
+pub mod smart_assets;
+pub mod tax_events;
 
 use sqlx::postgres::{PgPool, PgPoolOptions};
 

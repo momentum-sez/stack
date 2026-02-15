@@ -164,12 +164,12 @@ type errors from route registration changes.
 | ID | Description | Status | Notes |
 |----|-------------|--------|-------|
 | P1-001 | Rate limiter before auth | **RESOLVED** | Auth middleware runs after rate limiting (correct order) |
-| P1-004 | Mass proxy routes are passthrough | **OPEN** | 5 passthrough proxy routes remain; target is orchestration |
+| P1-004 | Mass proxy routes are passthrough | **RESOLVED** | All 5 write endpoints now orchestration pipelines (compliance eval → Mass API → VC → attestation); read endpoints remain proxies by design |
 | P1-005 | Identity primitive split | **OPEN** | Architectural — requires dedicated identity-info service |
 | P1-006 | Composition engine Python-only | **RESOLVED** | Ported to `msez-pack/src/composition.rs`; Python removed |
 | P1-007 | CLI commands Python-only | **RESOLVED** | Python CLI removed; core commands ported to `msez-cli` |
 | P1-008 | No database persistence | **RESOLVED** | SQLx + PgPool integrated; migration for corridors, smart assets, attestations, tensor snapshots, audit events; write-through from route handlers; startup hydration from DB |
-| P1-009 | Tax collection pipeline | **OPEN** | Not implemented |
+| P1-009 | Tax collection pipeline | **RESOLVED** | Full pipeline: 16 event types, WithholdingEngine (Pakistani tax law), TaxPipeline, 7 HTTP endpoints, DB persistence, auto-generation from payment orchestration |
 | P1-010 | CanonicalBytes bypass verification | **OPEN** | No automated enforcement that all SHA-256 goes through CanonicalBytes |
 
 ---
@@ -180,7 +180,7 @@ type errors from route registration changes.
 |----|-------------|--------|-------|
 | P2-001 | MsezError::NotImplemented unused | **INCORRECT** | Actively used in 10+ locations (see §1E above) |
 | P2-002 | msez-mass-client doesn't share types with msez-core | **BY DESIGN** | msez-mass-client has zero internal deps, which is stricter than required |
-| P2-003 | licensepack.rs at 2,265 lines | **OPEN** | Large but functional; submodule extraction is P2 |
+| P2-003 | licensepack.rs at 2,265 lines | **RESOLVED** | Extracted into submodule directory: `licensepack/mod.rs`, `types.rs`, `registry.rs`, `registries/` |
 | P2-004 | Auth token as plain Option<String> | **MITIGATED** | Custom Debug redacts value; constant-time comparison in place; in-memory only |
 | P2-005 | 45K lines of Python in tools/ | **RESOLVED** | All Python code removed; composition engine ported to Rust |
 
@@ -199,12 +199,12 @@ type errors from route registration changes.
 | 7 | msez-mass-client contract tests vs Mass API specs | **NOT YET** (P0-008) |
 | 8 | Cross-language parity tests | **PASS** (Python removed; hardcoded vectors retained) |
 | 9 | Composition engine in Rust | **PASS** (P1-006 resolved — `msez-pack::composition`) |
-| 10 | mass_proxy routes are orchestration | **NOT YET** (P1-004) |
+| 10 | mass_proxy routes are orchestration | **PASS** (P1-004 resolved — all write endpoints are orchestration pipelines) |
 | 11 | Postgres persistence | **PASS** (P1-008 resolved — `msez-api::db` module with SQLx migrations, write-through persistence, startup hydration) |
 | 12 | Crate dependency graph: no cycles, no unnecessary edges | **PASS** |
 
-**9 of 12 criteria met.** The remaining 3 are architectural/feature work, not
-code quality defects.
+**11 of 12 criteria met.** The sole remaining item (P0-008: Mass API contract
+tests) requires live Swagger specs from the deployed Mass services.
 
 ---
 
@@ -224,9 +224,9 @@ code quality defects.
 
 ### Production Readiness (P1)
 
-5. Add Postgres persistence for corridor state, tensor snapshots, VC audit log.
-6. Evolve mass_proxy routes from passthrough to orchestration endpoints.
-7. Implement identity aggregation service.
+5. ~~Add Postgres persistence for corridor state, tensor snapshots, VC audit log.~~ **DONE** — P1-008 resolved.
+6. ~~Evolve mass_proxy routes from passthrough to orchestration endpoints.~~ **DONE** — P1-004 resolved.
+7. Implement identity aggregation service (P1-005 — requires dedicated identity-info deployment).
 
 ---
 

@@ -64,6 +64,6 @@ pub use scheduler::{
     ActionScheduler, ActionStatus, CronSchedule, SchedulePattern, ScheduledAction,
 };
 pub use tax::{
-    FilerStatus, ReportParams, ReportStatus, TaxCategory, TaxEvent, TaxEventType, TaxPipeline,
-    TaxReport, WithholdingEngine, WithholdingResult, WithholdingRule,
+    format_amount, parse_amount, FilerStatus, ReportParams, ReportStatus, TaxCategory, TaxEvent,
+    TaxEventType, TaxPipeline, TaxReport, WithholdingEngine, WithholdingResult, WithholdingRule,
 };

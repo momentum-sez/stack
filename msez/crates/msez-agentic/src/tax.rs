@@ -1127,7 +1127,7 @@ impl std::fmt::Debug for TaxPipeline {
 /// - "1234.56" → 123456
 ///
 /// Returns `None` for unparseable strings.
-fn parse_amount(s: &str) -> Option<i64> {
+pub fn parse_amount(s: &str) -> Option<i64> {
     let s = s.trim();
     if s.is_empty() {
         return None;
@@ -1181,7 +1181,7 @@ fn parse_rate_bps(rate_str: &str) -> i64 {
 /// Format cents back into a string with 2 decimal places.
 ///
 /// 1000000 → "10000.00", 450 → "4.50"
-fn format_amount(cents: i64) -> String {
+pub fn format_amount(cents: i64) -> String {
     let sign = if cents < 0 { "-" } else { "" };
     let abs = cents.abs();
     format!("{}{}.{:02}", sign, abs / 100, abs % 100)

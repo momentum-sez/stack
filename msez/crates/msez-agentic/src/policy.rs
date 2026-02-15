@@ -923,6 +923,90 @@ pub fn extended_policies() -> BTreeMap<String, Policy> {
         .with_priority(55),
     );
 
+    // === Tax Collection Pipeline Policies (P1-009) ===
+
+    policies.insert(
+        "tax_year_end_halt".into(),
+        Policy::new(
+            "tax_year_end_halt",
+            TriggerType::TaxYearEnd,
+            PolicyAction::Halt,
+        )
+        .with_description(
+            "Halt asset operations at tax year end until annual assessment completes",
+        )
+        .with_condition(Condition::Equals {
+            field: "assessment_status".into(),
+            value: serde_json::Value::String("pending".into()),
+        })
+        .with_authorization(AuthorizationRequirement::Quorum)
+        .with_priority(75),
+    );
+
+    policies.insert(
+        "tax_year_end_assessment".into(),
+        Policy::new(
+            "tax_year_end_assessment",
+            TriggerType::TaxYearEnd,
+            PolicyAction::UpdateManifest,
+        )
+        .with_description(
+            "Trigger annual tax assessment and FBR IRIS reporting at tax year end",
+        )
+        .with_priority(70),
+    );
+
+    policies.insert(
+        "withholding_auto_deduct".into(),
+        Policy::new(
+            "withholding_auto_deduct",
+            TriggerType::WithholdingDue,
+            PolicyAction::UpdateManifest,
+        )
+        .with_description(
+            "Automatically compute and record withholding tax on economic activity",
+        )
+        .with_condition(Condition::Exists {
+            field: "transaction_amount".into(),
+        })
+        .with_priority(80),
+    );
+
+    policies.insert(
+        "withholding_ntn_missing_halt".into(),
+        Policy::new(
+            "withholding_ntn_missing_halt",
+            TriggerType::WithholdingDue,
+            PolicyAction::Halt,
+        )
+        .with_description(
+            "Halt operations when withholding is due but entity has no NTN registered",
+        )
+        .with_condition(Condition::Equals {
+            field: "ntn_status".into(),
+            value: serde_json::Value::String("missing".into()),
+        })
+        .with_priority(85),
+    );
+
+    policies.insert(
+        "withholding_high_value_quorum".into(),
+        Policy::new(
+            "withholding_high_value_quorum",
+            TriggerType::WithholdingDue,
+            PolicyAction::UpdateManifest,
+        )
+        .with_description(
+            "Require quorum approval for withholding on high-value transactions (>10M PKR)",
+        )
+        .with_condition(Condition::Threshold {
+            field: "transaction_amount".into(),
+            threshold: serde_json::json!(10_000_000),
+        })
+        .with_authorization(AuthorizationRequirement::Quorum)
+        .with_priority(90),
+    );
+
     policies
 }
 
@@ -1093,7 +1177,7 @@ mod tests {
 
     #[test]
     fn extended_policies_count() {
-        assert!(extended_policies().len() >= 10);
+        assert!(extended_policies().len() >= 15);
     }
 
     #[test]

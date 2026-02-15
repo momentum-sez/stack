@@ -204,7 +204,7 @@ pub struct PolicyActivity {
     pub policy_count: usize,
     /// Number of audit trail entries.
     pub audit_trail_size: usize,
-    /// Most recent audit entries (up to 20).
+    /// Most recent audit entries (up to 50).
     pub recent_entries: Vec<AuditEntrySummary>,
 }
 
@@ -483,7 +483,7 @@ async fn dashboard(
     // ── Policy Activity ─────────────────────────────────────────
     let policy_activity = {
         let engine = state.policy_engine.lock();
-        let recent = engine.audit_trail.last_n(20);
+        let recent = engine.audit_trail.last_n(50);
         PolicyActivity {
             policy_count: engine.policy_count(),
             audit_trail_size: engine.audit_trail.len(),

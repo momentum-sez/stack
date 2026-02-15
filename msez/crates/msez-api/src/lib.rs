@@ -13,8 +13,12 @@
 //! | `/v1/entities/*`      | [`routes::mass_proxy`]     | Mass proxy (Entities) |
 //! | `/v1/ownership/*`     | [`routes::mass_proxy`]     | Mass proxy (Ownership) |
 //! | `/v1/fiscal/*`        | [`routes::mass_proxy`]     | Mass proxy (Fiscal) |
-//! | `/v1/identity/*`      | [`routes::mass_proxy`]     | Mass proxy (Identity) |
+//! | `/v1/identity/*`      | [`routes::mass_proxy`]     | Mass proxy (Identity — passthrough) |
+//! | `/v1/identity/cnic/*` | [`routes::identity`]       | Identity orchestration (NADRA) |
+//! | `/v1/identity/ntn/*`  | [`routes::identity`]       | Identity orchestration (FBR IRIS) |
+//! | `/v1/identity/entity/*` | [`routes::identity`]     | Consolidated identity |
 //! | `/v1/consent/*`       | [`routes::mass_proxy`]     | Mass proxy (Consent) |
+//! | `/v1/tax/*`           | [`routes::tax`]            | Tax pipeline (SEZ)  |
 //! | `/v1/corridors/*`     | [`routes::corridors`]      | Corridors (SEZ)     |
 //! | `/v1/assets/*`        | [`routes::smart_assets`]   | Smart Assets (SEZ)  |
 //! | `/v1/assets/*/credentials/*` | [`routes::credentials`] | VC Issuance (SEZ) |
@@ -74,6 +78,12 @@ pub fn app(state: AppState) -> Router {
     let api = Router::new()
         // Mass API proxy (all five primitives via Mass client)
         .merge(routes::mass_proxy::router())
+        // Identity orchestration — P1-005: CNIC/NTN verification,
+        // consolidated entity identity, service status.
+        .merge(routes::identity::router())
+        // Tax collection pipeline — P1-009: withholding computation,
+        // tax event recording, FBR IRIS reporting.
+        .merge(routes::tax::router())
         // SEZ Stack native routes (genuinely this codebase's domain)
         .merge(routes::corridors::router())
         .merge(routes::settlement::router())

@@ -332,7 +332,7 @@ pub struct Party {
 ///
 /// Each claim has a type, description, optional monetary amount, and
 /// references to supporting evidence artifacts.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Claim {
     /// Unique claim identifier within the dispute.
     pub claim_id: String,
@@ -448,7 +448,7 @@ pub struct DismissalEvidence {
 ///
 /// Every transition is logged with source/target states, timestamp, and
 /// evidence digest for a complete audit trail.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TransitionRecord {
     /// State before the transition.
     pub from_state: DisputeState,
@@ -549,7 +549,7 @@ pub fn institution_registry() -> Vec<ArbitrationInstitution> {
 /// with the evidence digest that authorized it. The log is append-only and
 /// provides a tamper-evident audit trail. Terminal states reject all
 /// further transitions.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Dispute {
     /// Unique dispute identifier.
     pub id: DisputeId,

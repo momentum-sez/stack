@@ -15,7 +15,11 @@ pub trait Validate {
     fn validate(&self) -> Result<(), String>;
 }
 
-/// Extract a JSON body, mapping deserialization errors to [`AppError::BadRequest`].
+/// Extract a JSON body, mapping deserialization errors to [`AppError::BadRequest`] (422).
+///
+/// JSON parse failures return 422 Unprocessable Entity (not 400 Bad Request)
+/// because the client sent syntactically valid HTTP but semantically invalid
+/// content. See BUG-038.
 ///
 /// This is the primary extraction helper. Handlers should use:
 /// ```ignore

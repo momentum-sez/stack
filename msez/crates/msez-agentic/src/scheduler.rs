@@ -359,7 +359,12 @@ impl ActionScheduler {
 
     /// Mark an action as failed with an error message.
     ///
-    /// If retries remain, the action is reset to `Pending` for retry.
+    /// **Retry semantics:** If `retries_remaining > 0`, the action is
+    /// decremented and reset to `Pending` for automatic retry — it does NOT
+    /// enter terminal `Failed` state. Only when `retries_remaining == 0`
+    /// does the action transition to terminal `Failed`. Callers expecting
+    /// immediate terminal failure should use `with_max_retries(0)` when
+    /// creating the action.
     pub fn mark_failed(&mut self, action_id: &str, error: String) -> bool {
         if let Some(action) = self.actions.iter_mut().find(|a| a.action_id == action_id) {
             if action.status == ActionStatus::Executing {

@@ -1395,9 +1395,8 @@ fn netting_to_settlement_to_receipt_chain() {
     let mut chain = ReceiptChain::new(corridor_id.clone());
     let prev_root = chain.mmr_root().unwrap();
 
-    // BUG-006: SettlementPlan.reduction_percentage is f64, which CanonicalBytes::new
-    // rejects (FloatRejected). We canonicalize only the integer summary as a workaround.
-    // In production, SettlementPlan should use a fixed-point type for reduction_percentage.
+    // BUG-006/041 RESOLVED: SettlementPlan now uses reduction_bps (u32 basis points)
+    // instead of f64, so the full plan is CanonicalBytes-compatible.
     let plan_summary = serde_json::json!({
         "gross_total": plan.gross_total,
         "net_total": plan.net_total,

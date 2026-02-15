@@ -286,6 +286,12 @@ impl Watcher {
                 reason: "can only rebond from SLASHED state".to_string(),
             });
         }
+        if additional_stake == 0 {
+            return Err(WatcherError::InsufficientStake {
+                required: 1,
+                available: 0,
+            });
+        }
         self.bonded_stake += additional_stake;
         self.state = WatcherState::Bonded;
         Ok(())
@@ -729,7 +735,7 @@ mod tests {
         assert_eq!(w.slash_count, 1);
 
         // Rebond and reactivate
-        w.rebond(0).unwrap();
+        w.rebond(10_000).unwrap();
         w.activate().unwrap();
         // Second slash: 1% of original bond = 10,000
         w.slash(SlashingCondition::AvailabilityFailure).unwrap();

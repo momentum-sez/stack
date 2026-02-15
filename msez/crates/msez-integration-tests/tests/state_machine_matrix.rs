@@ -670,13 +670,16 @@ fn enforcement_transition_pending_to_blocked() {
 }
 
 #[test]
-fn enforcement_block_rejected_from_in_progress() {
+fn enforcement_block_allowed_from_in_progress() {
+    // BUG-025 RESOLVED: block() is allowed from both Pending and InProgress
+    // (e.g. an appeal can be filed during enforcement execution).
     let mut order = EnforcementOrder::new(DisputeId::new(), test_digest_sm("award"), vec![], None);
     order.begin_enforcement().unwrap();
     assert!(
-        order.block("Appeal filed").is_err(),
-        "Cannot block from InProgress"
+        order.block("Appeal filed").is_ok(),
+        "block() is valid from InProgress (appeal during execution)"
     );
+    assert_eq!(order.status, EnforcementStatus::Blocked);
 }
 
 #[test]

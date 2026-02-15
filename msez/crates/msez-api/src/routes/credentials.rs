@@ -585,7 +585,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn verify_invalid_vc_returns_400() {
+    async fn verify_invalid_vc_returns_422() {
+        // BUG-038: BadRequest now returns 422 (Unprocessable Entity).
         let app = test_app();
 
         let req = Request::builder()
@@ -596,7 +597,7 @@ mod tests {
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
     #[tokio::test]

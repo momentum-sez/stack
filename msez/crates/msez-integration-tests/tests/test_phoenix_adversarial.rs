@@ -77,10 +77,9 @@ fn mock_proof_deterministic_under_adversarial_input() {
 }
 
 #[test]
-fn mock_proof_same_for_same_public_inputs() {
-    // In the mock system, circuit data is validated but not hashed into
-    // the proof. Circuit binding happens through the verifying key in
-    // real ZK systems. Same public_inputs → same proof.
+fn mock_proof_differs_for_different_circuit_data() {
+    // BUG-048 RESOLVED: circuit_data is now hashed into the proof.
+    // Different circuit data with same public inputs → different proofs.
     let system = MockProofSystem;
     let pk = MockProvingKey;
 
@@ -95,9 +94,9 @@ fn mock_proof_same_for_same_public_inputs() {
 
     let proof_a = system.prove(&pk, &circuit_a).unwrap();
     let proof_b = system.prove(&pk, &circuit_b).unwrap();
-    assert_eq!(
+    assert_ne!(
         proof_a, proof_b,
-        "Same public_inputs should produce same proofs regardless of circuit data"
+        "BUG-048 RESOLVED: different circuit_data produces different proofs"
     );
 
     // Different public_inputs MUST produce different proofs.

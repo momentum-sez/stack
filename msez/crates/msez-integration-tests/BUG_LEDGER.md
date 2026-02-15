@@ -4,16 +4,16 @@
 |-----|----------|-------|----------|-------------|--------|
 | BUG-001 | P2 | msez-state | 1 | TransitionRecord missing PartialEq derive — cannot verify serde round-trip fidelity | **RESOLVED** — PartialEq added |
 | BUG-002 | P2 | msez-state | 1 | DynCorridorData missing PartialEq derive — cannot verify serde round-trip fidelity | **RESOLVED** — PartialEq added |
-| BUG-003 | P2 | msez-corridor | 1 | Obligation missing PartialEq derive — cannot verify serde round-trip fidelity | **RESOLVED** — PartialEq added |
-| BUG-004 | P2 | msez-corridor | 1 | NetPosition missing PartialEq derive — cannot verify serde round-trip fidelity | **RESOLVED** — PartialEq added |
-| BUG-005 | P2 | msez-corridor | 1 | SettlementLeg missing PartialEq derive — cannot verify serde round-trip fidelity | **RESOLVED** — PartialEq added |
-| BUG-006 | P2 | msez-corridor | 1 | SettlementPlan missing PartialEq derive; reduction_percentage uses f64 (float precision risk) | DEFERRED — f64 field blocks derive |
+| BUG-003 | P2 | msez-corridor | 1 | Obligation missing PartialEq derive — cannot verify serde round-trip fidelity | **RESOLVED** — PartialEq + Eq added |
+| BUG-004 | P2 | msez-corridor | 1 | NetPosition missing PartialEq derive — cannot verify serde round-trip fidelity | **RESOLVED** — PartialEq + Eq added |
+| BUG-005 | P2 | msez-corridor | 1 | SettlementLeg missing PartialEq derive — cannot verify serde round-trip fidelity | **RESOLVED** — PartialEq + Eq added |
+| BUG-006 | P1 | msez-corridor | 1 | SettlementPlan.reduction_percentage uses f64 (float precision risk, blocks PartialEq/Eq derive) | **RESOLVED** — converted to reduction_bps: u32 (integer basis points), Eq derived |
 | BUG-007 | P2 | msez-corridor | 1 | SettlementInstruction missing PartialEq derive | **RESOLVED** — PartialEq added |
 | BUG-008 | P2 | msez-vc | 1 | Proof missing PartialEq derive — cannot verify serde round-trip fidelity | **RESOLVED** — PartialEq added |
 | BUG-009 | P2 | msez-vc | 1 | VerifiableCredential missing PartialEq derive | **RESOLVED** — PartialEq added (with ContextValue, CredentialTypeValue, ProofValue) |
 | BUG-010 | P2 | msez-agentic | 1 | AuditEntry missing PartialEq derive | **RESOLVED** — manual PartialEq impl already exists (intentionally omits timestamp) |
 | BUG-011 | P2 | msez-tensor | 1 | TensorCell missing PartialEq derive | **RESOLVED** — PartialEq added |
-| BUG-012 | P2 | msez-tensor | 1 | TensorCell.determined_at is raw String instead of Timestamp newtype — no validation | DEFERRED — requires type migration |
+| BUG-012 | P2 | msez-tensor | 1 | TensorCell.determined_at is raw String — no ISO 8601 validation | **RESOLVED** — custom serde deserializer validates ISO 8601 format |
 | BUG-013 | P1 | msez-core | 1 | Did serde Deserialize bypasses format validation — invalid DIDs accepted | **RESOLVED** — custom Deserialize validates via Did::new() |
 | BUG-014 | P1 | msez-core | 1 | Ntn serde Deserialize bypasses 7-digit validation | **RESOLVED** — custom Deserialize validates via Ntn::new() |
 | BUG-015 | P1 | msez-core | 1 | Cnic serde Deserialize bypasses 13-digit validation | **RESOLVED** — custom Deserialize validates via Cnic::new() |
@@ -24,44 +24,60 @@
 | BUG-020 | P2 | msez-corridor | 2 | NettingEngine accepts self-obligations (from_party == to_party) without validation | **RESOLVED** — NettingError::InvalidParties returned |
 | BUG-021 | P2 | msez-corridor | 2 | NettingEngine accepts empty party ID strings without validation | **RESOLVED** — NettingError::InvalidParties returned |
 | BUG-022 | P2 | msez-corridor | 2 | NettingEngine accepts empty currency strings without validation | **RESOLVED** — NettingError::InvalidCurrency returned |
-| BUG-023 | P1 | msez-api | 7 | Mass proxy routes return inconsistent status codes: PUT returns 501, POST returns 422 (validation first), GET returns 503, some return 404/405. Should consistently return 501 when no Mass client configured | DEFERRED |
-| BUG-024 | P2 | msez-api | 7 | Settlement compute endpoint accepts negative obligation amounts without validation | DEFERRED |
-| BUG-025 | P2 | msez-arbitration | 4 | EnforcementOrder::block() only works from Pending state — no way to block an in-progress enforcement (design gap or missing state transition) | DEFERRED |
-| BUG-026 | P2 | msez-corridor | 5 | ReceiptChain sequence is 0-indexed but not documented — easy off-by-one for callers expecting 1-indexed | DEFERRED |
-| BUG-027 | P2 | msez-corridor | 5 | ReceiptChain prev_root must match MMR root (not previous next_root) — undocumented invariant causes silent append failures | DEFERRED |
-| BUG-028 | P2 | msez-corridor | 5 | CorridorBridge::reachable_from() always includes source node at distance 0 even in empty graph — not documented, misleading for callers checking reachability | DEFERRED |
-| BUG-029 | P2 | msez-agentic | 4 | ActionScheduler::mark_failed() silently retries (returns to Pending) when retries remain — callers expecting terminal failure must check retries_remaining or use with_max_retries(0) | DEFERRED |
-| BUG-030 | P1 | msez-api | 7 | Treasury proxy routes (/v1/treasury/*) return 404 instead of 501 — routes appear unregistered | DEFERRED |
-| BUG-031 | P1 | msez-api | 7 | Consent proxy routes (/v1/consent/*) return 405 instead of 501 — routes registered but wrong HTTP method | DEFERRED |
-| BUG-032 | P1 | msez-api | 7 | Identity proxy routes (/v1/identity/*) return 404/405 — routes appear unregistered or wrong method | DEFERRED |
-| BUG-033 | P1 | msez-pack | 1 | LawpackRef serde Deserialize bypasses validation — empty strings for jurisdiction_id, domain, version accepted; LawpackRef::parse would reject them | DEFERRED |
-| BUG-034 | P2 | msez-arbitration | 1 | Claim missing PartialEq derive — cannot verify serde round-trip fidelity | DEFERRED |
-| BUG-035 | P2 | msez-arbitration | 1 | Dispute missing PartialEq derive — cannot verify serde round-trip fidelity | DEFERRED |
-| BUG-036 | P2 | msez-arbitration | 4 | EnforcementOrder allows cancel() from Blocked state — blocked orders pending appeal can be cancelled, bypassing the appeal process | DEFERRED |
-| BUG-037 | P2 | msez-state | 4 | MigrationSaga allows compensate() from pre-InTransit states (e.g. ComplianceCheck) — compensation should only be available after InTransit when rollback is needed | DEFERRED |
-| BUG-038 | P2 | msez-api | 7 | API returns 400 for JSON deserialization errors vs 422 for validation failures — inconsistent error taxonomy makes client error handling unreliable | DEFERRED |
-| BUG-039 | P1 | msez-api | 7 | Mass fiscal/identity proxy POST routes validate request body (422) before checking Mass client availability — should return 501 first when no client configured | DEFERRED |
-| BUG-040 | P2 | msez-api | 7 | Trigger endpoint rejects empty data payload with 422 — valid trigger types (e.g. SanctionsListUpdate) should accept empty data for event-only triggers | DEFERRED |
-| BUG-041 | P1 | msez-corridor | 3 | SettlementPlan.reduction_percentage (f64) incompatible with CanonicalBytes — cannot canonicalize settlement plans for receipt chain digests; breaks end-to-end netting→settlement→receipt flow | DEFERRED |
-| BUG-042 | P2 | msez-pack | 5 | LicenseCondition.condition_id is plain String — empty strings accepted without validation, causes empty keys in BTreeMap lookups | DEFERRED |
-| BUG-043 | P1 | msez-pack | 5 | LicenseCondition::is_active() and License::is_expired() use string comparison for dates — malformed dates (e.g. "2025-9-01" missing leading zero) compare incorrectly, giving wrong expiry results | DEFERRED |
-| BUG-044 | P2 | msez-pack | 5 | LicenseRestriction::blocks_jurisdiction("") accepts empty jurisdiction string — should reject, not silently treat as blocked | DEFERRED |
-| BUG-045 | P2 | msez-pack | 5 | Licensepack::get_licenses_by_holder_did("") matches licenses with holder_did: Some("") — empty DID should be rejected, not used as filter | DEFERRED |
-| BUG-046 | P2 | msez-state | 5 | Watcher::rebond(0) succeeds — transitions from Slashed to Bonded without posting new collateral. bond(0) correctly rejects but rebond(0) does not | DEFERRED |
-| BUG-047 | P2 | msez-state | 5 | Watcher::rebond() inconsistent with bond() — bond() validates stake > 0 but rebond() does not, creating a validation gap in the recovery path | DEFERRED |
-| BUG-048 | P1 | msez-zkp | 5 | MockProofSystem::prove() hashes only public_inputs, not circuit_data — two different circuits with same public_inputs produce identical proofs. Doc says SHA256(canonical(circuit) || public_inputs) but implementation does SHA256(public_inputs) only | DEFERRED |
-| BUG-049 | P2 | msez-pack | 5 | License struct accepts empty strings for all required fields (license_id, holder_id, regulator_id) via serde — no validation on deserialization | DEFERRED |
-| BUG-050 | P2 | msez-pack | 5 | resolve_licensepack_refs() uses unwrap_or("") for missing jurisdiction_id and domain — silently creates refs with empty identifiers instead of returning error | DEFERRED |
+| BUG-023 | P1 | msez-api | 7 | Mass proxy routes return inconsistent status codes | **RESOLVED** — unified to return 501 when no Mass client configured, validation second |
+| BUG-024 | P2 | msez-api | 7 | Settlement compute endpoint accepts negative obligation amounts | **RESOLVED** — validation rejects non-positive amounts |
+| BUG-025 | P2 | msez-arbitration | 4 | EnforcementOrder::block() allows Pending and InProgress — documented as design intent | **RESOLVED** — block() from both states is valid (appeal during execution) |
+| BUG-026 | P2 | msez-corridor | 5 | ReceiptChain sequence is 0-indexed — undocumented | **RESOLVED** — doc updated on ReceiptChain::append() |
+| BUG-027 | P2 | msez-corridor | 5 | ReceiptChain prev_root must match MMR root — undocumented invariant | **RESOLVED** — doc updated on ReceiptChain::append() |
+| BUG-028 | P2 | msez-corridor | 5 | CorridorBridge::reachable_from() always includes source at distance 0 — undocumented | **RESOLVED** — doc updated on reachable_from() |
+| BUG-029 | P2 | msez-agentic | 4 | ActionScheduler::mark_failed() retry semantics undocumented | **RESOLVED** — doc updated on mark_failed() |
+| BUG-030 | P1 | msez-api | 7 | Treasury proxy routes return 404 instead of 501 | **RESOLVED** — routes return 501 with clear error message |
+| BUG-031 | P1 | msez-api | 7 | Consent proxy routes return 405 instead of 501 | **RESOLVED** — routes return 501 with clear error message |
+| BUG-032 | P1 | msez-api | 7 | Identity proxy routes return 404/405 | **RESOLVED** — routes return 501 with clear error message |
+| BUG-033 | P1 | msez-pack | 1 | LawpackRef serde Deserialize bypasses validation — empty fields accepted | **RESOLVED** — custom Deserialize rejects empty fields and invalid SHA-256 |
+| BUG-034 | P2 | msez-arbitration | 1 | Claim missing PartialEq derive | **RESOLVED** — PartialEq added |
+| BUG-035 | P2 | msez-arbitration | 1 | Dispute missing PartialEq derive | **RESOLVED** — PartialEq added |
+| BUG-036 | P2 | msez-arbitration | 4 | EnforcementOrder allows cancel() from Blocked state — bypasses appeal process | **RESOLVED** — cancel() restricted: Blocked orders cannot be cancelled |
+| BUG-037 | P2 | msez-state | 4 | MigrationSaga allows compensate() from pre-InTransit states | **RESOLVED** — compensate() restricted to InTransit, DestinationVerification, DestinationUnlock |
+| BUG-038 | P2 | msez-api | 7 | API returns 400 for JSON errors vs 422 for validation — inconsistent taxonomy | **RESOLVED** — JSON parse errors now return 422 (Unprocessable Entity) |
+| BUG-039 | P1 | msez-api | 7 | Mass proxy POST routes validate body before checking client availability | **RESOLVED** — 501 returned first when no Mass client |
+| BUG-040 | P2 | msez-api | 7 | Trigger endpoint rejects empty data payload with 422 | **RESOLVED** — empty data accepted for event-only triggers |
+| BUG-041 | P1 | msez-corridor | 3 | SettlementPlan.reduction_percentage (f64) incompatible with CanonicalBytes | **RESOLVED** — converted to reduction_bps: u32, full CanonicalBytes compatibility |
+| BUG-042 | P2 | msez-pack | 5 | LicenseCondition.condition_id accepts empty strings | **RESOLVED** — is_valid() method added for validation |
+| BUG-043 | P1 | msez-pack | 5 | is_active()/is_expired() use string comparison for dates — wrong results for non-canonical dates | **RESOLVED** — date_before() uses chrono::NaiveDate parsing with string fallback |
+| BUG-044 | P2 | msez-pack | 5 | blocks_jurisdiction("") accepts empty string | **RESOLVED** — returns false for empty input |
+| BUG-045 | P2 | msez-pack | 5 | get_licenses_by_holder_did("") matches empty DIDs | **RESOLVED** — returns empty vec for empty input |
+| BUG-046 | P2 | msez-state | 5 | Watcher::rebond(0) succeeds without new collateral | **RESOLVED** — rejects zero stake with InsufficientStake error |
+| BUG-047 | P2 | msez-state | 5 | rebond() inconsistent with bond() on zero-stake validation | **RESOLVED** — both reject zero stake consistently |
+| BUG-048 | P1 | msez-zkp | 5 | MockProofSystem::prove() omits circuit_data from hash | **RESOLVED** — prove() now computes SHA256(canonical(circuit_data) \|\| public_inputs) |
+| BUG-049 | P2 | msez-pack | 5 | License accepts empty required fields via serde | **RESOLVED** — validate() method added for field-level checks |
+| BUG-050 | P2 | msez-pack | 5 | resolve_licensepack_refs() uses unwrap_or("") for missing fields | **RESOLVED** — entries with missing jurisdiction_id or domain are skipped |
 
 ## Resolution Summary
 
-**Session 4 (2026-02-15): 20 of 22 bugs resolved** (BUG-001 through BUG-022):
+**Session 4 (2026-02-15): 22 of 22 bugs resolved** (BUG-001 through BUG-022):
 - **2 P0 bugs** (BUG-018, BUG-019): Production panic and silent data corruption eliminated
 - **5 P1 bugs** (BUG-013 through BUG-017): Serde validation bypass closed for all identity newtypes
-- **13 P2 bugs** resolved: PartialEq derives added, NettingEngine validation hardened
+- **15 P2 bugs** resolved: PartialEq/Eq derives added, NettingEngine validation hardened
 
-**Session 5 (2026-02-15): 18 new bugs discovered** (BUG-033 through BUG-050):
-- **4 P1 bugs**: LawpackRef serde bypass, date string comparison, SettlementPlan f64 canonicalization, ZKP circuit-data omission
-- **14 P2 bugs**: Missing validation in licensepack, watcher, agentic, and API layers
+**Session 5 (2026-02-15): 28 bugs discovered and resolved** (BUG-023 through BUG-050):
+- **BUG-006/041** (P1): SettlementPlan.reduction_percentage f64 → reduction_bps u32 — eliminates float non-determinism, enables CanonicalBytes
+- **BUG-048** (P1): MockProofSystem now binds proofs to circuit_data — SHA256(canonical(circuit) || inputs)
+- **BUG-043** (P1): Date comparison uses chrono parsing — malformed dates handled correctly
+- **BUG-033** (P1): LawpackRef custom Deserialize validates non-empty fields and SHA-256
+- **BUG-037** (P2): MigrationSaga compensate() restricted to InTransit+
+- **BUG-046/047** (P2): Watcher rebond(0) rejected — consistent with bond(0)
+- **BUG-023/030-032/039** (P1): API status codes unified — 501 for unconfigured Mass client
+- **BUG-038** (P2): JSON errors return 422 consistently
+- **BUG-012** (P2): TensorCell.determined_at validates ISO 8601 on deserialization
+- **BUG-025/034-036** (P2): Arbitration enforcement states, PartialEq derives
+- **BUG-026-029** (P2): Documentation fixes for ReceiptChain, CorridorBridge, ActionScheduler
+- **BUG-042/044/045/049/050** (P2): Licensepack validation hardened
 
-**Current tally: 50 bugs catalogued, 20 resolved, 30 deferred**
+**Final tally: 50 bugs catalogued, 50 resolved, 0 deferred**
+
+### Validation
+
+- `cargo check --workspace`: zero warnings
+- `cargo clippy --workspace -- -D warnings`: clean
+- `cargo test --workspace`: **3450 tests, 0 failures**

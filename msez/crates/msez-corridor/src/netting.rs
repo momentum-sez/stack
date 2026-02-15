@@ -108,7 +108,7 @@ pub struct Currency {
 ///
 /// Represents a directed payment obligation: `from_party` owes
 /// `amount` in `currency` to `to_party`.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Obligation {
     /// The party that owes.
     pub from_party: String,
@@ -125,7 +125,7 @@ pub struct Obligation {
 }
 
 /// A computed net position for a party in a specific currency.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NetPosition {
     /// Party identifier.
     pub party_id: String,
@@ -140,7 +140,7 @@ pub struct NetPosition {
 }
 
 /// A settlement leg — a single payment in the settlement plan.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SettlementLeg {
     /// Paying party.
     pub from_party: String,
@@ -153,7 +153,11 @@ pub struct SettlementLeg {
 }
 
 /// A complete settlement plan produced by the netting engine.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+///
+/// All fields use exact integer types — no floating-point — so that
+/// `SettlementPlan` is deterministically serialisable, implements
+/// `PartialEq`/`Eq`, and is compatible with `CanonicalBytes`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SettlementPlan {
     /// The original obligations that were netted.
     pub obligations: Vec<Obligation>,
@@ -165,8 +169,12 @@ pub struct SettlementPlan {
     pub gross_total: i64,
     /// Total net settlement amount (sum of all settlement leg amounts).
     pub net_total: i64,
-    /// Netting efficiency as a percentage (0.0 to 100.0).
-    pub reduction_percentage: f64,
+    /// Netting efficiency in basis points (0–10000, where 10000 = 100.00%).
+    ///
+    /// Computed as `((gross_total - net_total) * 10000) / gross_total`.
+    /// Uses integer arithmetic to avoid floating-point non-determinism,
+    /// enabling content-addressed digest computation via `CanonicalBytes`.
+    pub reduction_bps: u32,
 }
 
 /// The settlement netting engine.
@@ -386,10 +394,14 @@ impl NettingEngine {
             .try_fold(0i64, |acc, l| acc.checked_add(l.amount))
             .ok_or(NettingError::ArithmeticOverflow)?;
 
-        let reduction_percentage = if gross_total > 0 {
-            (1.0 - (net_total as f64 / gross_total as f64)) * 100.0
+        // Integer-only netting efficiency in basis points (0–10000).
+        // Avoids f64 non-determinism so SettlementPlan is CanonicalBytes-compatible.
+        let reduction_bps = if gross_total > 0 {
+            let reduced = gross_total.saturating_sub(net_total);
+            // (reduced * 10000) / gross_total, clamped to u32 range
+            ((reduced as u128 * 10_000) / gross_total as u128) as u32
         } else {
-            0.0
+            0
         };
 
         Ok(SettlementPlan {
@@ -398,7 +410,7 @@ impl NettingEngine {
             settlement_legs,
             gross_total,
             net_total,
-            reduction_percentage,
+            reduction_bps,
         })
     }
 
@@ -444,7 +456,7 @@ mod tests {
         assert_eq!(plan.settlement_legs[0].to_party, "B");
         assert_eq!(plan.settlement_legs[0].amount, 40);
         assert_eq!(plan.net_total, 40);
-        assert!(plan.reduction_percentage > 0.0);
+        assert!(plan.reduction_bps > 0);
     }
 
     #[test]
@@ -522,7 +534,7 @@ mod tests {
         let plan = engine.compute_plan().unwrap();
         assert_eq!(plan.settlement_legs.len(), 0);
         assert_eq!(plan.net_total, 0);
-        assert!((plan.reduction_percentage - 100.0).abs() < f64::EPSILON);
+        assert_eq!(plan.reduction_bps, 10_000);
     }
 
     #[test]
@@ -631,7 +643,7 @@ mod tests {
         assert_eq!(plan.gross_total, 500);
         assert_eq!(plan.net_total, 500);
         assert_eq!(plan.settlement_legs.len(), 1);
-        assert!((plan.reduction_percentage - 0.0).abs() < f64::EPSILON);
+        assert_eq!(plan.reduction_bps, 0);
     }
 
     #[test]
@@ -891,6 +903,6 @@ mod tests {
         let plan = engine.compute_plan().unwrap();
         assert_eq!(plan.gross_total, 3000);
         assert!(plan.net_total < plan.gross_total);
-        assert!(plan.reduction_percentage > 0.0);
+        assert!(plan.reduction_bps > 0);
     }
 }

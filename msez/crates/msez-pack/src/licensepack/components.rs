@@ -54,17 +54,37 @@ fn default_active_status() -> String {
 }
 
 impl LicenseCondition {
+    /// Whether the condition has valid required fields.
+    ///
+    /// Returns `false` if `condition_id` is empty, which indicates
+    /// the condition was not properly initialized.
+    pub fn is_valid(&self) -> bool {
+        !self.condition_id.trim().is_empty()
+    }
+
     /// Whether this condition is currently active.
     pub fn is_active(&self, today: &str) -> bool {
         if self.status != "active" {
             return false;
         }
         if let Some(ref expiry) = self.expiry_date {
-            if expiry.as_str() < today {
+            if date_before(expiry, today) {
                 return false;
             }
         }
         true
+    }
+}
+
+/// Compare two date strings in YYYY-MM-DD format.
+/// Parses both dates; if either fails to parse, falls back to string comparison.
+pub(crate) fn date_before(a: &str, b: &str) -> bool {
+    match (
+        chrono::NaiveDate::parse_from_str(a, "%Y-%m-%d"),
+        chrono::NaiveDate::parse_from_str(b, "%Y-%m-%d"),
+    ) {
+        (Ok(da), Ok(db)) => da < db,
+        _ => a < b,
     }
 }
 
@@ -146,6 +166,9 @@ impl LicenseRestriction {
 
     /// Whether this restriction blocks the specified jurisdiction.
     pub fn blocks_jurisdiction(&self, jurisdiction: &str) -> bool {
+        if jurisdiction.is_empty() {
+            return false;
+        }
         if self.status != "active" {
             return false;
         }

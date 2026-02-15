@@ -386,9 +386,8 @@ fn serde_rt_settlement_leg() {
 
 #[test]
 fn serde_rt_settlement_plan() {
-    // BUG-006: SettlementPlan does not derive PartialEq
-    // Also: SettlementPlan.reduction_percentage is f64, which means
-    // serde round-trip may suffer floating-point precision issues.
+    // BUG-006/041 RESOLVED: SettlementPlan now derives PartialEq and uses
+    // reduction_bps (u32 basis points) instead of f64.
     let mut engine = NettingEngine::new();
     engine
         .add_obligation(Obligation {
@@ -413,16 +412,8 @@ fn serde_rt_settlement_plan() {
     let plan = engine.compute_plan().unwrap();
     let json = serde_json::to_string(&plan).expect("serialize");
     let recovered: SettlementPlan = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.gross_total, plan.gross_total);
-    assert_eq!(recovered.net_total, plan.net_total);
-    assert_eq!(recovered.settlement_legs.len(), plan.settlement_legs.len());
-    // Verify the f64 field survives round-trip
-    assert!(
-        (recovered.reduction_percentage - plan.reduction_percentage).abs() < f64::EPSILON,
-        "reduction_percentage changed on round-trip: {} vs {}",
-        recovered.reduction_percentage,
-        plan.reduction_percentage
-    );
+    // BUG-006 RESOLVED: PartialEq now derived, direct comparison works
+    assert_eq!(recovered, plan, "SettlementPlan serde round-trip should be lossless");
 }
 
 #[test]
@@ -1545,13 +1536,11 @@ fn serde_rt_lawpack_ref() {
 
 #[test]
 fn serde_rt_lawpack_ref_empty_fields() {
-    // BUG-033: LawpackRef accepts empty strings for all fields via serde.
-    // This bypasses any validation that LawpackRef::parse() performs.
+    // BUG-033 RESOLVED: LawpackRef custom Deserialize now rejects empty fields.
     let json = r#"{"jurisdiction_id":"","domain":"","lawpack_digest_sha256":""}"#;
     let result: Result<LawpackRef, _> = serde_json::from_str(json);
-    // It succeeds — empty lawpack refs can be deserialized.
-    // This is a validation bypass (compared to LawpackRef::parse which rejects empty).
-    assert!(result.is_ok(), "BUG-033: LawpackRef deserializes with empty fields");
+    // BUG-033 RESOLVED: deserialization correctly fails for empty required fields.
+    assert!(result.is_err(), "BUG-033 RESOLVED: LawpackRef rejects empty fields via serde");
 }
 
 #[test]

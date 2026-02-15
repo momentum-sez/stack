@@ -520,7 +520,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handler_create_asset_bad_json_returns_400() {
+    async fn handler_create_asset_bad_json_returns_422() {
+        // BUG-038: JSON parse errors now return 422 (Unprocessable Entity).
         let app = test_app();
         let req = Request::builder()
             .method("POST")
@@ -530,7 +531,7 @@ mod tests {
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
     #[tokio::test]
@@ -648,7 +649,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handler_evaluate_compliance_bad_json_returns_400() {
+    async fn handler_evaluate_compliance_bad_json_returns_422() {
+        // BUG-038: JSON parse errors now return 422 (Unprocessable Entity).
         let app = test_app();
         let id = Uuid::new_v4();
         let req = Request::builder()
@@ -659,7 +661,7 @@ mod tests {
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
     #[tokio::test]
@@ -721,7 +723,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handler_verify_anchor_bad_json_returns_400() {
+    async fn handler_verify_anchor_bad_json_returns_422() {
+        // BUG-038: JSON parse errors now return 422 (Unprocessable Entity).
         let state = AppState::new();
         let app = test_app_with_state(state.clone());
 
@@ -745,7 +748,7 @@ mod tests {
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
     #[tokio::test]

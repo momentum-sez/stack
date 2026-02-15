@@ -845,7 +845,8 @@ mod tests {
     // ── Bad request handling ──────────────────────────────────────
 
     #[tokio::test]
-    async fn trigger_bad_json_returns_400() {
+    async fn trigger_bad_json_returns_422() {
+        // BUG-038: JSON parse errors now return 422 (Unprocessable Entity).
         let state = AppState::new();
         let app = agentic_app(state);
 
@@ -857,7 +858,7 @@ mod tests {
             .unwrap();
 
         let response = app.oneshot(request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
     // ── Router construction ───────────────────────────────────────

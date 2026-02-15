@@ -675,7 +675,7 @@ async fn settlement_compute_valid_obligations() {
     assert_eq!(resp.status(), StatusCode::OK);
     let v = body_json(resp).await;
     assert!(v["obligations_processed"].as_u64().unwrap() > 0);
-    assert!(v["reduction_percentage"].as_f64().is_some());
+    assert!(v["reduction_bps"].as_u64().is_some());
 }
 
 // =========================================================================

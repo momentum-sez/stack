@@ -55,7 +55,7 @@ const LAWPACK_DIGEST_PREFIX: &[u8] = b"msez-lawpack-v1\0";
 ///
 /// Used in zone manifests and stack.lock files to reference specific
 /// lawpack versions by their content-addressed digest.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct LawpackRef {
     /// Jurisdiction this lawpack applies to.
     pub jurisdiction_id: String,
@@ -63,6 +63,46 @@ pub struct LawpackRef {
     pub domain: String,
     /// SHA-256 digest of the lawpack content.
     pub lawpack_digest_sha256: String,
+}
+
+impl<'de> Deserialize<'de> for LawpackRef {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        /// Helper struct for deserialization before validation.
+        #[derive(Deserialize)]
+        struct LawpackRefRaw {
+            jurisdiction_id: String,
+            domain: String,
+            lawpack_digest_sha256: String,
+        }
+
+        let raw = LawpackRefRaw::deserialize(deserializer)?;
+
+        if raw.jurisdiction_id.trim().is_empty() {
+            return Err(serde::de::Error::custom(
+                "LawpackRef jurisdiction_id must be non-empty",
+            ));
+        }
+        if raw.domain.trim().is_empty() {
+            return Err(serde::de::Error::custom(
+                "LawpackRef domain must be non-empty",
+            ));
+        }
+        if !parser::is_valid_sha256(&raw.lawpack_digest_sha256) {
+            return Err(serde::de::Error::custom(format!(
+                "LawpackRef lawpack_digest_sha256 is not a valid SHA-256 hex digest: {}",
+                raw.lawpack_digest_sha256,
+            )));
+        }
+
+        Ok(LawpackRef {
+            jurisdiction_id: raw.jurisdiction_id,
+            domain: raw.domain,
+            lawpack_digest_sha256: raw.lawpack_digest_sha256,
+        })
+    }
 }
 
 impl LawpackRef {

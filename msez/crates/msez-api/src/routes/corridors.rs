@@ -879,7 +879,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handler_create_corridor_bad_json_returns_400() {
+    async fn handler_create_corridor_bad_json_returns_422() {
+        // BUG-038: JSON parse errors now return 422 (Unprocessable Entity).
         let app = test_app();
         let req = Request::builder()
             .method("POST")
@@ -889,7 +890,7 @@ mod tests {
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
     // ── Additional handler coverage ───────────────────────────────
@@ -1060,7 +1061,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handler_transition_corridor_bad_json_returns_400() {
+    async fn handler_transition_corridor_bad_json_returns_422() {
+        // BUG-038: JSON parse errors now return 422 (Unprocessable Entity).
         let state = AppState::new();
         let app = router().with_state(state.clone());
 
@@ -1083,7 +1085,7 @@ mod tests {
             .body(Body::from(r#"{broken"#))
             .unwrap();
         let transition_resp = app.oneshot(transition_req).await.unwrap();
-        assert_eq!(transition_resp.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(transition_resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
     // ── Receipt chain integration tests ─────────────────────────
@@ -1245,7 +1247,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn propose_receipt_bad_json_returns_400() {
+    async fn propose_receipt_bad_json_returns_422() {
+        // BUG-038: JSON parse errors now return 422 (Unprocessable Entity).
         let app = test_app();
         let req = Request::builder()
             .method("POST")
@@ -1255,7 +1258,7 @@ mod tests {
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
     #[tokio::test]
@@ -1385,7 +1388,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handler_create_corridor_missing_content_type_returns_400() {
+    async fn handler_create_corridor_missing_content_type_returns_422() {
+        // BUG-038: Missing content-type now returns 422 (Unprocessable Entity).
         let app = test_app();
         let req = Request::builder()
             .method("POST")
@@ -1396,7 +1400,7 @@ mod tests {
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
     // ── Typestate transition enforcement tests ──────────────────────

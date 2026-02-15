@@ -251,7 +251,9 @@ impl CorridorBridge {
 
     /// Find all reachable jurisdictions from a given source.
     ///
-    /// Returns a map of jurisdiction key -> minimum fee to reach it.
+    /// Returns a map of jurisdiction key -> minimum fee (in bps) to reach it.
+    /// The source node is always included with distance 0, even in an empty graph.
+    /// Uses Dijkstra's algorithm over the bidirectional link graph.
     pub fn reachable_from(&self, source: &JurisdictionId) -> HashMap<String, u64> {
         let source_key = source.as_str().to_string();
         let mut dist: HashMap<String, u64> = HashMap::new();

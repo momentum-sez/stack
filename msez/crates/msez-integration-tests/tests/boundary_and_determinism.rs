@@ -1051,7 +1051,7 @@ fn netting_bilateral_perfect_offset() {
         "Perfect bilateral offset should produce no settlement legs"
     );
     assert_eq!(plan.net_total, 0);
-    assert_eq!(plan.reduction_percentage, 100.0);
+    assert_eq!(plan.reduction_bps, 10_000);
 }
 
 // =========================================================================
@@ -1436,8 +1436,8 @@ fn determinism_netting_same_obligations_same_plan() {
         "Settlement leg count should be deterministic"
     );
     assert_eq!(
-        plan1.reduction_percentage, plan2.reduction_percentage,
-        "Reduction percentage should be deterministic"
+        plan1.reduction_bps, plan2.reduction_bps,
+        "Reduction bps should be deterministic"
     );
 }
 
@@ -1543,7 +1543,7 @@ fn licensepack_condition_empty_id_accepted() {
 
 #[test]
 fn licensepack_condition_date_comparison_malformed() {
-    // BUG-043: LicenseCondition::is_active() uses string comparison for dates
+    // BUG-043 RESOLVED: date_before() now uses chrono parsing, not string comparison
     let cond = LicenseCondition {
         condition_id: "c-date".to_string(),
         condition_type: "operational".to_string(),
@@ -1555,16 +1555,15 @@ fn licensepack_condition_date_comparison_malformed() {
         frequency: None,
         reporting_frequency: None,
         effective_date: None,
-        expiry_date: Some("2025-9-01".to_string()), // Missing leading zero
+        expiry_date: Some("2025-9-01".to_string()), // Non-canonical but parseable
         status: "active".to_string(),
     };
-    // String comparison: "2025-9-01" > "2025-12-31" because '9' > '1' lexicographically
-    // So is_active("2025-12-31") returns true even though 2025-09-01 < 2025-12-31
+    // Chrono correctly parses "2025-9-01" as Sept 1, which is before Dec 31.
+    // So the condition is expired and is_active returns false.
     let result = cond.is_active("2025-12-31");
-    // BUG-043: String date comparison gives wrong result for malformed dates
     assert!(
-        result,
-        "BUG-043: is_active returns true because string '2025-9-01' > '2025-12-31' lexicographically"
+        !result,
+        "BUG-043 RESOLVED: is_active correctly returns false — Sept 1 is before Dec 31"
     );
 }
 
@@ -1598,15 +1597,12 @@ fn licensepack_is_expired_string_date_comparison() {
         permissions: vec![],
         restrictions: vec![],
     };
-    // String comparison within same year: "2025-9-15" vs "2025-10-01"
-    // '2025-' matches, then '9' vs '1': '9' > '1' lexicographically
-    // So "2025-9-15" > "2025-10-01" is TRUE (string comparison)
-    // But chronologically Sept 15 < Oct 1 — license IS expired
+    // BUG-043 RESOLVED: date_before() now uses chrono parsing.
+    // "2025-9-15" is correctly parsed as Sept 15, which is before Oct 1.
     let expired = license.is_expired("2025-10-01");
-    // BUG-043: is_expired returns false because "2025-9-15" > "2025-10-01" lexicographically
     assert!(
-        !expired,
-        "BUG-043: is_expired returns false — malformed date '2025-9-15' defeats string comparison"
+        expired,
+        "BUG-043 RESOLVED: is_expired correctly returns true — Sept 15 is before Oct 1"
     );
 }
 
@@ -1626,10 +1622,9 @@ fn licensepack_restriction_blocks_jurisdiction_empty_string() {
         effective_date: None,
         status: "active".to_string(),
     };
-    // Empty string is not in allowed_jurisdictions, so it's treated as blocked
-    // But empty string should be rejected, not silently treated as a valid jurisdiction
+    // BUG-044 RESOLVED: blocks_jurisdiction("") now returns false for empty input
     let result = restriction.blocks_jurisdiction("");
-    assert!(result, "BUG-044: empty jurisdiction treated as blocked instead of rejected");
+    assert!(!result, "BUG-044 RESOLVED: empty jurisdiction correctly returns false");
 }
 
 #[test]
@@ -1665,12 +1660,12 @@ fn licensepack_holder_did_lookup_empty_string() {
     };
     pack.licenses.insert("lic-empty".to_string(), license);
 
-    // BUG-045: Empty DID matches licenses with holder_did: Some("")
+    // BUG-045 RESOLVED: empty DID now returns empty vec without matching
     let results = pack.get_licenses_by_holder_did("");
     assert_eq!(
         results.len(),
-        1,
-        "BUG-045: empty DID matches licenses with empty holder_did — should be rejected"
+        0,
+        "BUG-045 RESOLVED: empty DID correctly returns no matches"
     );
 }
 
@@ -1680,33 +1675,31 @@ fn licensepack_holder_did_lookup_empty_string() {
 
 #[test]
 fn watcher_rebond_zero_stake() {
-    // BUG-046: rebond(0) transitions from Slashed to Bonded without new collateral
+    // BUG-046 RESOLVED: rebond(0) now correctly rejected with InsufficientStake
     let mut w = Watcher::new(WatcherId::new());
     w.bond(1_000_000).unwrap();
     w.activate().unwrap();
     w.slash(SlashingCondition::AvailabilityFailure).unwrap();
 
-    // Rebond with zero additional stake — should be rejected
+    // Rebond with zero additional stake — correctly rejected
     let result = w.rebond(0);
-    // BUG-046: rebond(0) succeeds, transitioning to Bonded without new collateral
     assert!(
-        result.is_ok(),
-        "BUG-046: rebond(0) accepted — watcher recovers from slash without posting collateral"
+        result.is_err(),
+        "BUG-046 RESOLVED: rebond(0) correctly rejected — must post new collateral"
     );
 }
 
 #[test]
-fn watcher_bond_zero_correctly_rejected_but_rebond_zero_not() {
-    // bond(0) is correctly rejected with InsufficientStake
+fn watcher_bond_zero_correctly_rejected_and_rebond_zero_also() {
+    // BUG-046 RESOLVED: both bond(0) and rebond(0) now correctly rejected
     let mut w = Watcher::new(WatcherId::new());
     assert!(w.bond(0).is_err(), "bond(0) correctly rejected");
 
-    // But rebond(0) is not — BUG-046 inconsistency
     w.bond(100_000).unwrap();
     w.activate().unwrap();
     w.slash(SlashingCondition::Equivocation).unwrap();
-    // BUG-046: rebond(0) succeeds despite bond(0) being rejected
-    assert!(w.rebond(0).is_ok(), "BUG-046: rebond(0) succeeds — inconsistent with bond(0)");
+    // BUG-046 RESOLVED: rebond(0) now also correctly rejected, consistent with bond(0)
+    assert!(w.rebond(0).is_err(), "BUG-046 RESOLVED: rebond(0) correctly rejected — consistent with bond(0)");
 }
 
 // =========================================================================
@@ -1714,9 +1707,9 @@ fn watcher_bond_zero_correctly_rejected_but_rebond_zero_not() {
 // =========================================================================
 
 #[test]
-fn zkp_mock_circuit_data_not_in_proof_hash() {
-    // BUG-048: MockProofSystem::prove() hashes only public_inputs, not circuit_data
-    // Two different circuits with same public_inputs produce identical proofs
+fn zkp_mock_circuit_data_included_in_proof_hash() {
+    // BUG-048 RESOLVED: prove() now hashes canonical(circuit_data) || public_inputs
+    // Two different circuits with same public_inputs produce different proofs
     let sys = MockProofSystem;
     let pk = MockProvingKey;
 
@@ -1732,17 +1725,19 @@ fn zkp_mock_circuit_data_not_in_proof_hash() {
     let proof_a = sys.prove(&pk, &circuit_a).unwrap();
     let proof_b = sys.prove(&pk, &circuit_b).unwrap();
 
-    // BUG-048: Different circuits produce identical proofs because circuit_data
-    // is not included in the hash — only public_inputs are hashed
-    assert_eq!(
+    // BUG-048 RESOLVED: Different circuits now correctly produce different proofs
+    assert_ne!(
         proof_a.proof_hex, proof_b.proof_hex,
-        "BUG-048: different circuits with same public_inputs produce identical proofs"
+        "BUG-048 RESOLVED: different circuits produce different proofs"
     );
 }
 
 #[test]
 fn zkp_mock_empty_public_inputs() {
-    // Test: prove with empty public inputs should still work
+    // Test: prove with empty public inputs should still work.
+    // After BUG-048 fix, verify needs canonical(circuit_data) || public_inputs.
+    use msez_core::CanonicalBytes;
+
     let sys = MockProofSystem;
     let pk = MockProvingKey;
     let vk = MockVerifyingKey;
@@ -1755,8 +1750,11 @@ fn zkp_mock_empty_public_inputs() {
     let proof = sys.prove(&pk, &circuit).unwrap();
     assert_eq!(proof.proof_hex.len(), 64, "Empty inputs should produce valid 64-char hex proof");
 
-    let valid = sys.verify(&vk, &proof, &[]).unwrap();
-    assert!(valid, "Proof with empty inputs should verify against empty inputs");
+    // Verify requires canonical(circuit_data) || public_inputs
+    let canonical = CanonicalBytes::from_value(circuit.circuit_data.clone()).unwrap();
+    let verify_input: Vec<u8> = canonical.as_bytes().iter().chain(circuit.public_inputs.iter()).copied().collect();
+    let valid = sys.verify(&vk, &proof, &verify_input).unwrap();
+    assert!(valid, "Proof with empty inputs should verify when canonical circuit data is included");
 }
 
 #[test]
@@ -1812,8 +1810,7 @@ fn licensepack_condition_serde_empty_fields() {
 
 #[test]
 fn licensepack_resolve_refs_missing_fields() {
-    // BUG-050: resolve_licensepack_refs uses unwrap_or("") for missing fields
-    // Need a valid 64-char hex digest to pass the is_valid_sha256 check
+    // BUG-050 RESOLVED: entries with missing jurisdiction_id or domain are now skipped
     let valid_digest = "a".repeat(64);
     let zone = json!({
         "licensepacks": [
@@ -1823,8 +1820,6 @@ fn licensepack_resolve_refs_missing_fields() {
         ]
     });
     let refs = msez_pack::licensepack::resolve_licensepack_refs(&zone).unwrap();
-    assert_eq!(refs.len(), 1);
-    // BUG-050: Missing jurisdiction_id defaults to "" without error
-    assert_eq!(refs[0].jurisdiction_id, "", "BUG-050: missing jurisdiction_id defaults to empty string");
-    assert_eq!(refs[0].domain, "", "BUG-050: missing domain defaults to empty string");
+    // BUG-050 RESOLVED: entry with missing required fields is skipped
+    assert_eq!(refs.len(), 0, "BUG-050 RESOLVED: entries with missing fields are skipped");
 }

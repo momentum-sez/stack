@@ -172,9 +172,12 @@ fn cancel_rejected_at_and_after_transit() {
 
 #[test]
 fn compensation_records_context() {
+    // BUG-037 RESOLVED: compensation only valid from InTransit or later.
     let mut saga = test_saga();
     saga.advance().unwrap(); // ComplianceCheck
     saga.advance().unwrap(); // AttestationGathering
+    saga.advance().unwrap(); // SourceLocked
+    saga.advance().unwrap(); // InTransit
 
     saga.compensate("compliance_failure: sanctions hit")
         .unwrap();
@@ -319,8 +322,12 @@ fn compile_time_deadline_enforcement_doc_test_marker() {
 
 #[test]
 fn multiple_compensation_records() {
+    // BUG-037 RESOLVED: must reach InTransit before compensation.
     let mut saga = test_saga();
     saga.advance().unwrap(); // ComplianceCheck
+    saga.advance().unwrap(); // AttestationGathering
+    saga.advance().unwrap(); // SourceLocked
+    saga.advance().unwrap(); // InTransit
 
     // Record multiple failures before compensating
     saga.record_compensation_failure("unlock_source", "timeout");

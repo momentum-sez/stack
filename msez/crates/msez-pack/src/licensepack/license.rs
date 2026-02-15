@@ -94,9 +94,19 @@ impl License {
     /// Whether the license has expired based on the expiry date.
     pub fn is_expired(&self, today: &str) -> bool {
         match &self.expiry_date {
-            Some(expiry) => expiry.as_str() < today,
+            Some(expiry) => super::components::date_before(expiry, today),
             None => false,
         }
+    }
+
+    /// Validate that required fields are non-empty.
+    ///
+    /// Checks that `license_id`, `holder_id`, and `regulator_id` are
+    /// non-empty strings. Returns `true` if all required fields are present.
+    pub fn validate(&self) -> bool {
+        !self.license_id.trim().is_empty()
+            && !self.holder_id.trim().is_empty()
+            && !self.regulator_id.trim().is_empty()
     }
 
     /// Whether any active restriction blocks the given activity.

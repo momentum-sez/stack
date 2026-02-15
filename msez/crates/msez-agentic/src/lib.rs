@@ -52,6 +52,7 @@ pub mod audit;
 pub mod evaluation;
 pub mod policy;
 pub mod scheduler;
+pub mod tax;
 
 // Re-export primary types at crate root for ergonomic imports.
 pub use audit::{AuditEntry, AuditEntryType, AuditTrail};
@@ -61,4 +62,8 @@ pub use policy::{
 };
 pub use scheduler::{
     ActionScheduler, ActionStatus, CronSchedule, SchedulePattern, ScheduledAction,
+};
+pub use tax::{
+    FilerStatus, ReportParams, ReportStatus, TaxCategory, TaxEvent, TaxEventType, TaxPipeline,
+    TaxReport, WithholdingEngine, WithholdingResult, WithholdingRule,
 };

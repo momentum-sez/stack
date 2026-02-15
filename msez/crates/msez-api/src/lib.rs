@@ -21,6 +21,7 @@
 //! | `/v1/credentials/*`  | [`routes::credentials`]    | VC Verification (SEZ) |
 //! | `/v1/triggers`        | [`routes::agentic`]        | Agentic Engine (SEZ)|
 //! | `/v1/policies/*`      | [`routes::agentic`]        | Policy Mgmt (SEZ)   |
+//! | `/v1/tax/*`           | [`routes::tax`]            | Tax Pipeline (SEZ)  |
 //! | `/v1/regulator/*`     | [`routes::regulator`]      | Regulator (SEZ)     |
 //!
 //! ## Middleware Stack (execution order)
@@ -83,6 +84,7 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::credentials::router())
         .merge(routes::regulator::router())
         .merge(routes::agentic::router())
+        .merge(routes::tax::router())
         .merge(openapi::router())
         .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
         .layer(from_fn(auth::auth_middleware))

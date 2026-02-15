@@ -12,6 +12,8 @@
 //! - `regulator` — Read-only regulator console (SEZ Stack domain).
 //! - `agentic` — Autonomous policy engine: trigger ingestion, policy management,
 //!   and reactive corridor transitions via the typestate machine.
+//! - `tax` — Tax collection pipeline: event recording, withholding computation,
+//!   obligation tracking, and FBR IRIS report generation.
 
 pub mod agentic;
 pub mod corridors;
@@ -20,3 +22,4 @@ pub mod mass_proxy;
 pub mod regulator;
 pub mod settlement;
 pub mod smart_assets;
+pub mod tax;

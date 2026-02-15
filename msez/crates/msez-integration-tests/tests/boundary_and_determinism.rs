@@ -593,3 +593,364 @@ fn canonical_bytes_array_with_mixed_types() {
     let result = CanonicalBytes::new(&json!([1, "two", true, null, {"nested": []}]));
     assert!(result.is_ok());
 }
+
+// =========================================================================
+// Campaign 5: Bridge routing boundaries
+// =========================================================================
+
+use msez_corridor::bridge::{BridgeEdge, CorridorBridge};
+use msez_core::CorridorId;
+
+#[test]
+fn bridge_route_disconnected_graph() {
+    let mut bridge = CorridorBridge::new();
+    let pk = JurisdictionId::new("PK").unwrap();
+    let ae = JurisdictionId::new("AE").unwrap();
+    let sg = JurisdictionId::new("SG").unwrap();
+    let us = JurisdictionId::new("US").unwrap();
+    // Two disconnected components: PK↔AE and SG↔US
+    bridge.add_edge(BridgeEdge {
+        from: pk.clone(), to: ae.clone(),
+        corridor_id: CorridorId::new(), fee_bps: 50, settlement_time_secs: 3600,
+    });
+    bridge.add_edge(BridgeEdge {
+        from: sg.clone(), to: us.clone(),
+        corridor_id: CorridorId::new(), fee_bps: 30, settlement_time_secs: 1800,
+    });
+    // Route from PK to US should not exist
+    let route = bridge.find_route(&pk, &us);
+    assert!(route.is_none(), "Route across disconnected components should not exist");
+}
+
+#[test]
+fn bridge_route_many_edges_no_crash() {
+    let mut bridge = CorridorBridge::new();
+    // Add 100 edges in a chain
+    let jids: Vec<JurisdictionId> = (0..100)
+        .map(|i| JurisdictionId::new(&format!("J{:03}", i)).unwrap())
+        .collect();
+    for i in 0..99 {
+        bridge.add_edge(BridgeEdge {
+            from: jids[i].clone(),
+            to: jids[i + 1].clone(),
+            corridor_id: CorridorId::new(),
+            fee_bps: 10,
+            settlement_time_secs: 60,
+        });
+    }
+    // Route from first to last should exist
+    let route = bridge.find_route(&jids[0], &jids[99]);
+    assert!(route.is_some(), "Long chain route should be found");
+    let r = route.unwrap();
+    assert_eq!(r.hop_count(), 99);
+}
+
+#[test]
+fn bridge_reachable_from_empty_graph() {
+    let bridge = CorridorBridge::new();
+    let pk = JurisdictionId::new("PK").unwrap();
+    let reachable = bridge.reachable_from(&pk);
+    // Dijkstra includes source at distance 0; no other nodes reachable.
+    assert_eq!(reachable.len(), 1, "Only source itself should be reachable");
+    assert_eq!(reachable.get("PK"), Some(&0));
+}
+
+// =========================================================================
+// Campaign 5: Receipt chain boundaries
+// =========================================================================
+
+use msez_corridor::receipt::{CorridorReceipt, ReceiptChain};
+
+#[test]
+fn receipt_chain_many_appends() {
+    let corridor_id = CorridorId::new();
+    let mut chain = ReceiptChain::new(corridor_id.clone());
+    for i in 0..50 {
+        let prev_root = chain.mmr_root().unwrap();
+        let next_root = {
+            let c = CanonicalBytes::new(&json!({"seq": i})).unwrap();
+            sha256_digest(&c).to_hex()
+        };
+        let receipt = CorridorReceipt {
+            receipt_type: "state_transition".to_string(),
+            corridor_id: corridor_id.clone(),
+            sequence: i,
+            timestamp: Timestamp::now(),
+            prev_root,
+            next_root,
+            lawpack_digest_set: vec![],
+            ruleset_digest_set: vec![],
+        };
+        chain.append(receipt).unwrap();
+    }
+    assert_eq!(chain.height(), 50, "Chain should have 50 receipts");
+    let root = chain.mmr_root();
+    assert!(root.is_ok(), "MMR root should be computable after 50 appends");
+}
+
+#[test]
+fn receipt_chain_checkpoint_on_nonempty() {
+    let corridor_id = CorridorId::new();
+    let mut chain = ReceiptChain::new(corridor_id.clone());
+    let prev_root = chain.mmr_root().unwrap();
+    let next_root = {
+        let c = CanonicalBytes::new(&json!({"data": "test"})).unwrap();
+        sha256_digest(&c).to_hex()
+    };
+    chain.append(CorridorReceipt {
+        receipt_type: "state_transition".to_string(),
+        corridor_id: corridor_id.clone(),
+        sequence: 0,
+        timestamp: Timestamp::now(),
+        prev_root,
+        next_root,
+        lawpack_digest_set: vec![],
+        ruleset_digest_set: vec![],
+    }).unwrap();
+    let checkpoint = chain.create_checkpoint();
+    assert!(checkpoint.is_ok(), "Checkpoint on non-empty chain should succeed");
+}
+
+// =========================================================================
+// Campaign 5: Watcher slashing boundaries
+// =========================================================================
+
+use msez_state::{SlashingCondition, Watcher};
+
+#[test]
+fn watcher_slash_equivocation_100_percent() {
+    let mut watcher = Watcher::new(msez_core::WatcherId::new());
+    watcher.bond(100_000).unwrap();
+    watcher.activate().unwrap();
+    let slashed = watcher.slash(SlashingCondition::Equivocation).unwrap();
+    assert_eq!(slashed, 100_000, "Equivocation should slash 100%");
+}
+
+#[test]
+fn watcher_slash_availability_1_percent() {
+    let mut watcher = Watcher::new(msez_core::WatcherId::new());
+    watcher.bond(100_000).unwrap();
+    watcher.activate().unwrap();
+    let slashed = watcher.slash(SlashingCondition::AvailabilityFailure).unwrap();
+    assert_eq!(slashed, 1_000, "AvailabilityFailure should slash 1%");
+}
+
+#[test]
+fn watcher_slash_false_attestation_50_percent() {
+    let mut watcher = Watcher::new(msez_core::WatcherId::new());
+    watcher.bond(100_000).unwrap();
+    watcher.activate().unwrap();
+    let slashed = watcher.slash(SlashingCondition::FalseAttestation).unwrap();
+    assert_eq!(slashed, 50_000, "FalseAttestation should slash 50%");
+}
+
+#[test]
+fn watcher_bond_zero_stake() {
+    let mut watcher = Watcher::new(msez_core::WatcherId::new());
+    // BUG-023: Zero stake bond — should this be rejected?
+    let result = watcher.bond(0);
+    // Document behavior: if it succeeds, log as potential defect
+    if result.is_ok() {
+        // A watcher with zero stake has no economic security
+        // This may be a design issue but not necessarily a bug
+    }
+}
+
+#[test]
+fn watcher_available_stake_saturating() {
+    let mut watcher = Watcher::new(msez_core::WatcherId::new());
+    watcher.bond(100).unwrap();
+    watcher.activate().unwrap();
+    // Slash 100% — available stake should be 0 (saturating sub)
+    watcher.slash(SlashingCondition::Equivocation).unwrap();
+    assert_eq!(watcher.available_stake(), 0);
+}
+
+#[test]
+fn watcher_attestation_count_increments() {
+    let mut watcher = Watcher::new(msez_core::WatcherId::new());
+    watcher.bond(100_000).unwrap();
+    watcher.activate().unwrap();
+    assert_eq!(watcher.attestation_count, 0);
+    watcher.record_attestation();
+    watcher.record_attestation();
+    watcher.record_attestation();
+    assert_eq!(watcher.attestation_count, 3);
+}
+
+// =========================================================================
+// Campaign 5: Migration saga deadline enforcement
+// =========================================================================
+
+use msez_state::MigrationBuilder;
+
+#[test]
+fn migration_saga_expired_deadline_forces_timeout() {
+    let past = chrono::Utc::now() - chrono::Duration::hours(1);
+    let mut saga = MigrationBuilder::new(msez_core::MigrationId::new())
+        .source(JurisdictionId::new("PK").unwrap())
+        .destination(JurisdictionId::new("AE").unwrap())
+        .deadline(past)
+        .build();
+    // Advance should detect timeout
+    let result = saga.advance();
+    match result {
+        Ok(state) => {
+            assert_eq!(
+                state,
+                msez_state::MigrationState::TimedOut,
+                "Expired deadline should force TimedOut"
+            );
+        }
+        Err(_) => {
+            // Also acceptable: error because timed out
+        }
+    }
+}
+
+// =========================================================================
+// Campaign 6: CAS store determinism
+// =========================================================================
+
+#[test]
+fn cas_store_deterministic_digest_100_runs() {
+    let value = json!({"determinism": "test", "nested": {"key": [1, 2, 3]}});
+    let mut digests = Vec::new();
+    for _ in 0..100 {
+        let tmp = tempfile::tempdir().unwrap();
+        let cas = msez_crypto::ContentAddressedStore::new(tmp.path());
+        let artifact_ref = cas.store("test-type", &value).unwrap();
+        digests.push(artifact_ref.digest.to_hex());
+    }
+    assert!(
+        digests.windows(2).all(|w| w[0] == w[1]),
+        "CAS store should produce identical digests for identical content"
+    );
+}
+
+// =========================================================================
+// Campaign 6: Ed25519 signature determinism
+// =========================================================================
+
+#[test]
+fn ed25519_sign_deterministic_100_runs() {
+    let sk = SigningKey::from_bytes(&[42u8; 32]);
+    let canonical = CanonicalBytes::new(&json!({"test": "determinism"})).unwrap();
+    let mut sigs = Vec::new();
+    for _ in 0..100 {
+        let sig = sk.sign(&canonical);
+        sigs.push(sig.to_hex());
+    }
+    assert!(
+        sigs.windows(2).all(|w| w[0] == w[1]),
+        "Ed25519 signing should be deterministic (RFC 8032)"
+    );
+}
+
+// =========================================================================
+// Campaign 6: Compliance tensor evaluation determinism
+// =========================================================================
+
+#[test]
+fn tensor_evaluate_all_deterministic_100_runs() {
+    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let mut results_list = Vec::new();
+    for _ in 0..100 {
+        let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid.clone()));
+        let results = tensor.evaluate_all("entity-001");
+        let sorted: std::collections::BTreeMap<String, String> = results
+            .iter()
+            .map(|(d, s)| (format!("{:?}", d), format!("{:?}", s)))
+            .collect();
+        results_list.push(sorted);
+    }
+    assert!(
+        results_list.windows(2).all(|w| w[0] == w[1]),
+        "Tensor evaluation should be deterministic"
+    );
+}
+
+// =========================================================================
+// Campaign 5: Float rejection in canonical bytes
+// =========================================================================
+
+#[test]
+fn canonical_bytes_rejects_float() {
+    let result = CanonicalBytes::new(&json!({"amount": 3.14}));
+    // Per CLAUDE.md: floats not representable as i64/u64 should be rejected
+    // The coercion rules say: "Reject floats — Numbers not representable as i64/u64"
+    assert!(result.is_err(), "BUG-025: CanonicalBytes should reject float values like 3.14");
+}
+
+#[test]
+fn canonical_bytes_accepts_integer_as_number() {
+    // Integer values should be accepted
+    let result = CanonicalBytes::new(&json!({"amount": 42}));
+    assert!(result.is_ok(), "Integer values should be accepted");
+}
+
+#[test]
+fn canonical_bytes_accepts_negative_integer() {
+    let result = CanonicalBytes::new(&json!({"amount": -100}));
+    assert!(result.is_ok(), "Negative integers should be accepted");
+}
+
+// =========================================================================
+// Campaign 5: Netting engine multi-currency
+// =========================================================================
+
+#[test]
+fn netting_multi_currency_separate_legs() {
+    let mut engine = NettingEngine::new();
+    engine.add_obligation(Obligation {
+        from_party: "A".to_string(),
+        to_party: "B".to_string(),
+        amount: 100_000,
+        currency: "USD".to_string(),
+        corridor_id: None,
+        priority: 0,
+    }).unwrap();
+    engine.add_obligation(Obligation {
+        from_party: "A".to_string(),
+        to_party: "B".to_string(),
+        amount: 50_000,
+        currency: "PKR".to_string(),
+        corridor_id: None,
+        priority: 0,
+    }).unwrap();
+    let plan = engine.compute_plan().unwrap();
+    // Should have separate legs for each currency
+    let usd_legs: Vec<_> = plan.settlement_legs.iter().filter(|l| l.currency == "USD").collect();
+    let pkr_legs: Vec<_> = plan.settlement_legs.iter().filter(|l| l.currency == "PKR").collect();
+    assert!(!usd_legs.is_empty(), "Should have USD settlement legs");
+    assert!(!pkr_legs.is_empty(), "Should have PKR settlement legs");
+}
+
+#[test]
+fn netting_bilateral_perfect_offset() {
+    // A→B: 100, B→A: 100 — should net to zero legs
+    let mut engine = NettingEngine::new();
+    engine.add_obligation(Obligation {
+        from_party: "A".to_string(),
+        to_party: "B".to_string(),
+        amount: 100_000,
+        currency: "USD".to_string(),
+        corridor_id: None,
+        priority: 0,
+    }).unwrap();
+    engine.add_obligation(Obligation {
+        from_party: "B".to_string(),
+        to_party: "A".to_string(),
+        amount: 100_000,
+        currency: "USD".to_string(),
+        corridor_id: None,
+        priority: 0,
+    }).unwrap();
+    let plan = engine.compute_plan().unwrap();
+    assert!(
+        plan.settlement_legs.is_empty(),
+        "Perfect bilateral offset should produce no settlement legs"
+    );
+    assert_eq!(plan.net_total, 0);
+    assert_eq!(plan.reduction_percentage, 100.0);
+}

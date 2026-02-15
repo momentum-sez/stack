@@ -24,3 +24,13 @@
 | BUG-020 | P2 | msez-corridor | 2 | NettingEngine accepts self-obligations (from_party == to_party) without validation | DEFERRED |
 | BUG-021 | P2 | msez-corridor | 2 | NettingEngine accepts empty party ID strings without validation | DEFERRED |
 | BUG-022 | P2 | msez-corridor | 2 | NettingEngine accepts empty currency strings without validation | DEFERRED |
+| BUG-023 | P1 | msez-api | 7 | Mass proxy routes return inconsistent status codes: PUT returns 501, POST returns 422 (validation first), GET returns 503, some return 404/405. Should consistently return 501 when no Mass client configured | DEFERRED |
+| BUG-024 | P2 | msez-api | 7 | Settlement compute endpoint accepts negative obligation amounts without validation | DEFERRED |
+| BUG-025 | P2 | msez-arbitration | 4 | EnforcementOrder::block() only works from Pending state — no way to block an in-progress enforcement (design gap or missing state transition) | DEFERRED |
+| BUG-026 | P2 | msez-corridor | 5 | ReceiptChain sequence is 0-indexed but not documented — easy off-by-one for callers expecting 1-indexed | DEFERRED |
+| BUG-027 | P2 | msez-corridor | 5 | ReceiptChain prev_root must match MMR root (not previous next_root) — undocumented invariant causes silent append failures | DEFERRED |
+| BUG-028 | P2 | msez-corridor | 5 | CorridorBridge::reachable_from() always includes source node at distance 0 even in empty graph — not documented, misleading for callers checking reachability | DEFERRED |
+| BUG-029 | P2 | msez-agentic | 4 | ActionScheduler::mark_failed() silently retries (returns to Pending) when retries remain — callers expecting terminal failure must check retries_remaining or use with_max_retries(0) | DEFERRED |
+| BUG-030 | P1 | msez-api | 7 | Treasury proxy routes (/v1/treasury/*) return 404 instead of 501 — routes appear unregistered | DEFERRED |
+| BUG-031 | P1 | msez-api | 7 | Consent proxy routes (/v1/consent/*) return 405 instead of 501 — routes registered but wrong HTTP method | DEFERRED |
+| BUG-032 | P1 | msez-api | 7 | Identity proxy routes (/v1/identity/*) return 404/405 — routes appear unregistered or wrong method | DEFERRED |

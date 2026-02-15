@@ -55,6 +55,7 @@ use crate::state::AppState;
         // Regulator
         crate::routes::regulator::query_attestations,
         crate::routes::regulator::compliance_summary,
+        crate::routes::regulator::dashboard,
     ),
     components(schemas(
         // State record types (SEZ-Stack-owned)
@@ -96,6 +97,16 @@ use crate::state::AppState;
         crate::routes::regulator::QueryAttestationsRequest,
         crate::routes::regulator::QueryResultsResponse,
         crate::routes::regulator::ComplianceSummary,
+        // Regulator Dashboard DTOs
+        crate::routes::regulator::RegulatorDashboard,
+        crate::routes::regulator::ZoneStatus,
+        crate::routes::regulator::CompliancePosture,
+        crate::routes::regulator::AssetComplianceStatus,
+        crate::routes::regulator::CorridorOverview,
+        crate::routes::regulator::CorridorStatus,
+        crate::routes::regulator::PolicyActivity,
+        crate::routes::regulator::AuditEntrySummary,
+        crate::routes::regulator::SystemHealth,
     )),
     tags(
         (name = "entities", description = "ENTITIES primitive — proxied to Mass organization-info API"),

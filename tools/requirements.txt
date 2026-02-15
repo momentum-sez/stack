@@ -1,9 +1,0 @@
-# Pinned dependencies for SEZ Stack v0.4.44 GENESIS
-# IMPORTANT: Exact version pins are mandatory for sovereign infrastructure.
-# Non-reproducible builds are unacceptable for systems serving nation-states.
-# To update: run `pip install --upgrade <pkg>`, verify tests pass, then update pins.
-pyyaml==6.0.3
-jsonschema==4.26.0
-lxml==6.0.2
-pytest==9.0.2
-cryptography==46.0.5

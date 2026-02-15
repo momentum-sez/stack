@@ -574,7 +574,7 @@ async fn initiate_payment(
         &mass_req.amount,
         &currency,
         &envelope.compliance.jurisdiction_id,
-        &mass_req.reference,
+        mass_req.reference.as_deref().unwrap_or(""),
     )
     .await;
 
@@ -619,9 +619,9 @@ async fn generate_payment_tax_event(
     let gross_cents = parse_amount(amount).unwrap_or(0);
     let mut total_wht_cents: i64 = 0;
     for w in &withholdings {
-        total_wht_cents += parse_amount(&w.withholding_amount).unwrap_or(0);
+        total_wht_cents = total_wht_cents.saturating_add(parse_amount(&w.withholding_amount).unwrap_or(0));
     }
-    let net_cents = gross_cents - total_wht_cents;
+    let net_cents = gross_cents.saturating_sub(total_wht_cents);
 
     let record = TaxEventRecord {
         id: Uuid::new_v4(),

@@ -1,6 +1,6 @@
 const {
-  partHeading, chapterHeading, h2,
-  p, table, spacer
+  partHeading, chapterHeading, h2, h3,
+  p, p_runs, bold, table, spacer, pageBreak
 } = require("../lib/primitives");
 
 module.exports = function build_chapter05() {
@@ -8,6 +8,24 @@ module.exports = function build_chapter05() {
     ...partHeading("PART IV: CORE COMPONENTS \u2014 MODULES, PACK TRILOGY, PROFILES"),
     chapterHeading("Chapter 5: Module Specifications"),
     p("Modules are the unit of composition in the MSEZ Stack. Each module provides a discrete governance capability. Modules declare dependencies, expose interfaces, and can be composed into profiles."),
+
+    // --- Module Interface Summary ---
+    h3("Module Interface Summary"),
+    p_runs([bold("Table 5.0."), " Each module family exposes a principal trait that defines its interface boundary. The trait method count and key methods listed below represent the public contract; all inter-module communication passes through these traits."]),
+    table(
+      ["Module Family", "Interface Trait", "Methods", "Key Methods"],
+      [
+        ["Corridors", "CorridorService", "8", "establish(), sync_state(), verify_compliance(), bridge()"],
+        ["Governance", "GovernanceEngine", "6", "propose(), vote(), ratify(), amend()"],
+        ["Financial", "TreasuryOps", "7", "open_account(), execute_payment(), fx_convert(), custody_hold()"],
+        ["Regulatory", "ComplianceEvaluator", "5", "verify_identity(), screen_sanctions(), monitor_tx(), report()"],
+        ["Licensing", "LicenseRegistry", "5", "apply(), issue(), renew(), port_credential()"],
+        ["Legal", "DisputeResolver", "4", "file_dispute(), submit_evidence(), issue_ruling(), enforce()"],
+        ["Operational", "ZoneAdmin", "3", "provision(), configure(), audit_log()"],
+      ],
+      [1600, 2000, 960, 4800]
+    ),
+    spacer(),
 
     // --- 5.1 Corridors Module ---
     h2("5.1 Corridors Module"),

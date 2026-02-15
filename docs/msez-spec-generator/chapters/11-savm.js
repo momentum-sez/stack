@@ -2,7 +2,7 @@ const {
   chapterHeading, h2,
   p, p_runs, bold,
   codeBlock, table,
-  spacer, pageBreak
+  spacer, pageBreak, definition
 } = require("../lib/primitives");
 
 module.exports = function build_chapter11() {
@@ -85,8 +85,97 @@ module.exports = function build_chapter11() {
     ),
     spacer(),
 
-    // --- 11.5 Execution Receipts ---
-    h2("11.5 Execution Receipts"),
+    // --- 11.5 SAVM Execution Context ---
+    h2("11.5 SAVM Execution Context"),
+    p("The SAVM execution context encapsulates all state required to execute a compliance-aware smart asset program. The following example traces a complete compliance check execution flow for a cross-border payment from a Pakistan SEZ entity to a UAE free zone counterparty."),
+    definition("Example 11.1 (Cross-Border Payment Compliance Check).", "An entity in KSEZ (Karachi SEZ) initiates a USD 250,000 payment to a DMCC (Dubai) counterparty. The SAVM executes the compliance verification bytecode with the following flow:"),
+    ...codeBlock(
+      "// Step 1: Initialize execution context\n" +
+      "// caller = KSEZ entity (EntityId), jurisdiction = PAK\n" +
+      "// gas_limit = 2,000,000 (sufficient for tensor + ZK ops)\n" +
+      "\n" +
+      "PUSH entity_id          // Stack: [entity_id]\n" +
+      "PUSH jurisdiction_pak   // Stack: [entity_id, PAK]\n" +
+      "PUSH domain_aml_cft     // Stack: [entity_id, PAK, AML_CFT]\n" +
+      "TENSOR_GET              // Gas: 10,000. Stack: [aml_status]\n" +
+      "// aml_status = COMPLIANT (tensor cell PAK x AML_CFT)\n" +
+      "\n" +
+      "// Step 2: Verify FATF compliance via ZK proof\n" +
+      "PUSH fatf_proof_ref     // Stack: [aml_status, fatf_proof]\n" +
+      "PUSH verifier_bbs_plus  // Stack: [aml_status, fatf_proof, BBS+]\n" +
+      "VERIFY_ZK               // Gas: 75,000. Stack: [aml_status, true]\n" +
+      "// BBS+ selective disclosure: proves FATF compliance\n" +
+      "// without revealing underlying KYC data\n" +
+      "\n" +
+      "// Step 3: Check source jurisdiction tax clearance\n" +
+      "PUSH entity_id          // Stack: [aml_status, true, entity_id]\n" +
+      "PUSH jurisdiction_pak   // Stack: [..., entity_id, PAK]\n" +
+      "PUSH domain_tax         // Stack: [..., entity_id, PAK, TAX]\n" +
+      "TENSOR_GET              // Gas: 10,000. Stack: [..., tax_status]\n" +
+      "// tax_status = COMPLIANT (withholding tax paid)\n" +
+      "\n" +
+      "// Step 4: Check destination jurisdiction acceptance\n" +
+      "PUSH counterparty_id    // Stack: [..., counterparty_id]\n" +
+      "PUSH jurisdiction_uae   // Stack: [..., counterparty_id, UAE]\n" +
+      "PUSH domain_payments    // Stack: [..., counterparty_id, UAE, PAYMENTS]\n" +
+      "TENSOR_GET              // Gas: 10,000. Stack: [..., payments_status]\n" +
+      "\n" +
+      "// Step 5: Evaluate all conditions\n" +
+      "AND                     // Gas: 5. Combine tax + payments\n" +
+      "AND                     // Gas: 5. Combine with ZK result\n" +
+      "AND                     // Gas: 5. Combine with AML status\n" +
+      "// Stack: [true] — all compliance checks passed\n" +
+      "\n" +
+      "// Step 6: Emit compliance attestation and return\n" +
+      "PUSH attest_payload     // Compliance attestation reference\n" +
+      "ATTEST                  // Gas: 10,000. Write attestation to tensor\n" +
+      "RETURN                  // Total gas consumed: ~115,015"
+    ),
+    spacer(),
+    p("The execution consumed 115,015 gas units across four tensor lookups (40,000), one ZK verification (75,000), three boolean operations (15), and one attestation write (10,000). The compliance coprocessor handled all cryptographic operations transparently, and the final ATTEST instruction recorded the compliance result as a new tensor cell update bound to the execution receipt."),
+
+    // --- 11.6 Execution Receipts ---
+    h2("11.6 Execution Receipts"),
     p("Every SAVM execution produces a receipt containing the execution digest (SHA-256 of bytecode, input, and context), gas consumed, storage mutations as a set of key-value diffs, compliance tensor updates referencing affected cells and new states, emitted logs, and the execution outcome (success, revert, or out-of-gas). Receipts form an append-only chain, with each receipt referencing the digest of its predecessor. The receipt chain provides a complete audit trail of all programmable asset operations within a jurisdiction."),
+    ...codeBlock(
+      "/// Receipt produced by every SAVM execution.\n" +
+      "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +
+      "pub struct ExecutionReceipt {\n" +
+      "    /// SHA-256 of (bytecode || input || context) — unique execution ID.\n" +
+      "    pub execution_digest: Digest,\n" +
+      "    /// Digest of the previous receipt in the chain (zero digest for genesis).\n" +
+      "    pub prev_receipt_digest: Digest,\n" +
+      "    /// Monotonically increasing sequence number within this asset's chain.\n" +
+      "    pub sequence: u64,\n" +
+      "    /// Identity of the caller that initiated execution.\n" +
+      "    pub caller: EntityId,\n" +
+      "    /// Jurisdiction under which execution occurred.\n" +
+      "    pub jurisdiction: JurisdictionId,\n" +
+      "    /// Total gas consumed during execution.\n" +
+      "    pub gas_consumed: u64,\n" +
+      "    /// Storage mutations: vector of (key, old_value, new_value) triples.\n" +
+      "    pub storage_mutations: Vec<(U256, Option<U256>, Option<U256>)>,\n" +
+      "    /// Compliance tensor cells updated during execution.\n" +
+      "    pub tensor_updates: Vec<TensorCellUpdate>,\n" +
+      "    /// Logs emitted via the LOG instruction.\n" +
+      "    pub logs: Vec<ExecutionLog>,\n" +
+      "    /// Execution outcome.\n" +
+      "    pub outcome: ExecutionOutcome,\n" +
+      "    /// Timestamp of execution completion.\n" +
+      "    pub timestamp: chrono::DateTime<chrono::Utc>,\n" +
+      "}\n" +
+      "\n" +
+      "/// Outcome of a SAVM execution.\n" +
+      "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +
+      "pub enum ExecutionOutcome {\n" +
+      "    /// Execution completed successfully.\n" +
+      "    Success,\n" +
+      "    /// Execution reverted with a reason string.\n" +
+      "    Revert(String),\n" +
+      "    /// Execution ran out of gas at the given program counter.\n" +
+      "    OutOfGas { pc: usize, gas_limit: u64 },\n" +
+      "}"
+    ),
+    spacer(),
   ];
 };

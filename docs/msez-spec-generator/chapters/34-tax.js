@@ -1,5 +1,5 @@
 const {
-  chapterHeading, h2, h3,
+  chapterHeading, h2,
   p, p_runs, bold,
   codeBlock, table, spacer
 } = require("../lib/primitives");
@@ -15,23 +15,6 @@ module.exports = function build_chapter34() {
     // --- 34.2 Tax Framework Module ---
     h2("34.2 Tax Framework Module"),
     p("The Tax Framework Module defines jurisdiction-specific tax rules, rates, thresholds, and exemptions. It consumes lawpack data (e.g., Income Tax Ordinance 2001, Sales Tax Act 1990) and regpack data (FBR SROs, SBP circulars) to maintain current tax parameters. Tax computation is triggered automatically via msez-agentic on every qualifying transaction."),
-
-    h3("34.2.1 Tax Regime Types"),
-    p("Six regime types model the full spectrum of tax frameworks across jurisdictions:"),
-    table(
-      ["Regime Type", "Description", "Example"],
-      [
-        ["Territorial", "Taxes only income sourced within the jurisdiction", "UAE (no personal income tax), Hong Kong (territorial basis)"],
-        ["Worldwide", "Taxes global income of residents with foreign tax credits", "Pakistan (ITO 2001), United States"],
-        ["Exemption", "Full exemption from specified tax categories within SEZ", "Pakistan SEZ Act 2012 Schedule II (10-year income tax exemption)"],
-        ["Withholding", "Tax collected at source on specified payment types", "Pakistan WHT per ITO 2001 \u00a7153, UAE 0% WHT"],
-        ["Consumption", "VAT/GST/Sales tax on goods and services", "Pakistan Sales Tax Act 1990 (17% standard rate)"],
-        ["Transfer Pricing", "Arm's length pricing for related-party transactions", "OECD guidelines, Pakistan ITO 2001 \u00a7108"],
-      ],
-      [2200, 4200, 2960]
-    ),
-    spacer(),
-
     p_runs([bold("Pakistan Tax Collection Pipeline."), " Every transaction through a Pakistan SEZ generates tax events: withholding tax (WHT) on payments per Section 153, sales tax on services per provincial laws, capital gains tax on securities transfers per Section 37A, and customs duty exemptions per SEZ Act 2012. The pipeline computes applicable taxes, creates withholding entries via treasury-info.api.mass.inc, and generates tax certificates as Verifiable Credentials."]),
     ...codeBlock(
       "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +
@@ -50,51 +33,60 @@ module.exports = function build_chapter34() {
     ),
     spacer(),
 
+    p_runs([bold("Tax Regime Types."), " The Tax Framework Module supports the following regime types, each defining how taxable income is sourced and computed. Jurisdiction packs declare which regime applies, and the tensor evaluator selects the correct computation path accordingly."]),
+    table(
+      ["Regime Type", "Description", "Example Jurisdictions"],
+      [
+        ["Territorial", "Taxes only income sourced within the jurisdiction; foreign-source income is exempt", "Hong Kong, Singapore, Panama"],
+        ["Worldwide", "Taxes all income regardless of source; foreign tax credits may apply to avoid double taxation", "United States, India, Brazil"],
+        ["Hybrid", "Combines territorial and worldwide elements; typically territorial for active business income, worldwide for passive income", "United Kingdom, Japan, France"],
+        ["Flat Rate", "Applies a single uniform tax rate to all taxable income regardless of amount or source", "Estonia (20%), Georgia (20%), Hungary (9%)"],
+        ["Progressive", "Applies increasing tax rates to successive income brackets; higher income taxed at higher rates", "Pakistan, Germany, Australia"],
+        ["Special Economic Zone", "Provides preferential tax treatment within designated zones; may include full exemptions or reduced rates for qualifying activities", "Pakistan SEZs (SEZ Act 2012), UAE Free Zones, China SEZs"],
+      ],
+      [1800, 4560, 3000]
+    ),
+    spacer(),
+
     // --- 34.3 Fee Schedules Module ---
     h2("34.3 Fee Schedules Module"),
     p("The Fee Schedules Module manages SEZ-specific fee structures for entity formation, annual maintenance, transaction processing, and corridor usage. Fee schedules are jurisdiction-specific and may include tiered pricing, volume discounts, and incentive program credits. All fees are collected through treasury-info.api.mass.inc with full audit trail."),
+    p_runs([bold("Fee Schedule Examples."), " The following table illustrates typical fee ranges across SEZ jurisdictions. Actual fees are loaded from the regpack for each jurisdiction and may be adjusted by incentive program credits."]),
     table(
-      ["Fee Category", "Structure", "Collection Method"],
+      ["Fee Category", "Typical Range", "Billing Frequency", "Notes"],
       [
-        ["Formation Fees", "Fixed per entity type (e.g., PKR 15,000 for PLC)", "One-time at registration via treasury API"],
-        ["Annual Maintenance", "Tiered by authorized capital", "Annual invoice, agentic reminder at 90/60/30 days"],
-        ["Transaction Fees", "Basis points on transaction value (1-10 bps)", "Real-time deduction per transaction"],
-        ["Corridor Usage", "Per-transaction + monthly minimum", "Aggregated monthly billing"],
-        ["License Fees", "Per license type per authority schedule", "Per authority schedule, renewal-linked"],
-        ["Filing Fees", "Fixed per filing type", "At time of filing submission"],
+        ["Entity Formation", "$500 - $5,000", "One-time", "Varies by entity type (LLC, PLC, branch); includes government filing fees"],
+        ["Annual Maintenance", "$200 - $2,000", "Annual", "Covers registered agent, compliance filing, annual return preparation"],
+        ["Transaction Processing", "0.1% - 0.5%", "Per transaction", "Applied to treasury operations; tiered by volume with caps"],
+        ["Corridor Usage", "$50 - $500", "Per corridor operation", "Cross-border corridor fees; includes compliance tensor evaluation"],
+        ["License Renewal", "$100 - $1,000", "Annual", "Per license type; regulator-specific fees passed through"],
+        ["Document Certification", "$25 - $150", "Per document", "VC issuance for trade documents, tax certificates, compliance attestations"],
       ],
-      [2200, 3600, 3560]
+      [2000, 1800, 1800, 3760]
     ),
     spacer(),
 
     // --- 34.4 Incentive Programs Module ---
     h2("34.4 Incentive Programs Module"),
-    p("The Incentive Programs Module tracks tax holidays, reduced rates, exemptions, and credits available within SEZ jurisdictions. It evaluates entity eligibility based on formation date, activity type, investment amount, and employment targets. Incentive claims are verified against lawpack provisions and issued as Verifiable Credentials."),
+    p("The Incentive Programs Module tracks tax holidays, reduced rates, exemptions, and credits available within SEZ jurisdictions. It evaluates entity eligibility based on formation date, activity type, investment amount, and employment targets. Incentive claims are verified against lawpack provisions (e.g., SEZ Act 2012 Schedule II exemptions) and issued as Verifiable Credentials."),
+    p_runs([bold("Incentive Program Types."), " The following programs are supported. Each program type defines eligibility criteria, benefit computation, duration limits, and clawback conditions. The compliance tensor evaluates program applicability per entity per jurisdiction."]),
     table(
-      ["Incentive Type", "Pakistan SEZ Example", "Duration"],
+      ["Program", "Mechanism", "Typical Duration", "Eligibility Criteria"],
       [
-        ["Income Tax Exemption", "100% exemption per SEZ Act 2012 Schedule II", "10 years from commercial production"],
-        ["Customs Duty Exemption", "Zero duty on capital goods imports for SEZ enterprises", "Duration of SEZ status"],
-        ["Sales Tax Exemption", "Zero-rated supplies within SEZ", "Duration of SEZ status"],
-        ["Capital Gains Relief", "Reduced CGT rate on SEZ enterprise shares", "5 years from listing"],
-        ["Stamp Duty Waiver", "Exemption on property transfers within SEZ", "Duration of SEZ status"],
-        ["Accelerated Depreciation", "Enhanced first-year allowances on plant and machinery", "First 3 years of operation"],
+        ["Tax Holiday", "Full exemption from income tax for a defined period after formation or investment", "5 - 10 years", "New entity in designated SEZ; minimum capital investment; approved activity sector"],
+        ["Reduced Rate", "Lower tax rate applied instead of standard rate for qualifying income", "Indefinite or time-limited", "Entity operating within SEZ; income derived from approved activities"],
+        ["Investment Allowance", "Accelerated depreciation or additional deduction on qualifying capital expenditure", "Per asset useful life", "Capital investment in plant, machinery, or technology above minimum threshold"],
+        ["R&D Credit", "Tax credit computed as a percentage of qualifying research and development expenditure", "Annual claim", "R&D expenditure exceeding baseline; approved research activities per lawpack"],
+        ["Employment Incentive", "Tax credit or deduction for each qualifying employee hired above baseline headcount", "2 - 5 years per hire", "New hires in SEZ; minimum employment duration; local workforce percentage targets"],
+        ["Export Incentive", "Reduced rate or exemption on income derived from qualifying export transactions", "Linked to export volume", "Export revenue exceeding threshold; goods/services shipped outside jurisdiction via corridor"],
       ],
-      [2200, 4200, 2960]
+      [1600, 3000, 1600, 3160]
     ),
     spacer(),
 
     // --- 34.5 International Reporting Module ---
     h2("34.5 International Reporting Module"),
-    p("The International Reporting Module generates cross-border tax reports including CRS, FATCA, transfer pricing documentation, and country-by-country reporting."),
-
-    h3("34.5.1 CRS Reporting"),
-    p("Common Reporting Standard (CRS) compliance requires automatic exchange of financial account information with treaty partner jurisdictions. The module identifies reportable accounts (accounts held by non-residents with balances above de minimis thresholds), extracts required data points (name, address, TIN, account balance, income), formats reports per OECD CRS XML schema, and transmits to the jurisdiction's competent authority for exchange."),
-
-    h3("34.5.2 FATCA Reporting"),
-    p("Foreign Account Tax Compliance Act (FATCA) reporting identifies U.S. persons holding accounts in non-U.S. financial institutions. The module performs U.S. indicia checks (citizenship, residence, phone numbers, standing instructions), classifies entities under FATCA categories (participating FFI, deemed-compliant, NFFE), generates Form 8966 equivalent reports, and handles recalcitrant account procedures."),
-
-    h3("34.5.3 Transfer Pricing"),
-    p("Transfer pricing documentation is generated automatically for related-party transactions crossing jurisdictional boundaries through corridors. The module captures transaction details, identifies comparable uncontrolled transactions, applies the most appropriate method (CUP, resale price, cost plus, TNMM, profit split), and generates master file, local file, and country-by-country report per OECD BEPS Action 13."),
+    p("The International Reporting Module generates cross-border tax reports including CRS (Common Reporting Standard) disclosures, FATCA reporting, transfer pricing documentation, and country-by-country reporting. It aggregates data from Mass APIs through msez-mass-client and applies jurisdiction-specific reporting formats and thresholds from the regpack."),
+    p_runs([bold("CRS and FATCA Reporting Thresholds."), " The module applies jurisdiction-specific reporting thresholds to determine which accounts and entities must be reported. Under CRS, individual accounts with aggregate balances below $250,000 USD equivalent at year-end are subject to simplified due diligence, while those above require enhanced procedures. Entity accounts with aggregate balances above $1,000,000 USD equivalent require look-through to controlling persons. Under FATCA, thresholds for US persons are $50,000 (domestic institutions) or $200,000/$300,000 (foreign institutions, single/joint). The module automatically classifies accounts against these thresholds using balance data from treasury-info.api.mass.inc and beneficial ownership data from organization-info.api.mass.inc."]),
   ];
 };

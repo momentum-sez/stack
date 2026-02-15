@@ -1,5 +1,5 @@
 const {
-  chapterHeading, h2,
+  chapterHeading, h2, h3,
   p, p_runs, bold,
   definition, codeBlock, table,
   spacer
@@ -13,9 +13,8 @@ module.exports = function build_chapter20() {
     h2("20.1 Manifold Definition"),
     definition(
       "Definition 20.1 (Compliance Manifold).",
-      "The compliance manifold M is a continuous surface over jurisdictional coordinates where height represents compliance burden: M: R^n \u2192 R, where n is the number of jurisdictional dimensions."
+      "The compliance manifold M is a continuous surface over jurisdictional coordinates where height represents compliance burden: M: R^n -> R, where n is the number of jurisdictional dimensions."
     ),
-    p("The manifold extends the discrete compliance tensor into a continuous analytical surface. While the tensor tracks individual (asset, jurisdiction, domain) compliance states, the manifold provides a global view of compliance cost across the entire jurisdictional space. This enables path optimization for cross-border operations: rather than evaluating compliance pairwise for each hop, the manifold provides gradient information that directs migration and corridor routing toward paths of minimal compliance overhead."),
     ...codeBlock(
       "/// The compliance manifold: continuous surface over jurisdictional coordinates.\n" +
       "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +
@@ -43,26 +42,133 @@ module.exports = function build_chapter20() {
 
     // --- 20.2 Migration Path Optimization ---
     h2("20.2 Migration Path Optimization"),
-    p("Path cost is computed as the line integral of compliance burden along the path: Cost(P) = \u222B_P compliance_burden(x) dx. The optimal path minimizes this integral while satisfying all waypoint constraints. The optimization accounts for four cost components:"),
-    table(
-      ["Component", "Weight", "Description"],
-      [
-        ["Compliance Evaluation", "Direct tensor evaluation cost", "Number of domains requiring fresh evaluation at each hop"],
-        ["Attestation Acquisition", "Time and fee to obtain required attestations", "Watcher availability, bond requirements per domain"],
-        ["Settlement Latency", "Time from initiation to confirmed finality", "Corridor-specific settlement parameters and queue depth"],
-        ["Regulatory Overhead", "Filing and reporting obligations triggered by transit", "Per-jurisdiction reporting thresholds and filing requirements"],
-      ],
-      [2400, 3200, 3760]
+    definition(
+      "Definition 20.2 (Migration Path).",
+      "A migration path P from jurisdiction J1 to J2 is a sequence of intermediate jurisdictions " +
+      "[J1, Jk1, Jk2, ..., J2] where each consecutive pair has an active corridor. The path cost " +
+      "is the line integral Cost(P) = \u222B_P compliance_burden(x) dx, summing the compliance " +
+      "overhead at each waypoint."
+    ),
+    p(
+      "The optimal path minimizes this integral while satisfying all waypoint constraints. " +
+      "The manifold's optimal_path method uses Dijkstra's algorithm over the corridor graph, " +
+      "where edge weights are the evaluated compliance burden between each consecutive " +
+      "jurisdiction pair."
     ),
     spacer(),
-    p("The PathRouter pre-computes manifold gradients for all active corridor pairs during quiet periods. When a migration request arrives, the router queries the pre-computed gradient cache and produces a ranked list of candidate paths within the latency budget. Cache invalidation occurs on any tensor update, regpack refresh, or corridor state transition affecting the relevant jurisdictions."),
 
-    // --- 20.3 Attestation Gap Analysis ---
-    h2("20.3 Attestation Gap Analysis"),
-    definition(
-      "Definition 20.3 (Attestation Gap).",
-      "An attestation gap represents a compliance requirement not satisfied by current attestations. It includes the requirement specification, domain, jurisdiction, severity, blocking status, and remediation options with estimated time and cost to fill."
+    h3("20.2.1 Example: PAK \u2192 UAE \u2192 KSA Migration Path"),
+    p(
+      "Consider an entity migrating from Pakistan (PAK) to Saudi Arabia (KSA) via the " +
+      "United Arab Emirates (UAE). Each hop traverses an active corridor with its own " +
+      "compliance burden, computed from the tensor evaluation at that jurisdictional coordinate."
     ),
-    p("Gap analysis runs automatically when a migration path is computed. For each hop, the manifold evaluates the destination jurisdiction's compliance requirements against the asset's current tensor state. Requirements not covered by valid attestations produce gaps. Gaps are classified as blocking (migration cannot proceed until filled) or non-blocking (migration proceeds with reduced finality level). The gap report includes remediation options: which watcher roles can provide the needed attestation, estimated time to acquisition, and associated fees. The agentic trigger system can initiate gap remediation automatically for non-blocking gaps, reducing migration latency for subsequent transfers along the same path."),
+    table(
+      ["Hop", "From", "To", "Compliance Burden", "Cumulative Cost"],
+      [
+        ["1", "PAK", "UAE", "0.42 (FBR exit clearance, SBP forex approval, FATF screening)", "0.42"],
+        ["2", "UAE", "KSA", "0.31 (DFSA re-registration, VAT alignment, GCC corridor treaty)", "0.73"],
+      ],
+      [936, 1170, 1170, 3744, 2340]
+    ),
+    spacer(),
+    p_runs([
+      bold("Total path cost: "),
+      "Cost(P) = 0.42 + 0.31 = 0.73. ",
+      "A direct PAK \u2192 KSA path (if a corridor existed) would have an estimated burden of 0.89, ",
+      "making the UAE waypoint route 18% cheaper. The manifold surface reveals UAE as a compliance ",
+      "valley \u2014 a low-burden intermediate that reduces aggregate migration cost."
+    ]),
+    spacer(),
+    ...codeBlock(
+      "// Example: computing a migration path cost\n" +
+      "let manifold = ComplianceManifold::from_tensor(&tensor, &jurisdictions)?;\n" +
+      "let path = manifold.optimal_path(\n" +
+      "    &JurisdictionId::from(\"PAK\"),\n" +
+      "    &JurisdictionId::from(\"KSA\"),\n" +
+      "    &[],  // no forced waypoints; algorithm discovers UAE\n" +
+      ")?;\n" +
+      "assert_eq!(path.waypoints, vec![\"PAK\", \"UAE\", \"KSA\"]);\n" +
+      "assert!((path.total_cost - 0.73).abs() < 1e-6);"
+    ),
+    spacer(),
+
+    // --- 20.3 Manifold Visualization ---
+    h2("20.3 Manifold Visualization"),
+    p(
+      "The compliance manifold exists in n-dimensional jurisdictional space, but operators " +
+      "require a 2D projection for dashboard display. The manifold can be projected onto a " +
+      "two-dimensional plane using dimensionality reduction techniques that preserve the " +
+      "topological structure most relevant to migration path planning."
+    ),
+    p(
+      "The primary projection maps jurisdictions to a 2D coordinate system where spatial " +
+      "proximity corresponds to low compliance burden between jurisdictions. Corridors with " +
+      "active trade agreements (e.g., GCC member states) cluster together, while jurisdictions " +
+      "with high regulatory barriers (sanctions, FATF greylist status) appear as distant peaks. " +
+      "The surface height at each point encodes the local compliance burden, rendered as a " +
+      "heatmap or contour plot."
+    ),
+
+    h3("20.3.1 Projection Method"),
+    p(
+      "Given the manifold M: R^n \u2192 R, the dashboard projection \u03C0: R^n \u2192 R^2 is computed " +
+      "by selecting the two principal components of the jurisdictional distance matrix " +
+      "D[i,j] = Cost(optimal_path(Ji, Jj)). This preserves the metric structure that " +
+      "operators care about: jurisdictions that are cheap to migrate between appear close " +
+      "together, and compliance valleys (low-cost waypoints like UAE free zones) are visually " +
+      "identifiable as basins in the rendered surface."
+    ),
+    p(
+      "The visualization overlays active corridors as directed edges, with edge thickness " +
+      "proportional to trade volume and color encoding compliance burden (green for low, " +
+      "red for high). Attestation gaps (Definition 20.4) are rendered as warning markers at " +
+      "the affected jurisdictional coordinate."
+    ),
+    spacer(),
+
+    // --- 20.4 Attestation Gap Analysis ---
+    h2("20.4 Attestation Gap Analysis"),
+    definition(
+      "Definition 20.4 (Attestation Gap).",
+      "An attestation gap represents a compliance requirement not satisfied by current " +
+      "attestations. It captures the specific requirement, its compliance domain, the " +
+      "jurisdiction in which it applies, the severity of non-compliance, whether it blocks " +
+      "forward progress, and the available remediation paths with estimated time and cost."
+    ),
+    spacer(),
+    ...codeBlock(
+      "/// A compliance requirement not yet satisfied by current attestations.\n" +
+      "/// Identified during manifold traversal when an entity's credential set\n" +
+      "/// does not cover a waypoint's requirements.\n" +
+      "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +
+      "pub struct AttestationGap {\n" +
+      "    /// Unique identifier for the unsatisfied requirement.\n" +
+      "    pub requirement_id: RequirementId,\n" +
+      "    /// The compliance domain (e.g., Tax, Sanctions, Licensing).\n" +
+      "    pub domain: ComplianceDomain,\n" +
+      "    /// The jurisdiction where this gap applies.\n" +
+      "    pub jurisdiction: JurisdictionId,\n" +
+      "    /// Severity of the gap: determines escalation and reporting.\n" +
+      "    pub severity: GapSeverity, // Critical | High | Medium | Low\n" +
+      "    /// Whether this gap blocks corridor traversal or entity migration.\n" +
+      "    pub blocking: bool,\n" +
+      "    /// Available remediation paths to fill the gap.\n" +
+      "    pub remediation_options: Vec<RemediationOption>,\n" +
+      "    /// Estimated calendar days to remediate (shortest option).\n" +
+      "    pub estimated_days: u32,\n" +
+      "    /// Estimated cost in USD to remediate (cheapest option).\n" +
+      "    pub estimated_cost: f64,\n" +
+      "}\n" +
+      "\n" +
+      "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +
+      "pub enum GapSeverity {\n" +
+      "    Critical, // Regulatory violation; immediate enforcement risk\n" +
+      "    High,     // Non-compliance with mandatory filing or license\n" +
+      "    Medium,   // Best-practice gap; may trigger audit flags\n" +
+      "    Low,      // Advisory; no enforcement consequence\n" +
+      "}"
+    ),
+    spacer(),
   ];
 };

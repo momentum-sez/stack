@@ -27,6 +27,26 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Escape a string for safe inclusion in XML text content.
+///
+/// Replaces the five XML special characters with their entity references.
+/// This prevents XML injection when user-supplied strings (names, account IDs,
+/// remittance info) are interpolated into pacs.008 messages.
+fn xml_escape(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&apos;"),
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
 /// Trait for settlement rail implementations.
 ///
 /// Sealed — only implementations within this crate are permitted.
@@ -153,11 +173,26 @@ impl SettlementRail for SwiftPacs008 {
             return Err(SettlementRailError::MissingField("message_id".to_string()));
         }
 
-        // Format amount with decimal point based on currency convention.
-        // For simplicity, use 2 decimal places (standard for most currencies).
-        let amount_major = instruction.amount / 100;
-        let amount_minor = instruction.amount % 100;
-        let formatted_amount = format!("{amount_major}.{amount_minor:02}");
+        // Format amount with decimal point based on ISO 4217 currency convention.
+        // Most currencies use 2 decimal places, but JPY/KRW use 0, BHD/KWD/OMR use 3.
+        let minor_units = match instruction.currency.as_str() {
+            "JPY" | "KRW" | "VND" | "CLP" | "ISK" | "UGX" | "PYG" => 0,
+            "BHD" | "KWD" | "OMR" => 3,
+            _ => 2, // USD, EUR, GBP, PKR, AED, SGD, etc.
+        };
+        let formatted_amount = match minor_units {
+            0 => format!("{}", instruction.amount),
+            3 => {
+                let major = instruction.amount / 1000;
+                let minor = (instruction.amount % 1000).unsigned_abs();
+                format!("{major}.{minor:03}")
+            }
+            _ => {
+                let major = instruction.amount / 100;
+                let minor = (instruction.amount % 100).unsigned_abs();
+                format!("{major}.{minor:02}")
+            }
+        };
 
         let remittance = instruction
             .remittance_info
@@ -223,17 +258,17 @@ impl SettlementRail for SwiftPacs008 {
     </CdtTrfTxInf>
   </FIToFICstmrCdtTrf>
 </Document>"#,
-            msg_id = instruction.message_id,
-            instructing_bic = self.instructing_agent_bic,
-            currency = instruction.currency,
+            msg_id = xml_escape(&instruction.message_id),
+            instructing_bic = xml_escape(&self.instructing_agent_bic),
+            currency = xml_escape(&instruction.currency),
             amount = formatted_amount,
-            debtor_name = instruction.debtor_name,
-            debtor_bic = instruction.debtor_bic,
-            debtor_account = instruction.debtor_account,
-            creditor_name = instruction.creditor_name,
-            creditor_bic = instruction.creditor_bic,
-            creditor_account = instruction.creditor_account,
-            remittance = remittance,
+            debtor_name = xml_escape(&instruction.debtor_name),
+            debtor_bic = xml_escape(&instruction.debtor_bic),
+            debtor_account = xml_escape(&instruction.debtor_account),
+            creditor_name = xml_escape(&instruction.creditor_name),
+            creditor_bic = xml_escape(&instruction.creditor_bic),
+            creditor_account = xml_escape(&instruction.creditor_account),
+            remittance = xml_escape(remittance),
         );
 
         Ok(xml)
@@ -341,6 +376,58 @@ mod tests {
         instr.remittance_info = None;
         let xml = adapter.generate_instruction(&instr).unwrap();
         assert!(xml.contains("SEZ Settlement"));
+    }
+
+    #[test]
+    fn xml_injection_prevented_in_names() {
+        let adapter = SwiftPacs008::new("MSEZSEXX");
+        let mut instr = sample_instruction();
+        instr.debtor_name = r#"Evil<Nm>INJECTED</Nm></CdtTrfTxInf><script>alert("xss")</script>"#.to_string();
+        instr.creditor_name = "O'Brien & Sons \"Ltd\"".to_string();
+        let xml = adapter.generate_instruction(&instr).unwrap();
+        assert!(xml.contains("Evil&lt;Nm&gt;INJECTED&lt;/Nm&gt;"));
+        assert!(xml.contains("O&apos;Brien &amp; Sons &quot;Ltd&quot;"));
+        assert!(!xml.contains("<script>"));
+    }
+
+    #[test]
+    fn xml_injection_prevented_in_accounts() {
+        let adapter = SwiftPacs008::new("MSEZSEXX");
+        let mut instr = sample_instruction();
+        instr.debtor_account = "ACCT&<>\"'".to_string();
+        instr.remittance_info = Some("Pay & <settle>".to_string());
+        let xml = adapter.generate_instruction(&instr).unwrap();
+        assert!(xml.contains("ACCT&amp;&lt;&gt;&quot;&apos;"));
+        assert!(xml.contains("Pay &amp; &lt;settle&gt;"));
+    }
+
+    #[test]
+    fn xml_escape_handles_empty_and_normal() {
+        assert_eq!(xml_escape(""), "");
+        assert_eq!(xml_escape("normal text"), "normal text");
+        assert_eq!(xml_escape("a&b"), "a&amp;b");
+        assert_eq!(xml_escape("<tag>"), "&lt;tag&gt;");
+    }
+
+    #[test]
+    fn jpy_zero_decimal_formatting() {
+        let adapter = SwiftPacs008::new("MSEZSEXX");
+        let mut instr = sample_instruction();
+        instr.currency = "JPY".to_string();
+        instr.amount = 50000;
+        let xml = adapter.generate_instruction(&instr).unwrap();
+        // JPY has 0 decimal places — amount is already in whole yen
+        assert!(xml.contains(">50000<"));
+    }
+
+    #[test]
+    fn bhd_three_decimal_formatting() {
+        let adapter = SwiftPacs008::new("MSEZSEXX");
+        let mut instr = sample_instruction();
+        instr.currency = "BHD".to_string();
+        instr.amount = 12345; // 12.345 BHD
+        let xml = adapter.generate_instruction(&instr).unwrap();
+        assert!(xml.contains("12.345"));
     }
 
     #[test]

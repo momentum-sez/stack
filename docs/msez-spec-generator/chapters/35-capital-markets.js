@@ -1,6 +1,7 @@
 const {
   chapterHeading, h2,
-  p, pageBreak, table,
+  p, p_runs, bold,
+  pageBreak, table,
   spacer
 } = require("../lib/primitives");
 
@@ -32,43 +33,45 @@ module.exports = function build_chapter35() {
     // --- 35.2 Securities Issuance Module ---
     h2("35.2 Securities Issuance Module"),
     p("The Securities Issuance Module orchestrates primary issuance of equity, debt, and hybrid instruments. It manages offering document generation (via Mass templating-engine), investor qualification verification (via compliance tensor), allocation computation, and settlement. Each issued security is represented as a Smart Asset with full lifecycle tracking through the receipt chain."),
+    p_runs([bold("Issuance Types."), " The module supports the following primary issuance mechanisms, each with distinct regulatory requirements evaluated through the compliance tensor."]),
     table(
-      ["Issuance Type", "Description", "Regulatory Requirements"],
+      ["Issuance Type", "Description", "Regulatory Requirements", "Typical Use Case"],
       [
-        ["Initial Public Offering (IPO)", "First public sale of securities with prospectus filing", "Prospectus approval, underwriter appointment, lock-up periods"],
-        ["Rights Issue", "Offer to existing shareholders proportional to holdings", "Shareholder circular, record date, subscription period"],
-        ["Private Placement", "Sale to qualified institutional buyers without public offering", "Investor accreditation verification, placement memorandum"],
-        ["Shelf Registration", "Pre-approved framework for multiple future issuances", "Base prospectus, takedown supplements per tranche"],
+        ["IPO (Initial Public Offering)", "First public offering of securities to the general market via a regulated exchange", "Full prospectus, regulator approval, underwriter due diligence, investor suitability checks", "Company listing on PSX, ADX, or other exchange; requires SECP/SCA approval"],
+        ["Rights Issue", "Offering of new shares to existing shareholders in proportion to their current holdings", "Circular to shareholders, board resolution, regulator notification, pre-emptive rights compliance", "Capital raise by listed company; existing shareholders get priority allocation"],
+        ["Private Placement", "Direct sale of securities to a limited number of qualified or institutional investors", "Information memorandum, investor accreditation verification, exemption filing", "Pre-IPO funding round, institutional capital raise; fewer disclosure requirements"],
+        ["Shelf Registration", "Pre-approved registration allowing securities to be issued in tranches over a defined period", "Base prospectus, regulator pre-approval, supplement for each tranche, ongoing disclosure", "Flexible capital raising; issuer draws down as needed without repeated approval cycles"],
       ],
-      [2400, 3600, 3360]
+      [1800, 2600, 2600, 2360]
     ),
     spacer(),
 
     // --- 35.3 Trading Module ---
     h2("35.3 Trading Module"),
-    p("The Trading Module provides order management, matching, and execution services with jurisdiction-specific pre-trade compliance checks. All trades generate receipts anchored to the corridor state and are subject to real-time compliance tensor evaluation."),
+    p("The Trading Module provides order management, matching, and execution services. It supports limit orders, market orders, and negotiated trades with jurisdiction-specific pre-trade compliance checks. All trades generate receipts anchored to the corridor state and are subject to real-time compliance tensor evaluation."),
+    p_runs([bold("Market Structures."), " The module supports multiple market structure configurations, selected per venue and jurisdiction via the regpack."]),
     table(
-      ["Market Structure", "Matching Mechanism", "Use Case"],
+      ["Structure", "Mechanism", "Price Discovery", "Typical Venue"],
       [
-        ["Order-Driven", "Continuous limit order book with price-time priority", "Liquid markets with high participant count"],
-        ["Quote-Driven", "Dealer-provided bid/ask quotes with obligation to trade", "Less liquid markets, OTC securities"],
-        ["Hybrid", "Combined order book with designated market makers", "Markets requiring liquidity guarantees"],
+        ["Continuous Auction", "Orders matched continuously as they arrive; price/time priority", "Real-time; best bid/ask spread determines market price", "Major exchanges (PSX, NYSE); high-liquidity instruments"],
+        ["Call Auction", "Orders accumulated during a collection period, then matched at a single clearing price", "Periodic; single price maximizes matched volume at auction close", "Opening/closing auctions; illiquid instruments; IPO price discovery"],
+        ["Dealer Market", "Dealers quote bid/ask prices and trade from their own inventory as counterparty", "Dealer-driven; spread reflects dealer risk and inventory costs", "OTC markets, bond trading, FX corridors; lower-liquidity instruments"],
       ],
-      [2400, 3600, 3360]
+      [1800, 2800, 2400, 2360]
     ),
     spacer(),
-    p("Six order types are supported across all market structures:"),
+    p_runs([bold("Order Types."), " The following order types are supported, each with specific execution semantics and validity constraints."]),
     table(
-      ["Order Type", "Behavior", "Validity"],
+      ["Order Type", "Execution Behavior", "Validity"],
       [
-        ["Limit", "Execute at specified price or better", "Until filled, cancelled, or expired"],
-        ["Market", "Execute immediately at best available price", "Immediate (fill or partial fill)"],
-        ["Stop", "Becomes market order when trigger price reached", "Until triggered or cancelled"],
-        ["Iceberg", "Large order with only a portion visible in the book", "Until fully filled or cancelled"],
-        ["Fill-or-Kill (FOK)", "Execute entire quantity immediately or cancel", "Immediate (all or nothing)"],
-        ["Good-Till-Cancelled (GTC)", "Remains active until explicitly cancelled", "Until cancelled (max 90 days)"],
+        ["Market", "Executes immediately at the best available price; no price constraint", "Immediate; fills at current market or rejects if no liquidity"],
+        ["Limit", "Executes only at the specified price or better; rests in the order book if not immediately matchable", "Until filled, cancelled, or expiry (day/GTC)"],
+        ["Stop", "Becomes a market order when the stop price is reached; used for loss protection or breakout entry", "Dormant until trigger; then immediate execution"],
+        ["IOC (Immediate or Cancel)", "Executes any available quantity immediately at the limit price; unfilled portion is cancelled", "Instantaneous; partial fills allowed, remainder cancelled"],
+        ["FOK (Fill or Kill)", "Executes only if the entire quantity can be filled immediately at the limit price; otherwise fully cancelled", "Instantaneous; all-or-nothing execution"],
+        ["GTC (Good Till Cancelled)", "Limit order that remains active in the order book until explicitly cancelled or filled", "Indefinite; persists across trading sessions until cancelled"],
       ],
-      [2400, 3600, 3360]
+      [2200, 4960, 2200]
     ),
     spacer(),
 
@@ -86,63 +89,50 @@ module.exports = function build_chapter35() {
 
     // --- 35.7 DVP-PVP Module ---
     h2("35.7 DVP-PVP Module"),
-    p("The DVP-PVP Module ensures atomic delivery-versus-payment and payment-versus-payment settlement. Four settlement models accommodate different risk profiles and operational requirements:"),
+    p("The DVP-PVP Module ensures atomic delivery-versus-payment and payment-versus-payment settlement. Securities delivery (via CSD) and payment (via treasury-info.api.mass.inc) are locked in an atomic transaction. If either leg fails, both are rolled back. Cross-currency settlements use the PVP mechanism with FX rates sourced from the regpack."),
+    p_runs([bold("Settlement Models."), " The module supports four settlement models as defined by BIS/CPMI standards. The applicable model is determined by jurisdiction, instrument type, and clearing configuration."]),
     table(
       ["Model", "Securities Leg", "Cash Leg", "Risk Profile"],
       [
-        ["Model 1 (Gross/Gross)", "Gross settlement per trade", "Gross settlement per trade", "Zero principal risk; highest liquidity demand"],
-        ["Model 2 (Gross/Net)", "Gross settlement per trade", "Net settlement end-of-day", "Low principal risk; moderate liquidity"],
-        ["Model 3 (Net/Net)", "Net settlement end-of-day", "Net settlement end-of-day", "Settlement risk window; lowest liquidity"],
-        ["Model 4 (CCP-Cleared)", "CCP-guaranteed net settlement", "CCP-guaranteed net settlement", "CCP absorbs counterparty risk; margin required"],
+        ["Model 1: Gross/Gross", "Settled gross (trade-by-trade) with simultaneous cash transfer", "Settled gross (trade-by-trade) in real-time", "Lowest settlement risk; highest liquidity demand; each trade settled individually"],
+        ["Model 2: Gross/Net", "Settled gross (trade-by-trade) throughout the settlement cycle", "Settled net at end of cycle; single cash transfer per participant", "Securities move individually; cash is netted, reducing liquidity needs"],
+        ["Model 3: Net/Net", "Settled net at end of cycle; single securities transfer per participant", "Settled net at end of cycle; single cash transfer per participant", "Lowest liquidity demand; highest counterparty risk; requires netting engine"],
+        ["Model 4: DvP with CCP", "Central counterparty interposes between buyer and seller; novation of obligations", "CCP manages net cash obligations with margin requirements", "CCP absorbs counterparty risk; margin and default fund provide loss mutualization"],
       ],
-      [2000, 2200, 2200, 2960]
+      [1800, 2600, 2600, 2360]
     ),
     spacer(),
-    p("Cross-currency settlements use the PVP mechanism with FX rates sourced from the regpack. The PVP protocol extends DVP with simultaneous settlement of both currency legs, eliminating Herstatt risk."),
 
     // --- 35.8 Corporate Actions Module ---
     h2("35.8 Corporate Actions Module"),
-    p("The Corporate Actions Module processes corporate events affecting securities holders. Events are classified as mandatory (automatic application to all holders) or voluntary (requiring holder election):"),
+    p("The Corporate Actions Module processes dividends, stock splits, rights issues, mergers, and other corporate events. It computes entitlements from cap table data (via investment-info), generates payment instructions (via treasury-info.api.mass.inc), and updates the securities registry. Corporate action announcements and outcomes are issued as Verifiable Credentials."),
+    p_runs([bold("Mandatory Corporate Actions."), " These actions apply automatically to all holders without requiring a decision. The module processes them on the effective date using cap table data from investment-info."]),
     table(
-      ["Category", "Action Type", "Processing"],
+      ["Action", "Effect on Holdings", "Cash Flow", "Processing"],
       [
-        ["Mandatory", "Cash Dividend", "Automatic distribution computed from cap table, withholding tax applied per jurisdiction"],
-        ["Mandatory", "Stock Split / Reverse Split", "Registry update with ratio adjustment, fractional share handling"],
-        ["Mandatory", "Name / Symbol Change", "Registry metadata update, notification to all holders"],
-        ["Voluntary", "Rights Issue", "Subscription offer to existing holders, oversubscription handling, rump placement"],
-        ["Voluntary", "Tender Offer", "Offer acceptance/rejection, proration if oversubscribed, settlement"],
-        ["Voluntary", "Convertible Conversion", "Conversion ratio application, new share issuance, bond retirement"],
+        ["Cash Dividend", "No change to share count; entitlement based on record date holdings", "Payment to shareholders via treasury-info; withholding tax applied per jurisdiction", "Automatic on payment date; tax certificates issued as VCs"],
+        ["Stock Dividend", "Additional shares issued proportionally; no cash movement", "None; share count increases, price adjusts on ex-date", "Registry update via CSD; new shares reflected in cap table"],
+        ["Stock Split", "Share count multiplied by split ratio; par value adjusted inversely", "None; total market capitalization unchanged", "Registry restatement; all open orders and derivatives adjusted"],
+        ["Merger/Acquisition", "Shares converted to acquirer shares or cash per merger terms", "Cash component (if any) paid via treasury-info", "Registry swap on effective date; fractional shares paid in cash"],
       ],
-      [1600, 2400, 5360]
+      [1800, 2600, 2600, 2360]
     ),
     spacer(),
-    p("All corporate action entitlements are computed from cap table data (via investment-info), payment instructions generated (via treasury-info.api.mass.inc), and outcomes recorded as Verifiable Credentials."),
+    p_runs([bold("Voluntary Corporate Actions."), " These actions require a holder election within a specified deadline. The module tracks elections, applies defaults for non-respondents, and settles based on chosen options."]),
+    table(
+      ["Action", "Holder Decision", "Deadline Handling", "Processing"],
+      [
+        ["Tender Offer", "Accept or reject offer to sell shares at specified price", "Default: no action (shares retained); deadline enforced via consent.api.mass.inc", "Accepted shares transferred; payment settled via treasury-info"],
+        ["Rights Issue", "Exercise rights to purchase new shares at discounted price, or let rights lapse", "Default: rights lapse; tradeable rights may be sold before deadline", "Exercised rights convert to shares; payment collected via treasury-info"],
+        ["Conversion", "Convert convertible instruments (bonds, preferred) to common shares per terms", "Default: no conversion; holder retains original instrument", "Converted instruments retired; new shares issued and registered"],
+        ["Dividend Reinvestment", "Elect to receive dividend as additional shares instead of cash", "Default: cash payment; election registered before record date", "Reinvested amount used to purchase shares at plan price; fractional shares accumulated"],
+      ],
+      [1800, 2600, 2600, 2360]
+    ),
+    spacer(),
 
     // --- 35.9 Surveillance Module ---
     h2("35.9 Surveillance Module"),
-    p("The Surveillance Module monitors trading activity for market abuse and regulatory violations. It applies jurisdiction-specific surveillance rules from the regpack and generates alerts and suspicious transaction reports."),
-    table(
-      ["Monitoring Type", "Indicators", "Alert Threshold"],
-      [
-        ["Price Surveillance", "Abnormal price movements, gap detection, closing price manipulation", "Configurable per instrument class"],
-        ["Volume Surveillance", "Unusual volume spikes, wash trading patterns, pre-announcement activity", ">3\u03c3 from 30-day average"],
-        ["Timing Surveillance", "Pre-announcement trading, post-hours activity, cross-market timing", "Correlated with material events"],
-        ["Cross-Market Surveillance", "Inter-market arbitrage abuse, cross-venue manipulation", "Cross-venue correlation analysis"],
-      ],
-      [2000, 4200, 3160]
-    ),
-    spacer(),
-    table(
-      ["Abuse Pattern", "Detection Method", "Response"],
-      [
-        ["Insider Trading", "Pre-announcement trading correlation with material non-public information", "Alert + automatic position freeze"],
-        ["Front-Running", "Order timing analysis relative to large incoming orders", "Alert + order cancellation"],
-        ["Layering", "Non-genuine order detection through placement/cancellation patterns", "Alert + participant review"],
-        ["Spoofing", "Intent analysis on orders placed and cancelled before execution", "Alert + market access suspension"],
-      ],
-      [2000, 4200, 3160]
-    ),
-    spacer(),
-    p("Circuit breakers halt trading when price movements exceed defined thresholds: Level 1 (5% move) triggers a 5-minute cooling period, Level 2 (10% move) triggers a 15-minute halt, and Level 3 (20% move) triggers a market-wide halt with manual restart."),
+    p("The Surveillance Module monitors trading activity for market abuse, insider trading, and regulatory violations. It applies jurisdiction-specific surveillance rules from the regpack and generates alerts and suspicious transaction reports. The module integrates with the compliance tensor for real-time evaluation against 20 compliance domains."),
   ];
 };

@@ -1,13 +1,13 @@
 const {
   chapterHeading, h2,
-  p, definition, theorem,
-  codeBlock, spacer
+  p, p_runs, bold, definition, theorem,
+  codeBlock, table, spacer
 } = require("../lib/primitives");
 
 module.exports = function build_chapter09() {
   return [
     chapterHeading("Chapter 9: Receipt Chain Architecture"),
-    p("Receipt chains provide the cryptographic backbone for Smart Asset state management. Every state transition \u2014 creation, transfer, compliance update, migration, dispute \u2014 produces a cryptographically linked receipt. The chain of receipts forms a complete, independently verifiable history of the asset from genesis to current state. Receipt chains operate without blockchain dependency; they are the settlement mechanism in the Pre-L1 phase and remain the primary audit trail in the With-L1 phase."),
+    p("Receipt chains provide the cryptographic backbone for Smart Asset state management."),
 
     // --- 9.1 Receipt Structure ---
     h2("9.1 Receipt Structure"),
@@ -38,12 +38,74 @@ module.exports = function build_chapter09() {
     p("Fork detection occurs when two receipts reference the same prev_digest with different transitions. The receipt chain architecture treats forks as exceptional but recoverable events. Resolution follows a deterministic protocol: the fork is detected by watchers or participants, competing branches are evaluated against compliance predicates and timestamp ordering, and the canonical branch is selected through a combination of watcher consensus and corridor-level arbitration. Non-canonical receipts are preserved in an evidence package for audit purposes."),
     theorem("Theorem 9.1 (Object Survivability).", "A Smart Asset with a valid receipt chain maintains full operational capability without connectivity to any external system, including the MASS L1 settlement layer. Proof: The receipt chain provides total ordering, the Compliance Tensor carries compliance state, and the state machine specification enables deterministic execution. No external oracle is required for continued operation."),
 
-    // --- 9.4 Receipt Chain Pruning ---
-    h2("9.4 Receipt Chain Pruning"),
-    p("MMR checkpoints enable receipt chain pruning without loss of verifiability. Once a checkpoint is created and attested by the required watcher quorum, individual receipts covered by the checkpoint may be pruned from active storage. The checkpoint's mmr_root provides a commitment to all pruned receipts, and Merkle proofs against this root can verify the existence and content of any individual receipt. Pruned receipts are archived to cold storage with their inclusion proofs, maintaining full auditability while reducing the active state footprint. Pruning policy is configurable per jurisdiction and asset class: financial instruments may retain the full chain indefinitely, while high-frequency trade finance receipts may prune after 90 days."),
+    // --- 9.4 Receipt Verification Process ---
+    h2("9.4 Receipt Verification Process"),
+    p("A verifier checking a receipt chain performs the following steps in order. First, the verifier obtains the chain head digest and the set of receipts to verify, either the full chain or a suffix anchored to a trusted MMR checkpoint."),
+    p_runs([
+      bold("Step 1 — Structural Integrity. "),
+      "For each receipt r[i] in the chain, verify that r[i].prev_digest equals the SHA-256 digest of the canonical serialization of r[i-1]. For the genesis receipt (sequence 0), prev_digest must equal the well-known zero digest. This confirms the chain is linked and no receipt has been inserted, removed, or reordered."
+    ]),
+    p_runs([
+      bold("Step 2 — Sequence Monotonicity. "),
+      "Verify that r[i].sequence equals r[i-1].sequence + 1 for every consecutive pair. Gaps or duplicates indicate tampering or data loss and must cause verification to fail immediately."
+    ]),
+    p_runs([
+      bold("Step 3 — Signature Validation. "),
+      "For each receipt, verify every entry in the signatures vector against the authorized signers for the asset. At least one signature from the asset owner and one from a corridor participant must be present. Ed25519 signature verification uses the public keys bound to the asset at the corresponding sequence number."
+    ]),
+    p_runs([
+      bold("Step 4 — Watcher Attestation Quorum. "),
+      "Verify that each receipt carries watcher attestations meeting the quorum threshold defined by the corridor configuration. Each attestation must include the watcher's bonded identity, a signature over the receipt digest, and a timestamp within the acceptable clock skew window. Attestations from slashed or unbonded watchers are rejected."
+    ]),
+    p_runs([
+      bold("Step 5 — State Commitment Consistency. "),
+      "Recompute the state_commitment by applying the transition payload to the state at sequence i-1 and hashing the resulting state. Verify the recomputed commitment matches r[i].state_commitment. This confirms that the declared state transition was applied correctly."
+    ]),
+    p_runs([
+      bold("Step 6 — Tensor Commitment Validation. "),
+      "Verify that r[i].tensor_commitment matches the SHA-256 digest of the compliance tensor state after evaluating the transition against all applicable compliance domains. This binds every state transition to a specific compliance snapshot, ensuring no transition occurred outside the compliance envelope."
+    ]),
+    spacer(),
 
-    // --- 9.5 Cross-Chain Receipt Synchronization ---
-    h2("9.5 Cross-Chain Receipt Synchronization"),
-    p("When an asset operates across multiple corridors, its receipt chain segments are synchronized through corridor state anchors. Each corridor maintains a view of the asset's receipt chain tail (the most recent checkpoint and subsequent receipts). When the asset migrates, the destination corridor receives a receipt chain proof covering the full history up to the migration receipt. The destination corridor verifies this proof against the source corridor's published MMR root and begins appending new receipts from the migration point forward. This mechanism ensures that no receipt chain segment is lost during cross-corridor operations."),
+    // --- 9.5 Receipt Chain Operations ---
+    h2("9.5 Receipt Chain Operations"),
+    p("The receipt chain supports five core operations. Each operation has defined preconditions, effects, and failure modes."),
+    table(
+      ["Operation", "Description", "Preconditions", "Output"],
+      [
+        [
+          "Append",
+          "Adds a new receipt to the chain head. Computes prev_digest from the current head, increments sequence, collects signatures, and writes the receipt to the chain store.",
+          "Valid transition payload; owner signature; tensor evaluation passes; no pending fork",
+          "New chain head receipt with updated sequence and digests"
+        ],
+        [
+          "Verify",
+          "Validates a contiguous range of receipts against the six-step verification process (Section 9.4). Can verify the full chain or a suffix from a trusted checkpoint.",
+          "Chain segment to verify; trusted anchor (genesis zero digest or MMR checkpoint root)",
+          "Boolean validity result plus first failing receipt index and error category on failure"
+        ],
+        [
+          "Checkpoint",
+          "Creates an MMR checkpoint summarizing a range of receipts. Computes the MMR root over the receipt range, collects watcher attestations, and optionally anchors to the settlement layer.",
+          "At least one new receipt since last checkpoint; watcher quorum available",
+          "MMR checkpoint record with root, attestations, and optional L1 anchor transaction ID"
+        ],
+        [
+          "Prune",
+          "Removes historical receipts that are fully covered by a verified MMR checkpoint. Retains the checkpoint and all receipts after it. Pruned data is archived to cold storage before deletion.",
+          "Valid MMR checkpoint covering the prune range; cold storage archive confirmed",
+          "Reduced chain storage; archive reference for pruned receipts"
+        ],
+        [
+          "Fork-Detect",
+          "Identifies forks by scanning for multiple receipts sharing the same prev_digest. Reports competing branches with their respective watcher attestation counts and compliance evaluation results.",
+          "Access to the full unpruned chain segment or watcher gossip network",
+          "Fork report listing branch heads, attestation counts, compliance status, and recommended canonical branch"
+        ],
+      ],
+      [1400, 2800, 2800, 2360]
+    ),
+    spacer(),
   ];
 };

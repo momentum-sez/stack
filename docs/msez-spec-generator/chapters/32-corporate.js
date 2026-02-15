@@ -33,6 +33,7 @@ module.exports = function build_chapter32() {
     h2("32.2 Formation Module"),
     p("The Formation Module orchestrates entity creation across jurisdictions. It composes Mass API entity creation with compliance tensor evaluation, lawpack checking (e.g., Companies Act requirements), regpack verification (sanctions screening, calendar awareness), and licensepack validation (registry-specific requirements). Upon successful formation, the module issues a Formation Verifiable Credential."),
     p_runs([bold("Pakistan Example."), " Formation of a Private Limited Company under Companies Act 2017 requires: SECP name availability check, digital NTN binding via FBR integration, minimum two directors (CNIC-verified via NADRA), registered office in SEZ jurisdiction, and authorized capital declaration. The Formation Module orchestrates all checks through msez-mass-client to organization-info.api.mass.inc, evaluates compliance via msez-tensor for PAK jurisdiction across all 20 domains, and issues a Formation VC anchored to the corridor state."]),
+    p_runs([bold("Schema coverage."), " The formation workflow is validated by msez-schema, which maintains 116 JSON Schema definitions across all corporate modules. Formation-related schemas cover entity type specifications, director requirements, registered office validation, capital structure declarations, and registry integration configurations. Schema validation runs at both the API boundary (msez-api route handlers) and the Mass client boundary (msez-mass-client request/response validation)."]),
     ...codeBlock(
       "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +
       "pub struct FormationRules {\n" +
@@ -96,6 +97,22 @@ module.exports = function build_chapter32() {
     // --- 32.5 Secretarial Module ---
     h2("32.5 Secretarial Module"),
     p("The Secretarial Module manages board resolutions, meeting minutes, statutory filings, and corporate governance records. It integrates with consent.api.mass.inc for multi-party approval workflows and issues Governance Verifiable Credentials for board decisions. The module enforces quorum requirements, notice periods, and voting thresholds defined in the entity's constitutional documents."),
+    h3("32.5.1 Resolution Types"),
+    p("The Secretarial Module supports a comprehensive taxonomy of corporate resolution types. Each resolution type carries distinct quorum requirements, notice periods, voting thresholds, and regulatory filing obligations that vary by jurisdiction. The compliance tensor evaluates applicable governance rules across the Governance domain for the entity's jurisdiction."),
+    table(
+      ["Resolution Type", "Description", "Typical Threshold"],
+      [
+        ["Board Resolution", "Standard board decision on operational matters requiring simple majority of directors present at a quorate meeting", "Simple majority"],
+        ["Special Resolution", "Fundamental changes to constitutional documents, capital structure, or entity status requiring supermajority approval", "75% of votes cast"],
+        ["Ordinary Resolution", "Routine shareholder decisions including director appointments, auditor confirmations, and dividend declarations", "Simple majority"],
+        ["Written Resolution", "Decision taken without a physical meeting through documented written consent of all eligible voters", "Unanimous (or as per articles)"],
+        ["Circular Resolution", "Time-sensitive decision circulated to members for approval outside of scheduled meetings with defined response window", "As per constitutional documents"],
+        ["Emergency Resolution", "Urgent decision required to prevent material harm or regulatory breach, with abbreviated notice and expedited approval", "As per emergency provisions"],
+        ["Elective Resolution", "Optional resolution to adopt simplified governance procedures permitted under applicable companies legislation", "Unanimous"],
+      ],
+      [2200, 4960, 2200]
+    ),
+    spacer(),
 
     // --- 32.6 Annual Compliance Module ---
     h2("32.6 Annual Compliance Module"),
@@ -104,80 +121,24 @@ module.exports = function build_chapter32() {
 
     // --- 32.7 Dissolution Module ---
     h2("32.7 Dissolution Module"),
-    p("The Dissolution Module manages entity winding-up processes through a deterministic ten-stage state machine. Each stage has defined entry conditions, required actions, timeout enforcement, and compensation actions for rollback. The module coordinates with treasury-info.api.mass.inc for final distributions and issues Dissolution Verifiable Credentials upon completion."),
-
-    h3("32.7.1 Dissolution State Machine"),
+    p("The Dissolution Module manages entity winding-up processes including creditor notification, asset distribution, regulatory de-registration, and final compliance attestation. It coordinates with treasury-info.api.mass.inc for final distributions and issues Dissolution Verifiable Credentials upon completion. The module enforces jurisdiction-specific winding-up procedures and timelines."),
+    h3("32.7.1 Dissolution Stages"),
+    p("Dissolution proceeds through ten sequential stages. Each stage must complete before the next begins, enforced by the corridor lifecycle FSM in msez-state. The compliance tensor is re-evaluated at each stage transition to ensure ongoing regulatory compliance throughout the winding-up process."),
     table(
-      ["Stage", "Name", "Actions", "Timeout"],
+      ["Stage", "Description", "Timeline"],
       [
-        ["D1", "RESOLUTION_FILED", "Board resolution recorded, regulatory notification dispatched", "30 days"],
-        ["D2", "CREDITOR_NOTICE", "Public notice published, individual creditor notifications sent", "90 days"],
-        ["D3", "CLAIMS_PERIOD", "Creditor claims received and validated against entity records", "180 days"],
-        ["D4", "CLAIMS_ADJUDICATION", "Disputed claims resolved through arbitration module", "90 days"],
-        ["D5", "ASSET_INVENTORY", "Complete asset inventory compiled, valuations obtained", "60 days"],
-        ["D6", "TAX_CLEARANCE", "Final tax returns filed, clearance certificates obtained from FBR/relevant authority", "120 days"],
-        ["D7", "ASSET_DISTRIBUTION", "Assets distributed to creditors by priority, surplus to shareholders", "90 days"],
-        ["D8", "REGULATORY_DEREGISTRATION", "Licenses surrendered, registrations cancelled with SECP/BOI/relevant bodies", "60 days"],
-        ["D9", "FINAL_ACCOUNTING", "Final accounts prepared, auditor sign-off obtained", "30 days"],
-        ["D10", "DISSOLVED", "Entity marked dissolved, Dissolution VC issued, all records archived", "Terminal"],
+        ["1. Initiation", "Board or shareholder resolution to dissolve, filed with the applicable registry. Triggers compliance tensor evaluation for Dissolution domain.", "Day 0"],
+        ["2. Creditor Notification", "Statutory notice to all known creditors and public gazette publication. Creditors submit claims within the notice period.", "Day 1\u201330"],
+        ["3. Asset Freezing", "All entity assets frozen via treasury-info.api.mass.inc. No outbound transfers permitted except court-ordered or regulator-approved.", "Day 1\u201314"],
+        ["4. Liability Settlement", "Verified creditor claims settled in statutory priority order: secured creditors, employee wages, tax obligations, unsecured creditors.", "Day 30\u201390"],
+        ["5. Tax Clearance", "Final tax returns filed, outstanding assessments settled, and tax clearance certificate obtained from the revenue authority (e.g., FBR for Pakistan).", "Day 30\u2013120"],
+        ["6. Employee Settlement", "Terminal benefits calculated and disbursed: gratuity, provident fund, accrued leave encashment, and any severance per applicable labor law.", "Day 30\u201360"],
+        ["7. Asset Distribution", "Remaining assets distributed to shareholders in proportion to their holdings after all liabilities and preferential claims are satisfied.", "Day 90\u2013150"],
+        ["8. Regulatory De-registration", "Entity de-registered from all applicable registries (SECP, FBR, SBP, provincial authorities) and all active licenses surrendered.", "Day 120\u2013180"],
+        ["9. Final Audit", "Independent audit of the dissolution process, confirming all obligations met, all assets distributed, and all records preserved.", "Day 150\u2013210"],
+        ["10. Archive", "Entity records archived with cryptographic integrity proofs. Dissolution VC issued and anchored to the corridor receipt chain. Entity status set to dissolved.", "Day 210+"],
       ],
-      [800, 2200, 3800, 2560]
-    ),
-    spacer(),
-
-    h3("32.7.2 Resolution Types"),
-    p("The Secretarial Module supports eleven resolution types that govern corporate decision-making:"),
-    table(
-      ["Type", "Quorum", "Threshold", "Use Case"],
-      [
-        ["Ordinary Resolution", "Simple majority present", "50%+1", "Routine business decisions"],
-        ["Special Resolution", "Two-thirds present", "75%+", "Constitutional amendments, dissolution"],
-        ["Extraordinary Resolution", "As per articles", "As specified", "Major structural changes"],
-        ["Written Resolution", "N/A (circulated)", "Unanimous", "Decisions without meeting"],
-        ["Board Resolution", "Majority of directors", "50%+1", "Day-to-day management"],
-        ["Circular Resolution", "N/A (circulated to directors)", "Unanimous", "Urgent board decisions"],
-        ["Members Voluntary Liquidation", "75% of members", "Special + solvency declaration", "Solvent winding up"],
-        ["Creditors Voluntary Liquidation", "Simple majority", "50%+1 of creditors by value", "Insolvent winding up"],
-        ["Court-Ordered Liquidation", "Court order", "N/A", "Compulsory winding up"],
-        ["Scheme of Arrangement", "75% of each class", "75% by value per class", "Restructuring"],
-        ["Amalgamation Resolution", "75% of each entity", "Special resolution per entity", "Mergers"],
-      ],
-      [2400, 2200, 2200, 2560]
-    ),
-    spacer(),
-
-    h3("32.7.3 Filing Schedule and Reminders"),
-    p("The Annual Compliance Module generates automatic reminders through msez-agentic triggers at defined intervals before each filing deadline:"),
-    table(
-      ["Days Before Deadline", "Action", "Channel"],
-      [
-        ["90", "First reminder generated, task created in GovOS Console", "Email + Console"],
-        ["60", "Second reminder with preparation checklist", "Email + Console + SMS"],
-        ["30", "Urgent reminder, manager escalation triggered", "Email + Console + SMS + Escalation"],
-        ["14", "Final warning, penalty computation preview displayed", "All channels + Executive alert"],
-        ["7", "Critical alert, automatic filing initiated if data complete", "All channels + Auto-file attempt"],
-        ["0", "Deadline reached, penalty accrual begins", "All channels + Penalty notification"],
-      ],
-      [2200, 4200, 2960]
-    ),
-    spacer(),
-
-    h3("32.7.4 Filing Types"),
-    table(
-      ["Filing", "Frequency", "Authority", "Penalty (PKR)"],
-      [
-        ["Annual Return (Form A)", "Annual", "SECP", "100/day late, max 365 days"],
-        ["Financial Statements", "Annual", "SECP", "Level 1-3 penalty schedule"],
-        ["Beneficial Ownership", "On change + Annual", "SECP", "50,000 + 500/day"],
-        ["Income Tax Return", "Annual", "FBR", "Per ITO 2001 \u00a7182"],
-        ["Sales Tax Return", "Monthly", "FBR", "Per STA 1990 \u00a733"],
-        ["Withholding Tax Statement", "Quarterly/Annual", "FBR", "Per ITO 2001 \u00a7182"],
-        ["Director Changes", "Within 15 days", "SECP", "10,000 + 200/day"],
-        ["Registered Office Change", "Within 15 days", "SECP", "5,000 + 100/day"],
-        ["Share Transfer", "Within 30 days", "SECP", "25,000 + 500/day"],
-        ["Charge Registration", "Within 30 days", "SECP", "50,000 + 1,000/day"],
-      ],
-      [2400, 2000, 1800, 3160]
+      [1800, 5760, 1800]
     ),
     spacer(),
   ];

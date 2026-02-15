@@ -519,15 +519,15 @@ async fn get_tax_obligations(
         let gross = parse_amount_or_zero(&e.gross_amount);
         let wht = parse_amount_or_zero(&e.withholding_amount);
 
-        total_gross_cents += gross;
-        total_wht_cents += wht;
+        total_gross_cents = total_gross_cents.saturating_add(gross);
+        total_wht_cents = total_wht_cents.saturating_add(wht);
 
         let entry = by_category
             .entry(e.tax_category.clone())
             .or_insert((0, 0, 0));
-        entry.0 += 1;
-        entry.1 += gross;
-        entry.2 += wht;
+        entry.0 = entry.0.saturating_add(1);
+        entry.1 = entry.1.saturating_add(gross);
+        entry.2 = entry.2.saturating_add(wht);
     }
 
     let category_summaries: Vec<CategorySummary> = by_category
@@ -733,11 +733,11 @@ fn aggregate_withholdings(withholdings: &[WithholdingResult], gross: &str) -> (S
 
     let mut total_wht_cents: i64 = 0;
     for w in withholdings {
-        total_wht_cents += parse_amount_or_zero(&w.withholding_amount);
+        total_wht_cents = total_wht_cents.saturating_add(parse_amount_or_zero(&w.withholding_amount));
     }
 
     let gross_cents = parse_amount_or_zero(gross);
-    let net_cents = gross_cents - total_wht_cents;
+    let net_cents = gross_cents.saturating_sub(total_wht_cents);
 
     (format_amount(total_wht_cents), format_amount(net_cents))
 }

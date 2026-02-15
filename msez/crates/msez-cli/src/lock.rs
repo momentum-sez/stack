@@ -15,9 +15,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
 use clap::Args;
-use sha2::{Digest, Sha256};
 
-use msez_core::CanonicalBytes;
+use msez_core::{CanonicalBytes, Sha256Hasher};
 
 /// Arguments for the `msez lock` subcommand.
 #[derive(Args, Debug)]
@@ -322,17 +321,14 @@ fn sha256_file(path: &Path) -> Result<String> {
 
 /// Compute SHA-256 hex digest of raw bytes.
 fn sha256_of_bytes(bytes: &[u8]) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(bytes);
-    let result = hasher.finalize();
-    result.iter().map(|b| format!("{b:02x}")).collect()
+    msez_core::sha256_hex(bytes)
 }
 
 /// Compute a deterministic digest over a directory's contents.
 ///
 /// Walks all files in sorted order, hashing their relative paths and contents.
 fn digest_dir(dir: &Path) -> Result<String> {
-    let mut hasher = Sha256::new();
+    let mut hasher = Sha256Hasher::new();
     let mut paths: Vec<PathBuf> = Vec::new();
 
     for entry in walkdir_recursive(dir) {
@@ -355,8 +351,7 @@ fn digest_dir(dir: &Path) -> Result<String> {
         hasher.update(b"\0");
     }
 
-    let result = hasher.finalize();
-    Ok(result.iter().map(|b| format!("{b:02x}")).collect())
+    Ok(hasher.finalize_hex())
 }
 
 /// Recursively walk a directory, returning all file paths sorted.

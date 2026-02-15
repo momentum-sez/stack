@@ -251,11 +251,7 @@ pub fn ensure_json_compatible(value: &Value, path: &str, context: &str) -> PackR
 
 /// Compute SHA-256 hex digest of raw bytes.
 pub fn sha256_hex(data: &[u8]) -> String {
-    use sha2::{Digest, Sha256};
-    let mut hasher = Sha256::new();
-    hasher.update(data);
-    let result = hasher.finalize();
-    result.iter().map(|b| format!("{b:02x}")).collect()
+    msez_core::sha256_hex(data)
 }
 
 #[cfg(test)]
@@ -411,9 +407,9 @@ mod tests {
     #[test]
     fn test_load_yaml_typed_parse_error() {
         #[derive(serde::Deserialize)]
-        #[allow(dead_code)]
         struct ExpectInt {
-            count: i32,
+            #[serde(rename = "count")]
+            _count: i32,
         }
 
         let dir = tempfile::tempdir().unwrap();
@@ -499,9 +495,9 @@ mod tests {
     #[test]
     fn test_load_json_typed_type_mismatch() {
         #[derive(serde::Deserialize, Debug)]
-        #[allow(dead_code)]
         struct NeedsNum {
-            count: u32,
+            #[serde(rename = "count")]
+            _count: u32,
         }
 
         let dir = tempfile::tempdir().unwrap();

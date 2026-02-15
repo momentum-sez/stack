@@ -8,9 +8,8 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
-use sha2::{Digest as _, Sha256};
 
-use msez_core::{CanonicalBytes, ContentDigest, JurisdictionId};
+use msez_core::{CanonicalBytes, ContentDigest, JurisdictionId, Sha256Hasher};
 
 use super::components::LicenseHolder;
 use super::license::{License, LicenseTypeDefinition, LicensepackMetadata};
@@ -152,7 +151,7 @@ impl Licensepack {
     /// Produces a deterministic SHA-256 hex string by canonicalizing all
     /// components in a fixed order (BTreeMap guarantees sorted iteration).
     pub fn compute_digest(&self) -> PackResult<String> {
-        let mut hasher = Sha256::new();
+        let mut hasher = Sha256Hasher::new();
         hasher.update(LICENSEPACK_DIGEST_PREFIX);
 
         // Add metadata
@@ -236,8 +235,7 @@ impl Licensepack {
             hasher.update(b"\0");
         }
 
-        let result = hasher.finalize();
-        Ok(result.iter().map(|b| format!("{b:02x}")).collect())
+        Ok(hasher.finalize_hex())
     }
 
     /// Compute delta from a previous licensepack.

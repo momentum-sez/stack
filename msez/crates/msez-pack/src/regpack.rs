@@ -28,9 +28,8 @@
 use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
-use sha2::{Digest as _, Sha256};
 
-use msez_core::{CanonicalBytes, ComplianceDomain, ContentDigest, JurisdictionId};
+use msez_core::{CanonicalBytes, ComplianceDomain, ContentDigest, JurisdictionId, Sha256Hasher};
 
 use crate::error::{PackError, PackResult};
 use crate::parser;
@@ -536,7 +535,7 @@ pub fn compute_regpack_digest(
     regulators: Option<&[RegulatorProfile]>,
     deadlines: Option<&[ComplianceDeadline]>,
 ) -> PackResult<String> {
-    let mut hasher = Sha256::new();
+    let mut hasher = Sha256Hasher::new();
     hasher.update(b"msez-regpack-v1\0");
 
     // Add metadata
@@ -573,8 +572,7 @@ pub fn compute_regpack_digest(
         hasher.update(dl_canonical.as_bytes());
     }
 
-    let result = hasher.finalize();
-    Ok(result.iter().map(|b| format!("{b:02x}")).collect())
+    Ok(hasher.finalize_hex())
 }
 
 // ---------------------------------------------------------------------------

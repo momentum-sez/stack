@@ -32,7 +32,7 @@ pub mod temporal;
 
 // Re-export primary types at crate root for ergonomic imports.
 pub use canonical::CanonicalBytes;
-pub use digest::{sha256_digest, ContentDigest, DigestAlgorithm};
+pub use digest::{sha256_digest, sha256_hex, sha256_raw, ContentDigest, DigestAlgorithm, Sha256Hasher};
 pub use domain::ComplianceDomain;
 pub use error::{CanonicalizationError, MsezError, ValidationError};
 pub use identity::{Cnic, Did, EntityId, MigrationId, Ntn, PassportNumber, WatcherId};

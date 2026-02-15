@@ -1362,7 +1362,6 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
- "sha2",
  "thiserror 1.0.69",
  "tracing",
  "uuid",
@@ -1389,7 +1388,6 @@ dependencies = [
  "rand_core 0.6.4",
  "serde",
  "serde_json",
- "sha2",
  "sqlx",
  "subtle",
  "tempfile",
@@ -1401,6 +1399,7 @@ dependencies = [
  "tracing-subscriber",
  "utoipa",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]
@@ -1432,7 +1431,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "sha2",
  "tempfile",
  "tracing",
  "tracing-subscriber",
@@ -1553,7 +1551,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "sha2",
  "tempfile",
  "thiserror 1.0.69",
  "tracing",
@@ -1594,7 +1591,6 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
- "sha2",
  "thiserror 1.0.69",
  "tracing",
 ]
@@ -1623,7 +1619,6 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
- "sha2",
  "thiserror 1.0.69",
 ]
 

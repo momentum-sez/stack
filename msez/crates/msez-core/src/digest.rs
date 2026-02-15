@@ -11,6 +11,15 @@
 //! was produced from properly canonicalized data. There is no constructor
 //! that accepts raw `[u8; 32]` in the public API outside of deserialization.
 //!
+//! ## SHA-256 Centralization
+//!
+//! **All SHA-256 computation in the SEZ Stack flows through this module.**
+//! No other crate may import `sha2` directly. Three entry points are provided:
+//!
+//! - [`sha256_digest()`] — canonical JSON → [`ContentDigest`] (primary path)
+//! - [`Sha256Hasher`] — streaming SHA-256 for domain-separated / multi-part hashing
+//! - [`sha256_raw()`] / [`sha256_hex()`] — single-shot raw byte hashing
+//!
 //! ## Spec Reference
 //!
 //! Implements digest computation per `tools/lawpack.py:sha256_bytes()` and
@@ -144,6 +153,71 @@ pub fn sha256_digest(canonical: &CanonicalBytes) -> ContentDigest {
         algorithm: DigestAlgorithm::Sha256,
         bytes: result.into(),
     }
+}
+
+// ---------------------------------------------------------------------------
+// Raw-byte SHA-256 helpers (non-canonical paths)
+// ---------------------------------------------------------------------------
+
+/// A streaming SHA-256 hasher for domain-separated and multi-part hashing.
+///
+/// Use this when data is fed incrementally (e.g., pack digest computation,
+/// MMR node hashing, directory walks). For canonical JSON digests, prefer
+/// [`sha256_digest()`] which enforces the `CanonicalBytes` type gate.
+///
+/// This type centralizes all streaming SHA-256 in `msez-core` so that no
+/// other crate needs to import `sha2` directly.
+pub struct Sha256Hasher {
+    inner: Sha256,
+}
+
+impl Sha256Hasher {
+    /// Create a new streaming SHA-256 hasher.
+    pub fn new() -> Self {
+        Self {
+            inner: Sha256::new(),
+        }
+    }
+
+    /// Feed data into the hasher.
+    pub fn update(&mut self, data: &[u8]) {
+        self.inner.update(data);
+    }
+
+    /// Finalize and return the 32-byte digest.
+    pub fn finalize(self) -> [u8; 32] {
+        self.inner.finalize().into()
+    }
+
+    /// Finalize and return the digest as a lowercase hex string.
+    pub fn finalize_hex(self) -> String {
+        let bytes: [u8; 32] = self.finalize();
+        bytes.iter().map(|b| format!("{b:02x}")).collect()
+    }
+}
+
+impl Default for Sha256Hasher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Compute SHA-256 of raw bytes, returning the 32-byte digest.
+///
+/// Single-shot convenience for non-canonical data (file contents, MMR leaves,
+/// domain-separated byte strings). For canonical JSON, use [`sha256_digest()`].
+pub fn sha256_raw(data: &[u8]) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    hasher.finalize().into()
+}
+
+/// Compute SHA-256 of raw bytes, returning a lowercase hex string.
+///
+/// Single-shot convenience for non-canonical data. For canonical JSON, use
+/// [`sha256_digest()`] which returns a typed [`ContentDigest`].
+pub fn sha256_hex(data: &[u8]) -> String {
+    sha256_raw(data).iter().map(|b| format!("{b:02x}")).collect()
 }
 
 /// Compute a Poseidon2 content digest from canonical bytes.

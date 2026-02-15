@@ -27,6 +27,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
+use zeroize::Zeroize;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -143,6 +144,8 @@ pub fn require_role(caller: &CallerIdentity, minimum: Role) -> Result<(), AppErr
 /// Auth configuration injected into request extensions.
 ///
 /// Custom `Debug` redacts the token value to prevent credential leakage in logs.
+/// Implements `Zeroize` + `Drop` to overwrite the token in memory when the config
+/// is dropped, preventing credential remnants in heap-allocated memory.
 #[derive(Clone)]
 pub struct AuthConfig {
     pub token: Option<String>,
@@ -153,6 +156,20 @@ impl std::fmt::Debug for AuthConfig {
         f.debug_struct("AuthConfig")
             .field("token", &self.token.as_ref().map(|_| "[REDACTED]"))
             .finish()
+    }
+}
+
+impl Zeroize for AuthConfig {
+    fn zeroize(&mut self) {
+        if let Some(ref mut t) = self.token {
+            t.zeroize();
+        }
+    }
+}
+
+impl Drop for AuthConfig {
+    fn drop(&mut self) {
+        self.zeroize();
     }
 }
 

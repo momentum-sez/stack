@@ -25,9 +25,8 @@
 //! Audit §2.5: Phase 1 mock proofs are explicitly acknowledged as non-private.
 //! Real ZK backends activate in Phase 2 via feature flags.
 
-use msez_core::CanonicalBytes;
+use msez_core::{CanonicalBytes, Sha256Hasher};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 
 use crate::traits::{ProofError, ProofSystem, VerifyError};
 
@@ -129,12 +128,10 @@ impl ProofSystem for MockProofSystem {
         })?;
 
         // SHA256(canonical_bytes(circuit_data) || public_inputs)
-        let mut hasher = Sha256::new();
+        let mut hasher = Sha256Hasher::new();
         hasher.update(canonical.as_bytes());
         hasher.update(&circuit.public_inputs);
-        let digest = hasher.finalize();
-
-        let proof_hex = digest.iter().map(|b| format!("{b:02x}")).collect();
+        let proof_hex = hasher.finalize_hex();
 
         Ok(MockProof { proof_hex })
     }
@@ -166,10 +163,7 @@ impl ProofSystem for MockProofSystem {
         }
 
         // Recompute: SHA256(public_inputs).
-        let mut hasher = Sha256::new();
-        hasher.update(public_inputs);
-        let expected = hasher.finalize();
-        let expected_hex: String = expected.iter().map(|b| format!("{b:02x}")).collect();
+        let expected_hex = msez_core::sha256_hex(public_inputs);
 
         Ok(proof.proof_hex == expected_hex)
     }

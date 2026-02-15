@@ -215,7 +215,7 @@ async fn get_composite_identity_aggregates_all_three_sources() {
 }
 
 #[tokio::test]
-async fn get_composite_identity_tolerates_partial_failures() {
+async fn get_composite_identity_propagates_partial_failures() {
     let org_server = MockServer::start().await;
     let consent_server = MockServer::start().await;
 
@@ -245,18 +245,14 @@ async fn get_composite_identity_tolerates_partial_failures() {
         .await;
 
     let client = test_client_dual(&org_server, &consent_server).await;
-    let identity = client
+    let result = client
         .identity()
         .get_composite_identity("org-001")
-        .await
-        .unwrap();
+        .await;
 
-    // Composite identity should succeed with partial data.
-    assert_eq!(identity.organization_id, "org-001");
-    assert_eq!(identity.members.len(), 1);
-    // Board and shareholders failed, so they should be empty (unwrap_or_default).
-    assert!(identity.directors.is_empty());
-    assert!(identity.shareholders.is_empty());
+    // Partial service failures must propagate — silent data loss is unacceptable
+    // for an identity aggregation facade in a compliance-critical system.
+    assert!(result.is_err());
 }
 
 // ── Forward compatibility ────────────────────────────────────────────

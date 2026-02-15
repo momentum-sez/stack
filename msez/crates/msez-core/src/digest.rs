@@ -238,7 +238,8 @@ impl Default for Sha256Accumulator {
 /// ## Security Invariant
 ///
 /// All SHA-256 in the codebase flows through `msez-core`. No other crate
-/// should directly `use sha2::{Digest, Sha256}`.
+/// should directly `use sha2::{Digest, Sha256}` for single-shot hashing.
+/// For streaming multi-part hashes, use [`Sha256Accumulator`].
 pub fn sha256_raw(data: &[u8]) -> String {
     let mut acc = Sha256Accumulator::new();
     acc.update(data);

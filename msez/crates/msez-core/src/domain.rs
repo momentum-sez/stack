@@ -104,7 +104,18 @@ impl ComplianceDomain {
 
     /// The total number of compliance domains.
     pub const COUNT: usize = 20;
+}
 
+// Compile-time assertion: `ComplianceDomain::all()` length must match COUNT.
+// If a variant is added or removed without updating both, this fails at compile time.
+const _: () = {
+    const ALL_LEN: usize = 20; // must equal ComplianceDomain::all().len()
+    const EXPECTED: usize = ComplianceDomain::COUNT;
+    #[allow(clippy::no_effect)]
+    ["ComplianceDomain::all() length does not match COUNT"][(ALL_LEN != EXPECTED) as usize];
+};
+
+impl ComplianceDomain {
     /// Return the snake_case string representation of this domain.
     ///
     /// Matches the serde serialization format and the Python enum values.

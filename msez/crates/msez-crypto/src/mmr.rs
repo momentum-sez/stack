@@ -31,7 +31,11 @@ use crate::error::CryptoError;
 // Internal helpers (matching tools/mmr.py)
 // ---------------------------------------------------------------------------
 
-/// SHA256 helper returning raw 32 bytes.
+/// SHA256 helper returning raw 32 bytes for MMR node hashing.
+///
+/// Uses `sha2` directly (rather than `msez_core::sha256_raw`) because MMR
+/// operations need raw `[u8; 32]` for binary tree concatenation, not hex strings.
+/// This is a documented exception to the CanonicalBytes invariant (CLAUDE.md §V.5).
 fn sha256_raw(data: &[u8]) -> [u8; 32] {
     let mut hasher = Sha256::new();
     hasher.update(data);

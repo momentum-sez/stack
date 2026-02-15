@@ -301,10 +301,10 @@ async fn test_get_consent_returns_503_without_mass_client() {
     assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
-// -- Update Entity returns 501 (not implemented) ------------------------------
+// -- Update Entity returns 503 without Mass client ----------------------------
 
 #[tokio::test]
-async fn test_update_entity_returns_501() {
+async fn test_update_entity_returns_503_without_mass_client() {
     let app = test_app();
     let response = app
         .oneshot(
@@ -317,7 +317,7 @@ async fn test_update_entity_returns_501() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
 // -- Corridors (SEZ Stack domain) ---------------------------------------------

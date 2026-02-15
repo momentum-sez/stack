@@ -36,6 +36,7 @@
 pub mod auth;
 pub mod bootstrap;
 pub mod compliance;
+pub mod db;
 pub mod error;
 pub mod extractors;
 pub mod middleware;
@@ -113,6 +114,7 @@ async fn liveness() -> &'static str {
 /// - Zone signing key is loaded (can derive verifying key).
 /// - Policy engine lock is acquirable (not deadlocked).
 /// - In-memory stores are accessible.
+/// - Database connection is healthy (when configured).
 ///
 /// Returns 200 "ready" or 503 with a diagnostic message.
 async fn readiness(State(state): State<AppState>) -> impl IntoResponse {
@@ -132,6 +134,14 @@ async fn readiness(State(state): State<AppState>) -> impl IntoResponse {
     let _ = state.corridors.len();
     let _ = state.smart_assets.len();
     let _ = state.attestations.len();
+
+    // Verify database connection (when configured).
+    if let Some(pool) = &state.db_pool {
+        if let Err(e) = sqlx::query("SELECT 1").execute(pool).await {
+            tracing::warn!("Database health check failed: {e}");
+            return (StatusCode::SERVICE_UNAVAILABLE, "database unreachable").into_response();
+        }
+    }
 
     (StatusCode::OK, "ready").into_response()
 }

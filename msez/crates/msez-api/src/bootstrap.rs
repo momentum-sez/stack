@@ -141,6 +141,7 @@ struct SigningConfig {
 pub fn bootstrap(
     config: AppConfig,
     mass_client: Option<msez_mass_client::MassClient>,
+    db_pool: Option<sqlx::PgPool>,
 ) -> Result<AppState, BootstrapError> {
     let zone_config_path = std::env::var("ZONE_CONFIG").ok();
 
@@ -170,7 +171,7 @@ pub fn bootstrap(
         }
     };
 
-    let mut state = AppState::try_with_config(config, mass_client)
+    let mut state = AppState::try_with_config(config, mass_client, db_pool)
         .map_err(|e| BootstrapError::SigningKey(format!("zone key error from AppState: {e}")))?;
 
     // If we bootstrapped a zone, override the signing key and DID on AppState

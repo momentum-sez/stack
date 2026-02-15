@@ -168,7 +168,7 @@ type errors from route registration changes.
 | P1-005 | Identity primitive split | **OPEN** | Architectural — requires dedicated identity-info service |
 | P1-006 | Composition engine Python-only | **RESOLVED** | Ported to `msez-pack/src/composition.rs`; Python removed |
 | P1-007 | CLI commands Python-only | **RESOLVED** | Python CLI removed; core commands ported to `msez-cli` |
-| P1-008 | No database persistence | **OPEN** | In-memory stores only; needs Postgres for production |
+| P1-008 | No database persistence | **RESOLVED** | SQLx + PgPool integrated; migration for corridors, smart assets, attestations, tensor snapshots, audit events; write-through from route handlers; startup hydration from DB |
 | P1-009 | Tax collection pipeline | **OPEN** | Not implemented |
 | P1-010 | CanonicalBytes bypass verification | **OPEN** | No automated enforcement that all SHA-256 goes through CanonicalBytes |
 
@@ -192,7 +192,7 @@ type errors from route registration changes.
 |---|-----------|--------|
 | 1 | `cargo check --workspace` zero warnings | **PASS** |
 | 2 | `cargo clippy --workspace -- -D warnings` clean | **PASS** |
-| 3 | `cargo test --workspace` all pass | **PASS** (3,029 tests) |
+| 3 | `cargo test --workspace` all pass | **PASS** (3,172 tests) |
 | 4 | Zero `unwrap()` in msez-api request paths | **PASS** |
 | 5 | Zero `unwrap()` in msez-crypto non-test code | **PASS** |
 | 6 | Zero `unimplemented!()` or `todo!()` in non-test code | **PASS** |
@@ -200,10 +200,10 @@ type errors from route registration changes.
 | 8 | Cross-language parity tests | **PASS** (Python removed; hardcoded vectors retained) |
 | 9 | Composition engine in Rust | **PASS** (P1-006 resolved — `msez-pack::composition`) |
 | 10 | mass_proxy routes are orchestration | **NOT YET** (P1-004) |
-| 11 | Postgres persistence | **NOT YET** (P1-008) |
+| 11 | Postgres persistence | **PASS** (P1-008 resolved — `msez-api::db` module with SQLx migrations, write-through persistence, startup hydration) |
 | 12 | Crate dependency graph: no cycles, no unnecessary edges | **PASS** |
 
-**8 of 12 criteria met.** The remaining 4 are architectural/feature work, not
+**9 of 12 criteria met.** The remaining 3 are architectural/feature work, not
 code quality defects.
 
 ---

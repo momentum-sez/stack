@@ -37,3 +37,5 @@
 | BUG-033 | P1 | msez-pack | 1 | LawpackRef serde Deserialize bypasses validation — empty strings for jurisdiction_id, domain, version accepted; LawpackRef::parse would reject them | DEFERRED |
 | BUG-034 | P2 | msez-arbitration | 1 | Claim missing PartialEq derive — cannot verify serde round-trip fidelity | DEFERRED |
 | BUG-035 | P2 | msez-arbitration | 1 | Dispute missing PartialEq derive — cannot verify serde round-trip fidelity | DEFERRED |
+| BUG-036 | P2 | msez-arbitration | 4 | EnforcementOrder allows cancel() from Blocked state — blocked orders pending appeal can be cancelled, bypassing the appeal process | DEFERRED |
+| BUG-037 | P2 | msez-state | 4 | MigrationSaga allows compensate() from pre-InTransit states (e.g. ComplianceCheck) — compensation should only be available after InTransit when rollback is needed | DEFERRED |

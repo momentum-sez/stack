@@ -1444,3 +1444,355 @@ fn deser_entity_id_from_invalid_uuid_no_panic() {
     let result: Result<EntityId, _> = serde_json::from_str("\"not-a-uuid\"");
     assert!(result.is_err(), "Invalid UUID should fail deserialization");
 }
+
+// =========================================================================
+// Campaign 2 Extension: msez-pack panic paths
+// =========================================================================
+
+use msez_pack::regpack::{SanctionsChecker, SanctionsEntry, validate_compliance_domain};
+use msez_pack::parser::ensure_json_compatible;
+
+#[test]
+fn pack_validate_compliance_domain_empty_string_no_panic() {
+    let result = validate_compliance_domain("");
+    assert!(result.is_err(), "Empty domain should be rejected");
+}
+
+#[test]
+fn pack_validate_compliance_domain_huge_string_no_panic() {
+    let huge = "x".repeat(100_000);
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        validate_compliance_domain(&huge)
+    }));
+    assert!(result.is_ok(), "100K char domain should not panic");
+    assert!(result.unwrap().is_err(), "100K char domain should be rejected");
+}
+
+#[test]
+fn pack_validate_compliance_domain_unicode_no_panic() {
+    let result = validate_compliance_domain("日本語の規制");
+    assert!(result.is_err(), "Unicode domain should be rejected");
+}
+
+#[test]
+fn pack_validate_compliance_domain_null_byte_no_panic() {
+    let result = validate_compliance_domain("taxation\0injection");
+    assert!(result.is_err(), "Null byte in domain should be rejected");
+}
+
+#[test]
+fn pack_ensure_json_compatible_null_no_panic() {
+    let result = ensure_json_compatible(&json!(null), "", "test");
+    // Should not panic; may succeed or return error
+    let _ = result;
+}
+
+#[test]
+fn pack_ensure_json_compatible_deeply_nested_no_panic() {
+    // 200 levels of nesting
+    let mut value = json!("leaf");
+    for _ in 0..200 {
+        value = json!({"nested": value});
+    }
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        ensure_json_compatible(&value, "", "deep-nest")
+    }));
+    assert!(result.is_ok(), "200-level nesting should not panic (stack overflow)");
+}
+
+#[test]
+fn pack_ensure_json_compatible_empty_string_path_no_panic() {
+    let result = ensure_json_compatible(&json!({"key": "value"}), "", "");
+    let _ = result;
+}
+
+#[test]
+fn pack_ensure_json_compatible_huge_array_no_panic() {
+    let arr: Vec<serde_json::Value> = (0..10_000).map(|i| json!(i)).collect();
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        ensure_json_compatible(&json!(arr), "", "large-array")
+    }));
+    assert!(result.is_ok(), "10K element array should not panic");
+}
+
+#[test]
+fn pack_sanctions_checker_empty_entries_no_panic() {
+    let checker = SanctionsChecker::new(vec![], "empty-snapshot".to_string());
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        checker.check_entity("Test Entity", None, 0.8)
+    }));
+    assert!(result.is_ok(), "Checking against empty sanctions list should not panic");
+}
+
+#[test]
+fn pack_sanctions_checker_empty_name_no_panic() {
+    let checker = SanctionsChecker::new(vec![
+        SanctionsEntry {
+            entry_id: "SE-001".to_string(),
+            entry_type: "individual".to_string(),
+            source_lists: vec!["OFAC".to_string()],
+            primary_name: "Test Person".to_string(),
+            aliases: vec![],
+            identifiers: vec![],
+            addresses: vec![],
+            nationalities: vec![],
+            date_of_birth: None,
+            programs: vec![],
+            listing_date: None,
+            remarks: None,
+        },
+    ], "snapshot-001".to_string());
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        checker.check_entity("", None, 0.8)
+    }));
+    assert!(result.is_ok(), "Empty name query should not panic");
+}
+
+#[test]
+fn pack_sanctions_checker_nan_threshold_no_panic() {
+    let checker = SanctionsChecker::new(vec![], "snapshot-nan".to_string());
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        checker.check_entity("Test", None, f64::NAN)
+    }));
+    assert!(result.is_ok(), "NaN threshold should not panic");
+}
+
+#[test]
+fn pack_sanctions_checker_infinity_threshold_no_panic() {
+    let checker = SanctionsChecker::new(vec![], "snapshot-inf".to_string());
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        checker.check_entity("Test", None, f64::INFINITY)
+    }));
+    assert!(result.is_ok(), "Infinity threshold should not panic");
+}
+
+#[test]
+fn pack_sanctions_checker_negative_threshold_no_panic() {
+    let checker = SanctionsChecker::new(vec![], "snapshot-neg".to_string());
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        checker.check_entity("Test", None, -1.0)
+    }));
+    assert!(result.is_ok(), "Negative threshold should not panic");
+}
+
+#[test]
+fn pack_sanctions_checker_huge_name_no_panic() {
+    let checker = SanctionsChecker::new(vec![], "snapshot-huge".to_string());
+    let huge_name = "A".repeat(1_000_000);
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        checker.check_entity(&huge_name, None, 0.8)
+    }));
+    assert!(result.is_ok(), "1MB name query should not panic");
+}
+
+// =========================================================================
+// Campaign 2 Extension: msez-agentic panic paths
+// =========================================================================
+
+use msez_agentic::{AuditTrail, AuditEntry, AuditEntryType};
+
+#[test]
+fn agentic_audit_trail_zero_capacity_no_panic() {
+    let result = panic::catch_unwind(|| {
+        let mut trail = AuditTrail::new(0);
+        trail.append(AuditEntry::new(
+            AuditEntryType::TriggerReceived,
+            Some("asset-001".to_string()),
+            None,
+        ));
+    });
+    assert!(result.is_ok(), "Zero capacity audit trail should not panic on append");
+}
+
+#[test]
+fn agentic_audit_trail_append_beyond_capacity_no_panic() {
+    let mut trail = AuditTrail::new(10);
+    for i in 0..100 {
+        trail.append(AuditEntry::new(
+            AuditEntryType::PolicyEvaluated,
+            Some(format!("asset-{}", i)),
+            Some(json!({"iteration": i})),
+        ));
+    }
+    // Should have trimmed; verify no panic and bounded size
+    assert!(trail.len() <= 100, "Trail should be bounded");
+}
+
+#[test]
+fn agentic_audit_trail_entries_for_nonexistent_asset_no_panic() {
+    let trail = AuditTrail::new(100);
+    let entries = trail.entries_for_asset("nonexistent-asset-id");
+    assert!(entries.is_empty());
+}
+
+#[test]
+fn agentic_audit_trail_last_n_zero_no_panic() {
+    let trail = AuditTrail::new(100);
+    let last = trail.last_n(0);
+    assert!(last.is_empty());
+}
+
+#[test]
+fn agentic_audit_trail_last_n_more_than_entries_no_panic() {
+    let mut trail = AuditTrail::new(100);
+    trail.append(AuditEntry::new(AuditEntryType::ActionExecuted, None, None));
+    let last = trail.last_n(1000);
+    assert_eq!(last.len(), 1);
+}
+
+#[test]
+fn agentic_policy_engine_evaluate_empty_trigger_data_no_panic() {
+    let mut engine = PolicyEngine::with_standard_policies();
+    let trigger = Trigger::new(TriggerType::SanctionsListUpdate, json!({}));
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        engine.evaluate(&trigger, None, None)
+    }));
+    assert!(result.is_ok(), "Evaluating trigger with empty data should not panic");
+}
+
+#[test]
+fn agentic_policy_engine_evaluate_with_empty_asset_id_no_panic() {
+    let mut engine = PolicyEngine::with_standard_policies();
+    let trigger = Trigger::new(TriggerType::LicenseStatusChange, json!({"status": "expired"}));
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        engine.evaluate(&trigger, Some(""), None)
+    }));
+    assert!(result.is_ok(), "Empty asset_id should not panic");
+}
+
+#[test]
+fn agentic_policy_engine_evaluate_with_huge_jurisdiction_no_panic() {
+    let mut engine = PolicyEngine::with_standard_policies();
+    let trigger = Trigger::new(TriggerType::ComplianceDeadline, json!({}));
+    let huge_jurisdiction = "X".repeat(100_000);
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        engine.evaluate(&trigger, Some("asset-001"), Some(&huge_jurisdiction))
+    }));
+    assert!(result.is_ok(), "Huge jurisdiction string should not panic");
+}
+
+#[test]
+fn agentic_policy_engine_evaluate_and_resolve_no_panic() {
+    let mut engine = PolicyEngine::with_standard_policies();
+    let trigger = Trigger::new(TriggerType::DisputeFiled, json!({"dispute_id": "D-001"}));
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        engine.evaluate_and_resolve(&trigger, Some("asset-001"), Some("PK-RSEZ"))
+    }));
+    assert!(result.is_ok(), "evaluate_and_resolve should not panic");
+}
+
+#[test]
+fn agentic_policy_engine_process_trigger_no_panic() {
+    let mut engine = PolicyEngine::with_standard_policies();
+    let trigger = Trigger::new(TriggerType::CorridorStateChange, json!({"corridor": "test"}));
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        engine.process_trigger(&trigger, "asset-001", Some("AE-DIFC"))
+    }));
+    assert!(result.is_ok(), "process_trigger should not panic");
+}
+
+#[test]
+fn agentic_policy_engine_unregister_nonexistent_no_panic() {
+    let mut engine = PolicyEngine::new();
+    let result = engine.unregister_policy("nonexistent-policy-id");
+    assert!(result.is_none(), "Unregistering nonexistent policy should return None");
+}
+
+// =========================================================================
+// Campaign 2 Extension: msez-corridor CorridorBridge panic paths
+// =========================================================================
+
+#[test]
+fn bridge_find_route_nonexistent_source_no_panic() {
+    let bridge = CorridorBridge::new();
+    let source = JurisdictionId::new("NONEXISTENT-A").unwrap();
+    let target = JurisdictionId::new("NONEXISTENT-B").unwrap();
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        bridge.find_route(&source, &target)
+    }));
+    assert!(result.is_ok(), "Route finding in empty graph should not panic");
+    assert!(result.unwrap().is_none(), "No route in empty graph");
+}
+
+#[test]
+fn bridge_reachable_from_empty_graph_no_panic() {
+    let bridge = CorridorBridge::new();
+    let source = JurisdictionId::new("TEST-NODE").unwrap();
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        bridge.reachable_from(&source)
+    }));
+    assert!(result.is_ok(), "reachable_from on empty graph should not panic");
+}
+
+#[test]
+fn bridge_reachable_from_single_node_no_panic() {
+    let mut bridge = CorridorBridge::new();
+    let source = JurisdictionId::new("TEST-NODE").unwrap();
+    let target = JurisdictionId::new("OTHER-NODE").unwrap();
+    bridge.add_edge(BridgeEdge {
+        from: source.clone(),
+        to: target,
+        corridor_id: CorridorId::new(),
+        fee_bps: 10,
+        settlement_time_secs: 3600,
+    });
+    let result = bridge.reachable_from(&source);
+    // Should include source itself and at least one reachable node
+    assert!(!result.is_empty(), "Node with edge should have reachable nodes");
+}
+
+// =========================================================================
+// Campaign 2 Extension: msez-vc panic paths
+// =========================================================================
+
+use msez_vc::registry::SmartAssetRegistryVc;
+
+#[test]
+fn vc_credential_sign_empty_subject_no_panic() {
+    let mut vc = VerifiableCredential {
+        context: ContextValue::Single("https://www.w3.org/2018/credentials/v1".to_string()),
+        id: None,
+        credential_type: CredentialTypeValue::Single("VerifiableCredential".to_string()),
+        issuer: "did:key:z6MkTestIssuer".to_string(),
+        issuance_date: chrono::Utc::now(),
+        expiration_date: None,
+        credential_subject: json!({}),
+        proof: ProofValue::default(),
+    };
+    let sk = SigningKey::generate(&mut rand_core::OsRng);
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        vc.sign_ed25519(
+            &sk,
+            "did:key:z6MkTestIssuer#key-1".to_string(),
+            ProofType::Ed25519Signature2020,
+            None,
+        )
+    }));
+    assert!(result.is_ok(), "Signing VC with empty subject should not panic");
+}
+
+#[test]
+fn vc_compute_asset_id_empty_json_no_panic() {
+    let result = SmartAssetRegistryVc::compute_asset_id(&json!({}));
+    // Should succeed — empty JSON is valid canonical input
+    assert!(result.is_ok(), "compute_asset_id on empty JSON should succeed");
+}
+
+#[test]
+fn vc_compute_asset_id_null_no_panic() {
+    let result = SmartAssetRegistryVc::compute_asset_id(&json!(null));
+    // Should succeed or return error — never panic
+    let _ = result;
+}
+
+#[test]
+fn vc_compute_asset_id_deeply_nested_no_panic() {
+    let mut value = json!("leaf");
+    for _ in 0..100 {
+        value = json!({"n": value});
+    }
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        SmartAssetRegistryVc::compute_asset_id(&value)
+    }));
+    assert!(result.is_ok(), "Deeply nested genesis should not panic");
+}

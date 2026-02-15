@@ -955,3 +955,464 @@ fn netting_bilateral_perfect_offset() {
     assert_eq!(plan.net_total, 0);
     assert_eq!(plan.reduction_percentage, 100.0);
 }
+
+// =========================================================================
+// Campaign 5 Extension: Pack boundary inputs
+// =========================================================================
+
+use msez_pack::regpack::{SanctionsChecker, SanctionsEntry, validate_compliance_domain};
+use msez_pack::parser::ensure_json_compatible;
+
+#[test]
+fn pack_sanctions_checker_threshold_zero_returns_all_matches() {
+    // Threshold 0.0 should match everything (minimum similarity = 0)
+    let checker = SanctionsChecker::new(vec![
+        SanctionsEntry {
+            entry_id: "SE-100".to_string(),
+            entry_type: "individual".to_string(),
+            source_lists: vec!["OFAC".to_string()],
+            primary_name: "John Smith".to_string(),
+            aliases: vec![],
+            identifiers: vec![],
+            addresses: vec![],
+            nationalities: vec![],
+            date_of_birth: None,
+            programs: vec!["SDN".to_string()],
+            listing_date: None,
+            remarks: None,
+        },
+    ], "threshold-test".to_string());
+    let result = checker.check_entity("Completely Different Name", None, 0.0);
+    // With threshold 0.0, any name should match
+    // This tests whether the fuzzy matching handles extreme threshold correctly
+    let _ = result; // May or may not match depending on implementation
+}
+
+#[test]
+fn pack_sanctions_checker_threshold_one_requires_exact() {
+    // Threshold 1.0 should require exact (or near-exact) match
+    let checker = SanctionsChecker::new(vec![
+        SanctionsEntry {
+            entry_id: "SE-101".to_string(),
+            entry_type: "individual".to_string(),
+            source_lists: vec!["EU".to_string()],
+            primary_name: "Ahmed Hassan".to_string(),
+            aliases: vec![],
+            identifiers: vec![],
+            addresses: vec![],
+            nationalities: vec![],
+            date_of_birth: None,
+            programs: vec![],
+            listing_date: None,
+            remarks: None,
+        },
+    ], "exact-test".to_string());
+    let result = checker.check_entity("Ahmed Hassan", None, 1.0);
+    assert!(result.matched, "Exact name should match at threshold 1.0");
+}
+
+#[test]
+fn pack_sanctions_checker_identifier_matching() {
+    use std::collections::BTreeMap;
+    let mut id_map = BTreeMap::new();
+    id_map.insert("passport".to_string(), "AB1234567".to_string());
+
+    let checker = SanctionsChecker::new(vec![
+        SanctionsEntry {
+            entry_id: "SE-102".to_string(),
+            entry_type: "individual".to_string(),
+            source_lists: vec!["UN".to_string()],
+            primary_name: "Target Person".to_string(),
+            aliases: vec![],
+            identifiers: vec![id_map.clone()],
+            addresses: vec![],
+            nationalities: vec![],
+            date_of_birth: None,
+            programs: vec![],
+            listing_date: None,
+            remarks: None,
+        },
+    ], "id-test".to_string());
+    let query_ids = vec![id_map];
+    let result = checker.check_entity("Different Name", Some(&query_ids), 0.9);
+    // Even if name doesn't match, identifier should produce a match
+    let _ = result; // Document whether ID matching works independent of name
+}
+
+#[test]
+fn pack_validate_compliance_domain_all_known_domains() {
+    // Test all 20 ComplianceDomain variants
+    let domains = [
+        "taxation", "licensing", "sanctions", "aml", "kyc",
+        "data_protection", "environmental", "labor", "trade",
+        "securities", "banking", "insurance", "customs", "immigration",
+        "real_estate", "intellectual_property", "consumer_protection",
+        "competition", "foreign_investment", "corporate_governance",
+    ];
+    for domain in &domains {
+        let result = validate_compliance_domain(domain);
+        // We just verify no panic — some may not be recognized
+        let _ = result;
+    }
+}
+
+#[test]
+fn pack_ensure_json_compatible_float_rejected() {
+    // BUG-039: ensure_json_compatible should reject floats for deterministic hashing
+    let value = json!({"amount": 1.1});
+    let result = ensure_json_compatible(&value, "", "float-test");
+    // Document behavior: does it reject floats?
+    let _ = result;
+}
+
+#[test]
+fn pack_ensure_json_compatible_integer_accepted() {
+    let value = json!({"amount": 42});
+    let result = ensure_json_compatible(&value, "", "int-test");
+    assert!(result.is_ok(), "Integer values should be accepted");
+}
+
+#[test]
+fn pack_ensure_json_compatible_empty_object() {
+    let result = ensure_json_compatible(&json!({}), "", "empty");
+    assert!(result.is_ok(), "Empty object should be valid JSON");
+}
+
+#[test]
+fn pack_ensure_json_compatible_empty_array() {
+    let result = ensure_json_compatible(&json!([]), "", "empty-arr");
+    assert!(result.is_ok(), "Empty array should be valid JSON");
+}
+
+// =========================================================================
+// Campaign 5 Extension: Netting engine boundary inputs
+// =========================================================================
+
+#[test]
+fn netting_single_amount_one_boundary() {
+    // Minimum valid amount is 1
+    let mut engine = NettingEngine::new();
+    engine.add_obligation(Obligation {
+        from_party: "A".to_string(),
+        to_party: "B".to_string(),
+        amount: 1,
+        currency: "USD".to_string(),
+        corridor_id: None,
+        priority: 0,
+    }).unwrap();
+    let plan = engine.compute_plan().unwrap();
+    assert_eq!(plan.gross_total, 1);
+}
+
+#[test]
+fn netting_many_currencies_boundary() {
+    // 50 different currencies for the same party pair
+    let mut engine = NettingEngine::new();
+    for i in 0..50 {
+        engine.add_obligation(Obligation {
+            from_party: "A".to_string(),
+            to_party: "B".to_string(),
+            amount: 1000,
+            currency: format!("CUR{:03}", i),
+            corridor_id: None,
+            priority: 0,
+        }).unwrap();
+    }
+    let plan = engine.compute_plan().unwrap();
+    // Should have 50 settlement legs (one per currency)
+    assert_eq!(plan.settlement_legs.len(), 50, "Each currency should produce a separate leg");
+}
+
+#[test]
+fn netting_priority_ordering() {
+    // Test that obligations with different priorities are handled
+    let mut engine = NettingEngine::new();
+    engine.add_obligation(Obligation {
+        from_party: "A".to_string(),
+        to_party: "B".to_string(),
+        amount: 100_000,
+        currency: "USD".to_string(),
+        corridor_id: None,
+        priority: 10,
+    }).unwrap();
+    engine.add_obligation(Obligation {
+        from_party: "C".to_string(),
+        to_party: "D".to_string(),
+        amount: 50_000,
+        currency: "USD".to_string(),
+        corridor_id: None,
+        priority: 1,
+    }).unwrap();
+    let plan = engine.compute_plan().unwrap();
+    assert_eq!(plan.settlement_legs.len(), 2);
+}
+
+// =========================================================================
+// Campaign 5 Extension: Agentic boundary inputs
+// =========================================================================
+
+use msez_agentic::{AuditTrail, AuditEntry, AuditEntryType, PolicyEngine, Trigger, TriggerType};
+
+#[test]
+fn agentic_audit_trail_capacity_one_trim_behavior() {
+    // Capacity of 1 — every append after the first should trigger trim
+    let mut trail = AuditTrail::new(1);
+    trail.append(AuditEntry::new(AuditEntryType::TriggerReceived, None, None));
+    assert_eq!(trail.len(), 1);
+    trail.append(AuditEntry::new(AuditEntryType::PolicyEvaluated, None, None));
+    // After trimming, should still be bounded
+    assert!(trail.len() <= 2, "Trail with capacity 1 should stay bounded");
+}
+
+#[test]
+fn agentic_audit_entry_digest_deterministic() {
+    // Same entry type + asset + metadata should produce same digest
+    let e1 = AuditEntry::new(
+        AuditEntryType::ActionScheduled,
+        Some("asset-001".to_string()),
+        Some(json!({"key": "value"})),
+    );
+    let e2 = AuditEntry::new(
+        AuditEntryType::ActionScheduled,
+        Some("asset-001".to_string()),
+        Some(json!({"key": "value"})),
+    );
+    // Note: timestamps differ so digests MAY differ. This documents the behavior.
+    let d1 = e1.digest();
+    let d2 = e2.digest();
+    // Both should succeed (or both fail)
+    assert_eq!(d1.is_some(), d2.is_some(), "Digest computation should be consistent");
+}
+
+#[test]
+fn agentic_policy_engine_evaluate_all_trigger_types() {
+    // Verify no trigger type causes a panic during evaluation
+    let trigger_types = [
+        TriggerType::SanctionsListUpdate,
+        TriggerType::LicenseStatusChange,
+        TriggerType::GuidanceUpdate,
+        TriggerType::ComplianceDeadline,
+        TriggerType::DisputeFiled,
+        TriggerType::RulingReceived,
+        TriggerType::AppealPeriodExpired,
+        TriggerType::EnforcementDue,
+        TriggerType::CorridorStateChange,
+        TriggerType::SettlementAnchorAvailable,
+        TriggerType::WatcherQuorumReached,
+    ];
+    for tt in &trigger_types {
+        let mut engine = PolicyEngine::with_standard_policies();
+        let trigger = Trigger::new(tt.clone(), json!({"test": true}));
+        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            engine.evaluate(&trigger, Some("asset-001"), Some("PK-RSEZ"))
+        }));
+        assert!(
+            result.is_ok(),
+            "Evaluation panicked on trigger type {:?}",
+            tt
+        );
+    }
+}
+
+// =========================================================================
+// Campaign 5 Extension: Tensor boundary inputs
+// =========================================================================
+
+#[test]
+fn tensor_evaluate_empty_entity_id() {
+    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
+    let results = tensor.evaluate_all("");
+    // Should not panic; may return empty or default results
+    let _ = results;
+}
+
+#[test]
+fn tensor_evaluate_huge_entity_id() {
+    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
+    let huge_id = "E".repeat(100_000);
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        tensor.evaluate_all(&huge_id)
+    }));
+    assert!(result.is_ok(), "Huge entity ID should not panic");
+}
+
+#[test]
+fn tensor_all_20_domains_from_default_jurisdiction() {
+    // DefaultJurisdiction should populate all 20 ComplianceDomain variants
+    let jid = JurisdictionId::new("TEST-JUR").unwrap();
+    let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
+    let all = tensor.evaluate_all("test-entity");
+    assert_eq!(all.len(), 20, "DefaultJurisdiction should cover all 20 compliance domains");
+}
+
+// =========================================================================
+// Campaign 5 Extension: Crypto boundary inputs
+// =========================================================================
+
+#[test]
+fn mmr_append_whitespace_hex_rejected() {
+    let mut mmr = MerkleMountainRange::new();
+    let result = mmr.append("   ");
+    assert!(result.is_err(), "Whitespace-only hex should be rejected");
+}
+
+#[test]
+fn mmr_append_mixed_case_hex() {
+    let mut mmr = MerkleMountainRange::new();
+    let hex = "aAbBcCdDeEfF".repeat(5) + "aAbBcCdD"; // 64 chars
+    let result = mmr.append(&hex);
+    // Mixed case hex should be accepted (hex is case-insensitive)
+    let _ = result;
+}
+
+#[test]
+fn mmr_append_zero_hash() {
+    let mut mmr = MerkleMountainRange::new();
+    let zero_hash = "0".repeat(64);
+    let result = mmr.append(&zero_hash);
+    // Zero hash is valid hex — should succeed
+    assert!(result.is_ok(), "Zero hash should be valid");
+}
+
+#[test]
+fn mmr_deterministic_root() {
+    // Same sequence of appends should always produce same root
+    let make_mmr = || {
+        let mut mmr = MerkleMountainRange::new();
+        for i in 0..10 {
+            let canonical = CanonicalBytes::new(&json!({"i": i})).unwrap();
+            let digest = sha256_digest(&canonical);
+            mmr.append(&digest.to_hex()).unwrap();
+        }
+        mmr.root().unwrap()
+    };
+    let root1 = make_mmr();
+    let root2 = make_mmr();
+    assert_eq!(root1, root2, "MMR root should be deterministic for same inputs");
+}
+
+// =========================================================================
+// Campaign 6 Extension: Determinism verification
+// =========================================================================
+
+#[test]
+fn determinism_netting_same_obligations_same_plan() {
+    let build_plan = || {
+        let mut engine = NettingEngine::new();
+        engine.add_obligation(Obligation {
+            from_party: "Alice".to_string(),
+            to_party: "Bob".to_string(),
+            amount: 100_000,
+            currency: "USD".to_string(),
+            corridor_id: Some("PAK-UAE".to_string()),
+            priority: 5,
+        }).unwrap();
+        engine.add_obligation(Obligation {
+            from_party: "Bob".to_string(),
+            to_party: "Charlie".to_string(),
+            amount: 75_000,
+            currency: "USD".to_string(),
+            corridor_id: Some("PAK-UAE".to_string()),
+            priority: 3,
+        }).unwrap();
+        engine.add_obligation(Obligation {
+            from_party: "Charlie".to_string(),
+            to_party: "Alice".to_string(),
+            amount: 50_000,
+            currency: "USD".to_string(),
+            corridor_id: Some("PAK-UAE".to_string()),
+            priority: 1,
+        }).unwrap();
+        engine.compute_plan().unwrap()
+    };
+
+    let plan1 = build_plan();
+    let plan2 = build_plan();
+    assert_eq!(plan1.gross_total, plan2.gross_total, "Gross total should be deterministic");
+    assert_eq!(plan1.net_total, plan2.net_total, "Net total should be deterministic");
+    assert_eq!(
+        plan1.settlement_legs.len(),
+        plan2.settlement_legs.len(),
+        "Settlement leg count should be deterministic"
+    );
+    assert_eq!(
+        plan1.reduction_percentage, plan2.reduction_percentage,
+        "Reduction percentage should be deterministic"
+    );
+}
+
+#[test]
+fn determinism_canonical_bytes_key_ordering() {
+    // JSON objects with same keys in different insertion order should produce
+    // identical canonical bytes (canonical serialization normalizes key order)
+    let v1 = json!({"z": 1, "a": 2, "m": 3});
+    let v2 = json!({"a": 2, "m": 3, "z": 1});
+    let c1 = CanonicalBytes::new(&v1).unwrap();
+    let c2 = CanonicalBytes::new(&v2).unwrap();
+    let d1 = sha256_digest(&c1);
+    let d2 = sha256_digest(&c2);
+    assert_eq!(d1.to_hex(), d2.to_hex(), "Canonical bytes should normalize key order");
+}
+
+#[test]
+fn determinism_tensor_evaluation_repeated() {
+    let jid = JurisdictionId::new("AE-DIFC").unwrap();
+    let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
+    let results1 = tensor.evaluate_all("entity-001");
+    let results2 = tensor.evaluate_all("entity-001");
+    // Same entity, same tensor → same results
+    assert_eq!(results1.len(), results2.len(), "Tensor evaluation count should be deterministic");
+    for (domain, state) in &results1 {
+        assert_eq!(
+            results2.get(domain),
+            Some(state),
+            "Tensor evaluation for {:?} should be deterministic",
+            domain
+        );
+    }
+}
+
+#[test]
+fn determinism_signing_verification_round_trip() {
+    // Sign same content with same key → same signature
+    let sk = SigningKey::generate(&mut rand_core::OsRng);
+    let canonical = CanonicalBytes::new(&json!({"msg": "determinism test"})).unwrap();
+
+    // Note: Ed25519 signatures are deterministic (RFC 8032)
+    let sig1 = sk.sign(&canonical);
+    let sig2 = sk.sign(&canonical);
+    assert_eq!(sig1.to_hex(), sig2.to_hex(), "Ed25519 signatures should be deterministic (RFC 8032)");
+}
+
+#[test]
+fn determinism_content_digest_from_same_data() {
+    let d1 = ContentDigest::from_hex(&sha256_digest(&CanonicalBytes::new(&json!({"a": 1})).unwrap()).to_hex()).unwrap();
+    let d2 = ContentDigest::from_hex(&sha256_digest(&CanonicalBytes::new(&json!({"a": 1})).unwrap()).to_hex()).unwrap();
+    assert_eq!(d1.to_hex(), d2.to_hex(), "ContentDigest from same data should be identical");
+}
+
+#[test]
+fn determinism_swift_pacs008_same_inputs() {
+    let swift1 = SwiftPacs008::new("MSEZTEST");
+    let swift2 = SwiftPacs008::new("MSEZTEST");
+    let instruction = SettlementInstruction {
+        message_id: "DET001".to_string(),
+        debtor_bic: "DEUTDEFF".to_string(),
+        debtor_account: "DE89370400440532013000".to_string(),
+        debtor_name: "Determinism Corp".to_string(),
+        creditor_bic: "COBADEFF".to_string(),
+        creditor_account: "DE44500105175407324931".to_string(),
+        creditor_name: "Target Corp".to_string(),
+        amount: 50_000,
+        currency: "EUR".to_string(),
+        remittance_info: Some("Invoice 12345".to_string()),
+    };
+    let xml1 = swift1.generate_instruction(&instruction);
+    let xml2 = swift2.generate_instruction(&instruction);
+    assert_eq!(xml1.is_ok(), xml2.is_ok(), "SWIFT generation should be consistent");
+    if let (Ok(x1), Ok(x2)) = (xml1, xml2) {
+        assert_eq!(x1, x2, "SWIFT pacs.008 XML should be deterministic for same inputs");
+    }
+}

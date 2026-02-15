@@ -11,6 +11,10 @@
 //! | Prefix               | Module                      | Domain              |
 //! |-----------------------|----------------------------|---------------------|
 //! | `/v1/entities/*`      | [`routes::mass_proxy`]     | Mass proxy (Entities) |
+//! | `/v1/ownership/*`     | [`routes::mass_proxy`]     | Mass proxy (Ownership) |
+//! | `/v1/fiscal/*`        | [`routes::mass_proxy`]     | Mass proxy (Fiscal) |
+//! | `/v1/identity/*`      | [`routes::mass_proxy`]     | Mass proxy (Identity) |
+//! | `/v1/consent/*`       | [`routes::mass_proxy`]     | Mass proxy (Consent) |
 //! | `/v1/corridors/*`     | [`routes::corridors`]      | Corridors (SEZ)     |
 //! | `/v1/assets/*`        | [`routes::smart_assets`]   | Smart Assets (SEZ)  |
 //! | `/v1/regulator/*`     | [`routes::regulator`]      | Regulator (SEZ)     |
@@ -55,7 +59,7 @@ pub fn app(state: AppState) -> Router {
 
     // Authenticated API routes.
     let api = Router::new()
-        // Mass API proxy (entities via Mass client; ownership/fiscal/identity/consent pending)
+        // Mass API proxy (all five primitives via Mass client)
         .merge(routes::mass_proxy::router())
         // SEZ Stack native routes (genuinely this codebase's domain)
         .merge(routes::corridors::router())

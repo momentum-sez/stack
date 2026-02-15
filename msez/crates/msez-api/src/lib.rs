@@ -34,6 +34,7 @@
 //! Auto-generated OpenAPI 3.1 spec via utoipa derive macros at `/openapi.json`.
 
 pub mod auth;
+pub mod bootstrap;
 pub mod compliance;
 pub mod error;
 pub mod extractors;

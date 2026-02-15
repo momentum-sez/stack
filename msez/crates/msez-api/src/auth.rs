@@ -188,11 +188,37 @@ pub fn require_role(caller: &CallerIdentity, minimum: Role) -> Result<(), AppErr
 /// Auth configuration injected into request extensions.
 ///
 /// The token is wrapped in [`SecretString`] which derives `Zeroize`/`ZeroizeOnDrop`,
-/// preventing credential material from lingering in process memory. `Debug`
-/// on `SecretString` automatically redacts the value.
-#[derive(Clone, Debug)]
+/// preventing credential material from lingering in process memory. Custom
+/// `Debug` redacts the token value to prevent credential leakage in logs.
+///
+/// `AuthConfig` itself also implements `Zeroize` + `Drop` as defense-in-depth,
+/// ensuring the token is overwritten even if `SecretString`'s destructor is
+/// bypassed (e.g., via `mem::forget` on the inner value).
+#[derive(Clone)]
 pub struct AuthConfig {
     pub token: Option<SecretString>,
+}
+
+impl std::fmt::Debug for AuthConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AuthConfig")
+            .field("token", &self.token.as_ref().map(|_| "[REDACTED]"))
+            .finish()
+    }
+}
+
+impl Zeroize for AuthConfig {
+    fn zeroize(&mut self) {
+        if let Some(ref mut t) = self.token {
+            t.zeroize();
+        }
+    }
+}
+
+impl Drop for AuthConfig {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
 }
 
 // ── Token Validation ────────────────────────────────────────────────────────

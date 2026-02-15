@@ -31,7 +31,7 @@
 //! ## Middleware Stack (execution order)
 //!
 //! ```text
-//! TraceLayer → MetricsMiddleware → RateLimitMiddleware → AuthMiddleware → Handler
+//! TraceLayer → MetricsMiddleware → AuthMiddleware → RateLimitMiddleware → Handler
 //! ```
 //!
 //! ## OpenAPI
@@ -78,6 +78,12 @@ pub fn app(state: AppState) -> Router {
     // Body size limit: 2 MiB. This prevents OOM from oversized request bodies.
     // Individual routes that need larger payloads (e.g., bulk import) can
     // override with a route-level DefaultBodyLimit.
+    //
+    // Middleware execution order (outermost → innermost):
+    //   TraceLayer → MetricsMiddleware → AuthMiddleware → RateLimitMiddleware → Handler
+    //
+    // Auth runs BEFORE rate limiting so unauthenticated requests are rejected
+    // without consuming rate limit quota (prevents DoS via auth bypass).
     let api = Router::new()
         // Mass API proxy (all five primitives via Mass client)
         .merge(routes::mass_proxy::router())
@@ -96,8 +102,8 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::agentic::router())
         .merge(openapi::router())
         .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
-        .layer(from_fn(auth::auth_middleware))
         .layer(from_fn(middleware::rate_limit::rate_limit_middleware))
+        .layer(from_fn(auth::auth_middleware))
         .layer(from_fn(middleware::metrics::metrics_middleware))
         .layer(TraceLayer::new_for_http())
         .layer(axum::Extension(auth_config))

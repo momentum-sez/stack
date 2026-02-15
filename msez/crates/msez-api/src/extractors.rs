@@ -55,7 +55,6 @@ mod tests {
     #[derive(Debug, Deserialize)]
     struct SampleRequest {
         name: String,
-        #[allow(dead_code)]
         count: u32,
     }
 
@@ -71,7 +70,6 @@ mod tests {
 
     #[derive(Debug, Deserialize)]
     struct AlwaysValid {
-        #[allow(dead_code)]
         value: i32,
     }
 

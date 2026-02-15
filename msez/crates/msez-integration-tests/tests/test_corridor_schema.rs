@@ -132,12 +132,12 @@ fn corridor_transition_log_structure() {
     assert_eq!(log.len(), 2);
 
     // First transition: DRAFT -> PENDING
-    assert_eq!(log[0].from_state, "DRAFT");
-    assert_eq!(log[0].to_state, "PENDING");
+    assert_eq!(log[0].from_state, DynCorridorState::Draft);
+    assert_eq!(log[0].to_state, DynCorridorState::Pending);
 
     // Second transition: PENDING -> ACTIVE
-    assert_eq!(log[1].from_state, "PENDING");
-    assert_eq!(log[1].to_state, "ACTIVE");
+    assert_eq!(log[1].from_state, DynCorridorState::Pending);
+    assert_eq!(log[1].to_state, DynCorridorState::Active);
 
     // Timestamps should be present and ordered
     assert!(log[0].timestamp <= log[1].timestamp);

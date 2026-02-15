@@ -184,9 +184,9 @@ pub struct DeprecationEvidence {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransitionRecord {
     /// State before the transition.
-    pub from_state: String,
+    pub from_state: DynCorridorState,
     /// State after the transition.
-    pub to_state: String,
+    pub to_state: DynCorridorState,
     /// When the transition occurred.
     pub timestamp: DateTime<Utc>,
     /// Digest of the evidence authorizing this transition.
@@ -255,8 +255,10 @@ impl<S: CorridorState> Corridor<S> {
     fn transmute_to<T: CorridorState>(self, evidence_digest: Option<ContentDigest>) -> Corridor<T> {
         let mut inner = self.inner;
         inner.transition_log.push(TransitionRecord {
-            from_state: S::name().to_string(),
-            to_state: T::name().to_string(),
+            from_state: DynCorridorState::from_name(S::name())
+                .expect("sealed CorridorState trait guarantees valid name"),
+            to_state: DynCorridorState::from_name(T::name())
+                .expect("sealed CorridorState trait guarantees valid name"),
             timestamp: Utc::now(),
             evidence_digest,
         });
@@ -427,6 +429,23 @@ impl DynCorridorState {
         }
     }
 
+    /// Convert a canonical state name to a `DynCorridorState`.
+    ///
+    /// Only accepts spec-aligned names (DRAFT, PENDING, ACTIVE, HALTED,
+    /// SUSPENDED, DEPRECATED). Returns `None` for any other input,
+    /// including the defective Python v1 names (PROPOSED, OPERATIONAL).
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "DRAFT" => Some(Self::Draft),
+            "PENDING" => Some(Self::Pending),
+            "ACTIVE" => Some(Self::Active),
+            "HALTED" => Some(Self::Halted),
+            "SUSPENDED" => Some(Self::Suspended),
+            "DEPRECATED" => Some(Self::Deprecated),
+            _ => None,
+        }
+    }
+
     /// Whether this is a terminal state.
     pub fn is_terminal(&self) -> bool {
         matches!(self, Self::Deprecated)
@@ -453,15 +472,8 @@ impl std::fmt::Display for DynCorridorState {
 
 impl<S: CorridorState> From<&Corridor<S>> for DynCorridorData {
     fn from(c: &Corridor<S>) -> Self {
-        let state = match S::name() {
-            "DRAFT" => DynCorridorState::Draft,
-            "PENDING" => DynCorridorState::Pending,
-            "ACTIVE" => DynCorridorState::Active,
-            "HALTED" => DynCorridorState::Halted,
-            "SUSPENDED" => DynCorridorState::Suspended,
-            "DEPRECATED" => DynCorridorState::Deprecated,
-            _ => unreachable!("sealed trait guarantees exhaustive state names"),
-        };
+        let state = DynCorridorState::from_name(S::name())
+            .expect("sealed CorridorState trait guarantees valid name");
         DynCorridorData {
             id: c.id.clone(),
             jurisdiction_a: c.jurisdiction_a.clone(),
@@ -510,8 +522,8 @@ mod tests {
         let pending = draft.submit(evidence);
         assert_eq!(pending.state_name(), "PENDING");
         assert_eq!(pending.transition_log().len(), 1);
-        assert_eq!(pending.transition_log()[0].from_state, "DRAFT");
-        assert_eq!(pending.transition_log()[0].to_state, "PENDING");
+        assert_eq!(pending.transition_log()[0].from_state, DynCorridorState::Draft);
+        assert_eq!(pending.transition_log()[0].to_state, DynCorridorState::Pending);
     }
 
     #[test]
@@ -621,14 +633,14 @@ mod tests {
 
         let log = corridor.transition_log();
         assert_eq!(log.len(), 4);
-        assert_eq!(log[0].from_state, "DRAFT");
-        assert_eq!(log[0].to_state, "PENDING");
-        assert_eq!(log[1].from_state, "PENDING");
-        assert_eq!(log[1].to_state, "ACTIVE");
-        assert_eq!(log[2].from_state, "ACTIVE");
-        assert_eq!(log[2].to_state, "HALTED");
-        assert_eq!(log[3].from_state, "HALTED");
-        assert_eq!(log[3].to_state, "DEPRECATED");
+        assert_eq!(log[0].from_state, DynCorridorState::Draft);
+        assert_eq!(log[0].to_state, DynCorridorState::Pending);
+        assert_eq!(log[1].from_state, DynCorridorState::Pending);
+        assert_eq!(log[1].to_state, DynCorridorState::Active);
+        assert_eq!(log[2].from_state, DynCorridorState::Active);
+        assert_eq!(log[2].to_state, DynCorridorState::Halted);
+        assert_eq!(log[3].from_state, DynCorridorState::Halted);
+        assert_eq!(log[3].to_state, DynCorridorState::Deprecated);
     }
 
     #[test]
@@ -729,8 +741,8 @@ mod tests {
                 regulatory_approval_b: test_digest(),
             });
         let log = active.transition_log();
-        assert_eq!(log[1].from_state, "PENDING");
-        assert_eq!(log[1].to_state, "ACTIVE");
+        assert_eq!(log[1].from_state, DynCorridorState::Pending);
+        assert_eq!(log[1].to_state, DynCorridorState::Active);
         assert!(log[1].evidence_digest.is_some());
     }
 
@@ -752,8 +764,8 @@ mod tests {
             evidence: evidence.clone(),
         });
         let log = halted.transition_log();
-        assert_eq!(log[2].from_state, "ACTIVE");
-        assert_eq!(log[2].to_state, "HALTED");
+        assert_eq!(log[2].from_state, DynCorridorState::Active);
+        assert_eq!(log[2].to_state, DynCorridorState::Halted);
         assert!(log[2].evidence_digest.is_some());
     }
 
@@ -1077,7 +1089,7 @@ mod tests {
             });
         let dyn_data = DynCorridorData::from(&corridor);
         assert_eq!(dyn_data.transition_log.len(), 4);
-        assert_eq!(dyn_data.transition_log[0].from_state, "DRAFT");
-        assert_eq!(dyn_data.transition_log[3].to_state, "ACTIVE");
+        assert_eq!(dyn_data.transition_log[0].from_state, DynCorridorState::Draft);
+        assert_eq!(dyn_data.transition_log[3].to_state, DynCorridorState::Active);
     }
 }

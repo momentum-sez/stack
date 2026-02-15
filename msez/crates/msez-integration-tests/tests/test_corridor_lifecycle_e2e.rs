@@ -61,8 +61,8 @@ fn full_corridor_lifecycle() {
     });
     assert_eq!(pending.state_name(), "PENDING");
     assert_eq!(pending.transition_log().len(), 1);
-    assert_eq!(pending.transition_log()[0].from_state, "DRAFT");
-    assert_eq!(pending.transition_log()[0].to_state, "PENDING");
+    assert_eq!(pending.transition_log()[0].from_state, DynCorridorState::Draft);
+    assert_eq!(pending.transition_log()[0].to_state, DynCorridorState::Pending);
 
     // 3. Activate → Active
     let active = pending.activate(ActivationEvidence {
@@ -109,12 +109,12 @@ fn full_corridor_lifecycle() {
     // Verify complete transition log
     let log = deprecated.transition_log();
     let expected_transitions = [
-        ("DRAFT", "PENDING"),
-        ("PENDING", "ACTIVE"),
-        ("ACTIVE", "SUSPENDED"),
-        ("SUSPENDED", "ACTIVE"),
-        ("ACTIVE", "HALTED"),
-        ("HALTED", "DEPRECATED"),
+        (DynCorridorState::Draft, DynCorridorState::Pending),
+        (DynCorridorState::Pending, DynCorridorState::Active),
+        (DynCorridorState::Active, DynCorridorState::Suspended),
+        (DynCorridorState::Suspended, DynCorridorState::Active),
+        (DynCorridorState::Active, DynCorridorState::Halted),
+        (DynCorridorState::Halted, DynCorridorState::Deprecated),
     ];
 
     for (i, (from, to)) in expected_transitions.iter().enumerate() {

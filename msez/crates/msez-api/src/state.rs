@@ -20,6 +20,7 @@ use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use msez_corridor::ReceiptChain;
+use msez_crypto::SigningKey;
 use msez_state::{DynCorridorState, TransitionRecord};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
@@ -185,10 +186,51 @@ impl Default for AppConfig {
     }
 }
 
+/// Decode a hex string into bytes.
+fn hex_decode(s: &str) -> Result<Vec<u8>, String> {
+    let s = s.trim();
+    if s.len() % 2 != 0 {
+        return Err(format!("hex string has odd length: {}", s.len()));
+    }
+    (0..s.len())
+        .step_by(2)
+        .map(|i| {
+            u8::from_str_radix(&s[i..i + 2], 16)
+                .map_err(|e| format!("invalid hex at position {i}: {e}"))
+        })
+        .collect()
+}
+
+/// Load the zone signing key from the environment, or generate one for development.
+///
+/// In production, `ZONE_SIGNING_KEY_HEX` provides the 64-character hex-encoded
+/// Ed25519 private key (32 bytes). In development (when the variable is absent),
+/// a fresh key is generated and a warning is logged.
+fn load_or_generate_zone_key() -> SigningKey {
+    if let Ok(hex) = std::env::var("ZONE_SIGNING_KEY_HEX") {
+        let bytes = hex_decode(&hex).expect("ZONE_SIGNING_KEY_HEX must be valid hex");
+        assert_eq!(
+            bytes.len(),
+            32,
+            "ZONE_SIGNING_KEY_HEX must be exactly 64 hex chars (32 bytes)"
+        );
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&bytes);
+        SigningKey::from_bytes(&arr)
+    } else {
+        tracing::warn!(
+            "ZONE_SIGNING_KEY_HEX not set — generating ephemeral key. \
+             VCs signed with this key will not be verifiable after restart."
+        );
+        SigningKey::generate(&mut rand_core::OsRng)
+    }
+}
+
 /// Shared application state accessible to all route handlers.
 ///
 /// Contains SEZ-Stack-owned stores (corridors, smart assets, attestations),
-/// the Mass API client for primitive operations, and application configuration.
+/// the Mass API client for primitive operations, the zone signing key for
+/// VC issuance, and application configuration.
 /// Clone-friendly via `Arc` internals in each `Store`.
 ///
 /// ## What is NOT here
@@ -212,6 +254,18 @@ pub struct AppState {
     // -- Mass API client (delegates primitive operations to live Mass APIs) --
     pub mass_client: Option<msez_mass_client::MassClient>,
 
+    // -- Zone identity --
+
+    /// The zone operator's Ed25519 signing key.
+    /// Used to sign Verifiable Credentials issued by this zone.
+    /// Wrapped in `Arc` because `SigningKey` is not `Clone` (it contains
+    /// sensitive key material that shouldn't be casually duplicated).
+    pub zone_signing_key: Arc<SigningKey>,
+
+    /// The zone operator's DID, derived from the public key.
+    /// Format: `"did:mass:zone:<hex-encoded-verifying-key>"`
+    pub zone_did: String,
+
     // -- Configuration --
     pub config: AppConfig,
 }
@@ -227,12 +281,20 @@ impl AppState {
         config: AppConfig,
         mass_client: Option<msez_mass_client::MassClient>,
     ) -> Self {
+        let zone_signing_key = load_or_generate_zone_key();
+        let zone_did = format!(
+            "did:mass:zone:{}",
+            zone_signing_key.verifying_key().to_hex()
+        );
+
         Self {
             corridors: Store::new(),
             smart_assets: Store::new(),
             attestations: Store::new(),
             receipt_chains: Arc::new(RwLock::new(HashMap::new())),
             mass_client,
+            zone_signing_key: Arc::new(zone_signing_key),
+            zone_did,
             config,
         }
     }
@@ -468,5 +530,31 @@ mod tests {
             default_state.config.auth_token,
             new_state.config.auth_token
         );
+    }
+
+    #[test]
+    fn app_state_has_zone_signing_key() {
+        let state = AppState::new();
+        assert!(state.zone_did.starts_with("did:mass:zone:"));
+        // DID should contain a 64-char hex-encoded verifying key.
+        let hex_part = state.zone_did.strip_prefix("did:mass:zone:").unwrap();
+        assert_eq!(hex_part.len(), 64);
+        assert!(hex_part.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn hex_decode_valid() {
+        let result = super::hex_decode("deadbeef").unwrap();
+        assert_eq!(result, vec![0xde, 0xad, 0xbe, 0xef]);
+    }
+
+    #[test]
+    fn hex_decode_odd_length_fails() {
+        assert!(super::hex_decode("abc").is_err());
+    }
+
+    #[test]
+    fn hex_decode_invalid_chars_fails() {
+        assert!(super::hex_decode("zzzz").is_err());
     }
 }

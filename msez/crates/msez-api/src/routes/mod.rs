@@ -6,9 +6,11 @@
 //!   ownership, fiscal, identity, consent) via `msez-mass-client`.
 //! - `corridors` — Cross-border corridor lifecycle (SEZ Stack domain).
 //! - `smart_assets` — Smart asset lifecycle (SEZ Stack domain).
+//! - `credentials` — VC issuance on compliance evaluation, VC verification.
 //! - `regulator` — Read-only regulator console (SEZ Stack domain).
 
 pub mod corridors;
+pub mod credentials;
 pub mod mass_proxy;
 pub mod regulator;
 pub mod smart_assets;

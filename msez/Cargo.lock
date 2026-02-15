@@ -1401,6 +1401,7 @@ dependencies = [
  "tracing-subscriber",
  "utoipa",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]

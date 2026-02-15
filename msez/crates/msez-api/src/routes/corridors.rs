@@ -329,7 +329,10 @@ async fn transition_corridor(
     // Parse the target state.
     let target: DynCorridorState =
         serde_json::from_value(serde_json::Value::String(req.target_state.clone()))
-            .map_err(|_| AppError::Validation(format!("unknown state: '{}'", req.target_state)))?;
+            .map_err(|e| AppError::Validation(format!(
+                "unknown state: '{}' (valid states: DRAFT, PENDING, ACTIVE, HALTED, SUSPENDED, DEPRECATED): {e}",
+                req.target_state
+            )))?;
 
     // Parse and validate evidence digest upfront (before acquiring the lock).
     let evidence_digest = if let Some(ref hex) = req.evidence_digest {

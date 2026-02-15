@@ -34,3 +34,6 @@
 | BUG-030 | P1 | msez-api | 7 | Treasury proxy routes (/v1/treasury/*) return 404 instead of 501 — routes appear unregistered | DEFERRED |
 | BUG-031 | P1 | msez-api | 7 | Consent proxy routes (/v1/consent/*) return 405 instead of 501 — routes registered but wrong HTTP method | DEFERRED |
 | BUG-032 | P1 | msez-api | 7 | Identity proxy routes (/v1/identity/*) return 404/405 — routes appear unregistered or wrong method | DEFERRED |
+| BUG-033 | P1 | msez-pack | 1 | LawpackRef serde Deserialize bypasses validation — empty strings for jurisdiction_id, domain, version accepted; LawpackRef::parse would reject them | DEFERRED |
+| BUG-034 | P2 | msez-arbitration | 1 | Claim missing PartialEq derive — cannot verify serde round-trip fidelity | DEFERRED |
+| BUG-035 | P2 | msez-arbitration | 1 | Dispute missing PartialEq derive — cannot verify serde round-trip fidelity | DEFERRED |

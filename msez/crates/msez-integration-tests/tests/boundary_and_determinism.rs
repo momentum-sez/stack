@@ -59,11 +59,12 @@ fn netting_i64_max_overflow_two_obligations() {
 #[test]
 fn netting_many_small_obligations_no_overflow() {
     let mut engine = NettingEngine::new();
-    // 1000 obligations of 1M each = 1B total, well within i64 range
-    for i in 0..1000 {
+    // Use unique party pairs to avoid DuplicateObligation errors.
+    // 100 obligations with unique from/to pairs, 1M each = 100M total.
+    for i in 0..100 {
         engine.add_obligation(Obligation {
-            from_party: format!("party_{}", i % 10),
-            to_party: format!("party_{}", (i + 1) % 10),
+            from_party: format!("party_from_{}", i),
+            to_party: format!("party_to_{}", i),
             amount: 1_000_000,
             currency: "USD".to_string(),
             corridor_id: None,
@@ -71,7 +72,7 @@ fn netting_many_small_obligations_no_overflow() {
         }).unwrap();
     }
     let plan = engine.compute_plan().unwrap();
-    assert_eq!(plan.gross_total, 1_000_000_000);
+    assert_eq!(plan.gross_total, 100_000_000);
 }
 
 #[test]

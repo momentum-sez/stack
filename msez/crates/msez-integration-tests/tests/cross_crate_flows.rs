@@ -85,7 +85,7 @@ fn cas_store_then_contains_check() {
 
     // Verify the CAS reports the artifact exists
     let exists = cas
-        .contains(&artifact_ref.artifact_type, &artifact_ref.digest)
+        .contains(artifact_ref.artifact_type.as_str(), &artifact_ref.digest)
         .unwrap();
     assert!(exists, "CAS should contain the stored artifact");
 

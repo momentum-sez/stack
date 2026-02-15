@@ -72,6 +72,37 @@ impl ContentDigest {
     pub fn to_hex(&self) -> String {
         self.bytes.iter().map(|b| format!("{b:02x}")).collect()
     }
+
+    /// Reconstruct a SHA-256 ContentDigest from a 64-character hex string.
+    ///
+    /// This is the inverse of [`to_hex()`](Self::to_hex). It does not compute
+    /// a digest — it reconstructs one from a previously-computed hex
+    /// representation (e.g., evidence digests received at the API boundary).
+    ///
+    /// Assumes SHA-256 algorithm (Phase 1). Returns an error if the hex
+    /// string is not exactly 64 characters or contains non-hex characters.
+    pub fn from_hex(hex: &str) -> Result<Self, crate::error::MsezError> {
+        if hex.len() != 64 {
+            return Err(crate::error::MsezError::Integrity(format!(
+                "expected 64 hex chars for SHA-256 digest, got {}",
+                hex.len()
+            )));
+        }
+        let mut bytes = [0u8; 32];
+        for i in 0..32 {
+            bytes[i] = u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).map_err(|_| {
+                crate::error::MsezError::Integrity(format!(
+                    "invalid hex at position {}: '{}'",
+                    i * 2,
+                    &hex[i * 2..i * 2 + 2]
+                ))
+            })?;
+        }
+        Ok(Self {
+            algorithm: DigestAlgorithm::Sha256,
+            bytes,
+        })
+    }
 }
 
 impl std::fmt::Display for ContentDigest {
@@ -242,6 +273,43 @@ mod tests {
         set.insert(d2);
         assert_eq!(set.len(), 2);
         assert!(set.contains(&d1));
+    }
+
+    #[test]
+    fn from_hex_roundtrips_with_to_hex() {
+        let canonical = CanonicalBytes::new(&json!({"key": "value"})).unwrap();
+        let original = sha256_digest(&canonical);
+        let hex = original.to_hex();
+        let reconstructed = ContentDigest::from_hex(&hex).unwrap();
+        assert_eq!(original, reconstructed);
+    }
+
+    #[test]
+    fn from_hex_rejects_short_string() {
+        let result = ContentDigest::from_hex("abcd");
+        assert!(result.is_err());
+        let err = format!("{}", result.unwrap_err());
+        assert!(err.contains("64 hex chars"));
+    }
+
+    #[test]
+    fn from_hex_rejects_long_string() {
+        let long = "a".repeat(128);
+        assert!(ContentDigest::from_hex(&long).is_err());
+    }
+
+    #[test]
+    fn from_hex_rejects_non_hex_chars() {
+        let bad = "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz";
+        assert_eq!(bad.len(), 64);
+        assert!(ContentDigest::from_hex(bad).is_err());
+    }
+
+    #[test]
+    fn from_hex_produces_sha256_algorithm() {
+        let hex = "a".repeat(64);
+        let digest = ContentDigest::from_hex(&hex).unwrap();
+        assert_eq!(digest.algorithm(), DigestAlgorithm::Sha256);
     }
 
     // ── Additional coverage expansion tests ─────────────────────────

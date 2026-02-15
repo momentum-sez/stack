@@ -59,7 +59,6 @@ use crate::state::AppState;
     components(schemas(
         // State record types (SEZ-Stack-owned)
         crate::state::CorridorRecord,
-        crate::state::CorridorTransitionEntry,
         crate::state::SmartAssetRecord,
         crate::state::AttestationRecord,
         // Error types

@@ -339,7 +339,7 @@ mod tests {
             id: uuid::Uuid::new_v4(),
             jurisdiction_a: "PK-PSEZ".to_string(),
             jurisdiction_b: "AE-DIFC".to_string(),
-            state: "ACTIVE".to_string(),
+            state: msez_state::DynCorridorState::Active,
             transition_log: vec![],
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),

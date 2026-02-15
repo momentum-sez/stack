@@ -235,7 +235,7 @@
           "type": "string"
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "anchor": {
       "type": "object",
@@ -262,7 +262,7 @@
           "format": "date-time"
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "proof": {
       "description": "One or more cryptographic proofs over the receipt payload (excluding the proof field).",

@@ -17,7 +17,7 @@ use msez_tensor::{ComplianceState, ComplianceTensor, DefaultJurisdiction};
 
 use crate::state::SmartAssetRecord;
 #[cfg(test)]
-use crate::state::{AssetComplianceStatus, AssetStatus};
+use crate::state::{AssetComplianceStatus, AssetStatus, SmartAssetType};
 
 /// Attestation evidence for a single compliance domain.
 #[derive(Debug, Clone, Deserialize, ToSchema)]
@@ -232,7 +232,7 @@ mod tests {
         }
         let asset = SmartAssetRecord {
             id: Uuid::new_v4(),
-            asset_type: "bond".to_string(),
+            asset_type: SmartAssetType::new("bond").expect("valid"),
             jurisdiction_id: "PK-PSEZ".to_string(),
             status: AssetStatus::Genesis,
             genesis_digest: None,

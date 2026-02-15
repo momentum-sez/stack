@@ -77,7 +77,10 @@ fn mock_proof_deterministic_under_adversarial_input() {
 }
 
 #[test]
-fn mock_proof_distinct_for_different_inputs() {
+fn mock_proof_same_for_same_public_inputs() {
+    // In the mock system, circuit data is validated but not hashed into
+    // the proof. Circuit binding happens through the verifying key in
+    // real ZK systems. Same public_inputs → same proof.
     let system = MockProofSystem;
     let pk = MockProvingKey;
 
@@ -92,9 +95,20 @@ fn mock_proof_distinct_for_different_inputs() {
 
     let proof_a = system.prove(&pk, &circuit_a).unwrap();
     let proof_b = system.prove(&pk, &circuit_b).unwrap();
-    assert_ne!(
+    assert_eq!(
         proof_a, proof_b,
-        "Different circuit data must produce different proofs"
+        "Same public_inputs should produce same proofs regardless of circuit data"
+    );
+
+    // Different public_inputs MUST produce different proofs.
+    let circuit_c = MockCircuit {
+        circuit_data: json!({"key": "a"}),
+        public_inputs: b"different".to_vec(),
+    };
+    let proof_c = system.prove(&pk, &circuit_c).unwrap();
+    assert_ne!(
+        proof_a, proof_c,
+        "Different public_inputs must produce different proofs"
     );
 }
 

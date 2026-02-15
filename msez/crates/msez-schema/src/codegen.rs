@@ -300,15 +300,8 @@ mod tests {
 
     #[test]
     fn test_audit_current_schema_state() {
-        // Tracks the KNOWN count of additionalProperties violations in
-        // security-critical schemas. These are documented findings per audit
-        // §3.1 — the schemas themselves need fixing (tracked separately).
-        //
-        // This test prevents REGRESSIONS: if new violations appear beyond
-        // the known count, the test fails. As violations are fixed, reduce
-        // KNOWN_VIOLATION_COUNT toward zero.
-        const KNOWN_VIOLATION_COUNT: usize = 14;
-
+        // All security-critical schemas MUST have additionalProperties: false
+        // at non-extensible positions per audit §3.1. Zero violations allowed.
         let mut all_violations = Vec::new();
         for filename in SECURITY_CRITICAL_SCHEMAS {
             let path = repo_root().join("schemas").join(filename);
@@ -322,9 +315,9 @@ mod tests {
         }
 
         assert!(
-            all_violations.len() <= KNOWN_VIOLATION_COUNT,
-            "New additionalProperties violations introduced! \
-             Expected at most {KNOWN_VIOLATION_COUNT}, found {}:\n{}",
+            all_violations.is_empty(),
+            "additionalProperties violations found in security-critical schemas \
+             (expected 0, found {}):\n{}",
             all_violations.len(),
             all_violations
                 .iter()

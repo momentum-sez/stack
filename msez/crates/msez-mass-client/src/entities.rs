@@ -95,11 +95,7 @@ impl EntityClient {
         let endpoint = "POST /organizations";
         let url = format!("{}organization-info/organizations", self.base_url);
 
-        let resp = self
-            .http
-            .post(&url)
-            .json(req)
-            .send()
+        let resp = crate::retry::retry_send(|| self.http.post(&url).json(req).send())
             .await
             .map_err(|e| MassApiError::Http {
                 endpoint: endpoint.into(),
@@ -127,15 +123,12 @@ impl EntityClient {
         let endpoint = format!("GET /organizations/{id}");
         let url = format!("{}organization-info/organizations/{id}", self.base_url);
 
-        let resp =
-            self.http
-                .get(&url)
-                .send()
-                .await
-                .map_err(|e| MassApiError::Http {
-                    endpoint: endpoint.clone(),
-                    source: e,
-                })?;
+        let resp = crate::retry::retry_send(|| self.http.get(&url).send())
+            .await
+            .map_err(|e| MassApiError::Http {
+                endpoint: endpoint.clone(),
+                source: e,
+            })?;
 
         if resp.status() == reqwest::StatusCode::NOT_FOUND {
             return Ok(None);
@@ -181,15 +174,12 @@ impl EntityClient {
             url.push_str(&params.join("&"));
         }
 
-        let resp =
-            self.http
-                .get(&url)
-                .send()
-                .await
-                .map_err(|e| MassApiError::Http {
-                    endpoint: endpoint.into(),
-                    source: e,
-                })?;
+        let resp = crate::retry::retry_send(|| self.http.get(&url).send())
+            .await
+            .map_err(|e| MassApiError::Http {
+                endpoint: endpoint.into(),
+                source: e,
+            })?;
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();

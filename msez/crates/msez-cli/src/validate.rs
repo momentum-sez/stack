@@ -259,20 +259,48 @@ fn find_yaml_files(dir: &Path, target_name: &str) -> Vec<PathBuf> {
 }
 
 fn walk_for_files(dir: &Path, target_name: &str, acc: &mut Vec<PathBuf>) {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
+    let mut seen = std::collections::HashSet::new();
+    // Populate seen set from any existing entries for O(1) lookups.
+    for path in acc.iter() {
+        seen.insert(path.clone());
+    }
+    walk_for_files_inner(dir, target_name, acc, &mut seen);
+}
+
+fn walk_for_files_inner(
+    dir: &Path,
+    target_name: &str,
+    acc: &mut Vec<PathBuf>,
+    seen: &mut std::collections::HashSet<PathBuf>,
+) {
+    let entries = match std::fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(e) => {
+            tracing::warn!(
+                dir = %dir.display(),
+                error = %e,
+                "failed to read directory during file walk"
+            );
+            return;
+        }
     };
-    for entry in entries.flatten() {
+    for entry in entries {
+        let entry = match entry {
+            Ok(e) => e,
+            Err(e) => {
+                tracing::warn!(dir = %dir.display(), error = %e, "failed to read directory entry");
+                continue;
+            }
+        };
         let path = entry.path();
         if path.is_dir() {
-            // Check this directory for the target file.
             let candidate = path.join(target_name);
-            if candidate.exists() && !acc.contains(&candidate) {
+            if candidate.exists() && seen.insert(candidate.clone()) {
                 acc.push(candidate);
             }
-            walk_for_files(&path, target_name, acc);
+            walk_for_files_inner(&path, target_name, acc, seen);
         } else if path.file_name().and_then(|f| f.to_str()) == Some(target_name)
-            && !acc.contains(&path)
+            && seen.insert(path.clone())
         {
             acc.push(path);
         }

@@ -68,7 +68,8 @@ fn test_schema_validator_loads_all_schemas() {
 
 #[test]
 fn test_find_all_module_directories() {
-    let dirs = SchemaValidator::find_all_modules(&modules_dir());
+    let dirs = SchemaValidator::find_all_modules(&modules_dir())
+        .expect("find_all_modules should succeed");
     // The repo has ~119 module.yaml files across 16 families.
     assert!(
         dirs.len() >= 50,
@@ -136,7 +137,8 @@ fn test_validate_all_modules_against_schema() {
 #[test]
 fn test_individual_module_validation_produces_structured_errors() {
     let validator = SchemaValidator::new(schema_dir()).expect("failed to load schemas");
-    let module_dirs = SchemaValidator::find_all_modules(&modules_dir());
+    let module_dirs = SchemaValidator::find_all_modules(&modules_dir())
+        .expect("find_all_modules should succeed");
 
     // Pick the first module that fails and verify the error is structured.
     for dir in &module_dirs {

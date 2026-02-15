@@ -73,11 +73,7 @@ impl OwnershipClient {
         let endpoint = "POST /cap-tables";
         let url = format!("{}investment-info/cap-tables", self.base_url);
 
-        let resp = self
-            .http
-            .post(&url)
-            .json(req)
-            .send()
+        let resp = crate::retry::retry_send(|| self.http.post(&url).json(req).send())
             .await
             .map_err(|e| MassApiError::Http {
                 endpoint: endpoint.into(),
@@ -113,15 +109,12 @@ impl OwnershipClient {
             self.base_url
         );
 
-        let resp =
-            self.http
-                .get(&url)
-                .send()
-                .await
-                .map_err(|e| MassApiError::Http {
-                    endpoint: endpoint.clone(),
-                    source: e,
-                })?;
+        let resp = crate::retry::retry_send(|| self.http.get(&url).send())
+            .await
+            .map_err(|e| MassApiError::Http {
+                endpoint: endpoint.clone(),
+                source: e,
+            })?;
 
         if resp.status() == reqwest::StatusCode::NOT_FOUND {
             return Ok(None);

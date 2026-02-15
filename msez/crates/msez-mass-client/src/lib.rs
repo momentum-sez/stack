@@ -22,6 +22,7 @@ pub mod error;
 pub mod fiscal;
 pub mod identity;
 pub mod ownership;
+pub(crate) mod retry;
 pub mod templating;
 
 pub use config::MassApiConfig;

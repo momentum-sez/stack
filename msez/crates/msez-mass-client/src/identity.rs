@@ -107,15 +107,12 @@ impl IdentityClient {
         let endpoint = format!("GET /identities/{id}");
         let url = format!("{}consent-info/identities/{id}", self.base_url);
 
-        let resp =
-            self.http
-                .get(&url)
-                .send()
-                .await
-                .map_err(|e| MassApiError::Http {
-                    endpoint: endpoint.clone(),
-                    source: e,
-                })?;
+        let resp = crate::retry::retry_send(|| self.http.get(&url).send())
+            .await
+            .map_err(|e| MassApiError::Http {
+                endpoint: endpoint.clone(),
+                source: e,
+            })?;
 
         if resp.status() == reqwest::StatusCode::NOT_FOUND {
             return Ok(None);
@@ -150,11 +147,7 @@ impl IdentityClient {
         let endpoint = "POST /identities/verify";
         let url = format!("{}consent-info/identities/verify", self.base_url);
 
-        let resp = self
-            .http
-            .post(&url)
-            .json(req)
-            .send()
+        let resp = crate::retry::retry_send(|| self.http.post(&url).json(req).send())
             .await
             .map_err(|e| MassApiError::Http {
                 endpoint: endpoint.into(),

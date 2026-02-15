@@ -23,6 +23,7 @@
 //! document Part IV (receipt chain + MMR).
 
 use sha2::{Digest, Sha256};
+use subtle::ConstantTimeEq;
 
 use crate::error::CryptoError;
 
@@ -509,7 +510,18 @@ pub fn verify_inclusion_proof(proof: &MmrInclusionProof) -> bool {
     };
 
     match bag_peaks(&peaks2) {
-        Ok(computed_root) => computed_root == proof.root,
+        Ok(computed_root) => {
+            // Constant-time comparison to prevent timing side-channel
+            // on the MMR root digest. Both values are 64-char hex strings
+            // encoding 32-byte SHA-256 digests.
+            let Ok(computed_bytes) = from_hex(&computed_root) else {
+                return false;
+            };
+            let Ok(proof_bytes) = from_hex(&proof.root) else {
+                return false;
+            };
+            computed_bytes.ct_eq(&proof_bytes).into()
+        }
         Err(_) => false,
     }
 }

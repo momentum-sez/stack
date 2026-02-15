@@ -26,6 +26,7 @@ use msez_core::{sha256_digest, CanonicalBytes, ContentDigest};
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
+use subtle::ConstantTimeEq;
 
 use crate::error::CryptoError;
 
@@ -269,7 +270,10 @@ impl ContentAddressedStore {
             ))
         })?;
         let recomputed = sha256_digest(&recanon);
-        if recomputed.to_hex() != hex {
+        // Constant-time comparison to prevent timing side-channel on digest
+        // verification. Comparing raw 32-byte digests avoids hex encoding
+        // overhead and provides a fixed-length comparison.
+        if !bool::from(recomputed.as_bytes().ct_eq(digest.as_bytes())) {
             return Err(CryptoError::Cas(format!(
                 "integrity violation: artifact at {} has digest {} but filename says {}",
                 path.display(),

@@ -106,7 +106,13 @@ impl AuditEntry {
     ///
     /// Returns `None` if canonicalization fails (e.g., metadata contains floats).
     pub fn digest(&self) -> Option<ContentDigest> {
-        let canonical = CanonicalBytes::new(self).ok()?;
+        let canonical = match CanonicalBytes::new(self) {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::warn!(entry_type = ?self.entry_type, error = %e, "audit entry canonicalization failed — digest unavailable");
+                return None;
+            }
+        };
         Some(sha256_digest(&canonical))
     }
 }

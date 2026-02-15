@@ -18,9 +18,19 @@ use subtle::ConstantTimeEq;
 use crate::error::{ErrorBody, ErrorDetail};
 
 /// Auth configuration injected into request extensions.
-#[derive(Debug, Clone)]
+///
+/// Custom `Debug` redacts the token value to prevent credential leakage in logs.
+#[derive(Clone)]
 pub struct AuthConfig {
     pub token: Option<String>,
+}
+
+impl std::fmt::Debug for AuthConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AuthConfig")
+            .field("token", &self.token.as_ref().map(|_| "[REDACTED]"))
+            .finish()
+    }
 }
 
 /// Constant-time comparison of bearer tokens.

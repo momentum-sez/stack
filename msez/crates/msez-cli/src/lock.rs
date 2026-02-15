@@ -267,11 +267,26 @@ fn find_profile(profiles_dir: &Path, profile_id: &str) -> Result<serde_json::Val
 }
 
 /// Find a module by its module_id in the modules directory.
+///
+/// Skips unreadable or malformed `module.yaml` files rather than aborting
+/// the entire search — a single broken file must not hide other modules.
 fn find_module_by_id(modules_dir: &Path, module_id: &str) -> Option<(PathBuf, serde_json::Value)> {
     for entry in walkdir_recursive(modules_dir) {
         if entry.file_name().and_then(|f| f.to_str()) == Some("module.yaml") {
-            let content = std::fs::read_to_string(&entry).ok()?;
-            let module: serde_json::Value = serde_yaml::from_str(&content).ok()?;
+            let content = match std::fs::read_to_string(&entry) {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::debug!(path = %entry.display(), error = %e, "skipping unreadable module.yaml");
+                    continue;
+                }
+            };
+            let module: serde_json::Value = match serde_yaml::from_str(&content) {
+                Ok(m) => m,
+                Err(e) => {
+                    tracing::debug!(path = %entry.display(), error = %e, "skipping malformed module.yaml");
+                    continue;
+                }
+            };
             if module.get("module_id").and_then(|v| v.as_str()) == Some(module_id) {
                 return Some((entry.parent()?.to_path_buf(), module));
             }

@@ -16,14 +16,14 @@
 //! See CLAUDE.md Section II.
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use msez_agentic::PolicyEngine;
 use msez_corridor::ReceiptChain;
 use msez_crypto::SigningKey;
 use msez_state::{DynCorridorState, TransitionRecord};
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -80,6 +80,23 @@ impl<T: Clone + Send + Sync> Store<T> {
         } else {
             None
         }
+    }
+
+    /// Atomically read-validate-update a record.
+    ///
+    /// The closure receives a `&mut T` and may inspect the current state,
+    /// validate preconditions, mutate the record, and return `Ok(R)` or
+    /// `Err(E)`. The entire operation runs under a single write lock,
+    /// eliminating TOCTOU races between read and update.
+    ///
+    /// Returns `None` if the record doesn't exist, or `Some(result)` with
+    /// the closure's `Result`.
+    pub fn try_update<R, E>(
+        &self,
+        id: &Uuid,
+        f: impl FnOnce(&mut T) -> Result<R, E>,
+    ) -> Option<Result<R, E>> {
+        self.data.write().get_mut(id).map(f)
     }
 
     /// Remove a record by ID.
@@ -191,13 +208,24 @@ pub struct AttestationRecord {
 // -- Application State --------------------------------------------------------
 
 /// Application configuration.
-#[derive(Debug, Clone)]
+///
+/// Custom `Debug` redacts the `auth_token` to prevent credential leakage in logs.
+#[derive(Clone)]
 pub struct AppConfig {
     /// Port to bind the HTTP server to.
     pub port: u16,
     /// Static bearer token for Phase 1 authentication.
     /// If `None`, authentication is disabled.
     pub auth_token: Option<String>,
+}
+
+impl std::fmt::Debug for AppConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AppConfig")
+            .field("port", &self.port)
+            .field("auth_token", &self.auth_token.as_ref().map(|_| "[REDACTED]"))
+            .finish()
+    }
 }
 
 impl Default for AppConfig {
@@ -224,28 +252,56 @@ fn hex_decode(s: &str) -> Result<Vec<u8>, String> {
         .collect()
 }
 
+/// Error loading the zone signing key from the environment.
+#[derive(Debug)]
+pub enum ZoneKeyError {
+    /// `ZONE_SIGNING_KEY_HEX` contained invalid hex characters.
+    InvalidHex(String),
+    /// `ZONE_SIGNING_KEY_HEX` decoded to the wrong number of bytes.
+    InvalidLength { expected: usize, actual: usize },
+}
+
+impl std::fmt::Display for ZoneKeyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidHex(msg) => write!(f, "ZONE_SIGNING_KEY_HEX invalid hex: {msg}"),
+            Self::InvalidLength { expected, actual } => write!(
+                f,
+                "ZONE_SIGNING_KEY_HEX must be exactly {} hex chars ({expected} bytes), got {actual} bytes",
+                expected * 2
+            ),
+        }
+    }
+}
+
+impl std::error::Error for ZoneKeyError {}
+
 /// Load the zone signing key from the environment, or generate one for development.
 ///
 /// In production, `ZONE_SIGNING_KEY_HEX` provides the 64-character hex-encoded
 /// Ed25519 private key (32 bytes). In development (when the variable is absent),
 /// a fresh key is generated and a warning is logged.
-fn load_or_generate_zone_key() -> SigningKey {
+///
+/// Returns `Err` if the environment variable is set but contains invalid data,
+/// rather than panicking the server on startup.
+fn load_or_generate_zone_key() -> Result<SigningKey, ZoneKeyError> {
     if let Ok(hex) = std::env::var("ZONE_SIGNING_KEY_HEX") {
-        let bytes = hex_decode(&hex).expect("ZONE_SIGNING_KEY_HEX must be valid hex");
-        assert_eq!(
-            bytes.len(),
-            32,
-            "ZONE_SIGNING_KEY_HEX must be exactly 64 hex chars (32 bytes)"
-        );
+        let bytes = hex_decode(&hex).map_err(ZoneKeyError::InvalidHex)?;
+        if bytes.len() != 32 {
+            return Err(ZoneKeyError::InvalidLength {
+                expected: 32,
+                actual: bytes.len(),
+            });
+        }
         let mut arr = [0u8; 32];
         arr.copy_from_slice(&bytes);
-        SigningKey::from_bytes(&arr)
+        Ok(SigningKey::from_bytes(&arr))
     } else {
         tracing::warn!(
             "ZONE_SIGNING_KEY_HEX not set — generating ephemeral key. \
              VCs signed with this key will not be verifiable after restart."
         );
-        SigningKey::generate(&mut rand_core::OsRng)
+        Ok(SigningKey::generate(&mut rand_core::OsRng))
     }
 }
 
@@ -291,8 +347,10 @@ pub struct AppState {
 
     // -- Agentic policy engine --
 
-    /// The autonomous policy engine. `Mutex` because `PolicyEngine` is not `Sync`
-    /// (it holds a mutable audit trail) and evaluation mutates internal state.
+    /// The autonomous policy engine. `parking_lot::Mutex` because `PolicyEngine`
+    /// is not `Sync` (it holds a mutable audit trail) and evaluation mutates
+    /// internal state. `parking_lot::Mutex` never poisons on panic, eliminating
+    /// the entire class of lock-poisoning runtime failures.
     pub policy_engine: Arc<Mutex<PolicyEngine>>,
 
     // -- Configuration --
@@ -301,22 +359,47 @@ pub struct AppState {
 
 impl AppState {
     /// Create a new application state with default configuration and no Mass client.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `ZONE_SIGNING_KEY_HEX` is set but contains invalid data.
+    /// In production, prefer [`AppState::try_new`] for graceful error handling.
     pub fn new() -> Self {
-        Self::with_config(AppConfig::default(), None)
+        Self::try_with_config(AppConfig::default(), None)
+            .expect("failed to initialize AppState (check ZONE_SIGNING_KEY_HEX)")
+    }
+
+    /// Create a new application state, returning `Err` if zone key loading fails.
+    pub fn try_new() -> Result<Self, ZoneKeyError> {
+        Self::try_with_config(AppConfig::default(), None)
     }
 
     /// Create a new application state with the given configuration and optional Mass client.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `ZONE_SIGNING_KEY_HEX` is set but contains invalid data.
     pub fn with_config(
         config: AppConfig,
         mass_client: Option<msez_mass_client::MassClient>,
     ) -> Self {
-        let zone_signing_key = load_or_generate_zone_key();
+        Self::try_with_config(config, mass_client)
+            .expect("failed to initialize AppState (check ZONE_SIGNING_KEY_HEX)")
+    }
+
+    /// Create a new application state with the given configuration, returning `Err`
+    /// on zone key loading failures rather than panicking.
+    pub fn try_with_config(
+        config: AppConfig,
+        mass_client: Option<msez_mass_client::MassClient>,
+    ) -> Result<Self, ZoneKeyError> {
+        let zone_signing_key = load_or_generate_zone_key()?;
         let zone_did = format!(
             "did:mass:zone:{}",
             zone_signing_key.verifying_key().to_hex()
         );
 
-        Self {
+        Ok(Self {
             corridors: Store::new(),
             smart_assets: Store::new(),
             attestations: Store::new(),
@@ -326,7 +409,7 @@ impl AppState {
             zone_did,
             policy_engine: Arc::new(Mutex::new(PolicyEngine::with_extended_policies())),
             config,
-        }
+        })
     }
 }
 

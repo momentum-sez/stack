@@ -55,9 +55,19 @@ pub struct ComplianceEvalResult {
 }
 
 /// Build a compliance tensor for a jurisdiction.
+///
+/// Falls back to `"UNKNOWN"` jurisdiction if the input fails validation,
+/// since every evaluation must produce a result (even if degraded).
 pub fn build_tensor(jurisdiction_id: &str) -> ComplianceTensor<DefaultJurisdiction> {
-    let jid = JurisdictionId::new(jurisdiction_id)
-        .unwrap_or_else(|_| JurisdictionId::new("UNKNOWN").unwrap());
+    // Both paths are infallible in practice — JurisdictionId::new only
+    // rejects empty strings, and "UNKNOWN" is non-empty. However, we
+    // avoid unwrap() in library code by providing a hardcoded fallback
+    // that cannot fail structurally.
+    let jid = JurisdictionId::new(jurisdiction_id).unwrap_or_else(|_| {
+        // SAFETY: "UNKNOWN" is a non-empty string literal, so this
+        // construction is infallible.
+        JurisdictionId::new("UNKNOWN").expect("BUG: hardcoded 'UNKNOWN' rejected by JurisdictionId")
+    });
     let jurisdiction = DefaultJurisdiction::new(jid);
     ComplianceTensor::new(jurisdiction)
 }
@@ -101,7 +111,10 @@ pub fn build_evaluation_result(
 ) -> ComplianceEvalResult {
     let slice = tensor.full_slice();
     let aggregate = slice.aggregate_state();
-    let commitment = tensor.commit().ok();
+    let commitment = tensor.commit().map_err(|e| {
+        tracing::warn!(error = %e, "tensor commitment failed — response will omit commitment");
+        e
+    }).ok();
 
     let mut domain_results = HashMap::new();
     let mut passing_domains = Vec::new();

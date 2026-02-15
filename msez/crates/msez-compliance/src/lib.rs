@@ -48,7 +48,13 @@ pub fn build_tensor(
     applicable_domains: &[String],
     sanctions_entries: Option<(Vec<SanctionsEntry>, String)>,
 ) -> Option<ComplianceTensor<RegpackJurisdiction>> {
-    let jid = JurisdictionId::new(jurisdiction_id).ok()?;
+    let jid = match JurisdictionId::new(jurisdiction_id) {
+        Ok(id) => id,
+        Err(e) => {
+            tracing::debug!(jurisdiction_id, error = %e, "invalid jurisdiction ID for tensor build");
+            return None;
+        }
+    };
     let jurisdiction = RegpackJurisdiction::from_domain_names(jid, applicable_domains);
 
     let mut tensor = ComplianceTensor::new(jurisdiction);

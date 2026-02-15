@@ -4,7 +4,7 @@
 //! fork resolution, anchor verification, and finality status.
 //! Route structure based on apis/corridor-state.openapi.yaml.
 
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::routing::{get, post, put};
 use axum::{Json, Router};
 use chrono::Utc;
@@ -20,6 +20,30 @@ use crate::extractors::{extract_validated_json, Validate};
 use crate::state::{AppState, CorridorRecord};
 use axum::extract::rejection::JsonRejection;
 
+/// Pagination parameters for list endpoints.
+#[derive(Debug, Deserialize, Default)]
+pub struct PaginationParams {
+    /// Maximum number of items to return (default: 100, max: 1000).
+    pub limit: Option<usize>,
+    /// Number of items to skip (default: 0).
+    pub offset: Option<usize>,
+}
+
+impl PaginationParams {
+    const DEFAULT_LIMIT: usize = 100;
+    const MAX_LIMIT: usize = 1000;
+
+    fn effective_limit(&self) -> usize {
+        self.limit
+            .unwrap_or(Self::DEFAULT_LIMIT)
+            .min(Self::MAX_LIMIT)
+    }
+
+    fn effective_offset(&self) -> usize {
+        self.offset.unwrap_or(0)
+    }
+}
+
 /// Request to create a corridor.
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateCorridorRequest {
@@ -31,6 +55,12 @@ impl Validate for CreateCorridorRequest {
     fn validate(&self) -> Result<(), String> {
         if self.jurisdiction_a.trim().is_empty() || self.jurisdiction_b.trim().is_empty() {
             return Err("both jurisdiction IDs must be non-empty".to_string());
+        }
+        if self.jurisdiction_a.len() > 255 {
+            return Err("jurisdiction_a must not exceed 255 characters".to_string());
+        }
+        if self.jurisdiction_b.len() > 255 {
+            return Err("jurisdiction_b must not exceed 255 characters".to_string());
         }
         if self.jurisdiction_a == self.jurisdiction_b {
             return Err("jurisdiction_a and jurisdiction_b must differ".to_string());
@@ -214,17 +244,31 @@ async fn create_corridor(
     Ok((axum::http::StatusCode::CREATED, Json(record)))
 }
 
-/// GET /v1/corridors — List all corridors.
+/// GET /v1/corridors — List corridors with pagination.
+///
+/// Supports `?limit=N&offset=M` query parameters. Default: limit=100, offset=0.
+/// Maximum limit is 1000 to prevent unbounded memory usage.
 #[utoipa::path(
     get,
     path = "/v1/corridors",
+    params(
+        ("limit" = Option<usize>, Query, description = "Max items to return (default 100, max 1000)"),
+        ("offset" = Option<usize>, Query, description = "Items to skip (default 0)"),
+    ),
     responses(
         (status = 200, description = "List of corridors", body = Vec<CorridorRecord>),
     ),
     tag = "corridors"
 )]
-async fn list_corridors(State(state): State<AppState>) -> Json<Vec<CorridorRecord>> {
-    Json(state.corridors.list())
+async fn list_corridors(
+    State(state): State<AppState>,
+    Query(pagination): Query<PaginationParams>,
+) -> Json<Vec<CorridorRecord>> {
+    let all = state.corridors.list();
+    let offset = pagination.effective_offset().min(all.len());
+    let limit = pagination.effective_limit();
+    let page = all.into_iter().skip(offset).take(limit).collect();
+    Json(page)
 }
 
 /// GET /v1/corridors/:id — Get a corridor.
@@ -283,32 +327,13 @@ async fn transition_corridor(
         AppError::Validation(format!("unknown state: '{}'", req.target_state))
     })?;
 
-    // Read the corridor's current state.
-    let corridor = state
-        .corridors
-        .get(&id)
-        .ok_or_else(|| AppError::NotFound(format!("corridor {id} not found")))?;
-
-    let current = corridor.state;
-
-    // Ask the typestate machine whether this transition is legal.
-    let valid_targets = current.valid_transitions();
-    if !valid_targets.contains(&target) {
-        return Err(AppError::Conflict(format!(
-            "cannot transition corridor from {} to {}. Valid transitions from {}: [{}]",
-            current.as_str(),
-            target.as_str(),
-            current.as_str(),
-            valid_targets
-                .iter()
-                .map(|s| s.as_str())
-                .collect::<Vec<_>>()
-                .join(", "),
-        )));
-    }
-
-    // Build the evidence digest if provided.
+    // Parse and validate evidence digest upfront (before acquiring the lock).
     let evidence_digest = if let Some(ref hex) = req.evidence_digest {
+        if hex.len() != 64 {
+            return Err(AppError::Validation(
+                "evidence_digest must be exactly 64 hex characters (SHA-256)".to_string(),
+            ));
+        }
         Some(
             ContentDigest::from_hex(hex)
                 .map_err(|e| AppError::Validation(format!("invalid evidence_digest: {e}")))?,
@@ -317,25 +342,47 @@ async fn transition_corridor(
         None
     };
 
-    // Build the transition record.
-    let now = Utc::now();
-    let record = TransitionRecord {
-        from_state: current,
-        to_state: target,
-        timestamp: now,
-        evidence_digest,
-    };
-
-    // Apply the transition.
+    // Atomically read-validate-update under a single write lock.
+    // This eliminates the TOCTOU race where another request could
+    // transition the corridor between our read and write.
     state
         .corridors
-        .update(&id, |c| {
-            c.state = target;
-            c.transition_log.push(record.clone());
-            c.updated_at = now;
+        .try_update(&id, |corridor| {
+            let current = corridor.state;
+
+            // Ask the typestate machine whether this transition is legal.
+            let valid_targets = current.valid_transitions();
+            if !valid_targets.contains(&target) {
+                return Err(AppError::Conflict(format!(
+                    "cannot transition corridor from {} to {}. Valid transitions from {}: [{}]",
+                    current.as_str(),
+                    target.as_str(),
+                    current.as_str(),
+                    valid_targets
+                        .iter()
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                )));
+            }
+
+            // Build the transition record and apply.
+            let now = Utc::now();
+            let record = TransitionRecord {
+                from_state: current,
+                to_state: target,
+                timestamp: now,
+                evidence_digest: evidence_digest.clone(),
+            };
+
+            corridor.state = target;
+            corridor.transition_log.push(record);
+            corridor.updated_at = now;
+
+            Ok(corridor.clone())
         })
+        .ok_or_else(|| AppError::NotFound(format!("corridor {id} not found")))?
         .map(Json)
-        .ok_or_else(|| AppError::NotFound(format!("corridor {id} not found")))
 }
 
 /// POST /v1/corridors/state/propose — Propose a receipt.

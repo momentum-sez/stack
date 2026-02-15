@@ -22,6 +22,7 @@
 use ed25519_dalek::{Signer, Verifier};
 use msez_core::CanonicalBytes;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use zeroize::Zeroize;
 
 use crate::error::CryptoError;
 
@@ -125,6 +126,16 @@ pub struct SigningKey {
     inner: ed25519_dalek::SigningKey,
 }
 
+impl Zeroize for SigningKey {
+    fn zeroize(&mut self) {
+        // Extract key bytes, zeroize them, then overwrite inner with a zero-key.
+        // ed25519_dalek::SigningKey's own ZeroizeOnDrop provides additional defense.
+        let mut key_bytes = self.inner.to_bytes();
+        key_bytes.zeroize();
+        self.inner = ed25519_dalek::SigningKey::from_bytes(&[0u8; 32]);
+    }
+}
+
 impl SigningKey {
     /// Generate a new random Ed25519 signing key.
     ///
@@ -179,10 +190,7 @@ impl std::fmt::Debug for SigningKey {
 
 impl Drop for SigningKey {
     fn drop(&mut self) {
-        // Overwrite key material with zeros as defense in depth.
-        // The inner `ed25519_dalek::SigningKey` also zeroizes via `ZeroizeOnDrop`
-        // (enabled by the `zeroize` cargo feature), providing a second layer.
-        self.inner = ed25519_dalek::SigningKey::from_bytes(&[0u8; 32]);
+        self.zeroize();
     }
 }
 

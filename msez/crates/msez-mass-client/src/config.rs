@@ -7,7 +7,10 @@
 use url::Url;
 
 /// Configuration for connecting to Mass API services.
-#[derive(Debug, Clone)]
+///
+/// Custom `Debug` implementation redacts the `api_token` field
+/// to prevent credential leakage in log output.
+#[derive(Clone)]
 pub struct MassApiConfig {
     /// Base URL for organization-info (ENTITIES primitive).
     /// Default: <https://organization-info.api.mass.inc>
@@ -24,6 +27,20 @@ pub struct MassApiConfig {
     pub api_token: String,
     /// Request timeout in seconds.
     pub timeout_secs: u64,
+}
+
+impl std::fmt::Debug for MassApiConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MassApiConfig")
+            .field("organization_info_url", &self.organization_info_url)
+            .field("investment_info_url", &self.investment_info_url)
+            .field("treasury_info_url", &self.treasury_info_url)
+            .field("consent_info_url", &self.consent_info_url)
+            .field("templating_engine_url", &self.templating_engine_url)
+            .field("api_token", &"[REDACTED]")
+            .field("timeout_secs", &self.timeout_secs)
+            .finish()
+    }
 }
 
 impl MassApiConfig {

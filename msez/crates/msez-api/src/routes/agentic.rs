@@ -138,10 +138,7 @@ async fn submit_trigger(
 
     // Evaluate against the policy engine.
     let actions = {
-        let mut engine = state
-            .policy_engine
-            .lock()
-            .map_err(|_| AppError::Internal("policy engine lock poisoned".into()))?;
+        let mut engine = state.policy_engine.lock();
 
         engine.process_trigger(
             &trigger,
@@ -158,11 +155,7 @@ async fn submit_trigger(
     }
 
     // Snapshot audit trail size.
-    let audit_entries = state
-        .policy_engine
-        .lock()
-        .map(|e| e.audit_trail.last_n(10).len())
-        .unwrap_or(0);
+    let audit_entries = state.policy_engine.lock().audit_trail.last_n(10).len();
 
     Ok(Json(TriggerResponse {
         trigger_type: req.trigger_type,
@@ -176,10 +169,7 @@ async fn submit_trigger(
 async fn list_policies(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<serde_json::Value>>, AppError> {
-    let engine = state
-        .policy_engine
-        .lock()
-        .map_err(|_| AppError::Internal("policy engine lock poisoned".into()))?;
+    let engine = state.policy_engine.lock();
 
     let policies: Vec<serde_json::Value> = engine
         .list_policies()
@@ -203,10 +193,7 @@ async fn delete_policy(
     State(state): State<AppState>,
     Path(policy_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let mut engine = state
-        .policy_engine
-        .lock()
-        .map_err(|_| AppError::Internal("policy engine lock poisoned".into()))?;
+    let mut engine = state.policy_engine.lock();
 
     let removed = engine.unregister_policy(&policy_id);
     match removed {
@@ -717,13 +704,13 @@ mod tests {
 
         // Find a policy to delete.
         let policy_id = {
-            let engine = state.policy_engine.lock().unwrap();
+            let engine = state.policy_engine.lock();
             let policies = engine.list_policies();
             policies.first().unwrap().policy_id.clone()
         };
 
         let initial_count = {
-            let engine = state.policy_engine.lock().unwrap();
+            let engine = state.policy_engine.lock();
             engine.list_policies().len()
         };
 
@@ -744,7 +731,7 @@ mod tests {
 
         // Verify the policy was actually removed.
         let final_count = {
-            let engine = state.policy_engine.lock().unwrap();
+            let engine = state.policy_engine.lock();
             engine.list_policies().len()
         };
         assert_eq!(final_count, initial_count - 1);

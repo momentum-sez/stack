@@ -418,28 +418,22 @@ async fn dashboard(
     };
 
     // ── Policy Activity ─────────────────────────────────────────
-    let policy_activity = match state.policy_engine.lock() {
-        Ok(engine) => {
-            let recent = engine.audit_trail.last_n(20);
-            PolicyActivity {
-                policy_count: engine.policy_count(),
-                audit_trail_size: engine.audit_trail.len(),
-                recent_entries: recent
-                    .iter()
-                    .map(|entry| AuditEntrySummary {
-                        entry_type: entry.entry_type.as_str().to_string(),
-                        timestamp: entry.timestamp,
-                        asset_id: entry.asset_id.clone(),
-                        digest: entry.digest().map(|d| d.to_hex()),
-                    })
-                    .collect(),
-            }
+    let policy_activity = {
+        let engine = state.policy_engine.lock();
+        let recent = engine.audit_trail.last_n(20);
+        PolicyActivity {
+            policy_count: engine.policy_count(),
+            audit_trail_size: engine.audit_trail.len(),
+            recent_entries: recent
+                .iter()
+                .map(|entry| AuditEntrySummary {
+                    entry_type: entry.entry_type.as_str().to_string(),
+                    timestamp: entry.timestamp,
+                    asset_id: entry.asset_id.clone(),
+                    digest: entry.digest().map(|d| d.to_hex()),
+                })
+                .collect(),
         }
-        Err(_) => PolicyActivity {
-            policy_count: 0,
-            audit_trail_size: 0,
-            recent_entries: vec![],
-        },
     };
 
     // ── System Health ───────────────────────────────────────────
@@ -1117,7 +1111,7 @@ mod tests {
 
         // Fire a trigger through the policy engine directly.
         {
-            let mut engine = state.policy_engine.lock().unwrap();
+            let mut engine = state.policy_engine.lock();
             let trigger = msez_agentic::Trigger::new(
                 msez_agentic::TriggerType::SanctionsListUpdate,
                 serde_json::json!({"affected_parties": ["self"]}),

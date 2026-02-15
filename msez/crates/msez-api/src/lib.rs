@@ -42,7 +42,10 @@ pub mod openapi;
 pub mod routes;
 pub mod state;
 
+use axum::extract::{DefaultBodyLimit, State};
+use axum::http::StatusCode;
 use axum::middleware::from_fn;
+use axum::response::IntoResponse;
 use axum::Router;
 use tower_http::trace::TraceLayer;
 
@@ -63,6 +66,10 @@ pub fn app(state: AppState) -> Router {
     let limiter = RateLimiter::new(RateLimitConfig::default());
 
     // Authenticated API routes.
+    //
+    // Body size limit: 2 MiB. This prevents OOM from oversized request bodies.
+    // Individual routes that need larger payloads (e.g., bulk import) can
+    // override with a route-level DefaultBodyLimit.
     let api = Router::new()
         // Mass API proxy (all five primitives via Mass client)
         .merge(routes::mass_proxy::router())
@@ -73,6 +80,7 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::regulator::router())
         .merge(routes::agentic::router())
         .merge(openapi::router())
+        .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
         .layer(from_fn(middleware::rate_limit::rate_limit_middleware))
         .layer(from_fn(auth::auth_middleware))
         .layer(from_fn(middleware::metrics::metrics_middleware))
@@ -80,12 +88,13 @@ pub fn app(state: AppState) -> Router {
         .layer(axum::Extension(auth_config))
         .layer(axum::Extension(metrics))
         .layer(axum::Extension(limiter))
-        .with_state(state);
+        .with_state(state.clone());
 
-    // Unauthenticated health probes.
+    // Unauthenticated health probes — readiness checks actual service health.
     let health = Router::new()
         .route("/health/liveness", axum::routing::get(liveness))
-        .route("/health/readiness", axum::routing::get(readiness));
+        .route("/health/readiness", axum::routing::get(readiness))
+        .with_state(state);
 
     Router::new().merge(health).merge(api)
 }
@@ -95,7 +104,31 @@ async fn liveness() -> &'static str {
     "ok"
 }
 
-/// Readiness probe — returns 200 when the application is ready to serve.
-async fn readiness() -> &'static str {
-    "ready"
+/// Readiness probe — verifies the application is ready to serve traffic.
+///
+/// Checks:
+/// - Zone signing key is loaded (can derive verifying key).
+/// - Policy engine lock is acquirable (not deadlocked).
+/// - In-memory stores are accessible.
+///
+/// Returns 200 "ready" or 503 with a diagnostic message.
+async fn readiness(State(state): State<AppState>) -> impl IntoResponse {
+    // Verify zone signing key is functional.
+    let vk = state.zone_signing_key.verifying_key();
+    if vk.to_hex().len() != 64 {
+        return (StatusCode::SERVICE_UNAVAILABLE, "zone key degraded").into_response();
+    }
+
+    // Verify policy engine lock is acquirable (not deadlocked).
+    // parking_lot::Mutex::try_lock is non-blocking.
+    if state.policy_engine.try_lock().is_none() {
+        return (StatusCode::SERVICE_UNAVAILABLE, "policy engine locked").into_response();
+    }
+
+    // Verify stores are accessible (read lock acquirable).
+    let _ = state.corridors.len();
+    let _ = state.smart_assets.len();
+    let _ = state.attestations.len();
+
+    (StatusCode::OK, "ready").into_response()
 }

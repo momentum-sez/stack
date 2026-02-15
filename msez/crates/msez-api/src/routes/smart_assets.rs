@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+use crate::compliance::{apply_attestations, build_evaluation_result, build_tensor, AttestationInput};
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
 use crate::state::{AppState, SmartAssetRecord};
@@ -41,8 +42,15 @@ impl Validate for CreateAssetRequest {
 /// Compliance evaluation request.
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct ComplianceEvalRequest {
+    /// Domains to evaluate (currently ignored — all 20 domains are always evaluated).
+    #[serde(default)]
     pub domains: Vec<String>,
+    /// Additional evaluation context.
+    #[serde(default)]
     pub context: serde_json::Value,
+    /// Attestation evidence per compliance domain.
+    #[serde(default)]
+    pub attestations: std::collections::HashMap<String, AttestationInput>,
 }
 
 impl Validate for ComplianceEvalRequest {
@@ -57,6 +65,9 @@ pub struct ComplianceEvalResponse {
     pub asset_id: Uuid,
     pub overall_status: String,
     pub domain_results: serde_json::Value,
+    pub domain_count: usize,
+    pub passing_domains: Vec<String>,
+    pub blocking_domains: Vec<String>,
     pub evaluated_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -181,16 +192,27 @@ async fn evaluate_compliance(
     Path(id): Path<Uuid>,
     body: Result<Json<ComplianceEvalRequest>, JsonRejection>,
 ) -> Result<Json<ComplianceEvalResponse>, AppError> {
-    let _req = extract_validated_json(body)?;
-    if !state.smart_assets.contains(&id) {
-        return Err(AppError::NotFound(format!("asset {id} not found")));
-    }
+    let req = extract_validated_json(body)?;
+
+    let asset = state
+        .smart_assets
+        .get(&id)
+        .ok_or_else(|| AppError::NotFound(format!("asset {id} not found")))?;
+
+    // Build and evaluate the compliance tensor using the shared logic.
+    let mut tensor = build_tensor(&asset.jurisdiction_id);
+    apply_attestations(&mut tensor, &req.attestations);
+    let eval = build_evaluation_result(&tensor, &asset, id);
 
     Ok(Json(ComplianceEvalResponse {
         asset_id: id,
-        overall_status: "PERMITTED".to_string(),
-        domain_results: serde_json::json!({}),
-        evaluated_at: Utc::now(),
+        overall_status: eval.overall_status,
+        domain_results: serde_json::to_value(&eval.domain_results)
+            .unwrap_or_else(|_| serde_json::json!({})),
+        domain_count: eval.domain_count,
+        passing_domains: eval.passing_domains,
+        blocking_domains: eval.blocking_domains,
+        evaluated_at: eval.evaluated_at,
     }))
 }
 
@@ -292,6 +314,7 @@ mod tests {
         let req = ComplianceEvalRequest {
             domains: vec!["aml".to_string(), "kyc".to_string()],
             context: serde_json::json!({"entity_id": "123"}),
+            attestations: std::collections::HashMap::new(),
         };
         assert!(req.validate().is_ok());
     }
@@ -301,6 +324,7 @@ mod tests {
         let req = ComplianceEvalRequest {
             domains: vec![],
             context: serde_json::json!({}),
+            attestations: std::collections::HashMap::new(),
         };
         // The current validation always returns Ok.
         assert!(req.validate().is_ok());
@@ -529,7 +553,10 @@ mod tests {
 
         let result: ComplianceEvalResponse = body_json(eval_resp).await;
         assert_eq!(result.asset_id, created.id);
-        assert_eq!(result.overall_status, "PERMITTED");
+        // Without attestations, all 20 domains are Pending → overall is "pending".
+        assert_eq!(result.overall_status, "pending");
+        assert_eq!(result.domain_count, 20);
+        assert_eq!(result.blocking_domains.len(), 20);
     }
 
     #[tokio::test]

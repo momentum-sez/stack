@@ -1388,7 +1388,11 @@ fn netting_to_settlement_to_receipt_chain() {
             remittance_info: Some("Bilateral netting settlement".to_string()),
         };
         let xml = swift.generate_instruction(&instruction);
-        assert!(xml.is_ok(), "SWIFT instruction generation failed: {:?}", xml.err());
+        assert!(
+            xml.is_ok(),
+            "SWIFT instruction generation failed: {:?}",
+            xml.err()
+        );
     }
 
     // Step 3: Record settlement in receipt chain
@@ -1460,15 +1464,18 @@ fn vc_store_in_cas_retrieve_and_verify() {
 
     // Step 3: Retrieve from CAS
     let retrieved_bytes = cas.resolve_ref(&artifact_ref).unwrap().unwrap();
-    let retrieved_vc: VerifiableCredential =
-        serde_json::from_slice(&retrieved_bytes).unwrap();
+    let retrieved_vc: VerifiableCredential = serde_json::from_slice(&retrieved_bytes).unwrap();
 
     // Step 4: Verify the retrieved VC
     let vk_clone = vk.clone();
     let results = retrieved_vc.verify(move |_vm| Ok(vk_clone.clone()));
     assert!(!results.is_empty(), "Should have at least one proof result");
     for r in &results {
-        assert!(r.ok, "VC verification failed after CAS round trip: {}", r.error);
+        assert!(
+            r.ok,
+            "VC verification failed after CAS round trip: {}",
+            r.error
+        );
     }
 
     // Step 5: Verify content digest matches

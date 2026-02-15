@@ -566,9 +566,7 @@ mod tests {
         assert_eq!(saga.state, MigrationState::Compensated);
         assert_eq!(saga.compensation_log.len(), 1);
         assert!(saga.compensation_log[0].succeeded);
-        assert!(saga.compensation_log[0]
-            .action
-            .contains("transit_failure"));
+        assert!(saga.compensation_log[0].action.contains("transit_failure"));
     }
 
     #[test]

@@ -26,11 +26,10 @@ pub async fn append(pool: &PgPool, event: AuditEvent) -> Result<Uuid, sqlx::Erro
     let id = Uuid::new_v4();
 
     // Fetch the most recent event hash for chain integrity.
-    let previous_hash: Option<String> = sqlx::query_scalar(
-        "SELECT event_hash FROM audit_events ORDER BY created_at DESC LIMIT 1",
-    )
-    .fetch_optional(pool)
-    .await?;
+    let previous_hash: Option<String> =
+        sqlx::query_scalar("SELECT event_hash FROM audit_events ORDER BY created_at DESC LIMIT 1")
+            .fetch_optional(pool)
+            .await?;
 
     let prev = previous_hash
         .as_deref()

@@ -509,10 +509,7 @@ mod tests {
     fn test_licensepack_metadata_with_delta() {
         let mut meta = make_test_metadata();
         let mut delta = BTreeMap::new();
-        delta.insert(
-            "licenses_granted".to_string(),
-            serde_json::json!(5),
-        );
+        delta.insert("licenses_granted".to_string(), serde_json::json!(5));
         meta.delta = Some(delta);
 
         let json = serde_json::to_value(&meta).unwrap();

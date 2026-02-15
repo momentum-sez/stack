@@ -243,8 +243,14 @@ impl CorridorBridge {
         }
         hops.reverse();
 
-        let total_fee_bps: u64 = hops.iter().map(|h| u64::from(h.fee_bps)).fold(0u64, u64::saturating_add);
-        let total_settlement_time_secs: u64 = hops.iter().map(|h| h.settlement_time_secs).fold(0u64, u64::saturating_add);
+        let total_fee_bps: u64 = hops
+            .iter()
+            .map(|h| u64::from(h.fee_bps))
+            .fold(0u64, u64::saturating_add);
+        let total_settlement_time_secs: u64 = hops
+            .iter()
+            .map(|h| h.settlement_time_secs)
+            .fold(0u64, u64::saturating_add);
 
         Some(BridgeRoute {
             hops,

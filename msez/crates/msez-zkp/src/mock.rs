@@ -247,7 +247,10 @@ mod tests {
         };
         let proof1 = sys.prove(&pk, &circuit1).unwrap();
         let proof2 = sys.prove(&pk, &circuit2).unwrap();
-        assert_ne!(proof1, proof2, "different circuits must produce different proofs");
+        assert_ne!(
+            proof1, proof2,
+            "different circuits must produce different proofs"
+        );
     }
 
     #[test]

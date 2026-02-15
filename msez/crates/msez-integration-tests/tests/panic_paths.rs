@@ -1466,8 +1466,8 @@ fn deser_entity_id_from_invalid_uuid_no_panic() {
 // Campaign 2 Extension: msez-pack panic paths
 // =========================================================================
 
-use msez_pack::regpack::{SanctionsChecker, SanctionsEntry, validate_compliance_domain};
 use msez_pack::parser::ensure_json_compatible;
+use msez_pack::regpack::{validate_compliance_domain, SanctionsChecker, SanctionsEntry};
 
 #[test]
 fn pack_validate_compliance_domain_empty_string_no_panic() {
@@ -1482,7 +1482,10 @@ fn pack_validate_compliance_domain_huge_string_no_panic() {
         validate_compliance_domain(&huge)
     }));
     assert!(result.is_ok(), "100K char domain should not panic");
-    assert!(result.unwrap().is_err(), "100K char domain should be rejected");
+    assert!(
+        result.unwrap().is_err(),
+        "100K char domain should be rejected"
+    );
 }
 
 #[test]
@@ -1514,7 +1517,10 @@ fn pack_ensure_json_compatible_deeply_nested_no_panic() {
     let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
         ensure_json_compatible(&value, "", "deep-nest")
     }));
-    assert!(result.is_ok(), "200-level nesting should not panic (stack overflow)");
+    assert!(
+        result.is_ok(),
+        "200-level nesting should not panic (stack overflow)"
+    );
 }
 
 #[test]
@@ -1538,13 +1544,16 @@ fn pack_sanctions_checker_empty_entries_no_panic() {
     let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
         checker.check_entity("Test Entity", None, 0.8)
     }));
-    assert!(result.is_ok(), "Checking against empty sanctions list should not panic");
+    assert!(
+        result.is_ok(),
+        "Checking against empty sanctions list should not panic"
+    );
 }
 
 #[test]
 fn pack_sanctions_checker_empty_name_no_panic() {
-    let checker = SanctionsChecker::new(vec![
-        SanctionsEntry {
+    let checker = SanctionsChecker::new(
+        vec![SanctionsEntry {
             entry_id: "SE-001".to_string(),
             entry_type: "individual".to_string(),
             source_lists: vec!["OFAC".to_string()],
@@ -1557,8 +1566,9 @@ fn pack_sanctions_checker_empty_name_no_panic() {
             programs: vec![],
             listing_date: None,
             remarks: None,
-        },
-    ], "snapshot-001".to_string());
+        }],
+        "snapshot-001".to_string(),
+    );
     let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
         checker.check_entity("", None, 0.8)
     }));
@@ -1606,7 +1616,7 @@ fn pack_sanctions_checker_huge_name_no_panic() {
 // Campaign 2 Extension: msez-agentic panic paths
 // =========================================================================
 
-use msez_agentic::{AuditTrail, AuditEntry, AuditEntryType};
+use msez_agentic::{AuditEntry, AuditEntryType, AuditTrail};
 
 #[test]
 fn agentic_audit_trail_zero_capacity_no_panic() {
@@ -1618,7 +1628,10 @@ fn agentic_audit_trail_zero_capacity_no_panic() {
             None,
         ));
     });
-    assert!(result.is_ok(), "Zero capacity audit trail should not panic on append");
+    assert!(
+        result.is_ok(),
+        "Zero capacity audit trail should not panic on append"
+    );
 }
 
 #[test]
@@ -1664,13 +1677,19 @@ fn agentic_policy_engine_evaluate_empty_trigger_data_no_panic() {
     let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
         engine.evaluate(&trigger, None, None)
     }));
-    assert!(result.is_ok(), "Evaluating trigger with empty data should not panic");
+    assert!(
+        result.is_ok(),
+        "Evaluating trigger with empty data should not panic"
+    );
 }
 
 #[test]
 fn agentic_policy_engine_evaluate_with_empty_asset_id_no_panic() {
     let mut engine = PolicyEngine::with_standard_policies();
-    let trigger = Trigger::new(TriggerType::LicenseStatusChange, json!({"status": "expired"}));
+    let trigger = Trigger::new(
+        TriggerType::LicenseStatusChange,
+        json!({"status": "expired"}),
+    );
     let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
         engine.evaluate(&trigger, Some(""), None)
     }));
@@ -1701,7 +1720,10 @@ fn agentic_policy_engine_evaluate_and_resolve_no_panic() {
 #[test]
 fn agentic_policy_engine_process_trigger_no_panic() {
     let mut engine = PolicyEngine::with_standard_policies();
-    let trigger = Trigger::new(TriggerType::CorridorStateChange, json!({"corridor": "test"}));
+    let trigger = Trigger::new(
+        TriggerType::CorridorStateChange,
+        json!({"corridor": "test"}),
+    );
     let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
         engine.process_trigger(&trigger, "asset-001", Some("AE-DIFC"))
     }));
@@ -1712,7 +1734,10 @@ fn agentic_policy_engine_process_trigger_no_panic() {
 fn agentic_policy_engine_unregister_nonexistent_no_panic() {
     let mut engine = PolicyEngine::new();
     let result = engine.unregister_policy("nonexistent-policy-id");
-    assert!(result.is_none(), "Unregistering nonexistent policy should return None");
+    assert!(
+        result.is_none(),
+        "Unregistering nonexistent policy should return None"
+    );
 }
 
 // =========================================================================
@@ -1727,7 +1752,10 @@ fn bridge_find_route_nonexistent_source_no_panic() {
     let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
         bridge.find_route(&source, &target)
     }));
-    assert!(result.is_ok(), "Route finding in empty graph should not panic");
+    assert!(
+        result.is_ok(),
+        "Route finding in empty graph should not panic"
+    );
     assert!(result.unwrap().is_none(), "No route in empty graph");
 }
 
@@ -1735,10 +1763,11 @@ fn bridge_find_route_nonexistent_source_no_panic() {
 fn bridge_reachable_from_empty_graph_no_panic() {
     let bridge = CorridorBridge::new();
     let source = JurisdictionId::new("TEST-NODE").unwrap();
-    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        bridge.reachable_from(&source)
-    }));
-    assert!(result.is_ok(), "reachable_from on empty graph should not panic");
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| bridge.reachable_from(&source)));
+    assert!(
+        result.is_ok(),
+        "reachable_from on empty graph should not panic"
+    );
 }
 
 #[test]
@@ -1755,7 +1784,10 @@ fn bridge_reachable_from_single_node_no_panic() {
     });
     let result = bridge.reachable_from(&source);
     // Should include source itself and at least one reachable node
-    assert!(!result.is_empty(), "Node with edge should have reachable nodes");
+    assert!(
+        !result.is_empty(),
+        "Node with edge should have reachable nodes"
+    );
 }
 
 // =========================================================================
@@ -1785,14 +1817,20 @@ fn vc_credential_sign_empty_subject_no_panic() {
             None,
         )
     }));
-    assert!(result.is_ok(), "Signing VC with empty subject should not panic");
+    assert!(
+        result.is_ok(),
+        "Signing VC with empty subject should not panic"
+    );
 }
 
 #[test]
 fn vc_compute_asset_id_empty_json_no_panic() {
     let result = SmartAssetRegistryVc::compute_asset_id(&json!({}));
     // Should succeed — empty JSON is valid canonical input
-    assert!(result.is_ok(), "compute_asset_id on empty JSON should succeed");
+    assert!(
+        result.is_ok(),
+        "compute_asset_id on empty JSON should succeed"
+    );
 }
 
 #[test]

@@ -155,10 +155,7 @@ pub fn validate_zone(zone_path: &Path) -> PackResult<PackValidationResult> {
                 .get("jurisdiction_id")
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
-            let domain = lp
-                .get("domain")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
+            let domain = lp.get("domain").and_then(|v| v.as_str()).unwrap_or("");
             if jid.is_empty() {
                 result.add_error("licensepack ref has empty jurisdiction_id".to_string());
             }

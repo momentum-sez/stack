@@ -382,7 +382,8 @@ mod tests {
     fn xml_injection_prevented_in_names() {
         let adapter = SwiftPacs008::new("MSEZSEXX");
         let mut instr = sample_instruction();
-        instr.debtor_name = r#"Evil<Nm>INJECTED</Nm></CdtTrfTxInf><script>alert("xss")</script>"#.to_string();
+        instr.debtor_name =
+            r#"Evil<Nm>INJECTED</Nm></CdtTrfTxInf><script>alert("xss")</script>"#.to_string();
         instr.creditor_name = "O'Brien & Sons \"Ltd\"".to_string();
         let xml = adapter.generate_instruction(&instr).unwrap();
         assert!(xml.contains("Evil&lt;Nm&gt;INJECTED&lt;/Nm&gt;"));

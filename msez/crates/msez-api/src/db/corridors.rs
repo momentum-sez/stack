@@ -49,8 +49,8 @@ pub async fn update_state(
         .ok()
         .and_then(|v| v.as_str().map(String::from))
         .unwrap_or_else(|| "DRAFT".to_string());
-    let log_json = serde_json::to_value(transition_log)
-        .unwrap_or_else(|_| serde_json::Value::Array(vec![]));
+    let log_json =
+        serde_json::to_value(transition_log).unwrap_or_else(|_| serde_json::Value::Array(vec![]));
 
     let result = sqlx::query(
         "UPDATE corridors SET status = $1, transition_log = $2, updated_at = $3 WHERE id = $4",
@@ -122,10 +122,9 @@ struct CorridorRow {
 
 impl CorridorRow {
     fn into_record(self) -> CorridorRecord {
-        let state: DynCorridorState = serde_json::from_value(
-            serde_json::Value::String(self.status),
-        )
-        .unwrap_or(DynCorridorState::Draft);
+        let state: DynCorridorState =
+            serde_json::from_value(serde_json::Value::String(self.status))
+                .unwrap_or(DynCorridorState::Draft);
 
         let transition_log: Vec<TransitionRecord> =
             serde_json::from_value(self.transition_log).unwrap_or_default();

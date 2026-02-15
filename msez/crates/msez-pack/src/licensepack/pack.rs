@@ -276,9 +276,7 @@ impl Licensepack {
 
         // Status changes in existing licenses
         for id in curr_ids.intersection(&prev_ids) {
-            if let (Some(curr), Some(prev)) =
-                (self.licenses.get(*id), previous.licenses.get(*id))
-            {
+            if let (Some(curr), Some(prev)) = (self.licenses.get(*id), previous.licenses.get(*id)) {
                 if curr.status != prev.status {
                     match (prev.status, curr.status) {
                         (
@@ -316,13 +314,13 @@ impl Licensepack {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::components::LicenseHolder;
+    use super::super::components::{LicenseCondition, LicensePermission, LicenseRestriction};
     use super::super::license::{
         License, LicenseTypeDefinition, LicensepackMetadata, LicensepackRegulator,
     };
     use super::super::types::LicenseStatus;
-    use super::super::components::{LicenseCondition, LicensePermission, LicenseRestriction};
+    use super::*;
 
     fn make_test_license(id: &str, status: LicenseStatus) -> License {
         License {

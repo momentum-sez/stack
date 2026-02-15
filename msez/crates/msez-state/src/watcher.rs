@@ -120,10 +120,10 @@ impl SlashingCondition {
     /// slashing computation.
     pub fn slash_bps(&self) -> u64 {
         match self {
-            Self::Equivocation => 10_000,      // 100%
-            Self::AvailabilityFailure => 100,   // 1%
-            Self::FalseAttestation => 5_000,    // 50%
-            Self::Collusion => 10_000,          // 100%
+            Self::Equivocation => 10_000,     // 100%
+            Self::AvailabilityFailure => 100, // 1%
+            Self::FalseAttestation => 5_000,  // 50%
+            Self::Collusion => 10_000,        // 100%
         }
     }
 
@@ -277,7 +277,8 @@ impl Watcher {
 
         // Use integer basis-point arithmetic to avoid floating-point precision
         // loss on large bond values (>2^53). u128 intermediate prevents overflow.
-        let slash_amount = (u128::from(self.bonded_stake) * u128::from(condition.slash_bps()) / 10_000) as u64;
+        let slash_amount =
+            (u128::from(self.bonded_stake) * u128::from(condition.slash_bps()) / 10_000) as u64;
         let actual_slash = slash_amount.min(self.available_stake());
         self.slashed_amount = self.slashed_amount.saturating_add(actual_slash);
         self.slash_count = self.slash_count.saturating_add(1);

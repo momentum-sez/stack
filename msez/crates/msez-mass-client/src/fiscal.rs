@@ -296,10 +296,12 @@ impl FiscalClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// Create a bank account within a treasury.
@@ -338,19 +340,18 @@ impl FiscalClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// Get a bank account by ID.
     ///
     /// Calls `GET {base_url}/treasury-info/api/v1/account/{id}`.
-    pub async fn get_account(
-        &self,
-        id: Uuid,
-    ) -> Result<Option<MassFiscalAccount>, MassApiError> {
+    pub async fn get_account(&self, id: Uuid) -> Result<Option<MassFiscalAccount>, MassApiError> {
         let endpoint = format!("GET /account/{id}");
         let url = format!("{}{}/account/{id}", self.base_url, API_PREFIX);
 
@@ -392,10 +393,7 @@ impl FiscalClient {
         req: &CreatePaymentRequest,
     ) -> Result<MassPayment, MassApiError> {
         let endpoint = "POST /transaction/create/payment";
-        let url = format!(
-            "{}{}/transaction/create/payment",
-            self.base_url, API_PREFIX
-        );
+        let url = format!("{}{}/transaction/create/payment", self.base_url, API_PREFIX);
 
         let resp = crate::retry::retry_send(|| self.http.post(&url).json(req).send())
             .await
@@ -414,19 +412,18 @@ impl FiscalClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// Get a transaction by ID.
     ///
     /// Calls `GET {base_url}/treasury-info/api/v1/transaction/{id}`.
-    pub async fn get_transaction(
-        &self,
-        id: Uuid,
-    ) -> Result<Option<MassPayment>, MassApiError> {
+    pub async fn get_transaction(&self, id: Uuid) -> Result<Option<MassPayment>, MassApiError> {
         let endpoint = format!("GET /transaction/{id}");
         let url = format!("{}{}/transaction/{id}", self.base_url, API_PREFIX);
 
@@ -487,10 +484,12 @@ impl FiscalClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// List tax events for an entity.
@@ -527,10 +526,12 @@ impl FiscalClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint,
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint,
+                source: e,
+            })
     }
 
     /// Compute withholding tax for a transaction.
@@ -560,9 +561,11 @@ impl FiscalClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 }

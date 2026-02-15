@@ -56,13 +56,8 @@ impl MassClient {
                 let mut headers = reqwest::header::HeaderMap::new();
                 headers.insert(
                     reqwest::header::AUTHORIZATION,
-                    reqwest::header::HeaderValue::from_str(&format!(
-                        "Bearer {}",
-                        config.api_token
-                    ))
-                    .map_err(|_| {
-                        MassApiError::Config(config::ConfigError::MissingToken)
-                    })?,
+                    reqwest::header::HeaderValue::from_str(&format!("Bearer {}", config.api_token))
+                        .map_err(|_| MassApiError::Config(config::ConfigError::MissingToken))?,
                 );
                 headers
             })
@@ -92,14 +87,8 @@ impl MassClient {
                 config.consent_info_url.clone(),
                 config.identity_info_url,
             ),
-            consent: consent::ConsentClient::new(
-                http.clone(),
-                config.consent_info_url,
-            ),
-            templating: templating::TemplatingClient::new(
-                http,
-                config.templating_engine_url,
-            ),
+            consent: consent::ConsentClient::new(http.clone(), config.consent_info_url),
+            templating: templating::TemplatingClient::new(http, config.templating_engine_url),
         })
     }
 

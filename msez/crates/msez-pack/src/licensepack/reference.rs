@@ -135,9 +135,9 @@ pub fn evaluate_license_compliance(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::license::License;
     use super::super::types::LicenseStatus;
+    use super::*;
     use msez_core::JurisdictionId;
     use serde_json::json;
     use std::collections::BTreeMap;
@@ -267,12 +267,10 @@ mod tests {
         );
         pack.add_license(make_test_license("lic-001", LicenseStatus::Active));
 
-        let state =
-            evaluate_license_compliance("lic-001", "payment_services", &pack, "2026-06-15");
+        let state = evaluate_license_compliance("lic-001", "payment_services", &pack, "2026-06-15");
         assert_eq!(state, LicenseComplianceState::Compliant);
 
-        let state =
-            evaluate_license_compliance("lic-999", "payment_services", &pack, "2026-06-15");
+        let state = evaluate_license_compliance("lic-999", "payment_services", &pack, "2026-06-15");
         assert_eq!(state, LicenseComplianceState::NonCompliant);
     }
 

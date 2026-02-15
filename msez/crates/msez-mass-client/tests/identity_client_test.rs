@@ -16,10 +16,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 /// Build a MassClient with org-info and consent-info pointed at separate
 /// wiremock servers for isolation.
-async fn test_client_dual(
-    org_server: &MockServer,
-    consent_server: &MockServer,
-) -> MassClient {
+async fn test_client_dual(org_server: &MockServer, consent_server: &MockServer) -> MassClient {
     let config = MassApiConfig {
         organization_info_url: org_server.uri().parse().unwrap(),
         investment_info_url: "http://127.0.0.1:19001".parse().unwrap(),
@@ -55,9 +52,7 @@ async fn get_members_returns_member_list() {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("GET"))
-        .and(path(
-            "/organization-info/api/v1/membership/org-001/members",
-        ))
+        .and(path("/organization-info/api/v1/membership/org-001/members"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
             {
                 "userId": "user-1",
@@ -88,9 +83,7 @@ async fn get_members_handles_api_error() {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("GET"))
-        .and(path(
-            "/organization-info/api/v1/membership/bad-org/members",
-        ))
+        .and(path("/organization-info/api/v1/membership/bad-org/members"))
         .respond_with(ResponseTemplate::new(404).set_body_string("organization not found"))
         .mount(&mock_server)
         .await;
@@ -127,10 +120,7 @@ async fn get_board_returns_directors() {
     assert_eq!(directors.len(), 1);
     assert_eq!(directors[0].name.as_deref(), Some("Alice Khan"));
     assert_eq!(directors[0].shares, Some(500000));
-    assert_eq!(
-        directors[0].ownership_percentage.as_deref(),
-        Some("51.0")
-    );
+    assert_eq!(directors[0].ownership_percentage.as_deref(), Some("51.0"));
     assert_eq!(directors[0].active, Some(true));
 }
 
@@ -163,11 +153,7 @@ async fn get_shareholders_returns_shareholder_list() {
         .await;
 
     let client = test_client_dual(&org_server, &consent_server).await;
-    let shareholders = client
-        .identity()
-        .get_shareholders("org-001")
-        .await
-        .unwrap();
+    let shareholders = client.identity().get_shareholders("org-001").await.unwrap();
     assert_eq!(shareholders.len(), 1);
     assert_eq!(shareholders[0].first_name.as_deref(), Some("Alice"));
     assert_eq!(shareholders[0].outstanding_shares, Some(500000));
@@ -183,9 +169,7 @@ async fn get_composite_identity_aggregates_all_three_sources() {
 
     // Members (organization-info)
     Mock::given(method("GET"))
-        .and(path(
-            "/organization-info/api/v1/membership/org-001/members",
-        ))
+        .and(path("/organization-info/api/v1/membership/org-001/members"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
             {"userId": "user-1", "name": "Alice", "roles": ["ADMIN"]}
         ])))
@@ -237,9 +221,7 @@ async fn get_composite_identity_tolerates_partial_failures() {
 
     // Members succeeds
     Mock::given(method("GET"))
-        .and(path(
-            "/organization-info/api/v1/membership/org-001/members",
-        ))
+        .and(path("/organization-info/api/v1/membership/org-001/members"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
             {"userId": "user-1", "name": "Alice", "roles": ["ADMIN"]}
         ])))
@@ -284,9 +266,7 @@ async fn member_deserializes_with_unknown_fields() {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("GET"))
-        .and(path(
-            "/organization-info/api/v1/membership/org-001/members",
-        ))
+        .and(path("/organization-info/api/v1/membership/org-001/members"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
             {
                 "userId": "user-1",

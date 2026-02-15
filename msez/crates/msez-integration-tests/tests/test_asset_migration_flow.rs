@@ -213,7 +213,10 @@ fn migration_flow_compensation() {
     saga.advance().unwrap(); // AttestationGathering
 
     // Attempting compensation from pre-transit state should fail
-    assert!(saga.compensate("too_early").is_err(), "BUG-037: compensation rejected before InTransit");
+    assert!(
+        saga.compensate("too_early").is_err(),
+        "BUG-037: compensation rejected before InTransit"
+    );
 
     // Advance to InTransit (2 more advances: SourceLocked → InTransit)
     saga.advance().unwrap(); // SourceLocked

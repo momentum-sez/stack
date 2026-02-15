@@ -214,10 +214,12 @@ impl TemplatingClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// Get a template by ID.
@@ -297,10 +299,12 @@ impl TemplatingClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// Get a submission by ID.
@@ -311,10 +315,7 @@ impl TemplatingClient {
         submission_id: &str,
     ) -> Result<Option<SubmissionResponse>, MassApiError> {
         let endpoint = format!("GET /submission/{submission_id}");
-        let url = format!(
-            "{}{}/submission/{submission_id}",
-            self.base_url, API_PREFIX
-        );
+        let url = format!("{}{}/submission/{submission_id}", self.base_url, API_PREFIX);
 
         let resp = crate::retry::retry_send(|| self.http.get(&url).send())
             .await

@@ -1872,7 +1872,9 @@ async fn mass_proxy_create_cap_table_without_client() {
 async fn mass_proxy_get_cap_table_without_client() {
     let app = test_app();
     let resp = app
-        .oneshot(get("/v1/ownership/cap-tables/00000000-0000-0000-0000-000000000000"))
+        .oneshot(get(
+            "/v1/ownership/cap-tables/00000000-0000-0000-0000-000000000000",
+        ))
         .await
         .unwrap();
     assert!(
@@ -1996,10 +1998,7 @@ async fn credential_issue_compliance_empty_domain() {
 async fn credential_verify_empty_body() {
     let app = test_app();
     let resp = app
-        .oneshot(post_json(
-            "/v1/credentials/verify",
-            json!({}),
-        ))
+        .oneshot(post_json("/v1/credentials/verify", json!({})))
         .await
         .unwrap();
     assert!(
@@ -2312,7 +2311,9 @@ async fn asset_genesis_wrong_content_type() {
                 .method("POST")
                 .uri("/v1/assets/genesis")
                 .header("content-type", "text/plain")
-                .body(Body::from("{\"asset_type\": \"equity\", \"jurisdiction_id\": \"PK\"}"))
+                .body(Body::from(
+                    "{\"asset_type\": \"equity\", \"jurisdiction_id\": \"PK\"}",
+                ))
                 .unwrap(),
         )
         .await
@@ -2334,7 +2335,9 @@ async fn settlement_compute_no_content_type() {
             Request::builder()
                 .method("POST")
                 .uri("/v1/corridors")
-                .body(Body::from("{\"jurisdiction_a\": \"PK\", \"jurisdiction_b\": \"AE\"}"))
+                .body(Body::from(
+                    "{\"jurisdiction_a\": \"PK\", \"jurisdiction_b\": \"AE\"}",
+                ))
                 .unwrap(),
         )
         .await
@@ -2355,8 +2358,7 @@ async fn corridor_delete_method_not_allowed() {
         .await
         .unwrap();
     assert!(
-        resp.status() == StatusCode::METHOD_NOT_ALLOWED
-            || resp.status() == StatusCode::NOT_FOUND,
+        resp.status() == StatusCode::METHOD_NOT_ALLOWED || resp.status() == StatusCode::NOT_FOUND,
         "DELETE /v1/corridors/id: expected 405/404, got {}",
         resp.status()
     );
@@ -2373,8 +2375,7 @@ async fn asset_put_method_not_allowed() {
         .await
         .unwrap();
     assert!(
-        resp.status() == StatusCode::METHOD_NOT_ALLOWED
-            || resp.status() == StatusCode::NOT_FOUND,
+        resp.status() == StatusCode::METHOD_NOT_ALLOWED || resp.status() == StatusCode::NOT_FOUND,
         "PUT /v1/assets/id: expected 405/404, got {}",
         resp.status()
     );

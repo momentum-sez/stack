@@ -129,11 +129,7 @@ async fn get_template_returns_template_when_found() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let template = client
-        .templating()
-        .get_template("tpl-001")
-        .await
-        .unwrap();
+    let template = client.templating().get_template("tpl-001").await.unwrap();
     assert!(template.is_some());
     let template = template.unwrap();
     assert_eq!(template.id, "tpl-001");
@@ -248,11 +244,7 @@ async fn get_submission_returns_submission_when_found() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let submission = client
-        .templating()
-        .get_submission("sub-001")
-        .await
-        .unwrap();
+    let submission = client.templating().get_submission("sub-001").await.unwrap();
     assert!(submission.is_some());
     let submission = submission.unwrap();
     assert_eq!(submission.id, "sub-001");

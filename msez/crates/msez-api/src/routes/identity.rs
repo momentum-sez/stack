@@ -48,24 +48,18 @@ pub fn router() -> Router<AppState> {
         .route("/v1/identity/cnic/verify", post(verify_cnic))
         .route("/v1/identity/ntn/verify", post(verify_ntn))
         // Consolidated entity identity view
-        .route(
-            "/v1/identity/entity/:entity_id",
-            get(get_entity_identity),
-        )
+        .route("/v1/identity/entity/:entity_id", get(get_entity_identity))
         // Identity status (service health / mode)
         .route("/v1/identity/status", get(identity_service_status))
 }
 
 /// Helper: extract the Mass client from AppState or return 503.
 fn require_mass_client(state: &AppState) -> Result<&msez_mass_client::MassClient, AppError> {
-    state
-        .mass_client
-        .as_ref()
-        .ok_or_else(|| {
-            AppError::service_unavailable(
-                "Mass API client not configured. Set MASS_API_TOKEN environment variable.",
-            )
-        })
+    state.mass_client.as_ref().ok_or_else(|| {
+        AppError::service_unavailable(
+            "Mass API client not configured. Set MASS_API_TOKEN environment variable.",
+        )
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -427,9 +421,7 @@ async fn get_entity_identity(
     ),
     tag = "identity"
 )]
-async fn identity_service_status(
-    State(state): State<AppState>,
-) -> Json<IdentityServiceStatus> {
+async fn identity_service_status(State(state): State<AppState>) -> Json<IdentityServiceStatus> {
     let (configured, dedicated, sources) = match &state.mass_client {
         Some(client) => {
             let dedicated = client.identity().has_dedicated_service();
@@ -521,9 +513,7 @@ mod tests {
             .method("POST")
             .uri("/v1/identity/ntn/verify")
             .header("content-type", "application/json")
-            .body(Body::from(
-                r#"{"ntn":"1234567","entity_name":"Test Corp"}"#,
-            ))
+            .body(Body::from(r#"{"ntn":"1234567","entity_name":"Test Corp"}"#))
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();

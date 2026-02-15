@@ -42,9 +42,7 @@ pub mod types;
 // Re-export all public types at the module root to preserve the existing API.
 // External code using `msez_pack::licensepack::Licensepack` continues to work.
 pub use components::{LicenseCondition, LicenseHolder, LicensePermission, LicenseRestriction};
-pub use license::{
-    License, LicenseTypeDefinition, LicensepackMetadata, LicensepackRegulator,
-};
+pub use license::{License, LicenseTypeDefinition, LicensepackMetadata, LicensepackRegulator};
 pub use pack::Licensepack;
 pub use reference::{
     canonical_json_bytes, evaluate_license_compliance, resolve_licensepack_refs,

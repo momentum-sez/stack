@@ -954,7 +954,10 @@ fn entity_suspended_reject_fails() {
     let mut entity = Entity::new(EntityId::new());
     entity.approve().unwrap();
     entity.suspend().unwrap();
-    assert!(entity.reject().is_err(), "Suspended → Rejected should be rejected");
+    assert!(
+        entity.reject().is_err(),
+        "Suspended → Rejected should be rejected"
+    );
 }
 
 #[test]
@@ -963,7 +966,10 @@ fn entity_dissolving_to_rejected_fails() {
     let mut entity = Entity::new(EntityId::new());
     entity.approve().unwrap();
     entity.initiate_dissolution().unwrap();
-    assert!(entity.reject().is_err(), "Dissolving → Rejected should be rejected");
+    assert!(
+        entity.reject().is_err(),
+        "Dissolving → Rejected should be rejected"
+    );
 }
 
 #[test]
@@ -972,7 +978,10 @@ fn entity_dissolving_suspend_fails() {
     let mut entity = Entity::new(EntityId::new());
     entity.approve().unwrap();
     entity.initiate_dissolution().unwrap();
-    assert!(entity.suspend().is_err(), "Dissolving → Suspended should be rejected");
+    assert!(
+        entity.suspend().is_err(),
+        "Dissolving → Suspended should be rejected"
+    );
 }
 
 #[test]
@@ -981,7 +990,10 @@ fn entity_dissolving_reinstate_fails() {
     let mut entity = Entity::new(EntityId::new());
     entity.approve().unwrap();
     entity.initiate_dissolution().unwrap();
-    assert!(entity.reinstate().is_err(), "Dissolving → reinstate should be rejected");
+    assert!(
+        entity.reinstate().is_err(),
+        "Dissolving → reinstate should be rejected"
+    );
 }
 
 #[test]
@@ -992,7 +1004,7 @@ fn entity_dissolution_cannot_skip_stages() {
     entity.initiate_dissolution().unwrap();
     entity.advance_dissolution().unwrap(); // Stage 1→2
     entity.advance_dissolution().unwrap(); // Stage 2→3
-    // After 2 advances, should still be Dissolving (not Dissolved)
+                                           // After 2 advances, should still be Dissolving (not Dissolved)
     assert_eq!(entity.state, EntityLifecycleState::Dissolving);
 }
 
@@ -1009,7 +1021,10 @@ fn license_expire_from_suspended_rejected() {
     license.suspend("under investigation").unwrap();
     assert_eq!(license.state, LicenseState::Suspended);
     let result = license.expire();
-    assert!(result.is_err(), "Expire from Suspended should be rejected — only Active can expire");
+    assert!(
+        result.is_err(),
+        "Expire from Suspended should be rejected — only Active can expire"
+    );
 }
 
 #[test]
@@ -1021,7 +1036,10 @@ fn license_surrender_from_suspended_rejected() {
     license.suspend("regulatory hold").unwrap();
     assert_eq!(license.state, LicenseState::Suspended);
     let result = license.surrender();
-    assert!(result.is_err(), "Surrender from Suspended should be rejected — only Active can surrender");
+    assert!(
+        result.is_err(),
+        "Surrender from Suspended should be rejected — only Active can surrender"
+    );
 }
 
 #[test]
@@ -1077,7 +1095,10 @@ fn license_reject_from_active_fails() {
     let mut license = License::new("LIC-REJ-ACTIVE");
     license.review().unwrap();
     license.issue().unwrap();
-    assert!(license.reject("test").is_err(), "Cannot reject an Active license");
+    assert!(
+        license.reject("test").is_err(),
+        "Cannot reject an Active license"
+    );
 }
 
 #[test]
@@ -1102,16 +1123,14 @@ fn license_double_review_fails() {
 #[test]
 fn enforcement_cancel_from_in_progress_rejected() {
     // Cannot cancel after enforcement has begun
-    let mut order = EnforcementOrder::new(
-        DisputeId::new(),
-        test_digest_sm("award"),
-        vec![],
-        None,
-    );
+    let mut order = EnforcementOrder::new(DisputeId::new(), test_digest_sm("award"), vec![], None);
     order.begin_enforcement().unwrap();
     assert_eq!(order.status, EnforcementStatus::InProgress);
     let result = order.cancel();
-    assert!(result.is_err(), "Cannot cancel from InProgress — enforcement already started");
+    assert!(
+        result.is_err(),
+        "Cannot cancel from InProgress — enforcement already started"
+    );
 }
 
 #[test]
@@ -1119,12 +1138,7 @@ fn enforcement_blocked_reject_all_transitions() {
     // BUG-036: Blocked enforcement orders can still be cancelled.
     // Expected: Blocked should reject cancel() (order is stuck pending appeal).
     // Actual: cancel() succeeds from Blocked state.
-    let mut order = EnforcementOrder::new(
-        DisputeId::new(),
-        test_digest_sm("award"),
-        vec![],
-        None,
-    );
+    let mut order = EnforcementOrder::new(DisputeId::new(), test_digest_sm("award"), vec![], None);
     order.block("Appeal pending").unwrap();
     assert_eq!(order.status, EnforcementStatus::Blocked);
     // Complete from Blocked should fail
@@ -1138,14 +1152,12 @@ fn enforcement_blocked_reject_all_transitions() {
 
 #[test]
 fn enforcement_double_begin_fails() {
-    let mut order = EnforcementOrder::new(
-        DisputeId::new(),
-        test_digest_sm("award"),
-        vec![],
-        None,
-    );
+    let mut order = EnforcementOrder::new(DisputeId::new(), test_digest_sm("award"), vec![], None);
     order.begin_enforcement().unwrap();
-    assert!(order.begin_enforcement().is_err(), "Double begin_enforcement should fail");
+    assert!(
+        order.begin_enforcement().is_err(),
+        "Double begin_enforcement should fail"
+    );
 }
 
 // =========================================================================
@@ -1166,7 +1178,9 @@ fn watcher_slash_availability_failure_from_active() {
     let mut watcher = Watcher::new(msez_core::WatcherId::new());
     watcher.bond(100_000).unwrap();
     watcher.activate().unwrap();
-    assert!(watcher.slash(SlashingCondition::AvailabilityFailure).is_ok());
+    assert!(watcher
+        .slash(SlashingCondition::AvailabilityFailure)
+        .is_ok());
     assert_eq!(watcher.state, WatcherState::Slashed);
 }
 
@@ -1185,7 +1199,10 @@ fn watcher_cannot_rebond_from_active() {
     watcher.bond(100_000).unwrap();
     watcher.activate().unwrap();
     // rebond only works from Slashed
-    assert!(watcher.rebond(100_000).is_err(), "Cannot rebond from Active");
+    assert!(
+        watcher.rebond(100_000).is_err(),
+        "Cannot rebond from Active"
+    );
 }
 
 #[test]
@@ -1193,7 +1210,10 @@ fn watcher_cannot_complete_unbond_from_active() {
     let mut watcher = Watcher::new(msez_core::WatcherId::new());
     watcher.bond(100_000).unwrap();
     watcher.activate().unwrap();
-    assert!(watcher.complete_unbond().is_err(), "Cannot complete_unbond from Active");
+    assert!(
+        watcher.complete_unbond().is_err(),
+        "Cannot complete_unbond from Active"
+    );
 }
 
 #[test]
@@ -1201,7 +1221,10 @@ fn watcher_cannot_slash_from_bonded() {
     let mut watcher = Watcher::new(msez_core::WatcherId::new());
     watcher.bond(100_000).unwrap();
     assert_eq!(watcher.state, WatcherState::Bonded);
-    assert!(watcher.slash(SlashingCondition::Equivocation).is_err(), "Cannot slash from Bonded");
+    assert!(
+        watcher.slash(SlashingCondition::Equivocation).is_err(),
+        "Cannot slash from Bonded"
+    );
 }
 
 #[test]
@@ -1209,7 +1232,10 @@ fn watcher_cannot_unbond_from_bonded() {
     let mut watcher = Watcher::new(msez_core::WatcherId::new());
     watcher.bond(100_000).unwrap();
     assert_eq!(watcher.state, WatcherState::Bonded);
-    assert!(watcher.unbond().is_err(), "Cannot unbond from Bonded — must activate first");
+    assert!(
+        watcher.unbond().is_err(),
+        "Cannot unbond from Bonded — must activate first"
+    );
 }
 
 // =========================================================================
@@ -1272,8 +1298,12 @@ fn escrow_partial_release_then_full_release() {
         "USD".to_string(),
         None,
     );
-    escrow.deposit("50000".to_string(), test_digest_sm("dep")).unwrap();
-    escrow.partial_release("10000".to_string(), make_release_condition()).unwrap();
+    escrow
+        .deposit("50000".to_string(), test_digest_sm("dep"))
+        .unwrap();
+    escrow
+        .partial_release("10000".to_string(), make_release_condition())
+        .unwrap();
     assert_eq!(escrow.status, EscrowStatus::PartiallyReleased);
     // Can we do a full release after partial? This tests the state transition.
     let result = escrow.full_release(make_release_condition());
@@ -1289,8 +1319,13 @@ fn escrow_double_deposit_fails() {
         "USD".to_string(),
         None,
     );
-    escrow.deposit("10000".to_string(), test_digest_sm("dep")).unwrap();
+    escrow
+        .deposit("10000".to_string(), test_digest_sm("dep"))
+        .unwrap();
     assert_eq!(escrow.status, EscrowStatus::Funded);
     let result = escrow.deposit("5000".to_string(), test_digest_sm("dep2"));
-    assert!(result.is_err(), "Double deposit should fail — already Funded");
+    assert!(
+        result.is_err(),
+        "Double deposit should fail — already Funded"
+    );
 }

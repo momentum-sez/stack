@@ -413,7 +413,10 @@ fn serde_rt_settlement_plan() {
     let json = serde_json::to_string(&plan).expect("serialize");
     let recovered: SettlementPlan = serde_json::from_str(&json).expect("deserialize");
     // BUG-006 RESOLVED: PartialEq now derived, direct comparison works
-    assert_eq!(recovered, plan, "SettlementPlan serde round-trip should be lossless");
+    assert_eq!(
+        recovered, plan,
+        "SettlementPlan serde round-trip should be lossless"
+    );
 }
 
 #[test]
@@ -1517,7 +1520,7 @@ fn serde_rt_settlement_plan_large_amounts() {
 
 use msez_pack::lawpack::{
     Lawpack, LawpackLock, LawpackLockComponents, LawpackLockProvenance, LawpackManifest,
-    LawpackRef, LawpackSource, NormalizationInfo, NormalizationInput, ModuleDescriptor,
+    LawpackRef, LawpackSource, ModuleDescriptor, NormalizationInfo, NormalizationInput,
     SourcesDescriptor,
 };
 use std::collections::BTreeMap;
@@ -1540,7 +1543,10 @@ fn serde_rt_lawpack_ref_empty_fields() {
     let json = r#"{"jurisdiction_id":"","domain":"","lawpack_digest_sha256":""}"#;
     let result: Result<LawpackRef, _> = serde_json::from_str(json);
     // BUG-033 RESOLVED: deserialization correctly fails for empty required fields.
-    assert!(result.is_err(), "BUG-033 RESOLVED: LawpackRef rejects empty fields via serde");
+    assert!(
+        result.is_err(),
+        "BUG-033 RESOLVED: LawpackRef rejects empty fields via serde"
+    );
 }
 
 #[test]
@@ -1645,7 +1651,10 @@ fn serde_rt_lawpack_lock() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: LawpackLock = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.lawpack_digest_sha256, original.lawpack_digest_sha256);
+    assert_eq!(
+        recovered.lawpack_digest_sha256,
+        original.lawpack_digest_sha256
+    );
     assert_eq!(recovered.jurisdiction_id, "PAK");
 }
 
@@ -1824,7 +1833,10 @@ fn serde_rt_regulator_profile() {
         parent_authority: Some("Ministry of Finance".to_string()),
         scope: {
             let mut m = BTreeMap::new();
-            m.insert("taxation".to_string(), vec!["income_tax".to_string(), "sales_tax".to_string()]);
+            m.insert(
+                "taxation".to_string(),
+                vec!["income_tax".to_string(), "sales_tax".to_string()],
+            );
             m
         },
         contact: {
@@ -1987,8 +1999,7 @@ fn serde_rt_license_compliance_state_all_variants() {
     ];
     for v in &variants {
         let json = serde_json::to_string(v).expect("serialize");
-        let recovered: LicenseComplianceState =
-            serde_json::from_str(&json).expect("deserialize");
+        let recovered: LicenseComplianceState = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(*v, recovered, "LicenseComplianceState {:?} round-trip", v);
     }
 }
@@ -2234,18 +2245,11 @@ fn serde_rt_licensepack_lock() {
 // msez-mass-client: Mass DTO serde round-trips
 // =========================================================================
 
-use msez_mass_client::consent::{
-    MassConsent, MassConsentAuditEntry, MassConsentParty, MassConsentStatus, MassConsentType,
-};
-use msez_mass_client::entities::{
-    MassBeneficialOwner, MassEntity, MassEntityStatus, MassEntityType,
-};
-use msez_mass_client::fiscal::{
-    MassAccountType, MassFiscalAccount, MassPayment, MassPaymentStatus, MassTaxEvent,
-};
+use msez_mass_client::consent::{MassConsent, MassConsentOperationType, MassConsentStatus};
+use msez_mass_client::entities::{MassEntity, MassEntityStatus, MassEntityType};
+use msez_mass_client::fiscal::{MassFiscalAccount, MassPayment, MassPaymentStatus, MassTaxEvent};
 use msez_mass_client::identity::{
-    MassIdentity, MassIdentityAttestation, MassIdentityStatus, MassIdentityType,
-    MassLinkedExternalId,
+    MassIdentity, MassIdentityStatus, MassIdentityType, MassMember, MassShareholder,
 };
 use msez_mass_client::ownership::{MassCapTable, MassOwnershipTransfer, MassShareClass};
 
@@ -2287,38 +2291,38 @@ fn serde_rt_mass_entity_status_all_variants() {
 fn serde_rt_mass_entity_full() {
     let original = MassEntity {
         id: uuid::Uuid::new_v4(),
-        entity_type: MassEntityType::Company,
-        legal_name: "Momentum Technologies Pvt Ltd".to_string(),
-        jurisdiction_id: "PAK-RSEZ".to_string(),
-        status: MassEntityStatus::Active,
-        beneficial_owners: vec![MassBeneficialOwner {
-            name: "Raeez Lorgat".to_string(),
-            ownership_percentage: "51.0".to_string(),
-            cnic: Some("3520112345678".to_string()),
-            ntn: Some("1234567".to_string()),
-        }],
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
+        name: "Momentum Technologies Pvt Ltd".to_string(),
+        jurisdiction: Some("PAK-RSEZ".to_string()),
+        status: Some(MassEntityStatus::Active),
+        address: None,
+        tags: vec!["sez".to_string()],
+        created_at: Some(Utc::now()),
+        updated_at: Some(Utc::now()),
+        board: None,
+        members: None,
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: MassEntity = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.legal_name, original.legal_name);
-    assert_eq!(recovered.beneficial_owners.len(), 1);
-    assert_eq!(recovered.beneficial_owners[0].name, "Raeez Lorgat");
+    assert_eq!(recovered.name, original.name);
+    assert_eq!(recovered.jurisdiction, Some("PAK-RSEZ".to_string()));
 }
 
 #[test]
-fn serde_rt_mass_consent_type_all_variants() {
+fn serde_rt_mass_consent_operation_type_all_variants() {
     let variants = [
-        MassConsentType::Approval,
-        MassConsentType::Formation,
-        MassConsentType::Transfer,
-        MassConsentType::Dissolution,
-        MassConsentType::Unknown,
+        MassConsentOperationType::EquityOffer,
+        MassConsentOperationType::IssueNewShares,
+        MassConsentOperationType::AmendOptionsPool,
+        MassConsentOperationType::CreateOptionsPool,
+        MassConsentOperationType::CreateCommonClass,
+        MassConsentOperationType::ModifyCompanyLegalName,
+        MassConsentOperationType::ModifyBoardMemberDesignation,
+        MassConsentOperationType::CertificateOfAmendment,
+        MassConsentOperationType::Unknown,
     ];
     for v in &variants {
         let json = serde_json::to_string(v).expect("serialize");
-        let recovered: MassConsentType = serde_json::from_str(&json).expect("deserialize");
+        let recovered: MassConsentOperationType = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(*v, recovered);
     }
 }
@@ -2327,74 +2331,80 @@ fn serde_rt_mass_consent_type_all_variants() {
 fn serde_rt_mass_consent_full() {
     let original = MassConsent {
         id: uuid::Uuid::new_v4(),
-        consent_type: MassConsentType::Formation,
-        description: "Entity formation consent".to_string(),
-        parties: vec![MassConsentParty {
-            entity_id: uuid::Uuid::new_v4(),
-            role: "director".to_string(),
-            decision: Some("approved".to_string()),
-            decided_at: Some(Utc::now()),
-        }],
-        status: MassConsentStatus::Approved,
-        audit_trail: vec![MassConsentAuditEntry {
-            action: "approved".to_string(),
-            actor_id: uuid::Uuid::new_v4(),
-            timestamp: Utc::now(),
-            details: Some("Approved by director".to_string()),
-        }],
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
+        organization_id: "org-001".to_string(),
+        operation_id: Some(uuid::Uuid::new_v4()),
+        operation_type: Some(MassConsentOperationType::EquityOffer),
+        status: Some(MassConsentStatus::Approved),
+        votes: vec![],
+        num_votes_required: Some(1),
+        approval_count: Some(1),
+        rejection_count: Some(0),
+        document_url: None,
+        signatory: Some("director-001".to_string()),
+        jurisdiction: Some("PAK-RSEZ".to_string()),
+        requested_by: Some("admin".to_string()),
+        expires_at: None,
+        created_at: Some(Utc::now()),
+        updated_at: Some(Utc::now()),
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: MassConsent = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.consent_type, MassConsentType::Formation);
-    assert_eq!(recovered.parties.len(), 1);
+    assert_eq!(
+        recovered.operation_type,
+        Some(MassConsentOperationType::EquityOffer)
+    );
+    assert_eq!(recovered.status, Some(MassConsentStatus::Approved));
 }
 
 #[test]
 fn serde_rt_mass_fiscal_account() {
     let original = MassFiscalAccount {
         id: uuid::Uuid::new_v4(),
-        entity_id: uuid::Uuid::new_v4(),
-        account_type: MassAccountType::Operating,
-        currency: "PKR".to_string(),
-        balance: "50000000".to_string(),
-        ntn: Some("1234567".to_string()),
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
+        entity_id: Some("org-001".to_string()),
+        treasury_id: Some(uuid::Uuid::new_v4()),
+        name: Some("Operating Account".to_string()),
+        currency: Some("PKR".to_string()),
+        balance: Some("50000000".to_string()),
+        available: Some("50000000".to_string()),
+        status: None,
+        funding_details: None,
+        created_at: Some(Utc::now()),
+        updated_at: Some(Utc::now()),
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: MassFiscalAccount = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.account_type, MassAccountType::Operating);
-    assert_eq!(recovered.currency, "PKR");
+    assert_eq!(recovered.currency, Some("PKR".to_string()));
+    assert_eq!(recovered.balance, Some("50000000".to_string()));
 }
 
 #[test]
 fn serde_rt_mass_payment() {
     let original = MassPayment {
         id: uuid::Uuid::new_v4(),
-        from_account_id: uuid::Uuid::new_v4(),
-        to_account_id: Some(uuid::Uuid::new_v4()),
-        amount: "1000000".to_string(),
-        currency: "PKR".to_string(),
-        reference: "WHT-2026-Q1".to_string(),
-        status: MassPaymentStatus::Completed,
-        created_at: Utc::now(),
+        account_id: Some(uuid::Uuid::new_v4()),
+        entity_id: Some("org-001".to_string()),
+        transaction_type: Some("payment".to_string()),
+        status: Some(MassPaymentStatus::Completed),
+        direction: Some("outgoing".to_string()),
+        currency: Some("PKR".to_string()),
+        amount: Some("1000000".to_string()),
+        reference: Some("WHT-2026-Q1".to_string()),
+        created_at: Some(Utc::now()),
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: MassPayment = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.status, MassPaymentStatus::Completed);
+    assert_eq!(recovered.status, Some(MassPaymentStatus::Completed));
 }
 
 #[test]
 fn serde_rt_mass_tax_event() {
     let original = MassTaxEvent {
         id: uuid::Uuid::new_v4(),
-        entity_id: uuid::Uuid::new_v4(),
+        entity_id: "org-001".to_string(),
         event_type: "withholding_tax".to_string(),
         amount: "150000".to_string(),
         currency: "PKR".to_string(),
-        tax_year: "2026".to_string(),
+        tax_year: Some("2026".to_string()),
         details: json!({"section": "153", "rate": "4.5%"}),
         created_at: Utc::now(),
     };
@@ -2420,46 +2430,62 @@ fn serde_rt_mass_identity_type_all_variants() {
 #[test]
 fn serde_rt_mass_identity_full() {
     let original = MassIdentity {
-        id: uuid::Uuid::new_v4(),
-        identity_type: MassIdentityType::Individual,
-        status: MassIdentityStatus::Verified,
-        linked_ids: vec![MassLinkedExternalId {
-            id_type: "CNIC".to_string(),
-            id_value: "3520112345678".to_string(),
-            verified: true,
-            linked_at: Utc::now(),
+        organization_id: "org-001".to_string(),
+        members: vec![MassMember {
+            user_id: Some("user-001".to_string()),
+            name: Some("Raeez Lorgat".to_string()),
+            email: Some("raeez@momentum.inc".to_string()),
+            profile_image: None,
+            roles: vec!["admin".to_string()],
         }],
-        attestations: vec![MassIdentityAttestation {
+        directors: vec![],
+        shareholders: vec![MassShareholder {
             id: uuid::Uuid::new_v4(),
-            attestation_type: "kyc_verification".to_string(),
-            issuer: "NADRA".to_string(),
-            status: "valid".to_string(),
-            issued_at: Utc::now(),
-            expires_at: None,
+            organization_id: "org-001".to_string(),
+            user_id: Some("user-001".to_string()),
+            email: Some("raeez@momentum.inc".to_string()),
+            first_name: Some("Raeez".to_string()),
+            last_name: Some("Lorgat".to_string()),
+            business_name: None,
+            is_entity: Some(false),
+            status: Some(MassIdentityStatus::Verified),
+            outstanding_shares: Some(5_000_000),
+            fully_diluted_shares: Some(5_000_000),
+            created_at: Some(Utc::now()),
+            updated_at: Some(Utc::now()),
         }],
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: MassIdentity = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.identity_type, MassIdentityType::Individual);
-    assert_eq!(recovered.linked_ids.len(), 1);
+    assert_eq!(recovered.organization_id, "org-001");
+    assert_eq!(recovered.members.len(), 1);
+    assert_eq!(recovered.shareholders.len(), 1);
 }
 
 #[test]
 fn serde_rt_mass_cap_table() {
     let original = MassCapTable {
         id: uuid::Uuid::new_v4(),
-        entity_id: uuid::Uuid::new_v4(),
+        organization_id: "org-001".to_string(),
+        authorized_shares: Some(10_000_000),
+        outstanding_shares: Some(5_000_000),
+        fully_diluted_shares: Some(6_000_000),
+        reserved_shares: Some(1_000_000),
+        unreserved_shares: Some(4_000_000),
         share_classes: vec![MassShareClass {
+            id: None,
             name: "Class A Common".to_string(),
             authorized_shares: 10_000_000,
-            issued_shares: 5_000_000,
+            outstanding_shares: 5_000_000,
             par_value: Some("1.00".to_string()),
             voting_rights: true,
+            restricted: false,
+            class_type: None,
         }],
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
+        shareholders: vec![],
+        options_pools: vec![],
+        created_at: Some(Utc::now()),
+        updated_at: Some(Utc::now()),
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: MassCapTable = serde_json::from_str(&json).expect("deserialize");
@@ -2484,17 +2510,20 @@ fn serde_rt_mass_ownership_transfer() {
 }
 
 #[test]
-fn serde_rt_mass_account_type_all_variants() {
+fn serde_rt_mass_consent_status_all_variants() {
     let variants = [
-        MassAccountType::Operating,
-        MassAccountType::Escrow,
-        MassAccountType::Tax,
-        MassAccountType::Settlement,
-        MassAccountType::Unknown,
+        MassConsentStatus::Pending,
+        MassConsentStatus::Approved,
+        MassConsentStatus::Rejected,
+        MassConsentStatus::Expired,
+        MassConsentStatus::ForceApproved,
+        MassConsentStatus::Completed,
+        MassConsentStatus::Canceled,
+        MassConsentStatus::Unknown,
     ];
     for v in &variants {
         let json = serde_json::to_string(v).expect("serialize");
-        let recovered: MassAccountType = serde_json::from_str(&json).expect("deserialize");
+        let recovered: MassConsentStatus = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(*v, recovered);
     }
 }
@@ -2564,8 +2593,7 @@ fn serde_rt_balance_sufficiency_circuit() {
         balance: 5_000_000,
     };
     let json = serde_json::to_string(&original).expect("serialize");
-    let recovered: BalanceSufficiencyCircuit =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: BalanceSufficiencyCircuit = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(recovered.threshold, 1_000_000);
     assert_eq!(recovered.balance, 5_000_000);
     assert_eq!(recovered.result_commitment, [0xaa; 32]);
@@ -2581,8 +2609,7 @@ fn serde_rt_sanctions_clearance_circuit() {
         merkle_path_indices: vec![true, false],
     };
     let json = serde_json::to_string(&original).expect("serialize");
-    let recovered: SanctionsClearanceCircuit =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: SanctionsClearanceCircuit = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(recovered.merkle_proof.len(), 2);
     assert_eq!(recovered.merkle_path_indices, vec![true, false]);
 }
@@ -2599,8 +2626,7 @@ fn serde_rt_tensor_inclusion_circuit() {
         merkle_proof: vec![[0xbb; 32]],
     };
     let json = serde_json::to_string(&original).expect("serialize");
-    let recovered: TensorInclusionCircuit =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: TensorInclusionCircuit = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(recovered.asset_id, "asset-001");
 }
 
@@ -2617,8 +2643,7 @@ fn serde_rt_kyc_attestation_circuit() {
         issuer_merkle_proof: vec![[0x55; 32]],
     };
     let json = serde_json::to_string(&original).expect("serialize");
-    let recovered: KycAttestationCircuit =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: KycAttestationCircuit = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(recovered.kyc_level, 3);
     assert_eq!(recovered.min_kyc_level, 2);
 }
@@ -2634,8 +2659,7 @@ fn serde_rt_attestation_validity_circuit() {
         revocation_non_membership: vec![[0xdd; 32]],
     };
     let json = serde_json::to_string(&original).expect("serialize");
-    let recovered: AttestationValidityCircuit =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: AttestationValidityCircuit = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(recovered.expiry_timestamp, 1_800_000_000);
 }
 
@@ -2650,8 +2674,7 @@ fn serde_rt_threshold_signature_circuit() {
         signer_merkle_proofs: vec![vec![[0x11; 32]], vec![[0x22; 32]]],
     };
     let json = serde_json::to_string(&original).expect("serialize");
-    let recovered: ThresholdSignatureCircuit =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: ThresholdSignatureCircuit = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(recovered.threshold, 3);
     assert_eq!(recovered.signatures.len(), 2);
 }
@@ -2668,8 +2691,7 @@ fn serde_rt_migration_evidence_circuit() {
         approval_signatures: vec![vec![0x77; 64]],
     };
     let json = serde_json::to_string(&original).expect("serialize");
-    let recovered: MigrationEvidenceCircuit =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: MigrationEvidenceCircuit = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(recovered.phase_evidence.len(), 2);
 }
 
@@ -2687,8 +2709,7 @@ fn serde_rt_ownership_chain_circuit() {
         transfer_proofs: vec![vec![[0xff; 32]]],
     };
     let json = serde_json::to_string(&original).expect("serialize");
-    let recovered: OwnershipChainCircuit =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: OwnershipChainCircuit = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(recovered.ownership_entries.len(), 1);
 }
 
@@ -2706,8 +2727,7 @@ fn serde_rt_compensation_validity_circuit() {
         failure_evidence: [0xdd; 32],
     };
     let json = serde_json::to_string(&original).expect("serialize");
-    let recovered: CompensationValidityCircuit =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: CompensationValidityCircuit = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(recovered.compensation_records.len(), 1);
 }
 
@@ -2735,8 +2755,7 @@ fn serde_rt_merkle_membership_circuit() {
         path_indices: vec![true, false, true],
     };
     let json = serde_json::to_string(&original).expect("serialize");
-    let recovered: MerkleMembershipCircuit =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: MerkleMembershipCircuit = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(recovered.merkle_proof.len(), 3);
     assert_eq!(recovered.path_indices.len(), 3);
 }
@@ -2752,8 +2771,7 @@ fn serde_rt_netting_validity_circuit() {
         netting_matrix: vec![0; 25],
     };
     let json = serde_json::to_string(&original).expect("serialize");
-    let recovered: NettingValidityCircuit =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: NettingValidityCircuit = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(recovered.participant_count, 5);
     assert_eq!(recovered.gross_positions.len(), 5);
 }
@@ -2788,10 +2806,7 @@ fn serde_rt_arbitration_institution() {
         id: "SIAC".to_string(),
         name: "Singapore International Arbitration Centre".to_string(),
         jurisdiction_id: "SG".to_string(),
-        supported_dispute_types: vec![
-            DisputeType::BreachOfContract,
-            DisputeType::PaymentDefault,
-        ],
+        supported_dispute_types: vec![DisputeType::BreachOfContract, DisputeType::PaymentDefault],
         emergency_arbitrator: true,
         expedited_procedure: true,
         enforcement_jurisdictions: vec!["SG".to_string(), "PK".to_string(), "AE".to_string()],
@@ -2882,7 +2897,10 @@ fn serde_rt_release_condition() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: ReleaseCondition = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.condition_type, ReleaseConditionType::RulingEnforced);
+    assert_eq!(
+        recovered.condition_type,
+        ReleaseConditionType::RulingEnforced
+    );
 }
 
 #[test]

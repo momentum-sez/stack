@@ -62,14 +62,13 @@ pub async fn update_genesis_digest(
     genesis_digest: &str,
     updated_at: DateTime<Utc>,
 ) -> Result<bool, sqlx::Error> {
-    let result = sqlx::query(
-        "UPDATE smart_assets SET genesis_digest = $1, updated_at = $2 WHERE id = $3",
-    )
-    .bind(genesis_digest)
-    .bind(updated_at)
-    .bind(id)
-    .execute(pool)
-    .await?;
+    let result =
+        sqlx::query("UPDATE smart_assets SET genesis_digest = $1, updated_at = $2 WHERE id = $3")
+            .bind(genesis_digest)
+            .bind(updated_at)
+            .bind(id)
+            .execute(pool)
+            .await?;
 
     Ok(result.rows_affected() > 0)
 }

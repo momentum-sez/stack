@@ -41,9 +41,7 @@ use uuid::Uuid;
 
 use msez_core::ComplianceDomain;
 use msez_tensor::{ComplianceState, ComplianceTensor, DefaultJurisdiction, JurisdictionConfig};
-use msez_vc::credential::{
-    ContextValue, CredentialTypeValue, ProofValue, VerifiableCredential,
-};
+use msez_vc::credential::{ContextValue, CredentialTypeValue, ProofValue, VerifiableCredential};
 use msez_vc::proof::ProofType;
 
 use crate::state::{AppState, AttestationRecord, AttestationStatus};
@@ -378,11 +376,16 @@ pub fn orchestrate_entity_creation(
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
 
-    let (_tensor, summary) =
-        evaluate_compliance(jurisdiction_id, entity_id_str, ENTITY_DOMAINS);
+    let (_tensor, summary) = evaluate_compliance(jurisdiction_id, entity_id_str, ENTITY_DOMAINS);
 
-    let (credential, attestation_id) =
-        issue_and_store(state, vc_types::FORMATION_COMPLIANCE, jurisdiction_id, entity_id_str, legal_name, &summary);
+    let (credential, attestation_id) = issue_and_store(
+        state,
+        vc_types::FORMATION_COMPLIANCE,
+        jurisdiction_id,
+        entity_id_str,
+        legal_name,
+        &summary,
+    );
 
     OrchestrationEnvelope {
         mass_response,
@@ -407,8 +410,14 @@ pub fn orchestrate_cap_table_creation(
     let (_tensor, summary) =
         evaluate_compliance(jurisdiction_id, &entity_id_str, OWNERSHIP_DOMAINS);
 
-    let (credential, attestation_id) =
-        issue_and_store(state, vc_types::OWNERSHIP_COMPLIANCE, jurisdiction_id, &entity_id_str, &entity_id_str, &summary);
+    let (credential, attestation_id) = issue_and_store(
+        state,
+        vc_types::OWNERSHIP_COMPLIANCE,
+        jurisdiction_id,
+        &entity_id_str,
+        &entity_id_str,
+        &summary,
+    );
 
     OrchestrationEnvelope {
         mass_response,
@@ -433,8 +442,14 @@ pub fn orchestrate_account_creation(
     let (_tensor, summary) =
         evaluate_compliance(jurisdiction_id, &entity_id_str, FISCAL_ACCOUNT_DOMAINS);
 
-    let (credential, attestation_id) =
-        issue_and_store(state, vc_types::FISCAL_COMPLIANCE, jurisdiction_id, &entity_id_str, &entity_id_str, &summary);
+    let (credential, attestation_id) = issue_and_store(
+        state,
+        vc_types::FISCAL_COMPLIANCE,
+        jurisdiction_id,
+        &entity_id_str,
+        &entity_id_str,
+        &summary,
+    );
 
     OrchestrationEnvelope {
         mass_response,
@@ -454,11 +469,16 @@ pub fn orchestrate_payment(
     let account_id_str = from_account_id.to_string();
     let jurisdiction_id = infer_jurisdiction_from_currency(currency);
 
-    let (_tensor, summary) =
-        evaluate_compliance(jurisdiction_id, &account_id_str, PAYMENT_DOMAINS);
+    let (_tensor, summary) = evaluate_compliance(jurisdiction_id, &account_id_str, PAYMENT_DOMAINS);
 
-    let (credential, attestation_id) =
-        issue_and_store(state, vc_types::PAYMENT_COMPLIANCE, jurisdiction_id, &account_id_str, &account_id_str, &summary);
+    let (credential, attestation_id) = issue_and_store(
+        state,
+        vc_types::PAYMENT_COMPLIANCE,
+        jurisdiction_id,
+        &account_id_str,
+        &account_id_str,
+        &summary,
+    );
 
     OrchestrationEnvelope {
         mass_response,
@@ -482,11 +502,16 @@ pub fn orchestrate_identity_verification(
     // Identity verification is jurisdiction-agnostic at this layer.
     let jurisdiction_id = "GLOBAL";
 
-    let (_tensor, summary) =
-        evaluate_compliance(jurisdiction_id, entity_ref, IDENTITY_DOMAINS);
+    let (_tensor, summary) = evaluate_compliance(jurisdiction_id, entity_ref, IDENTITY_DOMAINS);
 
-    let (credential, attestation_id) =
-        issue_and_store(state, vc_types::IDENTITY_COMPLIANCE, jurisdiction_id, entity_ref, identity_type, &summary);
+    let (credential, attestation_id) = issue_and_store(
+        state,
+        vc_types::IDENTITY_COMPLIANCE,
+        jurisdiction_id,
+        entity_ref,
+        identity_type,
+        &summary,
+    );
 
     OrchestrationEnvelope {
         mass_response,
@@ -509,11 +534,16 @@ pub fn orchestrate_consent_creation(
 
     let jurisdiction_id = "GLOBAL";
 
-    let (_tensor, summary) =
-        evaluate_compliance(jurisdiction_id, consent_ref, CONSENT_DOMAINS);
+    let (_tensor, summary) = evaluate_compliance(jurisdiction_id, consent_ref, CONSENT_DOMAINS);
 
-    let (credential, attestation_id) =
-        issue_and_store(state, vc_types::CONSENT_COMPLIANCE, jurisdiction_id, consent_ref, consent_type, &summary);
+    let (credential, attestation_id) = issue_and_store(
+        state,
+        vc_types::CONSENT_COMPLIANCE,
+        jurisdiction_id,
+        consent_ref,
+        consent_type,
+        &summary,
+    );
 
     OrchestrationEnvelope {
         mass_response,
@@ -537,8 +567,13 @@ fn issue_and_store(
     description: &str,
     summary: &ComplianceSummary,
 ) -> (Option<serde_json::Value>, Option<Uuid>) {
-    let credential = match issue_compliance_vc(state, vc_type, jurisdiction_id, entity_reference, summary)
-    {
+    let credential = match issue_compliance_vc(
+        state,
+        vc_type,
+        jurisdiction_id,
+        entity_reference,
+        summary,
+    ) {
         Ok(vc) => match serde_json::to_value(&vc) {
             Ok(v) => Some(v),
             Err(e) => {
@@ -787,8 +822,7 @@ mod tests {
             "status": "verified"
         });
 
-        let envelope =
-            orchestrate_identity_verification(&state, "individual", mass_response);
+        let envelope = orchestrate_identity_verification(&state, "individual", mass_response);
 
         assert_eq!(envelope.compliance.jurisdiction_id, "GLOBAL");
         assert!(envelope.credential.is_some());
@@ -802,8 +836,7 @@ mod tests {
             "consent_type": "board_resolution"
         });
 
-        let envelope =
-            orchestrate_consent_creation(&state, "board_resolution", mass_response);
+        let envelope = orchestrate_consent_creation(&state, "board_resolution", mass_response);
 
         assert_eq!(envelope.compliance.jurisdiction_id, "GLOBAL");
         assert!(envelope.credential.is_some());

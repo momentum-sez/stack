@@ -104,9 +104,7 @@ impl Validate for CreateTaxEventRequest {
         // Validate filer_status if provided.
         if let Some(ref fs) = self.filer_status {
             if !matches!(fs.as_str(), "filer" | "late_filer" | "non_filer") {
-                return Err(
-                    "filer_status must be one of: filer, late_filer, non_filer".to_string(),
-                );
+                return Err("filer_status must be one of: filer, late_filer, non_filer".to_string());
             }
         }
         Ok(())
@@ -271,13 +269,13 @@ pub struct WithholdingRuleResponse {
 /// Construct the tax collection pipeline router.
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/v1/tax/events", get(list_tax_events).post(create_tax_event))
+        .route(
+            "/v1/tax/events",
+            get(list_tax_events).post(create_tax_event),
+        )
         .route("/v1/tax/events/{id}", get(get_tax_event))
         .route("/v1/tax/withhold", post(compute_withholding))
-        .route(
-            "/v1/tax/obligations/{entity_id}",
-            get(get_tax_obligations),
-        )
+        .route("/v1/tax/obligations/{entity_id}", get(get_tax_obligations))
         .route("/v1/tax/report", post(generate_tax_report))
         .route("/v1/tax/rules", get(list_withholding_rules))
 }
@@ -359,8 +357,10 @@ async fn create_tax_event(
         created_at: Utc::now(),
     };
 
-    let withholding_responses: Vec<WithholdingResultResponse> =
-        withholdings.iter().map(WithholdingResultResponse::from).collect();
+    let withholding_responses: Vec<WithholdingResultResponse> = withholdings
+        .iter()
+        .map(WithholdingResultResponse::from)
+        .collect();
 
     state.tax_events.insert(record.id, record.clone());
 
@@ -458,8 +458,10 @@ async fn compute_withholding(
         pipeline.process_event(&event)
     };
 
-    let responses: Vec<WithholdingResultResponse> =
-        withholdings.iter().map(WithholdingResultResponse::from).collect();
+    let responses: Vec<WithholdingResultResponse> = withholdings
+        .iter()
+        .map(WithholdingResultResponse::from)
+        .collect();
 
     Ok(Json(responses))
 }
@@ -733,7 +735,8 @@ fn aggregate_withholdings(withholdings: &[WithholdingResult], gross: &str) -> (S
 
     let mut total_wht_cents: i64 = 0;
     for w in withholdings {
-        total_wht_cents = total_wht_cents.saturating_add(parse_amount_or_zero(&w.withholding_amount));
+        total_wht_cents =
+            total_wht_cents.saturating_add(parse_amount_or_zero(&w.withholding_amount));
     }
 
     let gross_cents = parse_amount_or_zero(gross);
@@ -1078,7 +1081,10 @@ mod tests {
 
     #[test]
     fn parse_filer_status_variants() {
-        assert_eq!(parse_filer_status(Some("filer")).unwrap(), FilerStatus::Filer);
+        assert_eq!(
+            parse_filer_status(Some("filer")).unwrap(),
+            FilerStatus::Filer
+        );
         assert_eq!(
             parse_filer_status(Some("non_filer")).unwrap(),
             FilerStatus::NonFiler

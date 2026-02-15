@@ -16,4 +16,5 @@ pub mod corridors;
 pub mod credentials;
 pub mod mass_proxy;
 pub mod regulator;
+pub mod settlement;
 pub mod smart_assets;

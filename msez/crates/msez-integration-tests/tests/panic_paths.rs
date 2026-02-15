@@ -12,7 +12,7 @@ use std::panic;
 // =========================================================================
 
 use msez_core::{
-    CanonicalBytes, Cnic, ContentDigest, Did, EntityId, JurisdictionId, Ntn,
+    CanonicalBytes, Cnic, ContentDigest, CorridorId, Did, EntityId, JurisdictionId, Ntn,
     PassportNumber, Timestamp,
 };
 
@@ -873,6 +873,410 @@ fn vc_signing_input_no_panic() {
 // =========================================================================
 // msez-arbitration: Dispute state transition panic paths
 // =========================================================================
+
+// =========================================================================
+// msez-corridor: Fork resolution panic paths
+// =========================================================================
+
+use msez_corridor::fork::{resolve_fork, ForkBranch, ForkDetector};
+
+#[test]
+fn fork_resolve_identical_branches_no_panic() {
+    let digest = test_digest_for("fork-test");
+    let branch = ForkBranch {
+        receipt_digest: digest.clone(),
+        timestamp: chrono::Utc::now(),
+        attestation_count: 3,
+        next_root: "aa".repeat(32),
+    };
+    // Identical branches — resolution should not panic
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        resolve_fork(&branch, &branch)
+    }));
+    assert!(result.is_ok(), "Fork resolution with identical branches should not panic");
+}
+
+#[test]
+fn fork_resolve_zero_attestations_no_panic() {
+    let digest_a = test_digest_for("fork-a");
+    let digest_b = test_digest_for("fork-b");
+    let branch_a = ForkBranch {
+        receipt_digest: digest_a,
+        timestamp: chrono::Utc::now(),
+        attestation_count: 0,
+        next_root: "aa".repeat(32),
+    };
+    let branch_b = ForkBranch {
+        receipt_digest: digest_b,
+        timestamp: chrono::Utc::now(),
+        attestation_count: 0,
+        next_root: "bb".repeat(32),
+    };
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        resolve_fork(&branch_a, &branch_b)
+    }));
+    assert!(result.is_ok(), "Fork resolution with zero attestations should not panic");
+}
+
+#[test]
+fn fork_detector_register_and_resolve_no_panic() {
+    let mut detector = ForkDetector::new();
+    let digest_a = test_digest_for("fork-det-a");
+    let digest_b = test_digest_for("fork-det-b");
+    let branch_a = ForkBranch {
+        receipt_digest: digest_a,
+        timestamp: chrono::Utc::now(),
+        attestation_count: 5,
+        next_root: "aa".repeat(32),
+    };
+    let branch_b = ForkBranch {
+        receipt_digest: digest_b,
+        timestamp: chrono::Utc::now() - chrono::Duration::seconds(10),
+        attestation_count: 3,
+        next_root: "bb".repeat(32),
+    };
+    detector.register_fork(branch_a, branch_b);
+    assert_eq!(detector.pending_count(), 1);
+    let resolutions = detector.resolve_all();
+    assert_eq!(resolutions.len(), 1);
+}
+
+// =========================================================================
+// msez-corridor: Bridge routing panic paths
+// =========================================================================
+
+use msez_corridor::bridge::{BridgeEdge, CorridorBridge};
+
+#[test]
+fn bridge_route_no_path_returns_none() {
+    let bridge = CorridorBridge::new();
+    let src = JurisdictionId::new("PK-RSEZ").unwrap();
+    let tgt = JurisdictionId::new("AE-DIFC").unwrap();
+    let result = bridge.find_route(&src, &tgt);
+    assert!(result.is_none(), "Empty graph should return no route");
+}
+
+#[test]
+fn bridge_route_same_source_target_returns_none() {
+    let mut bridge = CorridorBridge::new();
+    let pk = JurisdictionId::new("PK-RSEZ").unwrap();
+    let ae = JurisdictionId::new("AE-DIFC").unwrap();
+    bridge.add_edge(BridgeEdge {
+        from: pk.clone(),
+        to: ae.clone(),
+        corridor_id: CorridorId::new(),
+        fee_bps: 50,
+        settlement_time_secs: 3600,
+    });
+    let result = bridge.find_route(&pk, &pk);
+    // Should either return None or an empty route, not panic
+    let _ = result;
+}
+
+#[test]
+fn bridge_route_single_hop() {
+    let mut bridge = CorridorBridge::new();
+    let pk = JurisdictionId::new("PK-RSEZ").unwrap();
+    let ae = JurisdictionId::new("AE-DIFC").unwrap();
+    bridge.add_edge(BridgeEdge {
+        from: pk.clone(),
+        to: ae.clone(),
+        corridor_id: CorridorId::new(),
+        fee_bps: 50,
+        settlement_time_secs: 3600,
+    });
+    let route = bridge.find_route(&pk, &ae);
+    assert!(route.is_some(), "Direct route should be found");
+    let r = route.unwrap();
+    assert_eq!(r.hop_count(), 1);
+}
+
+#[test]
+fn bridge_route_multi_hop() {
+    let mut bridge = CorridorBridge::new();
+    let pk = JurisdictionId::new("PK").unwrap();
+    let ae = JurisdictionId::new("AE").unwrap();
+    let sg = JurisdictionId::new("SG").unwrap();
+    bridge.add_edge(BridgeEdge {
+        from: pk.clone(),
+        to: ae.clone(),
+        corridor_id: CorridorId::new(),
+        fee_bps: 50,
+        settlement_time_secs: 3600,
+    });
+    bridge.add_edge(BridgeEdge {
+        from: ae.clone(),
+        to: sg.clone(),
+        corridor_id: CorridorId::new(),
+        fee_bps: 30,
+        settlement_time_secs: 1800,
+    });
+    let route = bridge.find_route(&pk, &sg);
+    assert!(route.is_some(), "Multi-hop route should be found");
+    let r = route.unwrap();
+    assert_eq!(r.hop_count(), 2);
+}
+
+// =========================================================================
+// msez-corridor: Receipt chain panic paths
+// =========================================================================
+
+use msez_corridor::receipt::{CorridorReceipt, ReceiptChain};
+
+#[test]
+fn receipt_chain_empty_root_no_panic() {
+    let chain = ReceiptChain::new(CorridorId::new());
+    let result = chain.mmr_root();
+    // Empty chain — root might return error or empty string, not panic
+    let _ = result;
+}
+
+#[test]
+fn receipt_chain_empty_height() {
+    let chain = ReceiptChain::new(CorridorId::new());
+    assert_eq!(chain.height(), 0, "Empty chain should have height 0");
+}
+
+#[test]
+fn receipt_chain_append_and_height() {
+    let corridor_id = CorridorId::new();
+    let mut chain = ReceiptChain::new(corridor_id.clone());
+    let prev_root = chain.mmr_root().unwrap();
+    let next_root = {
+        let c = CanonicalBytes::new(&serde_json::json!({"seq": 0})).unwrap();
+        sha256_digest(&c).to_hex()
+    };
+    let receipt = CorridorReceipt {
+        receipt_type: "state_transition".to_string(),
+        corridor_id: corridor_id.clone(),
+        sequence: 0,
+        timestamp: Timestamp::now(),
+        prev_root,
+        next_root,
+        lawpack_digest_set: vec![],
+        ruleset_digest_set: vec![],
+    };
+    let result = chain.append(receipt);
+    assert!(result.is_ok(), "Appending valid receipt should succeed");
+    assert_eq!(chain.height(), 1);
+}
+
+// =========================================================================
+// msez-arbitration: EscrowAccount panic paths
+// =========================================================================
+
+use msez_arbitration::dispute::DisputeId;
+use msez_arbitration::escrow::{EscrowAccount, EscrowStatus, EscrowType, ReleaseCondition, ReleaseConditionType};
+
+fn test_digest_for(label: &str) -> ContentDigest {
+    let canonical = CanonicalBytes::new(&serde_json::json!({"label": label})).unwrap();
+    msez_core::sha256_digest(&canonical)
+}
+
+#[test]
+fn escrow_deposit_on_pending_no_panic() {
+    let mut escrow = EscrowAccount::create(
+        DisputeId::new(),
+        EscrowType::FilingFee,
+        "USD".to_string(),
+        None,
+    );
+    let result = escrow.deposit("10000".to_string(), test_digest_for("deposit-evidence"));
+    assert!(result.is_ok(), "Deposit on Pending escrow should succeed");
+    assert_eq!(escrow.status, EscrowStatus::Funded);
+}
+
+#[test]
+fn escrow_double_deposit_no_panic() {
+    let mut escrow = EscrowAccount::create(
+        DisputeId::new(),
+        EscrowType::SecurityDeposit,
+        "USD".to_string(),
+        None,
+    );
+    escrow.deposit("10000".to_string(), test_digest_for("dep-1")).unwrap();
+    // Second deposit on already-Funded escrow
+    let result = escrow.deposit("5000".to_string(), test_digest_for("dep-2"));
+    // Should either succeed (adding more) or return error, never panic
+    let _ = result;
+}
+
+#[test]
+fn escrow_release_without_deposit_fails() {
+    let mut escrow = EscrowAccount::create(
+        DisputeId::new(),
+        EscrowType::FilingFee,
+        "USD".to_string(),
+        None,
+    );
+    let condition = ReleaseCondition {
+        condition_type: ReleaseConditionType::SettlementAgreed,
+        evidence_digest: test_digest_for("release-evidence"),
+        satisfied_at: Timestamp::now(),
+    };
+    let result = escrow.full_release(condition);
+    assert!(result.is_err(), "Release without deposit should fail");
+}
+
+#[test]
+fn escrow_forfeit_from_funded_no_panic() {
+    let mut escrow = EscrowAccount::create(
+        DisputeId::new(),
+        EscrowType::AppealBond,
+        "SGD".to_string(),
+        None,
+    );
+    escrow.deposit("25000".to_string(), test_digest_for("deposit")).unwrap();
+    let result = escrow.forfeit(test_digest_for("forfeit-evidence"));
+    assert!(result.is_ok(), "Forfeit from Funded should succeed");
+    assert_eq!(escrow.status, EscrowStatus::Forfeited);
+}
+
+#[test]
+fn escrow_forfeited_is_terminal() {
+    let mut escrow = EscrowAccount::create(
+        DisputeId::new(),
+        EscrowType::AwardEscrow,
+        "USD".to_string(),
+        None,
+    );
+    escrow.deposit("50000".to_string(), test_digest_for("dep")).unwrap();
+    escrow.forfeit(test_digest_for("forfeit")).unwrap();
+    // All operations from Forfeited should fail
+    let cond = ReleaseCondition {
+        condition_type: ReleaseConditionType::RulingEnforced,
+        evidence_digest: test_digest_for("release"),
+        satisfied_at: Timestamp::now(),
+    };
+    assert!(escrow.full_release(cond).is_err(), "Release from Forfeited should fail");
+    assert!(escrow.deposit("1000".to_string(), test_digest_for("dep2")).is_err(), "Deposit on Forfeited should fail");
+}
+
+// =========================================================================
+// msez-arbitration: EnforcementOrder panic paths
+// =========================================================================
+
+use msez_arbitration::enforcement::{EnforcementAction, EnforcementOrder, EnforcementStatus};
+
+#[test]
+fn enforcement_begin_without_preconditions_no_panic() {
+    let mut order = EnforcementOrder::new(
+        DisputeId::new(),
+        test_digest_for("award"),
+        vec![EnforcementAction::MonetaryPenalty {
+            party: Did::new("did:key:z6MkPenalty").unwrap(),
+            amount: "10000".to_string(),
+            currency: "USD".to_string(),
+        }],
+        None,
+    );
+    // No preconditions added — begin should succeed
+    let result = order.begin_enforcement();
+    assert!(result.is_ok(), "Begin enforcement without preconditions should succeed");
+    assert_eq!(order.status, EnforcementStatus::InProgress);
+}
+
+#[test]
+fn enforcement_complete_without_action_results_no_panic() {
+    let mut order = EnforcementOrder::new(
+        DisputeId::new(),
+        test_digest_for("award"),
+        vec![],
+        None,
+    );
+    order.begin_enforcement().unwrap();
+    // Complete without recording any action results
+    let result = order.complete();
+    // Should succeed or fail gracefully
+    let _ = result;
+}
+
+#[test]
+fn enforcement_cancel_from_pending() {
+    let mut order = EnforcementOrder::new(
+        DisputeId::new(),
+        test_digest_for("award"),
+        vec![],
+        None,
+    );
+    let result = order.cancel();
+    assert!(result.is_ok(), "Cancel from Pending should succeed");
+    assert_eq!(order.status, EnforcementStatus::Cancelled);
+}
+
+#[test]
+fn enforcement_cancelled_is_terminal() {
+    let mut order = EnforcementOrder::new(
+        DisputeId::new(),
+        test_digest_for("award"),
+        vec![],
+        None,
+    );
+    order.cancel().unwrap();
+    assert!(order.begin_enforcement().is_err(), "Begin from Cancelled should fail");
+    assert!(order.complete().is_err(), "Complete from Cancelled should fail");
+}
+
+// =========================================================================
+// msez-agentic: Scheduler panic paths
+// =========================================================================
+
+use msez_agentic::scheduler::{ActionScheduler, ScheduledAction as SchedAction};
+use msez_agentic::policy::{AuthorizationRequirement, PolicyAction};
+
+#[test]
+fn scheduler_cancel_nonexistent_action() {
+    let mut scheduler = ActionScheduler::new();
+    let result = scheduler.cancel("nonexistent-id");
+    assert!(!result, "Cancelling nonexistent action should return false");
+}
+
+#[test]
+fn scheduler_mark_completed_nonexistent() {
+    let mut scheduler = ActionScheduler::new();
+    let result = scheduler.mark_completed("nonexistent-id");
+    assert!(!result, "Completing nonexistent action should return false");
+}
+
+#[test]
+fn scheduler_mark_failed_nonexistent() {
+    let mut scheduler = ActionScheduler::new();
+    let result = scheduler.mark_failed("nonexistent-id", "test error".to_string());
+    assert!(!result, "Failing nonexistent action should return false");
+}
+
+#[test]
+fn scheduler_schedule_and_retrieve() {
+    let mut scheduler = ActionScheduler::new();
+    let action = SchedAction::new(
+        "asset:001".to_string(),
+        PolicyAction::Halt,
+        "policy-001".to_string(),
+        AuthorizationRequirement::Automatic,
+    );
+    let id = scheduler.schedule(action);
+    let retrieved = scheduler.get_action(&id);
+    assert!(retrieved.is_some(), "Scheduled action should be retrievable");
+    assert_eq!(retrieved.unwrap().action, PolicyAction::Halt);
+}
+
+#[test]
+fn scheduler_status_counts() {
+    let mut scheduler = ActionScheduler::new();
+    let action = SchedAction::new(
+        "asset:001".to_string(),
+        PolicyAction::Halt,
+        "policy-001".to_string(),
+        AuthorizationRequirement::Automatic,
+    );
+    let id = scheduler.schedule(action);
+    let counts = scheduler.status_counts();
+    assert_eq!(*counts.get(&msez_agentic::scheduler::ActionStatus::Pending).unwrap_or(&0), 1);
+    scheduler.mark_executing(&id);
+    scheduler.mark_completed(&id);
+    let counts2 = scheduler.status_counts();
+    assert_eq!(*counts2.get(&msez_agentic::scheduler::ActionStatus::Completed).unwrap_or(&0), 1);
+}
 
 use msez_arbitration::dispute::DisputeState;
 

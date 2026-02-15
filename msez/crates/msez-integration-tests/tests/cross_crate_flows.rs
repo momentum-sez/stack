@@ -826,3 +826,430 @@ fn mmr_roots_are_valid_hex_for_cas_storage() {
         root.len()
     );
 }
+
+// =========================================================================
+// Pipeline 7: Evidence Package → CAS → Verify Integrity
+// =========================================================================
+
+use msez_arbitration::evidence::{EvidenceItem, EvidencePackage, EvidenceType};
+use msez_arbitration::dispute::DisputeId;
+use msez_core::Did;
+
+#[test]
+fn evidence_package_digest_stored_in_cas() {
+    let tmp = tempfile::tempdir().unwrap();
+    let cas = ContentAddressedStore::new(tmp.path());
+
+    let dispute_id = DisputeId::new();
+    let content = json!({"contract_ref": "TC-2026-001", "value": 500000});
+    let item = EvidenceItem::new(
+        EvidenceType::ContractDocument,
+        "Trade Contract".to_string(),
+        "Bilateral trade agreement for PK-AE corridor".to_string(),
+        &content,
+        Did::new("did:key:z6MkSubmitter").unwrap(),
+    )
+    .unwrap();
+
+    let package = EvidencePackage::new(
+        dispute_id,
+        Did::new("did:key:z6MkSubmitter").unwrap(),
+        vec![item],
+    )
+    .unwrap();
+
+    // Package should have a digest
+    let digest = &package.package_digest;
+    assert_eq!(digest.to_hex().len(), 64, "Package digest should be 64 hex");
+
+    // Store the package in CAS
+    let artifact = cas.store("evidence-package", &package).unwrap();
+
+    // Retrieve and verify integrity
+    let bytes = cas.resolve_ref(&artifact).unwrap().unwrap();
+    let retrieved: EvidencePackage = serde_json::from_slice(&bytes).unwrap();
+    assert!(
+        retrieved.verify_package_integrity().is_ok(),
+        "Retrieved evidence package should pass integrity check"
+    );
+}
+
+#[test]
+fn evidence_package_add_item_updates_digest() {
+    let dispute_id = DisputeId::new();
+    let content1 = json!({"ref": "D001"});
+    let item1 = EvidenceItem::new(
+        EvidenceType::ContractDocument,
+        "Doc 1".to_string(),
+        "First document".to_string(),
+        &content1,
+        Did::new("did:key:z6MkA").unwrap(),
+    )
+    .unwrap();
+
+    let mut package = EvidencePackage::new(
+        dispute_id,
+        Did::new("did:key:z6MkA").unwrap(),
+        vec![item1],
+    )
+    .unwrap();
+
+    let digest_before = package.package_digest.to_hex();
+
+    let content2 = json!({"ref": "D002"});
+    let item2 = EvidenceItem::new(
+        EvidenceType::WitnessStatement,
+        "Doc 2".to_string(),
+        "Second document".to_string(),
+        &content2,
+        Did::new("did:key:z6MkA").unwrap(),
+    )
+    .unwrap();
+
+    package.add_item(item2).unwrap();
+    let digest_after = package.package_digest.to_hex();
+
+    assert_ne!(
+        digest_before, digest_after,
+        "Adding an item should change the package digest"
+    );
+}
+
+// =========================================================================
+// Pipeline 8: Receipt Chain → Checkpoint → CAS → Verify Digest
+// =========================================================================
+
+use msez_corridor::receipt::{CorridorReceipt, ReceiptChain};
+
+#[test]
+fn receipt_chain_checkpoint_stored_in_cas() {
+    let tmp = tempfile::tempdir().unwrap();
+    let cas = ContentAddressedStore::new(tmp.path());
+
+    let corridor_id = CorridorId::new();
+    let mut chain = ReceiptChain::new(corridor_id.clone());
+
+    // Append a receipt
+    let prev_root = chain.mmr_root().unwrap();
+    let next_root = {
+        let c = CanonicalBytes::new(&json!({"event": "state_change"})).unwrap();
+        sha256_digest(&c).to_hex()
+    };
+    chain
+        .append(CorridorReceipt {
+            receipt_type: "state_transition".to_string(),
+            corridor_id: corridor_id.clone(),
+            sequence: 0,
+            timestamp: msez_core::Timestamp::now(),
+            prev_root,
+            next_root,
+            lawpack_digest_set: vec![],
+            ruleset_digest_set: vec![],
+        })
+        .unwrap();
+
+    // Create checkpoint
+    let checkpoint = chain.create_checkpoint().unwrap();
+    assert_eq!(checkpoint.height, 1);
+    assert_eq!(checkpoint.mmr_root.len(), 64);
+
+    // Store checkpoint in CAS
+    let artifact = cas.store("checkpoint", &checkpoint).unwrap();
+    let bytes = cas.resolve_ref(&artifact).unwrap().unwrap();
+    let retrieved: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+
+    // Checkpoint digest should be present (serialized as ContentDigest object or string)
+    let digest_field = &retrieved["checkpoint_digest"];
+    assert!(
+        !digest_field.is_null(),
+        "Checkpoint should have a checkpoint_digest field, got: {:?}",
+        retrieved
+    );
+}
+
+// =========================================================================
+// Pipeline 9: CorridorBridge → Route → Settlement Fee Calculation
+// =========================================================================
+
+use msez_corridor::bridge::{BridgeEdge, CorridorBridge};
+
+#[test]
+fn bridge_route_fees_used_in_settlement() {
+    let mut bridge = CorridorBridge::new();
+
+    let pk = JurisdictionId::new("PK-RSEZ").unwrap();
+    let ae = JurisdictionId::new("AE-DIFC").unwrap();
+    let sg = JurisdictionId::new("SG-MAS").unwrap();
+
+    // Direct PK→AE: 100 bps
+    bridge.add_edge(BridgeEdge {
+        from: pk.clone(),
+        to: ae.clone(),
+        corridor_id: CorridorId::new(),
+        fee_bps: 100,
+        settlement_time_secs: 86400,
+    });
+
+    // PK→SG: 30 bps, SG→AE: 30 bps (cheaper multi-hop)
+    bridge.add_edge(BridgeEdge {
+        from: pk.clone(),
+        to: sg.clone(),
+        corridor_id: CorridorId::new(),
+        fee_bps: 30,
+        settlement_time_secs: 43200,
+    });
+    bridge.add_edge(BridgeEdge {
+        from: sg.clone(),
+        to: ae.clone(),
+        corridor_id: CorridorId::new(),
+        fee_bps: 30,
+        settlement_time_secs: 43200,
+    });
+
+    let route = bridge.find_route(&pk, &ae).unwrap();
+
+    // Dijkstra should find the cheaper multi-hop route (60 bps < 100 bps)
+    assert_eq!(route.total_fee_bps, 60);
+    assert_eq!(route.hop_count(), 2);
+
+    // Use the fee to adjust a settlement amount
+    let gross = 1_000_000i64; // $10,000.00
+    let fee = gross * (route.total_fee_bps as i64) / 10_000;
+    assert_eq!(fee, 6000, "60 bps on $10k should be $60.00");
+}
+
+// =========================================================================
+// Pipeline 10: MigrationSaga → Corridor ← Tensor
+// =========================================================================
+
+use msez_core::MigrationId;
+use msez_state::migration::MigrationBuilder;
+
+#[test]
+fn migration_saga_with_corridor_and_tensor() {
+    // Build a migration saga
+    let deadline = chrono::Utc::now() + chrono::Duration::hours(24);
+    let mut saga = MigrationBuilder::new(MigrationId::new())
+        .deadline(deadline)
+        .source(JurisdictionId::new("PK-RSEZ").unwrap())
+        .destination(JurisdictionId::new("AE-DIFC").unwrap())
+        .asset_description("Entity migration PK→AE".to_string())
+        .build();
+
+    // Build a compliance tensor for the source jurisdiction
+    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let mut tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
+    tensor.set(
+        ComplianceDomain::Kyc,
+        ComplianceState::Compliant,
+        vec![AttestationRef {
+            attestation_id: "vc:kyc:mig".to_string(),
+            attestation_type: "kyc".to_string(),
+            issuer_did: "did:key:z6MkIssuer".to_string(),
+            issued_at: "2026-01-01T00:00:00Z".to_string(),
+            expires_at: None,
+            digest: "dd".repeat(32),
+        }],
+        None,
+    );
+
+    // Verify entity is compliant before migrating
+    let kyc_state = tensor.evaluate("entity-mig", ComplianceDomain::Kyc);
+    assert_eq!(kyc_state, ComplianceState::Compliant);
+
+    // Advance the saga (should go from Initiated to ComplianceCheck)
+    let state = saga.advance().unwrap();
+    assert!(
+        format!("{:?}", state).contains("ComplianceCheck")
+            || format!("{:?}", state).contains("Compliance"),
+        "First advance should reach ComplianceCheck, got {:?}",
+        state
+    );
+}
+
+// =========================================================================
+// Pipeline 11: Policy Engine triggers → VC issuance
+// =========================================================================
+
+#[test]
+fn policy_engine_corridor_trigger_to_vc() {
+    let mut engine = PolicyEngine::with_standard_policies();
+
+    // Simulate a corridor state change trigger
+    let trigger = Trigger::new(
+        TriggerType::CorridorStateChange,
+        json!({
+            "corridor_id": "corr-pk-ae-001",
+            "new_state": "HALTED",
+            "reason": "sanctions"
+        }),
+    );
+
+    let actions = engine.process_trigger(&trigger, "asset:entity-001", Some("PK-RSEZ"));
+
+    // Actions should be serializable (cross-crate: agentic → serde)
+    let serialized = serde_json::to_string(&actions).unwrap();
+    let deserialized: Vec<serde_json::Value> = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(actions.len(), deserialized.len());
+
+    // If there's a halt action, we should be able to issue a compliance VC
+    if actions.iter().any(|a| a.action == PolicyAction::Halt) {
+        let sk = SigningKey::generate(&mut rand_core::OsRng);
+        let mut vc = VerifiableCredential {
+            context: ContextValue::default(),
+            id: Some("urn:vc:halt-notice".to_string()),
+            credential_type: CredentialTypeValue::Array(vec![
+                "VerifiableCredential".to_string(),
+                "HaltNotice".to_string(),
+            ]),
+            issuer: "did:key:z6MkSEZ".to_string(),
+            issuance_date: chrono::Utc::now(),
+            expiration_date: None,
+            credential_subject: json!({
+                "asset_id": "asset:entity-001",
+                "action": "halt",
+                "trigger_type": "corridor_state_change",
+                "corridor_id": "corr-pk-ae-001"
+            }),
+            proof: ProofValue::default(),
+        };
+        vc.sign_ed25519(
+            &sk,
+            "did:key:z6MkSEZ#key-1".to_string(),
+            ProofType::Ed25519Signature2020,
+            None,
+        )
+        .unwrap();
+
+        assert!(
+            !vc.proof.is_empty(),
+            "Halt notice VC should be signed"
+        );
+    }
+}
+
+// =========================================================================
+// Pipeline 12: Tensor commitment → MMR → Receipt chain
+// =========================================================================
+
+#[test]
+fn tensor_commitment_feeds_mmr_and_receipt_chain() {
+    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let mut tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid.clone()));
+
+    // Set compliance states across multiple domains
+    for (i, domain) in [
+        ComplianceDomain::Kyc,
+        ComplianceDomain::Aml,
+        ComplianceDomain::Sanctions,
+        ComplianceDomain::Tax,
+    ]
+    .iter()
+    .enumerate()
+    {
+        tensor.set(
+            *domain,
+            ComplianceState::Compliant,
+            vec![AttestationRef {
+                attestation_id: format!("vc:{}:{}", domain, i),
+                attestation_type: format!("{}_verification", domain),
+                issuer_did: "did:key:z6MkIssuer".to_string(),
+                issued_at: "2026-01-15T00:00:00Z".to_string(),
+                expires_at: None,
+                digest: format!("{:02x}", i).repeat(32),
+            }],
+            None,
+        );
+    }
+
+    // Compute commitment digest
+    let states: Vec<(ComplianceDomain, ComplianceState)> = ComplianceDomain::all()
+        .iter()
+        .map(|&d| (d, tensor.get(d)))
+        .collect();
+    let commitment = msez_tensor::commitment_digest("PK-RSEZ", &states).unwrap();
+
+    // Feed the commitment digest into an MMR
+    let mut mmr = MerkleMountainRange::new();
+    mmr.append(&commitment.to_hex()).unwrap();
+    let root = mmr.root().unwrap();
+    assert_eq!(root.len(), 64, "MMR root should be valid 64-hex");
+
+    // The MMR root can be used as the next_root in a receipt chain
+    let corridor_id = CorridorId::new();
+    let mut chain = ReceiptChain::new(corridor_id.clone());
+    let prev_root = chain.mmr_root().unwrap();
+    chain
+        .append(CorridorReceipt {
+            receipt_type: "compliance_snapshot".to_string(),
+            corridor_id,
+            sequence: 0,
+            timestamp: msez_core::Timestamp::now(),
+            prev_root,
+            next_root: root,
+            lawpack_digest_set: vec![],
+            ruleset_digest_set: vec![],
+        })
+        .unwrap();
+    assert_eq!(chain.height(), 1);
+}
+
+// =========================================================================
+// Pipeline 13: VC multi-proof (two signers on same credential)
+// =========================================================================
+
+#[test]
+fn vc_multi_proof_sign_and_verify_both() {
+    let sk1 = SigningKey::generate(&mut rand_core::OsRng);
+    let sk2 = SigningKey::generate(&mut rand_core::OsRng);
+    let vk1 = sk1.verifying_key();
+    let vk2 = sk2.verifying_key();
+
+    let mut vc = VerifiableCredential {
+        context: ContextValue::default(),
+        id: Some("urn:vc:multi-proof".to_string()),
+        credential_type: CredentialTypeValue::Single("VerifiableCredential".to_string()),
+        issuer: "did:key:z6MkMulti".to_string(),
+        issuance_date: chrono::Utc::now(),
+        expiration_date: None,
+        credential_subject: json!({"entity": "multi-signer-test"}),
+        proof: ProofValue::default(),
+    };
+
+    // First signer
+    vc.sign_ed25519(
+        &sk1,
+        "did:key:z6MkSigner1#key-1".to_string(),
+        ProofType::Ed25519Signature2020,
+        None,
+    )
+    .unwrap();
+
+    // Second signer
+    vc.sign_ed25519(
+        &sk2,
+        "did:key:z6MkSigner2#key-1".to_string(),
+        ProofType::Ed25519Signature2020,
+        None,
+    )
+    .unwrap();
+
+    // Should have two proofs
+    assert_eq!(vc.proof.as_list().len(), 2, "VC should have exactly 2 proofs");
+
+    // Verify with correct key resolver
+    let vk1_c = vk1.clone();
+    let vk2_c = vk2.clone();
+    let results = vc.verify(move |vm: &str| {
+        if vm.contains("Signer1") {
+            Ok(vk1_c.clone())
+        } else {
+            Ok(vk2_c.clone())
+        }
+    });
+
+    assert_eq!(results.len(), 2, "Should verify both proofs");
+    for r in &results {
+        assert!(r.ok, "Proof verification failed: {}", r.error);
+    }
+}

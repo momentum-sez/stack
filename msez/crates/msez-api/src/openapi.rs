@@ -84,7 +84,10 @@ use crate::state::AppState;
         crate::routes::corridors::CreateCorridorRequest,
         crate::routes::corridors::TransitionCorridorRequest,
         crate::routes::corridors::ProposeReceiptRequest,
-        crate::routes::corridors::ReceiptResponse,
+        crate::routes::corridors::ReceiptProposalResponse,
+        crate::routes::corridors::ForkResolveRequest,
+        crate::routes::corridors::ForkBranchInput,
+        crate::routes::corridors::ForkResolveResponse,
         // Smart Asset DTOs
         crate::routes::smart_assets::CreateAssetRequest,
         crate::routes::smart_assets::ComplianceEvalRequest,

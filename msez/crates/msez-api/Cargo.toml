@@ -17,6 +17,8 @@ swagger = []
 [dependencies]
 # Internal crates
 msez-core = { workspace = true }
+msez-crypto = { workspace = true }
+msez-corridor = { workspace = true }
 msez-state = { workspace = true }
 msez-mass-client = { workspace = true }
 

@@ -39,3 +39,16 @@
 | BUG-035 | P2 | msez-arbitration | 1 | Dispute missing PartialEq derive — cannot verify serde round-trip fidelity | DEFERRED |
 | BUG-036 | P2 | msez-arbitration | 4 | EnforcementOrder allows cancel() from Blocked state — blocked orders pending appeal can be cancelled, bypassing the appeal process | DEFERRED |
 | BUG-037 | P2 | msez-state | 4 | MigrationSaga allows compensate() from pre-InTransit states (e.g. ComplianceCheck) — compensation should only be available after InTransit when rollback is needed | DEFERRED |
+| BUG-038 | P2 | msez-api | 7 | API returns 400 for JSON deserialization errors vs 422 for validation failures — inconsistent error taxonomy makes client error handling unreliable | DEFERRED |
+| BUG-039 | P1 | msez-api | 7 | Mass fiscal/identity proxy POST routes validate request body (422) before checking Mass client availability — should return 501 first when no client configured | DEFERRED |
+| BUG-040 | P2 | msez-api | 7 | Trigger endpoint rejects empty data payload with 422 — valid trigger types (e.g. SanctionsListUpdate) should accept empty data for event-only triggers | DEFERRED |
+| BUG-041 | P1 | msez-corridor | 3 | SettlementPlan.reduction_percentage (f64) incompatible with CanonicalBytes — cannot canonicalize settlement plans for receipt chain digests; breaks end-to-end netting→settlement→receipt flow | DEFERRED |
+| BUG-042 | P2 | msez-pack | 5 | LicenseCondition.condition_id is plain String — empty strings accepted without validation, causes empty keys in BTreeMap lookups | DEFERRED |
+| BUG-043 | P1 | msez-pack | 5 | LicenseCondition::is_active() and License::is_expired() use string comparison for dates — malformed dates (e.g. "2025-9-01" missing leading zero) compare incorrectly, giving wrong expiry results | DEFERRED |
+| BUG-044 | P2 | msez-pack | 5 | LicenseRestriction::blocks_jurisdiction("") accepts empty jurisdiction string — should reject, not silently treat as blocked | DEFERRED |
+| BUG-045 | P2 | msez-pack | 5 | Licensepack::get_licenses_by_holder_did("") matches licenses with holder_did: Some("") — empty DID should be rejected, not used as filter | DEFERRED |
+| BUG-046 | P2 | msez-state | 5 | Watcher::rebond(0) succeeds — transitions from Slashed to Bonded without posting new collateral. bond(0) correctly rejects but rebond(0) does not | DEFERRED |
+| BUG-047 | P2 | msez-state | 5 | Watcher::rebond() inconsistent with bond() — bond() validates stake > 0 but rebond() does not, creating a validation gap in the recovery path | DEFERRED |
+| BUG-048 | P1 | msez-zkp | 5 | MockProofSystem::prove() hashes only public_inputs, not circuit_data — two different circuits with same public_inputs produce identical proofs. Doc says SHA256(canonical(circuit) || public_inputs) but implementation does SHA256(public_inputs) only | DEFERRED |
+| BUG-049 | P2 | msez-pack | 5 | License struct accepts empty strings for all required fields (license_id, holder_id, regulator_id) via serde — no validation on deserialization | DEFERRED |
+| BUG-050 | P2 | msez-pack | 5 | resolve_licensepack_refs() uses unwrap_or("") for missing jurisdiction_id and domain — silently creates refs with empty identifiers instead of returning error | DEFERRED |

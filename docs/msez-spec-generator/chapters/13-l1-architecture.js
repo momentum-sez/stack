@@ -65,5 +65,44 @@ module.exports = function build_chapter13() {
       "}"
     ),
     spacer(),
+
+    // --- 13.5 Jurisdictional Virtual Machine (JVM) ---
+    h2("13.5 Jurisdictional Virtual Machine (JVM)"),
+    p("Each Harbor shard executes a Jurisdictional Virtual Machine (JVM) -- a jurisdiction-specific execution environment that encodes the legal, fiscal, and regulatory rules of its zone directly into the transaction validation logic. The JVM is not a general-purpose smart contract runtime; it is a constrained, deterministic state machine whose instruction set is derived from the jurisdiction's lawpack, regpack, and licensepack. This design ensures that every transaction processed within a Harbor is valid not merely in the cryptographic sense but in the legal sense: it satisfies the jurisdiction's formation requirements, tax withholding rules, sanctions constraints, and licensing obligations as a precondition of execution."),
+    p_runs([bold("Instruction Set Derivation."), " The JVM instruction set is generated at Harbor initialization from the jurisdiction's pack trilogy. Each lawpack provision maps to a validation predicate (e.g., the Pakistan Income Tax Ordinance 2001 Section 153 maps to a withholding tax computation predicate). Each regpack entry maps to a runtime constraint (e.g., SBP foreign exchange limits map to transfer amount bounds). Each licensepack registry maps to a status check (e.g., SECP active registration required for corporate asset transfers). The resulting instruction set is a fixed, auditable mapping from legal requirements to executable predicates."]),
+    p_runs([bold("Execution Model."), " Transaction execution within the JVM proceeds in three phases. First, the predicate evaluation phase checks all jurisdictional constraints against the transaction inputs, producing a compliance attestation or a rejection with specific predicate failure codes. Second, the state transition phase applies the transaction to the Harbor's local state, updating commitments, nullifiers, and registry entries. Third, the proof generation phase produces a STARK proof attesting to both the correctness of the state transition and the satisfaction of all jurisdictional predicates. This three-phase model ensures that compliance is not an afterthought but is structurally inseparable from execution."]),
+    ...codeBlock(
+      "/// Jurisdictional Virtual Machine configuration for a Harbor shard.\n" +
+      "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +
+      "pub struct JurisdictionalVM {\n" +
+      "    pub harbor_id: HarborId,\n" +
+      "    pub jurisdiction: JurisdictionCode,\n" +
+      "    pub lawpack_version: PackVersion,\n" +
+      "    pub regpack_version: PackVersion,\n" +
+      "    pub licensepack_version: PackVersion,\n" +
+      "    pub predicate_set: Vec<CompliancePredicate>,\n" +
+      "    pub runtime_constraints: Vec<RuntimeConstraint>,\n" +
+      "    pub license_checks: Vec<LicenseCheck>,\n" +
+      "}"
+    ),
+    spacer(),
+
+    // --- 13.6 Asset Orbit Protocol ---
+    h2("13.6 Asset Orbit Protocol"),
+    p("Assets on the MASS L1 do not reside permanently in a single shard. Instead, they orbit between jurisdictional Harbors as they participate in cross-border trade corridors, regulatory migrations, and settlement cycles. The Asset Orbit Protocol governs how an asset's state is transferred from one Harbor to another while maintaining cryptographic continuity, compliance validity, and double-spend prevention across jurisdictional boundaries."),
+    p_runs([bold("Orbit Initiation."), " When an asset must transition from Harbor A (origin jurisdiction) to Harbor B (destination jurisdiction), the origin Harbor produces an orbit departure proof: a STARK proof attesting to the asset's current state, its compliance status in the origin jurisdiction, and the nullification of its origin-side commitment. This proof is submitted to the root chain along with an encrypted state capsule containing the asset's full state, encrypted under Harbor B's receiving key."]),
+    p_runs([bold("Orbit Transit."), " During transit, the asset exists in a liminal state: nullified in Harbor A but not yet committed in Harbor B. The root chain maintains a transit registry that tracks all in-flight orbits, preventing double-departure attacks and enforcing timeout-based recovery if the destination Harbor fails to accept. Transit duration is bounded by the Treaty agreement between the two jurisdictions, typically under 5 seconds for bilateral corridors."]),
+    p_runs([bold("Orbit Arrival."), " Harbor B validates the departure proof, decrypts the state capsule, evaluates the asset against its own jurisdictional predicates (via its JVM), and if compliant, produces an orbit arrival proof that commits the asset into Harbor B's local state. The root chain records the completed orbit, linking the origin nullifier to the destination commitment. If Harbor B's compliance evaluation fails -- for example, if the asset type is not permitted under the destination jurisdiction's licensing regime -- the orbit is rejected and the origin Harbor's recovery path restores the asset to its pre-departure state."]),
+    table(
+      ["Orbit Phase", "Location", "Duration", "Guarantee"],
+      [
+        ["Departure", "Origin Harbor", "<200ms", "Nullified + proof generated"],
+        ["Transit", "Root Chain registry", "<2s", "Double-departure prevented"],
+        ["Arrival", "Destination Harbor", "<200ms", "Re-committed + compliance checked"],
+        ["Recovery (timeout)", "Origin Harbor", "<10s", "Restored to pre-departure state"],
+      ],
+      [2000, 2400, 1800, 3160]
+    ),
+    spacer(),
   ];
 };

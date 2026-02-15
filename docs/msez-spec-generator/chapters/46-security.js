@@ -53,5 +53,28 @@ module.exports = function build_chapter46() {
     // --- 46.3 Audit System ---
     h2("46.3 Audit System"),
     p("Every state-changing operation in the SEZ Stack produces an AuditEvent. Audit events are structured records containing: event_id (unique identifier), timestamp (UTC with nanosecond precision), actor (authenticated principal), action (the operation performed), target (the resource affected), outcome (success or failure with error context), and previous_event_digest (SHA-256 hash of the prior audit event, forming a hash chain). The hash chain ensures that audit log tampering is detectable: any modification to a historical event invalidates all subsequent digests. Audit events are persisted to Postgres with write-through semantics and replicated to an append-only external store for regulatory retention."),
+    spacer(),
+
+    // --- 46.4 πpriv Constraint Analysis ---
+    h2("46.4 \u03C0priv Constraint Analysis"),
+    p("The privacy-preserving proof system (\u03C0priv) enables confidential compliance verification without revealing underlying transaction data. Each proof demonstrates that a transaction satisfies jurisdictional compliance requirements while preserving commercial confidentiality. The circuit is decomposed into eight constraint groups (C1 through C8), each enforcing a specific invariant."),
+    table(
+      ["Constraint", "Description", "R1CS Constraints", "Purpose"],
+      [
+        ["C1", "Value commitment opening", "~4,000", "Proves the prover knows the opening (value, blinding factor) to a Pedersen commitment. Ensures committed values are well-formed without revealing the transaction amount."],
+        ["C2", "Nullifier computation", "~3,000", "Derives a unique nullifier from the input note and spending key. Prevents double-spending by ensuring each note can only be consumed once, without linking to the original deposit."],
+        ["C3", "Merkle tree membership", "~8,000", "Proves the input note exists in the global state tree via a Merkle authentication path. The tree depth determines the constraint count; 32 levels yield approximately 8,000 constraints."],
+        ["C4", "Signature verification", "~6,000", "Verifies an Ed25519 signature inside the circuit, binding the proof to an authorized signer. This is the most expensive per-operation constraint group due to elliptic curve arithmetic in R1CS."],
+        ["C5", "Range proof", "~4,000", "Ensures all output values are non-negative and within the valid range [0, 2^64). Prevents overflow attacks that could create value from nothing via modular arithmetic."],
+        ["C6", "Balance conservation", "~2,000", "Enforces that the sum of input values equals the sum of output values plus fees. This is the fundamental soundness constraint: no value is created or destroyed."],
+        ["C7", "Compliance predicate", "~3,000", "Evaluates a jurisdiction-specific compliance predicate: sanctions list non-membership, transaction limit adherence, and withholding tax computation. The predicate is parameterized by the compliance tensor."],
+        ["C8", "Output commitment", "~4,000", "Constructs Pedersen commitments for each output note. Mirrors C1 for outputs, ensuring recipients can later prove ownership and spend the received notes."],
+      ],
+      [800, 1800, 1200, 5560]
+    ),
+    spacer(),
+    p_runs([bold("Total Circuit Size."), " The complete \u03C0priv circuit comprises approximately 34,000 R1CS constraints. At current proving speeds (Groth16 on commodity hardware), proof generation takes 2-4 seconds and verification takes under 10 milliseconds. The proof size is constant at 192 bytes (two G1 points and one G2 point in BN254), making it practical for on-chain verification and credential embedding."]),
+    p_runs([bold("Constraint Optimization."), " C3 (Merkle membership) and C4 (signature verification) together account for over 40% of the circuit. Two optimization paths are under evaluation: (1) replacing SHA-256 in the Merkle tree with a SNARK-friendly hash (Poseidon), which would reduce C3 to approximately 3,000 constraints, and (2) using Schnorr signatures instead of Ed25519 inside circuits, reducing C4 to approximately 2,500 constraints. These optimizations are tracked in the msez-zkp crate roadmap."]),
+    p_runs([bold("Security Level."), " The circuit targets 128-bit security. The BN254 curve provides approximately 126 bits of security against discrete log attacks. For sovereign deployments requiring higher security margins, BLS12-381 (approximately 128 bits) is supported as an alternative curve, at the cost of approximately 20% larger constraints due to the wider field."]),
   ];
 };

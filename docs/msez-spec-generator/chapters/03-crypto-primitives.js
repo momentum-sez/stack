@@ -192,5 +192,123 @@ pub struct BbsCredential {
       [2600, 1600, 5160]
     ),
     spacer(),
+
+    // --- 3.7 Nullifier System ---
+    h2("3.7 Nullifier System"),
+
+    p("The nullifier system is the privacy-preserving double-spend prevention mechanism at the core of the SEZ Stack\u2019s credential and compliance attestation lifecycle. While Section 3.4 introduced the basic nullifier concept for credential Merkle trees, this section specifies the complete nullifier derivation, the nullifier set protocol, and the rationale for choosing Poseidon2 as the nullifier hash function."),
+
+    h3("3.7.1 Nullifier Derivation"),
+
+    definition(
+      "Definition 3.2 (Nullifier Derivation).",
+      "For a record R with spending key sk, the nullifier n is computed as: n = Poseidon2(sk || R.commitment || R.nonce). Nullifiers are published on-chain to prevent double-spending while preserving transaction privacy."
+    ),
+
+    p("The three-input construction is deliberate. The spending key sk binds the nullifier to the holder\u2019s identity without revealing it. The commitment R.commitment binds the nullifier to a specific record (credential, compliance attestation, or corridor receipt). The nonce R.nonce ensures that two records with identical commitments but different issuance contexts produce distinct nullifiers, preventing correlation attacks across jurisdictions."),
+
+    p("The nullifier is deterministic: the same holder presenting the same record always produces the same nullifier. This determinism is what enables double-spend detection. However, the nullifier is unlinkable: given a nullifier n, an adversary cannot recover sk, R.commitment, or R.nonce without breaking Poseidon2 preimage resistance. This means that observing two nullifiers from the same holder reveals nothing about the holder\u2019s identity or the records being spent."),
+
+    h3("3.7.2 The Nullifier Set"),
+
+    p("Each jurisdiction maintains a nullifier set \u2014 an append-only set of all nullifiers that have been published. When a record is presented for compliance verification, corridor settlement, or credential proof, the protocol executes the following steps:"),
+
+    p_runs([
+      bold("Step 1: Derivation. "),
+      "The holder computes n = Poseidon2(sk || R.commitment || R.nonce) using their spending key and the record\u2019s commitment and nonce."
+    ]),
+
+    p_runs([
+      bold("Step 2: Membership check. "),
+      "The verifier checks whether n is already in the jurisdiction\u2019s nullifier set. If n \u2208 NullifierSet, the presentation is rejected as a double-spend."
+    ]),
+
+    p_runs([
+      bold("Step 3: Insertion. "),
+      "If n \u2209 NullifierSet, the nullifier is inserted into the set and the presentation proceeds. This insertion is atomic with the state transition to prevent race conditions."
+    ]),
+
+    p_runs([
+      bold("Step 4: Proof of valid derivation. "),
+      "The holder provides a zero-knowledge proof (using the NullifierDerivation circuit from Section 3.6) that n was correctly derived from a valid record in the credential Merkle tree, without revealing which record or which spending key was used."
+    ]),
+
+    p("The nullifier set is implemented as a sparse Merkle tree, enabling efficient non-membership proofs. This allows the holder to prove that their nullifier has NOT been spent (for fresh presentations) or allows the verifier to prove that a nullifier HAS been spent (for revocation enforcement), both in zero knowledge."),
+
+    h3("3.7.3 Why Poseidon2 for Nullifier Derivation"),
+
+    p("Nullifier derivation uses Poseidon2 rather than SHA-256 for a specific architectural reason: every nullifier derivation must be provable inside a zero-knowledge circuit. The NullifierDerivation circuit (Section 3.6) must verify that the published nullifier was correctly computed from a valid spending key and record. This requires hashing inside the arithmetic circuit."),
+
+    p("SHA-256 requires approximately 25,000 constraints per hash invocation in an R1CS circuit, making it prohibitively expensive for recursive or batched proofs. Poseidon2, designed as an algebraic hash function over prime fields, requires approximately 250 constraints per invocation \u2014 a 100x improvement. Since corridor settlement proofs may involve hundreds of nullifier checks (one per transaction in a netting batch), this efficiency difference is the difference between practical and impractical proof generation times."),
+
+    p("Additionally, Poseidon2\u2019s native operation over the BN254 scalar field means no field conversion is required. SHA-256 operates on bytes and produces a 256-bit output that must be split across multiple field elements, introducing additional constraints and complexity. Poseidon2 inputs and outputs are native field elements, eliminating this overhead entirely."),
+
+    h3("3.7.4 Nullifier Computation"),
+
+    ...codeBlock(
+`/// Nullifier derivation for records (msez-zkp)
+pub struct NullifierDeriver {
+    hasher: Poseidon2Hasher,
+}
+
+impl NullifierDeriver {
+    /// Derive a nullifier for a record.
+    ///
+    /// n = Poseidon2(sk || commitment || nonce)
+    ///
+    /// The spending key sk must be known only to the record holder.
+    /// The commitment is the Pedersen commitment to the record's contents.
+    /// The nonce is the unique issuance nonce assigned at record creation.
+    pub fn derive(
+        &self,
+        spending_key: &Fr,
+        commitment: &Fr,
+        nonce: &Fr,
+    ) -> Nullifier {
+        let hash = poseidon2_hash(
+            &self.hasher.params,
+            &[*spending_key, *commitment, *nonce],
+        );
+        Nullifier(hash)
+    }
+}
+
+/// A derived nullifier (msez-zkp)
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Nullifier(pub Fr);
+
+/// Nullifier set backed by a sparse Merkle tree (msez-zkp)
+pub struct NullifierSet {
+    tree: SparseMerkleTree,
+}
+
+impl NullifierSet {
+    /// Check whether a nullifier has already been spent.
+    pub fn contains(&self, nullifier: &Nullifier) -> bool {
+        self.tree.contains(&nullifier.0.to_bytes())
+    }
+
+    /// Insert a nullifier into the set. Returns Err if already present
+    /// (double-spend attempt).
+    pub fn insert(&mut self, nullifier: &Nullifier) -> Result<(), DoubleSpendError> {
+        if self.contains(nullifier) {
+            return Err(DoubleSpendError {
+                nullifier: nullifier.clone(),
+            });
+        }
+        self.tree.insert(&nullifier.0.to_bytes());
+        Ok(())
+    }
+
+    /// Generate a non-membership proof for a nullifier.
+    pub fn prove_non_membership(
+        &self,
+        nullifier: &Nullifier,
+    ) -> NonMembershipProof {
+        self.tree.prove_non_membership(&nullifier.0.to_bytes())
+    }
+}`
+    ),
+    spacer(),
   ];
 };

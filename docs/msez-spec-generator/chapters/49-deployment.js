@@ -1,6 +1,6 @@
 const {
   partHeading, chapterHeading, h2,
-  p,
+  p, p_runs, bold,
   codeBlock, table, spacer
 } = require("../lib/primitives");
 
@@ -52,6 +52,42 @@ FROM alpine:3.19
 COPY target/release/msez /usr/local/bin/msez
 ENTRYPOINT ["/usr/local/bin/msez"]`
     ),
+    spacer(),
+
+    // --- 49.4 Deployment Topology ---
+    h2("49.4 Deployment Topology"),
+    p("Each deployment profile defines a specific service topology. The topology determines how the msez-api server, PostgreSQL, Redis, observability stack, and external integrations connect. All profiles share the same binary artifacts; the difference is in replica count, resource allocation, and network segmentation."),
+    table(
+      ["Profile", "API Instances", "Database", "Cache", "Observability", "Network"],
+      [
+        ["minimal", "1 msez-api", "1 PostgreSQL (shared)", "1 Redis", "Logs to stdout only", "Single Docker network, no TLS between services"],
+        ["standard", "2 msez-api behind nginx", "1 PostgreSQL with streaming replica", "1 Redis with AOF persistence", "Prometheus + Grafana + Loki", "Internal mTLS, external TLS via nginx"],
+        ["enterprise", "4+ msez-api behind load balancer", "PostgreSQL primary + 2 read replicas + pgBouncer", "Redis Sentinel (3 nodes)", "Full stack: Prometheus, Grafana, Loki, Tempo", "Network segmentation: DMZ, app tier, data tier"],
+        ["sovereign-govos", "8+ msez-api across availability zones", "PostgreSQL HA cluster (Patroni) + dedicated analytics replica", "Redis Cluster (6 nodes)", "Full stack + external SIEM integration", "Air-gapped option, HSM integration, dedicated VPC per tier"],
+      ],
+      [1200, 1400, 2000, 1600, 1800, 1360]
+    ),
+    spacer(),
+    p_runs([bold("Service Connectivity."), " In all profiles, msez-api is the sole ingress point for external traffic. It connects to PostgreSQL for state persistence, Redis for caching and rate limiting, and Mass APIs (organization-info, treasury-info, consent, investment-info) via msez-mass-client over HTTPS. The worker service (msez-worker) shares the same database and Redis instances but has no external-facing ports. Vault provides secrets to all application services at startup via environment variable injection or the Vault agent sidecar."]),
+
+    // --- 49.5 Resource Scaling Guidelines ---
+    h2("49.5 Resource Scaling Guidelines"),
+    p("Resource allocation scales with three primary drivers: jurisdictional breadth (number of active jurisdictions and their regulatory complexity), corridor throughput (transactions per second across all active corridors), and credential volume (VCs issued and verified per day)."),
+    table(
+      ["Scaling Dimension", "Metric", "Threshold", "Action"],
+      [
+        ["API compute", "p99 latency > 200ms", "Sustained 5 minutes", "Add msez-api replica; each replica handles approximately 500 req/s"],
+        ["Database connections", "Active connections > 80% of pool", "Sustained 1 minute", "Increase PgBouncer pool size or add read replica for query offload"],
+        ["Database storage", "Disk usage > 70%", "Trending to 80% within 7 days", "Expand volume; audit event and tensor snapshot tables grow fastest"],
+        ["Redis memory", "Memory usage > 75%", "Sustained 10 minutes", "Increase maxmemory or add Redis node; rate-limit keys are highest cardinality"],
+        ["Corridor throughput", "Corridor receipt processing backlog > 1000", "Sustained 5 minutes", "Add msez-worker replica; workers are stateless and horizontally scalable"],
+        ["Tensor evaluation", "Tensor evaluation time > 50ms per entity", "Sustained across 100 evaluations", "Review jurisdiction pack complexity; consider tensor snapshot caching"],
+        ["Certificate/VC issuance", "VC signing queue depth > 500", "Sustained 2 minutes", "Add msez-api replica or optimize Ed25519 batch verification"],
+      ],
+      [1600, 2200, 2200, 3360]
+    ),
+    spacer(),
+    p_runs([bold("Vertical vs. Horizontal."), " The msez-api and msez-worker services scale horizontally (add replicas). PostgreSQL scales vertically first (more CPU, RAM, faster storage) and then horizontally via read replicas. Redis scales vertically for single-instance profiles and horizontally via Cluster mode for enterprise and sovereign-govos. The compliance tensor evaluation is CPU-bound and benefits most from vertical scaling (faster cores), while corridor receipt processing is I/O-bound and benefits from horizontal scaling (more workers)."]),
     spacer(),
   ];
 };

@@ -924,6 +924,9 @@ pub fn extended_policies() -> BTreeMap<String, Policy> {
     );
 
     // === Tax Collection Pipeline Policies (P1-009) ===
+    //
+    // These policies implement the tax pipeline's reactive behavior:
+    // tax year end → compliance evaluation, withholding due → execute withholding.
 
     policies.insert(
         "tax_year_end_halt".into(),
@@ -950,42 +953,47 @@ pub fn extended_policies() -> BTreeMap<String, Policy> {
             TriggerType::TaxYearEnd,
             PolicyAction::UpdateManifest,
         )
-        .with_description(
-            "Trigger annual tax assessment and FBR IRIS reporting at tax year end",
-        )
+        .with_description("Trigger annual tax compliance assessment at tax year end")
         .with_priority(70),
     );
 
     policies.insert(
-        "withholding_auto_deduct".into(),
+        "withholding_due_execute".into(),
         Policy::new(
-            "withholding_auto_deduct",
+            "withholding_due_execute",
             TriggerType::WithholdingDue,
             PolicyAction::UpdateManifest,
         )
-        .with_description(
-            "Automatically compute and record withholding tax on economic activity",
-        )
+        .with_description("Execute withholding computation when withholding obligation is due")
         .with_condition(Condition::Exists {
-            field: "transaction_amount".into(),
+            field: "entity_id".into(),
         })
-        .with_priority(80),
+        .with_priority(75),
     );
 
     policies.insert(
-        "withholding_ntn_missing_halt".into(),
+        "withholding_due_halt_nonfiler".into(),
         Policy::new(
-            "withholding_ntn_missing_halt",
+            "withholding_due_halt_nonfiler",
             TriggerType::WithholdingDue,
             PolicyAction::Halt,
         )
         .with_description(
-            "Halt operations when withholding is due but entity has no NTN registered",
+            "Halt operations for entities exceeding withholding threshold without NTN registration",
         )
-        .with_condition(Condition::Equals {
-            field: "ntn_status".into(),
-            value: serde_json::Value::String("missing".into()),
+        .with_condition(Condition::And {
+            conditions: vec![
+                Condition::Equals {
+                    field: "filer_status".into(),
+                    value: serde_json::Value::String("non_filer".into()),
+                },
+                Condition::Threshold {
+                    field: "cumulative_withholding".into(),
+                    threshold: serde_json::json!(500000),
+                },
+            ],
         })
+        .with_authorization(AuthorizationRequirement::Quorum)
         .with_priority(85),
     );
 

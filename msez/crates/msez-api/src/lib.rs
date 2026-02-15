@@ -25,6 +25,7 @@
 //! | `/v1/credentials/*`  | [`routes::credentials`]    | VC Verification (SEZ) |
 //! | `/v1/triggers`        | [`routes::agentic`]        | Agentic Engine (SEZ)|
 //! | `/v1/policies/*`      | [`routes::agentic`]        | Policy Mgmt (SEZ)   |
+//! | `/v1/tax/*`           | [`routes::tax`]            | Tax Pipeline (SEZ)  |
 //! | `/v1/regulator/*`     | [`routes::regulator`]      | Regulator (SEZ)     |
 //!
 //! ## Middleware Stack (execution order)

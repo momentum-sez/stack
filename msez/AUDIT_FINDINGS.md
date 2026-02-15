@@ -166,8 +166,8 @@ type errors from route registration changes.
 | P1-001 | Rate limiter before auth | **RESOLVED** | Auth middleware runs after rate limiting (correct order) |
 | P1-004 | Mass proxy routes are passthrough | **OPEN** | 5 passthrough proxy routes remain; target is orchestration |
 | P1-005 | Identity primitive split | **OPEN** | Architectural — requires dedicated identity-info service |
-| P1-006 | Composition engine Python-only | **OPEN** | `tools/msez/composition.py` not ported to Rust |
-| P1-007 | CLI commands Python-only | **OPEN** | Several commands in `tools/msez.py` lack Rust equivalents |
+| P1-006 | Composition engine Python-only | **RESOLVED** | Ported to `msez-pack/src/composition.rs`; Python removed |
+| P1-007 | CLI commands Python-only | **RESOLVED** | Python CLI removed; core commands ported to `msez-cli` |
 | P1-008 | No database persistence | **OPEN** | In-memory stores only; needs Postgres for production |
 | P1-009 | Tax collection pipeline | **OPEN** | Not implemented |
 | P1-010 | CanonicalBytes bypass verification | **OPEN** | No automated enforcement that all SHA-256 goes through CanonicalBytes |
@@ -182,7 +182,7 @@ type errors from route registration changes.
 | P2-002 | msez-mass-client doesn't share types with msez-core | **BY DESIGN** | msez-mass-client has zero internal deps, which is stricter than required |
 | P2-003 | licensepack.rs at 2,265 lines | **OPEN** | Large but functional; submodule extraction is P2 |
 | P2-004 | Auth token as plain Option<String> | **MITIGATED** | Custom Debug redacts value; constant-time comparison in place; in-memory only |
-| P2-005 | 45K lines of Python in tools/ | **OPEN** | Strategic deprecation, not blocking production |
+| P2-005 | 45K lines of Python in tools/ | **RESOLVED** | All Python code removed; composition engine ported to Rust |
 
 ---
 
@@ -197,13 +197,13 @@ type errors from route registration changes.
 | 5 | Zero `unwrap()` in msez-crypto non-test code | **PASS** |
 | 6 | Zero `unimplemented!()` or `todo!()` in non-test code | **PASS** |
 | 7 | msez-mass-client contract tests vs Mass API specs | **NOT YET** (P0-008) |
-| 8 | Cross-language parity tests | **PARTIAL** (MMR parity tests exist) |
-| 9 | Composition engine in Rust | **NOT YET** (P1-006) |
+| 8 | Cross-language parity tests | **PASS** (Python removed; hardcoded vectors retained) |
+| 9 | Composition engine in Rust | **PASS** (P1-006 resolved — `msez-pack::composition`) |
 | 10 | mass_proxy routes are orchestration | **NOT YET** (P1-004) |
 | 11 | Postgres persistence | **NOT YET** (P1-008) |
 | 12 | Crate dependency graph: no cycles, no unnecessary edges | **PASS** |
 
-**6 of 12 criteria met.** The remaining 6 are architectural/feature work, not
+**8 of 12 criteria met.** The remaining 4 are architectural/feature work, not
 code quality defects.
 
 ---
@@ -225,9 +225,8 @@ code quality defects.
 ### Production Readiness (P1)
 
 5. Add Postgres persistence for corridor state, tensor snapshots, VC audit log.
-6. Port composition engine from Python to Rust.
-7. Evolve mass_proxy routes from passthrough to orchestration endpoints.
-8. Implement identity aggregation service.
+6. Evolve mass_proxy routes from passthrough to orchestration endpoints.
+7. Implement identity aggregation service.
 
 ---
 

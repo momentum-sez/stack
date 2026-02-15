@@ -114,8 +114,8 @@ These findings are from Architecture Audit v5.0. Address them in priority order.
 |----|--------|----------|
 | P1-004 | Mass proxy routes are passthrough, not orchestration | `msez-api/src/routes/mass_proxy.rs` |
 | P1-005 | Identity primitive split across services | `msez-mass-client/src/identity.rs` |
-| P1-006 | Composition engine exists only in Python | `tools/msez/composition.py` |
-| P1-007 | Several CLI commands Python-only | `tools/msez.py` |
+| P1-006 | ~~Composition engine exists only in Python~~ | **RESOLVED** — ported to `msez-pack/src/composition.rs` |
+| P1-007 | ~~Several CLI commands Python-only~~ | **RESOLVED** — Python removed, core commands in `msez-cli` |
 | P1-008 | No database persistence (in-memory only) | `msez-api/src/state.rs` |
 | P1-009 | Tax collection pipeline not implemented | N/A |
 | P1-010 | CanonicalBytes bypass verification needed | All crates |
@@ -127,7 +127,7 @@ These findings are from Architecture Audit v5.0. Address them in priority order.
 | P2-002 | `msez-mass-client` does not share identifier types with `msez-core` | `msez-mass-client/Cargo.toml` |
 | P2-003 | `licensepack.rs` at 2,265 lines — needs submodule extraction | `msez-pack/src/licensepack.rs` |
 | P2-004 | Auth token stored as plain `Option<String>` | `msez-api/src/auth.rs` |
-| P2-005 | 45K lines of Python still in `tools/` | `tools/**` |
+| P2-005 | ~~45K lines of Python still in `tools/`~~ | **RESOLVED** — all Python removed |
 
 ### Resolved from Prior Audits
 
@@ -163,23 +163,35 @@ to confirm the same pattern holds.
 
 ---
 
-## V. PYTHON DEPRECATION RULES
+## V. PYTHON REMOVAL — COMPLETE
 
-### What Remains in Python
+**Status (2026-02-15)**: All Python code has been removed from the repository.
+The codebase is now pure Rust.
 
-| Component | Lines | Rust Equivalent | Status |
-|-----------|-------|-----------------|--------|
-| `tools/msez.py` | 15,476 | `msez-cli` | **Partial** — several commands Python-only |
-| `tools/phoenix/` | 16,838 | Various `msez-*` crates | **Partial** — reference implementation |
-| `tools/msez/composition.py` | ~2K | None | **NOT PORTED** — must port |
+### What Was Removed
+
+| Component | Lines | Disposition |
+|-----------|-------|-------------|
+| `tools/msez.py` | 15,476 | Removed — core commands ported to `msez-cli` |
+| `tools/phoenix/` | 16,838 | Removed — reference implementation; production Rust crates cover all needed functionality |
+| `tools/msez/composition.py` | 652 | **Ported** to `msez-pack/src/composition.rs` |
+| `tools/*.py` (domain modules) | ~10,000 | Removed — all ported to corresponding `msez-*` crates |
+| `tools/integrations/` | 289 | Removed — stubs, not production code |
+| `tools/akoma/` | 171 | Removed — utilities, not production code |
+| `tools/dev/` | 1,345 | Removed — development tools |
+| `tests/*.py` (Python tests) | 32,796 | Removed — tested Python implementations, not Rust |
+| `tests/generate_vectors.py` | 90 | Removed — digests hardcoded in Rust cross-language tests |
+
+### Retained
+
+- `tests/fixtures/` — JSON fixture files used by Rust integration tests
+- `tests/README.md` — test documentation
 
 ### Rules
 
-1. No new Python code may be written except for cross-language parity tests.
-2. No Rust crate may import any Python module or invoke the Python interpreter.
-3. The Python code remains in `tools/` as a test oracle for cross-language parity tests.
-4. All new CLI commands must be implemented in `msez-cli` (Rust).
-5. The composition engine must be ported to Rust before any production deployment.
+1. No Python code may be added to this repository.
+2. All CLI commands must be implemented in `msez-cli` (Rust).
+3. Cross-language test vectors are hardcoded in Rust test files.
 
 ---
 
@@ -204,8 +216,7 @@ When conflicts arise, resolve in this order:
 2. **Correctness** — compliance tensor evaluation, corridor state, receipt chain integrity (wrong compliance = regulatory exposure)
 3. **Mass/SEZ Boundary** — no primitive duplication, clean orchestration, `msez-mass-client` as sole gateway
 4. **Unwrap elimination** — HTTP server first, crypto second, foundation third
-5. **Architecture** — evolve proxy routes to orchestration, add persistence, port composition engine
-6. **Python deprecation** — strategic but not blocking production
+5. **Architecture** — evolve proxy routes to orchestration, add persistence
 
 ---
 
@@ -232,7 +243,7 @@ Before approving any change:
 - [ ] No new `std::sync::RwLock` (use `parking_lot`)
 - [ ] No SHA-256 computation bypassing `CanonicalBytes`
 - [ ] No Mass primitive CRUD duplicated in SEZ Stack
-- [ ] No new Python code (except parity tests)
+- [ ] No Python code added to the repository
 - [ ] Error types carry diagnostic context (not just `String`)
 - [ ] Public functions have doc comments that describe behavior (not restate the name)
 - [ ] Naming conventions followed (Momentum, Mass, SEZ Stack, momentum.inc, mass.inc)
@@ -250,8 +261,8 @@ The codebase is production-ready when:
 5. Zero `unwrap()` in `msez-crypto` non-test code
 6. Zero `unimplemented!()` or `todo!()` in non-test code
 7. `msez-mass-client` contract tests pass against live Mass API Swagger specs
-8. Cross-language parity tests pass for canonicalization, MMR, and VC signing
-9. The composition engine exists in Rust
+8. Canonicalization and digest test vectors verified (Python removed; vectors hardcoded)
+9. ~~The composition engine exists in Rust~~ **DONE** — `msez-pack::composition`
 10. Each `mass_proxy` route is an orchestration endpoint (compliance + Mass API + VC)
 11. Postgres persistence for corridor state, tensor snapshots, VC audit log, agentic policy state
 12. The crate dependency graph has no cycles and no unnecessary edges

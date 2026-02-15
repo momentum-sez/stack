@@ -1,7 +1,7 @@
 //! # Version Consistency Test
 //!
 //! Verifies that the canonical version 0.4.44 is consistently referenced
-//! across the entire codebase — Rust workspace, Python tools, YAML configs,
+//! across the entire codebase — Rust workspace, YAML configs,
 //! documentation, and deployment artifacts.
 //!
 //! ## Audit Reference
@@ -47,28 +47,6 @@ fn version_file_matches_canonical() {
     assert!(
         trimmed.starts_with(CANONICAL_VERSION),
         "VERSION file must start with {CANONICAL_VERSION}, got: {trimmed}"
-    );
-}
-
-#[test]
-fn python_msez_version_matches_canonical() {
-    let init = repo_root().join("tools/msez/__init__.py");
-    let content = std::fs::read_to_string(&init)
-        .unwrap_or_else(|e| panic!("Failed to read {}: {e}", init.display()));
-    assert!(
-        content.contains(&format!("__version__ = \"{CANONICAL_VERSION}\"")),
-        "tools/msez/__init__.py must contain __version__ = \"{CANONICAL_VERSION}\""
-    );
-}
-
-#[test]
-fn python_phoenix_version_matches_canonical() {
-    let init = repo_root().join("tools/phoenix/__init__.py");
-    let content = std::fs::read_to_string(&init)
-        .unwrap_or_else(|e| panic!("Failed to read {}: {e}", init.display()));
-    assert!(
-        content.contains(&format!("__version__ = \"{CANONICAL_VERSION}\"")),
-        "tools/phoenix/__init__.py must contain __version__ = \"{CANONICAL_VERSION}\""
     );
 }
 

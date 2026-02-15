@@ -84,6 +84,29 @@ pub enum PackError {
     /// Generic serde_yaml error (not file-specific).
     #[error("YAML error: {0}")]
     Yaml(#[from] serde_yaml::Error),
+
+    /// Zone composition is invalid.
+    #[error("invalid zone composition: {}", errors.join("; "))]
+    CompositionInvalid {
+        /// List of validation errors.
+        errors: Vec<String>,
+    },
+
+    /// Schema violation during parsing.
+    #[error("schema violation: {message}")]
+    SchemaViolation {
+        /// Description of the violation.
+        message: String,
+    },
+
+    /// YAML parsing failed (string description).
+    #[error("failed to parse YAML at {path}: {detail}")]
+    YamlParseStr {
+        /// File path.
+        path: std::path::PathBuf,
+        /// Error description.
+        detail: String,
+    },
 }
 
 /// Result type alias for pack operations.

@@ -1295,10 +1295,14 @@ mod tests {
 
     #[test]
     fn mmr_leaf_hash_accepts_uppercase_hex() {
-        // is_hex_32 checks c.is_ascii_hexdigit() which accepts A-F
+        // is_hex_32 checks c.is_ascii_hexdigit() which accepts A-F.
+        // from_hex lowercases before decode, so uppercase input produces
+        // the same hash as the equivalent lowercase input.
         let nr = "FEA5396A7F4325C408B1B65B33A4D77BA5486CEBA941804D8889A8546CFBAB96";
-        // from_hex lowercases, so this should work
-        let result = mmr_leaf_hash(nr);
-        assert!(result.is_ok());
+        let hash = mmr_leaf_hash(nr).expect("uppercase hex should be accepted");
+        assert_eq!(
+            hash,
+            "29534994a3ad2af6dd418f46d4093897971cd14bea312167ad82c4b31dbbfcec"
+        );
     }
 }

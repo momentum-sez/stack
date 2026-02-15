@@ -524,12 +524,24 @@ mod tests {
     }
 
     #[test]
-    fn verifying_key_from_bytes_invalid_curve_point() {
-        // All zeros is not a valid Ed25519 public key
+    fn verifying_key_from_bytes_all_zeros_accepted_but_unusable() {
+        // All zeros encodes the identity point on Ed25519. ed25519-dalek
+        // accepts it at construction but signatures against it will fail
+        // verification. Asserting Ok here documents this behavior — the
+        // real protection is at verify() time.
         let result = VerifyingKey::from_bytes(&[0u8; 32]);
-        // Some implementations accept the identity point, others reject it
-        // Just ensure it doesn't panic
-        let _ = result;
+        assert!(result.is_ok(), "ed25519-dalek accepts all-zeros key at construction");
+
+        // Verify that signing with any key and verifying against the
+        // identity point fails (the critical safety check).
+        let sk = SigningKey::generate(&mut OsRng);
+        let data = CanonicalBytes::new(&serde_json::json!({"test": true})).unwrap();
+        let sig = sk.sign(&data);
+        let zero_vk = result.unwrap();
+        assert!(
+            zero_vk.verify(&data, &sig).is_err(),
+            "verification against identity point must fail"
+        );
     }
 
     #[test]

@@ -186,8 +186,12 @@ async fn create_entity(
 ) -> Result<(axum::http::StatusCode, Json<serde_json::Value>), AppError> {
     let client = require_mass_client(&state)?;
 
+    let entity_type: msez_mass_client::entities::MassEntityType =
+        serde_json::from_value(serde_json::Value::String(req.entity_type))
+            .map_err(|e| AppError::BadRequest(format!("invalid entity_type: {e}")))?;
+
     let mass_req = msez_mass_client::entities::CreateEntityRequest {
-        entity_type: req.entity_type,
+        entity_type,
         legal_name: req.legal_name,
         jurisdiction_id: req.jurisdiction_id,
         beneficial_owners: req
@@ -390,9 +394,13 @@ async fn create_account(
 ) -> Result<(axum::http::StatusCode, Json<serde_json::Value>), AppError> {
     let client = require_mass_client(&state)?;
 
+    let account_type: msez_mass_client::fiscal::MassAccountType =
+        serde_json::from_value(serde_json::Value::String(req.account_type))
+            .map_err(|e| AppError::BadRequest(format!("invalid account_type: {e}")))?;
+
     let mass_req = msez_mass_client::fiscal::CreateAccountRequest {
         entity_id: req.entity_id,
-        account_type: req.account_type,
+        account_type,
         currency: req.currency,
         ntn: req.ntn,
     };
@@ -467,8 +475,12 @@ async fn verify_identity(
 ) -> Result<Json<serde_json::Value>, AppError> {
     let client = require_mass_client(&state)?;
 
+    let identity_type: msez_mass_client::identity::MassIdentityType =
+        serde_json::from_value(serde_json::Value::String(req.identity_type))
+            .map_err(|e| AppError::BadRequest(format!("invalid identity_type: {e}")))?;
+
     let mass_req = msez_mass_client::identity::VerifyIdentityRequest {
-        identity_type: req.identity_type,
+        identity_type,
         linked_ids: req
             .linked_ids
             .into_iter()
@@ -538,8 +550,12 @@ async fn create_consent(
 ) -> Result<(axum::http::StatusCode, Json<serde_json::Value>), AppError> {
     let client = require_mass_client(&state)?;
 
+    let consent_type: msez_mass_client::consent::MassConsentType =
+        serde_json::from_value(serde_json::Value::String(req.consent_type))
+            .map_err(|e| AppError::BadRequest(format!("invalid consent_type: {e}")))?;
+
     let mass_req = msez_mass_client::consent::CreateConsentRequest {
-        consent_type: req.consent_type,
+        consent_type,
         description: req.description,
         parties: req
             .parties

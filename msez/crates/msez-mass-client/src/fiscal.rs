@@ -8,6 +8,34 @@ use uuid::Uuid;
 
 use crate::error::MassApiError;
 
+// -- Typed enums matching Mass API values ------------------------------------
+
+/// Fiscal account type as defined by Mass treasury-info.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MassAccountType {
+    Operating,
+    Escrow,
+    Tax,
+    Settlement,
+    /// Forward-compatible catch-all.
+    #[serde(other)]
+    Unknown,
+}
+
+/// Payment status as defined by Mass treasury-info.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MassPaymentStatus {
+    Pending,
+    Completed,
+    Failed,
+    Reversed,
+    /// Forward-compatible catch-all.
+    #[serde(other)]
+    Unknown,
+}
+
 // -- Types matching Mass API schemas ------------------------------------------
 
 /// Fiscal account as returned by the Mass treasury-info API.
@@ -15,7 +43,7 @@ use crate::error::MassApiError;
 pub struct MassFiscalAccount {
     pub id: Uuid,
     pub entity_id: Uuid,
-    pub account_type: String,
+    pub account_type: MassAccountType,
     pub currency: String,
     pub balance: String,
     pub ntn: Option<String>,
@@ -27,7 +55,7 @@ pub struct MassFiscalAccount {
 #[derive(Debug, Serialize)]
 pub struct CreateAccountRequest {
     pub entity_id: Uuid,
-    pub account_type: String,
+    pub account_type: MassAccountType,
     pub currency: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ntn: Option<String>,
@@ -42,7 +70,7 @@ pub struct MassPayment {
     pub amount: String,
     pub currency: String,
     pub reference: String,
-    pub status: String,
+    pub status: MassPaymentStatus,
     pub created_at: DateTime<Utc>,
 }
 

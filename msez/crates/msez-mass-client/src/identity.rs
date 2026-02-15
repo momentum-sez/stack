@@ -9,14 +9,40 @@ use uuid::Uuid;
 
 use crate::error::MassApiError;
 
+// -- Typed enums matching Mass API values ------------------------------------
+
+/// Identity type as defined by Mass identity services.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MassIdentityType {
+    Individual,
+    Corporate,
+    /// Forward-compatible catch-all.
+    #[serde(other)]
+    Unknown,
+}
+
+/// Identity verification status.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MassIdentityStatus {
+    Pending,
+    Verified,
+    Rejected,
+    Expired,
+    /// Forward-compatible catch-all.
+    #[serde(other)]
+    Unknown,
+}
+
 // -- Types matching Mass API schemas ------------------------------------------
 
 /// Identity record from Mass.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MassIdentity {
     pub id: Uuid,
-    pub identity_type: String,
-    pub status: String,
+    pub identity_type: MassIdentityType,
+    pub status: MassIdentityStatus,
     pub linked_ids: Vec<MassLinkedExternalId>,
     pub attestations: Vec<MassIdentityAttestation>,
     pub created_at: DateTime<Utc>,
@@ -46,7 +72,7 @@ pub struct MassIdentityAttestation {
 /// Request to verify an identity (KYC/KYB).
 #[derive(Debug, Serialize)]
 pub struct VerifyIdentityRequest {
-    pub identity_type: String,
+    pub identity_type: MassIdentityType,
     pub linked_ids: Vec<LinkedIdInput>,
 }
 

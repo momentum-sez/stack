@@ -139,19 +139,18 @@ impl FiscalClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// Get a fiscal account by ID.
     ///
     /// Calls `GET {base_url}/treasury-info/accounts/{id}`.
-    pub async fn get_account(
-        &self,
-        id: Uuid,
-    ) -> Result<Option<MassFiscalAccount>, MassApiError> {
+    pub async fn get_account(&self, id: Uuid) -> Result<Option<MassFiscalAccount>, MassApiError> {
         let endpoint = format!("GET /accounts/{id}");
         let url = format!("{}treasury-info/accounts/{id}", self.base_url);
 
@@ -212,9 +211,11 @@ impl FiscalClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 }

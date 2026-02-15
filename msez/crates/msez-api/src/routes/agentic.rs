@@ -144,12 +144,7 @@ async fn submit_trigger(
     let trigger_type: TriggerType = serde_json::from_value(serde_json::Value::String(
         req.trigger_type.clone(),
     ))
-    .map_err(|_| {
-        AppError::Validation(format!(
-            "unknown trigger type: '{}'",
-            req.trigger_type,
-        ))
-    })?;
+    .map_err(|_| AppError::Validation(format!("unknown trigger type: '{}'", req.trigger_type,)))?;
 
     // Build the trigger.
     let trigger = Trigger::new(trigger_type, req.data.clone().unwrap_or_default());
@@ -468,11 +463,21 @@ mod tests {
         let resp: TriggerResponse = body_json(response).await;
 
         // The engine should have produced at least one action.
-        assert!(resp.actions_produced > 0, "expected actions from sanctions trigger");
+        assert!(
+            resp.actions_produced > 0,
+            "expected actions from sanctions trigger"
+        );
 
         // At least one action should have been executed (the halt).
-        let executed: Vec<_> = resp.actions.iter().filter(|a| a.status == ActionStatus::Executed).collect();
-        assert!(!executed.is_empty(), "expected at least one executed action");
+        let executed: Vec<_> = resp
+            .actions
+            .iter()
+            .filter(|a| a.status == ActionStatus::Executed)
+            .collect();
+        assert!(
+            !executed.is_empty(),
+            "expected at least one executed action"
+        );
 
         // The corridor should now be HALTED.
         let corridor = state.corridors.get(&corridor_id).unwrap();
@@ -514,8 +519,15 @@ mod tests {
         let resp: TriggerResponse = body_json(response).await;
 
         // Action should be "skipped" because DRAFT cannot transition to HALTED.
-        let skipped: Vec<_> = resp.actions.iter().filter(|a| a.status == ActionStatus::Skipped).collect();
-        assert!(!skipped.is_empty(), "expected skipped action for DRAFT corridor");
+        let skipped: Vec<_> = resp
+            .actions
+            .iter()
+            .filter(|a| a.status == ActionStatus::Skipped)
+            .collect();
+        assert!(
+            !skipped.is_empty(),
+            "expected skipped action for DRAFT corridor"
+        );
 
         // Corridor should still be DRAFT.
         let corridor = state.corridors.get(&corridor_id).unwrap();
@@ -545,7 +557,11 @@ mod tests {
 
         let resp: TriggerResponse = body_json(response).await;
         // Actions should exist but be skipped (corridor not found).
-        let skipped: Vec<_> = resp.actions.iter().filter(|a| a.status == ActionStatus::Skipped).collect();
+        let skipped: Vec<_> = resp
+            .actions
+            .iter()
+            .filter(|a| a.status == ActionStatus::Skipped)
+            .collect();
         assert!(
             !skipped.is_empty(),
             "expected skipped action for nonexistent corridor"
@@ -575,8 +591,15 @@ mod tests {
 
         let resp: TriggerResponse = body_json(response).await;
         // Halt actions should be skipped (invalid UUID).
-        let skipped: Vec<_> = resp.actions.iter().filter(|a| a.status == ActionStatus::Skipped).collect();
-        assert!(!skipped.is_empty(), "expected skipped action for non-UUID asset_id");
+        let skipped: Vec<_> = resp
+            .actions
+            .iter()
+            .filter(|a| a.status == ActionStatus::Skipped)
+            .collect();
+        assert!(
+            !skipped.is_empty(),
+            "expected skipped action for non-UUID asset_id"
+        );
     }
 
     #[tokio::test]

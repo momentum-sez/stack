@@ -410,9 +410,7 @@ impl SchemaValidator {
     /// Returns paths to directories containing a `module.yaml` file.
     /// Returns an error if the directory cannot be read, rather than
     /// silently returning an empty list.
-    pub fn find_all_modules(
-        modules_dir: &Path,
-    ) -> Result<Vec<PathBuf>, SchemaValidationError> {
+    pub fn find_all_modules(modules_dir: &Path) -> Result<Vec<PathBuf>, SchemaValidationError> {
         if !modules_dir.is_dir() {
             return Ok(Vec::new());
         }
@@ -497,12 +495,11 @@ impl SchemaValidator {
     }
 
     fn walk_for_modules(dir: &Path, acc: &mut Vec<PathBuf>) -> Result<(), SchemaValidationError> {
-        let entries = std::fs::read_dir(dir).map_err(|e| {
-            SchemaValidationError::DocumentLoadError {
+        let entries =
+            std::fs::read_dir(dir).map_err(|e| SchemaValidationError::DocumentLoadError {
                 path: dir.display().to_string(),
                 reason: format!("failed to read directory: {e}"),
-            }
-        })?;
+            })?;
         for entry in entries {
             let entry = entry.map_err(|e| SchemaValidationError::DocumentLoadError {
                 path: dir.display().to_string(),

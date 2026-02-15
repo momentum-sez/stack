@@ -61,8 +61,14 @@ fn full_corridor_lifecycle() {
     });
     assert_eq!(pending.state_name(), "PENDING");
     assert_eq!(pending.transition_log().len(), 1);
-    assert_eq!(pending.transition_log()[0].from_state, DynCorridorState::Draft);
-    assert_eq!(pending.transition_log()[0].to_state, DynCorridorState::Pending);
+    assert_eq!(
+        pending.transition_log()[0].from_state,
+        DynCorridorState::Draft
+    );
+    assert_eq!(
+        pending.transition_log()[0].to_state,
+        DynCorridorState::Pending
+    );
 
     // 3. Activate → Active
     let active = pending.activate(ActivationEvidence {

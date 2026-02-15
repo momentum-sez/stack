@@ -40,7 +40,9 @@ use crate::state::SmartAssetRecord;
 /// The `Ord` derivation respects variant declaration order:
 /// `EntityOperator < Regulator < ZoneAdmin`. This enables `>=` comparison
 /// for role-based access checks.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, ToSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, ToSchema,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum Role {
     /// Can read/write own entity's resources.
@@ -419,7 +421,10 @@ mod tests {
 
     #[test]
     fn constant_time_eq_identical_tokens() {
-        assert!(constant_time_token_eq("secret-token-123", "secret-token-123"));
+        assert!(constant_time_token_eq(
+            "secret-token-123",
+            "secret-token-123"
+        ));
     }
 
     #[test]

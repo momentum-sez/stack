@@ -92,8 +92,14 @@ mod tests {
         let slice = tensor.full_slice();
 
         // The 5 applicable domains should be Pending (awaiting attestation).
-        assert_eq!(slice.cells[&ComplianceDomain::Aml], ComplianceState::Pending);
-        assert_eq!(slice.cells[&ComplianceDomain::Tax], ComplianceState::Pending);
+        assert_eq!(
+            slice.cells[&ComplianceDomain::Aml],
+            ComplianceState::Pending
+        );
+        assert_eq!(
+            slice.cells[&ComplianceDomain::Tax],
+            ComplianceState::Pending
+        );
 
         // Non-applicable domains should be NotApplicable.
         assert_eq!(
@@ -266,9 +272,9 @@ mod tests {
         let jid = JurisdictionId::new("test-zone").unwrap();
         let domains = domain_strings(&[
             "aml",
-            "space_law",             // Does not exist in ComplianceDomain.
+            "space_law", // Does not exist in ComplianceDomain.
             "kyc",
-            "quantum_compliance",    // Also does not exist.
+            "quantum_compliance", // Also does not exist.
         ]);
         let jurisdiction = RegpackJurisdiction::from_domain_names(jid, &domains);
 

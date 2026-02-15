@@ -84,7 +84,10 @@ impl std::fmt::Debug for ZoneContext {
             .field("applicable_domains", &self.applicable_domains)
             .field("zone_did", &self.zone_did)
             .field("key_ephemeral", &self.key_ephemeral)
-            .field("sanctions_checker", &self.sanctions_checker.as_ref().map(|_| "[loaded]"))
+            .field(
+                "sanctions_checker",
+                &self.sanctions_checker.as_ref().map(|_| "[loaded]"),
+            )
             .field("sanctions_snapshot_id", &self.sanctions_snapshot_id)
             .field("cas_dir", &self.cas_dir)
             .finish()
@@ -167,9 +170,8 @@ pub fn bootstrap(
         }
     };
 
-    let mut state = AppState::try_with_config(config, mass_client).map_err(|e| {
-        BootstrapError::SigningKey(format!("zone key error from AppState: {e}"))
-    })?;
+    let mut state = AppState::try_with_config(config, mass_client)
+        .map_err(|e| BootstrapError::SigningKey(format!("zone key error from AppState: {e}")))?;
 
     // If we bootstrapped a zone, override the signing key and DID on AppState
     // so that all existing code paths (VC issuance, dashboard) use the
@@ -225,8 +227,7 @@ fn load_zone_manifest(path: &Path) -> Result<ZoneManifest, BootstrapError> {
     let applicable_domains = extract_applicable_domains(&zone_value);
 
     // Resolve regpack references.
-    let regpack_refs = msez_pack::regpack::resolve_regpack_refs(&zone_value)
-        .unwrap_or_default();
+    let regpack_refs = msez_pack::regpack::resolve_regpack_refs(&zone_value).unwrap_or_default();
 
     let manifest_dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
 
@@ -629,7 +630,10 @@ fn log_zone_banner(
 }
 
 fn log_generic_banner(config: &AppConfig) {
-    tracing::info!(port = config.port, "starting in generic mode (no zone configuration)");
+    tracing::info!(
+        port = config.port,
+        "starting in generic mode (no zone configuration)"
+    );
     println!("┌──────────────────────────────────────────────────┐");
     println!("│  MSEZ API Server — v0.4.44 GENESIS               │");
     println!("│  Mode: generic (no zone configuration)           │");

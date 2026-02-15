@@ -44,14 +44,8 @@ pub fn router() -> Router<AppState> {
         .route("/v1/entities", get(list_entities).post(create_entity))
         .route("/v1/entities/:id", get(get_entity).put(update_entity))
         // OWNERSHIP (investment-info)
-        .route(
-            "/v1/ownership/cap-tables",
-            post(create_cap_table),
-        )
-        .route(
-            "/v1/ownership/cap-tables/:id",
-            get(get_cap_table),
-        )
+        .route("/v1/ownership/cap-tables", post(create_cap_table))
+        .route("/v1/ownership/cap-tables/:id", get(get_cap_table))
         // FISCAL (treasury-info)
         .route("/v1/fiscal/accounts", post(create_account))
         .route("/v1/fiscal/payments", post(initiate_payment))
@@ -65,14 +59,11 @@ pub fn router() -> Router<AppState> {
 
 /// Helper: extract the Mass client from AppState or return 503.
 fn require_mass_client(state: &AppState) -> Result<&msez_mass_client::MassClient, AppError> {
-    state
-        .mass_client
-        .as_ref()
-        .ok_or_else(|| {
-            AppError::service_unavailable(
-                "Mass API client not configured. Set MASS_API_TOKEN environment variable.",
-            )
-        })
+    state.mass_client.as_ref().ok_or_else(|| {
+        AppError::service_unavailable(
+            "Mass API client not configured. Set MASS_API_TOKEN environment variable.",
+        )
+    })
 }
 
 // -- Request/Response DTOs for the proxy layer --------------------------------
@@ -281,9 +272,7 @@ async fn update_entity(
     ),
     tag = "entities"
 )]
-async fn list_entities(
-    State(state): State<AppState>,
-) -> Result<Json<serde_json::Value>, AppError> {
+async fn list_entities(State(state): State<AppState>) -> Result<Json<serde_json::Value>, AppError> {
     let client = require_mass_client(&state)?;
 
     let entities = client

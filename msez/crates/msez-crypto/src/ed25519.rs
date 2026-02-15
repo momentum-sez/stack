@@ -530,7 +530,10 @@ mod tests {
         // verification. Asserting Ok here documents this behavior — the
         // real protection is at verify() time.
         let result = VerifyingKey::from_bytes(&[0u8; 32]);
-        assert!(result.is_ok(), "ed25519-dalek accepts all-zeros key at construction");
+        assert!(
+            result.is_ok(),
+            "ed25519-dalek accepts all-zeros key at construction"
+        );
 
         // Verify that signing with any key and verifying against the
         // identity point fails (the critical safety check).

@@ -250,8 +250,11 @@ pub fn ensure_json_compatible(value: &Value, path: &str, context: &str) -> PackR
 }
 
 /// Compute SHA-256 hex digest of raw bytes.
+///
+/// Delegates to [`msez_core::sha256_raw`] — the sole raw-byte SHA-256
+/// implementation per CLAUDE.md §V.5.
 pub fn sha256_hex(data: &[u8]) -> String {
-    msez_core::sha256_hex(data)
+    msez_core::sha256_raw(data)
 }
 
 #[cfg(test)]

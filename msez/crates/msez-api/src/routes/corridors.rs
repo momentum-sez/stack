@@ -98,6 +98,15 @@ impl Validate for TransitionCorridorRequest {
                 self.target_state
             )
         })?;
+
+        // Enforce lowercase hex for evidence digests to prevent comparison
+        // mismatches: ContentDigest::to_hex() produces lowercase, so input
+        // must also be lowercase for equality checks to work correctly.
+        if let Some(ref hex) = self.evidence_digest {
+            if hex != &hex.to_ascii_lowercase() {
+                return Err("evidence_digest must be lowercase hex".to_string());
+            }
+        }
         Ok(())
     }
 }

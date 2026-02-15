@@ -121,29 +121,39 @@ pub fn validate_zone(zone_path: &Path) -> PackResult<PackValidationResult> {
     }
 
     // 4. Validate lawpack references
-    if let Ok(refs) = lawpack::resolve_lawpack_refs(&zone) {
-        for r in &refs {
-            if r.jurisdiction_id.is_empty() {
-                result.add_error("lawpack ref has empty jurisdiction_id".to_string());
+    match lawpack::resolve_lawpack_refs(&zone) {
+        Ok(refs) => {
+            for r in &refs {
+                if r.jurisdiction_id.is_empty() {
+                    result.add_error("lawpack ref has empty jurisdiction_id".to_string());
+                }
+                if r.domain.is_empty() {
+                    result.add_error("lawpack ref has empty domain".to_string());
+                }
+                if !parser::is_valid_sha256(&r.lawpack_digest_sha256) {
+                    result.add_error(format!(
+                        "lawpack ref has invalid digest: {}",
+                        r.lawpack_digest_sha256
+                    ));
+                }
             }
-            if r.domain.is_empty() {
-                result.add_error("lawpack ref has empty domain".to_string());
-            }
-            if !parser::is_valid_sha256(&r.lawpack_digest_sha256) {
-                result.add_error(format!(
-                    "lawpack ref has invalid digest: {}",
-                    r.lawpack_digest_sha256
-                ));
-            }
+        }
+        Err(e) => {
+            result.add_error(format!("failed to resolve lawpack refs: {e}"));
         }
     }
 
     // 5. Validate regpack references
-    if let Ok(refs) = regpack::resolve_regpack_refs(&zone) {
-        for r in &refs {
-            if r.jurisdiction_id.is_empty() {
-                result.add_error("regpack ref has empty jurisdiction_id".to_string());
+    match regpack::resolve_regpack_refs(&zone) {
+        Ok(refs) => {
+            for r in &refs {
+                if r.jurisdiction_id.is_empty() {
+                    result.add_error("regpack ref has empty jurisdiction_id".to_string());
+                }
             }
+        }
+        Err(e) => {
+            result.add_error(format!("failed to resolve regpack refs: {e}"));
         }
     }
 

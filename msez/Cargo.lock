@@ -1531,6 +1531,7 @@ name = "msez-mass-client"
 version = "0.4.44"
 dependencies = [
  "chrono",
+ "msez-core",
  "reqwest",
  "serde",
  "serde_json",
@@ -1540,6 +1541,7 @@ dependencies = [
  "url",
  "uuid",
  "wiremock",
+ "zeroize",
 ]
 
 [[package]]

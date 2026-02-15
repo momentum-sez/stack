@@ -15,8 +15,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
 use clap::Args;
-
-use msez_core::{CanonicalBytes, Sha256Hasher};
+use msez_core::digest::Sha256Accumulator;
+use msez_core::CanonicalBytes;
 
 /// Arguments for the `msez lock` subcommand.
 #[derive(Args, Debug)]
@@ -320,15 +320,20 @@ fn sha256_file(path: &Path) -> Result<String> {
 }
 
 /// Compute SHA-256 hex digest of raw bytes.
+///
+/// Delegates to [`msez_core::sha256_raw`] — the sole raw-byte SHA-256
+/// implementation per CLAUDE.md §V.5.
 fn sha256_of_bytes(bytes: &[u8]) -> String {
-    msez_core::sha256_hex(bytes)
+    msez_core::sha256_raw(bytes)
 }
 
 /// Compute a deterministic digest over a directory's contents.
 ///
 /// Walks all files in sorted order, hashing their relative paths and contents.
+/// Uses raw `sha2` streaming API since this is a multi-part hash over file
+/// paths and contents — not a canonical domain object.
 fn digest_dir(dir: &Path) -> Result<String> {
-    let mut hasher = Sha256Hasher::new();
+    let mut acc = Sha256Accumulator::new();
     let mut paths: Vec<PathBuf> = Vec::new();
 
     for entry in walkdir_recursive(dir) {
@@ -345,13 +350,13 @@ fn digest_dir(dir: &Path) -> Result<String> {
         let content = std::fs::read(&full)?;
         // Use forward slashes for cross-platform determinism.
         let path_str = rel_path.to_string_lossy().replace('\\', "/");
-        hasher.update(path_str.as_bytes());
-        hasher.update(b"\0");
-        hasher.update(&content);
-        hasher.update(b"\0");
+        acc.update(path_str.as_bytes());
+        acc.update(b"\0");
+        acc.update(&content);
+        acc.update(b"\0");
     }
 
-    Ok(hasher.finalize_hex())
+    Ok(acc.finalize_hex())
 }
 
 /// Recursively walk a directory, returning all file paths sorted.

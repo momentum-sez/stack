@@ -878,9 +878,10 @@ mod tests {
 
     #[test]
     fn app_state_with_config_applies_custom_config() {
+        use crate::auth::SecretString;
         let config = AppConfig {
             port: 3000,
-            auth_token: Some(crate::auth::SecretString::new("secret-token")),
+            auth_token: Some(SecretString::new("secret-token")),
         };
         let state = AppState::with_config(config, None);
         assert_eq!(state.config.port, 3000);

@@ -77,15 +77,27 @@ impl LicenseCondition {
 }
 
 /// Compare two date strings in YYYY-MM-DD format.
-/// Parses both dates; if either fails to parse, falls back to string comparison.
+///
+/// Returns `true` if date `a` is strictly before date `b`.
+/// If either date fails to parse, logs a warning and returns `false`
+/// (defensive: treat unparseable dates as "not before" rather than
+/// risk incorrect lexicographic ordering of malformed date strings).
 pub(crate) fn date_before(a: &str, b: &str) -> bool {
-    match (
-        chrono::NaiveDate::parse_from_str(a, "%Y-%m-%d"),
-        chrono::NaiveDate::parse_from_str(b, "%Y-%m-%d"),
-    ) {
-        (Ok(da), Ok(db)) => da < db,
-        _ => a < b,
-    }
+    let da = match chrono::NaiveDate::parse_from_str(a, "%Y-%m-%d") {
+        Ok(d) => d,
+        Err(_) => {
+            tracing::warn!(date = %a, "invalid date format in date_before — treating as not-before");
+            return false;
+        }
+    };
+    let db = match chrono::NaiveDate::parse_from_str(b, "%Y-%m-%d") {
+        Ok(d) => d,
+        Err(_) => {
+            tracing::warn!(date = %b, "invalid date format in date_before — treating as not-before");
+            return false;
+        }
+    };
+    da < db
 }
 
 /// A permission granted under a license.

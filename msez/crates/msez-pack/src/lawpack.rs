@@ -33,8 +33,9 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
+use msez_core::digest::Sha256Accumulator;
 
-use msez_core::{CanonicalBytes, ContentDigest, JurisdictionId, Sha256Hasher};
+use msez_core::{CanonicalBytes, ContentDigest, JurisdictionId};
 
 use crate::error::{PackError, PackResult};
 use crate::parser;
@@ -350,15 +351,15 @@ pub struct Lawpack {
 /// * `canonical_files` - Map from relative path (e.g., "lawpack.yaml", "akn/doc.xml")
 ///   to canonical byte representation of that file.
 pub fn compute_lawpack_digest(canonical_files: &BTreeMap<String, Vec<u8>>) -> String {
-    let mut hasher = Sha256Hasher::new();
-    hasher.update(LAWPACK_DIGEST_PREFIX);
+    let mut acc = Sha256Accumulator::new();
+    acc.update(LAWPACK_DIGEST_PREFIX);
     for (relpath, content) in canonical_files {
-        hasher.update(relpath.as_bytes());
-        hasher.update(b"\0");
-        hasher.update(content);
-        hasher.update(b"\0");
+        acc.update(relpath.as_bytes());
+        acc.update(b"\0");
+        acc.update(content);
+        acc.update(b"\0");
     }
-    hasher.finalize_hex()
+    acc.finalize_hex()
 }
 
 /// Canonicalize a JSON value using the JCS-compatible pipeline.

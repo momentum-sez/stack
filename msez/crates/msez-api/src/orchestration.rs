@@ -395,6 +395,38 @@ pub fn orchestrate_entity_creation(
     }
 }
 
+/// Run the full orchestration pipeline for an entity update.
+///
+/// Same pipeline as creation: compliance evaluation → VC issuance →
+/// attestation storage. Updates carry the same regulatory risk as creation
+/// (e.g., changing jurisdiction or beneficial owners triggers sanctions check).
+pub fn orchestrate_entity_update(
+    state: &AppState,
+    entity_id: uuid::Uuid,
+    jurisdiction_id: &str,
+    mass_response: serde_json::Value,
+) -> OrchestrationEnvelope {
+    let entity_id_str = entity_id.to_string();
+
+    let (_tensor, summary) = evaluate_compliance(jurisdiction_id, &entity_id_str, ENTITY_DOMAINS);
+
+    let (credential, attestation_id) = issue_and_store(
+        state,
+        vc_types::FORMATION_COMPLIANCE,
+        jurisdiction_id,
+        &entity_id_str,
+        &entity_id_str,
+        &summary,
+    );
+
+    OrchestrationEnvelope {
+        mass_response,
+        compliance: summary,
+        credential,
+        attestation_id,
+    }
+}
+
 /// Run the full orchestration pipeline for cap table creation.
 pub fn orchestrate_cap_table_creation(
     state: &AppState,
@@ -403,9 +435,10 @@ pub fn orchestrate_cap_table_creation(
 ) -> OrchestrationEnvelope {
     let entity_id_str = entity_id.to_string();
 
-    // Use a default jurisdiction since cap table requests don't carry one.
-    // In production, this would be looked up from the entity's jurisdiction.
-    let jurisdiction_id = "UNKNOWN";
+    // TODO(P1-004): Fetch entity's jurisdiction from Mass organization-info
+    // by entity_id. For now, ownership operations use GLOBAL-scope evaluation
+    // (same as the handler's pre-flight check in mass_proxy.rs).
+    let jurisdiction_id = "GLOBAL";
 
     let (_tensor, summary) =
         evaluate_compliance(jurisdiction_id, &entity_id_str, OWNERSHIP_DOMAINS);

@@ -30,9 +30,16 @@ pub mod identity;
 pub mod ownership;
 pub(crate) mod retry;
 pub mod templating;
+pub mod types;
 
 pub use config::MassApiConfig;
 pub use error::MassApiError;
+pub use types::MassEntityId;
+
+// Re-export msez-core identifier newtypes for callers that need type-safe
+// identifiers when working with Mass API data. Per CLAUDE.md §VIII, this
+// crate depends on msez-core ONLY for these identifier types.
+pub use msez_core::{Cnic, Did, EntityId, JurisdictionId, Ntn};
 
 use std::time::Duration;
 
@@ -56,7 +63,7 @@ impl MassClient {
                 let mut headers = reqwest::header::HeaderMap::new();
                 headers.insert(
                     reqwest::header::AUTHORIZATION,
-                    reqwest::header::HeaderValue::from_str(&format!("Bearer {}", config.api_token))
+                    reqwest::header::HeaderValue::from_str(&format!("Bearer {}", config.api_token.as_str()))
                         .map_err(|_| MassApiError::Config(config::ConfigError::MissingToken))?,
                 );
                 headers

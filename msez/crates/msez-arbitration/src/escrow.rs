@@ -286,6 +286,34 @@ impl EscrowAccount {
         evidence_digest: ContentDigest,
     ) -> Result<(), ArbitrationError> {
         self.check_timeout()?;
+
+        // Validate deposit amount: must be a non-empty, positive decimal.
+        let trimmed = amount.trim();
+        if trimmed.is_empty() {
+            return Err(ArbitrationError::InvalidEscrowOperation {
+                escrow_id: self.id.to_string(),
+                operation: "deposit".to_string(),
+                status: "amount is empty".to_string(),
+            });
+        }
+        match trimmed.parse::<f64>() {
+            Ok(v) if v <= 0.0 || v.is_nan() || v.is_infinite() => {
+                return Err(ArbitrationError::InvalidEscrowOperation {
+                    escrow_id: self.id.to_string(),
+                    operation: "deposit".to_string(),
+                    status: format!("amount must be positive, got {trimmed}"),
+                });
+            }
+            Err(_) => {
+                return Err(ArbitrationError::InvalidEscrowOperation {
+                    escrow_id: self.id.to_string(),
+                    operation: "deposit".to_string(),
+                    status: format!("amount is not a valid number: {trimmed}"),
+                });
+            }
+            _ => {} // positive finite number — valid
+        }
+
         if self.status != EscrowStatus::Pending {
             return Err(ArbitrationError::InvalidEscrowOperation {
                 escrow_id: self.id.to_string(),

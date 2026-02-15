@@ -17,8 +17,8 @@
 //! No other crate may import `sha2` directly. Three entry points are provided:
 //!
 //! - [`sha256_digest()`] — canonical JSON → [`ContentDigest`] (primary path)
-//! - [`Sha256Hasher`] — streaming SHA-256 for domain-separated / multi-part hashing
-//! - [`sha256_raw()`] / [`sha256_hex()`] — single-shot raw byte hashing
+//! - [`Sha256Accumulator`] — streaming SHA-256 for domain-separated / multi-part hashing
+//! - [`sha256_raw()`] — single-shot raw byte hashing (returns hex string)
 //!
 //! ## Spec Reference
 //!
@@ -155,69 +155,105 @@ pub fn sha256_digest(canonical: &CanonicalBytes) -> ContentDigest {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Raw-byte SHA-256 helpers (non-canonical paths)
-// ---------------------------------------------------------------------------
-
-/// A streaming SHA-256 hasher for domain-separated and multi-part hashing.
+/// Incremental SHA-256 accumulator for multi-part digest computation.
 ///
-/// Use this when data is fed incrementally (e.g., pack digest computation,
-/// MMR node hashing, directory walks). For canonical JSON digests, prefer
-/// [`sha256_digest()`] which enforces the `CanonicalBytes` type gate.
+/// Use this for hash computations that combine multiple data chunks
+/// (e.g., domain-prefixed pack digests, directory content hashes, MMR nodes).
+/// All SHA-256 computation in the SEZ Stack must flow through `msez-core`,
+/// either via [`sha256_digest`] for canonicalized structured data or via
+/// this accumulator for multi-part binary data.
 ///
-/// This type centralizes all streaming SHA-256 in `msez-core` so that no
-/// other crate needs to import `sha2` directly.
-pub struct Sha256Hasher {
-    inner: Sha256,
+/// # Example
+///
+/// ```
+/// use msez_core::digest::Sha256Accumulator;
+///
+/// let mut acc = Sha256Accumulator::new();
+/// acc.update(b"prefix\0");
+/// acc.update(b"content");
+/// let hex = acc.finalize_hex();
+/// assert_eq!(hex.len(), 64);
+/// ```
+pub struct Sha256Accumulator {
+    hasher: Sha256,
 }
 
-impl Sha256Hasher {
-    /// Create a new streaming SHA-256 hasher.
+impl Sha256Accumulator {
+    /// Create a new empty accumulator.
     pub fn new() -> Self {
         Self {
-            inner: Sha256::new(),
+            hasher: Sha256::new(),
         }
     }
 
-    /// Feed data into the hasher.
+    /// Feed data into the accumulator.
     pub fn update(&mut self, data: &[u8]) {
-        self.inner.update(data);
+        Digest::update(&mut self.hasher, data);
     }
 
-    /// Finalize and return the 32-byte digest.
-    pub fn finalize(self) -> [u8; 32] {
-        self.inner.finalize().into()
+    /// Consume the accumulator and return a [`ContentDigest`].
+    pub fn finalize(self) -> ContentDigest {
+        let result = self.hasher.finalize();
+        ContentDigest {
+            algorithm: DigestAlgorithm::Sha256,
+            bytes: result.into(),
+        }
     }
 
-    /// Finalize and return the digest as a lowercase hex string.
+    /// Consume the accumulator and return the raw 32-byte digest.
+    ///
+    /// Use this when the consumer needs raw bytes for binary concatenation
+    /// (e.g., MMR node hashing where left || right must be `[u8; 32]` each).
+    /// For most uses, prefer [`finalize`](Self::finalize) or
+    /// [`finalize_hex`](Self::finalize_hex).
+    pub fn finalize_bytes(self) -> [u8; 32] {
+        self.hasher.finalize().into()
+    }
+
+    /// Consume the accumulator and return the hex-encoded digest string.
     pub fn finalize_hex(self) -> String {
-        let bytes: [u8; 32] = self.finalize();
-        bytes.iter().map(|b| format!("{b:02x}")).collect()
+        self.finalize().to_hex()
     }
 }
 
-impl Default for Sha256Hasher {
+impl Default for Sha256Accumulator {
     fn default() -> Self {
         Self::new()
     }
 }
 
-/// Compute SHA-256 of raw bytes, returning the 32-byte digest.
+/// Compute a SHA-256 hex digest of raw bytes.
 ///
-/// Single-shot convenience for non-canonical data (file contents, MMR leaves,
-/// domain-separated byte strings). For canonical JSON, use [`sha256_digest()`].
-pub fn sha256_raw(data: &[u8]) -> [u8; 32] {
-    let mut hasher = Sha256::new();
-    hasher.update(data);
-    hasher.finalize().into()
+/// This is the **Tier 2** digest function for operations that legitimately
+/// hash raw byte streams (file contents, Merkle tree nodes, lockfile data)
+/// rather than serializable domain objects.
+///
+/// ## When to use `sha256_raw` vs `sha256_digest`
+///
+/// | Input type | Function | Example |
+/// |-----------|----------|---------|
+/// | `impl Serialize` (structs, enums, JSON) | [`sha256_digest`] via [`CanonicalBytes`] | Audit events, compliance tensors, VCs |
+/// | Raw `&[u8]` (file contents, concatenations) | `sha256_raw` | Pack file digests, lockfile hashes, MMR nodes |
+///
+/// ## Security Invariant
+///
+/// All SHA-256 in the codebase flows through `msez-core`. No other crate
+/// should directly `use sha2::{Digest, Sha256}`.
+pub fn sha256_raw(data: &[u8]) -> String {
+    let mut acc = Sha256Accumulator::new();
+    acc.update(data);
+    acc.finalize_hex()
 }
 
-/// Compute SHA-256 of raw bytes, returning a lowercase hex string.
+/// Compute SHA-256 of raw bytes, returning the 32-byte digest.
 ///
-/// Single-shot convenience for non-canonical data. For canonical JSON, use
-/// [`sha256_digest()`] which returns a typed [`ContentDigest`].
-pub fn sha256_hex(data: &[u8]) -> String {
-    sha256_raw(data).iter().map(|b| format!("{b:02x}")).collect()
+/// Single-shot convenience for binary hash operations that need raw `[u8; 32]`
+/// (MMR leaf hashing, binary tree concatenation). For hex output, use
+/// [`sha256_raw`]. For canonical JSON digests, use [`sha256_digest`].
+pub fn sha256_bytes(data: &[u8]) -> [u8; 32] {
+    let mut acc = Sha256Accumulator::new();
+    acc.update(data);
+    acc.finalize_bytes()
 }
 
 /// Compute a Poseidon2 content digest from canonical bytes.

@@ -7,10 +7,13 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
-# Internal: identifier newtypes ONLY (per CLAUDE.md §VIII invariant 2).
+# CLAUDE.md §V.2: msez-mass-client may depend on msez-core ONLY for
+# identifier newtypes. Do NOT import SEZ Stack domain logic (tensors,
+# corridors, packs, VCs, etc.) from msez-core.
 msez-core = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
+zeroize = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }

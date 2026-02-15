@@ -149,10 +149,10 @@ pub fn sha256_digest(canonical: &CanonicalBytes) -> ContentDigest {
 /// Incremental SHA-256 accumulator for multi-part digest computation.
 ///
 /// Use this for hash computations that combine multiple data chunks
-/// (e.g., domain-prefixed pack digests, directory content hashes, audit
-/// chain hashes). All SHA-256 computation in the SEZ Stack must flow
-/// through `msez-core`, either via [`sha256_digest`] for canonicalized
-/// structured data or via this accumulator for multi-part binary data.
+/// (e.g., domain-prefixed pack digests, directory content hashes).
+/// All SHA-256 computation in the SEZ Stack must flow through `msez-core`,
+/// either via [`sha256_digest`] for canonicalized structured data or via
+/// this accumulator for multi-part binary data.
 ///
 /// # Example
 ///
@@ -203,12 +203,26 @@ impl Default for Sha256Accumulator {
     }
 }
 
-/// Compute SHA-256 hex digest of raw bytes.
+/// Compute a SHA-256 hex digest of raw bytes.
 ///
-/// For non-serializable binary data (file contents, concatenated hashes).
-/// For structured/serializable data, prefer [`sha256_digest`] with
-/// [`CanonicalBytes`].
-pub fn sha256_raw_hex(data: &[u8]) -> String {
+/// This is the **Tier 2** digest function for operations that legitimately
+/// hash raw byte streams (file contents, Merkle tree nodes, lockfile data)
+/// rather than serializable domain objects.
+///
+/// ## When to use `sha256_raw` vs `sha256_digest`
+///
+/// | Input type | Function | Example |
+/// |-----------|----------|---------|
+/// | `impl Serialize` (structs, enums, JSON) | [`sha256_digest`] via [`CanonicalBytes`] | Audit events, compliance tensors, VCs |
+/// | Raw `&[u8]` (file contents, concatenations) | `sha256_raw` | Pack file digests, lockfile hashes, MMR nodes |
+///
+/// ## Security Invariant
+///
+/// All SHA-256 in the codebase flows through `msez-core`. No other crate
+/// should directly `use sha2::{Digest, Sha256}` for single-shot hashing.
+/// The only exception is streaming/multi-part hashing (e.g., `digest_dir`
+/// in `msez-cli`) where the `sha2` streaming API is needed directly.
+pub fn sha256_raw(data: &[u8]) -> String {
     let mut acc = Sha256Accumulator::new();
     acc.update(data);
     acc.finalize_hex()

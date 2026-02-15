@@ -179,17 +179,17 @@ These findings are from Architecture Audit v6.0. Address in priority order.
 
 | ID | Defect | Location | Status |
 |----|--------|----------|--------|
-| P1-004 | Mass proxy routes need full orchestration on all write paths. GET routes may remain proxies. POST/PUT/DELETE must follow: compliance → Mass API → VC → attestation. | `msez-api/src/routes/mass_proxy.rs` | **RESOLVED** — all mass proxy routes call `evaluate_compliance()`, issue VCs, store attestations; jurisdiction inference added for 23 currencies |
+| P1-004 | ~~Mass proxy routes need full orchestration on all write paths.~~ | `msez-api/src/routes/mass_proxy.rs` | **RESOLVED** — All 5 primitives orchestrated on write paths (compliance → Mass API → VC → attestation). Entity update (`PUT`) now fully orchestrated with jurisdiction inference from existing entity. All write endpoints return `OrchestrationEnvelope`. |
 | P1-005 | Identity primitive split across services. Need aggregation facade that gracefully degrades when dedicated identity-info service is unavailable. | `msez-mass-client/src/identity.rs` | **OPEN** — facade exists but needs error handling for split-service mode |
 | P1-009 | Tax collection pipeline (the 10.3→15% GDP target). Every transaction must generate a tax event, compute withholding, and report to FBR IRIS. | `msez-api/src/routes/tax.rs`, `msez-agentic/src/tax.rs` | **RESOLVED** — `TaxPipeline` in AppState, `WithholdingEngine` with Pakistan rules, FBR IRIS reporting, wired to payment orchestration |
-| P1-010 | CanonicalBytes bypass verification. Audit all crates to confirm no SHA-256 computation outside `msez-core::digest`. | All crates | **RESOLVED** — `Sha256Accumulator` and `sha256_raw_hex` added to `msez-core::digest`; `sha2` dependency removed from `msez-pack`, `msez-api`, `msez-cli`, `msez-zkp`; all SHA-256 now flows through `msez-core` |
+| P1-010 | ~~CanonicalBytes bypass verification.~~ | All crates | **RESOLVED** — Three-tier model: (1) serializable domain objects → `CanonicalBytes::new()` + `sha256_digest()`, (2) raw bytes → `msez_core::sha256_raw()`, (3) streaming multi-part → `Sha256Accumulator`. Audit hash chain routed through CanonicalBytes. `sha2` removed from `msez-api`, `msez-pack`, `msez-cli`, `msez-zkp`, `msez-agentic`, `msez-tensor` deps. Streaming exceptions documented (MMR in `msez-crypto`). |
 
 ### P2 — Code Quality
 
 | ID | Defect | Location | Status |
 |----|--------|----------|--------|
-| P2-002 | `msez-mass-client` does not share identifier newtypes with `msez-core`. EntityId in mass-client is `uuid::Uuid`; in core it's `EntityId(Uuid)`. | `msez-mass-client/Cargo.toml` | **RESOLVED** — `msez-core` dependency added; `EntityId`, `JurisdictionId`, `Ntn`, `Cnic`, `Did` re-exported from `msez-mass-client` |
-| P2-004 | Auth token stored as plain `Option<String>` in AppState. Should use zeroizing wrapper. | `msez-api/src/auth.rs` | **RESOLVED** — `SecretString` newtype with `#[derive(Zeroize, ZeroizeOnDrop)]`, constant-time `PartialEq` via `subtle::ConstantTimeEq`, `Debug`/`Display` redaction |
+| P2-002 | ~~`msez-mass-client` does not share identifier newtypes with `msez-core`.~~ | `msez-mass-client/Cargo.toml` | **RESOLVED** — `msez-core` dependency added per §V.2 (ONLY for identifier newtypes). `types` module re-exports `EntityId`, `JurisdictionId`, `MassEntityId`. Additional re-exports: `Ntn`, `Cnic`, `Did`. |
+| P2-004 | ~~Auth token stored as plain `Option<String>`.~~ | `msez-api/src/auth.rs`, `msez-mass-client/src/config.rs` | **RESOLVED** — `msez-api`: `SecretString` with `#[derive(Zeroize, ZeroizeOnDrop)]`, `[REDACTED]` Debug/Display, constant-time `PartialEq` via `subtle::ConstantTimeEq`. `msez-mass-client`: `api_token` wrapped in `Zeroizing<String>`, Debug already redacts. Full secret lifecycle coverage from env read to process shutdown. |
 
 ### Resolved (Confirmed)
 
@@ -212,7 +212,7 @@ These invariants must hold at all times. Violating any is a blocking code review
 2. **`msez-mass-client` has at most one internal dependency** (`msez-core`, for identifier newtypes only). It must never import SEZ Stack domain logic (tensors, corridors, packs, VCs, etc.).
 3. **No cycles in the dependency graph.**
 4. **`msez-api` is the only crate that composes all others.** No other crate depends on `msez-api`.
-5. **All SHA-256 computation flows through `msez-core::digest`.** Use `sha256_digest(&CanonicalBytes)` for structured data, `Sha256Accumulator` for incremental multi-part digests, or `sha256_raw_hex()` for raw bytes. No crate may use `sha2::Sha256` directly (except `msez-core` and `msez-crypto`). Grep for `sha2::Sha256` — it should appear only in `msez-core/src/canonical.rs` and `msez-core/src/digest.rs`.
+5. **All SHA-256 computation flows through `msez-core::digest`.** Three-tier model: (a) serializable domain objects → `CanonicalBytes::new()` + `sha256_digest()`, (b) raw bytes → `sha256_raw()`, (c) streaming multi-part → `Sha256Accumulator`. Direct `sha2::Sha256` usage outside `msez-core` is permitted ONLY for MMR node hashing in `msez-crypto` (needs raw `[u8; 32]`, not hex). Grep for `sha2::Sha256` — it should appear only in `msez-core/src/canonical.rs`, `msez-core/src/digest.rs`, and `msez-crypto/src/mmr.rs`.
 6. **`ComplianceDomain` is defined once in `msez-core`.** 20 variants. Exhaustive match everywhere. No other crate defines its own domain enum.
 
 **Dependency tree (leaf → root):**

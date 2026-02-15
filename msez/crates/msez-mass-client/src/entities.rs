@@ -296,6 +296,42 @@ impl EntityClient {
             })
     }
 
+    /// Update an organization by ID in Mass.
+    ///
+    /// Calls `PUT {base_url}/organization-info/api/v1/organization/{id}`.
+    pub async fn update(
+        &self,
+        id: Uuid,
+        body: &serde_json::Value,
+    ) -> Result<MassEntity, MassApiError> {
+        let endpoint = format!("PUT /organization/{id}");
+        let url = format!("{}{}/organization/{id}", self.base_url, API_PREFIX);
+
+        let resp = crate::retry::retry_send(|| self.http.put(&url).json(body).send())
+            .await
+            .map_err(|e| MassApiError::Http {
+                endpoint: endpoint.clone(),
+                source: e,
+            })?;
+
+        if !resp.status().is_success() {
+            let status = resp.status().as_u16();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(MassApiError::ApiError {
+                endpoint,
+                status,
+                body,
+            });
+        }
+
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint,
+                source: e,
+            })
+    }
+
     /// Delete an organization by ID.
     ///
     /// Calls `DELETE {base_url}/organization-info/api/v1/organization/{id}`.

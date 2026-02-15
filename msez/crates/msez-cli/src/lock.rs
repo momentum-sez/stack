@@ -320,13 +320,18 @@ fn sha256_file(path: &Path) -> Result<String> {
 }
 
 /// Compute SHA-256 hex digest of raw bytes.
+///
+/// Delegates to [`msez_core::sha256_raw`] — the sole raw-byte SHA-256
+/// implementation per CLAUDE.md §V.5.
 fn sha256_of_bytes(bytes: &[u8]) -> String {
-    msez_core::digest::sha256_raw_hex(bytes)
+    msez_core::sha256_raw(bytes)
 }
 
 /// Compute a deterministic digest over a directory's contents.
 ///
 /// Walks all files in sorted order, hashing their relative paths and contents.
+/// Uses raw `sha2` streaming API since this is a multi-part hash over file
+/// paths and contents — not a canonical domain object.
 fn digest_dir(dir: &Path) -> Result<String> {
     let mut acc = Sha256Accumulator::new();
     let mut paths: Vec<PathBuf> = Vec::new();

@@ -164,7 +164,7 @@ impl ProofSystem for MockProofSystem {
         }
 
         // Recompute: SHA256(public_inputs).
-        let expected_hex = msez_core::digest::sha256_raw_hex(public_inputs);
+        let expected_hex = msez_core::sha256_raw(public_inputs);
 
         Ok(proof.proof_hex == expected_hex)
     }

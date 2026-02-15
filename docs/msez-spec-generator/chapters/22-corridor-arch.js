@@ -1,6 +1,7 @@
 const {
   partHeading, chapterHeading, h2,
-  p, codeBlock, spacer
+  p, p_runs, bold,
+  codeBlock, table, spacer
 } = require("../lib/primitives");
 
 module.exports = function build_chapter22() {
@@ -57,10 +58,55 @@ module.exports = function build_chapter22() {
 
     // --- 22.3 State Synchronization ---
     h2("22.3 State Synchronization"),
-    p("Vector clocks track causality across jurisdictions. Each state update increments the local clock component. Merkle proofs enable efficient delta synchronization. Conflict resolution follows deterministic rules specified in the corridor manifest."),
+    p("Vector clocks track causality across jurisdictions. Each state update increments the local clock component and appends the update to the corridor's receipt chain. Merkle proofs enable efficient delta synchronization: rather than transmitting the full corridor state, participants exchange only the receipts added since the last synchronization point, with Merkle inclusion proofs against the receipt chain root."),
+    p("Conflict resolution follows deterministic rules specified in the corridor manifest. When concurrent updates from different jurisdictions create divergent receipt chains, the conflict resolver applies a three-step process: detect (identify the fork point via vector clock comparison), classify (determine whether the conflict is semantic or merely ordering-related), and resolve (apply the corridor-specific merge strategy: last-writer-wins for idempotent updates, or escalate to governance for mutually exclusive state changes)."),
 
     // --- 22.4 Lifecycle State Machine ---
     h2("22.4 Lifecycle State Machine"),
-    p("Corridors operate within a lifecycle state machine: DRAFT \u2192 PENDING \u2192 ACTIVE, with branches to HALTED and SUSPENDED, ultimately leading to TERMINATED. Evidence-gated transitions require specific credentials."),
+    p("Corridors operate within a lifecycle state machine with six states and evidence-gated transitions:"),
+    table(
+      ["State", "Description", "Allowed Transitions"],
+      [
+        ["DRAFT", "Corridor proposal created, terms under negotiation", "PENDING (on mutual agreement)"],
+        ["PENDING", "Terms agreed, awaiting technical activation and watcher registration", "ACTIVE (on activation VC), TERMINATED (on rejection)"],
+        ["ACTIVE", "Fully operational, processing transactions and synchronizing state", "HALTED (on compliance failure), SUSPENDED (on governance action), TERMINATED (on expiry/mutual termination)"],
+        ["HALTED", "Temporarily frozen due to compliance tensor degradation", "ACTIVE (on compliance restoration), TERMINATED (on timeout)"],
+        ["SUSPENDED", "Governance-initiated pause for review or amendment", "ACTIVE (on governance resolution), TERMINATED (on dissolution)"],
+        ["TERMINATED", "Permanently closed, all pending transactions settled, final netting computed", "Terminal state (no transitions)"],
+      ],
+      [1800, 4200, 3360]
+    ),
+    spacer(),
+    ...codeBlock(
+      "#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]\n" +
+      "pub enum CorridorState {\n" +
+      "    Draft,\n" +
+      "    Pending,\n" +
+      "    Active,\n" +
+      "    Halted,\n" +
+      "    Suspended,\n" +
+      "    Terminated,\n" +
+      "}\n" +
+      "\n" +
+      "impl CorridorState {\n" +
+      "    pub fn valid_transitions(&self) -> Vec<CorridorState> {\n" +
+      "        match self {\n" +
+      "            Self::Draft => vec![Self::Pending],\n" +
+      "            Self::Pending => vec![Self::Active, Self::Terminated],\n" +
+      "            Self::Active => vec![Self::Halted, Self::Suspended, Self::Terminated],\n" +
+      "            Self::Halted => vec![Self::Active, Self::Terminated],\n" +
+      "            Self::Suspended => vec![Self::Active, Self::Terminated],\n" +
+      "            Self::Terminated => vec![],\n" +
+      "        }\n" +
+      "    }\n" +
+      "}"
+    ),
+    spacer(),
+
+    // --- 22.5 Corridor Topologies ---
+    h2("22.5 Corridor Topologies"),
+    p_runs([bold("Hub-and-Spoke."), " A central jurisdiction (hub) maintains bilateral corridors with multiple peripheral jurisdictions (spokes). Cross-spoke transfers route through the hub, which handles compliance verification and netting. This topology suits deployments where one jurisdiction serves as a financial center (e.g., UAE/ADGM as hub for PAK, KSA, and other GCC spokes). The hub bears higher operational cost but simplifies spoke compliance requirements."]),
+    p_runs([bold("Mesh."), " Every jurisdiction maintains direct bilateral corridors with every other jurisdiction. Cross-jurisdiction transfers are direct, eliminating hub latency and single-point-of-failure risk. This topology suits mature deployments with high bilateral trade volumes between all participants. The compliance cost is higher (each jurisdiction evaluates tensors for all counterparties) but settlement latency is minimized."]),
+    p_runs([bold("Hybrid."), " Combines hub-and-spoke for low-volume corridors with direct bilateral corridors for high-volume pairs. The PAK\u2194UAE corridor operates as a direct bilateral due to $10.1B annual volume, while lower-volume corridors route through a hub. The PathRouter automatically selects the optimal path based on current topology, fees, and latency."]),
   ];
 };

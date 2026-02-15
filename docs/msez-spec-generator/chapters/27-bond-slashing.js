@@ -12,17 +12,22 @@ module.exports = function build_chapter27() {
     ...codeBlock(
       "/// Bond backing a watcher's attestation authority.\n" +
       "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +
-      "pub struct Bond {\n" +
+      "pub struct WatcherBond {\n" +
+      "    pub bond_id: BondId,\n" +
       "    pub watcher_id: WatcherId,\n" +
       "    pub amount: u128,\n" +
       "    pub currency: CurrencyCode,\n" +
       "    pub locked_at: DateTime<Utc>,\n" +
       "    pub unlock_period: Duration,\n" +
       "    pub status: BondStatus,\n" +
+      "    pub attestation_limit: u128,\n" +
+      "    pub jurisdictions: Vec<JurisdictionId>,\n" +
+      "    pub domains: Vec<ComplianceDomain>,\n" +
       "    pub slashing_history: Vec<SlashingEvent>,\n" +
+      "    pub last_topped_up: Option<DateTime<Utc>>,\n" +
       "}"
     ),
-    p("Bond amount determines the maximum value a watcher can attest to, typically 10x the bond amount."),
+    p("The WatcherBond contains twelve fields: bond_id (unique bond identifier), watcher_id (owning watcher), amount (staked collateral in base units), currency (bond denomination), locked_at (bond creation timestamp), unlock_period (minimum lock duration before withdrawal), status (Active, Partially_Slashed, Fully_Slashed, Unbonding, Withdrawn), attestation_limit (maximum attestable value, typically 10x bond amount), jurisdictions (authorized jurisdiction scope), domains (authorized compliance domain scope), slashing_history (ordered record of all slashing events against this bond), and last_topped_up (timestamp of most recent bond increase)."),
 
     // --- 27.2 Slashing Conditions ---
     h2("27.2 Slashing Conditions"),

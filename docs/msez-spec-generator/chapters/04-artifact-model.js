@@ -74,6 +74,42 @@ module.exports = function build_chapter04() {
       "  --out /tmp/witness.attestation.vc.json"
     ),
 
+    // --- 4.4 Content-Addressed Storage ---
+    h2("4.4 Content-Addressed Storage"),
+    p("All generated artifacts are stored in a content-addressed directory structure under dist/artifacts/. The directory layout mirrors artifact types and uses two-character prefix sharding to prevent filesystem bottlenecks at scale."),
+    ...codeBlock(
+      "dist/artifacts/\n" +
+      "\u251c\u2500\u2500 lawpacks/\n" +
+      "\u2502   \u251c\u2500\u2500 pk-ito-2001/       # Pakistan Income Tax Ordinance\n" +
+      "\u2502   \u251c\u2500\u2500 pk-sta-1990/       # Pakistan Sales Tax Act\n" +
+      "\u2502   \u2514\u2500\u2500 ae-adgm-fsmr/      # ADGM Financial Services Regulation\n" +
+      "\u251c\u2500\u2500 regpacks/\n" +
+      "\u2502   \u251c\u2500\u2500 pk-fbr-wht/        # FBR withholding tax tables\n" +
+      "\u2502   \u251c\u2500\u2500 pk-sbp-rates/      # SBP rate tables\n" +
+      "\u2502   \u2514\u2500\u2500 sanctions/         # OFAC, EU, UN consolidated\n" +
+      "\u251c\u2500\u2500 licensepacks/\n" +
+      "\u2502   \u251c\u2500\u2500 pk-secp/           # SECP license registry\n" +
+      "\u2502   \u251c\u2500\u2500 pk-boi/            # BOI license registry\n" +
+      "\u2502   \u2514\u2500\u2500 ae-adgm-fsp/       # ADGM FSP license registry\n" +
+      "\u251c\u2500\u2500 schemas/\n" +
+      "\u2502   \u251c\u2500\u2500 lawpack.schema.json\n" +
+      "\u2502   \u251c\u2500\u2500 regpack.schema.json\n" +
+      "\u2502   \u2514\u2500\u2500 licensepack.schema.json\n" +
+      "\u251c\u2500\u2500 credentials/\n" +
+      "\u2502   \u251c\u2500\u2500 formation/         # Formation VCs\n" +
+      "\u2502   \u251c\u2500\u2500 compliance/        # Compliance attestation VCs\n" +
+      "\u2502   \u2514\u2500\u2500 corridor/          # Corridor definition VCs\n" +
+      "\u251c\u2500\u2500 proofs/\n" +
+      "\u2502   \u251c\u2500\u2500 stark/             # Plonky3 STARK proofs\n" +
+      "\u2502   \u2514\u2500\u2500 groth16/           # Groth16 wrapper proofs\n" +
+      "\u2514\u2500\u2500 receipts/\n" +
+      "    \u251c\u2500\u2500 aa/                # Sharded by digest prefix\n" +
+      "    \u251c\u2500\u2500 ab/\n" +
+      "    \u2514\u2500\u2500 .../"
+    ),
+    spacer(),
+    p("Each artifact file is named by its canonical SHA-256 digest (hex-encoded). The two-character prefix directory (e.g., aa/, ab/) is derived from the first two characters of the digest, distributing artifacts evenly across subdirectories. This structure supports efficient lookup, deduplication, and garbage collection."),
+
     pageBreak()
   ];
 };

@@ -64,6 +64,13 @@ module.exports = function build_chapter10() {
         ["DATA_PROTECTION", "Data protection and privacy including cross-border transfer restrictions"],
         ["ARBITRATION", "Dispute resolution including arbitration, mediation, and enforcement"],
         ["LICENSING", "Licensing requirements including permits, registrations, and renewals"],
+        ["INSURANCE", "Insurance regulation including mandatory coverage, reinsurance, and claims handling"],
+        ["ENVIRONMENTAL", "Environmental compliance including emissions, waste management, and impact assessments"],
+        ["LABOR", "Labor law including employment contracts, workplace safety, and social security contributions"],
+        ["INTELLECTUAL_PROPERTY", "IP protection including patents, trademarks, copyrights, and trade secrets"],
+        ["IMMIGRATION", "Immigration and work permit requirements for foreign nationals and cross-border personnel"],
+        ["REAL_ESTATE", "Property law including ownership restrictions, land registration, and transfer taxes"],
+        ["HEALTH_SAFETY", "Health and safety regulation including occupational standards, inspections, and certifications"],
       ],
       [2400, 6960]
     ),

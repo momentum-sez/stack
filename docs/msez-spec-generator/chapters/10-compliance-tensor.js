@@ -22,23 +22,34 @@ module.exports = function build_chapter10() {
       "pub enum ComplianceState {\n" +
       "    Unknown,       // No attestation\n" +
       "    NonCompliant,  // Attested non-compliant\n" +
+      "    Expired,       // Previously compliant, attestation lapsed\n" +
+      "    Suspended,     // Compliance temporarily revoked pending review\n" +
       "    Pending,       // Evaluation in progress\n" +
       "    Compliant,     // Attested compliant\n" +
       "    Exempt,        // Jurisdiction exempts this domain\n" +
       "}\n" +
       "\n" +
-      "/// Partial order: Unknown < NonCompliant < Pending < Compliant, Exempt\n" +
+      "/// Lattice order: NonCompliant < Expired < Suspended < Unknown < Pending\n" +
+      "///                < Compliant, Exempt (incomparable top pair)\n" +
       "impl PartialOrd for ComplianceState {\n" +
       "    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {\n" +
       "        use ComplianceState::*;\n" +
+      "        fn rank(s: &ComplianceState) -> Option<u8> {\n" +
+      "            match s {\n" +
+      "                NonCompliant => Some(0),\n" +
+      "                Expired      => Some(1),\n" +
+      "                Suspended    => Some(2),\n" +
+      "                Unknown      => Some(3),\n" +
+      "                Pending      => Some(4),\n" +
+      "                Compliant    => Some(5),\n" +
+      "                Exempt       => Some(5), // Same rank: incomparable\n" +
+      "            }\n" +
+      "        }\n" +
       "        match (self, other) {\n" +
       "            (a, b) if a == b => Some(std::cmp::Ordering::Equal),\n" +
-      "            (Unknown, _) => Some(std::cmp::Ordering::Less),\n" +
-      "            (_, Unknown) => Some(std::cmp::Ordering::Greater),\n" +
-      "            (NonCompliant, Pending | Compliant | Exempt) => Some(std::cmp::Ordering::Less),\n" +
-      "            (Pending, Compliant | Exempt) => Some(std::cmp::Ordering::Less),\n" +
+      "            // Compliant and Exempt are incomparable\n" +
       "            (Compliant, Exempt) | (Exempt, Compliant) => None,\n" +
-      "            _ => other.partial_cmp(self).map(|o| o.reverse()),\n" +
+      "            _ => rank(self)?.partial_cmp(&rank(other)?),\n" +
       "        }\n" +
       "    }\n" +
       "}"
@@ -64,6 +75,13 @@ module.exports = function build_chapter10() {
         ["DATA_PROTECTION", "Data protection and privacy including cross-border transfer restrictions"],
         ["ARBITRATION", "Dispute resolution including arbitration, mediation, and enforcement"],
         ["LICENSING", "Licensing requirements including permits, registrations, and renewals"],
+        ["INSURANCE", "Insurance regulation including mandatory coverage, reinsurance, and solvency requirements"],
+        ["ENVIRONMENTAL", "Environmental compliance including emissions, waste management, and impact assessments"],
+        ["LABOR", "Labor law including employment contracts, workplace safety, and collective bargaining"],
+        ["INTELLECTUAL_PROPERTY", "Intellectual property including patents, trademarks, copyrights, and trade secrets"],
+        ["IMMIGRATION", "Immigration requirements including work permits, visas, and foreign worker quotas"],
+        ["REAL_ESTATE", "Real estate regulation including land ownership, zoning, and foreign ownership restrictions"],
+        ["HEALTH_SAFETY", "Health and safety regulation including occupational hazards, public health, and product safety"],
       ],
       [2400, 6960]
     ),
@@ -71,7 +89,60 @@ module.exports = function build_chapter10() {
 
     // --- 10.3 Compliance States ---
     h2("10.3 Compliance States"),
-    p("Compliance states follow a strict lattice: NON_COMPLIANT < EXPIRED < UNKNOWN < PENDING < EXEMPT < COMPLIANT. Meet (\u2227): pessimistic composition returning the lower state. Join (\u2228): optimistic composition returning the higher state. NON_COMPLIANT is the absorbing element under meet. EXPIRED is a temporal state that transitions to NON_COMPLIANT after a grace period."),
+    p("The seven compliance states form a bounded lattice with partial order:"),
+    p("NON_COMPLIANT < EXPIRED < SUSPENDED < UNKNOWN < PENDING < {COMPLIANT, EXEMPT}"),
+    p_runs([
+      bold("NON_COMPLIANT"), " is the bottom element and absorbing element under meet. ",
+      bold("COMPLIANT"), " and ", bold("EXEMPT"), " are incomparable top elements \u2014 neither dominates the other. ",
+      bold("EXPIRED"), " represents a previously compliant state whose attestation has lapsed; it transitions to NON_COMPLIANT after a configurable grace period. ",
+      bold("SUSPENDED"), " represents compliance temporarily revoked pending regulatory review; it ranks above EXPIRED because the underlying attestation still exists and may be reinstated. ",
+      bold("UNKNOWN"), " is the default state when no attestation has been submitted. ",
+      bold("PENDING"), " indicates an evaluation is in progress and an attestation is expected. ",
+      "Meet (\u2227) returns the pessimistic (lower) state of two operands. Join (\u2228) returns the optimistic (higher) state. For the incomparable pair {COMPLIANT, EXEMPT}, meet yields PENDING and join yields EXEMPT."
+    ]),
+    spacer(),
+
+    // --- 10.3.1 Lattice Operations ---
+    h2("10.3.1 Lattice Operations: Meet and Join"),
+    p("The meet (\u2227) operation computes the greatest lower bound (pessimistic composition). When composing compliance across multiple domains or jurisdictions, meet ensures the result reflects the weakest link. The join (\u2228) operation computes the least upper bound (optimistic composition), used when any single passing domain suffices."),
+    definition(
+      "Definition 10.6 (Meet / Greatest Lower Bound).",
+      "For states a, b: a \u2227 b = max(s) such that s \u2264 a and s \u2264 b. If a and b are comparable, meet is min(a, b). For the incomparable pair {Compliant, Exempt}, meet(Compliant, Exempt) = Pending."
+    ),
+    definition(
+      "Definition 10.7 (Join / Least Upper Bound).",
+      "For states a, b: a \u2228 b = min(s) such that s \u2265 a and s \u2265 b. If a and b are comparable, join is max(a, b). For the incomparable pair {Compliant, Exempt}, join(Compliant, Exempt) = Exempt."
+    ),
+    p("The following table shows meet (\u2227) results for all state pairs. The table is symmetric: meet(a, b) = meet(b, a)."),
+    table(
+      ["meet (\u2227)", "NonCompl", "Expired", "Suspended", "Unknown", "Pending", "Compliant", "Exempt"],
+      [
+        ["NonCompliant", "NonCompl", "NonCompl", "NonCompl", "NonCompl", "NonCompl", "NonCompl", "NonCompl"],
+        ["Expired",      "NonCompl", "Expired",  "Expired",  "Expired",  "Expired",  "Expired",  "Expired"],
+        ["Suspended",    "NonCompl", "Expired",  "Suspended","Suspended","Suspended","Suspended","Suspended"],
+        ["Unknown",      "NonCompl", "Expired",  "Suspended","Unknown",  "Unknown",  "Unknown",  "Unknown"],
+        ["Pending",      "NonCompl", "Expired",  "Suspended","Unknown",  "Pending",  "Pending",  "Pending"],
+        ["Compliant",    "NonCompl", "Expired",  "Suspended","Unknown",  "Pending",  "Compliant","Pending"],
+        ["Exempt",       "NonCompl", "Expired",  "Suspended","Unknown",  "Pending",  "Pending",  "Exempt"],
+      ],
+      [1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170]
+    ),
+    spacer(),
+    p("The following table shows join (\u2228) results for all state pairs. The table is symmetric: join(a, b) = join(b, a)."),
+    table(
+      ["join (\u2228)", "NonCompl", "Expired", "Suspended", "Unknown", "Pending", "Compliant", "Exempt"],
+      [
+        ["NonCompliant", "NonCompl", "Expired",  "Suspended","Unknown",  "Pending",  "Compliant","Exempt"],
+        ["Expired",      "Expired",  "Expired",  "Suspended","Unknown",  "Pending",  "Compliant","Exempt"],
+        ["Suspended",    "Suspended","Suspended", "Suspended","Unknown",  "Pending",  "Compliant","Exempt"],
+        ["Unknown",      "Unknown",  "Unknown",  "Unknown",  "Unknown",  "Pending",  "Compliant","Exempt"],
+        ["Pending",      "Pending",  "Pending",  "Pending",  "Pending",  "Pending",  "Compliant","Exempt"],
+        ["Compliant",    "Compliant","Compliant", "Compliant","Compliant","Compliant","Compliant","Exempt"],
+        ["Exempt",       "Exempt",   "Exempt",   "Exempt",   "Exempt",   "Exempt",   "Exempt",  "Exempt"],
+      ],
+      [1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170]
+    ),
+    spacer(),
 
     // --- 10.4 Tensor Operations ---
     h2("10.4 Tensor Operations"),

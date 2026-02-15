@@ -74,6 +74,41 @@ module.exports = function build_chapter04() {
       "  --out /tmp/witness.attestation.vc.json"
     ),
 
+    spacer(),
+
+    // --- 4.4 Content-Addressed Storage Layout ---
+    h2("4.4 Content-Addressed Storage Layout"),
+    p("Artifacts are organized on disk under a content-addressed storage (CAS) directory tree. The root of the tree is dist/artifacts/, with subdirectories for each artifact type. Within each subdirectory, artifacts are stored by their canonical identifier (slug or digest). Every artifact directory contains a manifest (manifest.json), the artifact payload, and a precomputed digest file (digest.sha256) enabling offline integrity verification without re-parsing the payload."),
+    ...codeBlock(
+      "dist/artifacts/\n" +
+      "\u251C\u2500\u2500 lawpacks/\n" +
+      "\u2502   \u251C\u2500\u2500 pk-ito-2001/\n" +
+      "\u2502   \u2502   \u251C\u2500\u2500 manifest.json\n" +
+      "\u2502   \u2502   \u251C\u2500\u2500 body.akn.xml\n" +
+      "\u2502   \u2502   \u2514\u2500\u2500 digest.sha256\n" +
+      "\u2502   \u2514\u2500\u2500 pk-sta-1990/\n" +
+      "\u251C\u2500\u2500 regpacks/\n" +
+      "\u2502   \u251C\u2500\u2500 pk-fbr-wht/\n" +
+      "\u2502   \u2514\u2500\u2500 pk-sbp-rates/\n" +
+      "\u251C\u2500\u2500 licensepacks/\n" +
+      "\u2502   \u251C\u2500\u2500 pk-secp/\n" +
+      "\u2502   \u2514\u2500\u2500 pk-boi/\n" +
+      "\u251C\u2500\u2500 credentials/\n" +
+      "\u251C\u2500\u2500 receipts/\n" +
+      "\u2514\u2500\u2500 proofs/"
+    ),
+    p("The manifest.json in each artifact directory records the artifact type, canonical digest, creation timestamp, authoring identity, and dependency references. The digest.sha256 file contains the hex-encoded SHA-256 digest of the canonical serialization, enabling quick integrity checks via standard tooling (e.g., sha256sum --check). CLI commands for CAS operations:"),
+    ...codeBlock(
+      "# List all artifacts in the CAS by type\n" +
+      "msez artifact list --type lawpack\n" +
+      "\n" +
+      "# Verify integrity of all artifacts in the CAS tree\n" +
+      "msez artifact verify --all --strict\n" +
+      "\n" +
+      "# Import an artifact into the CAS from an external source\n" +
+      "msez artifact import ./pk-ito-2001.zip --type lawpack"
+    ),
+
     pageBreak()
   ];
 };

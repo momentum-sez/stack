@@ -200,13 +200,17 @@ mod tests {
             migration_id: [0x03; 32],
             final_state_commitment: [0x04; 32],
             phase_evidence: vec![
-                [0x10; 32], [0x20; 32], [0x30; 32], [0x40; 32],
-                [0x50; 32], [0x60; 32], [0x70; 32], [0x80; 32],
+                [0x10; 32], [0x20; 32], [0x30; 32], [0x40; 32], [0x50; 32], [0x60; 32], [0x70; 32],
+                [0x80; 32],
             ],
             transition_timestamps: vec![1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000],
             approval_signatures: vec![vec![0xaa; 64], vec![0xbb; 64]],
         };
-        assert_eq!(circuit.phase_evidence.len(), 8, "All 8 phases must have evidence");
+        assert_eq!(
+            circuit.phase_evidence.len(),
+            8,
+            "All 8 phases must have evidence"
+        );
         assert_eq!(circuit.transition_timestamps.len(), 8);
         assert_eq!(circuit.approval_signatures.len(), 2);
     }
@@ -224,8 +228,14 @@ mod tests {
         };
         let json = serde_json::to_string(&circuit).unwrap();
         let deserialized: MigrationEvidenceCircuit = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.source_jurisdiction, circuit.source_jurisdiction);
-        assert_eq!(deserialized.target_jurisdiction, circuit.target_jurisdiction);
+        assert_eq!(
+            deserialized.source_jurisdiction,
+            circuit.source_jurisdiction
+        );
+        assert_eq!(
+            deserialized.target_jurisdiction,
+            circuit.target_jurisdiction
+        );
         assert_eq!(deserialized.migration_id, circuit.migration_id);
     }
 
@@ -274,9 +284,7 @@ mod tests {
                 evidence_hash: [(i + 0x10) as u8; 32],
             })
             .collect();
-        let proofs: Vec<Vec<[u8; 32]>> = (0..5)
-            .map(|_| vec![[0x33; 32], [0x44; 32]])
-            .collect();
+        let proofs: Vec<Vec<[u8; 32]>> = (0..5).map(|_| vec![[0x33; 32], [0x44; 32]]).collect();
         let circuit = OwnershipChainCircuit {
             asset_digest: [0xab; 32],
             current_owner_commitment: [0xcd; 32],

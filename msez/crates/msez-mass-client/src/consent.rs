@@ -101,10 +101,7 @@ impl ConsentClient {
     /// Create a consent request.
     ///
     /// Calls `POST {base_url}/consent-info/consents`.
-    pub async fn create(
-        &self,
-        req: &CreateConsentRequest,
-    ) -> Result<MassConsent, MassApiError> {
+    pub async fn create(&self, req: &CreateConsentRequest) -> Result<MassConsent, MassApiError> {
         let endpoint = "POST /consents";
         let url = format!("{}consent-info/consents", self.base_url);
 
@@ -125,10 +122,12 @@ impl ConsentClient {
             });
         }
 
-        resp.json().await.map_err(|e| MassApiError::Deserialization {
-            endpoint: endpoint.into(),
-            source: e,
-        })
+        resp.json()
+            .await
+            .map_err(|e| MassApiError::Deserialization {
+                endpoint: endpoint.into(),
+                source: e,
+            })
     }
 
     /// Get a consent request by ID.

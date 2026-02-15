@@ -320,12 +320,9 @@ async fn transition_corridor(
     let req = extract_validated_json(body)?;
 
     // Parse the target state.
-    let target: DynCorridorState = serde_json::from_value(serde_json::Value::String(
-        req.target_state.clone(),
-    ))
-    .map_err(|_| {
-        AppError::Validation(format!("unknown state: '{}'", req.target_state))
-    })?;
+    let target: DynCorridorState =
+        serde_json::from_value(serde_json::Value::String(req.target_state.clone()))
+            .map_err(|_| AppError::Validation(format!("unknown state: '{}'", req.target_state)))?;
 
     // Parse and validate evidence digest upfront (before acquiring the lock).
     let evidence_digest = if let Some(ref hex) = req.evidence_digest {
@@ -727,10 +724,7 @@ mod tests {
             ruleset_digest_set: vec![],
         };
         let err = req.validate().unwrap_err();
-        assert!(
-            err.contains("null"),
-            "error should mention null: {err}"
-        );
+        assert!(err.contains("null"), "error should mention null: {err}");
     }
 
     // ── Router construction ───────────────────────────────────────
@@ -960,8 +954,14 @@ mod tests {
         let transitioned: CorridorRecord = body_json(transition_resp).await;
         assert_eq!(transitioned.state, DynCorridorState::Pending);
         assert_eq!(transitioned.transition_log.len(), 1);
-        assert_eq!(transitioned.transition_log[0].from_state, DynCorridorState::Draft);
-        assert_eq!(transitioned.transition_log[0].to_state, DynCorridorState::Pending);
+        assert_eq!(
+            transitioned.transition_log[0].from_state,
+            DynCorridorState::Draft
+        );
+        assert_eq!(
+            transitioned.transition_log[0].to_state,
+            DynCorridorState::Pending
+        );
         assert!(
             transitioned.transition_log[0].evidence_digest.is_some(),
             "transition to PENDING should carry evidence digest"
@@ -980,8 +980,14 @@ mod tests {
         let transitioned2: CorridorRecord = body_json(transition_resp2).await;
         assert_eq!(transitioned2.state, DynCorridorState::Active);
         assert_eq!(transitioned2.transition_log.len(), 2);
-        assert_eq!(transitioned2.transition_log[1].from_state, DynCorridorState::Pending);
-        assert_eq!(transitioned2.transition_log[1].to_state, DynCorridorState::Active);
+        assert_eq!(
+            transitioned2.transition_log[1].from_state,
+            DynCorridorState::Pending
+        );
+        assert_eq!(
+            transitioned2.transition_log[1].to_state,
+            DynCorridorState::Active
+        );
         assert!(transitioned2.transition_log[1].evidence_digest.is_none());
     }
 

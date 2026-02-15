@@ -40,9 +40,7 @@ use msez_corridor::swift::SettlementInstruction;
 // msez-vc types
 // =========================================================================
 
-use msez_vc::credential::{
-    ContextValue, CredentialTypeValue, ProofValue, VerifiableCredential,
-};
+use msez_vc::credential::{ContextValue, CredentialTypeValue, ProofValue, VerifiableCredential};
 use msez_vc::proof::{Proof, ProofPurpose, ProofType};
 
 // =========================================================================
@@ -50,10 +48,10 @@ use msez_vc::proof::{Proof, ProofPurpose, ProofType};
 // =========================================================================
 
 use msez_arbitration::dispute::{DisputeId, DisputeState, DisputeType};
+use msez_arbitration::enforcement::{EnforcementOrderId, EnforcementReceiptId, EnforcementStatus};
 use msez_arbitration::escrow::{
     EscrowId, EscrowStatus, EscrowType, ReleaseConditionType, TransactionType,
 };
-use msez_arbitration::enforcement::{EnforcementOrderId, EnforcementReceiptId, EnforcementStatus};
 
 // =========================================================================
 // msez-agentic types
@@ -192,8 +190,7 @@ fn serde_rt_entity_lifecycle_state_all_variants() {
     ];
     for state in &states {
         let json = serde_json::to_string(state).expect("serialize");
-        let recovered: EntityLifecycleState =
-            serde_json::from_str(&json).expect("deserialize");
+        let recovered: EntityLifecycleState = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(*state, recovered);
     }
 }
@@ -495,10 +492,7 @@ fn serde_rt_proof() {
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: Proof = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(recovered.proof_type, ProofType::Ed25519Signature2020);
-    assert_eq!(
-        recovered.verification_method,
-        "did:key:z6MkTest#key-1"
-    );
+    assert_eq!(recovered.verification_method, "did:key:z6MkTest#key-1");
     assert_eq!(recovered.proof_value, "aa".repeat(64));
     // Verify W3C field names are used in JSON
     assert!(json.contains("\"type\""));
@@ -524,8 +518,7 @@ fn serde_rt_verifiable_credential_unsigned() {
         proof: ProofValue::default(),
     };
     let json = serde_json::to_string(&original).expect("serialize");
-    let recovered: VerifiableCredential =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: VerifiableCredential = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(recovered.issuer, original.issuer);
     assert_eq!(recovered.id, original.id);
     // Verify W3C field naming in JSON
@@ -553,8 +546,7 @@ fn serde_rt_verifiable_credential_with_expiration() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     assert!(json.contains("\"expirationDate\""));
-    let recovered: VerifiableCredential =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: VerifiableCredential = serde_json::from_str(&json).expect("deserialize");
     assert!(recovered.expiration_date.is_some());
 }
 
@@ -576,8 +568,7 @@ fn serde_rt_verifiable_credential_optional_id_absent() {
         !json.contains("\"id\""),
         "None id should be skipped: {json}"
     );
-    let recovered: VerifiableCredential =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: VerifiableCredential = serde_json::from_str(&json).expect("deserialize");
     assert!(recovered.id.is_none());
 }
 
@@ -709,8 +700,7 @@ fn serde_rt_release_condition_type_all_variants() {
     ];
     for rct in &types {
         let json = serde_json::to_string(rct).expect("serialize");
-        let recovered: ReleaseConditionType =
-            serde_json::from_str(&json).expect("deserialize");
+        let recovered: ReleaseConditionType = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(*rct, recovered);
     }
 }
@@ -743,8 +733,7 @@ fn serde_rt_enforcement_order_id() {
 fn serde_rt_enforcement_receipt_id() {
     let original = EnforcementReceiptId::new();
     let json = serde_json::to_string(&original).expect("serialize");
-    let recovered: EnforcementReceiptId =
-        serde_json::from_str(&json).expect("deserialize");
+    let recovered: EnforcementReceiptId = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(original, recovered);
 }
 
@@ -759,8 +748,7 @@ fn serde_rt_enforcement_status_all_variants() {
     ];
     for es in &statuses {
         let json = serde_json::to_string(es).expect("serialize");
-        let recovered: EnforcementStatus =
-            serde_json::from_str(&json).expect("deserialize");
+        let recovered: EnforcementStatus = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(*es, recovered);
     }
 }
@@ -831,8 +819,7 @@ fn serde_rt_authorization_requirement_all_variants() {
     ];
     for ar in &reqs {
         let json = serde_json::to_string(ar).expect("serialize");
-        let recovered: AuthorizationRequirement =
-            serde_json::from_str(&json).expect("deserialize");
+        let recovered: AuthorizationRequirement = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(*ar, recovered);
     }
 }
@@ -1024,7 +1011,10 @@ fn serde_rt_did_rejects_invalid() {
     // BUG-013 RESOLVED: Custom Deserialize validates via Did::new().
     let invalid_json = "\"not-a-did\"";
     let result: Result<msez_core::Did, _> = serde_json::from_str(invalid_json);
-    assert!(result.is_err(), "invalid DID must be rejected at deserialization");
+    assert!(
+        result.is_err(),
+        "invalid DID must be rejected at deserialization"
+    );
 }
 
 #[test]
@@ -1032,7 +1022,10 @@ fn serde_rt_ntn_rejects_invalid() {
     // BUG-014 RESOLVED: Custom Deserialize validates via Ntn::new().
     let invalid_json = "\"12345\""; // Only 5 digits, should be 7
     let result: Result<msez_core::Ntn, _> = serde_json::from_str(invalid_json);
-    assert!(result.is_err(), "invalid NTN must be rejected at deserialization");
+    assert!(
+        result.is_err(),
+        "invalid NTN must be rejected at deserialization"
+    );
 }
 
 #[test]
@@ -1040,7 +1033,10 @@ fn serde_rt_cnic_rejects_invalid() {
     // BUG-015 RESOLVED: Custom Deserialize validates via Cnic::new().
     let invalid_json = "\"123\""; // Only 3 digits, should be 13
     let result: Result<msez_core::Cnic, _> = serde_json::from_str(invalid_json);
-    assert!(result.is_err(), "invalid CNIC must be rejected at deserialization");
+    assert!(
+        result.is_err(),
+        "invalid CNIC must be rejected at deserialization"
+    );
 }
 
 #[test]
@@ -1048,7 +1044,10 @@ fn serde_rt_passport_number_rejects_invalid() {
     // BUG-016 RESOLVED: Custom Deserialize validates via PassportNumber::new().
     let invalid_json = "\"AB\""; // Only 2 chars, minimum is 5
     let result: Result<msez_core::PassportNumber, _> = serde_json::from_str(invalid_json);
-    assert!(result.is_err(), "invalid passport must be rejected at deserialization");
+    assert!(
+        result.is_err(),
+        "invalid passport must be rejected at deserialization"
+    );
 }
 
 #[test]
@@ -1056,7 +1055,10 @@ fn serde_rt_jurisdiction_id_rejects_invalid() {
     // BUG-017 RESOLVED: Custom Deserialize validates via JurisdictionId::new().
     let invalid_json = "\"\""; // Empty string, should be rejected
     let result: Result<JurisdictionId, _> = serde_json::from_str(invalid_json);
-    assert!(result.is_err(), "empty JurisdictionId must be rejected at deserialization");
+    assert!(
+        result.is_err(),
+        "empty JurisdictionId must be rejected at deserialization"
+    );
 }
 
 // =========================================================================
@@ -1066,10 +1068,10 @@ fn serde_rt_jurisdiction_id_rejects_invalid() {
 use msez_arbitration::dispute::{
     ArbitrationInstitution, Claim, Dispute, FilingEvidence, Money, Party as ArbParty,
 };
-use msez_arbitration::escrow::{EscrowAccount, EscrowTransaction, ReleaseCondition};
 use msez_arbitration::enforcement::{
     EnforcementAction, EnforcementOrder, EnforcementPrecondition, EnforcementReceipt,
 };
+use msez_arbitration::escrow::{EscrowAccount, EscrowTransaction, ReleaseCondition};
 use msez_arbitration::evidence::{
     AuthenticityAttestation, AuthenticityType, ChainOfCustodyEntry, EvidenceItem, EvidenceItemId,
     EvidencePackage, EvidencePackageId, EvidenceType,
@@ -1191,7 +1193,11 @@ fn serde_rt_enforcement_status_round_trip() {
     ] {
         let json = serde_json::to_string(&status).expect("serialize");
         let recovered: EnforcementStatus = serde_json::from_str(&json).expect("deserialize");
-        assert_eq!(status, recovered, "EnforcementStatus round-trip failed for {:?}", status);
+        assert_eq!(
+            status, recovered,
+            "EnforcementStatus round-trip failed for {:?}",
+            status
+        );
     }
 }
 
@@ -1322,20 +1328,14 @@ fn serde_rt_condition_all_variants() {
 #[test]
 fn serde_rt_condition_deeply_nested() {
     let deep = Condition::And {
-        conditions: vec![
-            Condition::Or {
-                conditions: vec![
-                    Condition::And {
-                        conditions: vec![
-                            Condition::Equals {
-                                field: "deep".to_string(),
-                                value: json!("value"),
-                            },
-                        ],
-                    },
-                ],
-            },
-        ],
+        conditions: vec![Condition::Or {
+            conditions: vec![Condition::And {
+                conditions: vec![Condition::Equals {
+                    field: "deep".to_string(),
+                    value: json!("value"),
+                }],
+            }],
+        }],
     };
     let json = serde_json::to_string(&deep).expect("serialize");
     let recovered: Condition = serde_json::from_str(&json).expect("deserialize");
@@ -1469,7 +1469,11 @@ fn serde_rt_dissolution_stage_all_variants() {
     for stage in DissolutionStage::all_stages() {
         let json = serde_json::to_string(stage).expect("serialize");
         let recovered: DissolutionStage = serde_json::from_str(&json).expect("deserialize");
-        assert_eq!(*stage, recovered, "DissolutionStage {:?} failed round-trip", stage);
+        assert_eq!(
+            *stage, recovered,
+            "DissolutionStage {:?} failed round-trip",
+            stage
+        );
     }
 }
 

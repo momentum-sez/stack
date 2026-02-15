@@ -141,10 +141,7 @@ mod tests {
     #[test]
     fn test_openapi_spec_generates_successfully() {
         let spec = ApiDoc::openapi();
-        assert_eq!(
-            spec.info.title,
-            "MSEZ API — SEZ Stack Orchestration Layer"
-        );
+        assert_eq!(spec.info.title, "MSEZ API — SEZ Stack Orchestration Layer");
         assert_eq!(spec.info.version, "0.4.44");
     }
 

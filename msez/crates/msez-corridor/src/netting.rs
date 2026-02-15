@@ -80,7 +80,9 @@ pub enum NettingError {
     InvalidCurrency,
 
     /// Arithmetic overflow during settlement computation.
-    #[error("arithmetic overflow computing settlement totals — obligation amounts exceed i64 range")]
+    #[error(
+        "arithmetic overflow computing settlement totals — obligation amounts exceed i64 range"
+    )]
     ArithmeticOverflow,
 }
 
@@ -248,9 +250,7 @@ impl NettingEngine {
                 to_party: obligation.to_party,
                 amount: obligation.amount,
                 currency: obligation.currency,
-                corridor_id: obligation
-                    .corridor_id
-                    .unwrap_or_else(|| "none".to_string()),
+                corridor_id: obligation.corridor_id.unwrap_or_else(|| "none".to_string()),
             });
         }
 

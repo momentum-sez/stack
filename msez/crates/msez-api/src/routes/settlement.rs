@@ -13,8 +13,8 @@ use axum::extract::{Path, State};
 use axum::routing::post;
 use axum::{Json, Router};
 use msez_core::{CorridorId, JurisdictionId};
-use msez_corridor::netting::{NettingEngine, Obligation};
 use msez_corridor::bridge::{BridgeEdge, CorridorBridge};
+use msez_corridor::netting::{NettingEngine, Obligation};
 use msez_corridor::swift::{SettlementInstruction, SwiftPacs008};
 use msez_corridor::SettlementRail;
 use msez_state::DynCorridorState;
@@ -259,9 +259,7 @@ async fn compute_settlement(
     }
 
     if engine.obligation_count() == 0 {
-        return Err(AppError::Validation(
-            "no valid obligations provided".into(),
-        ));
+        return Err(AppError::Validation("no valid obligations provided".into()));
     }
 
     let plan = engine
@@ -428,9 +426,7 @@ async fn generate_instructions(
         .get(&corridor_id)
         .ok_or_else(|| AppError::NotFound(format!("corridor {corridor_id} not found")))?;
 
-    let adapter = SwiftPacs008::new(
-        req.instructing_agent_bic.as_deref().unwrap_or("MSEZUS33"),
-    );
+    let adapter = SwiftPacs008::new(req.instructing_agent_bic.as_deref().unwrap_or("MSEZUS33"));
 
     let mut instructions = Vec::new();
     let mut errors = Vec::new();
@@ -537,12 +533,8 @@ mod tests {
     #[tokio::test]
     async fn bilateral_netting_through_api() {
         let state = AppState::new();
-        let corridor_id = create_corridor_in_state(
-            &state,
-            "pk-sez-01",
-            "ae-difc",
-            DynCorridorState::Active,
-        );
+        let corridor_id =
+            create_corridor_in_state(&state, "pk-sez-01", "ae-difc", DynCorridorState::Active);
 
         let body = serde_json::json!({
             "obligations": [
@@ -601,12 +593,8 @@ mod tests {
     #[tokio::test]
     async fn settlement_compute_no_obligations_returns_422() {
         let state = AppState::new();
-        let corridor_id = create_corridor_in_state(
-            &state,
-            "pk-sez-01",
-            "ae-difc",
-            DynCorridorState::Active,
-        );
+        let corridor_id =
+            create_corridor_in_state(&state, "pk-sez-01", "ae-difc", DynCorridorState::Active);
 
         let body = serde_json::json!({ "obligations": [] });
 
@@ -625,12 +613,8 @@ mod tests {
     #[tokio::test]
     async fn settlement_compute_skips_invalid_obligations() {
         let state = AppState::new();
-        let corridor_id = create_corridor_in_state(
-            &state,
-            "pk-sez-01",
-            "ae-difc",
-            DynCorridorState::Active,
-        );
+        let corridor_id =
+            create_corridor_in_state(&state, "pk-sez-01", "ae-difc", DynCorridorState::Active);
 
         // One valid obligation and one with negative amount (invalid).
         let body = serde_json::json!({
@@ -659,12 +643,8 @@ mod tests {
     #[tokio::test]
     async fn perfectly_balanced_settlement() {
         let state = AppState::new();
-        let corridor_id = create_corridor_in_state(
-            &state,
-            "pk-sez-01",
-            "ae-difc",
-            DynCorridorState::Active,
-        );
+        let corridor_id =
+            create_corridor_in_state(&state, "pk-sez-01", "ae-difc", DynCorridorState::Active);
 
         let body = serde_json::json!({
             "obligations": [
@@ -687,9 +667,7 @@ mod tests {
         let plan: serde_json::Value = body_json(resp).await;
         assert_eq!(plan["net_total"], 0);
         assert_eq!(plan["settlement_legs"].as_array().unwrap().len(), 0);
-        assert!(
-            (plan["reduction_percentage"].as_f64().unwrap() - 100.0).abs() < f64::EPSILON,
-        );
+        assert!((plan["reduction_percentage"].as_f64().unwrap() - 100.0).abs() < f64::EPSILON,);
     }
 
     // ── Bridge routing tests ────────────────────────────────────
@@ -875,12 +853,8 @@ mod tests {
     #[tokio::test]
     async fn swift_instruction_generation() {
         let state = AppState::new();
-        let corridor_id = create_corridor_in_state(
-            &state,
-            "pk-sez-01",
-            "ae-difc",
-            DynCorridorState::Active,
-        );
+        let corridor_id =
+            create_corridor_in_state(&state, "pk-sez-01", "ae-difc", DynCorridorState::Active);
 
         let body = serde_json::json!({
             "legs": [{
@@ -947,12 +921,8 @@ mod tests {
     #[tokio::test]
     async fn swift_instruction_empty_legs_returns_422() {
         let state = AppState::new();
-        let corridor_id = create_corridor_in_state(
-            &state,
-            "pk-sez-01",
-            "ae-difc",
-            DynCorridorState::Active,
-        );
+        let corridor_id =
+            create_corridor_in_state(&state, "pk-sez-01", "ae-difc", DynCorridorState::Active);
 
         let body = serde_json::json!({ "legs": [] });
 
@@ -971,12 +941,8 @@ mod tests {
     #[tokio::test]
     async fn swift_instruction_invalid_bic_reports_error() {
         let state = AppState::new();
-        let corridor_id = create_corridor_in_state(
-            &state,
-            "pk-sez-01",
-            "ae-difc",
-            DynCorridorState::Active,
-        );
+        let corridor_id =
+            create_corridor_in_state(&state, "pk-sez-01", "ae-difc", DynCorridorState::Active);
 
         let body = serde_json::json!({
             "legs": [{
@@ -1011,12 +977,8 @@ mod tests {
     #[tokio::test]
     async fn swift_instruction_multiple_legs() {
         let state = AppState::new();
-        let corridor_id = create_corridor_in_state(
-            &state,
-            "pk-sez-01",
-            "ae-difc",
-            DynCorridorState::Active,
-        );
+        let corridor_id =
+            create_corridor_in_state(&state, "pk-sez-01", "ae-difc", DynCorridorState::Active);
 
         let body = serde_json::json!({
             "legs": [
@@ -1060,12 +1022,8 @@ mod tests {
     #[tokio::test]
     async fn swift_instruction_custom_bic() {
         let state = AppState::new();
-        let corridor_id = create_corridor_in_state(
-            &state,
-            "pk-sez-01",
-            "ae-difc",
-            DynCorridorState::Active,
-        );
+        let corridor_id =
+            create_corridor_in_state(&state, "pk-sez-01", "ae-difc", DynCorridorState::Active);
 
         let body = serde_json::json!({
             "instructing_agent_bic": "MSEZPKXX",

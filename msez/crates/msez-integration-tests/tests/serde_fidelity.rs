@@ -1085,6 +1085,420 @@ fn serde_rt_jurisdiction_id_bypasses_validation() {
 }
 
 // =========================================================================
+// msez-arbitration: Full struct round-trip tests
+// =========================================================================
+
+use msez_arbitration::dispute::{
+    ArbitrationInstitution, Claim, Dispute, FilingEvidence, Money, Party as ArbParty,
+};
+use msez_arbitration::escrow::{EscrowAccount, EscrowTransaction, ReleaseCondition};
+use msez_arbitration::enforcement::{
+    EnforcementAction, EnforcementOrder, EnforcementPrecondition, EnforcementReceipt,
+};
+use msez_arbitration::evidence::{
+    AuthenticityAttestation, AuthenticityType, ChainOfCustodyEntry, EvidenceItem, EvidenceItemId,
+    EvidencePackage, EvidencePackageId, EvidenceType,
+};
+use msez_core::Did;
+
+#[test]
+fn serde_rt_money() {
+    let original = Money::new("150000.50", "USD").unwrap();
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: Money = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.amount, "150000.50");
+    assert_eq!(recovered.currency, "USD");
+}
+
+#[test]
+fn serde_rt_arb_party() {
+    let original = ArbParty {
+        did: Did::new("did:key:z6MkTest123").unwrap(),
+        legal_name: "Test Corp".to_string(),
+        jurisdiction_id: Some(JurisdictionId::new("PK-RSEZ").unwrap()),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: ArbParty = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.legal_name, "Test Corp");
+    assert!(recovered.jurisdiction_id.is_some());
+}
+
+#[test]
+fn serde_rt_claim() {
+    let original = Claim {
+        claim_id: "CLM-001".to_string(),
+        claim_type: DisputeType::BreachOfContract,
+        description: "Failed to deliver goods".to_string(),
+        amount: Some(Money::new("50000", "USD").unwrap()),
+        supporting_evidence_digests: vec![test_digest()],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: Claim = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.claim_id, "CLM-001");
+    assert_eq!(recovered.claim_type, DisputeType::BreachOfContract);
+    assert!(recovered.amount.is_some());
+}
+
+#[test]
+fn serde_rt_claim_without_amount() {
+    let original = Claim {
+        claim_id: "CLM-002".to_string(),
+        claim_type: DisputeType::ForceMajeure,
+        description: "Force majeure event".to_string(),
+        amount: None,
+        supporting_evidence_digests: vec![],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: Claim = serde_json::from_str(&json).expect("deserialize");
+    assert!(recovered.amount.is_none());
+    assert!(recovered.supporting_evidence_digests.is_empty());
+}
+
+#[test]
+fn serde_rt_evidence_type_all_variants() {
+    let types = [
+        EvidenceType::SmartAssetReceipt,
+        EvidenceType::CorridorReceipt,
+        EvidenceType::ComplianceEvidence,
+        EvidenceType::ExpertReport,
+        EvidenceType::WitnessStatement,
+        EvidenceType::ContractDocument,
+        EvidenceType::CommunicationRecord,
+        EvidenceType::PaymentRecord,
+        EvidenceType::ShippingDocument,
+        EvidenceType::InspectionReport,
+    ];
+    for et in &types {
+        let json = serde_json::to_string(et).expect("serialize");
+        let recovered: EvidenceType = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(*et, recovered);
+    }
+}
+
+#[test]
+fn serde_rt_authenticity_type_all_variants() {
+    let types = [
+        AuthenticityType::CorridorCheckpointInclusion,
+        AuthenticityType::SmartAssetCheckpointInclusion,
+        AuthenticityType::NotarizedDocument,
+        AuthenticityType::ExpertCertification,
+        AuthenticityType::ChainOfCustody,
+    ];
+    for at in &types {
+        let json = serde_json::to_string(at).expect("serialize");
+        let recovered: AuthenticityType = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(*at, recovered);
+    }
+}
+
+#[test]
+fn serde_rt_escrow_account_full() {
+    let original = EscrowAccount::create(
+        DisputeId::new(),
+        EscrowType::SecurityDeposit,
+        "USD".to_string(),
+        None,
+    );
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: EscrowAccount = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.currency, "USD");
+    assert_eq!(recovered.status, EscrowStatus::Pending);
+}
+
+#[test]
+fn serde_rt_enforcement_status_round_trip() {
+    for status in [
+        EnforcementStatus::Pending,
+        EnforcementStatus::InProgress,
+        EnforcementStatus::Completed,
+        EnforcementStatus::Blocked,
+        EnforcementStatus::Cancelled,
+    ] {
+        let json = serde_json::to_string(&status).expect("serialize");
+        let recovered: EnforcementStatus = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(status, recovered, "EnforcementStatus round-trip failed for {:?}", status);
+    }
+}
+
+#[test]
+fn serde_rt_enforcement_action_escrow_release() {
+    let original = EnforcementAction::EscrowRelease {
+        escrow_id: EscrowId::new(),
+        beneficiary: Did::new("did:key:z6MkBeneficiary").unwrap(),
+        amount: Some("50000".to_string()),
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: EnforcementAction = serde_json::from_str(&json).expect("deserialize");
+    match recovered {
+        EnforcementAction::EscrowRelease { amount, .. } => {
+            assert_eq!(amount, Some("50000".to_string()));
+        }
+        _ => panic!("Expected EscrowRelease variant"),
+    }
+}
+
+#[test]
+fn serde_rt_enforcement_action_all_variants() {
+    let actions = vec![
+        EnforcementAction::EscrowRelease {
+            escrow_id: EscrowId::new(),
+            beneficiary: Did::new("did:key:z6MkTest").unwrap(),
+            amount: None,
+        },
+        EnforcementAction::LicenseSuspension {
+            license_id: "LIC-001".to_string(),
+            reason: "Violation".to_string(),
+        },
+        EnforcementAction::CorridorSuspension {
+            corridor_id: CorridorId::new(),
+            reason: "Sanctions".to_string(),
+        },
+        EnforcementAction::CorridorReceiptGeneration {
+            corridor_id: CorridorId::new(),
+        },
+        EnforcementAction::AssetTransfer {
+            asset_digest: test_digest(),
+            recipient: Did::new("did:key:z6MkRecipient").unwrap(),
+        },
+        EnforcementAction::MonetaryPenalty {
+            party: Did::new("did:key:z6MkParty").unwrap(),
+            amount: "10000".to_string(),
+            currency: "PKR".to_string(),
+        },
+    ];
+    for action in &actions {
+        let json = serde_json::to_string(action).expect("serialize");
+        let _recovered: EnforcementAction = serde_json::from_str(&json).expect("deserialize");
+    }
+}
+
+// =========================================================================
+// msez-agentic: Condition variant exhaustive round-trips
+// =========================================================================
+
+#[test]
+fn serde_rt_condition_all_variants() {
+    let conditions = vec![
+        Condition::Threshold {
+            field: "score".to_string(),
+            threshold: json!(0.9),
+        },
+        Condition::Equals {
+            field: "status".to_string(),
+            value: json!("active"),
+        },
+        Condition::NotEquals {
+            field: "status".to_string(),
+            value: json!("inactive"),
+        },
+        Condition::Contains {
+            field: "parties".to_string(),
+            item: json!("self"),
+        },
+        Condition::In {
+            field: "jurisdiction".to_string(),
+            values: vec![json!("PK"), json!("AE"), json!("SG")],
+        },
+        Condition::LessThan {
+            field: "amount".to_string(),
+            threshold: json!(1000),
+        },
+        Condition::GreaterThan {
+            field: "amount".to_string(),
+            threshold: json!(0),
+        },
+        Condition::Exists {
+            field: "certification".to_string(),
+        },
+        Condition::And {
+            conditions: vec![
+                Condition::Equals {
+                    field: "a".to_string(),
+                    value: json!(1),
+                },
+                Condition::Equals {
+                    field: "b".to_string(),
+                    value: json!(2),
+                },
+            ],
+        },
+        Condition::Or {
+            conditions: vec![
+                Condition::Exists {
+                    field: "x".to_string(),
+                },
+                Condition::Exists {
+                    field: "y".to_string(),
+                },
+            ],
+        },
+    ];
+    for (i, cond) in conditions.iter().enumerate() {
+        let json = serde_json::to_string(cond).expect("serialize");
+        let recovered: Condition = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(
+            *cond, recovered,
+            "Condition variant {} failed round-trip",
+            i
+        );
+    }
+}
+
+#[test]
+fn serde_rt_condition_deeply_nested() {
+    let deep = Condition::And {
+        conditions: vec![
+            Condition::Or {
+                conditions: vec![
+                    Condition::And {
+                        conditions: vec![
+                            Condition::Equals {
+                                field: "deep".to_string(),
+                                value: json!("value"),
+                            },
+                        ],
+                    },
+                ],
+            },
+        ],
+    };
+    let json = serde_json::to_string(&deep).expect("serialize");
+    let recovered: Condition = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(deep, recovered, "Deeply nested Condition failed round-trip");
+}
+
+// =========================================================================
+// msez-agentic: ScheduledAction and CronSchedule round-trips
+// =========================================================================
+
+use msez_agentic::scheduler::{CronSchedule, SchedulePattern, ScheduledAction};
+
+#[test]
+fn serde_rt_schedule_pattern_all_variants() {
+    let patterns = [
+        SchedulePattern::Hourly,
+        SchedulePattern::Daily,
+        SchedulePattern::Weekly,
+        SchedulePattern::Monthly,
+        SchedulePattern::Yearly,
+    ];
+    for sp in &patterns {
+        let json = serde_json::to_string(sp).expect("serialize");
+        let recovered: SchedulePattern = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(*sp, recovered);
+    }
+}
+
+#[test]
+fn serde_rt_scheduled_action() {
+    let original = ScheduledAction::new(
+        "asset:001".to_string(),
+        PolicyAction::Halt,
+        "policy-sanctions-001".to_string(),
+        AuthorizationRequirement::Automatic,
+    );
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: ScheduledAction = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.action, PolicyAction::Halt);
+    assert_eq!(recovered.policy_id, "policy-sanctions-001");
+    assert_eq!(recovered.status, ActionStatus::Pending);
+}
+
+#[test]
+fn serde_rt_cron_schedule() {
+    let original = CronSchedule::new("sched-001", "Daily sanctions check", SchedulePattern::Daily);
+    let json = serde_json::to_string(&original).expect("serialize");
+    let recovered: CronSchedule = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(recovered.schedule_id, "sched-001");
+    assert_eq!(recovered.pattern, SchedulePattern::Daily);
+    assert!(recovered.active);
+}
+
+// =========================================================================
+// msez-corridor: Anchor and Fork types round-trips
+// =========================================================================
+
+use msez_corridor::anchor::{AnchorCommitment, AnchorStatus};
+use msez_corridor::fork::ResolutionReason;
+
+#[test]
+fn serde_rt_anchor_status_all_variants() {
+    let statuses = [
+        AnchorStatus::Pending,
+        AnchorStatus::Confirmed,
+        AnchorStatus::Finalized,
+        AnchorStatus::Failed,
+    ];
+    for s in &statuses {
+        let json = serde_json::to_string(s).expect("serialize");
+        let recovered: AnchorStatus = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(*s, recovered);
+    }
+}
+
+#[test]
+fn serde_rt_resolution_reason_all_variants() {
+    let reasons = [
+        ResolutionReason::EarlierTimestamp,
+        ResolutionReason::MoreAttestations,
+        ResolutionReason::LexicographicTiebreak,
+    ];
+    for r in &reasons {
+        let json = serde_json::to_string(r).expect("serialize");
+        let recovered: ResolutionReason = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(*r, recovered);
+    }
+}
+
+#[test]
+fn serde_rt_anchor_commitment() {
+    let original = AnchorCommitment {
+        checkpoint_digest: test_digest(),
+        chain_id: Some("ethereum-mainnet".to_string()),
+        checkpoint_height: 42,
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let _recovered: AnchorCommitment = serde_json::from_str(&json).expect("deserialize");
+}
+
+// =========================================================================
+// msez-corridor: CorridorReceipt and Checkpoint round-trips
+// =========================================================================
+
+use msez_corridor::receipt::{Checkpoint, CorridorReceipt};
+
+#[test]
+fn serde_rt_corridor_receipt() {
+    let original = CorridorReceipt {
+        receipt_type: "state_transition".to_string(),
+        corridor_id: CorridorId::new(),
+        sequence: 1,
+        timestamp: Timestamp::now(),
+        prev_root: "".to_string(),
+        next_root: "aa".repeat(32),
+        lawpack_digest_set: vec!["bb".repeat(32)],
+        ruleset_digest_set: vec![],
+    };
+    let json = serde_json::to_string(&original).expect("serialize");
+    let _recovered: CorridorReceipt = serde_json::from_str(&json).expect("deserialize");
+}
+
+// =========================================================================
+// msez-state: DissolutionStage round-trips
+// =========================================================================
+
+use msez_state::DissolutionStage;
+
+#[test]
+fn serde_rt_dissolution_stage_all_variants() {
+    for stage in DissolutionStage::all_stages() {
+        let json = serde_json::to_string(stage).expect("serialize");
+        let recovered: DissolutionStage = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(*stage, recovered, "DissolutionStage {:?} failed round-trip", stage);
+    }
+}
+
+// =========================================================================
 // Netting engine i64 overflow — financial calculation
 // =========================================================================
 

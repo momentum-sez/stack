@@ -100,12 +100,33 @@ pub async fn rate_limit_middleware(request: Request, next: Next) -> Response {
     let limiter = request.extensions().get::<RateLimiter>().cloned();
 
     if let Some(limiter) = limiter {
-        let key = request
-            .headers()
-            .get("x-jurisdiction-id")
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("anonymous")
-            .to_string();
+        let key = match request.headers().get("x-jurisdiction-id") {
+            Some(v) => match v.to_str() {
+                Ok(s) if !s.trim().is_empty() && s.len() <= 255 => s.to_string(),
+                Ok(s) if s.len() > 255 => {
+                    let body = ErrorBody {
+                        error: ErrorDetail {
+                            code: "BAD_REQUEST".to_string(),
+                            message: "x-jurisdiction-id header exceeds 255 characters".to_string(),
+                            details: None,
+                        },
+                    };
+                    return (StatusCode::BAD_REQUEST, Json(body)).into_response();
+                }
+                Ok(_) => "anonymous".to_string(), // empty or whitespace-only
+                Err(_) => {
+                    let body = ErrorBody {
+                        error: ErrorDetail {
+                            code: "BAD_REQUEST".to_string(),
+                            message: "x-jurisdiction-id header contains non-UTF-8 bytes".to_string(),
+                            details: None,
+                        },
+                    };
+                    return (StatusCode::BAD_REQUEST, Json(body)).into_response();
+                }
+            },
+            None => "anonymous".to_string(),
+        };
 
         if !limiter.check(&key) {
             let body = ErrorBody {

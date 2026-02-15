@@ -39,6 +39,9 @@ pub struct SettlementComputeRequest {
 
 impl Validate for SettlementComputeRequest {
     fn validate(&self) -> Result<(), String> {
+        if self.obligations.is_empty() {
+            return Err("at least one obligation is required".into());
+        }
         if self.obligations.len() > 10_000 {
             return Err(format!(
                 "too many obligations: {} (max 10,000)",

@@ -52,6 +52,181 @@ use crate::error::AppError;
 use crate::orchestration::{self, OrchestrationEnvelope};
 use crate::state::{AppState, TaxEventRecord};
 
+// ── Input Validation ─────────────────────────────────────────────────
+
+/// Trait for request validation at the HTTP boundary.
+///
+/// Validates field-level constraints before the request reaches the
+/// orchestration pipeline. Rejects empty strings, overlong fields,
+/// and semantically invalid combinations early.
+trait Validate {
+    fn validate(&self) -> Result<(), String>;
+}
+
+impl Validate for CreateEntityProxyRequest {
+    fn validate(&self) -> Result<(), String> {
+        if self.entity_type.trim().is_empty() {
+            return Err("entity_type must not be empty".into());
+        }
+        if self.entity_type.len() > 100 {
+            return Err("entity_type must not exceed 100 characters".into());
+        }
+        if self.legal_name.trim().is_empty() {
+            return Err("legal_name must not be empty".into());
+        }
+        if self.legal_name.len() > 1000 {
+            return Err("legal_name must not exceed 1000 characters".into());
+        }
+        if self.jurisdiction_id.trim().is_empty() {
+            return Err("jurisdiction_id must not be empty".into());
+        }
+        if self.jurisdiction_id.len() > 100 {
+            return Err("jurisdiction_id must not exceed 100 characters".into());
+        }
+        if self.beneficial_owners.len() > 100 {
+            return Err("beneficial_owners must not exceed 100 entries".into());
+        }
+        for (i, bo) in self.beneficial_owners.iter().enumerate() {
+            if bo.name.trim().is_empty() {
+                return Err(format!("beneficial_owners[{i}].name must not be empty"));
+            }
+            if bo.name.len() > 500 {
+                return Err(format!(
+                    "beneficial_owners[{i}].name must not exceed 500 characters"
+                ));
+            }
+            if bo.ownership_percentage.trim().is_empty() {
+                return Err(format!(
+                    "beneficial_owners[{i}].ownership_percentage must not be empty"
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Validate for CreateCapTableProxyRequest {
+    fn validate(&self) -> Result<(), String> {
+        if self.share_classes.is_empty() {
+            return Err("share_classes must not be empty".into());
+        }
+        if self.share_classes.len() > 50 {
+            return Err("share_classes must not exceed 50 entries".into());
+        }
+        for (i, sc) in self.share_classes.iter().enumerate() {
+            if sc.name.trim().is_empty() {
+                return Err(format!("share_classes[{i}].name must not be empty"));
+            }
+            if sc.name.len() > 200 {
+                return Err(format!(
+                    "share_classes[{i}].name must not exceed 200 characters"
+                ));
+            }
+            if sc.issued_shares > sc.authorized_shares {
+                return Err(format!(
+                    "share_classes[{i}].issued_shares ({}) exceeds authorized_shares ({})",
+                    sc.issued_shares, sc.authorized_shares
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Validate for CreateAccountProxyRequest {
+    fn validate(&self) -> Result<(), String> {
+        if self.account_type.trim().is_empty() {
+            return Err("account_type must not be empty".into());
+        }
+        if self.account_type.len() > 100 {
+            return Err("account_type must not exceed 100 characters".into());
+        }
+        if self.currency.trim().is_empty() {
+            return Err("currency must not be empty".into());
+        }
+        if self.currency.len() > 10 {
+            return Err("currency must not exceed 10 characters".into());
+        }
+        Ok(())
+    }
+}
+
+impl Validate for CreatePaymentProxyRequest {
+    fn validate(&self) -> Result<(), String> {
+        if self.amount.trim().is_empty() {
+            return Err("amount must not be empty".into());
+        }
+        if self.amount.len() > 50 {
+            return Err("amount must not exceed 50 characters".into());
+        }
+        if self.currency.trim().is_empty() {
+            return Err("currency must not be empty".into());
+        }
+        if self.currency.len() > 10 {
+            return Err("currency must not exceed 10 characters".into());
+        }
+        if self.reference.trim().is_empty() {
+            return Err("reference must not be empty".into());
+        }
+        if self.reference.len() > 500 {
+            return Err("reference must not exceed 500 characters".into());
+        }
+        Ok(())
+    }
+}
+
+impl Validate for VerifyIdentityProxyRequest {
+    fn validate(&self) -> Result<(), String> {
+        if self.identity_type.trim().is_empty() {
+            return Err("identity_type must not be empty".into());
+        }
+        if self.identity_type.len() > 100 {
+            return Err("identity_type must not exceed 100 characters".into());
+        }
+        if self.linked_ids.len() > 50 {
+            return Err("linked_ids must not exceed 50 entries".into());
+        }
+        for (i, lid) in self.linked_ids.iter().enumerate() {
+            if lid.id_type.trim().is_empty() {
+                return Err(format!("linked_ids[{i}].id_type must not be empty"));
+            }
+            if lid.id_value.trim().is_empty() {
+                return Err(format!("linked_ids[{i}].id_value must not be empty"));
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Validate for CreateConsentProxyRequest {
+    fn validate(&self) -> Result<(), String> {
+        if self.consent_type.trim().is_empty() {
+            return Err("consent_type must not be empty".into());
+        }
+        if self.consent_type.len() > 200 {
+            return Err("consent_type must not exceed 200 characters".into());
+        }
+        if self.description.trim().is_empty() {
+            return Err("description must not be empty".into());
+        }
+        if self.description.len() > 5000 {
+            return Err("description must not exceed 5000 characters".into());
+        }
+        if self.parties.is_empty() {
+            return Err("parties must not be empty".into());
+        }
+        if self.parties.len() > 100 {
+            return Err("parties must not exceed 100 entries".into());
+        }
+        for (i, p) in self.parties.iter().enumerate() {
+            if p.role.trim().is_empty() {
+                return Err(format!("parties[{i}].role must not be empty"));
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Build the Mass API orchestration router for all five primitives.
 ///
 /// Write endpoints compose compliance evaluation + Mass API + VC issuance.
@@ -201,6 +376,7 @@ async fn create_entity(
     State(state): State<AppState>,
     Json(req): Json<CreateEntityProxyRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
+    req.validate().map_err(AppError::Validation)?;
     let client = require_mass_client(&state)?;
 
     // Step 1: Pre-flight compliance evaluation.
@@ -350,6 +526,7 @@ async fn create_cap_table(
     State(state): State<AppState>,
     Json(req): Json<CreateCapTableProxyRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
+    req.validate().map_err(AppError::Validation)?;
     let client = require_mass_client(&state)?;
 
     // Step 1: Pre-flight compliance evaluation.
@@ -448,6 +625,7 @@ async fn create_account(
     State(state): State<AppState>,
     Json(req): Json<CreateAccountProxyRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
+    req.validate().map_err(AppError::Validation)?;
     let client = require_mass_client(&state)?;
 
     // Step 1: Pre-flight compliance evaluation.
@@ -513,6 +691,7 @@ async fn initiate_payment(
     State(state): State<AppState>,
     Json(req): Json<CreatePaymentProxyRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
+    req.validate().map_err(AppError::Validation)?;
     let client = require_mass_client(&state)?;
 
     // Step 1: Pre-flight compliance evaluation.
@@ -684,6 +863,7 @@ async fn verify_identity(
     State(state): State<AppState>,
     Json(req): Json<VerifyIdentityProxyRequest>,
 ) -> Result<Json<OrchestrationEnvelope>, AppError> {
+    req.validate().map_err(AppError::Validation)?;
     let client = require_mass_client(&state)?;
 
     // Step 1: Pre-flight compliance evaluation.
@@ -783,6 +963,7 @@ async fn create_consent(
     State(state): State<AppState>,
     Json(req): Json<CreateConsentProxyRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
+    req.validate().map_err(AppError::Validation)?;
     let client = require_mass_client(&state)?;
 
     // Step 1: Pre-flight compliance evaluation.
@@ -1058,7 +1239,7 @@ mod tests {
             .uri("/v1/ownership/cap-tables")
             .header("content-type", "application/json")
             .body(Body::from(
-                r#"{"entity_id":"550e8400-e29b-41d4-a716-446655440000","share_classes":[]}"#,
+                r#"{"entity_id":"550e8400-e29b-41d4-a716-446655440000","share_classes":[{"name":"Common","authorized_shares":1000000,"issued_shares":100000,"par_value":"0.01","voting_rights":true}]}"#,
             ))
             .unwrap();
 

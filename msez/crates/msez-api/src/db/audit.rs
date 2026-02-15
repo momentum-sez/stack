@@ -35,12 +35,18 @@ pub async fn append(pool: &PgPool, event: AuditEvent) -> Result<Uuid, sqlx::Erro
         .as_deref()
         .unwrap_or("0000000000000000000000000000000000000000000000000000000000000000");
 
-    // Compute event hash: SHA-256(previous_hash || event_type || resource_type || resource_id || action)
-    let hash_input = format!(
-        "{}{}{}{}{}",
-        prev, event.event_type, event.resource_type, event.resource_id, event.action,
-    );
-    let event_hash = sha256_hex(&hash_input);
+    // Compute event hash via CanonicalBytes (the sole authorized SHA-256 path).
+    // The JSON structure ensures deterministic key ordering.
+    let hash_data = serde_json::json!({
+        "action": event.action,
+        "event_type": event.event_type,
+        "previous_hash": prev,
+        "resource_id": event.resource_id.to_string(),
+        "resource_type": event.resource_type,
+    });
+    let canonical = msez_core::CanonicalBytes::new(&hash_data)
+        .expect("audit event hash input is always valid JSON");
+    let event_hash = msez_core::digest::sha256_digest(&canonical).to_hex();
 
     sqlx::query(
         "INSERT INTO audit_events (id, event_type, actor_did, resource_type, resource_id,
@@ -137,11 +143,3 @@ pub struct AuditEventRow {
     pub created_at: DateTime<Utc>,
 }
 
-/// Compute SHA-256 hex digest of input string.
-fn sha256_hex(input: &str) -> String {
-    use sha2::{Digest, Sha256};
-    let mut hasher = Sha256::new();
-    hasher.update(input.as_bytes());
-    let result = hasher.finalize();
-    result.iter().map(|b| format!("{b:02x}")).collect()
-}

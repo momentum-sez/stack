@@ -1854,7 +1854,7 @@ async fn mass_proxy_create_cap_table_without_client() {
     let resp = app
         .oneshot(post_json(
             "/v1/ownership/cap-tables",
-            json!({"entity_id": "00000000-0000-0000-0000-000000000000", "share_classes": []}),
+            json!({"entity_id": "00000000-0000-0000-0000-000000000000", "share_classes": [{"name":"Common","authorized_shares":1000000,"issued_shares":100000,"par_value":"0.01","voting_rights":true}]}),
         ))
         .await
         .unwrap();

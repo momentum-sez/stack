@@ -10,11 +10,11 @@
 //!
 //! | Prefix               | Module                      | Domain              |
 //! |-----------------------|----------------------------|---------------------|
-//! | `/v1/entities/*`      | [`routes::mass_proxy`]     | Mass proxy (Entities) |
-//! | `/v1/ownership/*`     | [`routes::mass_proxy`]     | Mass proxy (Ownership) |
-//! | `/v1/fiscal/*`        | [`routes::mass_proxy`]     | Mass proxy (Fiscal) |
-//! | `/v1/identity/*`      | [`routes::mass_proxy`]     | Mass proxy (Identity) |
-//! | `/v1/consent/*`       | [`routes::mass_proxy`]     | Mass proxy (Consent) |
+//! | `/v1/entities/*`      | [`routes::mass_proxy`]     | Entities (orchestrated) |
+//! | `/v1/ownership/*`     | [`routes::mass_proxy`]     | Ownership (orchestrated) |
+//! | `/v1/fiscal/*`        | [`routes::mass_proxy`]     | Fiscal (orchestrated) |
+//! | `/v1/identity/*`      | [`routes::mass_proxy`]     | Identity (orchestrated) |
+//! | `/v1/consent/*`       | [`routes::mass_proxy`]     | Consent (orchestrated) |
 //! | `/v1/corridors/*`     | [`routes::corridors`]      | Corridors (SEZ)     |
 //! | `/v1/assets/*`        | [`routes::smart_assets`]   | Smart Assets (SEZ)  |
 //! | `/v1/assets/*/credentials/*` | [`routes::credentials`] | VC Issuance (SEZ) |
@@ -40,6 +40,7 @@ pub mod error;
 pub mod extractors;
 pub mod middleware;
 pub mod openapi;
+pub mod orchestration;
 pub mod routes;
 pub mod state;
 

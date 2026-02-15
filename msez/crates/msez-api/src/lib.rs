@@ -26,7 +26,7 @@
 //! ## Middleware Stack (execution order)
 //!
 //! ```text
-//! TraceLayer → MetricsMiddleware → AuthMiddleware → RateLimitMiddleware → Handler
+//! TraceLayer → MetricsMiddleware → RateLimitMiddleware → AuthMiddleware → Handler
 //! ```
 //!
 //! ## OpenAPI
@@ -83,8 +83,8 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::agentic::router())
         .merge(openapi::router())
         .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
-        .layer(from_fn(middleware::rate_limit::rate_limit_middleware))
         .layer(from_fn(auth::auth_middleware))
+        .layer(from_fn(middleware::rate_limit::rate_limit_middleware))
         .layer(from_fn(middleware::metrics::metrics_middleware))
         .layer(TraceLayer::new_for_http())
         .layer(axum::Extension(auth_config))

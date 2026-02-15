@@ -20,3 +20,7 @@
 | BUG-016 | P1 | msez-core | 1 | PassportNumber serde Deserialize bypasses length validation | DEFERRED |
 | BUG-017 | P1 | msez-core | 1 | JurisdictionId serde Deserialize bypasses empty-string validation | DEFERRED |
 | BUG-018 | P0 | msez-corridor | 1 | NettingEngine gross_total computation uses i64 sum — overflow on large amounts | DEFERRED |
+| BUG-019 | P0 | msez-core | 2 | Did::method() panics on serde-deserialized invalid DID (expect("validated at construction") bypassed) | DEFERRED |
+| BUG-020 | P2 | msez-corridor | 2 | NettingEngine accepts self-obligations (from_party == to_party) without validation | DEFERRED |
+| BUG-021 | P2 | msez-corridor | 2 | NettingEngine accepts empty party ID strings without validation | DEFERRED |
+| BUG-022 | P2 | msez-corridor | 2 | NettingEngine accepts empty currency strings without validation | DEFERRED |

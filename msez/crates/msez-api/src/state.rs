@@ -357,6 +357,13 @@ pub struct AppState {
     /// the entire class of lock-poisoning runtime failures.
     pub policy_engine: Arc<Mutex<PolicyEngine>>,
 
+    // -- Zone context (from bootstrap) --
+
+    /// Zone context, if bootstrapped from a zone manifest.
+    /// When present, the server operates as a configured zone node.
+    /// When absent (generic mode), endpoints use default behavior.
+    pub zone: Option<crate::bootstrap::ZoneContext>,
+
     // -- Configuration --
     pub config: AppConfig,
 }
@@ -412,6 +419,7 @@ impl AppState {
             zone_signing_key: Arc::new(zone_signing_key),
             zone_did,
             policy_engine: Arc::new(Mutex::new(PolicyEngine::with_extended_policies())),
+            zone: None,
             config,
         })
     }

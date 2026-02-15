@@ -24,6 +24,8 @@ msez-corridor = { workspace = true }
 msez-state = { workspace = true }
 msez-mass-client = { workspace = true }
 msez-agentic = { workspace = true }
+msez-pack = { workspace = true }
+msez-compliance = { workspace = true }
 
 # Cryptography
 rand_core = { workspace = true }
@@ -61,3 +63,4 @@ tokio = { workspace = true }
 tower = { workspace = true }
 http-body-util = { workspace = true }
 rand_core = { workspace = true }
+tempfile = { workspace = true }

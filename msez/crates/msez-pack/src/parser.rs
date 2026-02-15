@@ -410,9 +410,9 @@ mod tests {
     #[test]
     fn test_load_yaml_typed_parse_error() {
         #[derive(serde::Deserialize)]
-        #[allow(dead_code)]
         struct ExpectInt {
-            count: i32,
+            #[serde(rename = "count")]
+            _count: i32,
         }
 
         let dir = tempfile::tempdir().unwrap();
@@ -498,9 +498,9 @@ mod tests {
     #[test]
     fn test_load_json_typed_type_mismatch() {
         #[derive(serde::Deserialize, Debug)]
-        #[allow(dead_code)]
         struct NeedsNum {
-            count: u32,
+            #[serde(rename = "count")]
+            _count: u32,
         }
 
         let dir = tempfile::tempdir().unwrap();

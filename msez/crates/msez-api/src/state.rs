@@ -377,10 +377,10 @@ pub struct TaxEventRecord {
 
 /// Application configuration.
 ///
-/// The token is wrapped in [`crate::auth::SecretString`] which derives
-/// `Zeroize`/`ZeroizeOnDrop`, preventing credential material from lingering
-/// in memory. `SecretString`'s `Debug` impl automatically redacts the value.
-#[derive(Clone, Debug)]
+/// Custom `Debug` redacts the `auth_token` to prevent credential leakage in logs.
+/// The token is wrapped in [`crate::auth::SecretString`] which implements
+/// `Zeroize` on drop, preventing credential material from lingering in memory.
+#[derive(Clone)]
 pub struct AppConfig {
     /// Port to bind the HTTP server to.
     pub port: u16,
@@ -388,6 +388,18 @@ pub struct AppConfig {
     /// If `None`, authentication is disabled.
     /// Wrapped in `SecretString` for automatic zeroization on drop.
     pub auth_token: Option<crate::auth::SecretString>,
+}
+
+impl std::fmt::Debug for AppConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AppConfig")
+            .field("port", &self.port)
+            .field(
+                "auth_token",
+                &self.auth_token.as_ref().map(|_| "[REDACTED]"),
+            )
+            .finish()
+    }
 }
 
 impl Default for AppConfig {

@@ -32,11 +32,13 @@ use crate::error::CryptoError;
 
 /// SHA256 helper returning raw 32 bytes for MMR node hashing.
 ///
-/// Delegates to [`msez_core::sha256_bytes()`] — the sole raw-byte SHA-256
-/// entry point. MMR operations need `[u8; 32]` for binary tree concatenation.
+/// Delegates to [`msez_core::sha256_bytes`] — the sole raw-byte SHA-256
+/// implementation per CLAUDE.md §V.5. MMR operations need raw `[u8; 32]`
+/// for binary tree concatenation, not hex strings.
 fn sha256_raw(data: &[u8]) -> [u8; 32] {
     msez_core::sha256_bytes(data)
 }
+
 
 /// Encode bytes as lowercase hex string.
 fn to_hex(bytes: &[u8]) -> String {

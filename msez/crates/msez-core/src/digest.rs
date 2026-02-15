@@ -11,6 +11,15 @@
 //! was produced from properly canonicalized data. There is no constructor
 //! that accepts raw `[u8; 32]` in the public API outside of deserialization.
 //!
+//! ## SHA-256 Centralization
+//!
+//! **All SHA-256 computation in the SEZ Stack flows through this module.**
+//! No other crate may import `sha2` directly. Three entry points are provided:
+//!
+//! - [`sha256_digest()`] — canonical JSON → [`ContentDigest`] (primary path)
+//! - [`Sha256Accumulator`] — streaming SHA-256 for domain-separated / multi-part hashing
+//! - [`sha256_raw()`] — single-shot raw byte hashing (returns hex string)
+//!
 //! ## Spec Reference
 //!
 //! Implements digest computation per `tools/lawpack.py:sha256_bytes()` and
@@ -149,7 +158,7 @@ pub fn sha256_digest(canonical: &CanonicalBytes) -> ContentDigest {
 /// Incremental SHA-256 accumulator for multi-part digest computation.
 ///
 /// Use this for hash computations that combine multiple data chunks
-/// (e.g., domain-prefixed pack digests, directory content hashes).
+/// (e.g., domain-prefixed pack digests, directory content hashes, MMR nodes).
 /// All SHA-256 computation in the SEZ Stack must flow through `msez-core`,
 /// either via [`sha256_digest`] for canonicalized structured data or via
 /// this accumulator for multi-part binary data.
@@ -191,6 +200,16 @@ impl Sha256Accumulator {
         }
     }
 
+    /// Consume the accumulator and return the raw 32-byte digest.
+    ///
+    /// Use this when the consumer needs raw bytes for binary concatenation
+    /// (e.g., MMR node hashing where left || right must be `[u8; 32]` each).
+    /// For most uses, prefer [`finalize`](Self::finalize) or
+    /// [`finalize_hex`](Self::finalize_hex).
+    pub fn finalize_bytes(self) -> [u8; 32] {
+        self.hasher.finalize().into()
+    }
+
     /// Consume the accumulator and return the hex-encoded digest string.
     pub fn finalize_hex(self) -> String {
         self.finalize().to_hex()
@@ -227,15 +246,15 @@ pub fn sha256_raw(data: &[u8]) -> String {
     acc.finalize_hex()
 }
 
-/// Compute a raw SHA-256 digest of arbitrary bytes, returning 32 bytes.
+/// Compute SHA-256 of raw bytes, returning the 32-byte digest.
 ///
-/// Like [`sha256_raw()`] but returns the raw `[u8; 32]` digest instead of
-/// a hex string. Use this when the caller needs raw bytes for binary
-/// operations (e.g., MMR node concatenation, constant-time comparison).
+/// Single-shot convenience for binary hash operations that need raw `[u8; 32]`
+/// (MMR leaf hashing, binary tree concatenation). For hex output, use
+/// [`sha256_raw`]. For canonical JSON digests, use [`sha256_digest`].
 pub fn sha256_bytes(data: &[u8]) -> [u8; 32] {
-    let mut hasher = Sha256::new();
-    hasher.update(data);
-    hasher.finalize().into()
+    let mut acc = Sha256Accumulator::new();
+    acc.update(data);
+    acc.finalize_bytes()
 }
 
 /// Compute a Poseidon2 content digest from canonical bytes.

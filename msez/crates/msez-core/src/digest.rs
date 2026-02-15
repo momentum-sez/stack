@@ -220,12 +220,22 @@ impl Default for Sha256Accumulator {
 ///
 /// All SHA-256 in the codebase flows through `msez-core`. No other crate
 /// should directly `use sha2::{Digest, Sha256}` for single-shot hashing.
-/// The only exception is streaming/multi-part hashing (e.g., `digest_dir`
-/// in `msez-cli`) where the `sha2` streaming API is needed directly.
+/// For streaming multi-part hashes, use [`Sha256Accumulator`].
 pub fn sha256_raw(data: &[u8]) -> String {
     let mut acc = Sha256Accumulator::new();
     acc.update(data);
     acc.finalize_hex()
+}
+
+/// Compute a raw SHA-256 digest of arbitrary bytes, returning 32 bytes.
+///
+/// Like [`sha256_raw()`] but returns the raw `[u8; 32]` digest instead of
+/// a hex string. Use this when the caller needs raw bytes for binary
+/// operations (e.g., MMR node concatenation, constant-time comparison).
+pub fn sha256_bytes(data: &[u8]) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    hasher.finalize().into()
 }
 
 /// Compute a Poseidon2 content digest from canonical bytes.

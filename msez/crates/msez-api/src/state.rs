@@ -102,25 +102,21 @@ impl<T: Clone + Send + Sync> Store<T> {
     }
 
     /// Remove a record by ID.
-    #[allow(dead_code)]
     pub fn remove(&self, id: &Uuid) -> Option<T> {
         self.data.write().remove(id)
     }
 
     /// Check if a record exists.
-    #[allow(dead_code)]
     pub fn contains(&self, id: &Uuid) -> bool {
         self.data.read().contains_key(id)
     }
 
     /// Return the number of records.
-    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.data.read().len()
     }
 
     /// Whether the store is empty.
-    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }

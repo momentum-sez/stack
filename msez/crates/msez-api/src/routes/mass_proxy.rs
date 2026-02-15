@@ -845,11 +845,24 @@ async fn generate_payment_tax_event(
         pipeline.process_event(&event)
     };
 
-    let gross_cents = parse_amount(amount).unwrap_or(0);
+    let gross_cents = parse_amount(amount).unwrap_or_else(|| {
+        tracing::warn!(
+            amount = amount,
+            "failed to parse payment amount for tax event — recording as 0 cents",
+        );
+        0
+    });
     let mut total_wht_cents: i64 = 0;
     for w in &withholdings {
-        total_wht_cents =
-            total_wht_cents.saturating_add(parse_amount(&w.withholding_amount).unwrap_or(0));
+        total_wht_cents = total_wht_cents.saturating_add(
+            parse_amount(&w.withholding_amount).unwrap_or_else(|| {
+                tracing::warn!(
+                    withholding_amount = %w.withholding_amount,
+                    "failed to parse withholding amount — recording as 0 cents",
+                );
+                0
+            }),
+        );
     }
     let net_cents = gross_cents.saturating_sub(total_wht_cents);
 
@@ -1041,7 +1054,9 @@ async fn create_consent(
     // Step 3: Mass API call — map proxy DTO → Swagger-aligned mass-client types.
     let operation_type: msez_mass_client::consent::MassConsentOperationType =
         serde_json::from_value(serde_json::Value::String(req.consent_type.clone()))
-            .unwrap_or(msez_mass_client::consent::MassConsentOperationType::Unknown);
+            .map_err(|e| AppError::Validation(format!(
+                "unknown consent type '{}': {e}", req.consent_type,
+            )))?;
 
     // Extract organization_id from the first party, or use description as fallback.
     let organization_id = req

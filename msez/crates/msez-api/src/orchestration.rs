@@ -371,18 +371,15 @@ pub fn orchestrate_entity_creation(
     legal_name: &str,
     mass_response: serde_json::Value,
 ) -> OrchestrationEnvelope {
-    let entity_id_str = mass_response
-        .get("id")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
+    let entity_id_str = extract_id(&mass_response, "orchestrate_entity_creation");
 
-    let (_tensor, summary) = evaluate_compliance(jurisdiction_id, entity_id_str, ENTITY_DOMAINS);
+    let (_tensor, summary) = evaluate_compliance(jurisdiction_id, &entity_id_str, ENTITY_DOMAINS);
 
     let (credential, attestation_id) = issue_and_store(
         state,
         vc_types::FORMATION_COMPLIANCE,
         jurisdiction_id,
-        entity_id_str,
+        &entity_id_str,
         legal_name,
         &summary,
     );
@@ -527,21 +524,18 @@ pub fn orchestrate_identity_verification(
     identity_type: &str,
     mass_response: serde_json::Value,
 ) -> OrchestrationEnvelope {
-    let entity_ref = mass_response
-        .get("id")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
+    let entity_ref = extract_id(&mass_response, "orchestrate_identity_verification");
 
     // Identity verification is jurisdiction-agnostic at this layer.
     let jurisdiction_id = "GLOBAL";
 
-    let (_tensor, summary) = evaluate_compliance(jurisdiction_id, entity_ref, IDENTITY_DOMAINS);
+    let (_tensor, summary) = evaluate_compliance(jurisdiction_id, &entity_ref, IDENTITY_DOMAINS);
 
     let (credential, attestation_id) = issue_and_store(
         state,
         vc_types::IDENTITY_COMPLIANCE,
         jurisdiction_id,
-        entity_ref,
+        &entity_ref,
         identity_type,
         &summary,
     );
@@ -560,20 +554,17 @@ pub fn orchestrate_consent_creation(
     consent_type: &str,
     mass_response: serde_json::Value,
 ) -> OrchestrationEnvelope {
-    let consent_ref = mass_response
-        .get("id")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
+    let consent_ref = extract_id(&mass_response, "orchestrate_consent_creation");
 
     let jurisdiction_id = "GLOBAL";
 
-    let (_tensor, summary) = evaluate_compliance(jurisdiction_id, consent_ref, CONSENT_DOMAINS);
+    let (_tensor, summary) = evaluate_compliance(jurisdiction_id, &consent_ref, CONSENT_DOMAINS);
 
     let (credential, attestation_id) = issue_and_store(
         state,
         vc_types::CONSENT_COMPLIANCE,
         jurisdiction_id,
-        consent_ref,
+        &consent_ref,
         consent_type,
         &summary,
     );
@@ -635,6 +626,30 @@ fn issue_and_store(
     );
 
     (credential, Some(attestation_id))
+}
+
+/// Extract the `id` field from a Mass API JSON response.
+///
+/// Mass API responses always include an `id` field for created resources.
+/// If the field is missing (schema drift or unexpected response format),
+/// this logs a warning identifying the calling context and falls back to
+/// a generated UUID. The warning makes the issue auditable in production
+/// logs rather than silently poisoning compliance evaluations with the
+/// literal string "unknown".
+fn extract_id(mass_response: &serde_json::Value, context: &str) -> String {
+    match mass_response.get("id").and_then(|v| v.as_str()) {
+        Some(id) => id.to_string(),
+        None => {
+            let fallback = Uuid::new_v4().to_string();
+            tracing::warn!(
+                context = context,
+                fallback_id = %fallback,
+                "Mass API response missing 'id' field — using generated fallback. \
+                 This may indicate schema drift between SEZ Stack and Mass API.",
+            );
+            fallback
+        }
+    }
 }
 
 /// Infer a jurisdiction from a currency code.

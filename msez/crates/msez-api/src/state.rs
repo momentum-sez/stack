@@ -16,9 +16,10 @@
 //! See CLAUDE.md Section II.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
+use msez_agentic::PolicyEngine;
 use msez_corridor::ReceiptChain;
 use msez_crypto::SigningKey;
 use msez_state::{DynCorridorState, TransitionRecord};
@@ -266,6 +267,12 @@ pub struct AppState {
     /// Format: `"did:mass:zone:<hex-encoded-verifying-key>"`
     pub zone_did: String,
 
+    // -- Agentic policy engine --
+
+    /// The autonomous policy engine. `Mutex` because `PolicyEngine` is not `Sync`
+    /// (it holds a mutable audit trail) and evaluation mutates internal state.
+    pub policy_engine: Arc<Mutex<PolicyEngine>>,
+
     // -- Configuration --
     pub config: AppConfig,
 }
@@ -295,6 +302,7 @@ impl AppState {
             mass_client,
             zone_signing_key: Arc::new(zone_signing_key),
             zone_did,
+            policy_engine: Arc::new(Mutex::new(PolicyEngine::with_extended_policies())),
             config,
         }
     }

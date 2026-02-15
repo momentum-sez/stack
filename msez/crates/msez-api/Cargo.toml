@@ -23,6 +23,7 @@ msez-tensor = { workspace = true }
 msez-corridor = { workspace = true }
 msez-state = { workspace = true }
 msez-mass-client = { workspace = true }
+msez-agentic = { workspace = true }
 
 # Cryptography
 rand_core = { workspace = true }

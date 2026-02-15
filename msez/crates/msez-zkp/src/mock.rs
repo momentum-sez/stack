@@ -25,9 +25,9 @@
 //! Audit §2.5: Phase 1 mock proofs are explicitly acknowledged as non-private.
 //! Real ZK backends activate in Phase 2 via feature flags.
 
+use msez_core::digest::Sha256Accumulator;
 use msez_core::CanonicalBytes;
 use serde::{Deserialize, Serialize};
-use msez_core::digest::Sha256Accumulator;
 
 use crate::traits::{ProofError, ProofSystem, VerifyError};
 

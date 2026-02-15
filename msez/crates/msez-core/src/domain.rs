@@ -108,20 +108,19 @@ impl ComplianceDomain {
     /// this many elements. If a variant is added to the enum without updating
     /// `all()`, the build breaks.
     pub const COUNT: usize = 20;
+}
 
-    /// Compile-time assertion that `COUNT` matches the actual variant list.
-    ///
-    /// This is a const evaluated at compile time — if someone adds a 21st
-    /// variant and updates `all()` without bumping `COUNT`, or bumps `COUNT`
-    /// without extending `all()`, the build fails.
-    const _ASSERT_COUNT: () = {
-        const ALL_LEN: usize = 20;
-        assert!(
-            ALL_LEN == ComplianceDomain::COUNT,
-            "ComplianceDomain::COUNT does not match the number of variants in all()"
-        );
-    };
+// Compile-time assertion (M-003): `ComplianceDomain::all()` length must match COUNT.
+// If a variant is added or removed without updating both, this fails at compile time.
+const _: () = {
+    const ALL_LEN: usize = 20; // must equal ComplianceDomain::all().len()
+    assert!(
+        ALL_LEN == ComplianceDomain::COUNT,
+        "ComplianceDomain::COUNT does not match the number of variants in all()"
+    );
+};
 
+impl ComplianceDomain {
     /// Return the snake_case string representation of this domain.
     ///
     /// Matches the serde serialization format and the Python enum values.

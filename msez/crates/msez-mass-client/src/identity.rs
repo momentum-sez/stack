@@ -311,7 +311,7 @@ impl IdentityClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_default();
+            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint,
                 status,
@@ -349,7 +349,7 @@ impl IdentityClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_default();
+            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint,
                 status,
@@ -387,7 +387,7 @@ impl IdentityClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_default();
+            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint,
                 status,
@@ -418,9 +418,9 @@ impl IdentityClient {
 
         Ok(MassIdentity {
             organization_id: organization_id.to_string(),
-            members: members.unwrap_or_default(),
-            directors: directors.unwrap_or_default(),
-            shareholders: shareholders.unwrap_or_default(),
+            members: members?,
+            directors: directors?,
+            shareholders: shareholders?,
         })
     }
 
@@ -450,7 +450,7 @@ impl IdentityClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_default();
+            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint: endpoint.into(),
                 status,
@@ -492,7 +492,7 @@ impl IdentityClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_default();
+            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint: endpoint.into(),
                 status,
@@ -532,7 +532,7 @@ impl IdentityClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_default();
+            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint,
                 status,

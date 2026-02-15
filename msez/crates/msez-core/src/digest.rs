@@ -11,6 +11,15 @@
 //! was produced from properly canonicalized data. There is no constructor
 //! that accepts raw `[u8; 32]` in the public API outside of deserialization.
 //!
+//! ## SHA-256 Centralization
+//!
+//! **All SHA-256 computation in the SEZ Stack flows through this module.**
+//! No other crate may import `sha2` directly. Three entry points are provided:
+//!
+//! - [`sha256_digest()`] — canonical JSON → [`ContentDigest`] (primary path)
+//! - [`Sha256Accumulator`] — streaming SHA-256 for domain-separated / multi-part hashing
+//! - [`sha256_raw()`] — single-shot raw byte hashing (returns hex string)
+//!
 //! ## Spec Reference
 //!
 //! Implements digest computation per `tools/lawpack.py:sha256_bytes()` and
@@ -149,7 +158,7 @@ pub fn sha256_digest(canonical: &CanonicalBytes) -> ContentDigest {
 /// Incremental SHA-256 accumulator for multi-part digest computation.
 ///
 /// Use this for hash computations that combine multiple data chunks
-/// (e.g., domain-prefixed pack digests, directory content hashes).
+/// (e.g., domain-prefixed pack digests, directory content hashes, MMR nodes).
 /// All SHA-256 computation in the SEZ Stack must flow through `msez-core`,
 /// either via [`sha256_digest`] for canonicalized structured data or via
 /// this accumulator for multi-part binary data.
@@ -191,6 +200,16 @@ impl Sha256Accumulator {
         }
     }
 
+    /// Consume the accumulator and return the raw 32-byte digest.
+    ///
+    /// Use this when the consumer needs raw bytes for binary concatenation
+    /// (e.g., MMR node hashing where left || right must be `[u8; 32]` each).
+    /// For most uses, prefer [`finalize`](Self::finalize) or
+    /// [`finalize_hex`](Self::finalize_hex).
+    pub fn finalize_bytes(self) -> [u8; 32] {
+        self.hasher.finalize().into()
+    }
+
     /// Consume the accumulator and return the hex-encoded digest string.
     pub fn finalize_hex(self) -> String {
         self.finalize().to_hex()
@@ -201,19 +220,6 @@ impl Default for Sha256Accumulator {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// Compute a SHA-256 digest of raw bytes, returning the raw 32-byte array.
-///
-/// Use this for operations that need binary `[u8; 32]` output — Merkle tree
-/// node concatenation, MMR leaf/node hashing, binary protocol fields.
-///
-/// This eliminates the need for any crate (including `msez-crypto`) to import
-/// `sha2` directly for raw-byte hashing.
-pub fn sha256_raw_bytes(data: &[u8]) -> [u8; 32] {
-    let mut hasher = Sha256::new();
-    hasher.update(data);
-    hasher.finalize().into()
 }
 
 /// Compute a SHA-256 hex digest of raw bytes.
@@ -228,16 +234,28 @@ pub fn sha256_raw_bytes(data: &[u8]) -> [u8; 32] {
 /// |-----------|----------|--------|---------|
 /// | `impl Serialize` (structs, enums, JSON) | [`sha256_digest`] via [`CanonicalBytes`] | `ContentDigest` | Audit events, compliance tensors, VCs |
 /// | Raw `&[u8]` needing hex string | `sha256_raw` | `String` | Pack file digests, lockfile hashes |
-/// | Raw `&[u8]` needing binary | [`sha256_raw_bytes`] | `[u8; 32]` | MMR nodes, Merkle tree concatenation |
+/// | Raw `&[u8]` needing binary | [`sha256_bytes`] | `[u8; 32]` | MMR nodes, Merkle tree concatenation |
 ///
 /// ## Security Invariant
 ///
 /// All SHA-256 in the codebase flows through `msez-core`. No other crate
-/// should directly `use sha2::{Digest, Sha256}`.
+/// should directly `use sha2::{Digest, Sha256}` for single-shot hashing.
+/// For streaming multi-part hashes, use [`Sha256Accumulator`].
 pub fn sha256_raw(data: &[u8]) -> String {
     let mut acc = Sha256Accumulator::new();
     acc.update(data);
     acc.finalize_hex()
+}
+
+/// Compute SHA-256 of raw bytes, returning the 32-byte digest.
+///
+/// Single-shot convenience for binary hash operations that need raw `[u8; 32]`
+/// (MMR leaf hashing, binary tree concatenation). For hex output, use
+/// [`sha256_raw`]. For canonical JSON digests, use [`sha256_digest`].
+pub fn sha256_bytes(data: &[u8]) -> [u8; 32] {
+    let mut acc = Sha256Accumulator::new();
+    acc.update(data);
+    acc.finalize_bytes()
 }
 
 /// Compute a Poseidon2 content digest from canonical bytes.

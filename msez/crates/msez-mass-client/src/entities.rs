@@ -169,7 +169,7 @@ impl EntityClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_default();
+            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint: endpoint.into(),
                 status,
@@ -205,7 +205,7 @@ impl EntityClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_default();
+            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint,
                 status,
@@ -245,7 +245,7 @@ impl EntityClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_default();
+            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint: endpoint.into(),
                 status,
@@ -280,7 +280,7 @@ impl EntityClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_default();
+            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint: endpoint.into(),
                 status,
@@ -316,7 +316,7 @@ impl EntityClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_default();
+            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint,
                 status,
@@ -348,7 +348,7 @@ impl EntityClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_default();
+            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint,
                 status,
@@ -378,7 +378,7 @@ impl EntityClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_default();
+            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint: endpoint.into(),
                 status,

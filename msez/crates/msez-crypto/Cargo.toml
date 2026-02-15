@@ -26,4 +26,5 @@ subtle = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+sha2 = { workspace = true }
 tempfile = "3"

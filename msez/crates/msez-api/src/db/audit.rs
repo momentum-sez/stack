@@ -143,4 +143,3 @@ pub struct AuditEventRow {
     pub event_hash: String,
     pub created_at: DateTime<Utc>,
 }
-

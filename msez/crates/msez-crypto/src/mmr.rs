@@ -22,7 +22,6 @@
 //! Implements the receipt chain MMR per `spec/40-corridors.md` and the audit
 //! document Part IV (receipt chain + MMR).
 
-use msez_core::sha256_raw_bytes;
 use subtle::ConstantTimeEq;
 
 use crate::error::CryptoError;
@@ -33,11 +32,13 @@ use crate::error::CryptoError;
 
 /// SHA256 helper returning raw 32 bytes for MMR node hashing.
 ///
-/// Delegates to `msez_core::sha256_raw_bytes` to maintain the invariant
-/// that all SHA-256 computation flows through `msez-core` (CLAUDE.md §V.5).
+/// Delegates to [`msez_core::sha256_bytes`] — the sole raw-byte SHA-256
+/// implementation per CLAUDE.md §V.5. MMR operations need raw `[u8; 32]`
+/// for binary tree concatenation, not hex strings.
 fn sha256_raw(data: &[u8]) -> [u8; 32] {
-    sha256_raw_bytes(data)
+    msez_core::sha256_bytes(data)
 }
+
 
 /// Encode bytes as lowercase hex string.
 fn to_hex(bytes: &[u8]) -> String {

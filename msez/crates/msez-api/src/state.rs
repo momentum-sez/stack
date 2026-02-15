@@ -138,6 +138,28 @@ pub struct CorridorRecord {
     pub updated_at: DateTime<Utc>,
 }
 
+/// Compliance status for a smart asset.
+///
+/// This is a simplified classification derived from the compliance tensor's
+/// [`ComplianceState`] lattice. The tensor performs algebraic evaluation across
+/// 20 compliance domains; this enum collapses that into an API-layer status
+/// suitable for storage and display. The conversion discards lattice semantics
+/// (meet, join, absorbing element) that are not needed at rest.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AssetComplianceStatus {
+    /// All applicable domains are passing.
+    Compliant,
+    /// Evaluation has not been performed or is incomplete.
+    Pending,
+    /// At least one domain is non-compliant.
+    NonCompliant,
+    /// At least one domain is pending but none are non-compliant.
+    PartiallyCompliant,
+    /// Compliance has not been evaluated for this asset.
+    Unevaluated,
+}
+
 /// Smart asset record.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct SmartAssetRecord {
@@ -146,7 +168,7 @@ pub struct SmartAssetRecord {
     pub jurisdiction_id: String,
     pub status: String,
     pub genesis_digest: Option<String>,
-    pub compliance_status: Option<String>,
+    pub compliance_status: AssetComplianceStatus,
     pub metadata: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

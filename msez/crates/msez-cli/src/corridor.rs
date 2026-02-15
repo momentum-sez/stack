@@ -217,13 +217,12 @@ fn cmd_transition(state_dir: &Path, id: &str, target: DynCorridorState) -> Resul
         );
     }
 
-    let from = data.state.as_str().to_string();
-    let to = target.as_str().to_string();
+    let from = data.state;
     let now = chrono::Utc::now();
 
     data.transition_log.push(msez_state::TransitionRecord {
-        from_state: from.clone(),
-        to_state: to.clone(),
+        from_state: from,
+        to_state: target,
         timestamp: now,
         evidence_digest: None,
     });
@@ -233,7 +232,7 @@ fn cmd_transition(state_dir: &Path, id: &str, target: DynCorridorState) -> Resul
     let json = serde_json::to_string_pretty(&data)?;
     std::fs::write(&state_file, json)?;
 
-    println!("OK: corridor {id} transitioned {from} → {to}");
+    println!("OK: corridor {id} transitioned {from} → {target}");
     Ok(0)
 }
 
@@ -502,10 +501,10 @@ mod tests {
         let content = std::fs::read_to_string(&state_file).unwrap();
         let data: DynCorridorData = serde_json::from_str(&content).unwrap();
         assert_eq!(data.transition_log.len(), 2);
-        assert_eq!(data.transition_log[0].from_state, "DRAFT");
-        assert_eq!(data.transition_log[0].to_state, "PENDING");
-        assert_eq!(data.transition_log[1].from_state, "PENDING");
-        assert_eq!(data.transition_log[1].to_state, "ACTIVE");
+        assert_eq!(data.transition_log[0].from_state, DynCorridorState::Draft);
+        assert_eq!(data.transition_log[0].to_state, DynCorridorState::Pending);
+        assert_eq!(data.transition_log[1].from_state, DynCorridorState::Pending);
+        assert_eq!(data.transition_log[1].to_state, DynCorridorState::Active);
     }
 
     #[test]

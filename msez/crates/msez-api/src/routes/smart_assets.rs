@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
-use crate::state::{AppState, SmartAssetRecord};
+use crate::state::{AppState, AssetComplianceStatus, SmartAssetRecord};
 use axum::extract::rejection::JsonRejection;
 
 /// Request to create a smart asset genesis.
@@ -116,7 +116,7 @@ async fn create_asset(
         jurisdiction_id: req.jurisdiction_id,
         status: "GENESIS".to_string(),
         genesis_digest: None,
-        compliance_status: None,
+        compliance_status: AssetComplianceStatus::Unevaluated,
         metadata: req.metadata,
         created_at: now,
         updated_at: now,
@@ -384,7 +384,7 @@ mod tests {
         assert_eq!(record.jurisdiction_id, "PK-PSEZ");
         assert_eq!(record.status, "GENESIS");
         assert!(record.genesis_digest.is_none());
-        assert!(record.compliance_status.is_none());
+        assert_eq!(record.compliance_status, AssetComplianceStatus::Unevaluated);
     }
 
     #[tokio::test]

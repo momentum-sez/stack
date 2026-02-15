@@ -165,12 +165,20 @@ pub struct AttestationRef {
 impl AttestationRef {
     /// Check if this attestation has expired as of the given time.
     ///
-    /// Returns `false` if no expiry is set or the expiry cannot be parsed.
+    /// Returns `false` if no expiry is set. Returns `true` (conservatively
+    /// treats as expired) if the expiry string cannot be parsed — an
+    /// unparseable date must not grant indefinite validity.
     pub fn is_expired(&self, as_of: &chrono::DateTime<chrono::Utc>) -> bool {
         match self.expires_at {
             Some(ref expires) => chrono::DateTime::parse_from_rfc3339(expires)
                 .map(|expiry| *as_of > expiry)
-                .unwrap_or(false),
+                .unwrap_or_else(|_| {
+                    tracing::warn!(
+                        expires_at = %expires,
+                        "unparseable attestation expiry — treating as expired (conservative)"
+                    );
+                    true
+                }),
             None => false,
         }
     }
@@ -696,7 +704,7 @@ mod tests {
     }
 
     #[test]
-    fn attestation_ref_unparseable_expiry_not_expired() {
+    fn attestation_ref_unparseable_expiry_treated_as_expired() {
         let att = AttestationRef {
             attestation_id: "att-1".into(),
             attestation_type: "kyc".into(),
@@ -705,8 +713,9 @@ mod tests {
             expires_at: Some("not-a-date".into()),
             digest: "abc".into(),
         };
-        // Unparseable expiry returns false (not expired)
-        assert!(!att.is_expired(&chrono::Utc::now()));
+        // Conservative: unparseable expiry is treated as expired. An
+        // unparseable date must not grant indefinite validity.
+        assert!(att.is_expired(&chrono::Utc::now()));
     }
 
     #[test]

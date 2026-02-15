@@ -256,6 +256,7 @@ async fn verify_credential(
     let zone_vk = state.zone_signing_key.verifying_key();
     let zone_did = state.zone_did.clone();
 
+    // Collect detailed per-proof results for the response.
     let results = vc.verify(|verification_method| {
         if verification_method.starts_with(&zone_did) {
             Ok(zone_vk.clone())
@@ -265,9 +266,16 @@ async fn verify_credential(
             ))
         }
     });
-
-    let all_ok = results.iter().all(|r| r.ok);
     let proof_count = results.len();
+
+    // Apply the same holistic checks that verify_all() enforces:
+    // (a) reject credentials with zero proofs (vacuously-true iterator bug),
+    // (b) reject expired credentials regardless of signature validity.
+    let proofs_ok = !results.is_empty() && results.iter().all(|r| r.ok);
+    let expired = vc
+        .expiration_date
+        .is_some_and(|exp| exp < chrono::Utc::now());
+    let all_ok = proofs_ok && !expired;
 
     let credential_type = match &vc.credential_type {
         CredentialTypeValue::Single(s) => s.clone(),

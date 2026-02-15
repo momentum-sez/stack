@@ -556,8 +556,16 @@ impl WithholdingEngine {
             return false;
         }
 
-        // Threshold check.
-        let min = parse_amount(&rule.threshold_min).unwrap_or(0);
+        // Threshold check. An unparseable threshold_min silently becoming 0
+        // would cause the rule to match ALL amounts — log the anomaly.
+        let min = parse_amount(&rule.threshold_min).unwrap_or_else(|| {
+            tracing::warn!(
+                threshold_min = %rule.threshold_min,
+                section = %rule.statutory_section,
+                "unparseable threshold_min in withholding rule — defaulting to 0"
+            );
+            0
+        });
         if gross < min {
             return false;
         }
@@ -1016,8 +1024,22 @@ pub fn generate_report(params: &ReportParams, results: &[WithholdingResult]) -> 
             currency.clone_from(&r.currency);
         }
 
-        let gross = parse_amount(&r.gross_amount).unwrap_or(0);
-        let wht = parse_amount(&r.withholding_amount).unwrap_or(0);
+        let gross = parse_amount(&r.gross_amount).unwrap_or_else(|| {
+            tracing::warn!(
+                gross_amount = %r.gross_amount,
+                section = %r.statutory_section,
+                "unparseable gross_amount in tax report — treating as 0; FBR submission may understate revenue"
+            );
+            0
+        });
+        let wht = parse_amount(&r.withholding_amount).unwrap_or_else(|| {
+            tracing::warn!(
+                withholding_amount = %r.withholding_amount,
+                section = %r.statutory_section,
+                "unparseable withholding_amount in tax report — treating as 0; FBR submission may understate withholding"
+            );
+            0
+        });
 
         total_gross_cents = total_gross_cents.saturating_add(gross);
         total_wht_cents = total_wht_cents.saturating_add(wht);

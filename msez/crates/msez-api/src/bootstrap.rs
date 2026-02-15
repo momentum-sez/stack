@@ -310,21 +310,34 @@ fn load_packs_from_cas(manifest: &ZoneManifest) -> PackData {
                         domain = %rp_ref.domain,
                         "loaded regpack from CAS"
                     );
-                    // Attempt to parse sanctions entries from the regpack data.
-                    if let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes) {
-                        if let Some(entries) = extract_sanctions_from_regpack(&value) {
-                            let snap_id = value
-                                .get("sanctions_snapshot")
-                                .and_then(|s| s.get("snapshot_id"))
-                                .and_then(|v| v.as_str())
-                                .map(|s| s.to_string())
-                                .or_else(|| {
-                                    rp_ref.as_of_date.as_ref().map(|d| format!("regpack-{d}"))
-                                });
-                            sanctions_entries.extend(entries);
-                            if sanctions_snapshot_id.is_none() {
-                                sanctions_snapshot_id = snap_id;
+                    // Parse sanctions entries from the regpack data.
+                    // Parse failure is HIGH severity — a corrupted regpack means
+                    // sanctions screening data may be missing, potentially allowing
+                    // sanctioned entities through compliance checks.
+                    match serde_json::from_slice::<serde_json::Value>(&bytes) {
+                        Ok(value) => {
+                            if let Some(entries) = extract_sanctions_from_regpack(&value) {
+                                let snap_id = value
+                                    .get("sanctions_snapshot")
+                                    .and_then(|s| s.get("snapshot_id"))
+                                    .and_then(|v| v.as_str())
+                                    .map(|s| s.to_string())
+                                    .or_else(|| {
+                                        rp_ref.as_of_date.as_ref().map(|d| format!("regpack-{d}"))
+                                    });
+                                sanctions_entries.extend(entries);
+                                if sanctions_snapshot_id.is_none() {
+                                    sanctions_snapshot_id = snap_id;
+                                }
                             }
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                digest = %rp_ref.regpack_digest_sha256,
+                                domain = %rp_ref.domain,
+                                error = %e,
+                                "regpack loaded from CAS but failed JSON parse — sanctions data may be missing"
+                            );
                         }
                     }
                 }

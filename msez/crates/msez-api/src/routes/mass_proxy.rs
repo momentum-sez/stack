@@ -488,10 +488,14 @@ async fn update_entity(
         .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?
         .ok_or_else(|| AppError::not_found(format!("entity {id} not found")))?;
 
+    // Use GLOBAL scope (same as cap table/consent) when the entity has no
+    // jurisdiction set. "UNKNOWN" is semantically wrong — it implies a data
+    // quality issue rather than a deliberate scope choice.
     let jurisdiction_id = existing
         .jurisdiction
         .as_deref()
-        .unwrap_or("UNKNOWN");
+        .filter(|j| !j.is_empty())
+        .unwrap_or("GLOBAL");
 
     // Step 2: Pre-flight compliance evaluation.
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(

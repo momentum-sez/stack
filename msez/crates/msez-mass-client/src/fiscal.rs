@@ -217,6 +217,7 @@ pub enum TaxEventType {
 
 /// Request to record a tax event.
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RecordTaxEventRequest {
     pub entity_id: Uuid,
     pub event_type: TaxEventType,
@@ -231,6 +232,7 @@ pub struct RecordTaxEventRequest {
 
 /// Request to compute withholding for a transaction.
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WithholdingComputeRequest {
     pub entity_id: Uuid,
     pub transaction_amount: String,
@@ -243,6 +245,7 @@ pub struct WithholdingComputeRequest {
 
 /// Withholding computation result.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WithholdingResult {
     pub entity_id: Uuid,
     pub gross_amount: String,

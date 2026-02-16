@@ -133,19 +133,24 @@ fn cmd_sign(key_path: &Path, file_path: &Path) -> Result<u8> {
         bail!("document file not found: {}", file_path.display());
     }
 
-    // Read private key (hex-encoded).
-    let sk_hex = std::fs::read_to_string(key_path)
-        .with_context(|| format!("failed to read private key: {}", key_path.display()))?;
-    let sk_hex = sk_hex.trim();
+    // Read private key (hex-encoded). All intermediates holding raw key
+    // bytes are wrapped in Zeroizing<> so they are zeroed on drop.
+    use zeroize::Zeroizing;
 
-    let sk_bytes = hex_to_bytes(sk_hex).context("invalid private key hex")?;
+    let sk_hex = Zeroizing::new(
+        std::fs::read_to_string(key_path)
+            .with_context(|| format!("failed to read private key: {}", key_path.display()))?,
+    );
+    let sk_hex_trimmed = sk_hex.trim();
+
+    let sk_bytes = Zeroizing::new(hex_to_bytes(sk_hex_trimmed).context("invalid private key hex")?);
     if sk_bytes.len() != 32 {
         bail!(
             "private key must be 32 bytes (64 hex chars), got {} bytes",
             sk_bytes.len()
         );
     }
-    let mut sk_arr = [0u8; 32];
+    let mut sk_arr = Zeroizing::new([0u8; 32]);
     sk_arr.copy_from_slice(&sk_bytes);
     let sk = SigningKey::from_bytes(&sk_arr);
 

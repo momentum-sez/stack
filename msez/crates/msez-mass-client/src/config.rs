@@ -110,6 +110,12 @@ impl MassApiConfig {
     /// Returns `ConfigError::InvalidUrl` if the localhost URL cannot be parsed
     /// (should not occur for valid port numbers, but avoids `expect()`).
     pub fn local_mock(base_port: u16, token: &str) -> Result<Self, ConfigError> {
+        if base_port > 65531 {
+            return Err(ConfigError::InvalidUrl(
+                "base_port".to_string(),
+                format!("base_port {base_port} would overflow u16 when adding offsets 0..4"),
+            ));
+        }
         let make_url = |port: u16| -> Result<Url, ConfigError> {
             Url::parse(&format!("http://127.0.0.1:{port}"))
                 .map_err(|e| ConfigError::InvalidUrl("localhost".to_string(), e.to_string()))

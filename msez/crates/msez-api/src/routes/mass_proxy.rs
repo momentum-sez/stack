@@ -933,7 +933,7 @@ async fn initiate_payment(
 /// Pakistan's fiscal year runs July 1 to June 30. If the current month
 /// is July or later, the fiscal year is `YYYY-(YYYY+1)`. Otherwise it is
 /// `(YYYY-1)-YYYY`.
-fn current_pk_fiscal_year() -> String {
+pub(crate) fn current_pk_fiscal_year() -> String {
     let now = Utc::now();
     let year = now.year();
     let month = now.month();

@@ -41,7 +41,17 @@ impl std::fmt::Debug for SanctionsEvaluator {
 
 impl SanctionsEvaluator {
     /// Create a new sanctions evaluator from a loaded checker.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `threshold` is not in `(0.0, 1.0]`. A threshold of 0.0 would
+    /// cause universal false positives; a threshold > 1.0 would silently disable
+    /// sanctions screening entirely.
     pub fn new(checker: Arc<SanctionsChecker>, threshold: f64) -> Self {
+        assert!(
+            threshold > 0.0 && threshold <= 1.0,
+            "sanctions threshold must be in (0.0, 1.0], got {threshold}"
+        );
         Self { checker, threshold }
     }
 

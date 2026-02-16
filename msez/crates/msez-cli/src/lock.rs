@@ -97,6 +97,15 @@ pub fn run_lock(args: &LockArgs, repo_root: &Path) -> Result<u8> {
         .unwrap_or("stack.lock");
 
     // Validate lockfile_path does not escape the zone directory.
+    // Check for path traversal components AND absolute paths (which would
+    // cause PathBuf::join to replace the base directory entirely).
+    let lockfile_path_obj = Path::new(lockfile_path_from_zone);
+    if lockfile_path_obj.is_absolute() {
+        bail!(
+            "lockfile_path in zone YAML is an absolute path (potential path traversal): {:?}",
+            lockfile_path_from_zone
+        );
+    }
     if lockfile_path_from_zone.contains("..") {
         bail!(
             "lockfile_path in zone YAML contains path traversal: {:?}",

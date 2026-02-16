@@ -145,13 +145,23 @@ pub trait NadraAdapter: Send + Sync {
 /// Validate that a CNIC string contains exactly 13 digits after stripping
 /// dashes. Returns the canonical 13-digit form on success.
 pub fn validate_cnic(cnic: &str) -> Result<String, NadraError> {
-    let digits: String = cnic.chars().filter(|c| c.is_ascii_digit()).collect();
+    // Only strip dashes (the standard CNIC format separator), not arbitrary
+    // non-digit characters. Permitting arbitrary stripping masks data entry
+    // errors that should be caught before reaching NADRA.
+    let stripped: String = cnic.chars().filter(|&c| c != '-').collect();
+    if !stripped.chars().all(|c| c.is_ascii_digit()) {
+        return Err(NadraError::InvalidCnic {
+            reason: "CNIC must contain only digits and dashes".to_string(),
+        });
+    }
+    let digits = stripped;
     if digits.len() != 13 {
         return Err(NadraError::InvalidCnic {
+            // Do NOT include raw CNIC input in error messages — it is PII
+            // (national identity number) that would leak into logs.
             reason: format!(
-                "CNIC must be exactly 13 digits, got {} digits from input '{}'",
+                "CNIC must be exactly 13 digits, got {} digits",
                 digits.len(),
-                cnic
             ),
         });
     }

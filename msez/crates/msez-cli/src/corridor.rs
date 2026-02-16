@@ -188,13 +188,17 @@ fn corridor_state_file(state_dir: &Path, id: &str) -> Result<PathBuf> {
     validate_corridor_id(id)?;
     let state_file = state_dir.join(format!("{id}.json"));
     // Defense-in-depth: verify the resolved path is still within state_dir.
+    // Canonicalize the directory (which must exist). For the file, use
+    // parent directory canonicalization instead of file canonicalization,
+    // since the file may not exist yet during `create` operations.
     let canonical_dir = state_dir
         .canonicalize()
         .unwrap_or_else(|_| state_dir.to_path_buf());
-    let canonical_file = state_file
+    let file_parent = state_file.parent().unwrap_or(state_dir);
+    let canonical_parent = file_parent
         .canonicalize()
-        .unwrap_or_else(|_| state_file.clone());
-    if !canonical_file.starts_with(&canonical_dir) {
+        .unwrap_or_else(|_| file_parent.to_path_buf());
+    if !canonical_parent.starts_with(&canonical_dir) {
         bail!(
             "corridor ID resolves outside state directory: {id:?}"
         );
@@ -212,9 +216,6 @@ fn cmd_create(
     std::fs::create_dir_all(state_dir).context("failed to create corridor state directory")?;
 
     let state_file = corridor_state_file(state_dir, id)?;
-    if state_file.exists() {
-        bail!("corridor already exists: {id}");
-    }
 
     let now = chrono::Utc::now();
     let data = DynCorridorData {
@@ -230,7 +231,21 @@ fn cmd_create(
     };
 
     let json = serde_json::to_string_pretty(&data)?;
-    std::fs::write(&state_file, json)?;
+    // Use create_new(true) for atomic create-or-fail to prevent TOCTOU
+    // race where two concurrent `corridor create` calls both succeed.
+    use std::io::Write;
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&state_file)
+        .map_err(|e| {
+            if e.kind() == std::io::ErrorKind::AlreadyExists {
+                anyhow::anyhow!("corridor already exists: {id}")
+            } else {
+                anyhow::anyhow!("failed to create corridor state file: {e}")
+            }
+        })?;
+    file.write_all(json.as_bytes())?;
 
     println!("OK: created corridor {id} in DRAFT state");
     Ok(0)

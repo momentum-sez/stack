@@ -22,7 +22,7 @@ use std::collections::HashMap;
 use axum::extract::State;
 use axum::routing::get;
 use axum::{Json, Router};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, Utc};
 use msez_agentic::tax::{format_amount, parse_amount};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -483,8 +483,14 @@ async fn citizen_dashboard(
         available_services,
         service_categories,
         filing_status: FilingStatusSummary {
-            tax_year: "2025-2026".to_string(),
-            filing_deadline: "2026-09-30".to_string(),
+            tax_year: super::mass_proxy::current_pk_fiscal_year(),
+            filing_deadline: {
+                // Pakistan filing deadline is Sep 30 of the calendar year
+                // in which the fiscal year ends (July-June cycle).
+                let now = chrono::Utc::now();
+                let deadline_year = if now.month() >= 7 { now.year() + 1 } else { now.year() };
+                format!("{deadline_year}-09-30")
+            },
             filed_count,
             outstanding_count,
         },

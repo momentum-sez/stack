@@ -299,9 +299,11 @@ impl IdentityClient {
         &self,
         organization_id: &str,
     ) -> Result<Vec<MassMember>, MassApiError> {
-        let endpoint = format!("GET /membership/{organization_id}/members");
+        let encoded_org_id: String =
+            url::form_urlencoded::byte_serialize(organization_id.as_bytes()).collect();
+        let endpoint = format!("GET /membership/{encoded_org_id}/members");
         let url = format!(
-            "{}{}/membership/{organization_id}/members",
+            "{}{}/membership/{encoded_org_id}/members",
             self.org_base_url, ORG_API_PREFIX
         );
 

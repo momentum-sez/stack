@@ -32,6 +32,46 @@ module.exports = function build_chapter07() {
     definition("Definition 7.1 (Profile).", "A profile P is a tuple (M, \u0398, T, R) where M is the set of active module families, \u0398 is the parameter configuration map, T is the compliance tensor weight matrix, and R is the resource requirement specification. A zone Z instantiated with profile P inherits all four components and may override \u0398 entries within the bounds declared by P's parameter constraints."),
     spacer(),
 
+    h3("7.1.1 Module Activation Matrix"),
+    p("The following matrix summarizes module activation status across all seven profiles. Active: full functionality. Minimal: limited functionality for the specific use case. Inactive: module not deployed."),
+    table(
+      ["Module Family", "financial-center", "trade-hub", "tech-park", "sovereign-govos", "charter-city", "digital-native", "asset-history"],
+      [
+        ["Corporate", "Active", "Active", "Active", "Active", "Active", "Active", "Minimal"],
+        ["Financial", "Active", "Active", "Minimal", "Active", "Active", "Active", "Minimal"],
+        ["Trade", "Active", "Active", "Inactive", "Active", "Minimal", "Inactive", "Active"],
+        ["Corridors", "Active", "Active", "Minimal", "Active", "Active", "Active", "Active"],
+        ["Governance", "Active", "Active", "Active", "Active", "Active", "Active", "Minimal"],
+        ["Regulatory", "Active", "Active", "Active", "Active", "Active", "Active", "Active"],
+        ["Licensing", "Active", "Active", "Active", "Active", "Active", "Active", "Minimal"],
+        ["Legal", "Active", "Active", "Active", "Active", "Active", "Active", "Active"],
+        ["Identity", "Active", "Active", "Active", "Active", "Active", "Active", "Active"],
+        ["Compliance", "20 domains", "14 domains", "10 domains", "20 domains", "16 domains", "12 domains", "6-10 domains"],
+        ["Tax", "Active", "Active", "Active", "Active", "Active", "Active", "Minimal"],
+        ["Insurance", "Active", "Minimal", "Inactive", "Active", "Active", "Inactive", "Active"],
+        ["IP", "Active", "Inactive", "Active", "Active", "Minimal", "Active", "Minimal"],
+        ["Customs", "Active", "Active", "Inactive", "Active", "Minimal", "Inactive", "Active"],
+        ["Land/Property", "Active", "Inactive", "Minimal", "Active", "Active", "Inactive", "Conditional"],
+        ["Civic", "Active", "Minimal", "Active", "Active", "Active", "Inactive", "Inactive"],
+      ],
+      [1400, 1200, 1100, 1000, 1200, 1100, 1100, 1260]
+    ),
+    spacer(),
+
+    h3("7.1.2 Resource Comparison"),
+    table(
+      ["Resource", "financial-center", "trade-hub", "tech-park", "sovereign-govos", "charter-city", "digital-native", "asset-history"],
+      [
+        ["Min vCPU", "16", "8", "4", "64", "16", "4", "4"],
+        ["Min RAM", "64 GB", "32 GB", "16 GB", "256 GB", "64 GB", "16 GB", "16 GB"],
+        ["Min Storage", "500 GB", "250 GB", "100 GB", "5 TB", "500 GB", "100 GB", "100 GB"],
+        ["HSM Required", "FIPS 140-2 L3", "Software OK", "Software OK", "FIPS 140-3 L3", "FIPS 140-2 L3", "Software OK", "Software OK"],
+        ["DB Nodes", "3-node cluster", "Single node", "Single node", "5-node cluster", "3-node cluster", "Single node", "Single node"],
+      ],
+      [1400, 1200, 1100, 1000, 1200, 1100, 1100, 1260]
+    ),
+    spacer(),
+
     // =========================================================================
     // 7.2 digital-financial-center
     // =========================================================================

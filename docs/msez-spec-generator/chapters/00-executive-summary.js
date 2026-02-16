@@ -80,7 +80,7 @@ module.exports = function build_executive_summary() {
         ["XII", "Institutional Infrastructure", "32\u201336", "Corporate services (formation through dissolution), identity and credentialing, tax and revenue, capital markets (issuance through settlement), trade and commerce"],
         ["XIII", "Mass API Integration", "37", "The msez-mass-bridge crate, JurisdictionalContext trait, typed client mapping to all five Mass primitives"],
         ["XIV", "GovOS Architecture", "38\u201341", "Four-layer sovereign deployment model, Sovereign AI spine, tax collection pipeline, sovereignty handover protocol"],
-        ["XV", "Mass Protocol Integration", "42\u201345", "Protocol overview, verifiable credentials (W3C VC, Ed25519 proofs), arbitration system, agentic execution framework"],
+        ["XV", "Protocol Reference", "42\u201345", "Protocol overview, verifiable credentials (W3C VC, Ed25519 proofs), arbitration system, agentic execution framework"],
         ["XVI", "Security and Hardening", "46\u201348", "Security architecture, production hardening checklist, zero-knowledge proof circuit specifications"],
         ["XVII", "Deployment and Operations", "49\u201353", "Deployment architecture, Docker infrastructure (12-service orchestration), AWS Terraform (VPC, EKS, RDS), one-click deployment, operations management"],
         ["XVIII", "Network Diffusion", "54\u201356", "Adoption strategy, partner network, current network topology and status"],

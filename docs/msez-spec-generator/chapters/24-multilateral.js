@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  table, spacer
+  table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter24() {
@@ -23,7 +23,6 @@ module.exports = function build_chapter24() {
       ],
       [2400, 3200, 3760]
     ),
-    spacer(),
 
     // --- 24.2 Mesh Model ---
     h2("24.2 Mesh Model"),
@@ -45,7 +44,6 @@ module.exports = function build_chapter24() {
       ],
       [2000, 1200, 6160]
     ),
-    spacer(),
 
     // --- 24.4 Multilateral Netting ---
     h2("24.4 Multilateral Netting"),
@@ -61,6 +59,5 @@ module.exports = function build_chapter24() {
       ],
       [2000, 2000, 5360]
     ),
-    spacer(),
   ];
 };

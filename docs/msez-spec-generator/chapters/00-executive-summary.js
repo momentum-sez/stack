@@ -1,4 +1,4 @@
-const { chapterHeading, h2, h3, p, p_runs, bold, italic, table, spacer, pageBreak } = require("../lib/primitives");
+const { chapterHeading, h2, h3, p, p_runs, bold, italic, table, pageBreak } = require("../lib/primitives");
 
 module.exports = function build_executive_summary() {
   return [
@@ -35,7 +35,6 @@ module.exports = function build_executive_summary() {
       ],
       [2400, 3600, 3360]
     ),
-    spacer(),
 
     h3("Version 0.4.44 Highlights"),
     table(
@@ -58,7 +57,6 @@ module.exports = function build_executive_summary() {
     ),
     p("The complete v0.4.44 implementation comprises sixteen module families totaling 298 modules across approximately 101,000 lines of production Rust code (243 source files, 16 crates), with 3,029 tests covering all critical paths."),
 
-    spacer(),
     h3("Document Organization"),
 
     p("This specification is organized into eighteen Parts that progress from foundational concepts through cryptographic infrastructure, compliance and governance systems, cross-border corridors, institutional modules, sovereign deployment architecture, security hardening, and operational deployment. Each Part is self-contained enough to be read independently by a domain specialist, but the Parts build on each other in a deliberate sequence: the cryptographic primitives of Part II underpin the compliance tensor of Part V, which feeds the corridor systems of Part IX, which rely on the watcher economy of Part X for attestation finality. The following table maps each Part to its constituent chapters and scope."),
@@ -87,11 +85,9 @@ module.exports = function build_executive_summary() {
       ],
       [540, 1800, 1080, 5940]
     ),
-    spacer(),
 
     p("Eleven appendices follow the main body: version history (A), test coverage summary (B), scalability switch reference (C), security proofs (D), Rust crate dependency graph (E), Mass API endpoint reference (F), jurisdiction template reference (G), CLI reference (H), module directory structure (I), conformance levels (J), and GovOS deployment checklist (K). The appendices serve as operational reference material; they are not required reading for understanding the architecture but are essential for implementors and auditors."),
 
-    spacer(),
     h3("Reading Guide"),
 
     p("This specification serves multiple audiences. Rather than reading all 56 chapters sequentially, each audience should follow the path most relevant to their concerns."),

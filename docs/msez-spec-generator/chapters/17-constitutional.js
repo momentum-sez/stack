@@ -1,8 +1,7 @@
 const {
   partHeading, chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table,
-  spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter17() {
@@ -23,7 +22,6 @@ module.exports = function build_chapter17() {
       ],
       [1600, 3200, 4560]
     ),
-    spacer(),
     ...codeBlock(
       "/// Zone constitutional framework.\n" +
       "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +
@@ -37,7 +35,6 @@ module.exports = function build_chapter17() {
       "    pub stakeholder_rights: Vec<StakeholderRight>,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 17.2 Voting Mechanisms ---
     h2("17.2 Voting Mechanisms"),
@@ -62,7 +59,6 @@ module.exports = function build_chapter17() {
       ],
       [2400, 2200, 2000, 2760]
     ),
-    spacer(),
 
     // --- 17.3.1 Governance Interoperability ---
     h3("17.3.1 Governance Interoperability"),

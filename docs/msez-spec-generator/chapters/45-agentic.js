@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table, spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter45() {
@@ -26,7 +26,6 @@ module.exports = function build_chapter45() {
       ],
       [1400, 2400, 5560]
     ),
-    spacer(),
 
     p_runs([bold("Fiscal Domain."), " Four triggers covering payment thresholds, withholding tax events, fee schedules, and tax filing deadlines."]),
     table(
@@ -39,7 +38,6 @@ module.exports = function build_chapter45() {
       ],
       [1400, 2400, 5560]
     ),
-    spacer(),
 
     p_runs([bold("Corridor Domain."), " Four triggers covering receipt chain events, netting boundaries, corridor policy updates, and counterparty state changes."]),
     table(
@@ -52,7 +50,6 @@ module.exports = function build_chapter45() {
       ],
       [1400, 2400, 5560]
     ),
-    spacer(),
 
     p_runs([bold("Governance Domain."), " Four triggers covering vote quorum, proposal deadlines, amendment ratification, and stakeholder threshold events."]),
     table(
@@ -65,7 +62,6 @@ module.exports = function build_chapter45() {
       ],
       [1400, 2400, 5560]
     ),
-    spacer(),
 
     p_runs([bold("Temporal Domain."), " Four triggers covering license renewal, annual returns, certificate expiry, and scheduled audits."]),
     table(
@@ -78,7 +74,6 @@ module.exports = function build_chapter45() {
       ],
       [1400, 2400, 5560]
     ),
-    spacer(),
 
     h3("45.1.2 Trigger Enum Definition"),
     p("The complete trigger enum encodes the full 20-variant taxonomy. Each variant carries strongly-typed context fields, ensuring that policy evaluation functions receive all required data without additional lookups."),
@@ -138,12 +133,10 @@ pub enum Trigger {
     ScheduledAuditDue { audit_type: String, entity_id: EntityId, due_date: DateTime<Utc> },
 }`
     ),
-    spacer(),
 
     // --- 45.2 Standard Policy Library ---
     h2("45.2 Standard Policy Library"),
     p("The standard policy library provides pre-built responses to common triggers. Policies are composable: a single trigger can activate multiple policies, and policies can chain to produce cascading actions. Standard policies include: automatic compliance re-evaluation on sanctions list update, license renewal notification 90/60/30 days before expiry, corridor suspension on compliance state degradation to NonCompliant, automatic tax withholding computation on payment execution, governance escalation when a proposal deadline passes without quorum, and regulatory filing generation on calendar-driven deadlines."),
-    spacer(),
 
     // --- 45.3 Policy Composition ---
     h2("45.3 Policy Composition"),
@@ -181,11 +174,9 @@ pub enum GuardCondition {
     JurisdictionIn { allowed: Vec<JurisdictionCode> },
 }`
     ),
-    spacer(),
 
     h3("45.3.3 Aggregation Composition"),
     p("Aggregation policies require multiple triggers to fire within a configurable time window before activating. The policy engine maintains a sliding window of trigger events and evaluates the aggregation predicate on each new event. This supports patterns like: activate a high-risk review only when both a SanctionsListUpdate AND a PaymentThresholdExceeded fire for the same entity within 24 hours. Aggregation windows are bounded and automatically expire incomplete trigger sets."),
-    spacer(),
 
     // --- 45.4 Agentic Execution Guarantees ---
     h2("45.4 Agentic Execution Guarantees"),
@@ -202,6 +193,5 @@ pub enum GuardCondition {
       ],
       [1800, 4200, 3360]
     ),
-    spacer(),
   ];
 };

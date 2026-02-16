@@ -1,6 +1,6 @@
 const {
   partHeading, chapterHeading, h2, h3,
-  p, codeBlock, table, spacer
+  p, codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter22() {
@@ -36,7 +36,6 @@ module.exports = function build_chapter22() {
       "    pub review_schedule: ReviewSchedule,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 22.2 Corridor Definition ---
     h2("22.2 Corridor Definition"),
@@ -53,7 +52,6 @@ module.exports = function build_chapter22() {
       "    pub state_channel: StateChannel,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 22.3 State Synchronization ---
     h2("22.3 State Synchronization"),
@@ -87,7 +85,6 @@ module.exports = function build_chapter22() {
       "    pub fn is_concurrent(&self, other: &VectorClock) -> bool { ... }\n" +
       "}"
     ),
-    spacer(),
 
     // --- 22.4 Lifecycle State Machine ---
     h2("22.4 Lifecycle State Machine"),
@@ -109,7 +106,6 @@ module.exports = function build_chapter22() {
       ],
       [1560, 1560, 3120, 3120]
     ),
-    spacer(),
 
     // --- 22.5 Corridor Definition VC Fields ---
     h2("22.5 Corridor Definition VC Fields"),
@@ -140,6 +136,5 @@ module.exports = function build_chapter22() {
       "    pub initial_vector_clock: VectorClock,\n" +
       "}"
     ),
-    spacer(),
   ];
 };

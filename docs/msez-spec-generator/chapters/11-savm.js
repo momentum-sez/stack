@@ -1,8 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table,
-  spacer, pageBreak, definition
+  codeBlock, table, pageBreak, definition
 } = require("../lib/primitives");
 
 module.exports = function build_chapter11() {
@@ -33,7 +32,6 @@ module.exports = function build_chapter11() {
       ],
       [1800, 2000, 5560]
     ),
-    spacer(),
 
     // --- 11.3 Compliance Coprocessor ---
     h3("11.2.1 Compliance Coprocessor"),
@@ -66,7 +64,6 @@ module.exports = function build_chapter11() {
       "    pub receipt_chain: Vec<ExecutionReceipt>,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 11.4 Gas Metering ---
     h3("11.2.2 Gas Metering"),
@@ -83,7 +80,6 @@ module.exports = function build_chapter11() {
       ],
       [2400, 2400, 4560]
     ),
-    spacer(),
 
     // --- 11.5 SAVM Execution Context ---
     h2("11.3 Execution Context"),
@@ -131,7 +127,6 @@ module.exports = function build_chapter11() {
       "ATTEST                  // Gas: 10,000. Write attestation to tensor\n" +
       "RETURN                  // Total gas consumed: ~115,015"
     ),
-    spacer(),
     p("The execution consumed 115,015 gas units across four tensor lookups (40,000), one ZK verification (75,000), three boolean operations (15), and one attestation write (10,000). The compliance coprocessor handled all cryptographic operations transparently, and the final ATTEST instruction recorded the compliance result as a new tensor cell update bound to the execution receipt."),
 
     // --- 11.6 Execution Receipts ---
@@ -176,6 +171,5 @@ module.exports = function build_chapter11() {
       "    OutOfGas { pc: usize, gas_limit: u64 },\n" +
       "}"
     ),
-    spacer(),
   ];
 };

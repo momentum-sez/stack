@@ -1,7 +1,7 @@
 const {
   partHeading, chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table, spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter49() {
@@ -23,7 +23,6 @@ module.exports = function build_chapter49() {
       ],
       [2000, 3200, 4160]
     ),
-    spacer(),
 
     // --- 49.2 Deployment Profiles ---
     h2("49.2 Deployment Profiles"),
@@ -37,7 +36,6 @@ module.exports = function build_chapter49() {
       ],
       [1600, 3000, 2200, 2560]
     ),
-    spacer(),
 
     // --- 49.2.1 Rust Binary Deployment ---
     h3("49.2.1 Rust Binary Deployment"),
@@ -52,7 +50,6 @@ FROM alpine:3.19
 COPY target/release/msez /usr/local/bin/msez
 ENTRYPOINT ["/usr/local/bin/msez"]`
     ),
-    spacer(),
 
     // --- 49.2.2 Deployment Topology ---
     h3("49.2.2 Deployment Topology"),
@@ -67,7 +64,6 @@ ENTRYPOINT ["/usr/local/bin/msez"]`
       ],
       [1200, 1400, 2000, 1600, 1800, 1360]
     ),
-    spacer(),
     p_runs([bold("Service Connectivity."), " In all profiles, msez-api is the sole ingress point for external traffic. It connects to PostgreSQL for state persistence, Redis for caching and rate limiting, and Mass APIs (organization-info, treasury-info, consent, investment-info) via msez-mass-client over HTTPS. The worker service (msez-worker) shares the same database and Redis instances but has no external-facing ports. Vault provides secrets to all application services at startup via environment variable injection or the Vault agent sidecar."]),
 
     // --- 49.3 Resource Scaling Guidelines ---
@@ -86,8 +82,6 @@ ENTRYPOINT ["/usr/local/bin/msez"]`
       ],
       [1600, 2200, 2200, 3360]
     ),
-    spacer(),
     p_runs([bold("Vertical vs. Horizontal."), " The msez-api and msez-worker services scale horizontally (add replicas). PostgreSQL scales vertically first (more CPU, RAM, faster storage) and then horizontally via read replicas. Redis scales vertically for single-instance profiles and horizontally via Cluster mode for enterprise and sovereign-govos. The compliance tensor evaluation is CPU-bound and benefits most from vertical scaling (faster cores), while corridor receipt processing is I/O-bound and benefits from horizontal scaling (more workers)."]),
-    spacer(),
   ];
 };

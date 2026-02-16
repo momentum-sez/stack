@@ -1,8 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  definition, codeBlock, table,
-  spacer
+  definition, codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter18() {
@@ -26,11 +25,9 @@ module.exports = function build_chapter18() {
       ],
       [1800, 1600, 1600, 4360]
     ),
-    spacer(),
 
     h3("18.1.2 Credential Lifecycle"),
     p("Credentials follow a four-phase lifecycle: Issuance (identity verification, KYC/KYB completion, credential minting), Active (credential in use, subject to periodic re-verification), Suspended (temporarily halted pending review or investigation), and Revoked (permanently invalidated with revocation reason recorded). Re-verification triggers include: expiration of validity period, material change in circumstances (e.g., change of beneficial ownership), regulatory directive, or adverse finding in compliance monitoring."),
-    spacer(),
 
     // --- 18.2 Property Services ---
     h2("18.2 Property Services"),
@@ -84,7 +81,6 @@ pub enum EncumbranceKind {
     RegulatoryHold,
 }`
     ),
-    spacer(),
 
     h3("18.2.2 Transfer Process"),
     p("Property transfers follow a multi-step process that composes compliance verification with ownership mutation. The transfer pipeline evaluates the compliance tensor for the destination jurisdiction, checks the lawpack for transfer restrictions (foreign ownership limits, zoning compatibility), verifies encumbrance clearance, obtains consent from required parties (existing lien holders, co-owners), and finally executes the ownership transfer through the Mass ownership primitive. A transfer receipt is appended to the property title's receipt chain, and a Transfer VC is issued to both parties."),
@@ -102,7 +98,6 @@ pub enum EncumbranceKind {
       ],
       [600, 2200, 3760, 2800]
     ),
-    spacer(),
 
     // --- 18.3 Dispute Resolution Services ---
     h2("18.3 Dispute Resolution Services"),
@@ -122,7 +117,6 @@ pub enum EncumbranceKind {
       ],
       [2800, 1200, 2000, 3360]
     ),
-    spacer(),
 
     h3("18.3.2 Dispute Case Lifecycle"),
     p("Every dispute case progresses through a structured lifecycle. Filing initiates the case with an evidence package and claim summary. Tribunal formation selects arbitrators per the institution's rules. Proceedings follow the encoded procedural timeline. A ruling is issued as a Verifiable Credential signed by the tribunal. Enforcement is executed automatically through the SEZ Stack's corridor state, fiscal primitive, and compliance tensor updates."),
@@ -186,13 +180,11 @@ pub struct ClaimSummary {
     pub relief_sought: Vec<String>,
 }`
     ),
-    spacer(),
 
     h3("18.3.3 Small Claims Procedures"),
     p("Small claims disputes (below the zone-configured monetary threshold) follow an expedited single-arbitrator process. The filing party submits a claim with supporting evidence. The respondent has a fixed response window (typically 14 days). A sole arbitrator is appointed from the institution's expedited panel. Document-only proceedings are the default unless either party requests a hearing. Rulings are issued within 30 days of tribunal formation. The expedited process reduces costs and time while maintaining the same enforcement mechanisms as full commercial arbitration."),
 
     h3("18.3.4 Appellate Procedures"),
     p("Appellate review is available for rulings that meet grounds for appeal as defined in the institution's rules: procedural irregularity, tribunal exceeded its jurisdiction, or ruling conflicts with zone public policy. Appeals are filed within the institution-specified deadline (typically 30 days from ruling). An appellate tribunal of three arbitrators reviews the original record. The appellate tribunal may affirm, modify, or remand the original ruling. During appeal, enforcement of the original ruling may be stayed upon posting of security."),
-    spacer(),
   ];
 };

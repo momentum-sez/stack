@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2,
   p, p_runs, bold,
-  codeBlock, table, spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter40() {
@@ -23,8 +23,6 @@ module.exports = function build_chapter40() {
       [1800, 4200, 3360]
     ),
 
-    spacer(),
-
     h2("Stage-by-Stage Pipeline Detail"),
 
     p_runs([bold("Stage 1 — Transaction."), " Every economic activity that flows through Mass Fiscal generates a structured transaction event. This includes payments between entities, salary disbursements, vendor payments, import/export settlements, dividend distributions, and service fee collections. Each transaction carries metadata: payer NTN, payee NTN, transaction category (per FBR classification), amount, currency, and timestamp. The transaction is recorded atomically in Mass Fiscal and simultaneously emitted as an event to the tax pipeline. No transaction can complete without generating its corresponding tax event — this is enforced at the API layer, not as an afterthought."]),
@@ -38,8 +36,6 @@ module.exports = function build_chapter40() {
     p_runs([bold("Stage 5 — Gap Analysis."), " The Sovereign AI Spine continuously analyzes the stream of tax events against expected patterns. For each registered entity, the AI maintains a dynamic tax profile: expected transaction volumes by category, seasonal patterns, peer-group benchmarks, and historical filing behavior. Deviations trigger risk scores: an entity whose declared sales tax input credits exceed its observed purchase transactions, an entity whose withholding certificates received far exceed its declared income, or an entity with high-volume transactions but no filed return. These risk scores feed the Tax & Revenue Dashboard as prioritized audit leads."]),
 
     p_runs([bold("Stage 6 — Enforcement."), " The GovOS Console surfaces enforcement actions for FBR officers. For non-filing entities, the system generates automated notices (with configurable escalation: reminder, warning, penalty notice, account restriction). For entities flagged by gap analysis, the system prepares audit case files with AI-generated evidence packages including transaction summaries, anomaly explanations, and comparable entity benchmarks. All enforcement actions are recorded as consent workflows via Mass Consent, ensuring due process and audit trails. Appeals are routed through the MSEZ Arbitration module."]),
-
-    spacer(),
 
     h2("Pakistan Withholding Tax Rate Schedule"),
 
@@ -63,8 +59,6 @@ module.exports = function build_chapter40() {
       ],
       [1000, 2400, 1600, 1800, 2560]
     ),
-
-    spacer(),
 
     h2("Pipeline Flow"),
 
@@ -133,6 +127,5 @@ pub async fn process_tax_event(
 }`
     ),
 
-    spacer(),
   ];
 };

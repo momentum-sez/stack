@@ -1,4 +1,4 @@
-const { chapterHeading, table, spacer, h2, p } = require("../lib/primitives");
+const { chapterHeading, table, h2, p } = require("../lib/primitives");
 
 module.exports = function build_appendixG() {
   return [
@@ -13,11 +13,9 @@ module.exports = function build_appendixG() {
       ],
       [1600, 2400, 2000, 1800, 1560]
     ),
-    spacer(),
 
     h2("G.1 Pakistan \u2014 Detailed Regulatory Encoding"),
     p("Pakistan is the flagship GovOS deployment. The Pack Trilogy encodes the following legislation and regulatory frameworks:"),
-    spacer(),
     table(
       ["Pack", "Act / Regulation", "Key Provisions Encoded"],
       [
@@ -36,11 +34,9 @@ module.exports = function build_appendixG() {
       ],
       [1200, 2800, 5360]
     ),
-    spacer(),
 
     h2("G.2 ADGM \u2014 Detailed Regulatory Encoding"),
     p("Abu Dhabi Global Market is a common-law financial free zone. The Pack Trilogy encodes:"),
-    spacer(),
     table(
       ["Pack", "Act / Regulation", "Key Provisions Encoded"],
       [
@@ -54,11 +50,9 @@ module.exports = function build_appendixG() {
       ],
       [1200, 3200, 4960]
     ),
-    spacer(),
 
     h2("G.3 Seychelles \u2014 Detailed Regulatory Encoding"),
     p("Seychelles provides an offshore IBC regime with growing financial services regulation. The Pack Trilogy encodes:"),
-    spacer(),
     table(
       ["Pack", "Act / Regulation", "Key Provisions Encoded"],
       [
@@ -77,11 +71,9 @@ module.exports = function build_appendixG() {
       ],
       [1200, 3200, 4960]
     ),
-    spacer(),
 
     h2("G.4 Kazakhstan (Alatau / AIFC) \u2014 Detailed Regulatory Encoding"),
     p("The Astana International Financial Centre operates under English common law within Kazakhstan's civil law system. The Pack Trilogy encodes:"),
-    spacer(),
     table(
       ["Pack", "Act / Regulation", "Key Provisions Encoded"],
       [
@@ -98,6 +90,5 @@ module.exports = function build_appendixG() {
       ],
       [1200, 3200, 4960]
     ),
-    spacer(),
   ];
 };

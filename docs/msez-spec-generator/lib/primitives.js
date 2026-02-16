@@ -72,6 +72,7 @@ function chapterHeading(text) {
 function h2(text) {
   return new Paragraph({
     heading: HeadingLevel.HEADING_2,
+    spacing: { before: 280, after: 200 },
     children: [new TextRun({ text, bold: true, font: C.BODY_FONT, size: 28, color: C.H2_COLOR })]
   });
 }
@@ -80,6 +81,7 @@ function h2(text) {
 function h3(text) {
   return new Paragraph({
     heading: HeadingLevel.HEADING_3,
+    spacing: { before: 200, after: 200 },
     children: [new TextRun({ text, bold: true, font: C.BODY_FONT, size: 24, color: C.H3_COLOR })]
   });
 }
@@ -90,7 +92,7 @@ function h3(text) {
 function definition(label, text) {
   return new Paragraph({
     border: { left: { style: BorderStyle.SINGLE, size: 6, color: C.ACCENT, space: 8 } },
-    spacing: { before: 160, after: 160 },
+    spacing: { before: 160, after: 200 },
     indent: { left: 360 },
     children: [
       new TextRun({ text: label + " ", bold: true, italics: true, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK }),
@@ -103,7 +105,7 @@ function definition(label, text) {
 function theorem(label, text) {
   return new Paragraph({
     border: { left: { style: BorderStyle.SINGLE, size: 6, color: "6B7280", space: 8 } },
-    spacing: { before: 160, after: 160 },
+    spacing: { before: 160, after: 200 },
     indent: { left: 360 },
     children: [
       new TextRun({ text: label + " ", bold: true, italics: true, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK }),
@@ -117,9 +119,9 @@ function theorem(label, text) {
 /** Multi-line code block. Pass a string; it splits on \n. */
 function codeBlock(codeString) {
   const lines = codeString.split("\n");
-  return lines.map(line =>
+  return lines.map((line, i) =>
     new Paragraph({
-      spacing: { after: 0, line: 240 },
+      spacing: { after: i === lines.length - 1 ? 200 : 0, line: 240 },
       shading: { type: ShadingType.CLEAR, fill: C.CODE_BG },
       children: [new TextRun({ text: line || " ", font: C.CODE_FONT, size: C.CODE_SIZE, color: C.CODE_TEXT })]
     })
@@ -161,18 +163,21 @@ function table(headers, rows, colWidths) {
     });
   }
 
-  return new Table({
-    width: { size: C.CONTENT_W, type: WidthType.DXA },
-    columnWidths: widths,
-    rows: [
-      new TableRow({ children: headers.map((h, i) => makeCell(h, widths[i], true, false)) }),
-      ...rows.map((row, ri) =>
-        new TableRow({
-          children: row.map((cell, ci) => makeCell(cell, widths[ci], false, ri % 2 === 1))
-        })
-      )
-    ]
-  });
+  return [
+    new Table({
+      width: { size: C.CONTENT_W, type: WidthType.DXA },
+      columnWidths: widths,
+      rows: [
+        new TableRow({ children: headers.map((h, i) => makeCell(h, widths[i], true, false)) }),
+        ...rows.map((row, ri) =>
+          new TableRow({
+            children: row.map((cell, ci) => makeCell(cell, widths[ci], false, ri % 2 === 1))
+          })
+        )
+      ]
+    }),
+    new Paragraph({ spacing: { after: 200 }, children: [] })
+  ];
 }
 
 /** Compute even column widths that sum to CONTENT_W */

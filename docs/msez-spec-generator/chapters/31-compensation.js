@@ -1,7 +1,6 @@
 const {
   chapterHeading, h2, h3,
-  p, codeBlock, table,
-  spacer
+  p, codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter31() {
@@ -22,7 +21,6 @@ module.exports = function build_chapter31() {
       ],
       [2800, 3200, 3360]
     ),
-    spacer(),
 
     // --- 31.2 Saga Pattern ---
     h2("31.2 Saga Pattern"),
@@ -50,7 +48,6 @@ module.exports = function build_chapter31() {
       "    pub completed_at: DateTime<Utc>,\n" +
       "}"
     ),
-    spacer(),
 
     p("Compensation guarantees: every forward step has an inverse, compensation is idempotent (re-running produces the same result), and timeout handling ensures that stuck migrations are eventually compensated. If compensation itself fails, the migration enters the Failed state and requires manual intervention with full audit trail available."),
 
@@ -67,6 +64,5 @@ module.exports = function build_chapter31() {
       ],
       [2400, 1600, 2800, 2560]
     ),
-    spacer(),
   ];
 };

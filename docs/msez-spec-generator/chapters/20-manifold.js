@@ -1,8 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  definition, codeBlock, table,
-  spacer
+  definition, codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter20() {
@@ -38,7 +37,6 @@ module.exports = function build_chapter20() {
       "    }\n" +
       "}"
     ),
-    spacer(),
 
     // --- 20.2 Migration Path Optimization ---
     h2("20.2 Migration Path Optimization"),
@@ -55,7 +53,6 @@ module.exports = function build_chapter20() {
       "where edge weights are the evaluated compliance burden between each consecutive " +
       "jurisdiction pair."
     ),
-    spacer(),
 
     h3("20.2.1 Example: PAK \u2192 UAE \u2192 KSA Migration Path"),
     p(
@@ -71,7 +68,6 @@ module.exports = function build_chapter20() {
       ],
       [936, 1170, 1170, 3744, 2340]
     ),
-    spacer(),
     p_runs([
       bold("Total path cost: "),
       "Cost(P) = 0.42 + 0.31 = 0.73. ",
@@ -79,7 +75,6 @@ module.exports = function build_chapter20() {
       "making the UAE waypoint route 18% cheaper. The manifold surface reveals UAE as a compliance ",
       "valley \u2014 a low-burden intermediate that reduces aggregate migration cost."
     ]),
-    spacer(),
     ...codeBlock(
       "// Example: computing a migration path cost\n" +
       "let manifold = ComplianceManifold::from_tensor(&tensor, &jurisdictions)?;\n" +
@@ -91,7 +86,6 @@ module.exports = function build_chapter20() {
       "assert_eq!(path.waypoints, vec![\"PAK\", \"UAE\", \"KSA\"]);\n" +
       "assert!((path.total_cost - 0.73).abs() < 1e-6);"
     ),
-    spacer(),
 
     // --- 20.3 Manifold Visualization ---
     h2("20.3 Manifold Visualization"),
@@ -125,7 +119,6 @@ module.exports = function build_chapter20() {
       "red for high). Attestation gaps (Definition 20.4) are rendered as warning markers at " +
       "the affected jurisdictional coordinate."
     ),
-    spacer(),
 
     // --- 20.4 Attestation Gap Analysis ---
     h2("20.4 Attestation Gap Analysis"),
@@ -136,7 +129,6 @@ module.exports = function build_chapter20() {
       "jurisdiction in which it applies, the severity of non-compliance, whether it blocks " +
       "forward progress, and the available remediation paths with estimated time and cost."
     ),
-    spacer(),
     ...codeBlock(
       "/// A compliance requirement not yet satisfied by current attestations.\n" +
       "/// Identified during manifold traversal when an entity's credential set\n" +
@@ -169,6 +161,5 @@ module.exports = function build_chapter20() {
       "    Low,      // Advisory; no enforcement consequence\n" +
       "}"
     ),
-    spacer(),
   ];
 };

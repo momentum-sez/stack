@@ -1,8 +1,7 @@
 const {
   partHeading, chapterHeading, h2,
   p, p_runs, bold,
-  definition, codeBlock, table,
-  spacer, pageBreak
+  definition, codeBlock, table, pageBreak
 } = require("../lib/primitives");
 
 module.exports = function build_chapter04() {
@@ -32,7 +31,6 @@ module.exports = function build_chapter04() {
       "    ProofKey, TransitionType, Blob,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 4.2 Artifact Type Registry ---
     h2("4.2 Artifact Type Registry"),
@@ -53,7 +51,6 @@ module.exports = function build_chapter04() {
       ],
       [1800, 4200, 3360]
     ),
-    spacer(),
 
     // --- 4.3 Artifact Closure and Availability ---
     h2("4.3 Artifact Closure and Availability"),
@@ -73,8 +70,6 @@ module.exports = function build_chapter04() {
       "  --sign --key keys/dev.ed25519.jwk \\\n" +
       "  --out /tmp/witness.attestation.vc.json"
     ),
-
-    spacer(),
 
     // --- 4.4 Content-Addressed Storage Layout ---
     h2("4.4 Content-Addressed Storage Layout"),

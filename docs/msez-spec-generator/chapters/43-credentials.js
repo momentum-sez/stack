@@ -2,7 +2,7 @@ const {
   chapterHeading, h2, h3,
   p, p_runs, bold, code,
   definition,
-  codeBlock, table, spacer, pageBreak
+  codeBlock, table, pageBreak
 } = require("../lib/primitives");
 
 module.exports = function build_chapter43() {
@@ -24,7 +24,6 @@ module.exports = function build_chapter43() {
       ],
       [2200, 2000, 2000, 3160]
     ),
-    spacer(),
 
     // --- 43.2 Credential Lifecycle ---
     h2("43.2 Credential Lifecycle"),
@@ -72,7 +71,6 @@ pub struct VerifiableCredential {
     pub proof: ProofValue,
 }`
     ),
-    spacer(),
 
     h3("43.2.2 Presentation"),
     p("Presentation is the act of a credential holder sharing a credential (or a derived subset of its claims) with a verifier. In the Ed25519 flow, the holder presents the full credential including its proof. The verifier can independently verify the signature without contacting the issuer. In the BBS+ selective disclosure flow (Section 43.4), the holder derives a proof that reveals only selected claims, preventing unnecessary exposure of private data. For example, a KYC credential holder can prove their verification tier without revealing their CNIC number or date of birth."),
@@ -94,7 +92,6 @@ pub struct VerifiableCredential {
       ],
       [1800, 1400, 6160]
     ),
-    spacer(),
 
     pageBreak(),
 
@@ -138,12 +135,10 @@ pub fn sign_ed25519(
     Ok(())
 }`
     ),
-    spacer(),
 
     p_runs([bold("Multi-party signing."), " A credential can carry multiple proofs from different signers. Each call to sign_ed25519 appends a new Proof to the proof array. The signing input is computed identically each time (proof field excluded), so each signer signs the same canonical body. During verification, the resolver function maps each proof's verification method to the corresponding public key. All proofs must pass for verify_all to succeed."]),
 
     p_runs([bold("Proof types."), " The SEZ Stack supports two Ed25519 proof type identifiers: ", code("Ed25519Signature2020"), " (W3C standard) and ", code("MsezEd25519Signature2025"), " (SEZ Stack-specific, for internal interoperability). Both use identical Ed25519 signing mechanics; the type string is purely a namespace identifier. The ", code("BbsBlsSignature2020"), " type is reserved for Phase 2 selective disclosure (Section 43.4)."]),
-    spacer(),
 
     // --- 43.4 BBS+ Selective Disclosure ---
     h2("43.4 BBS+ Selective Disclosure"),
@@ -176,12 +171,10 @@ pub fn sign_ed25519(
       ],
       [1600, 2200, 2800, 2760]
     ),
-    spacer(),
 
     p("The holder reveals only claims 0, 1, and 5 (subject DID, verification tier, and verification date). The verifier learns that the holder has enhanced KYC verification performed on a specific date, but learns nothing about the holder's CNIC number, date of birth, or full name. The BBS+ proof mathematically guarantees these hidden claims exist and were signed by the issuer."),
 
     p_runs([bold("Implementation status."), " BBS+ selective disclosure is Phase 2 functionality, gated behind the ", code("bbs-plus"), " feature flag in ", code("msez-crypto"), ". The ", code("ProofType::BbsBlsSignature2020"), " variant is defined in the proof type enum. The credential structure's extensible ", code("credential_subject"), " field (", code("serde_json::Value"), ") supports the claim decomposition required by BBS+ without structural changes to the VerifiableCredential type."]),
-    spacer(),
 
     pageBreak(),
 
@@ -217,7 +210,6 @@ pub struct StatusList {
     pub status_purpose: String,
 }`
     ),
-    spacer(),
 
     h3("43.5.2 Revocation Workflow"),
     p("When an issuer needs to revoke a credential (due to key compromise, entity dissolution, compliance failure, or regulatory order), the workflow proceeds as follows:"),
@@ -240,6 +232,5 @@ pub struct StatusList {
       ],
       [1800, 3000, 2800, 1760]
     ),
-    spacer(),
   ];
 };

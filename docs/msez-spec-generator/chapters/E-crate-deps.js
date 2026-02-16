@@ -1,4 +1,4 @@
-const { chapterHeading, codeBlock, spacer, h2, p, table } = require("../lib/primitives");
+const { chapterHeading, codeBlock, h2, p, table } = require("../lib/primitives");
 
 module.exports = function build_appendixE() {
   return [
@@ -26,11 +26,9 @@ module.exports = function build_appendixE() {
       "\n" +
       "Shared dependencies: serde, tokio, chrono, ed25519-dalek, arkworks, halo2"
     ),
-    spacer(),
 
     h2("E.1 Dependency Invariants"),
     p("The following six invariants must hold at all times. Violating any invariant is a blocking code review failure and must be resolved before merge."),
-    spacer(),
 
     table(
       ["ID", "Invariant", "Rationale", "Enforcement"],
@@ -74,11 +72,9 @@ module.exports = function build_appendixE() {
       ],
       [600, 2800, 3200, 2760]
     ),
-    spacer(),
 
     h2("E.2 Invariant Verification"),
     p("All six invariants are verified automatically on every pull request via the following CI checks:"),
-    spacer(),
     ...codeBlock(
       "# CI invariant checks (run in GitHub Actions)\n" +
       "cargo deny check                              # INV-1, INV-2, INV-3\n" +
@@ -93,6 +89,5 @@ module.exports = function build_appendixE() {
       "  --glob '!msez-core/**'\n" +
       "  && exit 1 || true"
     ),
-    spacer(),
   ];
 };

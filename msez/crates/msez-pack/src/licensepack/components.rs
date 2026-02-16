@@ -178,9 +178,12 @@ impl LicenseRestriction {
     }
 
     /// Whether this restriction blocks the specified jurisdiction.
+    ///
+    /// Empty jurisdiction is treated as blocked (fail-secure): if we don't know
+    /// the jurisdiction, we cannot verify it's allowed.
     pub fn blocks_jurisdiction(&self, jurisdiction: &str) -> bool {
         if jurisdiction.is_empty() {
-            return false;
+            return true;
         }
         if self.status != "active" {
             return false;

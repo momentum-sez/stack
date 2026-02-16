@@ -1034,14 +1034,15 @@ async fn generate_payment_tax_event(
         "auto-generated tax event from payment orchestration"
     );
 
-    state.tax_events.insert(record.id, record.clone());
-
-    // Persist to database (write-through).
+    // Persist to database FIRST. Only insert into memory if DB succeeds.
     if let Some(pool) = &state.db_pool {
         if let Err(e) = crate::db::tax_events::insert(pool, &record).await {
-            tracing::error!(tax_event_id = %record.id, error = %e, "failed to persist auto-generated tax event");
+            tracing::error!(tax_event_id = %record.id, error = %e, "failed to persist auto-generated tax event — skipping in-memory insert");
+            return;
         }
     }
+
+    state.tax_events.insert(record.id, record.clone());
 }
 
 /// Classify the payment event type from the payment reference string.

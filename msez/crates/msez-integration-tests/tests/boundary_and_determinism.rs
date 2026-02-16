@@ -1722,11 +1722,13 @@ fn licensepack_restriction_blocks_jurisdiction_empty_string() {
         effective_date: None,
         status: "active".to_string(),
     };
-    // BUG-044 RESOLVED: blocks_jurisdiction("") now returns false for empty input
+    // BUG-044 RESOLVED: blocks_jurisdiction("") now returns true (fail-secure).
+    // Empty jurisdiction means we cannot verify the restriction doesn't apply,
+    // so the safe default is to block the operation.
     let result = restriction.blocks_jurisdiction("");
     assert!(
-        !result,
-        "BUG-044 RESOLVED: empty jurisdiction correctly returns false"
+        result,
+        "BUG-044 RESOLVED: empty jurisdiction correctly returns true (fail-secure)"
     );
 }
 

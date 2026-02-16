@@ -227,8 +227,17 @@ fn load_zone_manifest(path: &Path) -> Result<ZoneManifest, BootstrapError> {
     // Extract applicable domains from lawpack_domains or profile.
     let applicable_domains = extract_applicable_domains(&zone_value);
 
-    // Resolve regpack references.
-    let regpack_refs = msez_pack::regpack::resolve_regpack_refs(&zone_value).unwrap_or_default();
+    // Resolve regpack references. Failure here is CRITICAL: an empty regpack
+    // means zero sanctions screening, so we log at error level and propagate.
+    let regpack_refs = match msez_pack::regpack::resolve_regpack_refs(&zone_value) {
+        Ok(refs) => refs,
+        Err(e) => {
+            tracing::error!(error = %e, "regpack resolution failed — sanctions data will be missing");
+            return Err(BootstrapError::InvalidManifest {
+                errors: vec![format!("regpack resolution failed: {e}")],
+            });
+        }
+    };
 
     let manifest_dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
 

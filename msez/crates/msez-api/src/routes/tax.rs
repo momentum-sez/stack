@@ -393,18 +393,17 @@ async fn create_tax_event(
         .map(WithholdingResultResponse::from)
         .collect();
 
-    state.tax_events.insert(record.id, record.clone());
-
-    // Persist to database (write-through). Failure is surfaced to the client
-    // because the in-memory record would be lost on restart, causing silent data loss.
+    // Persist to database FIRST. If DB fails, do NOT insert into memory.
     if let Some(pool) = &state.db_pool {
         if let Err(e) = crate::db::tax_events::insert(pool, &record).await {
             tracing::error!(tax_event_id = %record.id, error = %e, "failed to persist tax event to database");
             return Err(AppError::Internal(
-                "tax event recorded in-memory but database persist failed".to_string(),
+                "database persist failed — tax event not created".to_string(),
             ));
         }
     }
+
+    state.tax_events.insert(record.id, record.clone());
 
     Ok(Json(TaxEventResponse {
         event: record,

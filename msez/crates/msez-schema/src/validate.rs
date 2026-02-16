@@ -213,9 +213,11 @@ impl SchemaValidator {
             let schema_id = if let Some(id) = schema.get("$id").and_then(|v| v.as_str()) {
                 id.to_string()
             } else {
-                // Derive URI from filename.
+                // Derive URI from filename. Use forward slashes for RFC 3986
+                // compliance regardless of platform path separators.
                 let rel = path.strip_prefix(&schema_dir).unwrap_or(&path);
-                format!("{SCHEMA_URI_PREFIX}{}", rel.display())
+                let rel_str = rel.to_string_lossy().replace('\\', "/");
+                format!("{SCHEMA_URI_PREFIX}{rel_str}")
             };
 
             if let Some(filename) = path.file_name().and_then(|f| f.to_str()) {

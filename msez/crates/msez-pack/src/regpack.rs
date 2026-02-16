@@ -311,12 +311,22 @@ impl SanctionsChecker {
             }
         }
 
-        // Deduplicate by entry_id
-        let mut seen = std::collections::HashSet::new();
-        let unique_matches: Vec<SanctionsMatch> = matches
-            .into_iter()
-            .filter(|m| seen.insert(m.entry.entry_id.clone()))
-            .collect();
+        // Deduplicate by entry_id, keeping the highest-scored match per entry.
+        let mut best_by_entry: std::collections::HashMap<String, SanctionsMatch> =
+            std::collections::HashMap::new();
+        for m in matches {
+            best_by_entry
+                .entry(m.entry.entry_id.clone())
+                .and_modify(|existing| {
+                    if m.score > existing.score {
+                        *existing = m.clone();
+                    }
+                })
+                .or_insert(m);
+        }
+        let mut unique_matches: Vec<SanctionsMatch> = best_by_entry.into_values().collect();
+        // Deterministic ordering by entry_id for reproducible results.
+        unique_matches.sort_by(|a, b| a.entry.entry_id.cmp(&b.entry.entry_id));
 
         SanctionsCheckResult {
             query: name.to_string(),

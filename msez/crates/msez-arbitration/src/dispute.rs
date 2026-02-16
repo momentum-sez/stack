@@ -654,6 +654,9 @@ impl Dispute {
             claims,
             filed_at: now.clone(),
             updated_at: now,
+            // Genesis entry: records the filing evidence. Uses Filed→Filed
+            // because there is no prior state; this serves as the anchor for
+            // the audit trail hash chain. Transition count = 1 (genesis) + N.
             transition_log: vec![TransitionRecord {
                 from_state: DisputeState::Filed,
                 to_state: DisputeState::Filed,

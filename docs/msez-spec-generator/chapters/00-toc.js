@@ -11,7 +11,10 @@ module.exports = function build_toc() {
     }),
     new TableOfContents("Table of Contents", {
       hyperlink: true,
-      headingStyleRange: "1-3",
+      stylesWithLevels: [
+        { styleName: "Heading 1", level: 1 },
+        { styleName: "Heading 2", level: 2 },
+      ],
     }),
     pageBreak()
   ];

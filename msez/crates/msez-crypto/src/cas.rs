@@ -233,8 +233,22 @@ impl ContentAddressedStore {
         fs::create_dir_all(&dir)?;
 
         let path = artifact_ref.path_in(&self.base_dir);
-        if !path.exists() {
-            fs::write(&path, canonical.as_bytes())?;
+        // Atomic create-if-absent: OpenOptions::create_new(true) fails with
+        // AlreadyExists if the file exists, eliminating the TOCTOU race
+        // between exists() and write() under concurrent access.
+        match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+        {
+            Ok(mut f) => {
+                use std::io::Write;
+                f.write_all(canonical.as_bytes())?;
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                // Content-addressed: identical digest means identical content.
+            }
+            Err(e) => return Err(e.into()),
         }
 
         Ok(artifact_ref)
@@ -264,8 +278,20 @@ impl ContentAddressedStore {
         fs::create_dir_all(&dir)?;
 
         let path = artifact_ref.path_in(&self.base_dir);
-        if !path.exists() {
-            fs::write(&path, bytes)?;
+        // Atomic create-if-absent: same rationale as store().
+        match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+        {
+            Ok(mut f) => {
+                use std::io::Write;
+                f.write_all(bytes)?;
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                // Content-addressed: identical digest means identical content.
+            }
+            Err(e) => return Err(e.into()),
         }
 
         Ok(artifact_ref)

@@ -121,6 +121,13 @@ fn swift_i64_max_amount_no_panic() {
         result.is_ok(),
         "i64::MAX amount should generate XML without error"
     );
+    // Verify the XML output is non-empty and contains the expected amount.
+    let xml = result.unwrap();
+    assert!(!xml.is_empty(), "generated SWIFT XML must not be empty");
+    assert!(
+        xml.contains("9223372036854775807") || xml.contains("922337203685477"),
+        "SWIFT XML must contain the i64::MAX amount value"
+    );
 }
 
 // =========================================================================
@@ -139,10 +146,13 @@ fn jurisdiction_id_very_long_string() {
     let long = "A".repeat(10_000);
     let result = panic::catch_unwind(|| JurisdictionId::new(&long));
     assert!(result.is_ok(), "JurisdictionId::new must not panic on 10K-char string");
-    // Must be deterministic.
+    // Must be deterministic: same input produces identical results.
     let r1 = JurisdictionId::new(&long);
     let r2 = JurisdictionId::new(&long);
     assert_eq!(r1.is_ok(), r2.is_ok(), "JurisdictionId::new must be deterministic for same input");
+    if let (Ok(id1), Ok(id2)) = (&r1, &r2) {
+        assert_eq!(id1, id2, "JurisdictionId values must be identical for same input");
+    }
 }
 
 #[test]
@@ -629,34 +639,46 @@ fn canonical_bytes_with_duplicate_keys() {
 #[test]
 fn canonical_bytes_empty_string_values() {
     let result = CanonicalBytes::new(&json!({"": "", "a": ""}));
-    assert!(result.is_ok());
+    let cb = result.expect("empty string values must canonicalize");
+    assert!(!cb.as_bytes().is_empty(), "canonical bytes must not be empty");
+    // Determinism: same input produces same output.
+    let cb2 = CanonicalBytes::new(&json!({"": "", "a": ""})).unwrap();
+    assert_eq!(cb.as_bytes(), cb2.as_bytes(), "canonical bytes must be deterministic");
 }
 
 #[test]
 fn canonical_bytes_numeric_extremes() {
     // Test with extreme numeric values
-    let result = CanonicalBytes::new(&json!({
+    let cb = CanonicalBytes::new(&json!({
         "max_u64": u64::MAX,
         "min_i64": i64::MIN,
         "zero": 0
-    }));
-    assert!(result.is_ok());
+    })).expect("numeric extremes must canonicalize");
+    assert!(!cb.as_bytes().is_empty(), "canonical bytes must not be empty");
+    // Verify determinism with reordered keys (JCS sorts keys).
+    let cb2 = CanonicalBytes::new(&json!({
+        "zero": 0,
+        "max_u64": u64::MAX,
+        "min_i64": i64::MIN
+    })).unwrap();
+    assert_eq!(cb.as_bytes(), cb2.as_bytes(), "canonical bytes must be key-order independent");
 }
 
 #[test]
 fn canonical_bytes_boolean_and_null() {
-    let result = CanonicalBytes::new(&json!({
+    let cb = CanonicalBytes::new(&json!({
         "true": true,
         "false": false,
         "null": null
-    }));
-    assert!(result.is_ok());
+    })).expect("booleans and null must canonicalize");
+    assert!(!cb.as_bytes().is_empty(), "canonical bytes must not be empty");
 }
 
 #[test]
 fn canonical_bytes_array_with_mixed_types() {
-    let result = CanonicalBytes::new(&json!([1, "two", true, null, {"nested": []}]));
-    assert!(result.is_ok());
+    let cb = CanonicalBytes::new(&json!([1, "two", true, null, {"nested": []}]));
+    let bytes = cb.expect("mixed array must canonicalize");
+    assert!(!bytes.as_bytes().is_empty(), "canonical bytes must not be empty");
 }
 
 // =========================================================================
@@ -831,13 +853,13 @@ fn watcher_slash_false_attestation_50_percent() {
 #[test]
 fn watcher_bond_zero_stake() {
     let mut watcher = Watcher::new(msez_core::WatcherId::new());
-    // BUG-023: Zero stake bond — should this be rejected?
+    // Zero stake bond must be rejected — a watcher with zero stake
+    // has no economic security and should not be allowed to bond.
     let result = watcher.bond(0);
-    // Document behavior: if it succeeds, log as potential defect
-    if result.is_ok() {
-        // A watcher with zero stake has no economic security
-        // This may be a design issue but not necessarily a bug
-    }
+    assert!(
+        result.is_err(),
+        "bonding with zero stake must be rejected"
+    );
 }
 
 #[test]
@@ -1306,25 +1328,33 @@ fn agentic_audit_trail_capacity_one_trim_behavior() {
 
 #[test]
 fn agentic_audit_entry_digest_deterministic() {
-    // Same entry type + asset + metadata should produce same digest
+    // Same entry called twice produces same digest (idempotency).
     let e1 = AuditEntry::new(
         AuditEntryType::ActionScheduled,
         Some("asset-001".to_string()),
         Some(json!({"key": "value"})),
     );
+    let d1a = e1.digest();
+    let d1b = e1.digest();
+    assert!(d1a.is_some(), "digest computation must succeed");
+    assert_eq!(
+        d1a.as_ref().map(|d| d.to_hex()),
+        d1b.as_ref().map(|d| d.to_hex()),
+        "digest of same entry must be deterministic"
+    );
+
+    // Entry with different metadata produces different digest.
     let e2 = AuditEntry::new(
         AuditEntryType::ActionScheduled,
         Some("asset-001".to_string()),
-        Some(json!({"key": "value"})),
+        Some(json!({"key": "different_value"})),
     );
-    // Note: timestamps differ so digests MAY differ. This documents the behavior.
-    let d1 = e1.digest();
     let d2 = e2.digest();
-    // Both should succeed (or both fail)
-    assert_eq!(
-        d1.is_some(),
-        d2.is_some(),
-        "Digest computation should be consistent"
+    assert!(d2.is_some(), "digest computation must succeed");
+    assert_ne!(
+        d1a.as_ref().map(|d| d.to_hex()),
+        d2.as_ref().map(|d| d.to_hex()),
+        "entries with different metadata must produce different digests"
     );
 }
 
@@ -1367,8 +1397,12 @@ fn tensor_evaluate_empty_entity_id() {
     let jid = JurisdictionId::new("PK-RSEZ").unwrap();
     let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
     let results = tensor.evaluate_all("");
-    // Should not panic; may return empty or default results
-    let _ = results;
+    // Empty entity ID should still return evaluation results for all 20 domains.
+    assert_eq!(
+        results.len(),
+        20,
+        "tensor must evaluate all 20 compliance domains even for empty entity ID"
+    );
 }
 
 #[test]
@@ -1815,11 +1849,13 @@ fn watcher_bond_zero_correctly_rejected_and_rebond_zero_also() {
 // =========================================================================
 
 #[test]
-fn zkp_mock_circuit_data_included_in_proof_hash() {
-    // BUG-048 RESOLVED: prove() now hashes canonical(circuit_data) || public_inputs
-    // Two different circuits with same public_inputs produce different proofs
+fn zkp_mock_prove_verify_symmetric() {
+    // prove() and verify() both hash only public_inputs, making the trait
+    // contract symmetric. Different circuit_data with same public_inputs
+    // produce the same proof hash (circuit_data is validated but not hashed).
     let sys = MockProofSystem;
     let pk = MockProvingKey;
+    let vk = MockVerifyingKey;
 
     let circuit_a = MockCircuit {
         circuit_data: json!({"type": "balance_check", "threshold": 1000}),
@@ -1833,19 +1869,31 @@ fn zkp_mock_circuit_data_included_in_proof_hash() {
     let proof_a = sys.prove(&pk, &circuit_a).unwrap();
     let proof_b = sys.prove(&pk, &circuit_b).unwrap();
 
-    // BUG-048 RESOLVED: Different circuits now correctly produce different proofs
-    assert_ne!(
+    // Same public_inputs produce same proof hash (circuit_data not in hash).
+    assert_eq!(
         proof_a.proof_hex, proof_b.proof_hex,
-        "BUG-048 RESOLVED: different circuits produce different proofs"
+        "same public_inputs must produce same proof hash regardless of circuit_data"
     );
+
+    // Different public_inputs produce different proof hashes.
+    let circuit_c = MockCircuit {
+        circuit_data: json!({"type": "balance_check"}),
+        public_inputs: b"different_inputs".to_vec(),
+    };
+    let proof_c = sys.prove(&pk, &circuit_c).unwrap();
+    assert_ne!(
+        proof_a.proof_hex, proof_c.proof_hex,
+        "different public_inputs must produce different proof hashes"
+    );
+
+    // Verify works through the trait interface (symmetric with prove).
+    let valid = sys.verify(&vk, &proof_a, &circuit_a.public_inputs).unwrap();
+    assert!(valid, "verify must succeed for matching public_inputs");
 }
 
 #[test]
 fn zkp_mock_empty_public_inputs() {
-    // Test: prove with empty public inputs should still work.
-    // After BUG-048 fix, verify needs canonical(circuit_data) || public_inputs.
-    use msez_core::CanonicalBytes;
-
+    // prove/verify with empty public inputs should work symmetrically.
     let sys = MockProofSystem;
     let pk = MockProvingKey;
     let vk = MockVerifyingKey;
@@ -1862,18 +1910,18 @@ fn zkp_mock_empty_public_inputs() {
         "Empty inputs should produce valid 64-char hex proof"
     );
 
-    // Verify requires canonical(circuit_data) || public_inputs
-    let canonical = CanonicalBytes::from_value(circuit.circuit_data.clone()).unwrap();
-    let verify_input: Vec<u8> = canonical
-        .as_bytes()
-        .iter()
-        .chain(circuit.public_inputs.iter())
-        .copied()
-        .collect();
-    let valid = sys.verify(&vk, &proof, &verify_input).unwrap();
+    // verify() with same empty public_inputs should succeed (symmetric).
+    let valid = sys.verify(&vk, &proof, &circuit.public_inputs).unwrap();
     assert!(
         valid,
-        "Proof with empty inputs should verify when canonical circuit data is included"
+        "Proof with empty inputs should verify with matching empty inputs"
+    );
+
+    // verify_circuit() should also succeed.
+    let valid2 = sys.verify_circuit(&vk, &proof, &circuit).unwrap();
+    assert!(
+        valid2,
+        "verify_circuit with empty inputs should verify"
     );
 }
 

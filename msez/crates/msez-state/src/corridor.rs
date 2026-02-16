@@ -321,8 +321,14 @@ impl Corridor<Pending> {
     /// lost from the audit trail.
     pub fn activate(self, evidence: ActivationEvidence) -> Corridor<Active> {
         let mut acc = Sha256Accumulator::new();
-        acc.update(evidence.regulatory_approval_a.as_bytes());
-        acc.update(evidence.regulatory_approval_b.as_bytes());
+        // Length-prefix each approval to prevent domain confusion where
+        // ("AB", "CDEF") would hash identically to ("ABC", "DEF").
+        let a_bytes = evidence.regulatory_approval_a.as_bytes();
+        let b_bytes = evidence.regulatory_approval_b.as_bytes();
+        acc.update(&(a_bytes.len() as u64).to_le_bytes());
+        acc.update(a_bytes);
+        acc.update(&(b_bytes.len() as u64).to_le_bytes());
+        acc.update(b_bytes);
         let combined_digest = acc.finalize();
         self.transmute_to(Some(combined_digest))
     }

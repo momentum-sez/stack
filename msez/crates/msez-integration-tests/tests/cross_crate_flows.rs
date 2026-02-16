@@ -296,10 +296,11 @@ fn corridor_lifecycle_draft_to_active() {
 
     // 4. Verify the transition log has entries for each transition.
     let log = active.transition_log();
-    // Draft→Pending + Pending→Active = at least 2 transitions
-    assert!(
-        log.len() >= 2,
-        "Expected at least 2 transition records, got {}",
+    // Draft→Pending + Pending→Active = exactly 2 transitions
+    assert_eq!(
+        log.len(),
+        2,
+        "Expected exactly 2 transition records (Draft→Pending, Pending→Active), got {}",
         log.len()
     );
 }
@@ -328,10 +329,11 @@ fn corridor_lifecycle_to_halted_preserves_history() {
     });
 
     let log = halted.transition_log();
-    // Should have 3 transitions: Draft→Pending, Pending→Active, Active→Halted
-    assert!(
-        log.len() >= 3,
-        "Expected at least 3 transition records, got {}",
+    // Should have exactly 3 transitions: Draft→Pending, Pending→Active, Active→Halted
+    assert_eq!(
+        log.len(),
+        3,
+        "Expected exactly 3 transition records (Draft→Pending, Pending→Active, Active→Halted), got {}",
         log.len()
     );
 }

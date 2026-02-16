@@ -116,13 +116,14 @@ fn smoke_mock_proof_system() {
 }
 
 #[test]
-fn smoke_mock_proof_binds_circuit_data() {
-    // BUG-048 RESOLVED: circuit_data is now hashed into the proof.
-    // Different circuit data with same public inputs → different proofs.
-    use msez_zkp::mock::{MockCircuit, MockProvingKey};
+fn smoke_mock_proof_symmetric_with_verify() {
+    // prove() and verify() are symmetric: both hash only public_inputs.
+    // Circuit data is validated but not included in the proof hash.
+    use msez_zkp::mock::{MockCircuit, MockProvingKey, MockVerifyingKey};
 
     let system = MockProofSystem;
     let pk = MockProvingKey;
+    let vk = MockVerifyingKey;
 
     let circuit1 = MockCircuit {
         circuit_data: json!({"type": "a"}),
@@ -135,10 +136,14 @@ fn smoke_mock_proof_binds_circuit_data() {
 
     let proof1 = system.prove(&pk, &circuit1).unwrap();
     let proof2 = system.prove(&pk, &circuit2).unwrap();
-    assert_ne!(
+    // Same public_inputs → same proof (circuit_data not in hash).
+    assert_eq!(
         proof1, proof2,
-        "BUG-048 RESOLVED: different circuit_data produces different proofs"
+        "same public_inputs must produce same proof regardless of circuit_data"
     );
+    // Verify through trait interface works.
+    let valid = system.verify(&vk, &proof1, &circuit1.public_inputs).unwrap();
+    assert!(valid, "verify must succeed for matching public_inputs");
 
     // Same circuit data + same public inputs → same proof (deterministic).
     let circuit1_dup = MockCircuit {

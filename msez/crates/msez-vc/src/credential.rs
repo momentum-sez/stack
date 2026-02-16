@@ -258,6 +258,17 @@ impl VerifiableCredential {
         proof_type: ProofType,
         created: Option<Timestamp>,
     ) -> Result<(), VcError> {
+        // Reject signing credentials that are already expired — issuing
+        // cryptographically valid but expired credentials wastes a signing
+        // operation and confuses audit logs.
+        if let Some(expiration) = self.expiration_date {
+            if expiration < chrono::Utc::now() {
+                return Err(VcError::VerificationFailed(format!(
+                    "refusing to sign credential that is already expired at {expiration}"
+                )));
+            }
+        }
+
         let canonical = self.signing_input()?;
         let signature = signing_key.sign(&canonical);
 
@@ -351,6 +362,9 @@ impl VerifiableCredential {
     }
 
     /// Verify all proofs and return `Ok(())` only if all pass.
+    ///
+    /// Delegates to [`Self::verify`] for the actual verification logic
+    /// (which handles empty proofs, expiration, and signature checks).
     pub fn verify_all<F>(&self, resolve_key: F) -> Result<(), VcError>
     where
         F: Fn(&str) -> Result<VerifyingKey, String>,
@@ -360,16 +374,9 @@ impl VerifiableCredential {
             return Err(VcError::NoProofs);
         }
 
-        // Check expiration before spending CPU on signature verification.
-        // An expired credential is invalid regardless of signature validity.
-        if let Some(expiration) = self.expiration_date {
-            if expiration < Utc::now() {
-                return Err(VcError::VerificationFailed(format!(
-                    "credential expired at {expiration}"
-                )));
-            }
-        }
-
+        // Delegate to verify() which handles expiration and signature checks.
+        // We do NOT re-check expiration here to avoid a TOCTOU race where
+        // the clock advances between our check and verify()'s check.
         let results = self.verify(resolve_key);
         for r in &results {
             if !r.ok {

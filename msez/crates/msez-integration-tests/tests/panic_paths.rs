@@ -411,20 +411,19 @@ fn netting_i64_overflow_gross_total() {
     let result = panic::catch_unwind(panic::AssertUnwindSafe(|| engine.compute_plan()));
     match result {
         Ok(Ok(plan)) => {
-            // If it didn't panic, check for overflow wrap
-            if plan.gross_total < 0 {
-                panic!(
-                    "BUG-020: gross_total overflowed to {} (i64 wrap in release mode)",
-                    plan.gross_total
-                );
-            }
+            // If it produced a plan, gross_total must not have overflowed negative.
+            assert!(
+                plan.gross_total >= 0,
+                "BUG-020: gross_total overflowed to {} (i64 wrap in release mode)",
+                plan.gross_total,
+            );
         }
         Ok(Err(_)) => {
-            // Returned an error — correct behavior
+            // Returned an error — correct behavior for overflow
         }
-        Err(_) => {
-            // BUG-020: panicked on overflow
-            // This is expected in debug mode — the test documents the defect
+        Err(panic_info) => {
+            // Panicked on overflow — this is a real bug. Re-panic so the test fails.
+            std::panic::resume_unwind(panic_info);
         }
     }
 }
@@ -465,14 +464,11 @@ fn netting_empty_party_ids_no_panic() {
         corridor_id: None,
         priority: 0,
     });
-    // Either rejected upfront (valid) or accepted — but must never panic
-    match add_result {
-        Err(_) => {} // Correctly rejected empty party IDs
-        Ok(()) => {
-            let result = panic::catch_unwind(panic::AssertUnwindSafe(|| engine.compute_plan()));
-            assert!(result.is_ok(), "Empty party IDs should not panic in compute_plan");
-        }
-    }
+    // Empty party IDs must be rejected at add_obligation time.
+    assert!(
+        add_result.is_err(),
+        "empty party IDs must be rejected by add_obligation"
+    );
 }
 
 #[test]
@@ -486,14 +482,11 @@ fn netting_empty_currency_no_panic() {
         corridor_id: None,
         priority: 0,
     });
-    // Either rejected upfront (valid) or accepted — but must never panic
-    match add_result {
-        Err(_) => {} // Correctly rejected empty currency
-        Ok(()) => {
-            let result = panic::catch_unwind(panic::AssertUnwindSafe(|| engine.compute_plan()));
-            assert!(result.is_ok(), "NettingEngine::compute_plan must not panic with empty currency");
-        }
-    }
+    // Empty currency must be rejected at add_obligation time.
+    assert!(
+        add_result.is_err(),
+        "empty currency must be rejected by add_obligation"
+    );
 }
 
 // =========================================================================
@@ -863,14 +856,14 @@ fn vc_verify_unsigned_returns_error() {
         credential_subject: json!({}),
         proof: ProofValue::default(),
     };
-    // Verify without proof should return empty results (no proofs to verify)
+    // Verify unsigned credential: verify() returns explicit failure entry for no proofs.
     let results = vc.verify(|_method| Ok(vk.clone()));
-    // With no proofs, results vec should be empty or all Ok
-    // verify_all should handle this case
+    assert_eq!(results.len(), 1, "unsigned credential should return one failure entry");
+    assert!(!results[0].ok, "unsigned credential must not verify as ok");
+
+    // verify_all should return NoProofs error for unsigned credentials.
     let all_result = vc.verify_all(|_method| Ok(vk.clone()));
-    // Either empty proofs means success or it means an error — just verify no panic
-    let _ = results;
-    let _ = all_result;
+    assert!(all_result.is_err(), "verify_all must reject unsigned credentials");
 }
 
 #[test]
@@ -1127,11 +1120,11 @@ fn escrow_double_deposit_no_panic() {
         .unwrap();
     // Second deposit on already-Funded escrow — must not panic.
     let result = escrow.deposit("5000".to_string(), test_digest_for("dep-2"));
-    // Second deposit on funded escrow: the implementation either accepts
-    // additional deposits or rejects them. Both are valid; panicking is not.
+    // Second deposit on already-funded escrow must be rejected — the escrow
+    // is already in Funded state and does not accept additional deposits.
     assert!(
-        result.is_ok() || result.is_err(),
-        "double deposit must produce a definite Ok/Err result"
+        result.is_err(),
+        "double deposit on already-funded escrow must be rejected"
     );
     // Verify determinism: same operation on fresh escrow produces same outcome.
     let mut escrow2 = EscrowAccount::create(
@@ -1441,8 +1434,12 @@ fn policy_engine_with_standard_policies_evaluate_no_panic() {
         json!({"affected_parties": ["self"]}),
     );
     let results = engine.evaluate(&trigger, Some("asset:test"), None);
-    // Standard policies should produce results without panicking
-    let _ = results;
+    // Standard policies should produce results without panicking.
+    // Sanctions list updates should trigger at least one matching policy.
+    assert!(
+        !results.is_empty(),
+        "standard policies must produce at least one result for SanctionsListUpdate trigger"
+    );
 }
 
 #[test]

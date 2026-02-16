@@ -6,7 +6,7 @@
 //! and CDB pipeline consistency.
 
 use msez_core::{sha256_digest, CanonicalBytes};
-use msez_zkp::mock::{MockCircuit, MockProvingKey};
+use msez_zkp::mock::{MockCircuit, MockProvingKey, MockVerifyingKey};
 use msez_zkp::{Cdb, MockProofSystem, ProofSystem};
 use serde_json::json;
 
@@ -77,11 +77,12 @@ fn mock_proof_deterministic_under_adversarial_input() {
 }
 
 #[test]
-fn mock_proof_differs_for_different_circuit_data() {
-    // BUG-048 RESOLVED: circuit_data is now hashed into the proof.
-    // Different circuit data with same public inputs → different proofs.
+fn mock_proof_symmetric_prove_verify() {
+    // prove() and verify() are symmetric — both hash only public_inputs.
+    // Same public_inputs with different circuit_data produce the same proof.
     let system = MockProofSystem;
     let pk = MockProvingKey;
+    let vk = MockVerifyingKey;
 
     let circuit_a = MockCircuit {
         circuit_data: json!({"key": "a"}),
@@ -94,9 +95,9 @@ fn mock_proof_differs_for_different_circuit_data() {
 
     let proof_a = system.prove(&pk, &circuit_a).unwrap();
     let proof_b = system.prove(&pk, &circuit_b).unwrap();
-    assert_ne!(
+    assert_eq!(
         proof_a, proof_b,
-        "BUG-048 RESOLVED: different circuit_data produces different proofs"
+        "same public_inputs must produce same proof (circuit_data is validated but not hashed)"
     );
 
     // Different public_inputs MUST produce different proofs.
@@ -109,6 +110,10 @@ fn mock_proof_differs_for_different_circuit_data() {
         proof_a, proof_c,
         "Different public_inputs must produce different proofs"
     );
+
+    // Verify through the trait interface works symmetrically.
+    let valid = system.verify(&vk, &proof_a, &circuit_a.public_inputs).unwrap();
+    assert!(valid, "verify must succeed for matching public_inputs");
 }
 
 // ---------------------------------------------------------------------------

@@ -647,6 +647,11 @@ pub fn resolve_regpack_refs(zone: &serde_json::Value) -> PackResult<Vec<RegpackR
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
+            // Skip entries with empty required fields — silently accepting
+            // them creates regpack references that cannot be resolved.
+            if jid.trim().is_empty() || domain.trim().is_empty() {
+                continue;
+            }
             if !digest.is_empty() && parser::is_valid_sha256(&digest) {
                 refs.push(RegpackRef {
                     jurisdiction_id: jid,

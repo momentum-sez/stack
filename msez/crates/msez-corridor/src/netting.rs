@@ -198,7 +198,7 @@ pub struct SettlementPlan {
 pub struct NettingEngine {
     obligations: Vec<Obligation>,
     /// Tracks seen obligation keys for O(1) duplicate detection.
-    seen: BTreeSet<(String, String, i64, String, String)>,
+    seen: BTreeSet<(String, String, i64, String, Option<String>)>,
 }
 
 impl NettingEngine {
@@ -250,7 +250,7 @@ impl NettingEngine {
             obligation.to_party.clone(),
             obligation.amount,
             obligation.currency.clone(),
-            obligation.corridor_id.clone().unwrap_or_default(),
+            obligation.corridor_id.clone(),
         );
         if !self.seen.insert(key) {
             return Err(NettingError::DuplicateObligation {

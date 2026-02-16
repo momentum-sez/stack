@@ -169,7 +169,8 @@ impl AnchorTarget for MockAnchorTarget {
             .next_block
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let tx_id = format!(
-            "mock-tx-{}",
+            "mock-tx-{}-{}",
+            block,
             commitment
                 .checkpoint_digest
                 .to_hex()

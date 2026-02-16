@@ -341,11 +341,11 @@ impl MigrationSaga {
     /// Finding §3.5: The Python `MigrationSaga` had a `deadline` field
     /// but no enforcement. This method is called at the top of every
     /// transition to prevent progress on expired migrations.
-    fn check_deadline(&mut self) -> Result<(), MigrationError> {
-        if Utc::now() > self.deadline && !self.state.is_terminal() {
+    fn check_deadline(&mut self, now: DateTime<Utc>) -> Result<(), MigrationError> {
+        if now > self.deadline && !self.state.is_terminal() {
             let timed_out_state = self.state;
             self.state = MigrationState::TimedOut;
-            self.updated_at = Utc::now();
+            self.updated_at = now;
             return Err(MigrationError::Timeout {
                 id: self.id.clone(),
                 state: timed_out_state,
@@ -357,11 +357,12 @@ impl MigrationSaga {
 
     /// Advance the migration to the next forward phase.
     ///
-    /// Checks the deadline before advancing. If the deadline has passed,
-    /// the migration is force-transitioned to `TimedOut` and a
-    /// [`MigrationError::Timeout`] is returned.
+    /// Captures `Utc::now()` once at entry and uses that single timestamp
+    /// for both the deadline check and the `updated_at` field, eliminating
+    /// the TOCTOU race between deadline evaluation and state mutation.
     pub fn advance(&mut self) -> Result<MigrationState, MigrationError> {
-        self.check_deadline()?;
+        let now = Utc::now();
+        self.check_deadline(now)?;
 
         if self.state.is_terminal() {
             return Err(MigrationError::AlreadyTerminal {
@@ -380,7 +381,7 @@ impl MigrationSaga {
                 })?;
 
         self.state = next;
-        self.updated_at = Utc::now();
+        self.updated_at = now;
         Ok(next)
     }
 

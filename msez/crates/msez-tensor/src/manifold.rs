@@ -616,9 +616,17 @@ impl ComplianceManifold {
         let mut total_time = 0u32;
 
         for (prev_jurisdiction, corridor_id) in &segments {
-            // Defensive: skip if corridor was removed mid-operation (shouldn't happen
-            // but prevents panic from unchecked HashMap indexing).
+            // Defensive: if corridor is missing from the map (should not happen since
+            // we hold &self), log an error and stop reconstruction — a partial path
+            // with incorrect totals is worse than silently continuing.
             let Some(corridor) = self.corridors.get(corridor_id.as_str()) else {
+                tracing::error!(
+                    corridor_id = %corridor_id,
+                    source = %source,
+                    target = %target,
+                    "corridor missing during path reconstruction — returning partial path; \
+                     this indicates a data integrity issue"
+                );
                 break;
             };
             let target_id = if corridor.source_jurisdiction == *prev_jurisdiction {

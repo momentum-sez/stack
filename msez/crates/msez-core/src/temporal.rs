@@ -90,7 +90,7 @@ impl Timestamp {
                 reason: format!("not valid YYYY-MM-DD: {e}"),
             })?;
         let utc = Utc.from_utc_datetime(&nd);
-        Ok(Self(utc))
+        Ok(Self(truncate_to_seconds(utc)))
     }
 
     /// Access the underlying `chrono::DateTime<Utc>`.

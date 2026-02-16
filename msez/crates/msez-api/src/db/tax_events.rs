@@ -34,9 +34,10 @@ pub async fn insert(pool: &PgPool, record: &TaxEventRecord) -> Result<(), sqlx::
     .bind(record.withholding_executed)
     .bind(record.mass_payment_id)
     .bind(i32::try_from(record.rules_applied).unwrap_or_else(|_| {
-        tracing::warn!(
+        tracing::error!(
             rules_applied = record.rules_applied,
-            "rules_applied exceeds i32::MAX — clamping to i32::MAX for DB storage"
+            "rules_applied exceeds i32::MAX — clamping to i32::MAX for DB storage; \
+             this may indicate a bug in rule evaluation producing excessive matches"
         );
         i32::MAX
     }))
@@ -210,9 +211,10 @@ impl TaxEventRow {
             withholding_executed: self.withholding_executed,
             mass_payment_id: self.mass_payment_id,
             rules_applied: usize::try_from(self.rules_applied).unwrap_or_else(|_| {
-                tracing::warn!(
+                tracing::error!(
                     rules_applied = self.rules_applied,
-                    "rules_applied is negative in database — defaulting to 0"
+                    "rules_applied is negative in database — defaulting to 0; \
+                     this indicates database corruption or a schema mismatch"
                 );
                 0
             }),

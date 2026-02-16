@@ -590,7 +590,16 @@ impl WithholdingEngine {
         rule: &WithholdingRule,
         gross_cents: i64,
     ) -> WithholdingResult {
-        let rate_bps = parse_rate_bps(&rule.rate_percent);
+        let rate_bps = parse_rate_bps(&rule.rate_percent).unwrap_or_else(|| {
+            tracing::error!(
+                rate = %rule.rate_percent,
+                rule_id = %rule.rule_id,
+                section = %rule.statutory_section,
+                "unparseable rate_percent in withholding rule — treating as 0 bps; \
+                 THIS IS A DATA ERROR that will result in zero withholding"
+            );
+            0
+        });
 
         // Withholding = gross * rate / 10000 (basis points).
         // Use i128 intermediate to prevent overflow on large transactions.
@@ -1023,10 +1032,20 @@ pub fn generate_report(params: &ReportParams, results: &[WithholdingResult]) -> 
 
     let mut total_gross_cents: i64 = 0;
     let mut total_wht_cents: i64 = 0;
-    let mut currency = String::new();
+    // Default currency from jurisdiction. Empty currency in FBR IRIS submissions
+    // will cause rejection, so we infer from jurisdiction when results are empty.
+    let mut currency = match params.jurisdiction_id.as_str() {
+        "PK" => "PKR".to_string(),
+        "AE" => "AED".to_string(),
+        "SA" => "SAR".to_string(),
+        "CN" => "CNY".to_string(),
+        "GB" => "GBP".to_string(),
+        "US" => "USD".to_string(),
+        _ => String::new(),
+    };
 
     for r in results {
-        if currency.is_empty() {
+        if !r.currency.is_empty() {
             currency.clone_from(&r.currency);
         }
 
@@ -1179,11 +1198,13 @@ pub fn parse_amount(s: &str) -> Option<i64> {
         let frac_str = &s[dot_pos + 1..];
 
         // Pad or truncate to exactly 2 decimal places.
+        // Use chars().take(2) instead of byte slicing to avoid UTF-8 boundary
+        // panic if the fractional part contains non-ASCII characters.
         let frac_cents = match frac_str.len() {
             0 => 0i64,
             1 => frac_str.parse::<i64>().ok()? * 10,
             2 => frac_str.parse::<i64>().ok()?,
-            _ => frac_str[..2].parse::<i64>().ok()?,
+            _ => frac_str.chars().take(2).collect::<String>().parse::<i64>().ok()?,
         };
 
         let sign: i64 = if integer_part < 0 || s.starts_with('-') {
@@ -1210,31 +1231,27 @@ pub fn parse_amount(s: &str) -> Option<i64> {
 /// Parse a rate percentage string into basis points.
 ///
 /// "4.5" → 450 bps, "18.0" → 1800 bps, "15" → 1500 bps.
-fn parse_rate_bps(rate_str: &str) -> i64 {
+///
+/// Returns `None` for unparseable rate strings. A `None` result forces the
+/// caller to decide how to handle the error rather than silently defaulting
+/// to zero withholding.
+fn parse_rate_bps(rate_str: &str) -> Option<i64> {
     let rate_str = rate_str.trim();
+    if rate_str.is_empty() {
+        return None;
+    }
     if let Some(dot_pos) = rate_str.find('.') {
-        let integer_part = rate_str[..dot_pos].parse::<i64>().unwrap_or_else(|_| {
-            tracing::warn!(rate = %rate_str, "invalid integer part in rate — defaulting to 0 bps");
-            0
-        });
+        let integer_part = rate_str[..dot_pos].parse::<i64>().ok()?;
         let frac_str = &rate_str[dot_pos + 1..];
+        // Use chars().take(2) instead of byte slicing to avoid UTF-8 boundary panic.
         let frac = match frac_str.len() {
             0 => 0i64,
-            1 => frac_str.parse::<i64>().unwrap_or_else(|_| {
-                tracing::warn!(rate = %rate_str, "invalid fractional part in rate — defaulting to 0");
-                0
-            }) * 10,
-            _ => frac_str[..2].parse::<i64>().unwrap_or_else(|_| {
-                tracing::warn!(rate = %rate_str, "invalid fractional part in rate — defaulting to 0");
-                0
-            }),
+            1 => frac_str.parse::<i64>().ok()? * 10,
+            _ => frac_str.chars().take(2).collect::<String>().parse::<i64>().ok()?,
         };
-        integer_part.saturating_mul(100).saturating_add(frac)
+        Some(integer_part.saturating_mul(100).saturating_add(frac))
     } else {
-        rate_str.parse::<i64>().unwrap_or_else(|_| {
-            tracing::warn!(rate = %rate_str, "invalid rate string — defaulting to 0 bps");
-            0
-        }).saturating_mul(100)
+        rate_str.parse::<i64>().ok().map(|v| v.saturating_mul(100))
     }
 }
 
@@ -1294,17 +1311,24 @@ mod tests {
 
     #[test]
     fn parse_rate_bps_decimal() {
-        assert_eq!(parse_rate_bps("4.5"), 450);
-        assert_eq!(parse_rate_bps("18.0"), 1800);
-        assert_eq!(parse_rate_bps("15.0"), 1500);
-        assert_eq!(parse_rate_bps("8.0"), 800);
-        assert_eq!(parse_rate_bps("0.5"), 50);
+        assert_eq!(parse_rate_bps("4.5"), Some(450));
+        assert_eq!(parse_rate_bps("18.0"), Some(1800));
+        assert_eq!(parse_rate_bps("15.0"), Some(1500));
+        assert_eq!(parse_rate_bps("8.0"), Some(800));
+        assert_eq!(parse_rate_bps("0.5"), Some(50));
     }
 
     #[test]
     fn parse_rate_bps_whole() {
-        assert_eq!(parse_rate_bps("15"), 1500);
-        assert_eq!(parse_rate_bps("20"), 2000);
+        assert_eq!(parse_rate_bps("15"), Some(1500));
+        assert_eq!(parse_rate_bps("20"), Some(2000));
+    }
+
+    #[test]
+    fn parse_rate_bps_invalid_returns_none() {
+        assert_eq!(parse_rate_bps(""), None);
+        assert_eq!(parse_rate_bps("abc"), None);
+        assert_eq!(parse_rate_bps("abc.def"), None);
     }
 
     // -- TaxCategory --

@@ -393,6 +393,14 @@ impl ContentAddressedStore {
                 if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
                     if validate_digest_hex(stem).is_ok() {
                         digests.push(stem.to_string());
+                    } else {
+                        eprintln!(
+                            "WARNING: CAS directory contains file with invalid digest \
+                             filename — skipping: {} (artifact_type={}). \
+                             This may indicate data corruption or tampering.",
+                            path.display(),
+                            artifact_type,
+                        );
                     }
                 }
             }

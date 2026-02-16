@@ -370,8 +370,21 @@ impl Condition {
                     None => false,
                 }
             }
-            Self::And { conditions } => conditions.iter().all(|c| c.evaluate(data)),
-            Self::Or { conditions } => conditions.iter().any(|c| c.evaluate(data)),
+            Self::And { conditions } => {
+                // Guard against stack overflow from deeply nested conditions.
+                if conditions.len() > 1000 {
+                    tracing::warn!(count = conditions.len(), "And condition has excessive sub-conditions — failing safe");
+                    return false;
+                }
+                conditions.iter().all(|c| c.evaluate(data))
+            }
+            Self::Or { conditions } => {
+                if conditions.len() > 1000 {
+                    tracing::warn!(count = conditions.len(), "Or condition has excessive sub-conditions — failing safe");
+                    return false;
+                }
+                conditions.iter().any(|c| c.evaluate(data))
+            }
         }
     }
 }
@@ -900,9 +913,9 @@ pub fn extended_policies() -> BTreeMap<String, Policy> {
             PolicyAction::UpdateManifest,
         )
         .with_description("Warn when compliance deadline approaching")
-        .with_condition(Condition::Threshold {
+        .with_condition(Condition::LessThan {
             field: "days_until_deadline".into(),
-            threshold: serde_json::json!(0),
+            threshold: serde_json::json!(7),
         })
         .with_authorization(AuthorizationRequirement::Quorum)
         .with_priority(60),

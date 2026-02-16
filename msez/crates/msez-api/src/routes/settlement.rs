@@ -137,7 +137,7 @@ impl Validate for RouteRequest {
         if self.source.trim().is_empty() || self.target.trim().is_empty() {
             return Err("source and target must be non-empty".into());
         }
-        if self.source == self.target {
+        if self.source.eq_ignore_ascii_case(&self.target) {
             return Err("source and target must differ".into());
         }
         Ok(())

@@ -70,7 +70,7 @@ pub struct GovosConsoleDashboard {
 // ── Tax & Revenue Dashboard Types ────────────────────────────────────────────
 
 /// Tax & Revenue dashboard for GovOS.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct TaxRevenueDashboard {
     /// Snapshot timestamp.
     pub snapshot_at: DateTime<Utc>,
@@ -111,7 +111,7 @@ pub struct FreeZoneDashboard {
 }
 
 /// An active incentive program within a digital free zone.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct IncentiveProgram {
     /// Program identifier.
     pub program_id: String,
@@ -139,7 +139,7 @@ pub struct ZoneCompliancePosture {
 // ── Citizen Tax & Services Types ─────────────────────────────────────────────
 
 /// Citizen-facing tax and services dashboard.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct CitizenDashboard {
     /// Snapshot timestamp.
     pub snapshot_at: DateTime<Utc>,
@@ -152,7 +152,7 @@ pub struct CitizenDashboard {
 }
 
 /// A government service category.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct ServiceCategory {
     /// Category identifier.
     pub category_id: String,
@@ -165,7 +165,7 @@ pub struct ServiceCategory {
 }
 
 /// Tax filing status summary for citizen dashboard.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct FilingStatusSummary {
     /// Current tax year.
     pub tax_year: String,

@@ -65,7 +65,7 @@ impl Validate for TriggerRequest {
 }
 
 /// Response from trigger evaluation.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct TriggerResponse {
     /// The trigger type that was evaluated.
     pub trigger_type: String,
@@ -92,7 +92,7 @@ pub enum ActionStatus {
 }
 
 /// Result of dispatching a single action.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct ActionResult {
     /// Unique action identifier.
     pub action_id: String,

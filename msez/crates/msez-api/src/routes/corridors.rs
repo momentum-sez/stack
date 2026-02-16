@@ -62,7 +62,7 @@ impl Validate for CreateCorridorRequest {
         if self.jurisdiction_b.len() > 255 {
             return Err("jurisdiction_b must not exceed 255 characters".to_string());
         }
-        if self.jurisdiction_a == self.jurisdiction_b {
+        if self.jurisdiction_a.eq_ignore_ascii_case(&self.jurisdiction_b) {
             return Err("jurisdiction_a and jurisdiction_b must differ".to_string());
         }
         Ok(())
@@ -99,10 +99,18 @@ impl Validate for TransitionCorridorRequest {
             )
         })?;
 
-        // Enforce lowercase hex for evidence digests to prevent comparison
-        // mismatches: ContentDigest::to_hex() produces lowercase, so input
-        // must also be lowercase for equality checks to work correctly.
+        // Validate evidence digest format: SHA-256 = 64 lowercase hex chars.
+        // ContentDigest::to_hex() produces lowercase, so input must match.
         if let Some(ref hex) = self.evidence_digest {
+            if hex.len() != 64 {
+                return Err(format!(
+                    "evidence_digest must be exactly 64 hex characters (got {})",
+                    hex.len()
+                ));
+            }
+            if !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+                return Err("evidence_digest must contain only hex characters".to_string());
+            }
             if hex != &hex.to_ascii_lowercase() {
                 return Err("evidence_digest must be lowercase hex".to_string());
             }
@@ -141,7 +149,7 @@ impl Validate for ProposeReceiptRequest {
 }
 
 /// Receipt proposal response — the committed receipt with chain proof.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct ReceiptProposalResponse {
     /// The corridor this receipt was appended to.
     pub corridor_id: Uuid,
@@ -194,7 +202,7 @@ impl Validate for ForkResolveRequest {
 }
 
 /// Fork resolution response.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct ForkResolveResponse {
     /// Digest of the winning branch.
     pub winning_branch: String,
@@ -687,7 +695,7 @@ mod tests {
     fn test_transition_corridor_request_valid_active() {
         let req = TransitionCorridorRequest {
             target_state: "ACTIVE".to_string(),
-            evidence_digest: Some("abc123".to_string()),
+            evidence_digest: Some("a".repeat(64)),
             reason: Some("compliance approved".to_string()),
         };
         assert!(req.validate().is_ok());

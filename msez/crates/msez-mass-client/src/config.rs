@@ -99,10 +99,7 @@ impl MassApiConfig {
                 "https://templating-engine-prod-5edc768c1f80.herokuapp.com",
             )?,
             api_token,
-            timeout_secs: std::env::var("MASS_TIMEOUT_SECS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(30),
+            timeout_secs: parse_env_u64("MASS_TIMEOUT_SECS", 30),
         })
     }
 
@@ -133,6 +130,29 @@ impl MassApiConfig {
 fn env_url(var: &str, default: &str) -> Result<Url, ConfigError> {
     let raw = std::env::var(var).unwrap_or_else(|_| default.to_string());
     Url::parse(&raw).map_err(|e| ConfigError::InvalidUrl(var.to_string(), e.to_string()))
+}
+
+/// Parse a `u64` from an environment variable, falling back to `default`.
+///
+/// If the variable is set but cannot be parsed as a `u64`, a warning is logged
+/// so operators can catch typos like `"12O"` (letter O) instead of `"120"`.
+fn parse_env_u64(var: &str, default: u64) -> u64 {
+    match std::env::var(var) {
+        Ok(raw) => match raw.parse::<u64>() {
+            Ok(val) => val,
+            Err(err) => {
+                tracing::warn!(
+                    env_var = var,
+                    raw_value = %raw,
+                    %err,
+                    default_value = default,
+                    "environment variable present but not a valid u64, falling back to default"
+                );
+                default
+            }
+        },
+        Err(_) => default,
+    }
 }
 
 /// Configuration errors.

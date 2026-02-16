@@ -50,7 +50,7 @@ pub struct ComplianceCredentialRequest {
 }
 
 /// Response from the compliance credential issuance endpoint.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct ComplianceCredentialResponse {
     /// The compliance evaluation result.
     pub evaluation: ComplianceEvalResult,
@@ -62,7 +62,7 @@ pub struct ComplianceCredentialResponse {
 }
 
 /// Response from the credential verification endpoint.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct VerificationResponse {
     /// Whether all proofs verified successfully.
     pub verified: bool,
@@ -77,7 +77,7 @@ pub struct VerificationResponse {
 }
 
 /// Per-proof verification result.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct ProofVerificationResult {
     /// The DID URL of the verification method used.
     pub verification_method: String,

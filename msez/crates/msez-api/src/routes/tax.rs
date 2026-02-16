@@ -202,7 +202,7 @@ pub struct RulesQueryParams {
 }
 
 /// Response for a tax event with withholding details.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct TaxEventResponse {
     /// The persisted tax event record.
     pub event: TaxEventRecord,
@@ -211,7 +211,7 @@ pub struct TaxEventResponse {
 }
 
 /// Simplified withholding result for API responses.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct WithholdingResultResponse {
     pub rule_id: String,
     pub rate_percent: String,
@@ -237,7 +237,7 @@ impl From<&WithholdingResult> for WithholdingResultResponse {
 }
 
 /// Response for the report generation endpoint.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct TaxReportResponse {
     pub report_id: Uuid,
     pub entity_id: Uuid,
@@ -256,7 +256,7 @@ pub struct TaxReportResponse {
 }
 
 /// Summary of tax obligations for an entity.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct TaxObligationSummary {
     pub entity_id: Uuid,
     pub jurisdiction_id: String,
@@ -268,7 +268,7 @@ pub struct TaxObligationSummary {
 }
 
 /// Per-category tax obligation summary.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct CategorySummary {
     pub tax_category: String,
     pub event_count: usize,
@@ -277,7 +277,7 @@ pub struct CategorySummary {
 }
 
 /// Withholding rule as returned by the API.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct WithholdingRuleResponse {
     pub rule_id: String,
     pub applicable_event_types: Vec<String>,

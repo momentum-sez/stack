@@ -164,7 +164,7 @@ pub struct EntityIdentityResponse {
 }
 
 /// Identity service status response.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct IdentityServiceStatus {
     /// Whether the identity client is configured.
     pub configured: bool,

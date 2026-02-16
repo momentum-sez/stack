@@ -17,13 +17,13 @@ use utoipa::ToSchema;
 /// All error responses use this format for consistency across the API surface.
 /// The `details` field carries additional context for 422 validation errors
 /// but is omitted for 500-class errors to prevent information leakage.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct ErrorBody {
     pub error: ErrorDetail,
 }
 
 /// Inner error detail.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct ErrorDetail {
     /// Machine-readable error code (e.g., "NOT_FOUND", "VALIDATION_ERROR").
     pub code: String,

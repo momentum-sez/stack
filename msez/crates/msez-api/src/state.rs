@@ -138,7 +138,7 @@ impl<T: Clone + Send + Sync> Default for Store<T> {
 /// Uses [`DynCorridorState`] from `msez-state` for the corridor state, ensuring
 /// only spec-aligned state names are representable. The transition log uses
 /// [`TransitionRecord`] which carries `Option<ContentDigest>` evidence.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct CorridorRecord {
     pub id: Uuid,
     pub jurisdiction_a: String,
@@ -263,7 +263,7 @@ impl PartialEq<&str> for SmartAssetType {
 }
 
 /// Smart asset record.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct SmartAssetRecord {
     pub id: Uuid,
     pub asset_type: SmartAssetType,
@@ -316,7 +316,7 @@ impl std::fmt::Display for AttestationStatus {
 }
 
 /// Attestation record for regulator queries.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct AttestationRecord {
     pub id: Uuid,
     pub entity_id: Uuid,
@@ -335,7 +335,7 @@ pub struct AttestationRecord {
 /// status for API-layer persistence. Tax events are SEZ-Stack-owned data —
 /// they represent the jurisdictional tax awareness applied to Mass fiscal
 /// operations, not Mass fiscal CRUD.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct TaxEventRecord {
     /// Unique identifier (matches the inner event_id).
     pub id: Uuid,

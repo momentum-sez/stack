@@ -70,7 +70,7 @@ impl Validate for QueryAttestationsRequest {
 }
 
 /// Query results response.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct QueryResultsResponse {
     /// Number of results in this page.
     pub count: usize,
@@ -80,7 +80,7 @@ pub struct QueryResultsResponse {
 }
 
 /// Compliance summary for regulator dashboard.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct ComplianceSummary {
     pub total_entities: usize,
     pub total_corridors: usize,
@@ -94,7 +94,7 @@ pub struct ComplianceSummary {
 ///
 /// Assembles zone identity, compliance posture, corridor health,
 /// agentic policy activity, and system health into a single response.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct RegulatorDashboard {
     /// Zone identity and operational status.
     pub zone: ZoneStatus,
@@ -109,7 +109,7 @@ pub struct RegulatorDashboard {
 }
 
 /// Zone identity and counts.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct ZoneStatus {
     /// Zone identifier (from zone manifest, if bootstrapped).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -140,7 +140,7 @@ pub struct ZoneStatus {
 }
 
 /// Aggregate compliance posture across all assets.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct CompliancePosture {
     /// Per-asset compliance summary.
     pub assets: Vec<AssetComplianceSnapshot>,
@@ -153,7 +153,7 @@ pub struct CompliancePosture {
 }
 
 /// Per-asset compliance status snapshot for the regulator dashboard.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct AssetComplianceSnapshot {
     /// Asset ID.
     pub asset_id: Uuid,
@@ -168,7 +168,7 @@ pub struct AssetComplianceSnapshot {
 }
 
 /// Corridor health and activity overview.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct CorridorOverview {
     /// Per-corridor status.
     pub corridors: Vec<CorridorStatus>,
@@ -180,7 +180,7 @@ pub struct CorridorOverview {
 }
 
 /// Per-corridor status snapshot.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct CorridorStatus {
     /// Corridor ID.
     pub corridor_id: Uuid,
@@ -201,7 +201,7 @@ pub struct CorridorStatus {
 }
 
 /// Recent agentic policy activity.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct PolicyActivity {
     /// Number of registered policies.
     pub policy_count: usize,
@@ -212,7 +212,7 @@ pub struct PolicyActivity {
 }
 
 /// Audit trail entry summary.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct AuditEntrySummary {
     /// Entry type (trigger_received, policy_evaluated, action_scheduled, etc.).
     pub entry_type: String,
@@ -225,7 +225,7 @@ pub struct AuditEntrySummary {
 }
 
 /// System health indicators.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct SystemHealth {
     /// Corridors stuck in DRAFT for more than 7 days.
     pub stale_draft_corridors: usize,

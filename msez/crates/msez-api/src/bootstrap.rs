@@ -404,7 +404,15 @@ fn extract_sanctions_from_regpack(value: &serde_json::Value) -> Option<Vec<Sanct
         if let Some(entries) = snapshot.get("entries").and_then(|v| v.as_array()) {
             let parsed: Vec<SanctionsEntry> = entries
                 .iter()
-                .filter_map(|e| serde_json::from_value(e.clone()).ok())
+                .filter_map(|e| {
+                    serde_json::from_value(e.clone()).map_err(|err| {
+                        tracing::warn!(
+                            error = %err,
+                            raw = %e,
+                            "failed to deserialize sanctions entry — entry will be omitted from active list"
+                        );
+                    }).ok()
+                })
                 .collect();
             if !parsed.is_empty() {
                 return Some(parsed);
@@ -417,7 +425,15 @@ fn extract_sanctions_from_regpack(value: &serde_json::Value) -> Option<Vec<Sanct
         if let Some(entries) = sanctions.get("entries").and_then(|v| v.as_array()) {
             let parsed: Vec<SanctionsEntry> = entries
                 .iter()
-                .filter_map(|e| serde_json::from_value(e.clone()).ok())
+                .filter_map(|e| {
+                    serde_json::from_value(e.clone()).map_err(|err| {
+                        tracing::warn!(
+                            error = %err,
+                            raw = %e,
+                            "failed to deserialize sanctions entry — entry will be omitted from active list"
+                        );
+                    }).ok()
+                })
                 .collect();
             if !parsed.is_empty() {
                 return Some(parsed);

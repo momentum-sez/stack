@@ -53,7 +53,7 @@ use crate::state::{AppState, AttestationRecord, AttestationStatus};
 /// Compliance evaluation summary included in orchestration responses.
 ///
 /// Captures the full 20-domain tensor evaluation result for the jurisdiction.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct ComplianceSummary {
     /// Jurisdiction evaluated against.
     pub jurisdiction_id: String,
@@ -77,7 +77,7 @@ pub struct ComplianceSummary {
 /// Enriched response envelope for orchestration endpoints.
 ///
 /// Wraps the Mass API response with compliance evaluation and VC data.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct OrchestrationEnvelope {
     /// The Mass API response data for the primitive operation.
     pub mass_response: serde_json::Value,

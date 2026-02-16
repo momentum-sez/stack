@@ -32,7 +32,7 @@ pub struct AttestationInput {
 
 /// Compliance evaluation result returned by both the evaluation and
 /// credential issuance endpoints.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct ComplianceEvalResult {
     /// The asset that was evaluated.
     pub asset_id: Uuid,

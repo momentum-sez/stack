@@ -82,7 +82,7 @@ impl Validate for ComplianceEvalRequest {
 }
 
 /// Compliance evaluation response.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct ComplianceEvalResponse {
     pub asset_id: Uuid,
     pub overall_status: String,

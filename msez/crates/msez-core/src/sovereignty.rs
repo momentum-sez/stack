@@ -211,11 +211,7 @@ impl SovereigntyEnforcer {
     ///
     /// Returns [`SovereigntyVerdict::Allowed`] if the policy permits the
     /// transfer, or [`SovereigntyVerdict::Denied`] with a reason if not.
-    pub fn check(
-        &self,
-        category: DataCategory,
-        target_jurisdiction: &str,
-    ) -> SovereigntyVerdict {
+    pub fn check(&self, category: DataCategory, target_jurisdiction: &str) -> SovereigntyVerdict {
         // Same-jurisdiction transfers are always allowed.
         if target_jurisdiction == self.policy.jurisdiction_id.as_str() {
             return SovereigntyVerdict::Allowed;
@@ -225,9 +221,7 @@ impl SovereigntyEnforcer {
         if self.policy.confined_categories.contains(&category) {
             return SovereigntyVerdict::Denied(format!(
                 "{} data is confined to {} and may not be transferred to {}",
-                category,
-                self.policy.jurisdiction_id,
-                target_jurisdiction,
+                category, self.policy.jurisdiction_id, target_jurisdiction,
             ));
         }
 
@@ -239,17 +233,13 @@ impl SovereigntyEnforcer {
                 } else {
                     SovereigntyVerdict::Denied(format!(
                         "{} data transfer from {} to {} is not in the allowed target list",
-                        category,
-                        self.policy.jurisdiction_id,
-                        target_jurisdiction,
+                        category, self.policy.jurisdiction_id, target_jurisdiction,
                     ))
                 }
             }
             None => SovereigntyVerdict::Denied(format!(
                 "no sovereignty policy allows {} data transfer from {} to {}",
-                category,
-                self.policy.jurisdiction_id,
-                target_jurisdiction,
+                category, self.policy.jurisdiction_id, target_jurisdiction,
             )),
         }
     }
@@ -351,8 +341,12 @@ mod tests {
         policy.allow(DataCategory::Analytics, "partner");
 
         let enforcer = SovereigntyEnforcer::new(policy);
-        assert!(enforcer.check(DataCategory::Analytics, "partner").is_allowed());
-        assert!(!enforcer.check(DataCategory::Analytics, "other").is_allowed());
+        assert!(enforcer
+            .check(DataCategory::Analytics, "partner")
+            .is_allowed());
+        assert!(!enforcer
+            .check(DataCategory::Analytics, "other")
+            .is_allowed());
         assert!(!enforcer.check(DataCategory::Pii, "partner").is_allowed());
     }
 
@@ -391,6 +385,9 @@ mod tests {
             recovered.jurisdiction_id.as_str(),
             policy.jurisdiction_id.as_str()
         );
-        assert_eq!(recovered.confined_categories.len(), policy.confined_categories.len());
+        assert_eq!(
+            recovered.confined_categories.len(),
+            policy.confined_categories.len()
+        );
     }
 }

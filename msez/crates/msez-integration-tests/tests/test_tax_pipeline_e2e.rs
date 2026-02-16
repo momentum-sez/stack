@@ -149,8 +149,7 @@ fn pakistan_all_tax_categories_exercised() {
     .with_ntn("1234567", FilerStatus::Filer);
     let wht = pipeline.process_event(&event);
     assert!(
-        wht.iter()
-            .any(|w| w.tax_category == TaxCategory::SalesTax),
+        wht.iter().any(|w| w.tax_category == TaxCategory::SalesTax),
         "SupplyOfGoods should trigger sales tax"
     );
 

@@ -102,9 +102,7 @@ impl Validate for ComplianceCredentialRequest {
         }
         for key in self.attestations.keys() {
             if key.len() > 100 {
-                return Err(
-                    "attestation domain name must not exceed 100 characters".to_string(),
-                );
+                return Err("attestation domain name must not exceed 100 characters".to_string());
             }
             if key.trim().is_empty() {
                 return Err("attestation domain name must not be empty".to_string());

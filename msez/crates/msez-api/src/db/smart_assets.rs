@@ -136,7 +136,10 @@ fn parse_compliance_status(s: &str) -> AssetComplianceStatus {
         "non_compliant" => AssetComplianceStatus::NonCompliant,
         "partially_compliant" => AssetComplianceStatus::PartiallyCompliant,
         other => {
-            tracing::warn!(status = other, "unknown compliance status in database, defaulting to Unevaluated");
+            tracing::warn!(
+                status = other,
+                "unknown compliance status in database, defaulting to Unevaluated"
+            );
             AssetComplianceStatus::Unevaluated
         }
     }
@@ -151,7 +154,10 @@ fn parse_asset_status(s: &str) -> AssetStatus {
         "SUSPENDED" => AssetStatus::Suspended,
         "RETIRED" => AssetStatus::Retired,
         other => {
-            tracing::warn!(status = other, "unknown asset status in database, defaulting to Genesis");
+            tracing::warn!(
+                status = other,
+                "unknown asset status in database, defaulting to Genesis"
+            );
             AssetStatus::Genesis
         }
     }

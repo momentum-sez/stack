@@ -895,7 +895,10 @@ async fn regulator_dashboard() {
     let v = body_json(resp).await;
     // Dashboard must be a JSON object with at least one key
     assert!(v.is_object(), "Dashboard response must be a JSON object");
-    assert!(!v.as_object().unwrap().is_empty(), "Dashboard response must not be empty");
+    assert!(
+        !v.as_object().unwrap().is_empty(),
+        "Dashboard response must not be empty"
+    );
 }
 
 // =========================================================================
@@ -1053,8 +1056,14 @@ async fn asset_compliance_and_credential_lifecycle() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let eval = body_json(resp).await;
-    assert!(eval.is_object(), "Compliance evaluation must be a JSON object");
-    assert!(!eval.as_object().unwrap().is_empty(), "Compliance evaluation must not be empty");
+    assert!(
+        eval.is_object(),
+        "Compliance evaluation must be a JSON object"
+    );
+    assert!(
+        !eval.as_object().unwrap().is_empty(),
+        "Compliance evaluation must not be empty"
+    );
 
     // Issue compliance credential
     let resp = app

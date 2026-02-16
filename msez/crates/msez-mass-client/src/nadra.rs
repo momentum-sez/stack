@@ -380,7 +380,9 @@ mod tests {
             date_of_birth: Some("1990-06-15".into()),
             request_reference: "REQ-001".into(),
         };
-        let resp = adapter.verify_identity(&req).expect("should verify valid CNIC");
+        let resp = adapter
+            .verify_identity(&req)
+            .expect("should verify valid CNIC");
         assert!(resp.verified);
         assert_eq!(resp.match_score, Some(0.95));
         assert_eq!(resp.cnic_status, CnicStatus::Active);
@@ -417,7 +419,9 @@ mod tests {
             date_of_birth: None,
             request_reference: "REQ-003".into(),
         };
-        let resp = adapter.verify_identity(&req).expect("dashed CNIC should pass");
+        let resp = adapter
+            .verify_identity(&req)
+            .expect("dashed CNIC should pass");
         assert!(resp.verified);
     }
 
@@ -476,7 +480,9 @@ mod tests {
             date_of_birth: None,
             request_reference: "ARC-001".into(),
         };
-        let resp = adapter.verify_identity(&req).expect("Arc adapter should work");
+        let resp = adapter
+            .verify_identity(&req)
+            .expect("Arc adapter should work");
         assert!(resp.verified);
     }
 
@@ -492,8 +498,7 @@ mod tests {
                 reference: "BOUNDARY".into(),
             };
             let json = serde_json::to_string(&resp).expect("serialize");
-            let back: NadraVerificationResponse =
-                serde_json::from_str(&json).expect("deserialize");
+            let back: NadraVerificationResponse = serde_json::from_str(&json).expect("deserialize");
             let diff = (back.match_score.expect("score present") - score).abs();
             assert!(diff < f64::EPSILON, "score {score} did not round-trip");
         }

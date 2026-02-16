@@ -291,13 +291,12 @@ impl EscrowAccount {
         // parse_amount() used by partial_release, ensuring consistency. Using
         // f64 here would allow decimal strings (e.g., "100.50") that fail i64
         // parsing in partial_release, corrupting the escrow balance.
-        let parsed = parse_amount(&amount).map_err(|_| {
-            ArbitrationError::InvalidEscrowOperation {
+        let parsed =
+            parse_amount(&amount).map_err(|_| ArbitrationError::InvalidEscrowOperation {
                 escrow_id: self.id.to_string(),
                 operation: "deposit".to_string(),
                 status: format!("amount is not a valid integer: {}", amount),
-            }
-        })?;
+            })?;
         if parsed <= 0 {
             return Err(ArbitrationError::InvalidEscrowOperation {
                 escrow_id: self.id.to_string(),

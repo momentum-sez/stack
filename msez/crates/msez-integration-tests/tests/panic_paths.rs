@@ -241,21 +241,35 @@ fn jurisdiction_id_new_empty_string() {
 #[test]
 fn jurisdiction_id_new_whitespace_only() {
     let result = panic::catch_unwind(|| JurisdictionId::new("   "));
-    assert!(result.is_ok(), "JurisdictionId::new must not panic on whitespace");
+    assert!(
+        result.is_ok(),
+        "JurisdictionId::new must not panic on whitespace"
+    );
     // Whitespace-only should be deterministic.
     let r1 = JurisdictionId::new("   ");
     let r2 = JurisdictionId::new("   ");
-    assert_eq!(r1.is_ok(), r2.is_ok(), "JurisdictionId::new must be deterministic");
+    assert_eq!(
+        r1.is_ok(),
+        r2.is_ok(),
+        "JurisdictionId::new must be deterministic"
+    );
 }
 
 #[test]
 fn jurisdiction_id_new_path_traversal() {
     // Path traversal attempt — should not panic and must be deterministic.
     let result = panic::catch_unwind(|| JurisdictionId::new("../../../../etc/passwd"));
-    assert!(result.is_ok(), "JurisdictionId::new must not panic on path traversal input");
+    assert!(
+        result.is_ok(),
+        "JurisdictionId::new must not panic on path traversal input"
+    );
     let r1 = JurisdictionId::new("../../../../etc/passwd");
     let r2 = JurisdictionId::new("../../../../etc/passwd");
-    assert_eq!(r1.is_ok(), r2.is_ok(), "JurisdictionId::new must be deterministic");
+    assert_eq!(
+        r1.is_ok(),
+        r2.is_ok(),
+        "JurisdictionId::new must be deterministic"
+    );
 }
 
 // =========================================================================
@@ -359,7 +373,10 @@ fn netting_self_obligation_no_panic() {
         Err(_) => {} // Correctly rejected self-obligation
         Ok(()) => {
             let result = panic::catch_unwind(panic::AssertUnwindSafe(|| engine.compute_plan()));
-            assert!(result.is_ok(), "Self-obligation should not panic in compute_plan");
+            assert!(
+                result.is_ok(),
+                "Self-obligation should not panic in compute_plan"
+            );
         }
     }
 }
@@ -470,7 +487,10 @@ fn netting_empty_party_ids_no_panic() {
         Err(_) => {} // Correctly rejected empty party IDs
         Ok(()) => {
             let result = panic::catch_unwind(panic::AssertUnwindSafe(|| engine.compute_plan()));
-            assert!(result.is_ok(), "Empty party IDs should not panic in compute_plan");
+            assert!(
+                result.is_ok(),
+                "Empty party IDs should not panic in compute_plan"
+            );
         }
     }
 }
@@ -491,7 +511,10 @@ fn netting_empty_currency_no_panic() {
         Err(_) => {} // Correctly rejected empty currency
         Ok(()) => {
             let result = panic::catch_unwind(panic::AssertUnwindSafe(|| engine.compute_plan()));
-            assert!(result.is_ok(), "NettingEngine::compute_plan must not panic with empty currency");
+            assert!(
+                result.is_ok(),
+                "NettingEngine::compute_plan must not panic with empty currency"
+            );
         }
     }
 }
@@ -646,14 +669,20 @@ fn mmr_many_appends_no_panic() {
 fn mmr_append_invalid_hex_returns_error() {
     let mut mmr = MerkleMountainRange::new();
     let result = mmr.append("not-valid-hex");
-    assert!(result.is_err(), "MMR append with non-hex input must return error");
+    assert!(
+        result.is_err(),
+        "MMR append with non-hex input must return error"
+    );
 }
 
 #[test]
 fn mmr_append_empty_string_returns_error() {
     let mut mmr = MerkleMountainRange::new();
     let result = mmr.append("");
-    assert!(result.is_err(), "MMR append with empty string must return error");
+    assert!(
+        result.is_err(),
+        "MMR append with empty string must return error"
+    );
 }
 
 // =========================================================================
@@ -774,7 +803,10 @@ fn swift_generate_instruction_zero_amount() {
     };
     let result = swift.generate_instruction(&instruction);
     // Zero amount must be rejected — SWIFT pacs.008 requires positive amount.
-    assert!(result.is_err(), "Zero amount must be rejected for SWIFT instruction");
+    assert!(
+        result.is_err(),
+        "Zero amount must be rejected for SWIFT instruction"
+    );
 }
 
 #[test]
@@ -795,7 +827,10 @@ fn swift_generate_instruction_negative_amount() {
     };
     let result = swift.generate_instruction(&instruction);
     // Negative amount must be rejected.
-    assert!(result.is_err(), "Negative amount must be rejected for SWIFT instruction");
+    assert!(
+        result.is_err(),
+        "Negative amount must be rejected for SWIFT instruction"
+    );
 }
 
 #[test]
@@ -887,7 +922,10 @@ fn vc_signing_input_no_panic() {
     };
     let result = vc.signing_input();
     // Should not panic even with null subject — must produce a deterministic result.
-    assert!(result.is_ok(), "signing_input must succeed even with null credential_subject");
+    assert!(
+        result.is_ok(),
+        "signing_input must succeed even with null credential_subject"
+    );
 }
 
 // =========================================================================
@@ -994,7 +1032,10 @@ fn bridge_route_same_source_target_returns_none() {
     });
     let result = bridge.find_route(&pk, &pk);
     // Routing from a node to itself should return None (no self-routes).
-    assert!(result.is_none(), "find_route from node to itself must return None");
+    assert!(
+        result.is_none(),
+        "find_route from node to itself must return None"
+    );
 }
 
 #[test]
@@ -1054,7 +1095,11 @@ fn receipt_chain_empty_root_no_panic() {
     // Empty chain — root should return error (no leaves) or empty sentinel.
     // Either way, must not panic and must be deterministic.
     let result2 = ReceiptChain::new(CorridorId::new()).mmr_root();
-    assert_eq!(result.is_ok(), result2.is_ok(), "empty chain root must be deterministic");
+    assert_eq!(
+        result.is_ok(),
+        result2.is_ok(),
+        "empty chain root must be deterministic"
+    );
 }
 
 #[test]
@@ -1140,9 +1185,15 @@ fn escrow_double_deposit_no_panic() {
         "USD".to_string(),
         None,
     );
-    escrow2.deposit("10000".to_string(), test_digest_for("dep-1")).unwrap();
+    escrow2
+        .deposit("10000".to_string(), test_digest_for("dep-1"))
+        .unwrap();
     let result2 = escrow2.deposit("5000".to_string(), test_digest_for("dep-2"));
-    assert_eq!(result.is_ok(), result2.is_ok(), "double deposit behavior must be deterministic");
+    assert_eq!(
+        result.is_ok(),
+        result2.is_ok(),
+        "double deposit behavior must be deterministic"
+    );
 }
 
 #[test]
@@ -1244,13 +1295,18 @@ fn enforcement_complete_without_action_results_no_panic() {
     // Completing enforcement with zero action results: must not panic.
     // The implementation may succeed (vacuously complete) or reject.
     let r = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        let mut o2 = EnforcementOrder::new(DisputeId::new(), test_digest_for("award"), vec![], None);
+        let mut o2 =
+            EnforcementOrder::new(DisputeId::new(), test_digest_for("award"), vec![], None);
         o2.begin_enforcement().unwrap();
         o2.complete()
     }));
     assert!(r.is_ok(), "EnforcementOrder::complete must not panic");
     // Verify the result matches (both succeed or both fail).
-    assert_eq!(result.is_ok(), r.unwrap().is_ok(), "complete behavior must be deterministic");
+    assert_eq!(
+        result.is_ok(),
+        r.unwrap().is_ok(),
+        "complete behavior must be deterministic"
+    );
 }
 
 #[test]
@@ -1556,7 +1612,11 @@ fn pack_ensure_json_compatible_null_no_panic() {
     let result = ensure_json_compatible(&json!(null), "", "test");
     // Null JSON value: must not panic. Verify deterministic behavior.
     let result2 = ensure_json_compatible(&json!(null), "", "test");
-    assert_eq!(result.is_ok(), result2.is_ok(), "ensure_json_compatible(null) must be deterministic");
+    assert_eq!(
+        result.is_ok(),
+        result2.is_ok(),
+        "ensure_json_compatible(null) must be deterministic"
+    );
 }
 
 #[test]
@@ -1580,7 +1640,11 @@ fn pack_ensure_json_compatible_empty_string_path_no_panic() {
     let result = ensure_json_compatible(&json!({"key": "value"}), "", "");
     // Empty path and context: must not panic, must be deterministic.
     let result2 = ensure_json_compatible(&json!({"key": "value"}), "", "");
-    assert_eq!(result.is_ok(), result2.is_ok(), "ensure_json_compatible must be deterministic");
+    assert_eq!(
+        result.is_ok(),
+        result2.is_ok(),
+        "ensure_json_compatible must be deterministic"
+    );
 }
 
 #[test]
@@ -1892,9 +1956,16 @@ fn vc_compute_asset_id_null_no_panic() {
     let result = SmartAssetRegistryVc::compute_asset_id(&json!(null));
     // Null JSON: must not panic. Verify deterministic behavior.
     let result2 = SmartAssetRegistryVc::compute_asset_id(&json!(null));
-    assert_eq!(result.is_ok(), result2.is_ok(), "compute_asset_id(null) must be deterministic");
+    assert_eq!(
+        result.is_ok(),
+        result2.is_ok(),
+        "compute_asset_id(null) must be deterministic"
+    );
     if let (Ok(r1), Ok(r2)) = (&result, &result2) {
-        assert_eq!(r1, r2, "compute_asset_id(null) digest must be deterministic");
+        assert_eq!(
+            r1, r2,
+            "compute_asset_id(null) digest must be deterministic"
+        );
     }
 }
 

@@ -15,8 +15,7 @@ use std::process::Command;
 
 /// The workspace root for the msez crates.
 fn workspace_root() -> PathBuf {
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
-        .unwrap_or_else(|_| ".".to_string());
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
     PathBuf::from(manifest_dir)
         .parent() // up from msez-integration-tests
         .expect("parent of integration-tests")
@@ -63,14 +62,12 @@ fn sha2_dependency_only_in_core_and_crypto() {
         // msez-crypto needs raw sha2 for MMR node hashing (documented exception
         // per CLAUDE.md §V.5 — needs raw [u8; 32], not hex).
         if crate_name != "msez-core" && crate_name != "msez-crypto" {
-            let has_sha2_dep = content
-                .lines()
-                .any(|line| {
-                    let trimmed = line.trim();
-                    trimmed.starts_with("sha2")
-                        && !trimmed.starts_with('#')
-                        && !trimmed.starts_with("//")
-                });
+            let has_sha2_dep = content.lines().any(|line| {
+                let trimmed = line.trim();
+                trimmed.starts_with("sha2")
+                    && !trimmed.starts_with('#')
+                    && !trimmed.starts_with("//")
+            });
 
             assert!(
                 !has_sha2_dep,
@@ -167,8 +164,7 @@ fn manual_scan_sha2(crates_dir: &std::path::Path) {
                 if !is_allowed && !is_test {
                     for (i, line) in content.lines().enumerate() {
                         if line.contains("sha2::") && !line.trim_start().starts_with("//") {
-                            violations
-                                .push(format!("{}:{}: {}", path_str, i + 1, line.trim()));
+                            violations.push(format!("{}:{}: {}", path_str, i + 1, line.trim()));
                         }
                     }
                 }

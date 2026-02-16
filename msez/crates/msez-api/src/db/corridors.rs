@@ -138,17 +138,18 @@ struct CorridorRow {
 
 impl CorridorRow {
     fn into_record(self) -> CorridorRecord {
-        let state: DynCorridorState =
-            serde_json::from_value(serde_json::Value::String(self.status.clone()))
-                .unwrap_or_else(|e| {
-                    tracing::warn!(
-                        id = %self.id,
-                        status = %self.status,
-                        error = %e,
-                        "unknown corridor state in database, defaulting to Draft"
-                    );
-                    DynCorridorState::Draft
-                });
+        let state: DynCorridorState = serde_json::from_value(serde_json::Value::String(
+            self.status.clone(),
+        ))
+        .unwrap_or_else(|e| {
+            tracing::warn!(
+                id = %self.id,
+                status = %self.status,
+                error = %e,
+                "unknown corridor state in database, defaulting to Draft"
+            );
+            DynCorridorState::Draft
+        });
 
         let transition_log: Vec<TransitionRecord> =
             serde_json::from_value(self.transition_log.clone()).unwrap_or_else(|e| {

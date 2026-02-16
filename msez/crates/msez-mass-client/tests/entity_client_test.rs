@@ -164,7 +164,11 @@ async fn get_entity_returns_entity_when_found() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let entity = client.entities().get(id.parse::<uuid::Uuid>().unwrap()).await.unwrap();
+    let entity = client
+        .entities()
+        .get(id.parse::<uuid::Uuid>().unwrap())
+        .await
+        .unwrap();
 
     assert!(entity.is_some());
     let entity = entity.unwrap();
@@ -184,7 +188,11 @@ async fn get_entity_returns_none_when_not_found() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let entity = client.entities().get(id.parse::<uuid::Uuid>().unwrap()).await.unwrap();
+    let entity = client
+        .entities()
+        .get(id.parse::<uuid::Uuid>().unwrap())
+        .await
+        .unwrap();
     assert!(entity.is_none());
 }
 
@@ -200,7 +208,10 @@ async fn get_entity_returns_error_on_500() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.entities().get(id.parse::<uuid::Uuid>().unwrap()).await;
+    let result = client
+        .entities()
+        .get(id.parse::<uuid::Uuid>().unwrap())
+        .await;
     assert!(result.is_err());
     match result.unwrap_err() {
         msez_mass_client::MassApiError::ApiError { status, .. } => {
@@ -320,7 +331,10 @@ async fn delete_entity_succeeds() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.entities().delete(id.parse::<uuid::Uuid>().unwrap()).await;
+    let result = client
+        .entities()
+        .delete(id.parse::<uuid::Uuid>().unwrap())
+        .await;
     assert!(result.is_ok());
 }
 
@@ -336,7 +350,10 @@ async fn delete_entity_returns_error_on_404() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.entities().delete(id.parse::<uuid::Uuid>().unwrap()).await;
+    let result = client
+        .entities()
+        .delete(id.parse::<uuid::Uuid>().unwrap())
+        .await;
     assert!(result.is_err());
 }
 
@@ -382,7 +399,11 @@ async fn entity_deserializes_with_unknown_fields() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let entity = client.entities().get(id.parse::<uuid::Uuid>().unwrap()).await.unwrap();
+    let entity = client
+        .entities()
+        .get(id.parse::<uuid::Uuid>().unwrap())
+        .await
+        .unwrap();
     assert!(entity.is_some());
     let entity = entity.unwrap();
     assert_eq!(entity.name, "Forward Corp");
@@ -429,9 +450,7 @@ async fn update_entity_sends_correct_path_and_returns_entity() {
     let id = "550e8400-e29b-41d4-a716-446655440000";
 
     Mock::given(method("PUT"))
-        .and(path(format!(
-            "/organization-info/api/v1/organization/{id}"
-        )))
+        .and(path(format!("/organization-info/api/v1/organization/{id}")))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "id": id,
             "name": "Updated Corp",
@@ -462,9 +481,7 @@ async fn update_entity_returns_error_on_404() {
     let id = "550e8400-e29b-41d4-a716-446655440099";
 
     Mock::given(method("PUT"))
-        .and(path(format!(
-            "/organization-info/api/v1/organization/{id}"
-        )))
+        .and(path(format!("/organization-info/api/v1/organization/{id}")))
         .respond_with(ResponseTemplate::new(404).set_body_string("Not Found"))
         .mount(&mock_server)
         .await;
@@ -487,9 +504,7 @@ async fn update_entity_returns_error_on_422() {
     let id = "550e8400-e29b-41d4-a716-446655440000";
 
     Mock::given(method("PUT"))
-        .and(path(format!(
-            "/organization-info/api/v1/organization/{id}"
-        )))
+        .and(path(format!("/organization-info/api/v1/organization/{id}")))
         .respond_with(
             ResponseTemplate::new(422).set_body_string("Validation failed: name is required"),
         )

@@ -164,7 +164,9 @@ impl FromStr for ComplianceDomain {
     /// Accepts the same strings produced by [`ComplianceDomain::as_str()`]
     /// and the [`Display`](std::fmt::Display) implementation.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+        // Case-insensitive matching: API callers may send "AML", "Aml",
+        // or "aml" — all should resolve to the same domain.
+        match s.to_ascii_lowercase().as_str() {
             "aml" => Ok(Self::Aml),
             "kyc" => Ok(Self::Kyc),
             "sanctions" => Ok(Self::Sanctions),
@@ -220,7 +222,16 @@ mod tests {
     fn from_str_rejects_unknown() {
         assert!("unknown_domain".parse::<ComplianceDomain>().is_err());
         assert!("".parse::<ComplianceDomain>().is_err());
-        assert!("AML".parse::<ComplianceDomain>().is_err()); // case-sensitive
+    }
+
+    #[test]
+    fn from_str_case_insensitive() {
+        // API callers may send "AML", "Aml", or "aml" — all must resolve.
+        assert_eq!("AML".parse::<ComplianceDomain>().unwrap(), ComplianceDomain::Aml);
+        assert_eq!("Aml".parse::<ComplianceDomain>().unwrap(), ComplianceDomain::Aml);
+        assert_eq!("aml".parse::<ComplianceDomain>().unwrap(), ComplianceDomain::Aml);
+        assert_eq!("DATA_PRIVACY".parse::<ComplianceDomain>().unwrap(), ComplianceDomain::DataPrivacy);
+        assert_eq!("Consumer_Protection".parse::<ComplianceDomain>().unwrap(), ComplianceDomain::ConsumerProtection);
     }
 
     #[test]

@@ -107,7 +107,9 @@ impl Validate for CreateTaxEventRequest {
         if self.event_type.len() > 100 {
             return Err("event_type must not exceed 100 characters".to_string());
         }
-        // Validate NTN format if provided (7 digits).
+        // Validate NTN format if provided.
+        // Pakistan NTN is exactly 7 digits (FBR format).
+        #[cfg(feature = "jurisdiction-pk")]
         if let Some(ref ntn) = self.ntn {
             if ntn.len() != 7 || !ntn.chars().all(|c| c.is_ascii_digit()) {
                 return Err("ntn must be exactly 7 digits".to_string());
@@ -675,7 +677,16 @@ async fn list_withholding_rules(
     Query(params): Query<RulesQueryParams>,
 ) -> Result<Json<Vec<WithholdingRuleResponse>>, AppError> {
     let pipeline = state.tax_pipeline.lock();
-    let jurisdiction = params.jurisdiction_id.as_deref().unwrap_or("PK");
+
+    #[cfg(feature = "jurisdiction-pk")]
+    let default_jurisdiction = "PK";
+    #[cfg(not(feature = "jurisdiction-pk"))]
+    let default_jurisdiction = "";
+
+    let jurisdiction = params
+        .jurisdiction_id
+        .as_deref()
+        .unwrap_or(default_jurisdiction);
 
     let rules = pipeline.engine.rules_for_jurisdiction(jurisdiction);
     let responses: Vec<WithholdingRuleResponse> = rules
@@ -794,6 +805,7 @@ mod tests {
         super::router().with_state(state)
     }
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[tokio::test]
     async fn create_tax_event_goods_filer() {
         let app = test_app();
@@ -835,6 +847,7 @@ mod tests {
         assert_eq!(result.withholdings[0].rate_percent, "4.5");
     }
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[tokio::test]
     async fn create_tax_event_nonfiler_double_rate() {
         let app = test_app();
@@ -898,6 +911,7 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[tokio::test]
     async fn create_tax_event_rejects_invalid_ntn() {
         let app = test_app();
@@ -967,6 +981,7 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[tokio::test]
     async fn compute_withholding_dry_run() {
         let app = test_app();
@@ -1004,8 +1019,9 @@ mod tests {
         assert_eq!(results[0].withholding_amount, "4000.00");
     }
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[tokio::test]
-    async fn list_withholding_rules() {
+    async fn list_withholding_rules_pakistan() {
         let app = test_app();
 
         let resp = app

@@ -1,16 +1,33 @@
-//! # Tax Collection Pipeline — Pakistan GovOS Reference Implementation
+//! # Tax Collection Pipeline
 //!
-//! Implements the signature Pakistan deployment feature:
+//! Jurisdiction-agnostic tax pipeline infrastructure with pluggable rule sets.
 //! **Every economic activity on Mass generates a tax event → automatic
-//! withholding at source → real-time reporting to FBR IRIS → gap analysis
+//! withholding at source → real-time reporting to tax authority → gap analysis
 //! closes evasion.**
+//!
+//! ## Jurisdiction Feature Flags
+//!
+//! Jurisdiction-specific tax rules are gated behind Cargo feature flags:
+//! - `jurisdiction-pk` — Pakistan (ITO 2001, FBR IRIS, Section 153)
+//! - `jurisdiction-ae` — UAE (planned)
+//! - `jurisdiction-kz` — Kazakhstan (planned)
+//!
+//! The generic infrastructure (`WithholdingEngine`, `TaxPipeline`,
+//! `WithholdingRule`, `TaxEvent`) is always compiled. Only jurisdiction-
+//! specific rule sets and integrations are feature-gated.
+//!
+//! To add a new jurisdiction:
+//! 1. Add `jurisdiction-xx` feature to `msez-agentic/Cargo.toml`
+//! 2. Create `xx_standard_rules() -> Vec<WithholdingRule>` function
+//! 3. Gate it with `#[cfg(feature = "jurisdiction-xx")]`
+//! 4. Add corresponding route handlers in `msez-api` if needed
 //!
 //! ## Architecture
 //!
 //! The tax pipeline sits in the SEZ Stack's jurisdictional orchestration layer.
 //! It does NOT duplicate Mass fiscal CRUD — it provides the *tax awareness*
 //! that transforms generic payment/transaction operations into tax-compliant
-//! operations under Pakistani (or any jurisdiction's) tax law.
+//! operations under any jurisdiction's tax law.
 //!
 //! ### Pipeline stages:
 //!
@@ -22,18 +39,8 @@
 //!    jurisdiction-specific [`WithholdingRule`]s (from regpack), compute the
 //!    [`WithholdingResult`] with exact amount, applicable section, and rate.
 //!
-//! 3. **Reporting** — Generate a [`TaxReport`] for submission to FBR IRIS
-//!    (or any jurisdiction's tax authority). Includes event digest for
-//!    tamper evidence via [`CanonicalBytes`].
-//!
-//! ## Pakistan-Specific Context
-//!
-//! - Income Tax Ordinance 2001: Sections 149 (salary), 151 (profit on debt),
-//!   153 (payments for goods/services), 231A (cash withdrawal), 236G (sale of
-//!   goods to unregistered persons)
-//! - Sales Tax Act 1990: Standard rate, zero-rated, exempt supplies
-//! - Federal Excise Act 2005: Excise duties on services and goods
-//! - FBR IRIS: Real-time reporting endpoint for withholding certificates
+//! 3. **Reporting** — Generate a [`TaxReport`] for submission to the
+//!    jurisdiction's tax authority. Includes event digest for tamper evidence.
 //!
 //! ## Determinism
 //!
@@ -615,6 +622,7 @@ impl WithholdingEngine {
 
     /// Create an engine pre-loaded with Pakistan's standard withholding rules
     /// based on the Income Tax Ordinance 2001 and current FBR SRO rates.
+    #[cfg(feature = "jurisdiction-pk")]
     pub fn with_pakistan_rules() -> Self {
         let mut engine = Self::new();
         engine.load_rules("PK", pakistan_standard_rules());
@@ -646,6 +654,7 @@ impl std::fmt::Debug for WithholdingEngine {
 ///
 /// These are the baseline rules. Jurisdiction-specific overrides and
 /// SRO amendments are applied via regpack data at runtime.
+#[cfg(feature = "jurisdiction-pk")]
 pub fn pakistan_standard_rules() -> Vec<WithholdingRule> {
     vec![
         // Section 153(1)(a) — Goods, Filer
@@ -1119,6 +1128,7 @@ impl TaxPipeline {
     }
 
     /// Create a pipeline pre-loaded with Pakistan standard rules.
+    #[cfg(feature = "jurisdiction-pk")]
     pub fn pakistan() -> Self {
         Self {
             engine: WithholdingEngine::with_pakistan_rules(),
@@ -1424,6 +1434,7 @@ mod tests {
 
     // -- WithholdingEngine --
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[test]
     fn engine_pakistan_rules_loaded() {
         let engine = WithholdingEngine::with_pakistan_rules();
@@ -1432,6 +1443,7 @@ mod tests {
         assert!(engine.rules_for_jurisdiction("AE").is_empty());
     }
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[test]
     fn engine_compute_goods_filer() {
         let engine = WithholdingEngine::with_pakistan_rules();
@@ -1457,6 +1469,7 @@ mod tests {
         assert_eq!(r.statutory_section, "ITO 2001 Section 153(1)(a)");
     }
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[test]
     fn engine_compute_goods_nonfiler_double_rate() {
         let engine = WithholdingEngine::with_pakistan_rules();
@@ -1480,6 +1493,7 @@ mod tests {
         assert_eq!(r.net_amount, "91000.00");
     }
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[test]
     fn engine_compute_services_filer() {
         let engine = WithholdingEngine::with_pakistan_rules();
@@ -1502,6 +1516,7 @@ mod tests {
         assert_eq!(r.withholding_amount, "4000.00");
     }
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[test]
     fn engine_compute_no_matching_jurisdiction() {
         let engine = WithholdingEngine::with_pakistan_rules();
@@ -1519,6 +1534,7 @@ mod tests {
         assert!(results.is_empty());
     }
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[test]
     fn engine_compute_dividend_filer() {
         let engine = WithholdingEngine::with_pakistan_rules();
@@ -1539,6 +1555,7 @@ mod tests {
         assert!(results[0].is_final_tax);
     }
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[test]
     fn engine_compute_crossborder() {
         let engine = WithholdingEngine::with_pakistan_rules();
@@ -1559,6 +1576,7 @@ mod tests {
         assert_eq!(results[0].withholding_amount, "200000.00");
     }
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[test]
     fn engine_compute_deterministic() {
         let engine = WithholdingEngine::with_pakistan_rules();
@@ -1633,6 +1651,7 @@ mod tests {
 
     // -- Tax Report Generation --
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[test]
     fn generate_report_from_results() {
         let entity_id = Uuid::new_v4();
@@ -1735,6 +1754,7 @@ mod tests {
 
     // -- TaxPipeline --
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[test]
     fn pipeline_pakistan_processes_event() {
         let pipeline = TaxPipeline::pakistan();
@@ -1769,6 +1789,7 @@ mod tests {
         assert!(results.is_empty());
     }
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[test]
     fn pipeline_debug_format() {
         let pipeline = TaxPipeline::pakistan();
@@ -1777,6 +1798,7 @@ mod tests {
         assert!(dbg.contains("WithholdingEngine"));
     }
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[test]
     fn engine_debug_format() {
         let engine = WithholdingEngine::with_pakistan_rules();
@@ -1787,6 +1809,7 @@ mod tests {
 
     // -- Sales Tax --
 
+    #[cfg(feature = "jurisdiction-pk")]
     #[test]
     fn engine_compute_sales_tax_goods() {
         let engine = WithholdingEngine::with_pakistan_rules();

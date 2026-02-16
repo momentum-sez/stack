@@ -36,14 +36,14 @@ module.exports = function build_appendixD() {
 
     definition(
       "Definition D.2 (Compliance Tensor).",
-      "A compliance tensor C is a function C: AssetID x JurisdictionID x ComplianceDomain x " +
-      "TimeQuantum -> ComplianceState, where ComplianceState is a discrete 7-state lattice with " +
+      "A compliance tensor C is a function C: AssetID \u00D7 JurisdictionID \u00D7 ComplianceDomain \u00D7 " +
+      "TimeQuantum \u2192 ComplianceState, where ComplianceState is a discrete 7-state lattice with " +
       "ordering NonCompliant < Expired < Suspended < Unknown < Pending < {Compliant, Exempt} " +
       "(Compliant and Exempt form an incomparable top pair). For a given asset a, jurisdiction j, " +
       "domain d, and time quantum t, C(a, j, d, t) is computed by composing evaluations from the " +
-      "pack trilogy: C(a, j, d, t) = compose(lawpack_d(j, t), regpack_d(j, t), licensepack_d(a, j, t)). " +
-      "An asset is fully compliant in jurisdiction j at time t iff for all d in ComplianceDomain, " +
-      "C(a, j, d, t) in {Compliant, Exempt}."
+      "pack trilogy (\u00a712): C(a, j, d, t) = compose(lawpack_d(j, t), regpack_d(j, t), licensepack_d(a, j, t)). " +
+      "An asset is fully compliant in jurisdiction j at time t iff for all d \u2208 ComplianceDomain, " +
+      "C(a, j, d, t) \u2208 {Compliant, Exempt}."
     ),
 
     definition(

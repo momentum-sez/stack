@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold, definition, theorem,
-  codeBlock, table, spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter09() {
@@ -26,7 +26,6 @@ module.exports = function build_chapter09() {
       "    pub watcher_attestations: Vec<WatcherAttestation>,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 9.2 MMR Checkpoints ---
     h2("9.2 MMR Checkpoints"),
@@ -65,7 +64,6 @@ module.exports = function build_chapter09() {
       bold("Step 6 — Tensor Commitment Validation. "),
       "Verify that r[i].tensor_commitment matches the SHA-256 digest of the compliance tensor state after evaluating the transition against all applicable compliance domains. This binds every state transition to a specific compliance snapshot, ensuring no transition occurred outside the compliance envelope."
     ]),
-    spacer(),
 
     // --- 9.3.1 Receipt Chain Operations ---
     h3("9.3.1 Receipt Chain Operations"),
@@ -106,6 +104,5 @@ module.exports = function build_chapter09() {
       ],
       [1400, 2800, 2800, 2360]
     ),
-    spacer(),
   ];
 };

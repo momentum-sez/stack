@@ -1,4 +1,4 @@
-const { chapterHeading, codeBlock, spacer, h2, p, table } = require("../lib/primitives");
+const { chapterHeading, codeBlock, h2, p, table } = require("../lib/primitives");
 
 module.exports = function build_appendixI() {
   return [
@@ -19,11 +19,9 @@ module.exports = function build_appendixI() {
       "\u251C\u2500\u2500 capital_markets/     # Securities, trading, CSD (v0.4.44)\n" +
       "\u2514\u2500\u2500 trade/               # LCs, documents, SCF (v0.4.44)"
     ),
-    spacer(),
 
     h2("I.1 Line Count Estimates by Module Family"),
     p("The following table provides approximate line counts for each module family and its constituent crates across the workspace. Estimates are based on the v0.4.44 codebase as of February 2026."),
-    spacer(),
 
     table(
       ["Module Family", "Primary Crate(s)", "Est. Lines", "Key Files"],
@@ -44,11 +42,9 @@ module.exports = function build_appendixI() {
       ],
       [1400, 2800, 900, 4260]
     ),
-    spacer(),
 
     h2("I.2 Core Infrastructure Crates"),
     p("In addition to the domain module families above, the following infrastructure crates provide the foundational services:"),
-    spacer(),
 
     table(
       ["Crate", "Est. Lines", "Scope"],
@@ -64,9 +60,7 @@ module.exports = function build_appendixI() {
       ],
       [1800, 1000, 6560]
     ),
-    spacer(),
 
     p("Total workspace estimate: ~62,000 lines of Rust (excluding tests and generated code). Test modules add approximately 18,000 additional lines."),
-    spacer(),
   ];
 };

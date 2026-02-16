@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2,
   p, p_runs, bold,
-  codeBlock, table, spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter39() {
@@ -21,8 +21,6 @@ module.exports = function build_chapter39() {
       [2000, 4400, 2960]
     ),
 
-    spacer(),
-
     h2("Revenue Recovery Estimates"),
 
     p("Pakistan's tax-to-GDP ratio stands at approximately 9.2%, significantly below the regional average of 15-18% and the OECD average of 34%. The Federal Board of Revenue's annual collection target consistently falls short due to structural gaps in identification, assessment, and enforcement. The AI Spine targets the three primary revenue leakage categories:"),
@@ -41,8 +39,6 @@ module.exports = function build_chapter39() {
 
     p("The aggregate tax gap is estimated at PKR 1.5-3.0 trillion annually. Conservative recovery projections for Year 1 of AI Spine deployment target PKR 200-400 billion in additional identified revenue, scaling to PKR 500-800 billion by Year 3 as models improve with more training data and broader system integration coverage."),
 
-    spacer(),
-
     p_runs([bold("Data Sovereignty."), " All AI inference runs on-premise within Pakistani data centers. The training cluster comprises 8x NVIDIA A100 80GB GPUs for model training and fine-tuning. The inference cluster comprises 4x NVIDIA A100 GPUs for production serving. No training data, inference requests, or model weights leave Pakistani jurisdiction. The foundation model is fine-tuned on Pakistani tax data, regulatory filings, corporate registrations, and trade data to produce a sovereign model that understands Pakistani law, Urdu language, and local business patterns."]),
 
     h2("On-Premise GPU Infrastructure"),
@@ -59,8 +55,6 @@ module.exports = function build_chapter39() {
       ],
       [1400, 1800, 2400, 2000, 1760]
     ),
-
-    spacer(),
 
     p_runs([bold("Tax Intelligence Pipeline."), " The AI Spine's primary revenue impact comes from tax intelligence. Pakistan's tax-to-GDP ratio is approximately 9.2%, compared to a regional average of 15-18%. The tax gap — the difference between taxes owed and taxes collected — is estimated at PKR 1.5-3.0 trillion annually. The AI Spine analyzes transaction patterns across Mass Fiscal, cross-references entity data from Mass Entities, and identifies under-reporting, unreported transactions, and evasion patterns. This analysis feeds into the GovOS Console as actionable intelligence for FBR officers."]),
 
@@ -80,8 +74,6 @@ module.exports = function build_chapter39() {
       ],
       [1400, 2200, 3200, 2560]
     ),
-
-    spacer(),
 
     ...codeBlock(
 `pub struct AiInferenceRequest {
@@ -118,6 +110,5 @@ pub struct TaxRiskScore {
 }`
     ),
 
-    spacer(),
   ];
 };

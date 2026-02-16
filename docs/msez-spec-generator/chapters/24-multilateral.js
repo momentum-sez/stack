@@ -1,7 +1,7 @@
 const {
-  chapterHeading, h2,
+  chapterHeading, h2, h3,
   p, p_runs, bold,
-  table, spacer
+  table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter24() {
@@ -23,7 +23,6 @@ module.exports = function build_chapter24() {
       ],
       [2400, 3200, 3760]
     ),
-    spacer(),
 
     // --- 24.2 Mesh Model ---
     h2("24.2 Mesh Model"),
@@ -33,9 +32,32 @@ module.exports = function build_chapter24() {
     // --- 24.3 Hybrid Topology ---
     h2("24.3 Hybrid Topology"),
     p("Production deployments use a hybrid topology that combines hub-and-spoke for low-volume corridors with direct bilateral corridors for high-volume pairs. The PAK\u2194UAE corridor operates as a direct bilateral due to $10.1B annual volume, while lower-volume corridors (e.g., PAK\u2194KSA at $5.4B) may route through a hub when direct bilateral infrastructure is not yet established. The PathRouter automatically selects the optimal path based on current topology, fees, settlement latency, and compliance overhead."),
+    h3("24.3.1 PathRouter Selection Criteria"),
+    table(
+      ["Criterion", "Weight", "Description"],
+      [
+        ["Settlement Latency", "High", "Direct bilateral preferred for time-sensitive operations"],
+        ["Compliance Cost", "Medium", "Hub routing reduces per-transaction evaluation cost for low-volume pairs"],
+        ["Liquidity", "High", "Routes through corridors with sufficient settlement liquidity"],
+        ["Fees", "Medium", "Total routing fees across all hops in the path"],
+        ["Availability", "Critical", "Failover to alternative path if primary corridor is suspended or halted"],
+      ],
+      [2000, 1200, 6160]
+    ),
 
     // --- 24.4 Multilateral Netting ---
     h2("24.4 Multilateral Netting"),
     p("Multilateral netting reduces gross settlement obligations across the corridor group. At each netting cycle (configurable per corridor group, typically daily), the netting engine computes net positions across all participants. A five-party corridor group with 100 gross transactions may reduce to 5-10 net settlement obligations, reducing liquidity requirements and settlement risk. The \u03C0net circuit (approximately 20,000 constraints) produces a ZK proof that the net positions correctly represent the underlying gross transactions, enabling privacy-preserving netting verification without exposing individual transaction details."),
+    table(
+      ["Parameter", "Typical Value", "Description"],
+      [
+        ["Netting Cycle", "Daily (configurable)", "Frequency of multilateral netting computation"],
+        ["Gross-to-Net Ratio", "10:1 to 20:1", "Typical reduction in settlement obligations"],
+        ["Circuit (\u03C0net)", "~20,000 constraints", "ZK proof of correct netting computation"],
+        ["Privacy", "Full", "Individual transactions not revealed in net positions"],
+        ["Settlement Currency", "Corridor-specific", "Net obligations denominated in corridor settlement currency"],
+      ],
+      [2000, 2000, 5360]
+    ),
   ];
 };

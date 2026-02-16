@@ -1,6 +1,6 @@
 const {
-  chapterHeading, h2,
-  p, codeBlock, table, theorem, spacer
+  chapterHeading, h2, h3,
+  p, codeBlock, table, theorem
 } = require("../lib/primitives");
 
 module.exports = function build_chapter28() {
@@ -25,7 +25,6 @@ module.exports = function build_chapter28() {
       "    BondWeighted { min_weight_fraction: f64 },\n" +
       "}"
     ),
-    spacer(),
 
     // --- 28.2 Finality Levels ---
     h2("28.2 Finality Levels"),
@@ -39,16 +38,34 @@ module.exports = function build_chapter28() {
       ],
       [2000, 3600, 3760]
     ),
-    spacer(),
 
     theorem("Theorem 28.1 (Watcher Accountability).", "The slashing mechanism ensures watcher accountability. Dishonest attestations result in provable collateral loss. Given a conflicting attestation pair from the same watcher for the same (asset, jurisdiction, domain) tuple, the slashing contract verifies signatures, confirms conflict, and executes bond forfeiture."),
 
     // --- 28.3 Quorum Selection per Asset Class ---
     h2("28.3 Quorum Selection per Asset Class"),
-    p("Corridor governance selects quorum policy based on the risk profile of the operation. High-value settlement operations (e.g., cross-corridor DVP for securities above $1M) require SuperMajority or Unanimous quorum to ensure maximum economic security. Routine trade finance operations (LC amendments, document releases) use Majority quorum for speed. Critical state transitions (corridor suspension, governance amendment) require BondWeighted quorum with a minimum weight fraction of 0.67, ensuring that the decision represents at least two-thirds of economic stake in the corridor."),
+    p("Corridor governance selects quorum policy based on the risk profile of the operation."),
+    table(
+      ["Operation Class", "Quorum Policy", "Rationale"],
+      [
+        ["High-value settlement (DVP > $1M)", "SuperMajority or Unanimous", "Maximum economic security for large-value transfers"],
+        ["Routine trade finance (LC amendments, doc releases)", "Majority", "Speed: fast attestation for low-risk operations"],
+        ["Critical state transitions (corridor suspension, governance amendment)", "BondWeighted (min 0.67)", "Two-thirds of economic stake must agree"],
+        ["Standard corridor operations", "Threshold {k, n}", "Configurable per corridor governance agreement"],
+      ],
+      [2400, 2600, 4360]
+    ),
 
     // --- 28.4 Finality Upgrade Path ---
     h2("28.4 Finality Upgrade Path"),
     p("Operations begin at Provisional finality and upgrade progressively. The finality upgrade is monotonic: once an operation reaches a higher finality level, it never degrades. The upgrade process is asynchronous; business operations can proceed at Provisional finality while Confirmed and Anchored finality accumulate in the background. This enables sub-second operational latency (Provisional) with full settlement guarantee (Anchored) within minutes."),
+    table(
+      ["Upgrade", "Trigger", "Typical Latency", "Reversible"],
+      [
+        ["Provisional \u2192 Confirmed", "Quorum attestation received", "1\u201330 seconds", "No (monotonic)"],
+        ["Confirmed \u2192 Anchored", "Checkpoint committed to L1", "1\u20135 minutes", "No (monotonic)"],
+        ["Anchored \u2192 Sovereign", "Jurisdictional authority ratification", "Hours to days", "No (monotonic)"],
+      ],
+      [2400, 2800, 2000, 2160]
+    ),
   ];
 };

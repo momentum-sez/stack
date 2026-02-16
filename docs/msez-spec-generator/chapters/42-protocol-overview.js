@@ -1,12 +1,12 @@
 const {
   partHeading, chapterHeading, h2,
   p,
-  table, spacer
+  table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter42() {
   return [
-    ...partHeading("PART XV: MASS PROTOCOL INTEGRATION"),
+    ...partHeading("PART XV: PROTOCOL REFERENCE — CREDENTIALS, ARBITRATION, AND AGENTIC SYSTEMS"),
 
     chapterHeading("Chapter 42: Protocol Overview"),
 
@@ -27,6 +27,5 @@ module.exports = function build_chapter42() {
       ],
       [2200, 2800, 4360]
     ),
-    spacer(),
   ];
 };

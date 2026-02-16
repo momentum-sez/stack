@@ -1227,10 +1227,13 @@ fn parse_rate_bps(rate_str: &str) -> i64 {
         };
         integer_part.saturating_mul(100).saturating_add(frac)
     } else {
-        rate_str.parse::<i64>().unwrap_or_else(|_| {
-            tracing::warn!(rate = %rate_str, "invalid rate string — defaulting to 0 bps");
-            0
-        }).saturating_mul(100)
+        rate_str
+            .parse::<i64>()
+            .unwrap_or_else(|_| {
+                tracing::warn!(rate = %rate_str, "invalid rate string — defaulting to 0 bps");
+                0
+            })
+            .saturating_mul(100)
     }
 }
 

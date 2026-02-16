@@ -171,14 +171,10 @@ fn validate_corridor_id(id: &str) -> Result<()> {
         bail!("corridor ID must not be empty");
     }
     if id.contains('/') || id.contains('\\') || id.contains('\0') {
-        bail!(
-            "corridor ID contains invalid path characters: {id:?}"
-        );
+        bail!("corridor ID contains invalid path characters: {id:?}");
     }
     if id == "." || id == ".." || id.starts_with("../") || id.starts_with("..\\") {
-        bail!(
-            "corridor ID must not be a relative path traversal: {id:?}"
-        );
+        bail!("corridor ID must not be a relative path traversal: {id:?}");
     }
     Ok(())
 }
@@ -195,9 +191,7 @@ fn corridor_state_file(state_dir: &Path, id: &str) -> Result<PathBuf> {
         .canonicalize()
         .unwrap_or_else(|_| state_file.clone());
     if !canonical_file.starts_with(&canonical_dir) {
-        bail!(
-            "corridor ID resolves outside state directory: {id:?}"
-        );
+        bail!("corridor ID resolves outside state directory: {id:?}");
     }
     Ok(state_file)
 }

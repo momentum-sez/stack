@@ -1,4 +1,4 @@
-const { chapterHeading, h2, h3, p, p_runs, bold, table, codeBlock, spacer } = require("../lib/primitives");
+const { chapterHeading, h2, h3, p, p_runs, bold, table, codeBlock } = require("../lib/primitives");
 
 module.exports = function build_appendixB() {
   return [
@@ -12,7 +12,6 @@ module.exports = function build_appendixB() {
       "integration. All tests run in the standard Rust test harness via cargo test --workspace, " +
       "with no external test frameworks or Python dependencies."
     ),
-    spacer(),
 
     h3("B.1.1 Unit Tests"),
     p(
@@ -53,7 +52,6 @@ module.exports = function build_appendixB() {
       "for offline execution and are validated against live endpoints in the CI staging environment. " +
       "P0-008 has been resolved with 2,015 lines of wiremock contract tests across 6 test files."
     ),
-    spacer(),
 
     // --- Example Test Structure ---
     h2("B.2 Example Test Structure"),
@@ -105,7 +103,6 @@ mod tests {
     }
 }`
     ),
-    spacer(),
 
     // --- Coverage Summary Table ---
     h2("B.3 Coverage by Category"),
@@ -132,6 +129,5 @@ mod tests {
       ],
       [4800, 1200, 3360]
     ),
-    spacer(),
   ];
 };

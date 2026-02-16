@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  table, spacer
+  table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter41() {
@@ -20,8 +20,6 @@ module.exports = function build_chapter41() {
       ],
       [1600, 1600, 6160]
     ),
-
-    spacer(),
 
     p("Phase 1 (Months 1-6): Deploy core Mass primitives, connect national systems, begin AI training. Phase 2 (Months 7-12): Scale to all ministries, activate bilateral corridors, deploy full licensing. Phase 3 (Months 13-18): Optimize AI models, measure tax collection improvements, launch analytics dashboards. Phase 4 (Months 19-24): Transfer complete operational control to Pakistani engineers. Momentum retains advisory role only."),
 
@@ -89,8 +87,6 @@ module.exports = function build_chapter41() {
       [600, 1800, 3600, 3360]
     ),
 
-    spacer(),
-
     h2("41.2 Key Personnel Requirements"),
 
     p("Successful execution of the 24-month handover requires dedicated personnel on both the Momentum and Pakistani sides. The following table specifies minimum staffing by role category and phase. Pakistani personnel are embedded with Momentum engineers from Phase 1, ensuring continuous knowledge transfer rather than a single handover event."),
@@ -111,8 +107,6 @@ module.exports = function build_chapter41() {
     ),
 
     p("By Phase 4, the Pakistani team comprises 34 engineers and operators, fully capable of independent operation. The 3 remaining Momentum personnel serve exclusively in an advisory capacity with no production access. Total Pakistani capacity build: 34 trained engineers across platform, infrastructure, AI, integration, and security disciplines."),
-
-    spacer(),
 
     h2("41.3 Success Metrics"),
 
@@ -137,6 +131,5 @@ module.exports = function build_chapter41() {
       [2000, 1800, 1800, 1800, 1960]
     ),
 
-    spacer(),
   ];
 };

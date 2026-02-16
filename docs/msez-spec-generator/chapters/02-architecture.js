@@ -1,6 +1,6 @@
 const {
   chapterHeading, h2, h3, p, p_runs, bold,
-  table, codeBlock, spacer
+  table, codeBlock, spacer, pageBreak
 } = require("../lib/primitives");
 
 module.exports = function build_chapter02() {
@@ -27,7 +27,6 @@ module.exports = function build_chapter02() {
       ],
       [800, 2000, 3760, 2800]
     ),
-    spacer(),
 
     p("Layers L0\u2013L2 are provided by Mass and its infrastructure. Layers L3\u2013L4 are the MSEZ Stack \u2014 the subject of this specification. Layer L5 is built by deployment teams using the Stack\u2019s APIs."),
 
@@ -55,7 +54,6 @@ module.exports = function build_chapter02() {
       ],
       [2600, 3200, 3560]
     ),
-    spacer(),
 
     // --- 2.2.1 PHOENIX Module Suite ---
     h3("2.2.1 PHOENIX Module Suite"),
@@ -83,7 +81,6 @@ module.exports = function build_chapter02() {
       ],
       [3000, 1200, 5160]
     ),
-    spacer(),
 
     // --- 2.2.2 Rust Workspace Structure ---
     h3("2.2.2 Rust Workspace Structure"),
@@ -110,7 +107,6 @@ module.exports = function build_chapter02() {
 \u251c\u2500\u2500 msez-cli/               # Command-Line Interface
 \u2514\u2500\u2500 docs/                   # Specifications and documentation`
     ),
-    spacer(),
 
     // --- 2.3 Live Deployments ---
     h2("2.3 Live Deployments"),
@@ -131,6 +127,5 @@ module.exports = function build_chapter02() {
       ],
       [2400, 1200, 5760]
     ),
-    spacer(),
   ];
 };

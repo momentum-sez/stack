@@ -1,8 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold, italic, code,
-  definition, table,
-  spacer, pageBreak
+  definition, table, pageBreak
 } = require("../lib/primitives");
 
 module.exports = function build_chapter07() {
@@ -27,10 +26,46 @@ module.exports = function build_chapter07() {
       ],
       [2600, 3200, 3560]
     ),
-    spacer(),
 
     definition("Definition 7.1 (Profile).", "A profile P is a tuple (M, \u0398, T, R) where M is the set of active module families, \u0398 is the parameter configuration map, T is the compliance tensor weight matrix, and R is the resource requirement specification. A zone Z instantiated with profile P inherits all four components and may override \u0398 entries within the bounds declared by P's parameter constraints."),
-    spacer(),
+
+    h3("7.1.1 Module Activation Matrix"),
+    p("The following matrix summarizes module activation status across all seven profiles. Active: full functionality. Minimal: limited functionality for the specific use case. Inactive: module not deployed."),
+    table(
+      ["Module Family", "financial-center", "trade-hub", "tech-park", "sovereign-govos", "charter-city", "digital-native", "asset-history"],
+      [
+        ["Corporate", "Active", "Active", "Active", "Active", "Active", "Active", "Minimal"],
+        ["Financial", "Active", "Active", "Minimal", "Active", "Active", "Active", "Minimal"],
+        ["Trade", "Active", "Active", "Inactive", "Active", "Minimal", "Inactive", "Active"],
+        ["Corridors", "Active", "Active", "Minimal", "Active", "Active", "Active", "Active"],
+        ["Governance", "Active", "Active", "Active", "Active", "Active", "Active", "Minimal"],
+        ["Regulatory", "Active", "Active", "Active", "Active", "Active", "Active", "Active"],
+        ["Licensing", "Active", "Active", "Active", "Active", "Active", "Active", "Minimal"],
+        ["Legal", "Active", "Active", "Active", "Active", "Active", "Active", "Active"],
+        ["Identity", "Active", "Active", "Active", "Active", "Active", "Active", "Active"],
+        ["Compliance", "20 domains", "14 domains", "10 domains", "20 domains", "16 domains", "12 domains", "6-10 domains"],
+        ["Tax", "Active", "Active", "Active", "Active", "Active", "Active", "Minimal"],
+        ["Insurance", "Active", "Minimal", "Inactive", "Active", "Active", "Inactive", "Active"],
+        ["IP", "Active", "Inactive", "Active", "Active", "Minimal", "Active", "Minimal"],
+        ["Customs", "Active", "Active", "Inactive", "Active", "Minimal", "Inactive", "Active"],
+        ["Land/Property", "Active", "Inactive", "Minimal", "Active", "Active", "Inactive", "Conditional"],
+        ["Civic", "Active", "Minimal", "Active", "Active", "Active", "Inactive", "Inactive"],
+      ],
+      [1400, 1200, 1100, 1000, 1200, 1100, 1100, 1260]
+    ),
+
+    h3("7.1.2 Resource Comparison"),
+    table(
+      ["Resource", "financial-center", "trade-hub", "tech-park", "sovereign-govos", "charter-city", "digital-native", "asset-history"],
+      [
+        ["Min vCPU", "16", "8", "4", "64", "16", "4", "4"],
+        ["Min RAM", "64 GB", "32 GB", "16 GB", "256 GB", "64 GB", "16 GB", "16 GB"],
+        ["Min Storage", "500 GB", "250 GB", "100 GB", "5 TB", "500 GB", "100 GB", "100 GB"],
+        ["HSM Required", "FIPS 140-2 L3", "Software OK", "Software OK", "FIPS 140-3 L3", "FIPS 140-2 L3", "Software OK", "Software OK"],
+        ["DB Nodes", "3-node cluster", "Single node", "Single node", "5-node cluster", "3-node cluster", "Single node", "Single node"],
+      ],
+      [1400, 1200, 1100, 1000, 1200, 1100, 1100, 1260]
+    ),
 
     // =========================================================================
     // 7.2 digital-financial-center
@@ -65,7 +100,6 @@ module.exports = function build_chapter07() {
       ],
       [1800, 1200, 6360]
     ),
-    spacer(),
 
     h3("7.2.3 Resource Requirements"),
     table(
@@ -79,12 +113,10 @@ module.exports = function build_chapter07() {
       ],
       [2000, 3200, 4160]
     ),
-    spacer(),
 
     h3("7.2.4 Example Deployment: Abu Dhabi Digital Financial Centre"),
     p("A sovereign deploying the digital-financial-center profile for a new ADGM-class zone would configure the profile with UAE-specific lawpacks encoding Federal Decree-Law No. 32/2021 (Commercial Companies), ADGM Financial Services and Markets Regulations 2015, and the ADGM Insolvency Regulations. Regpacks would include UAE Central Bank prudential requirements, FATF mutual evaluation follow-up items, and the OFAC/EU/UN consolidated sanctions lists with daily synchronization. Licensepacks would encode ADGM FSRA license categories (Category 1 through Category 4), regulated activity permissions, and capital adequacy requirements per license type."),
     p("Corridor configuration would establish the UAE-GCC corridor (real-time settlement via UAESWITCH and GCC-RTGS), the UAE-India corridor (high-volume remittance with UPI integration), and the UAE-UK corridor (DIFC-London financial services passporting). Each corridor binds specific lawpack and regpack digests establishing the regulatory context at corridor creation time."),
-    spacer(),
 
     // =========================================================================
     // 7.3 trade-hub
@@ -120,7 +152,6 @@ module.exports = function build_chapter07() {
       ],
       [1800, 1200, 6360]
     ),
-    spacer(),
 
     h3("7.3.3 Resource Requirements"),
     table(
@@ -134,12 +165,10 @@ module.exports = function build_chapter07() {
       ],
       [2000, 3200, 4160]
     ),
-    spacer(),
 
     h3("7.3.4 Example Deployment: Pakistan-UAE Trade Corridor Zone"),
     p("A trade-hub deployment for a Pakistan-UAE bilateral trade zone would configure lawpacks encoding Pakistan's Customs Act 1969, Sales Tax Act 1990, and the Pakistan-UAE Bilateral Investment Treaty alongside UAE Federal Customs Law and the GCC Common Customs Tariff. Regpacks would include Pakistan Single Window integration parameters, CPEC preferential tariff schedules, and SBP foreign exchange regulations governing trade settlements in PKR, AED, and USD."),
     p("The primary corridor (PAK-UAE) would be configured for containerized cargo flows with receipt chains tracking bill of lading issuance, customs declaration filing, inspection clearance, bonded transit, and final delivery confirmation. A secondary corridor (PAK-UAE-KSA) would enable triangular trade routing through UAE free zones with appropriate re-export documentation and certificate of origin management under the GCC-Pakistan FTA framework."),
-    spacer(),
 
     // =========================================================================
     // 7.4 tech-park
@@ -175,7 +204,6 @@ module.exports = function build_chapter07() {
       ],
       [1800, 1200, 6360]
     ),
-    spacer(),
 
     h3("7.4.3 Resource Requirements"),
     table(
@@ -189,12 +217,10 @@ module.exports = function build_chapter07() {
       ],
       [2000, 3200, 4160]
     ),
-    spacer(),
 
     h3("7.4.4 Example Deployment: Islamabad Technology Park"),
     p("A tech-park deployment for a Pakistani technology zone would configure lawpacks encoding the relevant provisions of the Companies Act 2017 (simplified private limited formation), the Income Tax Ordinance 2001 (Section 100C IT exemptions for SEZ enterprises), and SECP regulatory requirements for technology companies. Regpacks would include PSEB (Pakistan Software Export Board) registration requirements, PTA licensing categories for IT and telecom services, and withholding tax exemptions applicable to IT export revenues under SRO 1371(I)/2022."),
     p("The zone would operate a single service-export corridor (PAK-GLOBAL) enabling technology service delivery to international clients with automatic withholding tax computation based on treaty status, PSEB certification verification, and foreign exchange receipt tracking through SBP-authorized dealer banks. Entity formation would target sub-4-hour registration leveraging the Mass Entities primitive with SECP integration, producing a formation Verifiable Credential that serves as portable proof of incorporation across all system participants."),
-    spacer(),
 
     // =========================================================================
     // 7.5 sovereign-govos
@@ -231,7 +257,6 @@ module.exports = function build_chapter07() {
       ],
       [1800, 1200, 6360]
     ),
-    spacer(),
 
     h3("7.5.3 National System Integration"),
     p("The sovereign-govos profile uniquely requires integration with existing national systems. These integrations are additive and reversible: Mass enhances the existing system, it never replaces it. The following national system integrations are required for the Pakistan reference deployment:"),
@@ -248,7 +273,6 @@ module.exports = function build_chapter07() {
       ],
       [2400, 2000, 4960]
     ),
-    spacer(),
 
     h3("7.5.4 Resource Requirements"),
     table(
@@ -263,13 +287,11 @@ module.exports = function build_chapter07() {
       ],
       [2000, 3200, 4160]
     ),
-    spacer(),
 
     h3("7.5.5 Example Deployment: Pakistan GovOS"),
     p("The Pakistan GovOS deployment is the canonical sovereign-govos reference implementation. Lawpacks encode the complete Pakistani legal corpus relevant to economic activity: Income Tax Ordinance 2001, Sales Tax Act 1990, Federal Excise Act 2005, Customs Act 1969, Companies Act 2017, Foreign Exchange Regulation Act 1947, and all applicable SROs. Regpacks encode FBR withholding rate tables (updated per SRO), SBP monetary policy parameters, FATF mutual evaluation action items, and the consolidated UN/OFAC/EU sanctions lists."),
     p("Corridor configuration establishes Pakistan's bilateral economic corridors: PAK-UAE (trade and remittance, USD/AED/PKR settlement via SBP Raast and UAESWITCH), PAK-KSA (labor remittance and trade, SAR/PKR settlement), PAK-CHN (CPEC trade corridor with RMB/PKR settlement and preferential tariff application), and PAK-UK (services export and diaspora remittance). The multilateral CPEC corridor operates as a bridge corridor connecting Pakistan, China, and participating Central Asian economies with unified customs transit and multi-currency netting."),
     p("The deployment operates across three availability zones within Pakistan (Islamabad, Lahore, Karachi) with disaster recovery in a fourth region. Each zone runs the full MSEZ Stack with regional database replicas. The Experience Layer serves the GovOS Console for federal and provincial government officers, citizen portals for tax filing and business registration, and AI-powered interfaces for natural language regulatory queries."),
-    spacer(),
 
     // =========================================================================
     // 7.6 charter-city
@@ -305,7 +327,6 @@ module.exports = function build_chapter07() {
       ],
       [1800, 1200, 6360]
     ),
-    spacer(),
 
     h3("7.6.3 Resource Requirements"),
     table(
@@ -319,12 +340,10 @@ module.exports = function build_chapter07() {
       ],
       [2000, 3200, 4160]
     ),
-    spacer(),
 
     h3("7.6.4 Example Deployment: Gulf Charter City Development"),
     p("A charter-city deployment for a new planned city in the Gulf would configure lawpacks encoding the host country's commercial companies law, land registration law, municipal governance framework, and the charter city's founding legislation (typically a royal decree or special law establishing the development authority). Regpacks would encode building codes, environmental impact assessment requirements, labor welfare regulations for construction workers, and fire safety standards."),
     p("The land/property module would be initialized with the master plan GIS data, establishing parcel boundaries, zoning designations (residential, commercial, industrial, mixed-use, green space), and infrastructure easements. Development permits would track the lifecycle from architectural submission through regulatory review, construction inspection, and occupancy certification. The corridor configuration would establish procurement corridors to construction material suppliers (steel from Turkey, cement from UAE, fixtures from China) and workforce corridors to labor source countries with credential verification and welfare monitoring."),
-    spacer(),
 
     // =========================================================================
     // 7.7 digital-native-free-zone
@@ -360,7 +379,6 @@ module.exports = function build_chapter07() {
       ],
       [1800, 1200, 6360]
     ),
-    spacer(),
 
     h3("7.7.3 Resource Requirements"),
     table(
@@ -374,12 +392,10 @@ module.exports = function build_chapter07() {
       ],
       [2000, 3200, 4160]
     ),
-    spacer(),
 
     h3("7.7.4 Example Deployment: Digital Free Zone Authority"),
     p("A digital-native-free-zone deployment for a new digital asset hub would configure lawpacks encoding the host jurisdiction's virtual asset regulatory framework, data protection legislation, electronic transactions law, and any applicable digital asset-specific legislation (such as the ADGM DLT Foundations Regulations or Cayman Virtual Asset Service Providers Act). Regpacks would include FATF Recommendation 16 (travel rule) implementation parameters, digital asset custody standards, and smart contract audit requirements."),
     p("The formation flow would operate as a fully automated pipeline: applicant submits digital identity credentials, the compliance tensor evaluates KYC/KYB, sanctions, and jurisdictional eligibility in parallel, and upon passing, the Mass Entities primitive creates the entity while the Mass Ownership primitive establishes the initial share structure. The entire process from application submission to formation VC issuance targets sub-60-minute completion with zero human intervention for standard applications. Corridor configuration would establish digital asset corridors with major counterparty zones, enabling token transfers with automated travel rule compliance and real-time sanctions screening."),
-    spacer(),
 
     // =========================================================================
     // 7.8 asset-history-bundle
@@ -415,7 +431,6 @@ module.exports = function build_chapter07() {
       ],
       [1800, 1200, 6360]
     ),
-    spacer(),
 
     h3("7.8.3 Resource Requirements"),
     table(
@@ -429,12 +444,10 @@ module.exports = function build_chapter07() {
       ],
       [2000, 3200, 4160]
     ),
-    spacer(),
 
     h3("7.8.4 Example Deployment: Commodity Provenance Registry"),
     p("An asset-history-bundle deployment for commodity provenance would configure lawpacks encoding applicable commodity trading regulations, ethical sourcing requirements (EU Conflict Minerals Regulation, US Dodd-Frank Section 1502), and transit-country customs laws. Regpacks would include commodity exchange standards, assay and grading specifications, and sanctions screening parameters for commodity-origin jurisdictions."),
     p("Each commodity lot would be registered as a tracked asset with an initial certification receipt recording the assay results, origin mine or farm, and ethical sourcing attestation. Subsequent receipts track every custody transfer, blending operation, quality re-certification, and cross-border movement. The receipt chain enables any downstream buyer to verify the complete provenance of a lot by requesting a Merkle proof from the MMR, verifiable against the published root hash without requiring access to the full chain. Corridor configuration would establish commodity flow corridors with receipt chain synchronization between origin, transit, and destination zones."),
-    spacer(),
 
     // =========================================================================
     // 7.9 Profile Selection and Composition
@@ -460,7 +473,6 @@ module.exports = function build_chapter07() {
       ],
       [5360, 4000]
     ),
-    spacer(),
     p("When a deployment spans multiple archetypes, the recommended approach is to deploy the more comprehensive profile and deactivate unnecessary modules rather than attempting to compose two lighter profiles. This ensures compliance domain coverage remains complete and avoids gaps in the tensor evaluation surface."),
   ];
 };

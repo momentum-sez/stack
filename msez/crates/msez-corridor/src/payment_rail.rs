@@ -227,10 +227,7 @@ pub trait PaymentRailAdapter: Send + Sync {
     /// Returns [`PaymentRailError::NotConfigured`] for stub adapters.
     /// Production adapters may return `NotFound`, `Network`, or
     /// `UnexpectedResponse`.
-    fn check_status(
-        &self,
-        rail_reference: &str,
-    ) -> Result<PaymentStatus, PaymentRailError>;
+    fn check_status(&self, rail_reference: &str) -> Result<PaymentStatus, PaymentRailError>;
 }
 
 // ---------------------------------------------------------------------------
@@ -269,13 +266,9 @@ impl PaymentRailAdapter for RaastAdapter {
         ))
     }
 
-    fn check_status(
-        &self,
-        _rail_reference: &str,
-    ) -> Result<PaymentStatus, PaymentRailError> {
+    fn check_status(&self, _rail_reference: &str) -> Result<PaymentStatus, PaymentRailError> {
         Err(PaymentRailError::NotConfigured(
-            "SBP Raast status query requires SBP API credentials and network access"
-                .into(),
+            "SBP Raast status query requires SBP API credentials and network access".into(),
         ))
     }
 }
@@ -316,13 +309,9 @@ impl PaymentRailAdapter for RtgsAdapter {
         ))
     }
 
-    fn check_status(
-        &self,
-        _rail_reference: &str,
-    ) -> Result<PaymentStatus, PaymentRailError> {
+    fn check_status(&self, _rail_reference: &str) -> Result<PaymentStatus, PaymentRailError> {
         Err(PaymentRailError::NotConfigured(
-            "RTGS status query requires central bank gateway credentials and network access"
-                .into(),
+            "RTGS status query requires central bank gateway credentials and network access".into(),
         ))
     }
 }
@@ -363,13 +352,9 @@ impl PaymentRailAdapter for CircleUsdcAdapter {
         ))
     }
 
-    fn check_status(
-        &self,
-        _rail_reference: &str,
-    ) -> Result<PaymentStatus, PaymentRailError> {
+    fn check_status(&self, _rail_reference: &str) -> Result<PaymentStatus, PaymentRailError> {
         Err(PaymentRailError::NotConfigured(
-            "Circle USDC status query requires Circle API key and environment configuration"
-                .into(),
+            "Circle USDC status query requires Circle API key and environment configuration".into(),
         ))
     }
 }
@@ -588,7 +573,10 @@ mod tests {
         ];
         for (status, expected_json) in &variants {
             let json = serde_json::to_string(status).expect("serialize PaymentStatus");
-            assert_eq!(&json, expected_json, "serialization mismatch for {status:?}");
+            assert_eq!(
+                &json, expected_json,
+                "serialization mismatch for {status:?}"
+            );
             let recovered: PaymentStatus =
                 serde_json::from_str(&json).expect("deserialize PaymentStatus");
             assert_eq!(&recovered, status, "round-trip mismatch for {status:?}");

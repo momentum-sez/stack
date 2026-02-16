@@ -46,9 +46,9 @@ pub mod types;
 pub use components::{LicenseCondition, LicenseHolder, LicensePermission, LicenseRestriction};
 pub use license::{License, LicenseTypeDefinition, LicensepackMetadata, LicensepackRegulator};
 pub use pack::Licensepack;
+pub use pakistan::{pakistan_license_types, pakistan_regulators};
 pub use reference::{
     canonical_json_bytes, evaluate_license_compliance, resolve_licensepack_refs,
     LicensepackArtifactInfo, LicensepackLock, LicensepackLockInfo, LicensepackRef,
 };
-pub use pakistan::{pakistan_license_types, pakistan_regulators};
 pub use types::{LicenseComplianceState, LicenseDomain, LicenseStatus};

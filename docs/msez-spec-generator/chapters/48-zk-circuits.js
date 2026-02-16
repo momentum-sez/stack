@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2,
   p,
-  table, spacer
+  table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter48() {
@@ -28,7 +28,6 @@ module.exports = function build_chapter48() {
       ],
       [1800, 1600, 3200, 2760]
     ),
-    spacer(),
 
     // --- 48.2 Privacy Circuit ---
     h2("48.2 Privacy Circuit (\u03C0priv)"),
@@ -48,7 +47,6 @@ module.exports = function build_chapter48() {
       [800, 2000, 1400, 5160]
     ),
     p("The C1-C8 labeling convention provides a stable reference for audit, composition, and selective circuit inclusion. When composing with other circuits (see Section 48.4), sub-circuits are referenced by label to enable precise constraint accounting and to identify which verification steps are shared across composed proofs."),
-    spacer(),
 
     // --- 48.3 Compliance Circuit ---
     h2("48.3 Compliance Circuit (\u03C0comp)"),
@@ -67,7 +65,6 @@ module.exports = function build_chapter48() {
       [800, 2200, 1400, 4960]
     ),
     p("Total constraint count for \u03C0comp is approximately 18,000, consistent with the taxonomy in Section 48.1. CC3 (domain predicate evaluation) is the most variable sub-circuit: its constraint count scales with the number of predicates in the compliance domain, ranging from approximately 2,000 constraints for simple domains to 7,000 for domains with complex multi-condition predicates such as tax compliance. CC5 reuses the same Merkle exclusion proof construction as \u03C0sanc but operates on a subset of the sanctions set scoped to the relevant jurisdiction."),
-    spacer(),
 
     // --- 48.4 Circuit Composition ---
     h2("48.4 Circuit Composition"),
@@ -86,6 +83,5 @@ module.exports = function build_chapter48() {
       [1600, 1600, 2160, 1400, 2600]
     ),
     p("Constraint counts for composed circuits are not simply additive because shared sub-circuits are deduplicated. The savings depend on the specific overlap. For the Transfer + Compliance composition, deduplication saves approximately 3,000 constraints compared to independent proofs (34,000 + 18,000 = 52,000 independent vs. ~49,000 composed). For Full Settlement, the savings are more substantial at approximately 4,000 constraints due to multiple shared commitment and balance sub-circuits across four composed proofs."),
-    spacer(),
   ];
 };

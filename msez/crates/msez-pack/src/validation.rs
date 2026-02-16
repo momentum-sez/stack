@@ -140,9 +140,7 @@ pub fn validate_zone(zone_path: &Path) -> PackResult<PackValidationResult> {
                 result.add_error("lawpack ref has empty domain".to_string());
             }
             if !parser::is_valid_sha256(digest) {
-                result.add_error(format!(
-                    "lawpack ref has invalid digest: {digest}"
-                ));
+                result.add_error(format!("lawpack ref has invalid digest: {digest}"));
             }
         }
     }
@@ -163,9 +161,7 @@ pub fn validate_zone(zone_path: &Path) -> PackResult<PackValidationResult> {
                 result.add_error("regpack ref has empty jurisdiction_id".to_string());
             }
             if !parser::is_valid_sha256(digest) {
-                result.add_error(format!(
-                    "regpack ref has invalid digest: {digest}"
-                ));
+                result.add_error(format!("regpack ref has invalid digest: {digest}"));
             }
         }
     }
@@ -700,10 +696,7 @@ mod tests {
         // Invalid digests are now caught by raw zone data validation
         // instead of being silently filtered by resolve_lawpack_refs.
         assert!(!result.is_valid);
-        assert!(result
-            .errors
-            .iter()
-            .any(|e| e.contains("invalid digest")));
+        assert!(result.errors.iter().any(|e| e.contains("invalid digest")));
     }
 
     #[test]

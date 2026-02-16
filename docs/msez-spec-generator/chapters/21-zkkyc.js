@@ -1,8 +1,7 @@
 const {
   chapterHeading, h2,
   p, p_runs, bold,
-  codeBlock, table,
-  spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter21() {
@@ -30,7 +29,6 @@ module.exports = function build_chapter21() {
       "    pub expiry: chrono::DateTime<chrono::Utc>,\n" +
       "}"
     ),
-    spacer(),
 
     p("The KycAttestationCircuit enforces the following constraints: (1) the attestation hash opens to a valid KYC document under the committed credential, (2) the issuer's signature over the attestation verifies against their public key, (3) the issuer's public key is included in the approved issuers Merkle tree with root equal to the public input, (4) the KYC level in the attestation is greater than or equal to the required minimum, and (5) the verification timestamp is before the attestation's expiry. The approximate constraint count is 4096, dominated by Ed25519 signature verification and Merkle path computation."),
 
@@ -59,7 +57,6 @@ module.exports = function build_chapter21() {
       "    pub list_identifier: SanctionsListId,\n" +
       "}"
     ),
-    spacer(),
 
     p("The SanctionsClearanceCircuit enforces: (1) the entity hash is correctly derived from the prover's identity commitment and a domain separator, (2) the Merkle non-membership proof is valid against the public sanctions root, (3) the verification timestamp matches the published snapshot time, and (4) the DID commitment binds the proof to the prover. The approximate constraint count is 2048, dominated by Merkle path verification over a tree of depth up to 20 (supporting over one million sanctioned entries)."),
 
@@ -72,8 +69,6 @@ module.exports = function build_chapter21() {
     p_runs([bold("Step 3 -- Proof Generation. "), "When a transaction requires KYC verification (corridor entry, entity formation, capital transfer), the entity's client generates a ZK proof over the committed credential. The proof demonstrates the required predicates (tier >= minimum, jurisdiction match, non-expiry) without opening the commitment. For corridor transactions, a PPOI is generated in parallel against the current sanctions root."]),
     p_runs([bold("Step 4 -- On-Chain Verification. "), "The verifier (corridor counterparty, regulator endpoint, or the SEZ Stack API itself) checks the ZK proof against the public inputs. Verification is constant-time and requires no access to the underlying identity data. The proof is anchored to the receipt chain for audit trail purposes."]),
     p_runs([bold("Step 5 -- Selective Disclosure (Optional). "), "If a regulator presents a valid legal instrument (subpoena, court order, regulatory examination notice), the entity can produce a BBS+ selective disclosure proof from the original Verifiable Credential, revealing only the specific fields required by the instrument. This is mediated through the consent primitive via msez-mass-client."]),
-
-    spacer(),
 
     // --- 21.4 Disclosure Matrix ---
     h2("21.4 Disclosure Matrix"),
@@ -115,7 +110,6 @@ module.exports = function build_chapter21() {
       ],
       [2200, 3400, 3760]
     ),
-    spacer(),
 
     p("This matrix is enforced at the circuit level: the ZK proof system makes it cryptographically impossible to extract hidden fields from the proof. Selective disclosure under regulatory examination uses BBS+ signatures on the original Verifiable Credential, not the ZK proof, ensuring that even under compelled disclosure the entity reveals only the specific fields demanded by the legal instrument and nothing more."),
   ];

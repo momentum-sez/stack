@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  table, codeBlock, spacer
+  table, codeBlock
 } = require("../lib/primitives");
 
 module.exports = function build_chapter51() {
@@ -25,7 +25,6 @@ module.exports = function build_chapter51() {
       ],
       [1400, 1800, 2800, 3360]
     ),
-    spacer(),
 
     h3("51.1.1 Network Architecture"),
     p("The VPC spans three availability zones for fault tolerance. Public subnets host the Application Load Balancer and NAT gateways. Private subnets host EKS worker nodes, RDS instances, and ElastiCache clusters. No application workload has a public IP address; all egress routes through NAT gateways with Elastic IPs for consistent source addresses in firewall allowlists."),
@@ -47,7 +46,6 @@ module "vpc" {
   enable_dns_hostnames = true
 }`
     ),
-    spacer(),
 
     h3("51.1.2 Database Configuration"),
     p("RDS PostgreSQL uses a dedicated subnet group across three AZs. The instance class scales per deployment profile: db.t3.medium for standard, db.r6g.xlarge for enterprise, db.r6g.4xlarge for sovereign-govos. Automated backups retain 30 days with point-in-time recovery. Performance Insights is enabled for query analysis."),
@@ -63,7 +61,6 @@ module "vpc" {
       ],
       [2000, 1800, 2200, 3360]
     ),
-    spacer(),
 
     // --- 51.2 Kubernetes Resources ---
     h2("51.2 Kubernetes Resources"),
@@ -83,7 +80,6 @@ module "vpc" {
       ],
       [1600, 1800, 2800, 3160]
     ),
-    spacer(),
 
     h3("51.2.1 Node Group Sizing"),
     table(
@@ -96,6 +92,5 @@ module "vpc" {
       ],
       [1600, 1600, 1600, 1600, 2960]
     ),
-    spacer(),
   ];
 };

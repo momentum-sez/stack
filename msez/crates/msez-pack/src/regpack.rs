@@ -27,8 +27,8 @@
 
 use std::collections::{BTreeMap, HashMap};
 
-use serde::{Deserialize, Serialize};
 use msez_core::digest::Sha256Accumulator;
+use serde::{Deserialize, Serialize};
 
 use msez_core::{CanonicalBytes, ComplianceDomain, ContentDigest, JurisdictionId};
 

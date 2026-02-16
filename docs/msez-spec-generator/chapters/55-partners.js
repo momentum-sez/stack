@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  table, spacer
+  table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter55() {
@@ -20,7 +20,6 @@ module.exports = function build_chapter55() {
       ],
       [1600, 3200, 2400, 2160]
     ),
-    spacer(),
 
     // --- 55.2 Technology Partners ---
     h2("55.2 Technology Partners"),
@@ -36,6 +35,5 @@ module.exports = function build_chapter55() {
       ],
       [1600, 2600, 2600, 2560]
     ),
-    spacer(),
   ];
 };

@@ -1,6 +1,6 @@
 const {
   partHeading, chapterHeading, h2, p, p_runs, bold,
-  table, spacer, pageBreak
+  table, pageBreak
 } = require("../lib/primitives");
 
 module.exports = function build_chapter01() {
@@ -30,7 +30,6 @@ module.exports = function build_chapter01() {
       ],
       [2400, 1200, 5760]
     ),
-    spacer(),
 
     // --- 1.2 The Two-System Architecture ---
     h2("1.2 The Two-System Architecture"),
@@ -51,7 +50,6 @@ module.exports = function build_chapter01() {
       ],
       [1800, 3200, 4360]
     ),
-    spacer(),
 
     p("Supporting infrastructure includes the Templating Engine (document generation via Heroku) and Organs (composable service modules that extend Mass primitives with domain-specific logic)."),
 
@@ -80,7 +78,6 @@ module.exports = function build_chapter01() {
       ],
       [2400, 2400, 4560]
     ),
-    spacer(),
 
     // --- 1.3 The Orthogonal Execution Layer ---
     h2("1.3 The Orthogonal Execution Layer"),

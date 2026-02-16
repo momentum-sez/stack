@@ -165,7 +165,8 @@ pub async fn rate_limit_middleware(request: Request, next: Next) -> Response {
                     let body = ErrorBody {
                         error: ErrorDetail {
                             code: "BAD_REQUEST".to_string(),
-                            message: "x-jurisdiction-id header contains non-UTF-8 bytes".to_string(),
+                            message: "x-jurisdiction-id header contains non-UTF-8 bytes"
+                                .to_string(),
                             details: None,
                         },
                     };

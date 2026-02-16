@@ -150,10 +150,16 @@ pub fn run_lock(args: &LockArgs, repo_root: &Path) -> Result<u8> {
                     .cloned()
                     .unwrap_or(serde_json::json!([]));
 
-                let module_version = mdata.get("version").and_then(|v| v.as_str()).unwrap_or_else(|| {
-                    tracing::warn!(module_id = mid, "module missing version field, using '0.0.0'");
-                    "0.0.0"
-                });
+                let module_version = mdata
+                    .get("version")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or_else(|| {
+                        tracing::warn!(
+                            module_id = mid,
+                            "module missing version field, using '0.0.0'"
+                        );
+                        "0.0.0"
+                    });
                 let entry = serde_json::json!({
                     "module_id": mid,
                     "version": module_version,

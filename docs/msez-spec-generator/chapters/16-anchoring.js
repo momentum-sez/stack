@@ -1,8 +1,7 @@
 const {
   chapterHeading, h2,
   p, p_runs, bold,
-  codeBlock, table,
-  spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter16() {
@@ -37,7 +36,6 @@ module.exports = function build_chapter16() {
       "    SovereignL1 { harbor_id: HarborId },\n" +
       "}"
     ),
-    spacer(),
 
     // --- 16.2 Anchor Targets ---
     h2("16.2 Anchor Targets"),
@@ -52,7 +50,6 @@ module.exports = function build_chapter16() {
       ],
       [1200, 2400, 2000, 1600, 2160]
     ),
-    spacer(),
 
     // --- 16.3 L1-Optional Design ---
     h2("16.3 L1-Optional Design"),

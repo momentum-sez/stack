@@ -1,4 +1,4 @@
-const { chapterHeading, h2, h3, p, p_runs, bold, definition, theorem, table, spacer } = require("../lib/primitives");
+const { chapterHeading, h2, h3, p, p_runs, bold, definition, theorem, table } = require("../lib/primitives");
 
 module.exports = function build_appendixD() {
   return [
@@ -20,7 +20,6 @@ module.exports = function build_appendixD() {
       ],
       [2800, 6560]
     ),
-    spacer(),
 
     // --- Formal Definitions ---
     h2("D.2 Formal Definitions"),
@@ -70,7 +69,6 @@ module.exports = function build_appendixD() {
       "iff its nullifier nf is not in NS. Double-spend is prevented because spending r requires " +
       "publishing nf, and a second spend attempt would produce the same nf, which is already in NS."
     ),
-    spacer(),
 
     // --- Proof Sketches ---
     h2("D.3 Proof Sketches"),
@@ -103,7 +101,6 @@ module.exports = function build_appendixD() {
       "the corridor-specific policy (longest chain, highest compliance score, or manual arbitration). " +
       "In all cases, neither fork can be silently discarded -- both are recorded for audit. QED."
     ),
-    spacer(),
 
     h3("D.3.2 Theorem 10.1: Compliance Soundness"),
     theorem(
@@ -123,7 +120,6 @@ module.exports = function build_appendixD() {
       "(prevented by deterministic evaluation from committed pack state). Since all three attack " +
       "vectors are computationally infeasible, the proof is sound. QED."
     ),
-    spacer(),
 
     h3("D.3.3 Theorem 28.1: Watcher Accountability"),
     theorem(
@@ -143,7 +139,6 @@ module.exports = function build_appendixD() {
       "receipt chain and SHA-256 is collision-resistant, w cannot claim the canonical chain was " +
       "ambiguous. The slashing contract transfers the prescribed fraction of B_w. QED."
     ),
-    spacer(),
 
     h3("D.3.4 Theorem 30.1: Migration Atomicity"),
     theorem(
@@ -171,7 +166,6 @@ module.exports = function build_appendixD() {
       "bound S10 ensures that if the saga has not reached phase 7 within the allotted time, automatic " +
       "rollback is triggered, executing all recorded compensating actions. QED."
     ),
-    spacer(),
 
     h3("D.3.5 Theorem 32.1: Double-Spend Resistance"),
     theorem(
@@ -189,6 +183,5 @@ module.exports = function build_appendixD() {
       "ownership proof -- this is prevented by the binding between sk and the ownership credential. " +
       "The append-only property of NS ensures that once a nullifier is published, it cannot be removed. QED."
     ),
-    spacer(),
   ];
 };

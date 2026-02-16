@@ -40,7 +40,10 @@ fn bilateral_netting_reduces_to_net_position() {
     let result = engine.compute_plan().expect("netting succeeds");
 
     // Net position: A owes B $400.
-    assert!(result.gross_total > result.net_total, "netting should reduce total");
+    assert!(
+        result.gross_total > result.net_total,
+        "netting should reduce total"
+    );
 
     // Should produce exactly one settlement leg.
     assert_eq!(

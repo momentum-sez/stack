@@ -79,9 +79,8 @@ pub fn secp_license_types() -> Vec<LicenseTypeDefinition> {
         LicenseTypeDefinition {
             license_type_id: "pk-secp:nbfc".to_string(),
             name: "Non-Banking Finance Company License".to_string(),
-            description:
-                "License for non-banking financial companies under NBFC Rules 2003"
-                    .to_string(),
+            description: "License for non-banking financial companies under NBFC Rules 2003"
+                .to_string(),
             regulator_id: "pk-secp".to_string(),
             category: Some("financial".to_string()),
             permitted_activities: vec![
@@ -139,7 +138,9 @@ pub fn sbp_license_types() -> Vec<LicenseTypeDefinition> {
         LicenseTypeDefinition {
             license_type_id: "pk-sbp:commercial-bank".to_string(),
             name: "Commercial Banking License".to_string(),
-            description: "License to operate as a scheduled bank under Banking Companies Ordinance 1962".to_string(),
+            description:
+                "License to operate as a scheduled bank under Banking Companies Ordinance 1962"
+                    .to_string(),
             regulator_id: "pk-sbp".to_string(),
             category: Some("financial".to_string()),
             permitted_activities: vec![
@@ -157,7 +158,8 @@ pub fn sbp_license_types() -> Vec<LicenseTypeDefinition> {
         LicenseTypeDefinition {
             license_type_id: "pk-sbp:microfinance-bank".to_string(),
             name: "Microfinance Banking License".to_string(),
-            description: "License to operate as a microfinance bank under MFI Ordinance 2001".to_string(),
+            description: "License to operate as a microfinance bank under MFI Ordinance 2001"
+                .to_string(),
             regulator_id: "pk-sbp".to_string(),
             category: Some("financial".to_string()),
             permitted_activities: vec![
@@ -173,7 +175,8 @@ pub fn sbp_license_types() -> Vec<LicenseTypeDefinition> {
         LicenseTypeDefinition {
             license_type_id: "pk-sbp:emi".to_string(),
             name: "Electronic Money Institution License".to_string(),
-            description: "License to issue electronic money under SBP Payment Systems regulations".to_string(),
+            description: "License to issue electronic money under SBP Payment Systems regulations"
+                .to_string(),
             regulator_id: "pk-sbp".to_string(),
             category: Some("financial".to_string()),
             permitted_activities: vec![
@@ -192,10 +195,7 @@ pub fn sbp_license_types() -> Vec<LicenseTypeDefinition> {
             description: "License to operate foreign exchange business".to_string(),
             regulator_id: "pk-sbp".to_string(),
             category: Some("financial".to_string()),
-            permitted_activities: vec![
-                "foreign_exchange".to_string(),
-                "remittance".to_string(),
-            ],
+            permitted_activities: vec!["foreign_exchange".to_string(), "remittance".to_string()],
             requirements: BTreeMap::new(),
             application_fee: BTreeMap::new(),
             annual_fee: BTreeMap::new(),
@@ -388,10 +388,7 @@ pub fn drap_license_types() -> Vec<LicenseTypeDefinition> {
             description: "License to import pharmaceutical drugs".to_string(),
             regulator_id: "pk-drap".to_string(),
             category: Some("professional".to_string()),
-            permitted_activities: vec![
-                "drug_import".to_string(),
-                "drug_distribution".to_string(),
-            ],
+            permitted_activities: vec!["drug_import".to_string(), "drug_distribution".to_string()],
             requirements: BTreeMap::new(),
             application_fee: [("PKR".to_string(), "50000".to_string())]
                 .into_iter()

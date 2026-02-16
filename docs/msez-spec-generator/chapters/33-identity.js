@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold, table,
-  spacer, codeBlock
+  spacer, pageBreak, codeBlock
 } = require("../lib/primitives");
 
 module.exports = function build_chapter33() {
@@ -39,7 +39,6 @@ module.exports = function build_chapter33() {
       ],
       [1400, 1800, 3560, 2600]
     ),
-    spacer(),
 
     // --- 33.3 Progressive KYC Tiers ---
     h2("33.3 Progressive KYC Tiers"),
@@ -57,7 +56,6 @@ module.exports = function build_chapter33() {
       ],
       [1000, 3160, 2800, 2400]
     ),
-    spacer(),
 
     // --- 33.4 Credentials Module ---
     h2("33.4 Credentials Module"),
@@ -66,7 +64,6 @@ module.exports = function build_chapter33() {
     // --- 33.5 Binding Module ---
     h2("33.5 Binding Module"),
     p("The Binding Module creates verifiable links between decentralized identifiers and external identity systems. Bindings include: CNIC binding (Pakistan national ID via NADRA integration), NTN binding (Pakistan tax number via FBR), passport binding (ICAO 9303 MRZ verification), and corporate registry binding (SECP, DIFC, ADGM). Each binding produces a Verifiable Credential that can be selectively disclosed without revealing the underlying identity document."),
-    spacer(),
 
     // --- 33.6 Identity Recovery Module ---
     h2("33.6 Identity Recovery Module"),
@@ -95,6 +92,5 @@ module.exports = function build_chapter33() {
       "    TimeLocked { inactivity_days: u32, sealed_key_ref: KeyRef },\n" +
       "}"
     ),
-    spacer(),
   ];
 };

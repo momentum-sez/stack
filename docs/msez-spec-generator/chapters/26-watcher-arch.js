@@ -1,6 +1,6 @@
 const {
   partHeading, chapterHeading, h2, h3,
-  p, codeBlock, table, spacer
+  p, codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter26() {
@@ -27,7 +27,6 @@ module.exports = function build_chapter26() {
       "}"
     ),
     p("The WatcherProfile captures nine fields: id (unique watcher identifier), public_key (Ed25519 public key for attestation verification), bond (current bond state and amount), roles (set of authorized attestation roles), jurisdiction (home jurisdiction for scope validation), reputation_score (cumulative score updated on each attestation cycle), registered_at (registration timestamp), last_attestation (timestamp of most recent attestation, None if no attestations yet), and liveness_window (maximum interval between required attestations before SC4 triggers)."),
-    spacer(),
 
     // --- 26.2 Watcher Roles ---
     h2("26.2 Watcher Roles"),
@@ -41,7 +40,6 @@ module.exports = function build_chapter26() {
       ],
       [2400, 3600, 3360]
     ),
-    spacer(),
 
     // --- 26.3 Watcher Profile ---
     h2("26.3 Watcher Profile"),
@@ -68,7 +66,6 @@ module.exports = function build_chapter26() {
       "    pub qualification_vc: Option<VerifiableCredential>,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 26.4 Quorum Diversity Requirements ---
     h2("26.4 Quorum Diversity Requirements"),
@@ -82,7 +79,6 @@ module.exports = function build_chapter26() {
 
     h3("26.4.3 Anti-Collusion Constraints"),
     p("No single entity may control more than one-third of the watchers in any quorum. Beneficial ownership data from the Mass Identity primitive is cross-referenced to detect common control. Watchers found to be under common control after quorum formation trigger an automatic re-evaluation, and the affected attestations are quarantined until a compliant quorum can be assembled."),
-    spacer(),
 
     // --- 26.5 Reputation Scoring ---
     h2("26.5 Reputation Scoring"),
@@ -100,10 +96,8 @@ module.exports = function build_chapter26() {
       ],
       [1800, 960, 3720, 2880]
     ),
-    spacer(),
 
     h3("26.5.2 Score Mechanics"),
     p("Reputation scores are bounded to the range [0, 1000]. New watchers start at a baseline score of 500. Positive adjustments are capped at +5 per attestation cycle, while negative adjustments for verified failures can reach -50 per incident, enforcing the asymmetric incentive structure. A watcher whose score falls below 200 is automatically suspended from quorum eligibility and must re-stake their bond to resume operations. Scores above 800 qualify the watcher for reduced bond requirements, creating a tangible economic reward for sustained good behavior."),
-    spacer(),
   ];
 };

@@ -1,6 +1,6 @@
 const {
   partHeading, chapterHeading, h2, h3,
-  p, p_runs, bold, table, spacer, pageBreak
+  p, p_runs, bold, table, pageBreak
 } = require("../lib/primitives");
 
 module.exports = function build_chapter05() {
@@ -25,7 +25,6 @@ module.exports = function build_chapter05() {
       ],
       [1600, 2000, 960, 4800]
     ),
-    spacer(),
 
     // --- 5.1 Corridors Module ---
     h2("5.1 Corridors Module"),
@@ -42,7 +41,6 @@ module.exports = function build_chapter05() {
       ],
       [2800, 1200, 5360]
     ),
-    spacer(),
 
     // --- 5.1.1 Governance Module ---
     h3("5.1.1 Governance Module"),

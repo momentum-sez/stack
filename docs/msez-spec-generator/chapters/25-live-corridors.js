@@ -1,6 +1,6 @@
 const {
   chapterHeading, h2, h3,
-  p, table, spacer
+  p, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter25() {
@@ -25,7 +25,6 @@ module.exports = function build_chapter25() {
       ],
       [2400, 6960]
     ),
-    spacer(),
 
     // --- 25.2 PAK<->UAE Corridor ---
     h2("25.2 PAK\u2194UAE Corridor ($10.1B Bilateral)"),
@@ -45,7 +44,6 @@ module.exports = function build_chapter25() {
       ],
       [2400, 6960]
     ),
-    spacer(),
 
     // --- 25.3 PAK<->CHN Corridor ---
     h2("25.3 PAK\u2194CHN Corridor ($23.1B Bilateral)"),
@@ -65,7 +63,6 @@ module.exports = function build_chapter25() {
       ],
       [2400, 6960]
     ),
-    spacer(),
 
     // --- Summary ---
     h2("25.4 Corridor Summary"),
@@ -79,6 +76,5 @@ module.exports = function build_chapter25() {
       ],
       [1600, 1400, 1200, 5160]
     ),
-    spacer(),
   ];
 };

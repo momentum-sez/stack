@@ -353,7 +353,9 @@ fn merkle_path_for_power_of_two(
         let mut i = 0;
         while i < level.len() {
             if i + 1 >= level.len() {
-                return Err(CryptoError::Mmr("unexpected odd-sized level in merkle path".into()));
+                return Err(CryptoError::Mmr(
+                    "unexpected odd-sized level in merkle path".into(),
+                ));
             }
             next_level.push(mmr_node_hash(&level[i], &level[i + 1])?);
             i += 2;

@@ -1,4 +1,4 @@
-const { chapterHeading, table, spacer, h2, p } = require("../lib/primitives");
+const { chapterHeading, table, h2, p } = require("../lib/primitives");
 
 module.exports = function build_appendixJ() {
   return [
@@ -14,11 +14,9 @@ module.exports = function build_appendixJ() {
       ],
       [800, 2600, 5960]
     ),
-    spacer(),
 
     h2("J.1 Level 1: Schema Conformance \u2014 Test Criteria"),
     p("Schema conformance ensures all data structures exchanged within and between crates match their canonical JSON Schema definitions."),
-    spacer(),
     table(
       ["Test ID", "Criterion", "Pass Condition"],
       [
@@ -31,11 +29,9 @@ module.exports = function build_appendixJ() {
       ],
       [800, 3600, 4960]
     ),
-    spacer(),
 
     h2("J.2 Level 2: Behavioral Conformance \u2014 Test Criteria"),
     p("Behavioral conformance ensures deterministic outputs and correct module composition under all valid input combinations."),
-    spacer(),
     table(
       ["Test ID", "Criterion", "Pass Condition"],
       [
@@ -48,11 +44,9 @@ module.exports = function build_appendixJ() {
       ],
       [800, 3600, 4960]
     ),
-    spacer(),
 
     h2("J.3 Level 3: Cryptographic Conformance \u2014 Test Criteria"),
     p("Cryptographic conformance ensures all signature, hash, and proof operations are correct, constant-time where required, and interoperable with external verifiers."),
-    spacer(),
     table(
       ["Test ID", "Criterion", "Pass Condition"],
       [
@@ -66,11 +60,9 @@ module.exports = function build_appendixJ() {
       ],
       [800, 3200, 5360]
     ),
-    spacer(),
 
     h2("J.4 Level 4: Corridor Integrity \u2014 Test Criteria"),
     p("Corridor integrity ensures the trade corridor lifecycle, receipt chain, and cross-border state synchronization are tamper-evident and fork-resistant."),
-    spacer(),
     table(
       ["Test ID", "Criterion", "Pass Condition"],
       [
@@ -84,11 +76,9 @@ module.exports = function build_appendixJ() {
       ],
       [800, 3200, 5360]
     ),
-    spacer(),
 
     h2("J.5 Level 5: Migration Integrity \u2014 Test Criteria"),
     p("Migration integrity ensures the 8-phase migration saga executes correctly, with compensation for partial failures and watcher attestation for state consistency."),
-    spacer(),
     table(
       ["Test ID", "Criterion", "Pass Condition"],
       [
@@ -102,6 +92,5 @@ module.exports = function build_appendixJ() {
       ],
       [800, 3200, 5360]
     ),
-    spacer(),
   ];
 };

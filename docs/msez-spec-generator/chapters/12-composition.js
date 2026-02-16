@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table, spacer
+  codeBlock, table, spacer, pageBreak
 } = require("../lib/primitives");
 
 module.exports = function build_chapter12() {
@@ -42,7 +42,6 @@ module.exports = function build_chapter12() {
       "    pub bilateral_treaties: Vec<TreatyRef>,\n" +
       "}"
     ),
-    spacer(),
     p_runs([
       bold("Kazakhstan Example. "),
       "The Astana International Financial Centre (AIFC) composes three jurisdiction layers: Kazakhstan national law (base layer providing CIVIC, CORPORATE, TAX, and LABOR domains), AIFC common law framework (overlay replacing COMMERCIAL, FINANCIAL, SECURITIES, BANKING, and ARBITRATION with English common law equivalents), and FATF/EAG mutual evaluation requirements (overlay strengthening AML_CFT domain to meet enhanced due diligence standards). The resulting composition has 20 domains with 8 overridden by the AIFC layer, producing a compliance tensor of shape (3, 20) with 60 cells."
@@ -91,7 +90,6 @@ module.exports = function build_chapter12() {
       "    })\n" +
       "}"
     ),
-    spacer(),
 
     // --- 12.3.2 Composition Example: Pakistan GovOS ---
     h3("12.3.2 Composition Example: Pakistan GovOS"),
@@ -108,7 +106,6 @@ module.exports = function build_chapter12() {
       bold("Layer 3 — FATF Overlay (FATF Mutual Evaluation). "),
       "Strengthens 3 domains beyond the PAK base layer requirements to meet FATF grey-list remediation commitments. AML_CFT is overridden with enhanced due diligence (EDD) for all cross-border transactions above USD 10,000, beneficial ownership transparency per FATF Recommendation 24, and STR filing within 24 hours. FINANCIAL is overridden with SBP real-time transaction monitoring and cross-border wire transfer reporting per FATF Recommendation 16. DATA_PROTECTION is overridden with mandatory 5-year record retention for all KYC/KYB data and secure data sharing protocols with FMU (Financial Monitoring Unit)."
     ]),
-    spacer(),
     p("The domain assignment matrix for the Pakistan GovOS composition:"),
     table(
       ["Domain", "Governing Layer", "Key Provision"],
@@ -136,7 +133,6 @@ module.exports = function build_chapter12() {
       ],
       [2200, 1800, 5360]
     ),
-    spacer(),
     p("The composition digest is computed as SHA-256 over the canonical serialization of all three layers, their pack references, and the domain override matrix. This digest is embedded in every corridor state and verifiable credential issued under the Pakistan GovOS zone, binding all compliance attestations to a specific, reproducible regulatory snapshot."),
 
     // --- 12.3.3 Generated Artifacts ---

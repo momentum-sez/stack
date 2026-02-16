@@ -2,7 +2,7 @@ const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
   definition, codeBlock, table,
-  spacer
+  spacer, pageBreak
 } = require("../lib/primitives");
 
 module.exports = function build_chapter10() {
@@ -54,7 +54,6 @@ module.exports = function build_chapter10() {
       "    }\n" +
       "}"
     ),
-    spacer(),
 
     // --- 10.2 Compliance Domains ---
     // IMPORTANT: These 20 domains match the ComplianceDomain enum in
@@ -87,7 +86,6 @@ module.exports = function build_chapter10() {
       ],
       [1800, 2000, 5560]
     ),
-    spacer(),
 
     // --- 10.3 Compliance States ---
     h2("10.3 Compliance States"),
@@ -102,7 +100,6 @@ module.exports = function build_chapter10() {
       bold("PENDING"), " indicates an evaluation is in progress and an attestation is expected. ",
       "Meet (\u2227) returns the pessimistic (lower) state of two operands. Join (\u2228) returns the optimistic (higher) state. For the incomparable pair {COMPLIANT, EXEMPT}, meet yields PENDING and join yields EXEMPT."
     ]),
-    spacer(),
 
     // --- 10.3.1 Lattice Operations ---
     h3("10.3.1 Lattice Operations: Meet and Join"),
@@ -129,7 +126,6 @@ module.exports = function build_chapter10() {
       ],
       [1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170]
     ),
-    spacer(),
     p("The following table shows join (\u2228) results for all state pairs. The table is symmetric: join(a, b) = join(b, a)."),
     table(
       ["join (\u2228)", "NonCompl", "Expired", "Suspended", "Unknown", "Pending", "Compliant", "Exempt"],
@@ -144,7 +140,6 @@ module.exports = function build_chapter10() {
       ],
       [1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170]
     ),
-    spacer(),
 
     // --- 10.4 Tensor Operations ---
     h2("10.4 Tensor Operations"),
@@ -181,7 +176,6 @@ module.exports = function build_chapter10() {
       "    pub evidence: Vec<EvidenceRef>,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 10.5 Cross-Border Compliance Verification ---
     h3("10.4.1 Cross-Border Compliance Verification"),

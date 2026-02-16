@@ -16,11 +16,11 @@
 //!   decoded from the next_root hex digest.
 //! - Node: `SHA256(0x01 || left_hash_bytes || right_hash_bytes)`.
 
+use msez_core::sha256_raw;
 use msez_crypto::mmr::{
     bag_peaks, build_inclusion_proof, build_peaks, mmr_leaf_hash, mmr_node_hash,
     mmr_root_from_next_roots, verify_inclusion_proof, MerkleMountainRange,
 };
-use msez_core::sha256_raw;
 use serde::Deserialize;
 
 const FIXTURE_PATH: &str = "tests/fixtures/mmr_roots.json";

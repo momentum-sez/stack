@@ -27,7 +27,7 @@ pub struct LicensepackRef {
 }
 
 /// Licensepack lock file.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LicensepackLock {
     /// Lock version.
     pub lock_version: String,
@@ -44,7 +44,7 @@ pub struct LicensepackLock {
 }
 
 /// Licensepack identification in a lock file.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LicensepackLockInfo {
     /// Licensepack identifier.
     pub licensepack_id: String,
@@ -59,7 +59,7 @@ pub struct LicensepackLockInfo {
 }
 
 /// Artifact metadata in a licensepack lock file.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LicensepackArtifactInfo {
     /// Artifact type.
     pub artifact_type: String,

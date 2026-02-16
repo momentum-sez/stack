@@ -32,7 +32,7 @@ use crate::traits::{ProofError, ProofSystem, VerifyError};
 ///
 /// In Phase 2, this will wrap `ark_groth16::Proof<Bn254>`.
 /// Currently a placeholder type.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Groth16Proof {
     /// Serialized proof bytes (Phase 2: BN254 curve points).
     pub proof_bytes: Vec<u8>,

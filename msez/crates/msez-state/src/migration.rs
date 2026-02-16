@@ -187,7 +187,7 @@ pub enum MigrationError {
 ///
 /// Unlike the Python implementation (audit §5.5), the error_detail
 /// field preserves diagnostic context instead of swallowing exceptions.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CompensationRecord {
     /// The state from which compensation was triggered.
     pub from_state: MigrationState,

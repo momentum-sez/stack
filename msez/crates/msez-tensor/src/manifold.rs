@@ -35,7 +35,7 @@ use msez_core::{CanonicalBytes, ComplianceDomain};
 ///
 /// Each jurisdiction specifies entry requirements (attestations),
 /// supported asset classes, and cost structure.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct JurisdictionNode {
     /// Unique identifier (e.g., "uae-difc", "kz-aifc", "pk-rsez").
     pub jurisdiction_id: String,
@@ -65,7 +65,7 @@ pub struct JurisdictionNode {
 ///
 /// Corridors enable asset migration and specify the compliance
 /// requirements, fee structure, and timing for the transfer.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CorridorEdge {
     /// Unique corridor identifier.
     pub corridor_id: String,
@@ -205,7 +205,7 @@ impl MigrationPath {
 // ---------------------------------------------------------------------------
 
 /// Summary of the compliance distance between two jurisdictions.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ComplianceDistance {
     /// Source jurisdiction.
     pub source: String,

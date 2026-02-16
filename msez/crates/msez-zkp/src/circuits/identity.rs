@@ -38,7 +38,7 @@ use serde::{Deserialize, Serialize};
 /// - `issuer_merkle_proof`: Proof that the issuer is in the approved list.
 ///
 /// Approximate constraint count: 4096 (signature verification + Merkle proof).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct KycAttestationCircuit {
     // -- Public inputs --
     /// Merkle root of the approved KYC issuers list.
@@ -74,7 +74,7 @@ pub struct KycAttestationCircuit {
 /// - `revocation_non_membership`: Proof of non-revocation.
 ///
 /// Approximate constraint count: 2048 (timestamp comparison + accumulator check).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AttestationValidityCircuit {
     // -- Public inputs --
     /// Commitment to the attestation being verified.
@@ -107,7 +107,7 @@ pub struct AttestationValidityCircuit {
 ///
 /// Approximate constraint count: 4096 * threshold (one signature verification
 /// per required signer).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ThresholdSignatureCircuit {
     // -- Public inputs --
     /// SHA-256 hash of the statement being endorsed.

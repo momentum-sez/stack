@@ -96,7 +96,7 @@ pub enum IdentityDocumentType {
 // -- Types matching Mass API schemas ------------------------------------------
 
 /// Organization member from organization-info API.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MassMember {
     #[serde(default)]
@@ -112,7 +112,7 @@ pub struct MassMember {
 }
 
 /// Board director from organization-info API.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MassDirector {
     #[serde(default)]
@@ -132,7 +132,7 @@ pub struct MassDirector {
 }
 
 /// Shareholder identity from consent-info API.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MassShareholder {
     pub id: Uuid,
@@ -164,7 +164,7 @@ pub struct MassShareholder {
 /// Composite identity record assembled from multiple Mass services.
 ///
 /// This is an SEZ Stack-side aggregation, not a direct Mass API response.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MassIdentity {
     pub organization_id: String,
     #[serde(default)]
@@ -191,7 +191,7 @@ pub struct CnicVerificationRequest {
 }
 
 /// CNIC verification response.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CnicVerificationResponse {
     pub cnic: String,
     pub verified: bool,
@@ -214,7 +214,7 @@ pub struct NtnVerificationRequest {
 }
 
 /// NTN verification response.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NtnVerificationResponse {
     pub ntn: String,
     pub verified: bool,
@@ -227,7 +227,7 @@ pub struct NtnVerificationResponse {
 
 /// Consolidated identity view aggregating data from consent-info and
 /// organization-info for a single entity.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ConsolidatedIdentity {
     /// The entity this identity belongs to.
     pub entity_id: Uuid,

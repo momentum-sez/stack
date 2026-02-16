@@ -46,7 +46,7 @@ pub struct SignTemplateRequest {
 }
 
 /// Signing order for a template signing request.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SigningOrder {
     Random,
@@ -68,7 +68,7 @@ pub struct TemplateSigner {
 }
 
 /// Name structure for a signer.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SignerName {
     pub first_name: String,
@@ -76,7 +76,7 @@ pub struct SignerName {
 }
 
 /// Role of a signer.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SigningRole {
     Officer,

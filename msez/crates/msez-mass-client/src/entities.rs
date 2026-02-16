@@ -66,7 +66,7 @@ pub enum MassEntityStatus {
 /// Fields use `#[serde(default)]` for resilience against schema evolution
 /// in the live Mass API. The live API may return additional fields not
 /// modeled here — `serde(deny_unknown_fields)` is intentionally NOT used.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MassEntity {
     /// Entity identifier, shared with [`msez_core::EntityId`] for type safety

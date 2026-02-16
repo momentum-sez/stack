@@ -36,7 +36,7 @@ use serde::{Deserialize, Serialize};
 /// - `balance`: The actual balance value.
 ///
 /// Approximate constraint count: 256 (range check).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BalanceSufficiencyCircuit {
     // -- Public inputs --
     /// Minimum balance threshold. Public when `threshold_public` is true.
@@ -63,7 +63,7 @@ pub struct BalanceSufficiencyCircuit {
 /// - `merkle_path_indices`: Path direction indicators (left/right).
 ///
 /// Approximate constraint count: 2048 (Merkle path verification).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SanctionsClearanceCircuit {
     // -- Public inputs --
     /// Root hash of the sanctions Merkle tree.
@@ -94,7 +94,7 @@ pub struct SanctionsClearanceCircuit {
 /// - `merkle_proof`: Inclusion proof within the tensor commitment.
 ///
 /// Approximate constraint count: 2048 (Merkle inclusion + coordinate binding).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TensorInclusionCircuit {
     // -- Public inputs --
     /// Commitment to the full compliance tensor.

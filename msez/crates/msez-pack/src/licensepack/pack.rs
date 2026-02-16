@@ -25,7 +25,7 @@ const LICENSEPACK_DIGEST_PREFIX: &[u8] = b"msez-licensepack-v1\0";
 /// - Lawpack: Static law (statutes, regulations)
 /// - Regpack: Dynamic guidance (sanctions, calendars)
 /// - Licensepack: Live registry (licenses, holders, conditions)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Licensepack {
     /// The jurisdiction this licensepack applies to.
     pub jurisdiction: JurisdictionId,

@@ -48,7 +48,7 @@ pub const REGPACK_VERSION: &str = "1.0";
 ///
 /// Represents an individual, entity, vessel, or aircraft that appears
 /// on one or more sanctions lists (OFAC, EU, UN, UK).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SanctionsEntry {
     /// Unique entry identifier.
     pub entry_id: String,
@@ -85,7 +85,7 @@ pub struct SanctionsEntry {
 }
 
 /// A point-in-time snapshot of consolidated sanctions.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SanctionsSnapshot {
     /// Snapshot identifier.
     pub snapshot_id: String,
@@ -334,7 +334,7 @@ impl SanctionsChecker {
 // ---------------------------------------------------------------------------
 
 /// Profile of a regulatory authority.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RegulatorProfile {
     /// Unique regulator identifier.
     pub regulator_id: String,
@@ -367,7 +367,7 @@ fn default_timezone() -> String {
 }
 
 /// A type of regulatory license.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RegLicenseType {
     /// Unique license type identifier.
     pub license_type_id: String,
@@ -401,7 +401,7 @@ fn default_renewal_lead_time() -> i32 {
 }
 
 /// A regulatory reporting requirement.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ReportingRequirement {
     /// Report type identifier.
     pub report_type_id: String,
@@ -425,7 +425,7 @@ pub struct ReportingRequirement {
 }
 
 /// An upcoming compliance deadline.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ComplianceDeadline {
     /// Deadline identifier.
     pub deadline_id: String,
@@ -453,7 +453,7 @@ pub struct ComplianceDeadline {
 ///
 /// Contains identifying information, source feeds, and content summary
 /// for a regulatory state snapshot.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RegPackMetadata {
     /// Unique regpack identifier.
     pub regpack_id: String,
@@ -492,7 +492,7 @@ pub struct RegPackMetadata {
 /// A compiled regpack containing regulatory requirement mappings.
 ///
 /// This is the primary type for working with regpacks in the Rust layer.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Regpack {
     /// The jurisdiction this regpack applies to.
     pub jurisdiction: JurisdictionId,

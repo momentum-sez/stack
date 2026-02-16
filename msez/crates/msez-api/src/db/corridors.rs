@@ -11,22 +11,43 @@ use uuid::Uuid;
 
 use crate::state::CorridorRecord;
 
+/// Serialize a `DynCorridorState` to the string stored in the `status` column.
+///
+/// Previous implementation silently defaulted to `"DRAFT"` on serialization
+/// failure, which caused data corruption: an ACTIVE corridor would be
+/// persisted as DRAFT and revert on server restart.
+fn serialize_corridor_state(state: DynCorridorState) -> Result<String, sqlx::Error> {
+    let value = serde_json::to_value(state).map_err(|e| {
+        tracing::error!(error = %e, state = ?state, "failed to serialize corridor state");
+        sqlx::Error::Encode(Box::new(e))
+    })?;
+    value
+        .as_str()
+        .map(String::from)
+        .ok_or_else(|| {
+            tracing::error!(value = ?value, "corridor state did not serialize to a JSON string");
+            sqlx::Error::Encode(Box::new(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "corridor state did not serialize to a string",
+            )))
+        })
+}
+
+/// Serialize a transition log slice to JSON for persistence.
+fn serialize_transition_log(log: &[TransitionRecord]) -> Result<serde_json::Value, sqlx::Error> {
+    serde_json::to_value(log).map_err(|e| {
+        tracing::error!(error = %e, "failed to serialize corridor transition_log");
+        sqlx::Error::Encode(Box::new(e))
+    })
+}
+
 /// Insert a new corridor record.
+///
+/// Returns an error if the corridor state or transition log cannot be
+/// serialized — never silently defaults to DRAFT.
 pub async fn insert(pool: &PgPool, record: &CorridorRecord) -> Result<(), sqlx::Error> {
-    let status = serde_json::to_value(record.state)
-        .map_err(|e| {
-            tracing::warn!(error = %e, state = ?record.state, "failed to serialize corridor state — defaulting to DRAFT");
-            e
-        })
-        .ok()
-        .and_then(|v| v.as_str().map(String::from))
-        .unwrap_or_else(|| "DRAFT".to_string());
-    let transition_log = serde_json::to_value(&record.transition_log)
-        .map_err(|e| {
-            tracing::warn!(error = %e, "failed to serialize corridor transition_log — defaulting to empty array");
-            e
-        })
-        .unwrap_or_else(|_| serde_json::Value::Array(vec![]));
+    let status = serialize_corridor_state(record.state)?;
+    let transition_log = serialize_transition_log(&record.transition_log)?;
 
     sqlx::query(
         "INSERT INTO corridors (id, jurisdiction_a, jurisdiction_b, status, transition_log, created_at, updated_at)
@@ -46,6 +67,9 @@ pub async fn insert(pool: &PgPool, record: &CorridorRecord) -> Result<(), sqlx::
 }
 
 /// Update corridor state and transition log.
+///
+/// Returns an error if serialization fails — never silently defaults to
+/// DRAFT, which would corrupt the FSM on restart.
 pub async fn update_state(
     pool: &PgPool,
     id: Uuid,
@@ -53,20 +77,8 @@ pub async fn update_state(
     transition_log: &[TransitionRecord],
     updated_at: DateTime<Utc>,
 ) -> Result<bool, sqlx::Error> {
-    let status = serde_json::to_value(state)
-        .map_err(|e| {
-            tracing::warn!(error = %e, state = ?state, "failed to serialize corridor state — defaulting to DRAFT");
-            e
-        })
-        .ok()
-        .and_then(|v| v.as_str().map(String::from))
-        .unwrap_or_else(|| "DRAFT".to_string());
-    let log_json = serde_json::to_value(transition_log)
-        .map_err(|e| {
-            tracing::warn!(error = %e, "failed to serialize corridor transition_log — defaulting to empty array");
-            e
-        })
-        .unwrap_or_else(|_| serde_json::Value::Array(vec![]));
+    let status = serialize_corridor_state(*state)?;
+    let log_json = serialize_transition_log(transition_log)?;
 
     let result = sqlx::query(
         "UPDATE corridors SET status = $1, transition_log = $2, updated_at = $3 WHERE id = $4",
@@ -141,21 +153,27 @@ impl CorridorRow {
         let state: DynCorridorState =
             serde_json::from_value(serde_json::Value::String(self.status.clone()))
                 .unwrap_or_else(|e| {
-                    tracing::warn!(
+                    // IMPORTANT: This is the READ path — we default to Draft for
+                    // forward-compatibility (new code reading old DB rows), but
+                    // log at ERROR because it may indicate data corruption from
+                    // the bug fixed in the write path.
+                    tracing::error!(
                         id = %self.id,
                         status = %self.status,
                         error = %e,
-                        "unknown corridor state in database, defaulting to Draft"
+                        "unknown corridor state in database — defaulting to Draft; \
+                         investigate: this may indicate prior data corruption"
                     );
                     DynCorridorState::Draft
                 });
 
         let transition_log: Vec<TransitionRecord> =
             serde_json::from_value(self.transition_log.clone()).unwrap_or_else(|e| {
-                tracing::warn!(
+                tracing::error!(
                     id = %self.id,
                     error = %e,
-                    "failed to deserialize corridor transition_log, defaulting to empty"
+                    "failed to deserialize corridor transition_log — defaulting to empty; \
+                     investigate: this may indicate prior data corruption"
                 );
                 Vec::new()
             });

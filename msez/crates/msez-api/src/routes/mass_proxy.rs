@@ -788,7 +788,11 @@ async fn create_account(
     let entity_id = req.entity_id;
     let currency = req.currency.clone();
     let inferred_jurisdiction =
-        orchestration::infer_jurisdiction(&currency);
+        orchestration::infer_jurisdiction(&currency)
+            .ok_or_else(|| AppError::Validation(format!(
+                "unmapped currency '{}' — cannot infer jurisdiction for compliance evaluation",
+                currency
+            )))?;
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
         inferred_jurisdiction,
         &entity_id.to_string(),
@@ -855,7 +859,11 @@ async fn initiate_payment(
     let from_account_id = req.from_account_id;
     let currency = req.currency.clone();
     let inferred_jurisdiction =
-        orchestration::infer_jurisdiction(&currency);
+        orchestration::infer_jurisdiction(&currency)
+            .ok_or_else(|| AppError::Validation(format!(
+                "unmapped currency '{}' — cannot infer jurisdiction for compliance evaluation",
+                currency
+            )))?;
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
         inferred_jurisdiction,
         &from_account_id.to_string(),

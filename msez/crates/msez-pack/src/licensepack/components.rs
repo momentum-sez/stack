@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Conditions represent ongoing requirements (capital adequacy, operational
 /// standards, reporting obligations) that a license holder must satisfy.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LicenseCondition {
     /// Unique condition identifier.
     pub condition_id: String,
@@ -105,7 +105,7 @@ pub(crate) fn date_before(a: &str, b: &str) -> bool {
 ///
 /// Permissions specify which activities a license holder is authorized to
 /// perform, optionally with scope and limit constraints.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LicensePermission {
     /// Unique permission identifier.
     pub permission_id: String,
@@ -137,7 +137,7 @@ impl LicensePermission {
 /// Restrictions block specific activities, jurisdictions, products, or client
 /// types. A wildcard `"*"` in `blocked_jurisdictions` blocks all except
 /// those listed in `allowed_jurisdictions`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LicenseRestriction {
     /// Unique restriction identifier.
     pub restriction_id: String,
@@ -199,7 +199,7 @@ impl LicenseRestriction {
 ///
 /// Represents the entity that holds one or more licenses, including
 /// identity, ownership, and contact information.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LicenseHolder {
     /// Unique holder identifier.
     pub holder_id: String,

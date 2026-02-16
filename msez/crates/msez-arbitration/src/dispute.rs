@@ -466,7 +466,7 @@ pub struct TransitionRecord {
 ///
 /// Matches the Python `ARBITRATION_INSTITUTIONS` registry in
 /// `tools/arbitration.py:103-183`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ArbitrationInstitution {
     /// Short identifier (e.g., "difc-lcia").
     pub id: String,

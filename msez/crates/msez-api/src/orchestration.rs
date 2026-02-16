@@ -153,6 +153,29 @@ const HARD_BLOCK_DOMAINS: &[ComplianceDomain] = &[ComplianceDomain::Sanctions];
 // Compliance evaluation
 // ---------------------------------------------------------------------------
 
+/// Build a blocked `ComplianceSummary` when the currency cannot be mapped
+/// to a jurisdiction. All 20 domains are reported as `non_compliant`.
+fn blocked_summary_for_unmapped_currency(currency: &str) -> ComplianceSummary {
+    let mut domain_results = HashMap::new();
+    for domain in ComplianceDomain::all() {
+        domain_results.insert(format!("{domain:?}"), "non_compliant".to_string());
+    }
+    let blocking_domains: Vec<String> = ComplianceDomain::all()
+        .iter()
+        .map(|d| format!("{d:?}"))
+        .collect();
+    ComplianceSummary {
+        jurisdiction_id: format!("UNMAPPED:{currency}"),
+        overall_status: "BLOCKED".to_string(),
+        domain_results,
+        passing_domains: Vec::new(),
+        hard_blocks: blocking_domains.clone(),
+        blocking_domains,
+        tensor_commitment: None,
+        evaluated_at: chrono::Utc::now(),
+    }
+}
+
 /// Build a compliance tensor for a jurisdiction and evaluate all 20 domains.
 ///
 /// Returns the tensor and a compliance summary. Falls back to `"UNKNOWN"`
@@ -466,8 +489,20 @@ pub fn orchestrate_account_creation(
 ) -> OrchestrationEnvelope {
     let entity_id_str = entity_id.to_string();
 
-    // Infer jurisdiction from currency for fiscal operations.
-    let jurisdiction_id = infer_jurisdiction_from_currency(currency);
+    // Infer jurisdiction from currency — reject if unmapped so we don't
+    // issue a compliance credential for an unknown jurisdiction.
+    let jurisdiction_id = match infer_jurisdiction_from_currency(currency) {
+        Some(j) => j,
+        None => {
+            let blocked = blocked_summary_for_unmapped_currency(currency);
+            return OrchestrationEnvelope {
+                mass_response,
+                compliance: blocked,
+                credential: None,
+                attestation_id: None,
+            };
+        }
+    };
 
     let (_tensor, summary) =
         evaluate_compliance(jurisdiction_id, &entity_id_str, FISCAL_ACCOUNT_DOMAINS);
@@ -497,7 +532,18 @@ pub fn orchestrate_payment(
     mass_response: serde_json::Value,
 ) -> OrchestrationEnvelope {
     let account_id_str = from_account_id.to_string();
-    let jurisdiction_id = infer_jurisdiction_from_currency(currency);
+    let jurisdiction_id = match infer_jurisdiction_from_currency(currency) {
+        Some(j) => j,
+        None => {
+            let blocked = blocked_summary_for_unmapped_currency(currency);
+            return OrchestrationEnvelope {
+                mass_response,
+                compliance: blocked,
+                credential: None,
+                attestation_id: None,
+            };
+        }
+    };
 
     let (_tensor, summary) = evaluate_compliance(jurisdiction_id, &account_id_str, PAYMENT_DOMAINS);
 
@@ -683,38 +729,45 @@ fn extract_id(mass_response: &serde_json::Value, context: &str) -> String {
 /// Coverage: all current and planned deployment corridors — USA, BVI,
 /// Cayman, UAE, Pakistan, China (Hainan), Seychelles, Kazakhstan, KSA,
 /// Hong Kong, and common international currencies.
-pub fn infer_jurisdiction(currency: &str) -> &str {
+pub fn infer_jurisdiction(currency: &str) -> Option<&'static str> {
     infer_jurisdiction_from_currency(currency)
 }
 
-fn infer_jurisdiction_from_currency(currency: &str) -> &str {
+fn infer_jurisdiction_from_currency(currency: &str) -> Option<&'static str> {
     match currency.to_uppercase().as_str() {
         // Active deployment targets
-        "PKR" => "PK",   // Pakistan
-        "AED" => "AE",   // UAE (ADGM, DIFC, 27 free zones)
-        "USD" => "US",   // United States (also used in BVI)
-        "GBP" => "GB",   // United Kingdom
-        "EUR" => "EU",   // European Union
-        "SGD" => "SG",   // Singapore
-        "CNY" | "RMB" => "CN", // China (Hainan SEZ)
-        "SAR" => "SA",   // Saudi Arabia (PAK↔KSA corridor)
-        "KYD" => "KY",   // Cayman Islands
-        "SCR" => "SC",   // Seychelles
-        "KZT" => "KZ",   // Kazakhstan (Alatau City / AIFC)
-        "HKD" => "HK",   // Hong Kong
+        "PKR" => Some("PK"),   // Pakistan
+        "AED" => Some("AE"),   // UAE (ADGM, DIFC, 27 free zones)
+        "USD" => Some("US"),   // United States (also used in BVI)
+        "GBP" => Some("GB"),   // United Kingdom
+        "EUR" => Some("EU"),   // European Union
+        "SGD" => Some("SG"),   // Singapore
+        "CNY" | "RMB" => Some("CN"), // China (Hainan SEZ)
+        "SAR" => Some("SA"),   // Saudi Arabia (PAK↔KSA corridor)
+        "KYD" => Some("KY"),   // Cayman Islands
+        "SCR" => Some("SC"),   // Seychelles
+        "KZT" => Some("KZ"),   // Kazakhstan (Alatau City / AIFC)
+        "HKD" => Some("HK"),   // Hong Kong
         // Additional corridors and common currencies
-        "BHD" => "BH",   // Bahrain
-        "OMR" => "OM",   // Oman
-        "QAR" => "QA",   // Qatar
-        "KWD" => "KW",   // Kuwait
-        "INR" => "IN",   // India
-        "JPY" => "JP",   // Japan
-        "CHF" => "CH",   // Switzerland
-        "CAD" => "CA",   // Canada
-        "AUD" => "AU",   // Australia
-        "MYR" => "MY",   // Malaysia
-        "TRY" => "TR",   // Türkiye
-        _ => "UNKNOWN",
+        "BHD" => Some("BH"),   // Bahrain
+        "OMR" => Some("OM"),   // Oman
+        "QAR" => Some("QA"),   // Qatar
+        "KWD" => Some("KW"),   // Kuwait
+        "INR" => Some("IN"),   // India
+        "JPY" => Some("JP"),   // Japan
+        "CHF" => Some("CH"),   // Switzerland
+        "CAD" => Some("CA"),   // Canada
+        "AUD" => Some("AU"),   // Australia
+        "MYR" => Some("MY"),   // Malaysia
+        "TRY" => Some("TR"),   // Türkiye
+        _ => {
+            tracing::warn!(
+                currency = currency,
+                "unmapped currency — cannot infer jurisdiction; \
+                 compliance evaluation will be skipped"
+            );
+            None
+        }
     }
 }
 
@@ -941,53 +994,55 @@ mod tests {
 
     #[test]
     fn infer_jurisdiction_pkr() {
-        assert_eq!(infer_jurisdiction_from_currency("PKR"), "PK");
-        assert_eq!(infer_jurisdiction_from_currency("pkr"), "PK");
+        assert_eq!(infer_jurisdiction_from_currency("PKR"), Some("PK"));
+        assert_eq!(infer_jurisdiction_from_currency("pkr"), Some("PK"));
     }
 
     #[test]
     fn infer_jurisdiction_deployment_targets() {
         // All active and planned deployment corridors must resolve.
-        assert_eq!(infer_jurisdiction_from_currency("AED"), "AE");
-        assert_eq!(infer_jurisdiction_from_currency("USD"), "US");
-        assert_eq!(infer_jurisdiction_from_currency("GBP"), "GB");
-        assert_eq!(infer_jurisdiction_from_currency("EUR"), "EU");
-        assert_eq!(infer_jurisdiction_from_currency("SGD"), "SG");
-        assert_eq!(infer_jurisdiction_from_currency("CNY"), "CN");
-        assert_eq!(infer_jurisdiction_from_currency("RMB"), "CN");
-        assert_eq!(infer_jurisdiction_from_currency("SAR"), "SA");
-        assert_eq!(infer_jurisdiction_from_currency("KYD"), "KY");
-        assert_eq!(infer_jurisdiction_from_currency("SCR"), "SC");
-        assert_eq!(infer_jurisdiction_from_currency("KZT"), "KZ");
-        assert_eq!(infer_jurisdiction_from_currency("HKD"), "HK");
+        assert_eq!(infer_jurisdiction_from_currency("AED"), Some("AE"));
+        assert_eq!(infer_jurisdiction_from_currency("USD"), Some("US"));
+        assert_eq!(infer_jurisdiction_from_currency("GBP"), Some("GB"));
+        assert_eq!(infer_jurisdiction_from_currency("EUR"), Some("EU"));
+        assert_eq!(infer_jurisdiction_from_currency("SGD"), Some("SG"));
+        assert_eq!(infer_jurisdiction_from_currency("CNY"), Some("CN"));
+        assert_eq!(infer_jurisdiction_from_currency("RMB"), Some("CN"));
+        assert_eq!(infer_jurisdiction_from_currency("SAR"), Some("SA"));
+        assert_eq!(infer_jurisdiction_from_currency("KYD"), Some("KY"));
+        assert_eq!(infer_jurisdiction_from_currency("SCR"), Some("SC"));
+        assert_eq!(infer_jurisdiction_from_currency("KZT"), Some("KZ"));
+        assert_eq!(infer_jurisdiction_from_currency("HKD"), Some("HK"));
     }
 
     #[test]
     fn infer_jurisdiction_additional_corridors() {
         // Additional currencies added for broader corridor coverage.
-        assert_eq!(infer_jurisdiction_from_currency("BHD"), "BH");
-        assert_eq!(infer_jurisdiction_from_currency("OMR"), "OM");
-        assert_eq!(infer_jurisdiction_from_currency("QAR"), "QA");
-        assert_eq!(infer_jurisdiction_from_currency("KWD"), "KW");
-        assert_eq!(infer_jurisdiction_from_currency("INR"), "IN");
-        assert_eq!(infer_jurisdiction_from_currency("JPY"), "JP");
-        assert_eq!(infer_jurisdiction_from_currency("CHF"), "CH");
-        assert_eq!(infer_jurisdiction_from_currency("CAD"), "CA");
-        assert_eq!(infer_jurisdiction_from_currency("AUD"), "AU");
-        assert_eq!(infer_jurisdiction_from_currency("MYR"), "MY");
-        assert_eq!(infer_jurisdiction_from_currency("TRY"), "TR");
+        assert_eq!(infer_jurisdiction_from_currency("BHD"), Some("BH"));
+        assert_eq!(infer_jurisdiction_from_currency("OMR"), Some("OM"));
+        assert_eq!(infer_jurisdiction_from_currency("QAR"), Some("QA"));
+        assert_eq!(infer_jurisdiction_from_currency("KWD"), Some("KW"));
+        assert_eq!(infer_jurisdiction_from_currency("INR"), Some("IN"));
+        assert_eq!(infer_jurisdiction_from_currency("JPY"), Some("JP"));
+        assert_eq!(infer_jurisdiction_from_currency("CHF"), Some("CH"));
+        assert_eq!(infer_jurisdiction_from_currency("CAD"), Some("CA"));
+        assert_eq!(infer_jurisdiction_from_currency("AUD"), Some("AU"));
+        assert_eq!(infer_jurisdiction_from_currency("MYR"), Some("MY"));
+        assert_eq!(infer_jurisdiction_from_currency("TRY"), Some("TR"));
     }
 
     #[test]
     fn infer_jurisdiction_case_insensitive() {
-        assert_eq!(infer_jurisdiction_from_currency("cny"), "CN");
-        assert_eq!(infer_jurisdiction_from_currency("Sar"), "SA");
-        assert_eq!(infer_jurisdiction_from_currency("kyd"), "KY");
+        assert_eq!(infer_jurisdiction_from_currency("cny"), Some("CN"));
+        assert_eq!(infer_jurisdiction_from_currency("Sar"), Some("SA"));
+        assert_eq!(infer_jurisdiction_from_currency("kyd"), Some("KY"));
     }
 
     #[test]
-    fn infer_jurisdiction_unknown() {
-        assert_eq!(infer_jurisdiction_from_currency("XYZ"), "UNKNOWN");
+    fn infer_jurisdiction_unknown_returns_none() {
+        assert_eq!(infer_jurisdiction_from_currency("XYZ"), None);
+        assert_eq!(infer_jurisdiction_from_currency(""), None);
+        assert_eq!(infer_jurisdiction_from_currency("FAKE"), None);
     }
 
     #[test]

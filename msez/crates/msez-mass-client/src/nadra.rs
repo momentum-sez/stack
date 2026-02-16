@@ -85,7 +85,7 @@ pub enum NadraError {
 }
 
 /// CNIC verification request sent to NADRA.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NadraVerificationRequest {
     /// CNIC number (13 digits, with or without dashes).
     pub cnic: String,

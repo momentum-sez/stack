@@ -59,7 +59,7 @@ pub struct MockProvingKey;
 /// Contains the serializable circuit payload and the public inputs that
 /// the proof will bind to. The `circuit_data` field holds the canonical
 /// representation of the circuit's constraint-relevant state.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MockCircuit {
     /// Canonical JSON-serializable circuit data (public inputs + structure).
     /// Serialized with sorted keys and compact separators for deterministic

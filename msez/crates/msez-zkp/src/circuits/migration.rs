@@ -37,7 +37,7 @@ use serde::{Deserialize, Serialize};
 /// - `approval_signatures`: Regulatory approval signature data.
 ///
 /// Approximate constraint count: 4096 (multi-phase verification chain).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MigrationEvidenceCircuit {
     // -- Public inputs --
     /// SHA-256 hash of the source jurisdiction identifier.
@@ -72,7 +72,7 @@ pub struct MigrationEvidenceCircuit {
 /// - `transfer_proofs`: Merkle proofs for each ownership transfer.
 ///
 /// Approximate constraint count: 2048 per chain link.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OwnershipChainCircuit {
     // -- Public inputs --
     /// Content-addressed digest of the asset being tracked.
@@ -90,7 +90,7 @@ pub struct OwnershipChainCircuit {
 }
 
 /// A single entry in the ownership chain.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OwnershipEntry {
     /// SHA-256 hash of the owner identity.
     pub owner_hash: [u8; 32],
@@ -111,7 +111,7 @@ pub struct OwnershipEntry {
 /// - `failure_evidence`: Evidence of the migration failure trigger.
 ///
 /// Approximate constraint count: 1024 per compensation action.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CompensationValidityCircuit {
     // -- Public inputs --
     /// SHA-256 hash of the failed migration identifier.
@@ -127,7 +127,7 @@ pub struct CompensationValidityCircuit {
 }
 
 /// A single compensation action record.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CompensationRecord {
     /// Type of compensation action (e.g., "unlock_source", "refund_fees").
     pub action_type: String,

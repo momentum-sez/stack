@@ -33,7 +33,7 @@ use crate::traits::{ProofError, ProofSystem, VerifyError};
 ///
 /// In Phase 2, this will wrap `halo2_proofs::plonk::Proof`.
 /// Currently a placeholder type.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PlonkProof {
     /// Serialized proof bytes (Phase 2: polynomial commitment openings).
     pub proof_bytes: Vec<u8>,

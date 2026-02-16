@@ -271,9 +271,8 @@ fn serde_rt_slashing_condition_all_variants() {
 
 #[test]
 fn serde_rt_transition_record() {
-    // BUG-001: TransitionRecord does not derive PartialEq, so we cannot
-    // assert_eq on the deserialized value. We can only verify round-trip
-    // does not panic and key fields survive.
+    // BUG-001 RESOLVED: TransitionRecord now derives PartialEq — full
+    // round-trip equality verification is possible.
     let original = TransitionRecord {
         from_state: DynCorridorState::Draft,
         to_state: DynCorridorState::Pending,
@@ -282,14 +281,13 @@ fn serde_rt_transition_record() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: TransitionRecord = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.from_state, DynCorridorState::Draft);
-    assert_eq!(recovered.to_state, DynCorridorState::Pending);
-    assert!(recovered.evidence_digest.is_some());
+    assert_eq!(original, recovered, "TransitionRecord round-trip must be lossless");
 }
 
 #[test]
 fn serde_rt_dyn_corridor_data() {
-    // BUG-002: DynCorridorData does not derive PartialEq
+    // BUG-002 RESOLVED: DynCorridorData now derives PartialEq — full
+    // round-trip equality verification is possible.
     let original = DynCorridorData {
         id: CorridorId::new(),
         jurisdiction_a: JurisdictionId::new("PK").unwrap(),
@@ -301,8 +299,7 @@ fn serde_rt_dyn_corridor_data() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: DynCorridorData = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.state, DynCorridorState::Active);
-    assert_eq!(recovered.id, original.id);
+    assert_eq!(original, recovered, "DynCorridorData round-trip must be lossless");
 }
 
 // =========================================================================
@@ -333,7 +330,8 @@ fn serde_rt_currency() {
 
 #[test]
 fn serde_rt_obligation() {
-    // BUG-003: Obligation does not derive PartialEq — cannot verify round-trip fidelity.
+    // BUG-003 RESOLVED: Obligation now derives PartialEq — full
+    // round-trip equality verification is possible.
     let original = Obligation {
         from_party: "A".to_string(),
         to_party: "B".to_string(),
@@ -344,18 +342,13 @@ fn serde_rt_obligation() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: Obligation = serde_json::from_str(&json).expect("deserialize");
-    // Must check field-by-field since no PartialEq
-    assert_eq!(recovered.from_party, "A");
-    assert_eq!(recovered.to_party, "B");
-    assert_eq!(recovered.amount, 100_000);
-    assert_eq!(recovered.currency, "USD");
-    assert_eq!(recovered.corridor_id.as_deref(), Some("corridor-001"));
-    assert_eq!(recovered.priority, 5);
+    assert_eq!(original, recovered, "Obligation round-trip must be lossless");
 }
 
 #[test]
 fn serde_rt_net_position() {
-    // BUG-004: NetPosition does not derive PartialEq
+    // BUG-004 RESOLVED: NetPosition now derives PartialEq — full
+    // round-trip equality verification is possible.
     let original = NetPosition {
         party_id: "A".to_string(),
         currency: "USD".to_string(),
@@ -365,13 +358,13 @@ fn serde_rt_net_position() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: NetPosition = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.party_id, "A");
-    assert_eq!(recovered.net, 40);
+    assert_eq!(original, recovered, "NetPosition round-trip must be lossless");
 }
 
 #[test]
 fn serde_rt_settlement_leg() {
-    // BUG-005: SettlementLeg does not derive PartialEq
+    // BUG-005 RESOLVED: SettlementLeg now derives PartialEq — full
+    // round-trip equality verification is possible.
     let original = SettlementLeg {
         from_party: "A".to_string(),
         to_party: "B".to_string(),
@@ -380,8 +373,7 @@ fn serde_rt_settlement_leg() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: SettlementLeg = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.from_party, "A");
-    assert_eq!(recovered.amount, 40);
+    assert_eq!(original, recovered, "SettlementLeg round-trip must be lossless");
 }
 
 #[test]
@@ -421,7 +413,8 @@ fn serde_rt_settlement_plan() {
 
 #[test]
 fn serde_rt_settlement_instruction() {
-    // BUG-007: SettlementInstruction does not derive PartialEq
+    // BUG-007 RESOLVED: SettlementInstruction now derives PartialEq — full
+    // round-trip equality verification is possible.
     let original = SettlementInstruction {
         message_id: "MSG001".to_string(),
         debtor_bic: "DEUTDEFF".to_string(),
@@ -436,13 +429,7 @@ fn serde_rt_settlement_instruction() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: SettlementInstruction = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.message_id, "MSG001");
-    assert_eq!(recovered.amount, 1_000_000);
-    assert_eq!(recovered.currency, "USD");
-    assert_eq!(
-        recovered.remittance_info.as_deref(),
-        Some("Invoice INV-2026-001")
-    );
+    assert_eq!(original, recovered, "SettlementInstruction round-trip must be lossless");
 }
 
 // =========================================================================
@@ -475,7 +462,8 @@ fn serde_rt_proof_purpose_all_variants() {
 
 #[test]
 fn serde_rt_proof() {
-    // BUG-008: Proof does not derive PartialEq — cannot assert_eq on round-trip
+    // BUG-008 RESOLVED: Proof now derives PartialEq — full round-trip
+    // equality verification is possible.
     let original = Proof {
         proof_type: ProofType::Ed25519Signature2020,
         created: Utc::now(),
@@ -485,9 +473,7 @@ fn serde_rt_proof() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: Proof = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.proof_type, ProofType::Ed25519Signature2020);
-    assert_eq!(recovered.verification_method, "did:key:z6MkTest#key-1");
-    assert_eq!(recovered.proof_value, "aa".repeat(64));
+    assert_eq!(original, recovered, "Proof round-trip must be lossless");
     // Verify W3C field names are used in JSON
     assert!(json.contains("\"type\""));
     assert!(json.contains("\"verificationMethod\""));
@@ -497,7 +483,8 @@ fn serde_rt_proof() {
 
 #[test]
 fn serde_rt_verifiable_credential_unsigned() {
-    // BUG-009: VerifiableCredential does not derive PartialEq
+    // BUG-009 RESOLVED: VerifiableCredential now derives PartialEq — full
+    // round-trip equality verification is possible.
     let original = VerifiableCredential {
         context: ContextValue::Array(vec![json!("https://www.w3.org/2018/credentials/v1")]),
         id: Some("urn:msez:vc:test:serde-001".to_string()),
@@ -513,8 +500,7 @@ fn serde_rt_verifiable_credential_unsigned() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: VerifiableCredential = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.issuer, original.issuer);
-    assert_eq!(recovered.id, original.id);
+    assert_eq!(original, recovered, "VerifiableCredential round-trip must be lossless");
     // Verify W3C field naming in JSON
     assert!(json.contains("\"@context\""));
     assert!(json.contains("\"issuanceDate\""));
@@ -853,7 +839,8 @@ fn serde_rt_audit_entry_type_all_variants() {
 
 #[test]
 fn serde_rt_audit_entry() {
-    // BUG-010: AuditEntry does not derive PartialEq
+    // BUG-010 RESOLVED: AuditEntry now has a manual PartialEq impl
+    // (compares entry_type, asset_id, metadata — excludes timestamp).
     let original = AuditEntry::new(
         AuditEntryType::TriggerReceived,
         Some("asset-001".to_string()),
@@ -861,9 +848,7 @@ fn serde_rt_audit_entry() {
     );
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: AuditEntry = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.entry_type, AuditEntryType::TriggerReceived);
-    assert_eq!(recovered.asset_id, Some("asset-001".to_string()));
-    assert!(recovered.metadata.is_some());
+    assert_eq!(original, recovered, "AuditEntry round-trip must be lossless");
 }
 
 #[test]
@@ -943,10 +928,11 @@ fn serde_rt_attestation_ref() {
 
 #[test]
 fn serde_rt_tensor_cell() {
-    // BUG-011: TensorCell does not derive PartialEq — cannot verify
-    // round-trip fidelity mechanically.
+    // BUG-011 RESOLVED: TensorCell now derives PartialEq — full
+    // round-trip equality verification is possible.
     // BUG-012: TensorCell.determined_at is a raw String instead of
     // Timestamp newtype — no validation, no normalization, no type safety.
+    // (Type change is a separate migration task.)
     let original = TensorCell {
         state: ComplianceState::Compliant,
         attestations: vec![AttestationRef {
@@ -962,10 +948,7 @@ fn serde_rt_tensor_cell() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: TensorCell = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.state, ComplianceState::Compliant);
-    assert_eq!(recovered.attestations.len(), 1);
-    assert_eq!(recovered.determined_at, "2026-01-15T12:00:00Z");
-    assert_eq!(recovered.reason, Some("All checks passed".to_string()));
+    assert_eq!(original, recovered, "TensorCell round-trip must be lossless");
 }
 
 #[test]
@@ -2792,10 +2775,9 @@ fn serde_rt_claim_full_with_evidence() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: Claim = serde_json::from_str(&json).expect("deserialize");
-    // BUG-034: Claim does not derive PartialEq — field-by-field check
-    assert_eq!(recovered.claim_id, "CLM-002");
-    assert_eq!(recovered.claim_type, DisputeType::BreachOfContract);
-    assert_eq!(recovered.supporting_evidence_digests.len(), 1);
+    // BUG-034 RESOLVED: Claim now derives PartialEq — full round-trip
+    // equality verification is possible.
+    assert_eq!(original, recovered, "Claim round-trip must be lossless");
 }
 
 #[test]
@@ -2811,8 +2793,7 @@ fn serde_rt_arbitration_institution() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: ArbitrationInstitution = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.id, "SIAC");
-    assert_eq!(recovered.supported_dispute_types.len(), 2);
+    assert_eq!(original, recovered, "ArbitrationInstitution round-trip must be lossless");
 }
 
 #[test]
@@ -2847,10 +2828,9 @@ fn serde_rt_dispute_full_roundtrip() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: Dispute = serde_json::from_str(&json).expect("deserialize");
-    // BUG-035: Dispute does not derive PartialEq
-    assert_eq!(recovered.state, DisputeState::Filed);
-    assert_eq!(recovered.dispute_type, DisputeType::PaymentDefault);
-    assert_eq!(recovered.claims.len(), 1);
+    // BUG-035 RESOLVED: Dispute now derives PartialEq — full round-trip
+    // equality verification is possible.
+    assert_eq!(original, recovered, "Dispute round-trip must be lossless");
 }
 
 #[test]
@@ -2863,8 +2843,7 @@ fn serde_rt_enforcement_precondition() {
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: EnforcementPrecondition = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.description, "Appeal period must expire");
-    assert!(!recovered.satisfied);
+    assert_eq!(original, recovered, "EnforcementPrecondition round-trip must be lossless");
 }
 
 #[test]
@@ -2882,8 +2861,7 @@ fn serde_rt_enforcement_order_full_roundtrip() {
     );
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: EnforcementOrder = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.status, EnforcementStatus::Pending);
-    assert_eq!(recovered.actions.len(), 1);
+    assert_eq!(original, recovered, "EnforcementOrder round-trip must be lossless");
 }
 
 #[test]

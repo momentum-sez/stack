@@ -47,7 +47,7 @@ const CONSENT_API_PREFIX: &str = "consent-info/api/v1";
 // -- Types matching Mass consent-info API Swagger schemas ---------------------
 
 /// Cap table as returned by the Mass consent-info API.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MassCapTable {
     pub id: Uuid,
@@ -75,7 +75,7 @@ pub struct MassCapTable {
 }
 
 /// Share class definition from consent-info API.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MassShareClass {
     #[serde(default)]
@@ -128,7 +128,7 @@ pub struct ShareholderAllocation {
 }
 
 /// Ownership transfer event.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MassOwnershipTransfer {
     pub id: Uuid,

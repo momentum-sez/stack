@@ -245,7 +245,7 @@ impl std::fmt::Display for EnforcementStatus {
 // ── Enforcement Precondition ─────────────────────────────────────────
 
 /// A precondition that must be met before enforcement can proceed.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EnforcementPrecondition {
     /// Description of the precondition.
     pub description: String,
@@ -270,7 +270,7 @@ pub struct EnforcementPrecondition {
 /// The receipt digest is computed via `CanonicalBytes` → `sha256_digest()`
 /// from the receipt's serializable content. This ensures corridor nodes
 /// can independently verify the receipt's integrity.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EnforcementReceipt {
     /// Unique receipt identifier.
     pub id: EnforcementReceiptId,
@@ -316,7 +316,7 @@ struct ReceiptDigestContent {
 /// Preconditions are checked before execution begins. Each executed action
 /// generates a content-addressed receipt. Terminal statuses reject further
 /// operations.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EnforcementOrder {
     /// Unique order identifier.
     pub id: EnforcementOrderId,

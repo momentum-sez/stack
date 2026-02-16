@@ -63,7 +63,7 @@ pub enum MassConsentStatus {
 // -- Types matching Mass API schemas ------------------------------------------
 
 /// Consent record from Mass consent-info API.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MassConsent {
     pub id: Uuid,
@@ -99,7 +99,7 @@ pub struct MassConsent {
 }
 
 /// A vote cast on a consent request.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MassConsentVote {
     #[serde(default)]
@@ -115,7 +115,7 @@ pub struct MassConsentVote {
 }
 
 /// Vote response returned by approve/reject operations.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MassConsentVoteResponse {
     pub consent_id: Uuid,

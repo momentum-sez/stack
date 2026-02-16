@@ -16,7 +16,7 @@ use super::types::{LicenseComplianceState, LicenseStatus};
 /// Represents a specific license issued by a regulator to a holder, with
 /// associated conditions, permissions, and restrictions that govern the
 /// holder's authorized activities.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct License {
     /// Unique license identifier.
     pub license_id: String,
@@ -164,7 +164,7 @@ impl License {
 ///
 /// Describes a category of license available in a jurisdiction, including
 /// the issuing regulator, permitted activities, requirements, and fees.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LicenseTypeDefinition {
     /// Unique license type identifier.
     pub license_type_id: String,
@@ -198,7 +198,7 @@ pub struct LicenseTypeDefinition {
 ///
 /// Identifies the regulator that issues and oversees licenses within
 /// a jurisdiction.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LicensepackRegulator {
     /// Unique regulator identifier.
     pub regulator_id: String,
@@ -221,7 +221,7 @@ pub struct LicensepackRegulator {
 ///
 /// Describes the snapshot context: jurisdiction, domain, snapshot timing,
 /// regulator, and optional delta from the previous snapshot.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LicensepackMetadata {
     /// Unique licensepack identifier.
     pub licensepack_id: String,

@@ -132,12 +132,16 @@ impl IntoResponse for AppError {
             other => other.to_string(),
         };
 
-        // Log server-side errors for operator visibility.
+        // Log server-side errors and security-relevant client errors.
         match &self {
             Self::Internal(_) => tracing::error!(error = %self, "internal server error"),
             Self::UpstreamError(_) => tracing::error!(error = %self, "upstream API error"),
             Self::ServiceUnavailable(_) => tracing::warn!(error = %self, "service unavailable"),
             Self::NotImplemented(_) => tracing::info!(error = %self, "not implemented"),
+            // Log auth failures for security audit trail — failed auth
+            // attempts are a signal of credential stuffing / brute-force.
+            Self::Unauthorized(_) => tracing::warn!(error = %self, "authentication failure"),
+            Self::Forbidden(_) => tracing::warn!(error = %self, "authorization failure"),
             _ => {}
         }
 

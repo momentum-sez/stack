@@ -37,7 +37,7 @@ use serde::{Deserialize, Serialize};
 /// - `blinding_factor`: Randomness used in the commitment scheme.
 ///
 /// Approximate constraint count: 512 (bit decomposition + range check).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RangeProofCircuit {
     // -- Public inputs --
     /// Minimum acceptable value (inclusive).
@@ -65,7 +65,7 @@ pub struct RangeProofCircuit {
 /// - `path_indices`: Direction indicators for each level of the tree.
 ///
 /// Approximate constraint count: 256 * tree_depth (hash per level).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MerkleMembershipCircuit {
     // -- Public inputs --
     /// Root hash of the Merkle tree.
@@ -94,7 +94,7 @@ pub struct MerkleMembershipCircuit {
 /// - `netting_matrix`: The bilateral obligation matrix.
 ///
 /// Approximate constraint count: O(n^2) where n = participant_count.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NettingValidityCircuit {
     // -- Public inputs --
     /// Commitment to the gross positions vector.

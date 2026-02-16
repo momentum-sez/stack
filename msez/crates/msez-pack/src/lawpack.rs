@@ -157,7 +157,7 @@ impl std::fmt::Display for LawpackRef {
 /// Source entry in a lawpack manifest.
 ///
 /// Describes a source document used to produce the lawpack.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LawpackSource {
     /// Unique identifier for this source within the lawpack.
     pub source_id: String,
@@ -179,7 +179,7 @@ pub struct LawpackSource {
 }
 
 /// Normalization metadata in a lawpack manifest.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NormalizationInfo {
     /// Normalization recipe identifier.
     pub recipe_id: String,
@@ -196,7 +196,7 @@ pub struct NormalizationInfo {
 }
 
 /// Input to a normalization process.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NormalizationInput {
     /// Module identifier.
     #[serde(default)]
@@ -213,7 +213,7 @@ pub struct NormalizationInput {
 ///
 /// Contains metadata about the lawpack: jurisdiction, domain, sources,
 /// normalization provenance, and licensing.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LawpackManifest {
     /// Format version (currently "1").
     pub lawpack_format_version: String,
@@ -239,7 +239,7 @@ pub struct LawpackManifest {
 // ---------------------------------------------------------------------------
 
 /// Component digests in a lawpack lock.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LawpackLockComponents {
     /// SHA-256 of the canonical lawpack.yaml bytes.
     pub lawpack_yaml_sha256: String,
@@ -255,7 +255,7 @@ pub struct LawpackLockComponents {
 }
 
 /// Provenance information in a lawpack lock.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LawpackLockProvenance {
     /// Relative path to module.yaml.
     pub module_manifest_path: String,
@@ -276,7 +276,7 @@ pub struct LawpackLockProvenance {
 /// for verification.
 ///
 /// Matches Python output format from `tools/lawpack.py:ingest_lawpack()`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LawpackLock {
     /// SHA-256 digest of the lawpack content.
     pub lawpack_digest_sha256: String,
@@ -306,7 +306,7 @@ pub struct LawpackLock {
 /// This is the primary type for working with lawpacks in the Rust layer.
 /// It holds the parsed manifest, component digests, and the overall
 /// content-addressed digest.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Lawpack {
     /// The jurisdiction this lawpack applies to.
     pub jurisdiction: JurisdictionId,
@@ -538,7 +538,7 @@ fn normalize_relpath(path: &Path, repo_root: &Path) -> String {
 // ---------------------------------------------------------------------------
 
 /// A module.yaml descriptor (minimal fields needed for lawpack operations).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModuleDescriptor {
     /// Unique module identifier.
     #[serde(default)]
@@ -567,7 +567,7 @@ pub struct ModuleDescriptor {
 }
 
 /// A sources.yaml descriptor.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SourcesDescriptor {
     /// Jurisdiction identifier.
     #[serde(default)]

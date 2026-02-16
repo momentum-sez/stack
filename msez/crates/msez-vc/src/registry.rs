@@ -41,7 +41,7 @@ pub const REGISTRY_SCHEMA_ID: &str =
 /// An artifact reference in content-addressed storage.
 ///
 /// Matches the `artifact-ref.schema.json` format.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ArtifactRef {
     /// The artifact type (e.g., `"smart-asset-genesis"`).
     pub artifact_type: String,
@@ -58,7 +58,7 @@ pub struct ArtifactRef {
 /// A lawpack reference pinned by digest.
 ///
 /// Matches the `LawpackRef` definition in the schema.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LawpackRef {
     /// Jurisdiction identifier (e.g., `"PK"` for Pakistan).
     pub jurisdiction_id: String,
@@ -75,7 +75,7 @@ pub struct LawpackRef {
 ///
 /// Declarative compliance profile used by the reference compliance evaluator.
 /// Matches `ComplianceProfile` in the schema.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ComplianceProfile {
     /// Transition kinds that are permitted under this binding.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -93,7 +93,7 @@ pub struct ComplianceProfile {
 /// Enforcement profile for a jurisdictional binding.
 ///
 /// Matches `EnforcementProfile` in the schema.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EnforcementProfile {
     /// Enforcement intensity level.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -112,7 +112,7 @@ pub struct EnforcementProfile {
 ///
 /// Binds the asset to a specific zone/harbor with compliance and enforcement
 /// profiles. Matches `JurisdictionBinding` in the schema.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct JurisdictionBinding {
     /// Zone or harbor identifier.
     pub harbor_id: String,
@@ -150,7 +150,7 @@ pub struct JurisdictionBinding {
 ///
 /// Matches the `credentialSubject` shape in
 /// `schemas/vc.smart-asset-registry.schema.json`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SmartAssetRegistrySubject {
     /// The asset identifier — SHA-256 digest of the genesis document (64 hex).
     pub asset_id: String,

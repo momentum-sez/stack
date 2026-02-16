@@ -70,7 +70,7 @@ pub enum MassPaymentStatus {
 // -- Types matching Mass API schemas ------------------------------------------
 
 /// Treasury record from the Mass treasury-info API.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MassTreasury {
     pub id: Uuid,
@@ -90,7 +90,7 @@ pub struct MassTreasury {
 }
 
 /// Bank account as returned by the Mass treasury-info API.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MassFiscalAccount {
     pub id: Uuid,
@@ -132,7 +132,7 @@ pub struct CreateTreasuryRequest {
 }
 
 /// Financial transaction as returned by the treasury-info API.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MassPayment {
     pub id: Uuid,
@@ -179,7 +179,7 @@ pub struct CreatePaymentRequest {
 }
 
 /// Tax event record from Mass treasury-info.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MassTaxEvent {
     pub id: Uuid,
@@ -242,7 +242,7 @@ pub struct WithholdingComputeRequest {
 }
 
 /// Withholding computation result.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WithholdingResult {
     pub entity_id: Uuid,
     pub gross_amount: String,

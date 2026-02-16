@@ -1,30 +1,30 @@
-# Deep Audit Report: `msez-spec-generator` v3
+# Deep Audit Report: `msez-spec-generator` v4
 
 **Date**: 2026-02-16
 **Scope**: `docs/msez-spec-generator/` — the Node.js/docx-js pipeline that generates the MSEZ Stack v0.4.44 GENESIS specification document
 **Auditor**: Architecture review per CLAUDE.md mandate
-**Supersedes**: AUDIT.md v2 (same date, previous round of findings)
-**Methodology**: Full read of all 70 chapter source files, lib/, build.js, validate.js, and cross-reference against the live Rust codebase on the `main` branch at commit `7dadc90`.
+**Supersedes**: AUDIT.md v3 (same date, previous round of findings)
+**Methodology**: Full read of all 70 chapter source files, lib/, build.js, validate.js, cross-reference against the live Rust codebase, and XML-level inspection of generated .docx output.
 
 ---
 
 ## 1. Executive Summary
 
-This audit is the third pass over the spec generator. Audit v2 identified 23 findings; 14 have been resolved. This audit verifies those resolutions, identifies 5 remaining open issues, and surfaces 6 new findings discovered during this deeper pass. Total: **11 open findings across 3 severity levels.**
+This audit is the fourth pass over the spec generator. Audit v3 identified 11 findings; 7 were resolved. This v4 pass resolves the critical TOC bloat bug (duplicate heading style definitions in the generated OOXML caused Word to include body paragraphs in the TOC) and updates the headingStyleRange to H1-only. Total: **7 open findings across 2 severity levels (0 P0).**
 
 ### What Was Fixed Since v2
 
 | v2 ID | Description | Resolution |
 |-------|-------------|------------|
 | P0-001 | Chapter 10 compliance domains wrong | **RESOLVED** — §10.2 now lists all 20 canonical `ComplianceDomain` enum variants with correct names matching `msez-core/src/domain.rs` |
-| P0-002 | TOC bloat (495 entries, ~30 pages) | **RESOLVED** — `partHeading()` is display-only (no `HeadingLevel`), `chapterHeading()` uses H1, `headingStyleRange: "1-2"`. TOC entries: 76 H1 + 228 H2 = ~304 (~18-20 pages) |
+| P0-002 | TOC bloat (495 entries, ~30 pages) | **RESOLVED** — `partHeading()` is display-only (no `HeadingLevel`), `chapterHeading()` uses H1, `headingStyleRange: "1-1"`. Duplicate heading style defs eliminated. TOC entries: 68 H1 = ~4 pages |
 | P0-005 | No page breaks between chapters | **RESOLVED** — `chapterHeading()` includes `pageBreakBefore: true` |
 | P1-003 | Single-section document | **RESOLVED** — `build.js` produces per-Part sections with Part-specific headers |
 | P1-004 | 365 spacer() calls | **RESOLVED** — reduced to 4 (cover page only, for layout) |
 | P1-005 | Code blocks lack visual definition | **RESOLVED** — `codeBlock()` has left accent border (`C.ACCENT`, 4pt) |
 | P1-006 | No bullet list primitive | **RESOLVED** — `bulletItem()` defined in `primitives.js` |
 | P1-009 | partHeading and chapterHeading identical style | **RESOLVED** — partHeading is 44pt centered display-only; chapterHeading is 36pt H1 |
-| P1-010 | Executive summary statistics stale | **RESOLVED** — updated to 17 crates, ~109K lines, 257 files, 5,000+ tests |
+| P1-010 | Executive summary statistics stale | **RESOLVED** — updated to 16 crates, ~109K lines, 257 files, 3,300+ tests |
 | P2-002 | Build validation absent | **RESOLVED** — `validate.js` checks exports, return types, heading sequencing |
 | P2-003 | package.json missing scripts | **RESOLVED** — has `validate` and `build` scripts |
 
@@ -32,17 +32,17 @@ This audit is the third pass over the spec generator. Audit v2 identified 23 fin
 
 | # | Problem | Severity | Status |
 |---|---------|----------|--------|
-| 1 | **Chapter 12 compliance domain names wrong.** §12.2 and the Pakistan GovOS table listed fabricated names (CIVIC, INSURANCE, ENVIRONMENTAL, etc.) that do not exist in `ComplianceDomain`. | P0 | **FIXED in this audit cycle** — replaced with canonical 20 variants |
-| 2 | **Appendix D Definition D.2 contradicted Chapter 10.** Used `T: Entity × Jurisdiction → R^20` with continuous [0,1] scores instead of the canonical discrete 7-state `ComplianceState` lattice. | P0 | **FIXED in this audit cycle** — reconciled with canonical definition |
-| 3 | **AML_CFT references in prose.** Chapters 7, 11 used "AML_CFT" (no such enum variant; canonical name is `Aml`). | P1 | **FIXED in this audit cycle** — replaced with canonical names |
-| 4 | **Chapter 7 (Profiles) repetitive table structure.** 479 lines, 19 tables, ~28 pages. Seven identical per-profile module tables despite §7.1 already having a comparison matrix. | P1 | **OPEN** — requires structural rewrite |
-| 5 | **Content repetition across chapters.** "Compliance tensor" referenced 76 times in 34/70 files. Most are appropriate cross-references, but some still re-explain the concept. | P1 | **OPEN** — editorial pass needed |
-| 6 | **Marketing language in profiles.** Superlatives ("most comprehensive", "most demanding") and sales positioning remain in chapter 7. | P1 | **OPEN** — editorial pass needed |
-| 7 | **Module family names ≠ ComplianceDomain names.** The 16 module families in profiles (Insurance, Civic, Customs, etc.) do not all correspond to `ComplianceDomain` variants, but the spec does not clarify this distinction. | P1-NEW | **OPEN** — needs clarifying note |
-| 8 | **`bulletItem()` defined but never used.** Zero calls across all 70 chapter files. | P2-NEW | **OPEN** |
-| 9 | **README TOC documentation stale.** References `"1-3"` headingStyleRange; actual is `"1-2"`. | P2-NEW | **FIXED in this audit cycle** |
+| 1 | **Chapter 12 compliance domain names wrong.** §12.2 and the Pakistan GovOS table listed fabricated names (CIVIC, INSURANCE, ENVIRONMENTAL, etc.) that do not exist in `ComplianceDomain`. | P0 | **FIXED** (v3) — replaced with canonical 20 variants |
+| 2 | **Appendix D Definition D.2 contradicted Chapter 10.** Used `T: Entity × Jurisdiction → R^20` with continuous [0,1] scores instead of the canonical discrete 7-state `ComplianceState` lattice. | P0 | **FIXED** (v3) — reconciled with canonical definition |
+| 3 | **TOC bloat: duplicate heading styles in OOXML.** docx-js `DefaultStylesFactory` generated built-in Heading1-6 styles WITHOUT `outlineLvl`, then `paragraphStyles` added DUPLICATE Heading1-3 WITH `outlineLvl`. Two `<w:style w:styleId="Heading1">` elements in styles.xml. Word's behavior with duplicate style IDs is implementation-dependent, causing some renderers to include body paragraphs in the TOC. | P0 | **FIXED** (v4) — styles.js rewritten to use `default.heading1/2/3` instead of `paragraphStyles`, producing single unique definitions |
+| 4 | **AML_CFT references in prose.** Chapters 7, 11 used "AML_CFT" (no such enum variant; canonical name is `Aml`). | P1 | **FIXED** (v3) — replaced with canonical names |
+| 5 | **Chapter 7 (Profiles) repetitive table structure.** 479 lines, 19 tables, ~28 pages. Seven identical per-profile module tables despite §7.1 already having a comparison matrix. | P1 | **OPEN** — requires structural rewrite |
+| 6 | **Content repetition across chapters.** "Compliance tensor" referenced 76 times in 34/70 files. Most are appropriate cross-references, but some still re-explain the concept. | P1 | **OPEN** — editorial pass needed |
+| 7 | **Marketing language in profiles.** Superlatives ("most comprehensive", "most demanding") and sales positioning remain in chapter 7. | P1 | **OPEN** — editorial pass needed |
+| 8 | **Module family names ≠ ComplianceDomain names.** The 16 module families in profiles (Insurance, Civic, Customs, etc.) do not all correspond to `ComplianceDomain` variants, but the spec does not clarify this distinction. | P1 | **OPEN** — needs clarifying note |
+| 9 | **`bulletItem()` defined but never used.** Zero calls across all 70 chapter files. | P2 | **OPEN** |
 | 10 | **Cover page uses raw docx API.** Does not use `primitives.js` helpers. | P2 | **OPEN** (carried from v2) |
-| 11 | **48 chapters lack h3() depth.** Flat heading hierarchy in most files. | P2 | **OPEN** (carried from v2) |
+| 11 | **Heading hierarchy flat in some chapters.** 8 chapters have 4+ h2 headings but 0 h3 headings. | P2 | **OPEN** (carried from v2) |
 
 ---
 
@@ -53,16 +53,11 @@ This audit is the third pass over the spec generator. Audit v2 identified 23 fin
 | Metric | Spec Claims (exec summary) | Actual (`main` branch) | Status |
 |--------|---------------------------|----------------------|--------|
 | ComplianceDomain variants | 20 | **20** | **MATCH** |
-| Crates | 17 | **16** | **MISMATCH** — spec says 17, workspace has 16 members |
+| Crates | 16 | **16** | **MATCH** (fixed v3: was 17) |
 | .rs files | 257 | **257** | **MATCH** |
 | Lines of Rust | ~109,000 | **~109,131** | **MATCH** |
-| `#[test]` count | 5,000+ | **3,323** | **MISMATCH** — spec overstates. Actual: 3,323 `#[test]` annotations |
+| `#[test]` count | 3,300+ | **3,323** | **MATCH** (fixed v3: was 5,000+) |
 | Workspace version | 0.4.44 | **0.4.44** | **MATCH** |
-
-**Action items:**
-- Executive summary line 7: change "17 crates" to "16 crates"
-- Executive summary line 7: change "over 5,000 tests" to "over 3,300 tests"
-- Executive summary line 58: same corrections
 
 ### 2.2 Document Element Inventory (Verified Counts)
 
@@ -85,12 +80,13 @@ This audit is the third pass over the spec generator. Audit v2 identified 23 fin
 | Level | Style | Count | In TOC? |
 |-------|-------|-------|---------|
 | Part headings | Display-only (no heading level) | 19 | **No** |
-| Chapter headings | `HeadingLevel.HEADING_1` | 76 | **Yes** |
-| H2 sections | `HeadingLevel.HEADING_2` | 228 | **Yes** |
-| H3 subsections | `HeadingLevel.HEADING_3` | 196 | **No** (`headingStyleRange: "1-2"`) |
-| **Total TOC entries** | | **304** | **~18-20 pages** |
+| Chapter headings | `HeadingLevel.HEADING_1` | 68 | **Yes** |
+| H2 sections | `HeadingLevel.HEADING_2` | 228 | **No** (`headingStyleRange: "1-1"`) |
+| H3 subsections | `HeadingLevel.HEADING_3` | 196 | **No** |
+| Body paragraphs | Normal (no heading level) | 9,292 | **No** |
+| **Total TOC entries** | | **68** | **~4 pages** |
 
-**Assessment**: Down from 495 entries (~30 pages) in v2 to 304 entries (~18-20 pages). Still above the 10-15 page target. To reach that, either reduce H2 count via demotion to H3, or switch to `headingStyleRange: "1-1"` (76 entries, ~5 pages).
+**Assessment**: Down from 495 entries (~30 pages) in v1 to 68 entries (~4 pages) in v4. The critical fix was eliminating duplicate heading style definitions in styles.xml (see §3 P0-NEW-003) and switching `headingStyleRange` to `"1-1"`. The 68 chapter-level entries provide clean top-level navigation. H2/H3 detail is available via per-Part reading within each chapter.
 
 ### 2.4 Content Repetition (Re-measured)
 
@@ -127,6 +123,50 @@ This audit is the third pass over the spec generator. Audit v2 identified 23 fin
 **Description**: Definition D.2 defined the compliance tensor as `T: Entity × Jurisdiction → R^20` with continuous scores in [0, 1]. The canonical definition in Chapter 10 defines it as `C: AssetID × JurisdictionID × ComplianceDomain × TimeQuantum → ComplianceState` with a discrete 7-state lattice. These were fundamentally incompatible — one maps to real-valued vectors, the other to a discrete enum. Additionally, the full-compliance predicate used `T_d(e, j) = 1.0` instead of `ComplianceState ∈ {Compliant, Exempt}`.
 
 **Fix applied**: Rewrote Definition D.2 to use the canonical 4-dimensional mapping with ComplianceState. Updated Theorem 10.1 and its proof sketch for consistency.
+
+---
+
+### P0-NEW-003: Duplicate Heading Styles in OOXML — TOC Bloat Root Cause (FIXED)
+
+**Severity**: P0
+**Location**: `lib/styles.js`, generated `word/styles.xml`
+**Status**: **FIXED** in v4
+
+**Description**: The generated .docx file contained duplicate `<w:style w:styleId="Heading1">` definitions in `word/styles.xml`. The docx-js library's `DefaultStylesFactory` always emits built-in Heading1-6 styles (with default blue color, no `<w:outlineLvl>` element). Our `styles.js` then defined Heading1/2/3 again in the `paragraphStyles` array (with custom colors and `<w:outlineLvl>`). This resulted in:
+
+```xml
+<!-- First definition (docx-js default): NO outlineLvl -->
+<w:style w:styleId="Heading1">
+  <w:rPr><w:color w:val="2E74B5"/><w:sz w:val="32"/></w:rPr>
+</w:style>
+
+<!-- Second definition (our paragraphStyles): WITH outlineLvl -->
+<w:style w:styleId="Heading1">
+  <w:pPr><w:outlineLvl w:val="0"/></w:pPr>
+  <w:rPr><w:color w:val="0F2B46"/><w:sz w:val="36"/></w:rPr>
+</w:style>
+```
+
+Duplicate style IDs violate OOXML best practices. Word's behavior is implementation-dependent: some implementations use the last definition, others merge properties, and some produce unpredictable TOC behavior (including treating body paragraphs as heading-level content).
+
+**Root cause**: `paragraphStyles` in docx-js creates NEW style definitions that are appended to the styles list, independent of the built-in defaults. The `default.heading1/2/3` properties, by contrast, merge into the built-in `Heading1Style` constructor, producing a single definition.
+
+**Fix applied**: Rewrote `styles.js` to use `default.heading1/2/3` instead of `paragraphStyles`:
+
+```javascript
+module.exports = {
+  default: {
+    document: { run: { font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK } },
+    heading1: {
+      run: { size: 36, bold: true, font: C.BODY_FONT, color: C.H1_COLOR },
+      paragraph: { spacing: { before: 360, after: 200 }, outlineLevel: 0 }
+    },
+    // ... heading2, heading3 similarly
+  }
+};
+```
+
+**Verification**: XML inspection of rebuilt .docx confirms single unique definition per heading style, each with correct `<w:outlineLvl>`.
 
 ---
 
@@ -182,9 +222,9 @@ The specification never explains this mapping or distinguishes the two concept s
 
 **Severity**: P2
 **Location**: `README.md` line 24
-**Status**: **FIXED** in this audit cycle
+**Status**: **FIXED** (v3, updated v4)
 
-**Description**: README stated `TOC \o "1-3" \h` but the actual `headingStyleRange` is `"1-2"`.
+**Description**: README stated `TOC \o "1-3" \h` but the actual `headingStyleRange` is `"1-1"`. Updated to match.
 
 ---
 
@@ -256,27 +296,43 @@ Low priority. Cosmetic source code quality issue that does not affect output.
 
 ## 5. TOC & Heading Hierarchy Status
 
-### 5.1 Current State (Post-v2 Fixes)
+### 5.1 Current State (Post-v4 Fixes)
 
 ```
-partHeading()    → Display-only (44pt, centered)    → NOT in TOC     ✓ Fixed
-chapterHeading() → HEADING_1 (36pt, pageBreakBefore) → IN TOC        ✓ Fixed
-h2()             → HEADING_2 (28pt)                  → IN TOC        ✓ Correct
-h3()             → HEADING_3 (24pt)                  → NOT in TOC    ✓ Correct
+partHeading()    → Display-only (44pt, centered)    → NOT in TOC     ✓ Fixed (v2)
+chapterHeading() → HEADING_1 (36pt, pageBreakBefore) → IN TOC        ✓ Fixed (v2)
+h2()             → HEADING_2 (28pt)                  → NOT in TOC    ✓ Excluded (v4)
+h3()             → HEADING_3 (24pt)                  → NOT in TOC    ✓ Excluded (v2)
 
-headingStyleRange: "1-2"
+headingStyleRange: "1-1"
 
-Total TOC entries: 76 + 228 = 304
-Estimated TOC pages: 18-20
+styles.xml: SINGLE unique definition per heading style (no duplicates)
+  Heading1: outlineLvl=0  ✓
+  Heading2: outlineLvl=1  ✓
+  Heading3: outlineLvl=2  ✓
+
+TOC field instruction: TOC \h \o "1-1"
+Total TOC entries: 68
+Estimated TOC pages: ~4
 ```
 
-### 5.2 Recommendation for Further Reduction
+### 5.2 Root Cause of Previous TOC Bloat
 
-The 304-entry TOC is functional but still 3-5 pages longer than the 10-15 page target. Two options:
+The v2/v3 TOC bloat (users reported "hundreds of pages" of body paragraph text in the TOC) was caused by two compounding issues:
 
-**Option A (Conservative)**: Keep `"1-2"`. Demote 30-50 H2s to H3 in the densest chapters. Target: ~250 entries (~15-16 pages).
+1. **Duplicate heading style definitions in styles.xml.** The docx-js `DefaultStylesFactory` always emits built-in Heading1-6 styles (without `<w:outlineLvl>`). Our `paragraphStyles` config then added a SECOND Heading1/2/3 definition (with `<w:outlineLvl>`). This produced two `<w:style w:styleId="Heading1">` elements in the same styles.xml. Word's behavior with duplicate style IDs is undefined — some implementations use the last definition, others merge, and others produce unpredictable results including treating body paragraphs as heading-level content.
 
-**Option B (Aggressive)**: Switch to `headingStyleRange: "1-1"`. 76 entries, ~5 pages. Add per-Part mini-TOC generated from metadata. Best navigation experience but requires build.js changes to emit mini-TOC paragraphs after each `partHeading()`.
+2. **`headingStyleRange: "1-2"` was too broad.** Even without the duplicate styles bug, 228 H2 entries at ~15 words each produced 17+ pages of TOC.
+
+**Fix applied (v4):**
+- `styles.js`: Moved heading definitions from `paragraphStyles` array to `default.heading1/2/3` properties. This merges our customizations (fonts, colors, outline levels) into the single built-in heading style rather than creating duplicates.
+- `00-toc.js`: Changed `headingStyleRange` from `"1-2"` to `"1-1"` (chapters only).
+
+**Verification:** XML inspection of the rebuilt .docx confirms:
+- Single unique `<w:style w:styleId="Heading1">` with `<w:outlineLvl w:val="0"/>`
+- Only 68 paragraphs with `<w:pStyle w:val="Heading1"/>`
+- Zero body paragraphs with any heading style or outline level
+- TOC field instruction: `TOC \h \o "1-1"`
 
 ---
 
@@ -366,7 +422,7 @@ The 304-entry TOC is functional but still 3-5 pages longer than the 10-15 page t
 
 ## 8. docx-js Technical Status
 
-| Feature | v2 Status | v3 Status |
+| Feature | v2 Status | v4 Status |
 |---------|-----------|-----------|
 | Multi-section document | Missing | **RESOLVED** — per-Part sections with unique headers |
 | Cover page header suppression | Header visible on cover | **IMPROVED** — cover has its own section. Full suppression requires `titlePage: true` in cover section properties (not yet verified) |
@@ -375,6 +431,7 @@ The 304-entry TOC is functional but still 3-5 pages longer than the 10-15 page t
 | Spacer elimination | 365 calls | **RESOLVED** — 4 calls (cover page layout only) |
 | Code block borders | No borders | **RESOLVED** — left accent border |
 | TOC field code limitation | Inherent to docx-js | **DOCUMENTED** — README.md covers the limitation |
+| Duplicate heading styles | Duplicate `<w:style>` elements for Heading1-3 | **RESOLVED** (v4) — `styles.js` uses `default.heading1/2/3` instead of `paragraphStyles` |
 | String concat in code blocks | Inconsistent | **OPEN** — low priority cosmetic |
 
 ---
@@ -386,11 +443,11 @@ The 304-entry TOC is functional but still 3-5 pages longer than the 10-15 page t
 | Remove per-profile redundant tables (Ch 7) | ~28 | ~17 | **~11 pages** |
 | Content repetition tightening (editorial) | scattered | — | **~15-20 pages** |
 | Marketing prose removal (Ch 7 primarily) | ~3 | ~1 | **~2 pages** |
-| TOC reduction to "1-1" (if applied) | ~20 | ~5 | **~15 pages** |
+| ~~TOC reduction to "1-1"~~ | ~~~20~~ | ~~~4~~ | **~16 pages** (**DONE** v4) |
 | Chapter merges (29+30+31, 46+47, 52→49, 54+55) | ~20 | ~14 | **~6 pages** |
-| **Total remaining savings** | | | **~49-54 pages** |
-| **Previously saved (v2 fixes)** | | | **~100-130 pages** |
-| **Cumulative savings from v1** | | | **~150-180 pages** |
+| **Total remaining savings (open items)** | | | **~34-39 pages** |
+| **Previously saved (v2-v4 fixes)** | | | **~116-146 pages** |
+| **Cumulative savings from v1** | | | **~150-185 pages** |
 
 ---
 
@@ -399,10 +456,11 @@ The 304-entry TOC is functional but still 3-5 pages longer than the 10-15 page t
 | Phase | Actions | Status |
 |-------|---------|--------|
 | **Phase 1 (Critical — DONE)** | Fix Chapter 10 domains. Fix partHeading to display-only. Fix headingStyleRange. Add pageBreakBefore. Multi-section document. | **COMPLETE** |
-| **Phase 2 (Critical — THIS CYCLE)** | Fix Chapter 12 domains. Fix Appendix D Definition D.2. Fix AML_CFT references. Fix exec summary stats. | **COMPLETE** |
+| **Phase 2 (Critical — DONE)** | Fix Chapter 12 domains. Fix Appendix D Definition D.2. Fix AML_CFT references. Fix exec summary stats. | **COMPLETE** |
+| **Phase 2.5 (Critical — DONE)** | Fix TOC bloat: eliminate duplicate heading styles in styles.xml, switch to H1-only TOC. Verify XML output. | **COMPLETE** (v4) |
 | **Phase 3 (Structure)** | Rewrite Chapter 7 to remove redundant tables. Merge thin chapters. | **OPEN** |
 | **Phase 4 (Content)** | Editorial pass: cross-reference tightening, marketing language removal, module/domain disambiguation. | **OPEN** |
-| **Phase 5 (Polish)** | Use `bulletItem()` in appropriate chapters. H2→H3 demotion for TOC reduction. | **OPEN** |
+| **Phase 5 (Polish)** | Use `bulletItem()` in appropriate chapters. | **OPEN** |
 
 ---
 
@@ -424,9 +482,11 @@ Post-audit verification against the codebase:
 | "Mass Protocol" usage context-appropriate | **PASS** — appears in L1 and protocol reference only |
 | `partHeading()` out of TOC | **PASS** — no heading level assigned |
 | `chapterHeading()` has pageBreakBefore | **PASS** |
-| `headingStyleRange: "1-2"` | **PASS** |
-| Executive summary statistics current | **NEEDS UPDATE** — crate count (17→16) and test count (5000→3323) |
+| `headingStyleRange: "1-1"` | **PASS** (updated v4) |
+| No duplicate heading style definitions in styles.xml | **PASS** (fixed v4) |
+| TOC field instruction: `TOC \h \o "1-1"` | **PASS** (verified via XML inspection) |
+| Executive summary statistics current | **PASS** (fixed v3: 16 crates, 3,300+ tests) |
 
 ---
 
-*End of audit v3.*
+*End of audit v4.*

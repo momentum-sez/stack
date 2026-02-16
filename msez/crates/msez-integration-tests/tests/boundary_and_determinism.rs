@@ -856,9 +856,9 @@ fn watcher_attestation_count_increments() {
     watcher.bond(100_000).unwrap();
     watcher.activate().unwrap();
     assert_eq!(watcher.attestation_count, 0);
-    watcher.record_attestation();
-    watcher.record_attestation();
-    watcher.record_attestation();
+    watcher.record_attestation().unwrap();
+    watcher.record_attestation().unwrap();
+    watcher.record_attestation().unwrap();
     assert_eq!(watcher.attestation_count, 3);
 }
 

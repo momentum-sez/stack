@@ -99,6 +99,10 @@ impl MigrationState {
     }
 
     /// Return the next forward phase, if one exists.
+    ///
+    /// Terminal states explicitly return `None`. No wildcard is used so
+    /// that adding a new variant forces a compiler error here rather than
+    /// silently falling through.
     fn next_forward_phase(&self) -> Option<MigrationState> {
         match self {
             Self::Initiated => Some(Self::ComplianceCheck),
@@ -108,7 +112,7 @@ impl MigrationState {
             Self::InTransit => Some(Self::DestinationVerification),
             Self::DestinationVerification => Some(Self::DestinationUnlock),
             Self::DestinationUnlock => Some(Self::Completed),
-            _ => None,
+            Self::Completed | Self::Compensated | Self::TimedOut | Self::Cancelled => None,
         }
     }
 

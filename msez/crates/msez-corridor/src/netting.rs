@@ -403,9 +403,12 @@ impl NettingEngine {
         // Integer-only netting efficiency in basis points (0–10000).
         // Avoids f64 non-determinism so SettlementPlan is CanonicalBytes-compatible.
         let reduction_bps = if gross_total > 0 {
-            let reduced = gross_total.saturating_sub(net_total);
-            // (reduced * 10000) / gross_total, clamped to u32 range
-            ((reduced as u128 * 10_000) / gross_total as u128) as u32
+            // Clamp to non-negative: if net_total > gross_total (should not happen
+            // but defensive), reduced would be 0 rather than wrapping via `as u128`.
+            let reduced = gross_total.saturating_sub(net_total).max(0);
+            let reduced_u128 = reduced as u128;
+            let gross_u128 = gross_total as u128;
+            ((reduced_u128 * 10_000) / gross_u128).min(10_000) as u32
         } else {
             0
         };

@@ -483,9 +483,9 @@ impl IdentityClient {
         let endpoint = "POST /identity/cnic/verify";
 
         let service_path = if self.dedicated_url.is_some() {
-            "identity-info"
+            "identity-info/api/v1"
         } else {
-            "organization-info"
+            "organization-info/api/v1"
         };
         let url = format!("{base}{service_path}/identity/cnic/verify");
 
@@ -525,9 +525,9 @@ impl IdentityClient {
         let endpoint = "POST /identity/ntn/verify";
 
         let service_path = if self.dedicated_url.is_some() {
-            "identity-info"
+            "identity-info/api/v1"
         } else {
-            "organization-info"
+            "organization-info/api/v1"
         };
         let url = format!("{base}{service_path}/identity/ntn/verify");
 
@@ -565,9 +565,9 @@ impl IdentityClient {
         let endpoint = format!("GET /identities?entity_id={entity_id}");
 
         let service_path = if self.dedicated_url.is_some() {
-            "identity-info"
+            "identity-info/api/v1"
         } else {
-            "consent-info"
+            "consent-info/api/v1"
         };
         let url = format!("{base}{service_path}/identities?entity_id={entity_id}");
 

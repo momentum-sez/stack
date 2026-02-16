@@ -81,10 +81,16 @@ impl Validate for CreateTaxEventRequest {
         if self.gross_amount.trim().is_empty() {
             return Err("gross_amount must not be empty".to_string());
         }
-        // Validate gross_amount is a parseable number.
+        // Validate gross_amount is a parseable non-negative number.
         let trimmed = self.gross_amount.trim();
-        if trimmed.parse::<f64>().is_err() {
-            return Err("gross_amount must be a valid number".to_string());
+        match trimmed.parse::<f64>() {
+            Ok(v) if v < 0.0 => {
+                return Err("gross_amount must not be negative".to_string());
+            }
+            Err(_) => {
+                return Err("gross_amount must be a valid number".to_string());
+            }
+            _ => {}
         }
         if self.currency.trim().is_empty() || self.currency.len() > 5 {
             return Err("currency must be 1-5 characters".to_string());
@@ -94,6 +100,9 @@ impl Validate for CreateTaxEventRequest {
         }
         if self.event_type.trim().is_empty() {
             return Err("event_type must not be empty".to_string());
+        }
+        if self.event_type.len() > 100 {
+            return Err("event_type must not exceed 100 characters".to_string());
         }
         // Validate NTN format if provided (7 digits).
         if let Some(ref ntn) = self.ntn {
@@ -364,10 +373,14 @@ async fn create_tax_event(
 
     state.tax_events.insert(record.id, record.clone());
 
-    // Persist to database (write-through).
+    // Persist to database (write-through). Failure is surfaced to the client
+    // because the in-memory record would be lost on restart, causing silent data loss.
     if let Some(pool) = &state.db_pool {
         if let Err(e) = crate::db::tax_events::insert(pool, &record).await {
             tracing::error!(tax_event_id = %record.id, error = %e, "failed to persist tax event to database");
+            return Err(AppError::Internal(
+                "tax event recorded in-memory but database persist failed".to_string(),
+            ));
         }
     }
 
@@ -588,7 +601,14 @@ async fn generate_tax_report(
     for record in &matching_events {
         let event_type = match parse_event_type(&record.event_type) {
             Ok(t) => t,
-            Err(_) => continue,
+            Err(_) => {
+                tracing::warn!(
+                    tax_event_id = %record.id,
+                    event_type = %record.event_type,
+                    "skipping tax event with unparseable event_type during report generation"
+                );
+                continue;
+            }
         };
         let filer_status = match parse_filer_status(Some(&record.filer_status)) {
             Ok(s) => s,

@@ -127,9 +127,9 @@ fn yaml_to_json_value(yaml: serde_yaml::Value) -> PackResult<Value> {
                 // Attempt to represent as integer if possible; otherwise pass as float.
                 // The canonicalization layer will reject true floats.
                 if f.fract() == 0.0 && f.is_finite() {
-                    if f >= 0.0 && f <= u64::MAX as f64 {
+                    if f >= 0.0 && f < (u64::MAX as f64) {
                         Ok(Value::Number(serde_json::Number::from(f as u64)))
-                    } else if f >= i64::MIN as f64 && f <= i64::MAX as f64 {
+                    } else if f > (i64::MIN as f64) && f < (i64::MAX as f64) {
                         Ok(Value::Number(serde_json::Number::from(f as i64)))
                     } else {
                         // Defensive: from_f64 only fails for NaN/Infinity, which

@@ -162,6 +162,46 @@ pub fn run_corridor(args: &CorridorArgs, repo_root: &Path) -> Result<u8> {
     }
 }
 
+/// Validate that a corridor ID is safe for use in filesystem paths.
+///
+/// Rejects IDs containing path separators, parent-directory traversals,
+/// or other characters that could escape the state directory.
+fn validate_corridor_id(id: &str) -> Result<()> {
+    if id.is_empty() {
+        bail!("corridor ID must not be empty");
+    }
+    if id.contains('/') || id.contains('\\') || id.contains('\0') {
+        bail!(
+            "corridor ID contains invalid path characters: {id:?}"
+        );
+    }
+    if id == "." || id == ".." || id.starts_with("../") || id.starts_with("..\\") {
+        bail!(
+            "corridor ID must not be a relative path traversal: {id:?}"
+        );
+    }
+    Ok(())
+}
+
+/// Resolve a corridor state file path, with path traversal protection.
+fn corridor_state_file(state_dir: &Path, id: &str) -> Result<PathBuf> {
+    validate_corridor_id(id)?;
+    let state_file = state_dir.join(format!("{id}.json"));
+    // Defense-in-depth: verify the resolved path is still within state_dir.
+    let canonical_dir = state_dir
+        .canonicalize()
+        .unwrap_or_else(|_| state_dir.to_path_buf());
+    let canonical_file = state_file
+        .canonicalize()
+        .unwrap_or_else(|_| state_file.clone());
+    if !canonical_file.starts_with(&canonical_dir) {
+        bail!(
+            "corridor ID resolves outside state directory: {id:?}"
+        );
+    }
+    Ok(state_file)
+}
+
 /// Create a new corridor state file in DRAFT state.
 fn cmd_create(
     state_dir: &Path,
@@ -171,7 +211,7 @@ fn cmd_create(
 ) -> Result<u8> {
     std::fs::create_dir_all(state_dir).context("failed to create corridor state directory")?;
 
-    let state_file = state_dir.join(format!("{id}.json"));
+    let state_file = corridor_state_file(state_dir, id)?;
     if state_file.exists() {
         bail!("corridor already exists: {id}");
     }
@@ -198,7 +238,7 @@ fn cmd_create(
 
 /// Transition a corridor to a new state.
 fn cmd_transition(state_dir: &Path, id: &str, target: DynCorridorState) -> Result<u8> {
-    let state_file = state_dir.join(format!("{id}.json"));
+    let state_file = corridor_state_file(state_dir, id)?;
     if !state_file.exists() {
         bail!("corridor not found: {id}");
     }
@@ -238,7 +278,7 @@ fn cmd_transition(state_dir: &Path, id: &str, target: DynCorridorState) -> Resul
 
 /// Show corridor status.
 fn cmd_status(state_dir: &Path, id: &str) -> Result<u8> {
-    let state_file = state_dir.join(format!("{id}.json"));
+    let state_file = corridor_state_file(state_dir, id)?;
     if !state_file.exists() {
         bail!("corridor not found: {id}");
     }
@@ -274,11 +314,33 @@ fn cmd_list(state_dir: &Path) -> Result<u8> {
     let mut count = 0;
     let mut entries: Vec<(String, DynCorridorState)> = Vec::new();
 
-    for entry in std::fs::read_dir(state_dir)?.flatten() {
+    for entry in std::fs::read_dir(state_dir)? {
+        let entry = match entry {
+            Ok(e) => e,
+            Err(e) => {
+                tracing::warn!(
+                    dir = %state_dir.display(),
+                    error = %e,
+                    "failed to read directory entry while listing corridors"
+                );
+                continue;
+            }
+        };
         let path = entry.path();
         if path.extension().and_then(|e| e.to_str()) == Some("json") {
-            if let Ok(content) = std::fs::read_to_string(&path) {
-                if let Ok(data) = serde_json::from_str::<DynCorridorData>(&content) {
+            let content = match std::fs::read_to_string(&path) {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::warn!(
+                        path = %path.display(),
+                        error = %e,
+                        "failed to read corridor state file"
+                    );
+                    continue;
+                }
+            };
+            match serde_json::from_str::<DynCorridorData>(&content) {
+                Ok(data) => {
                     let name = path
                         .file_stem()
                         .and_then(|s| s.to_str())
@@ -286,6 +348,13 @@ fn cmd_list(state_dir: &Path) -> Result<u8> {
                         .to_string();
                     entries.push((name, data.state));
                     count += 1;
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        path = %path.display(),
+                        error = %e,
+                        "failed to parse corridor state file as JSON"
+                    );
                 }
             }
         }

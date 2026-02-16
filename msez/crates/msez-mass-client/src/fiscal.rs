@@ -314,13 +314,17 @@ impl FiscalClient {
         name: Option<&str>,
     ) -> Result<MassFiscalAccount, MassApiError> {
         let endpoint = "POST /account/create";
+        let encoded_key: String =
+            url::form_urlencoded::byte_serialize(idempotency_key.as_bytes()).collect();
         let mut url = format!(
             "{}{}/account/create?treasuryId={}&idempotencyKey={}",
-            self.base_url, API_PREFIX, treasury_id, idempotency_key
+            self.base_url, API_PREFIX, treasury_id, encoded_key
         );
 
         if let Some(n) = name {
-            url.push_str(&format!("&name={n}"));
+            let encoded_name: String =
+                url::form_urlencoded::byte_serialize(n.as_bytes()).collect();
+            url.push_str(&format!("&name={encoded_name}"));
         }
 
         let resp = crate::retry::retry_send(|| self.http.post(&url).send())
@@ -459,13 +463,13 @@ impl FiscalClient {
 
     /// Record a tax event for an entity.
     ///
-    /// Calls `POST {base_url}/treasury-info/tax-events`.
+    /// Calls `POST {base_url}/treasury-info/api/v1/tax-events`.
     pub async fn record_tax_event(
         &self,
         req: &RecordTaxEventRequest,
     ) -> Result<MassTaxEvent, MassApiError> {
         let endpoint = "POST /tax-events";
-        let url = format!("{}treasury-info/tax-events", self.base_url);
+        let url = format!("{}{}/tax-events", self.base_url, API_PREFIX);
 
         let resp = crate::retry::retry_send(|| self.http.post(&url).json(req).send())
             .await
@@ -494,7 +498,7 @@ impl FiscalClient {
 
     /// List tax events for an entity.
     ///
-    /// Calls `GET {base_url}/treasury-info/tax-events?entity_id={entity_id}`.
+    /// Calls `GET {base_url}/treasury-info/api/v1/tax-events?entity_id={entity_id}`.
     pub async fn list_tax_events(
         &self,
         entity_id: Uuid,
@@ -502,8 +506,8 @@ impl FiscalClient {
     ) -> Result<Vec<MassTaxEvent>, MassApiError> {
         let endpoint = format!("GET /tax-events?entity_id={entity_id}");
         let mut url = format!(
-            "{}treasury-info/tax-events?entity_id={entity_id}",
-            self.base_url
+            "{}{}/tax-events?entity_id={entity_id}",
+            self.base_url, API_PREFIX
         );
         if let Some(year) = tax_year {
             url.push_str(&format!("&tax_year={year}"));
@@ -536,13 +540,13 @@ impl FiscalClient {
 
     /// Compute withholding tax for a transaction.
     ///
-    /// Calls `POST {base_url}/treasury-info/withholding/compute`.
+    /// Calls `POST {base_url}/treasury-info/api/v1/withholding/compute`.
     pub async fn compute_withholding(
         &self,
         req: &WithholdingComputeRequest,
     ) -> Result<WithholdingResult, MassApiError> {
         let endpoint = "POST /withholding/compute";
-        let url = format!("{}treasury-info/withholding/compute", self.base_url);
+        let url = format!("{}{}/withholding/compute", self.base_url, API_PREFIX);
 
         let resp = crate::retry::retry_send(|| self.http.post(&url).json(req).send())
             .await

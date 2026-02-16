@@ -143,8 +143,10 @@ impl SovereigntyPolicy {
     /// - Analytics: may be shared with approved corridor partners
     /// - PublicRegulatory: unrestricted (public data)
     pub fn pakistan_govos() -> Self {
-        let jid = JurisdictionId::new("pk")
-            .unwrap_or_else(|_| JurisdictionId::new("PK").expect("static jurisdiction ID"));
+        // SAFETY: "PK" is a non-empty string literal; JurisdictionId::new only
+        // rejects empty strings, so this construction is infallible.
+        let jid = JurisdictionId::new("PK")
+            .expect("BUG: static non-empty string rejected by JurisdictionId::new");
 
         let mut policy = Self::deny_all(jid);
 
@@ -324,7 +326,7 @@ mod tests {
         // All categories allowed within PK.
         for category in DataCategory::all() {
             assert!(
-                enforcer.check(*category, "pk").is_allowed(),
+                enforcer.check(*category, "PK").is_allowed(),
                 "{category} should be allowed within home jurisdiction"
             );
         }

@@ -33,7 +33,13 @@ pub async fn insert(pool: &PgPool, record: &TaxEventRecord) -> Result<(), sqlx::
     .bind(&record.statutory_section)
     .bind(record.withholding_executed)
     .bind(record.mass_payment_id)
-    .bind(record.rules_applied as i32)
+    .bind(i32::try_from(record.rules_applied).unwrap_or_else(|_| {
+        tracing::warn!(
+            rules_applied = record.rules_applied,
+            "rules_applied exceeds i32::MAX — clamping to i32::MAX for DB storage"
+        );
+        i32::MAX
+    }))
     .bind(record.created_at)
     .execute(pool)
     .await?;
@@ -194,7 +200,13 @@ impl TaxEventRow {
             statutory_section: self.statutory_section,
             withholding_executed: self.withholding_executed,
             mass_payment_id: self.mass_payment_id,
-            rules_applied: self.rules_applied as usize,
+            rules_applied: usize::try_from(self.rules_applied).unwrap_or_else(|_| {
+                tracing::warn!(
+                    rules_applied = self.rules_applied,
+                    "rules_applied is negative in database — defaulting to 0"
+                );
+                0
+            }),
             created_at: self.created_at,
         }
     }

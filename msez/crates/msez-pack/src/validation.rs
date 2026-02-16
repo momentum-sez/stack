@@ -120,40 +120,53 @@ pub fn validate_zone(zone_path: &Path) -> PackResult<PackValidationResult> {
         result.add_error(format!("JSON compatibility: {e}"));
     }
 
-    // 4. Validate lawpack references
-    match lawpack::resolve_lawpack_refs(&zone) {
-        Ok(refs) => {
-            for r in &refs {
-                if r.jurisdiction_id.is_empty() {
-                    result.add_error("lawpack ref has empty jurisdiction_id".to_string());
-                }
-                if r.domain.is_empty() {
-                    result.add_error("lawpack ref has empty domain".to_string());
-                }
-                if !parser::is_valid_sha256(&r.lawpack_digest_sha256) {
-                    result.add_error(format!(
-                        "lawpack ref has invalid digest: {}",
-                        r.lawpack_digest_sha256
-                    ));
-                }
+    // 4. Validate lawpack references (check raw zone data since
+    //    resolve_lawpack_refs silently skips entries with invalid digests)
+    if let Some(lawpacks) = zone.get("lawpacks").and_then(|v| v.as_array()) {
+        for lp in lawpacks {
+            let jid = lp
+                .get("jurisdiction_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let domain = lp.get("domain").and_then(|v| v.as_str()).unwrap_or("");
+            let digest = lp
+                .get("lawpack_digest_sha256")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            if jid.is_empty() {
+                result.add_error("lawpack ref has empty jurisdiction_id".to_string());
             }
-        }
-        Err(e) => {
-            result.add_error(format!("failed to resolve lawpack refs: {e}"));
+            if domain.is_empty() {
+                result.add_error("lawpack ref has empty domain".to_string());
+            }
+            if !parser::is_valid_sha256(digest) {
+                result.add_error(format!(
+                    "lawpack ref has invalid digest: {digest}"
+                ));
+            }
         }
     }
 
-    // 5. Validate regpack references
-    match regpack::resolve_regpack_refs(&zone) {
-        Ok(refs) => {
-            for r in &refs {
-                if r.jurisdiction_id.is_empty() {
-                    result.add_error("regpack ref has empty jurisdiction_id".to_string());
-                }
+    // 5. Validate regpack references (check raw zone data since
+    //    resolve_regpack_refs silently skips entries with invalid digests)
+    if let Some(regpacks) = zone.get("regpacks").and_then(|v| v.as_array()) {
+        for rp in regpacks {
+            let jid = rp
+                .get("jurisdiction_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let digest = rp
+                .get("regpack_digest_sha256")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            if jid.is_empty() {
+                result.add_error("regpack ref has empty jurisdiction_id".to_string());
             }
-        }
-        Err(e) => {
-            result.add_error(format!("failed to resolve regpack refs: {e}"));
+            if !parser::is_valid_sha256(digest) {
+                result.add_error(format!(
+                    "regpack ref has invalid digest: {digest}"
+                ));
+            }
         }
     }
 
@@ -668,10 +681,6 @@ mod tests {
 
     #[test]
     fn test_validate_zone_with_invalid_lawpack_digest() {
-        // resolve_lawpack_refs silently filters entries with invalid digests,
-        // so no error is produced for unresolvable digest strings. The entry
-        // simply doesn't appear in the resolved refs. This test documents
-        // that behavior.
         let dir = tempfile::tempdir().unwrap();
         let zone_path = dir.path().join("zone.yaml");
         std::fs::write(
@@ -688,9 +697,13 @@ mod tests {
         .unwrap();
 
         let result = validate_zone(&zone_path).unwrap();
-        // Invalid digests are silently filtered by resolve_lawpack_refs,
-        // so the zone is still valid (no lawpack refs resolved).
-        assert!(result.is_valid);
+        // Invalid digests are now caught by raw zone data validation
+        // instead of being silently filtered by resolve_lawpack_refs.
+        assert!(!result.is_valid);
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.contains("invalid digest")));
     }
 
     #[test]

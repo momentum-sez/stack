@@ -191,7 +191,9 @@ impl TaxEventType {
             | Self::FormationFee
             | Self::AnnualFilingFee => TaxCategory::IncomeTax,
 
-            Self::CrossBorderPayment | Self::CapitalGainDisposal => TaxCategory::IncomeTax,
+            Self::CrossBorderPayment => TaxCategory::CrossBorderWithholding,
+
+            Self::CapitalGainDisposal => TaxCategory::CapitalGains,
 
             Self::ImportOfGoods | Self::ExportOfGoods => TaxCategory::CustomsDuty,
 
@@ -717,7 +719,7 @@ pub fn pakistan_standard_rules() -> Vec<WithholdingRule> {
             ],
             tax_category: TaxCategory::IncomeTax,
             rate_percent: "5.0".into(),
-            threshold_min: "5000000".into(),
+            threshold_min: "50000".into(),
             threshold_max: None,
             statutory_section: "ITO 2001 Section 149".into(),
             description: "WHT on salary above PKR 50,000/month (simplified)".into(),
@@ -824,7 +826,7 @@ pub fn pakistan_standard_rules() -> Vec<WithholdingRule> {
                 FilerStatus::NonFiler,
                 FilerStatus::LateFiler,
             ],
-            tax_category: TaxCategory::IncomeTax,
+            tax_category: TaxCategory::CrossBorderWithholding,
             rate_percent: "20.0".into(),
             threshold_min: "0".into(),
             threshold_max: None,

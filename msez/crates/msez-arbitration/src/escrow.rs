@@ -287,31 +287,23 @@ impl EscrowAccount {
     ) -> Result<(), ArbitrationError> {
         self.check_timeout()?;
 
-        // Validate deposit amount: must be a non-empty, positive decimal.
-        let trimmed = amount.trim();
-        if trimmed.is_empty() {
+        // Validate deposit amount: must parse as a positive i64 via the same
+        // parse_amount() used by partial_release, ensuring consistency. Using
+        // f64 here would allow decimal strings (e.g., "100.50") that fail i64
+        // parsing in partial_release, corrupting the escrow balance.
+        let parsed = parse_amount(&amount).map_err(|_| {
+            ArbitrationError::InvalidEscrowOperation {
+                escrow_id: self.id.to_string(),
+                operation: "deposit".to_string(),
+                status: format!("amount is not a valid integer: {}", amount),
+            }
+        })?;
+        if parsed <= 0 {
             return Err(ArbitrationError::InvalidEscrowOperation {
                 escrow_id: self.id.to_string(),
                 operation: "deposit".to_string(),
-                status: "amount is empty".to_string(),
+                status: format!("amount must be positive, got {parsed}"),
             });
-        }
-        match trimmed.parse::<f64>() {
-            Ok(v) if v <= 0.0 || v.is_nan() || v.is_infinite() => {
-                return Err(ArbitrationError::InvalidEscrowOperation {
-                    escrow_id: self.id.to_string(),
-                    operation: "deposit".to_string(),
-                    status: format!("amount must be positive, got {trimmed}"),
-                });
-            }
-            Err(_) => {
-                return Err(ArbitrationError::InvalidEscrowOperation {
-                    escrow_id: self.id.to_string(),
-                    operation: "deposit".to_string(),
-                    status: format!("amount is not a valid number: {trimmed}"),
-                });
-            }
-            _ => {} // positive finite number — valid
         }
 
         if self.status != EscrowStatus::Pending {
@@ -439,6 +431,7 @@ impl EscrowAccount {
     /// Returns [`ArbitrationError::InvalidEscrowOperation`] if not in a
     /// forfeitable status.
     pub fn forfeit(&mut self, evidence_digest: ContentDigest) -> Result<(), ArbitrationError> {
+        self.check_timeout()?;
         if !matches!(
             self.status,
             EscrowStatus::Funded | EscrowStatus::PartiallyReleased

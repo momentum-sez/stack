@@ -60,8 +60,8 @@ fn event_type_default_category_mapping_is_consistent() {
         (TaxEventType::RentPayment, TaxCategory::IncomeTax),
         (TaxEventType::CashWithdrawal, TaxCategory::IncomeTax),
         (TaxEventType::SaleToUnregistered, TaxCategory::IncomeTax),
-        (TaxEventType::CrossBorderPayment, TaxCategory::IncomeTax),
-        (TaxEventType::CapitalGainDisposal, TaxCategory::IncomeTax),
+        (TaxEventType::CrossBorderPayment, TaxCategory::CrossBorderWithholding),
+        (TaxEventType::CapitalGainDisposal, TaxCategory::CapitalGains),
         (TaxEventType::ImportOfGoods, TaxCategory::CustomsDuty),
         (TaxEventType::ExportOfGoods, TaxCategory::CustomsDuty),
         (TaxEventType::SupplyOfGoods, TaxCategory::SalesTax),
@@ -492,12 +492,12 @@ fn withholding_crossborder_uniform_rate() {
 fn withholding_salary_threshold_filtering() {
     let engine = WithholdingEngine::with_pakistan_rules();
 
-    // Below threshold: PKR 4,000,000 (below 5,000,000 threshold).
+    // Below threshold: PKR 40,000 (below 50,000/month threshold per S149).
     let below_event = TaxEvent::new(
         Uuid::new_v4(),
         TaxEventType::SalaryPayment,
         "PK",
-        "4000000",
+        "40000",
         "PKR",
         "2025-2026",
     )
@@ -509,12 +509,12 @@ fn withholding_salary_threshold_filtering() {
         "salary below threshold should produce no withholding"
     );
 
-    // Above threshold: PKR 6,000,000.
+    // Above threshold: PKR 60,000 (above 50,000/month threshold per S149).
     let above_event = TaxEvent::new(
         Uuid::new_v4(),
         TaxEventType::SalaryPayment,
         "PK",
-        "6000000",
+        "60000",
         "PKR",
         "2025-2026",
     )
@@ -528,9 +528,9 @@ fn withholding_salary_threshold_filtering() {
     );
     assert_eq!(above_results[0].rate_percent, "5.0");
     assert_eq!(above_results[0].statutory_section, "ITO 2001 Section 149");
-    // 6,000,000 * 5% = 300,000
-    assert_eq!(above_results[0].withholding_amount, "300000.00");
-    assert_eq!(above_results[0].net_amount, "5700000.00");
+    // PKR 60,000 * 5% = PKR 3,000
+    assert_eq!(above_results[0].withholding_amount, "3000.00");
+    assert_eq!(above_results[0].net_amount, "57000.00");
 }
 
 /// Validates rent payment withholding (ITO 2001 Section 155):

@@ -23,6 +23,7 @@ use axum::extract::State;
 use axum::routing::get;
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
+use msez_agentic::tax::{format_amount, parse_amount};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -294,24 +295,27 @@ async fn tax_revenue_dashboard(
         *events_by_category
             .entry(event.event_type.clone())
             .or_insert(0) += 1;
-        // Parse the withholding_amount string back to cents.
-        if let Ok(amount) = event.withholding_amount.replace(',', "").parse::<f64>() {
-            total_withholding_cents += (amount * 100.0) as i64;
+        // Parse the withholding_amount string to cents using fixed-precision parsing.
+        // The withholding_amount is stored as a decimal string (e.g., "100.00")
+        // from format_amount(). Using parse_amount() avoids f64 precision loss.
+        if let Some(cents) = parse_amount(&event.withholding_amount) {
+            total_withholding_cents = total_withholding_cents.saturating_add(cents);
         }
     }
 
     let reports_generated = 0usize; // Report count tracked externally.
 
-    // Derive NTN count from attestations with "ntn_verification" type.
+    // Derive NTN count from attestations with "NTN_VERIFICATION" type.
+    // The identity.rs verify_ntn handler stores attestations with type
+    // "NTN_VERIFICATION" (uppercase) — must match exactly.
     let entities_with_ntn = state
         .attestations
         .list()
         .iter()
-        .filter(|a| a.attestation_type == "ntn_verification")
+        .filter(|a| a.attestation_type == "NTN_VERIFICATION")
         .count();
 
-    let total_pkr = total_withholding_cents as f64 / 100.0;
-    let total_withholding = format!("{total_pkr:.2} PKR");
+    let total_withholding = format!("{} PKR", format_amount(total_withholding_cents));
 
     Ok(Json(TaxRevenueDashboard {
         snapshot_at: now,

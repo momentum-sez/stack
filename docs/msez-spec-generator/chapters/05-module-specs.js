@@ -30,7 +30,7 @@ module.exports = function build_chapter05() {
     // --- 5.1 Corridors Module ---
     h2("5.1 Corridors Module"),
     p("The Corridors module manages economic relationships between jurisdictions. A corridor represents a bilateral or multilateral agreement enabling coordinated economic activity with cryptographic compliance guarantees. Corridor establishment follows Protocol 14.1 for cross-jurisdiction transfer setup. Each party publishes their policy requirements as a machine-readable specification. The corridor negotiation process identifies compatible policy overlaps and generates a corridor manifest encoding the agreed terms."),
-    p("Corridor state synchronization maintains consistent views across participants. The sync protocol uses vector clocks for causality tracking and Merkle proofs for efficient delta synchronization. Compliance verification operates through the Compliance Tensor V2 model. Cross-border operations verify all applicable predicates through ZK proofs."),
+    p("Corridor state synchronization maintains consistent views across participants. The sync protocol uses vector clocks for causality tracking and Merkle proofs for efficient delta synchronization. Compliance verification operates through the Compliance Tensor (§10). Cross-border operations verify all applicable predicates through ZK proofs."),
     table(
       ["Component", "Version", "Description"],
       [

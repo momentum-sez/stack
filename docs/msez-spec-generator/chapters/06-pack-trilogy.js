@@ -459,7 +459,7 @@ module.exports = function build_chapter06() {
 
     // --- 6.5.3 Compliance Tensor Integration ---
     h3("6.5.3 Compliance Tensor Integration"),
-    p("Licensepacks populate the LICENSING compliance domain in the Compliance Tensor V2. The compliance tensor is a 20-domain evaluation matrix; the LICENSING domain is one of the 20 that must reach a permissive state for any corridor operation to proceed. The mapping from license status to tensor state follows a strict lattice: NON_COMPLIANT < SUSPENDED < UNKNOWN < PENDING < COMPLIANT."),
+    p("Licensepacks populate the LICENSING domain of the Compliance Tensor (§10). The LICENSING domain must reach a permissive state for any corridor operation to proceed. The mapping from license status to tensor state follows the ComplianceState lattice (§10.2): NON_COMPLIANT < SUSPENDED < UNKNOWN < PENDING < COMPLIANT."),
     spacer(),
     table(
       ["License Status", "Tensor State", "Effect on Corridor Operations"],

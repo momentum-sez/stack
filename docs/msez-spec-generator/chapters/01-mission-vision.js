@@ -10,18 +10,14 @@ module.exports = function build_chapter01() {
 
     chapterHeading("Chapter 1: Mission and Vision"),
 
-    p("The Momentum SEZ Stack exists to compress the creation of high-quality economic governance from years to months. Traditional Special Economic Zones demand $50\u2013100M in capital, regulatory counsel across multiple domains, and 18\u201336 months before a single license is issued. The SEZ Stack reduces this to a single deployment command, a curated profile, and 90 days to first license."),
+    p("The Momentum SEZ Stack decomposes economic governance into modular, composable primitives. A jurisdiction selects a deployment profile (\u00a77), imports its legal corpus as machine-readable packs (\u00a76), and deploys the stack to yield a zone that processes entity formation, enforces tax law, clears securities, and manages trade corridors."),
 
-    p("The fundamental insight driving the Stack is that economic governance can be decomposed into modular, composable primitives. Just as software libraries enable rapid application development through component reuse, governance primitives enable rapid jurisdiction development through regulatory composition. A new SEZ need not design corporate formation processes from scratch when proven implementations exist and can be adapted to local requirements."),
-
-    p("This modularity extends beyond code reuse to encompass regulatory recognition. When multiple jurisdictions deploy compatible Stack implementations, mutual recognition becomes computationally verifiable rather than diplomatically negotiated. A corporate entity formed in one Stack-compatible jurisdiction can be algorithmically recognized in another, with compliance verified through cryptographic proofs rather than document review."),
+    p("When multiple jurisdictions deploy compatible Stack implementations, mutual recognition becomes computationally verifiable. A corporate entity formed in one Stack-compatible jurisdiction can be algorithmically recognized in another, with compliance verified through cryptographic proofs rather than document review. This is the foundation of the corridor system (\u00a722\u201325)."),
 
     // --- 1.1 The Programmable Institution Thesis ---
     h2("1.1 The Programmable Institution Thesis"),
 
-    p("The SEZ Stack embodies a thesis: institutions can be programmable without sacrificing sovereignty. A programmable institution encodes its rules in machine-executable form, enforces them through cryptographic mechanisms, and provides mathematical guarantees about compliance state. This is not automation of existing paper processes; it is a fundamental reconception of how governance operates."),
-
-    p("The evidence for this thesis comes from production deployments across multiple jurisdictions, each demonstrating that programmable governance delivers measurable improvements in speed, cost, transparency, and compliance coverage."),
+    p("A programmable institution encodes its rules in machine-executable form, enforces them through cryptographic mechanisms, and provides mathematical guarantees about compliance state. The following deployments validate this model."),
 
     table(
       ["Deployment", "Status", "Evidence"],
@@ -38,8 +34,6 @@ module.exports = function build_chapter01() {
 
     // --- 1.2 The Two-System Architecture ---
     h2("1.2 The Two-System Architecture"),
-
-    p("The separation between Mass and the MSEZ Stack is the most important architectural constraint in the system. Every design decision, API boundary, data flow, and deployment topology traces back to this separation. Understanding it is prerequisite to understanding anything else in this specification."),
 
     p_runs([
       bold("System A: Mass \u2014 The Five Programmable Primitives. "),

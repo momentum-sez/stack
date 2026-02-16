@@ -95,7 +95,7 @@ module.exports = function build_chapter12() {
 
     // --- 12.3.2 Composition Example: Pakistan GovOS ---
     h3("12.3.2 Composition Example: Pakistan GovOS"),
-    p("The Pakistan GovOS deployment composes three jurisdiction layers into a single zone configuration: the Pakistan national base layer, the SEZ overlay providing special economic zone exemptions, and the FATF overlay strengthening AML/CFT and financial monitoring. The resulting composition covers all 20 compliance domains with a tensor shape of (3, 20) yielding 60 cells."),
+    p("The Pakistan GovOS deployment composes three jurisdiction layers into a single zone configuration: the Pakistan national base layer, the SEZ overlay providing special economic zone exemptions, and the FATF overlay strengthening AML/CFT and financial monitoring. The resulting composition covers all 20 ComplianceDomain variants (§10.1) with a tensor shape of (3, 20) yielding 60 cells."),
     p_runs([
       bold("Layer 1 — PAK Base (Pakistan National Law). "),
       "Provides the foundational legal framework covering all 20 compliance domains. Sources include the Income Tax Ordinance 2001, Sales Tax Act 1990, Companies Act 2017, Foreign Exchange Regulation Act 1947, Anti-Money Laundering Act 2010, SECP Act 1997, and Pakistan Penal Code. This layer binds entities to FBR registration (NTN) and SBP regulatory oversight. The lawpack references Akoma Ntoso encodings of all applicable statutes."

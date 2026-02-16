@@ -1,6 +1,7 @@
 const {
-  chapterHeading, h2,
-  p
+  chapterHeading, h2, h3,
+  p, p_runs, bold,
+  table, spacer
 } = require("../lib/primitives");
 
 module.exports = function build_chapter53() {
@@ -9,14 +10,71 @@ module.exports = function build_chapter53() {
 
     // --- 53.1 Monitoring and Alerting ---
     h2("53.1 Monitoring and Alerting"),
-    p("The MSEZ Stack exposes Prometheus metrics on /metrics for all operational dimensions. Key metric families include: msez_api_request_duration_seconds (histogram, by route and status), msez_corridor_state_transitions_total (counter, by corridor and transition type), msez_tensor_evaluation_duration_seconds (histogram, by jurisdiction and domain count), msez_pack_check_results (counter, by pack type and outcome), msez_mass_client_request_duration_seconds (histogram, by Mass primitive and endpoint), msez_vc_issuance_total (counter, by credential type), and msez_db_pool_connections (gauge, active/idle/waiting). Alerting rules fire on: API p99 latency exceeding 500ms, corridor state machine stuck for more than 5 minutes, Mass API error rate above 1%, database connection pool exhaustion above 80%, and certificate expiration within 14 days."),
+    p("The MSEZ Stack exposes Prometheus metrics on /metrics for all operational dimensions. Grafana dashboards visualize these metrics with pre-configured panels for API health, corridor throughput, compliance evaluation, and Mass API connectivity."),
+
+    h3("53.1.1 Metric Families"),
+    table(
+      ["Metric", "Type", "Labels", "Description"],
+      [
+        ["msez_api_request_duration_seconds", "Histogram", "route, method, status", "API request latency distribution"],
+        ["msez_corridor_state_transitions_total", "Counter", "corridor, from_state, to_state", "Corridor FSM transition count"],
+        ["msez_tensor_evaluation_duration_seconds", "Histogram", "jurisdiction, domain_count", "Compliance tensor evaluation latency"],
+        ["msez_pack_check_results", "Counter", "pack_type, outcome", "Pack validation pass/fail count"],
+        ["msez_mass_client_request_duration_seconds", "Histogram", "primitive, endpoint, status", "Mass API call latency"],
+        ["msez_vc_issuance_total", "Counter", "credential_type, issuer", "Verifiable Credential issuance count"],
+        ["msez_db_pool_connections", "Gauge", "state (active/idle/waiting)", "Database connection pool utilization"],
+        ["msez_receipt_chain_length", "Gauge", "corridor", "Current receipt chain depth per corridor"],
+      ],
+      [3200, 1200, 2200, 2760]
+    ),
+    spacer(),
+
+    h3("53.1.2 Alert Rules"),
+    table(
+      ["Alert", "Condition", "Severity", "Response Window"],
+      [
+        ["API Latency Spike", "p99 latency > 500ms for 5 minutes", "SEV-2", "30 minutes"],
+        ["Corridor Stall", "No state transition for > 5 minutes on active corridor", "SEV-2", "30 minutes"],
+        ["Mass API Errors", "Error rate > 1% over 5-minute window", "SEV-2", "30 minutes"],
+        ["DB Pool Exhaustion", "Active connections > 80% of pool for 1 minute", "SEV-1", "15 minutes"],
+        ["Certificate Expiry", "TLS certificate expires within 14 days", "SEV-3", "2 hours"],
+        ["Disk Usage", "Any volume > 80% capacity", "SEV-2", "30 minutes"],
+        ["Failed VC Verification", "Signature verification failure rate > 0.1%", "SEV-1", "15 minutes"],
+      ],
+      [2200, 3200, 1200, 2760]
+    ),
+    spacer(),
 
     // --- 53.2 Incident Response ---
     h2("53.2 Incident Response"),
-    p("Incidents are classified into four severity levels. SEV-1 (Critical): complete service outage, data integrity breach, or security compromise requiring immediate response within 15 minutes and resolution within 4 hours. SEV-2 (Major): degraded service affecting multiple users, corridor processing delays, or compliance evaluation failures requiring response within 30 minutes and resolution within 8 hours. SEV-3 (Minor): isolated feature failures, single-user impact, or non-critical monitoring gaps requiring response within 2 hours and resolution within 24 hours. SEV-4 (Low): cosmetic issues, documentation gaps, or optimization opportunities addressed during normal development cycles. Each severity level has defined escalation paths, communication templates, and post-incident review requirements."),
+    table(
+      ["Severity", "Criteria", "Response Time", "Resolution Target", "Escalation"],
+      [
+        ["SEV-1 (Critical)", "Complete outage, data breach, security compromise", "15 minutes", "4 hours", "On-call \u2192 Engineering Lead \u2192 CTO"],
+        ["SEV-2 (Major)", "Degraded service, corridor delays, compliance failures", "30 minutes", "8 hours", "On-call \u2192 Engineering Lead"],
+        ["SEV-3 (Minor)", "Isolated feature failure, single-user impact", "2 hours", "24 hours", "On-call \u2192 ticket queue"],
+        ["SEV-4 (Low)", "Cosmetic issues, documentation gaps, optimizations", "Next business day", "Sprint cycle", "Ticket queue"],
+      ],
+      [1400, 2400, 1200, 1400, 2960]
+    ),
+    spacer(),
+    p("Each incident produces a post-incident review (PIR) within 48 hours of resolution. The PIR documents the timeline, root cause, impact assessment, remediation steps, and preventive actions. PIR findings feed back into alert rule tuning, runbook updates, and capacity planning."),
 
     // --- 53.3 Change Management ---
     h2("53.3 Change Management"),
-    p("All production changes follow a staged rollout process. Changes are first deployed to a staging environment that mirrors production topology. Automated integration tests validate API compatibility, corridor state machine transitions, tensor evaluation correctness, and Mass API client behavior against contract tests. After staging validation, production deployment uses a canary strategy: 5% of traffic is routed to the new version for 15 minutes while error rates, latency, and compliance evaluation results are monitored. If canary metrics remain within thresholds, traffic is gradually shifted (25%, 50%, 100%) over 45 minutes. Rollback is automatic if error rate exceeds 0.5% or p99 latency increases by more than 50% during any canary phase. Infrastructure changes (Terraform) require plan review and approval before apply."),
+    p("All production changes follow a staged rollout process with automated gates at each stage."),
+    table(
+      ["Stage", "Traffic %", "Duration", "Gate Criteria", "Rollback Trigger"],
+      [
+        ["Staging", "0% (mirror)", "Full test suite", "All integration tests pass, contract tests green", "Any test failure"],
+        ["Canary", "5%", "15 minutes", "Error rate < 0.5%, p99 latency stable", "Error rate > 0.5%"],
+        ["Partial", "25%", "15 minutes", "Error rate < 0.3%, no new alerts", "p99 increase > 50%"],
+        ["Majority", "50%", "15 minutes", "All metrics stable", "Any SEV-1 or SEV-2 alert"],
+        ["Full", "100%", "Continuous", "Monitoring continues post-deploy", "Manual trigger only"],
+      ],
+      [1200, 1200, 1400, 2800, 2760]
+    ),
+    spacer(),
+    p("Infrastructure changes (Terraform) require plan output review and explicit approval before apply. Database migrations run in a maintenance window with pre-migration backup verification."),
   ];
 };

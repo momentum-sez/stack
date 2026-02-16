@@ -28,7 +28,7 @@ module.exports = function build_chapter56() {
     p("The current network topology follows a hub-and-spoke pattern with Pakistan as the primary hub and the UAE as the secondary hub. Pakistan connects outward to three corridor endpoints (UAE, KSA, CHN), while the UAE serves as a regional financial center linking the Gulf economies. Kazakhstan and Seychelles are spoke nodes in the partnership and deployment phases respectively, with planned corridors that will create additional mesh connections as they come online."),
 
     h3("56.1.1 Jurisdiction Nodes"),
-    p("Each jurisdiction operates as a node in the network, running a full SEZ Stack deployment configured with jurisdiction-specific lawpacks, regpacks, and licensepacks. The node exposes the five Mass primitives (Entities, Ownership, Fiscal, Identity, Consent) through the SEZ Stack orchestration layer, which evaluates compliance tensors across all 20 compliance domains for every operation. Nodes communicate through corridor channels that enforce bilateral compliance requirements, settlement netting, and mutual credential recognition."),
+    p("Each jurisdiction operates as a node in the network, running a full SEZ Stack deployment configured with jurisdiction-specific lawpacks, regpacks, and licensepacks. The node exposes the five Mass primitives (Entities, Ownership, Fiscal, Identity, Consent) through the SEZ Stack orchestration layer, which evaluates the compliance tensor (§10) across all 20 ComplianceDomain variants (§10.1) for every operation. Nodes communicate through corridor channels that enforce bilateral compliance requirements, settlement netting, and mutual credential recognition."),
     table(
       ["Node", "Role", "Pack Configuration", "Mass Integration"],
       [
@@ -101,7 +101,7 @@ module.exports = function build_chapter56() {
     spacer(),
 
     h3("56.3.2 Growth Drivers"),
-    p("Three factors drive network growth acceleration. First, the pack trilogy architecture (lawpacks, regpacks, licensepacks) reduces new jurisdiction onboarding from months to weeks once the regulatory content is digitized into Akoma Ntoso format. Second, the compliance tensor generalizes across jurisdictions, meaning each new deployment reuses the same 20-domain evaluation framework with jurisdiction-specific weightings. Third, corridor infrastructure is symmetric and composable: the same receipt chain, netting, and settlement mechanisms that power PAK-UAE apply to any new bilateral, reducing corridor deployment to configuration rather than custom development."),
+    p("Three factors drive network growth acceleration. First, the pack trilogy architecture (lawpacks, regpacks, licensepacks) reduces new jurisdiction onboarding from months to weeks once the regulatory content is digitized into Akoma Ntoso format. Second, the compliance tensor (§10) generalizes across jurisdictions with jurisdiction-specific weightings. Third, corridor infrastructure is symmetric and composable: the same receipt chain, netting, and settlement mechanisms that power PAK-UAE apply to any new bilateral, reducing corridor deployment to configuration rather than custom development."),
 
     // --- 56.4 Future Network ---
     h2("56.4 Future Network"),

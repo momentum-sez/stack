@@ -29,6 +29,8 @@ module.exports = function build_chapter07() {
 
     definition("Definition 7.1 (Profile).", "A profile P is a tuple (M, \u0398, T, R) where M is the set of active module families, \u0398 is the parameter configuration map, T is the compliance tensor weight matrix, and R is the resource requirement specification. A zone Z instantiated with profile P inherits all four components and may override \u0398 entries within the bounds declared by P's parameter constraints."),
 
+    p("Module families and compliance domains are distinct concepts. Module families (16) represent functional capabilities deployed in a zone: corporate services, financial services, customs processing, and so on. Compliance domains (20, defined in \u00a710.2) represent regulatory dimensions evaluated by the compliance tensor. A single module family may trigger evaluation across multiple compliance domains (e.g., the Financial module family activates the Banking, Payments, Clearing, and Settlement domains), and a single compliance domain may be relevant to multiple module families. The matrices below use module family names; see \u00a710.2 for the canonical ComplianceDomain enum variants."),
+
     h3("7.1.1 Module Activation Matrix"),
     p("The following matrix summarizes module activation status across all seven profiles. Active: full functionality. Minimal: limited functionality for the specific use case. Inactive: module not deployed."),
     table(
@@ -127,7 +129,7 @@ module.exports = function build_chapter07() {
 
     h3("7.3.1 Deployed Capabilities"),
     p("Trade-hub deployments activate corporate services for entity formation optimized for trading companies, freight forwarders, and logistics operators. Financial services are configured for trade finance instruments: letters of credit, documentary collections, trade receivables financing, and supply chain finance. The customs module operates at full depth with tariff classification, bonded warehousing, duty deferral schemes, and preferential origin determination under applicable free trade agreements."),
-    p("Corridor capabilities focus on trade corridors with receipt chain tracking (§9) for goods movement. The compliance tensor is configured with elevated weights for CUSTOMS, TRADE, SANCTIONS, and AML_CFT domains, reflecting the regulatory priorities of trade facilitation zones."),
+    p("Corridor capabilities focus on trade corridors with receipt chain tracking (§9) for goods movement. The compliance tensor is configured with elevated weights for Trade, Sanctions, and Aml domains, reflecting the regulatory priorities of trade facilitation zones."),
 
     h3("7.3.2 Module Families"),
     table(
@@ -406,7 +408,7 @@ module.exports = function build_chapter07() {
 
     h3("7.8.1 Deployed Capabilities"),
     p("Asset-history-bundle deployments activate the receipt chain subsystem (§9) at maximum fidelity. Every state transition of a tracked asset generates a receipt: creation, inspection, certification, transfer, encumbrance, release, and disposal. The credential module issues Verifiable Credentials for certifications, appraisals, and compliance attestations that can be independently verified without contacting the issuing system."),
-    p("Corporate services are minimal: just enough to register the entities involved in asset transactions. Financial services support escrow and settlement for asset transfers. The compliance tensor is configured with narrow focus on the specific regulatory domains relevant to the asset class being tracked. For art provenance, this might emphasize AML_CFT and SANCTIONS (anti-money-laundering in art transactions). For commodity lots, it would emphasize CUSTOMS, TRADE, and ENVIRONMENTAL (ethical sourcing). The profile is designed to be embedded within a larger system rather than to operate as a standalone zone."),
+    p("Corporate services are minimal: just enough to register the entities involved in asset transactions. Financial services support escrow and settlement for asset transfers. The compliance tensor is configured with narrow focus on the specific regulatory domains relevant to the asset class being tracked. For art provenance, this might emphasize Aml and Sanctions (anti-money-laundering in art transactions). For commodity lots, it would emphasize Trade and Aml (ethical sourcing). The profile is designed to be embedded within a larger system rather than to operate as a standalone zone."),
 
     h3("7.8.2 Module Families"),
     table(

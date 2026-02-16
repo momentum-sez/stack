@@ -21,7 +21,7 @@ npm run build
 
 ### Table of Contents Requires Manual Update
 
-The generated TOC uses a Word field code (`TOC \o "1-3" \h`) that is evaluated client-side when the document is opened. This means:
+The generated TOC uses a Word field code (`TOC \o "1-2" \h`) that is evaluated client-side when the document is opened. This means:
 
 1. **Microsoft Word**: Right-click the TOC area and select **"Update Field"** → **"Update entire table"** to populate it.
 2. **Google Docs / LibreOffice**: The TOC may appear empty or as placeholder text. These renderers do not evaluate Word field codes.

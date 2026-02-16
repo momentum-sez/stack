@@ -29,7 +29,7 @@ use crate::state::AppState;
 // ── Settlement Computation ──────────────────────────────────────
 
 /// Request to compute a settlement plan from obligations.
-#[derive(Debug, Default, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct SettlementComputeRequest {
     /// The obligations to net. Each obligation is a directed payment
     /// between two parties in a specific currency.
@@ -290,7 +290,7 @@ pub fn router() -> Router<AppState> {
 async fn compute_settlement(
     State(state): State<AppState>,
     Path(corridor_id): Path<Uuid>,
-    body: Option<Json<SettlementComputeRequest>>,
+    body: Result<Json<SettlementComputeRequest>, JsonRejection>,
 ) -> Result<Json<SettlementPlanResponse>, AppError> {
     // Verify the corridor exists.
     let _corridor = state
@@ -298,8 +298,7 @@ async fn compute_settlement(
         .get(&corridor_id)
         .ok_or_else(|| AppError::NotFound(format!("corridor {corridor_id} not found")))?;
 
-    let req = body.map(|Json(r)| r).unwrap_or_default();
-    req.validate().map_err(AppError::Validation)?;
+    let req = extract_validated_json(body)?;
 
     let mut engine = NettingEngine::new();
     let mut skipped = 0;

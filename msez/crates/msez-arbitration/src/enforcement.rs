@@ -586,7 +586,7 @@ impl EnforcementOrder {
     /// # Errors
     ///
     /// Returns [`ArbitrationError::EnforcementPreconditionFailed`] if the
-    /// order is not in Pending status.
+    /// order is not in Pending or InProgress status.
     pub fn block(&mut self, reason: &str) -> Result<(), ArbitrationError> {
         if !matches!(
             self.status,

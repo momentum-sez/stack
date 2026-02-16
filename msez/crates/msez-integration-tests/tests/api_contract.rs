@@ -893,8 +893,9 @@ async fn regulator_dashboard() {
     let resp = app.oneshot(get("/v1/regulator/dashboard")).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let v = body_json(resp).await;
-    // Dashboard should have structured sections
-    assert!(v["zone"].is_object() || v["compliance"].is_object() || v.is_object());
+    // Dashboard must be a JSON object with at least one key
+    assert!(v.is_object(), "Dashboard response must be a JSON object");
+    assert!(!v.as_object().unwrap().is_empty(), "Dashboard response must not be empty");
 }
 
 // =========================================================================
@@ -1052,7 +1053,8 @@ async fn asset_compliance_and_credential_lifecycle() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let eval = body_json(resp).await;
-    assert!(eval["aggregate"].is_object() || eval["domains"].is_object() || eval.is_object());
+    assert!(eval.is_object(), "Compliance evaluation must be a JSON object");
+    assert!(!eval.as_object().unwrap().is_empty(), "Compliance evaluation must not be empty");
 
     // Issue compliance credential
     let resp = app
@@ -2239,8 +2241,15 @@ async fn settlement_compute_i64_max_amount() {
         ))
         .await
         .unwrap();
-    // i64::MAX amount — document behavior
-    let _ = resp.status();
+    // i64::MAX amount — server must not panic; it should reject or process gracefully
+    let status = resp.status();
+    assert!(
+        status == StatusCode::OK
+            || status == StatusCode::BAD_REQUEST
+            || status == StatusCode::UNPROCESSABLE_ENTITY,
+        "Settlement with i64::MAX amount: expected 200/400/422, got {}",
+        status
+    );
 }
 
 #[tokio::test]
@@ -2342,8 +2351,16 @@ async fn settlement_compute_no_content_type() {
         )
         .await
         .unwrap();
-    // Without Content-Type header, Axum may reject or attempt parsing
-    let _ = resp.status();
+    // Without Content-Type header, Axum should reject with 415 or 400
+    let status = resp.status();
+    assert!(
+        status == StatusCode::UNSUPPORTED_MEDIA_TYPE
+            || status == StatusCode::BAD_REQUEST
+            || status == StatusCode::UNPROCESSABLE_ENTITY
+            || status == StatusCode::OK,
+        "POST without Content-Type: expected 415/400/422/200, got {}",
+        status
+    );
 }
 
 // =========================================================================

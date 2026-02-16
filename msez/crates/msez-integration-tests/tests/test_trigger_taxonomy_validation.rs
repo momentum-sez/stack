@@ -87,7 +87,9 @@ fn compliance_deadline_processed() {
         TriggerType::ComplianceDeadline,
         serde_json::json!({"deadline": "2026-03-01"}),
     );
-    let _actions = engine.process_trigger(&trigger, "asset:deadline-test", None);
+    let actions = engine.process_trigger(&trigger, "asset:deadline-test", None);
+    // Engine must return a defined (possibly empty) action list, not panic
+    assert!(actions.len() <= 20, "action count should be bounded");
 }
 
 /// TaxYearEnd trigger should be processable (fiscal domain).
@@ -98,7 +100,8 @@ fn tax_year_end_processable() {
         TriggerType::TaxYearEnd,
         serde_json::json!({"tax_year": "2025-2026", "jurisdiction": "PK"}),
     );
-    let _actions = engine.process_trigger(&trigger, "entity:pk-corp", None);
+    let actions = engine.process_trigger(&trigger, "entity:pk-corp", None);
+    assert!(actions.len() <= 20, "action count should be bounded");
 }
 
 /// WithholdingDue trigger should be processable (fiscal domain).
@@ -109,7 +112,8 @@ fn withholding_due_processable() {
         TriggerType::WithholdingDue,
         serde_json::json!({"entity_id": "test", "amount": "50000"}),
     );
-    let _actions = engine.process_trigger(&trigger, "entity:pk-corp", None);
+    let actions = engine.process_trigger(&trigger, "entity:pk-corp", None);
+    assert!(actions.len() <= 20, "action count should be bounded");
 }
 
 /// All trigger types from the regulatory domain are correctly identified.

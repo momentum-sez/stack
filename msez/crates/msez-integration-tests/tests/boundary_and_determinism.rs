@@ -856,9 +856,9 @@ fn watcher_attestation_count_increments() {
     watcher.bond(100_000).unwrap();
     watcher.activate().unwrap();
     assert_eq!(watcher.attestation_count, 0);
-    watcher.record_attestation();
-    watcher.record_attestation();
-    watcher.record_attestation();
+    watcher.record_attestation().unwrap();
+    watcher.record_attestation().unwrap();
+    watcher.record_attestation().unwrap();
     assert_eq!(watcher.attestation_count, 3);
 }
 
@@ -1141,8 +1141,8 @@ fn pack_sanctions_checker_identifier_matching() {
     );
     let query_ids = vec![id_map];
     let result = checker.check_entity("Different Name", Some(&query_ids), 0.9);
-    // Even if name doesn't match, identifier should produce a match.
-    // Must be deterministic.
+    // Identifier-based matching is not yet implemented — name mismatch means no match.
+    // Verify determinism: repeated calls with same input produce same result.
     let result2 = checker.check_entity("Different Name", Some(&query_ids), 0.9);
     assert_eq!(result.matched, result2.matched, "ID-based sanctions check must be deterministic");
 }

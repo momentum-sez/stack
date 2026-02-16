@@ -219,7 +219,7 @@ fn watcher_economy_slashing() {
 
     // False attestation: 50% slash
     let slashed = w.slash(SlashingCondition::FalseAttestation).unwrap();
-    assert_eq!(slashed, 505_000); // 50% of 1_010_000
+    assert_eq!(slashed, 500_000); // 50% of available_stake (1_000_000)
     assert_eq!(w.state, WatcherState::Slashed);
 }
 

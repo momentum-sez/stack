@@ -207,7 +207,14 @@ fn cmd_verify(pubkey_path: &Path, file_path: &Path, sig_hex: &str) -> Result<u8>
 }
 
 /// Decode a hex string into bytes.
+///
+/// Validates that the input contains only ASCII characters before indexing,
+/// preventing panics from slicing at non-char-boundary positions in multi-byte
+/// UTF-8 strings.
 fn hex_to_bytes(hex: &str) -> Result<Vec<u8>> {
+    if !hex.is_ascii() {
+        bail!("hex string contains non-ASCII characters");
+    }
     if hex.len() % 2 != 0 {
         bail!("hex string has odd length: {}", hex.len());
     }

@@ -45,7 +45,7 @@ use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use chrono::Utc;
+use chrono::{Datelike, Utc};
 use uuid::Uuid;
 
 use crate::error::AppError;
@@ -920,6 +920,22 @@ async fn initiate_payment(
 ///
 /// Failures are logged but never block the payment — tax event generation is
 /// a post-operation side effect, not a gate.
+/// Compute the current Pakistan fiscal year string (Jul-Jun).
+///
+/// Pakistan's fiscal year runs July 1 to June 30. If the current month
+/// is July or later, the fiscal year is `YYYY-(YYYY+1)`. Otherwise it is
+/// `(YYYY-1)-YYYY`.
+fn current_pk_fiscal_year() -> String {
+    let now = Utc::now();
+    let year = now.year();
+    let month = now.month();
+    if month >= 7 {
+        format!("{}-{}", year, year + 1)
+    } else {
+        format!("{}-{}", year - 1, year)
+    }
+}
+
 async fn generate_payment_tax_event(
     state: &AppState,
     from_account_id: uuid::Uuid,
@@ -930,14 +946,14 @@ async fn generate_payment_tax_event(
 ) {
     use msez_agentic::tax::{format_amount, parse_amount, FilerStatus, TaxEvent, TaxEventType};
 
+    let fiscal_year = current_pk_fiscal_year();
     let event = TaxEvent::new(
         from_account_id,
         TaxEventType::PaymentForGoods,
         jurisdiction_id,
         amount,
         currency,
-        // Default to current fiscal year (Jul-Jun for PK).
-        "2025-2026",
+        &fiscal_year,
     );
 
     let withholdings = {
@@ -979,7 +995,7 @@ async fn generate_payment_tax_event(
         withholding_amount: format_amount(total_wht_cents),
         net_amount: format_amount(net_cents),
         currency: currency.to_string(),
-        tax_year: "2025-2026".to_string(),
+        tax_year: fiscal_year,
         ntn: None,
         filer_status: FilerStatus::NonFiler.to_string(),
         statutory_section: withholdings.first().map(|w| w.statutory_section.clone()),

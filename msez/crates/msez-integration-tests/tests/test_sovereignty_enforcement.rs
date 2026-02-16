@@ -93,8 +93,8 @@ fn intra_jurisdiction_always_allowed() {
 
     for category in DataCategory::all() {
         assert!(
-            enforcer.check(*category, "pk").is_allowed(),
-            "{category} should be allowed within pk"
+            enforcer.check(*category, "PK").is_allowed(),
+            "{category} should be allowed within PK"
         );
     }
 }

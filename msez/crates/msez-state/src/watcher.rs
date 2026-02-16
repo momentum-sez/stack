@@ -277,9 +277,12 @@ impl Watcher {
 
         // Use integer basis-point arithmetic to avoid floating-point precision
         // loss on large bond values (>2^53). u128 intermediate prevents overflow.
+        // Slash percentage is applied to available (unslashed) stake, not total
+        // bonded amount, so that prior slashing does not inflate the effective rate.
+        let available = self.available_stake();
         let slash_amount =
-            (u128::from(self.bonded_stake) * u128::from(condition.slash_bps()) / 10_000) as u64;
-        let actual_slash = slash_amount.min(self.available_stake());
+            (u128::from(available) * u128::from(condition.slash_bps()) / 10_000) as u64;
+        let actual_slash = slash_amount.min(available);
         self.slashed_amount = self.slashed_amount.saturating_add(actual_slash);
         self.slash_count = self.slash_count.saturating_add(1);
 
@@ -348,8 +351,20 @@ impl Watcher {
     }
 
     /// Record a successful attestation.
-    pub fn record_attestation(&mut self) {
+    ///
+    /// Only active watchers may attest. Returns an error if the watcher
+    /// is in any other state (registered, bonded, slashed, unbonding,
+    /// deactivated, or banned).
+    pub fn record_attestation(&mut self) -> Result<(), WatcherError> {
+        if self.state != WatcherState::Active {
+            return Err(WatcherError::InvalidTransition {
+                from: self.state,
+                to: self.state,
+                reason: "can only record attestations in ACTIVE state".to_string(),
+            });
+        }
         self.attestation_count = self.attestation_count.saturating_add(1);
+        Ok(())
     }
 }
 
@@ -512,10 +527,45 @@ mod tests {
         w.bond(1_000_000).unwrap();
         w.activate().unwrap();
 
-        w.record_attestation();
-        w.record_attestation();
-        w.record_attestation();
+        w.record_attestation().unwrap();
+        w.record_attestation().unwrap();
+        w.record_attestation().unwrap();
         assert_eq!(w.attestation_count, 3);
+    }
+
+    #[test]
+    fn cannot_attest_from_registered() {
+        let mut w = test_watcher();
+        let err = w.record_attestation().unwrap_err();
+        assert!(matches!(err, WatcherError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_attest_from_bonded() {
+        let mut w = test_watcher();
+        w.bond(1_000_000).unwrap();
+        let err = w.record_attestation().unwrap_err();
+        assert!(matches!(err, WatcherError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_attest_from_slashed() {
+        let mut w = test_watcher();
+        w.bond(1_000_000).unwrap();
+        w.activate().unwrap();
+        w.slash(SlashingCondition::AvailabilityFailure).unwrap();
+        let err = w.record_attestation().unwrap_err();
+        assert!(matches!(err, WatcherError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn cannot_attest_from_banned() {
+        let mut w = test_watcher();
+        w.bond(1_000_000).unwrap();
+        w.activate().unwrap();
+        w.slash(SlashingCondition::Collusion).unwrap();
+        let err = w.record_attestation().unwrap_err();
+        assert!(matches!(err, WatcherError::InvalidTransition { .. }));
     }
 
     #[test]

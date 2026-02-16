@@ -66,26 +66,43 @@ pub fn run_lock(args: &LockArgs, repo_root: &Path) -> Result<u8> {
     let zone_id = zone
         .get("zone_id")
         .and_then(|v| v.as_str())
-        .unwrap_or("unknown")
-        .to_string();
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| {
+            tracing::warn!(zone_path = %zone_path.display(), "zone_id missing from zone YAML, using 'unknown'");
+            "unknown".to_string()
+        });
 
     let profile_id = zone
         .pointer("/profile/profile_id")
         .and_then(|v| v.as_str())
-        .unwrap_or("unknown")
-        .to_string();
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| {
+            tracing::warn!(zone_path = %zone_path.display(), "profile.profile_id missing from zone YAML, using 'unknown'");
+            "unknown".to_string()
+        });
 
     let profile_version = zone
         .pointer("/profile/version")
         .and_then(|v| v.as_str())
-        .unwrap_or("0.0.0")
-        .to_string();
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| {
+            tracing::warn!(zone_path = %zone_path.display(), "profile.version missing from zone YAML, using '0.0.0'");
+            "0.0.0".to_string()
+        });
 
     // Determine output path.
     let lockfile_path_from_zone = zone
         .get("lockfile_path")
         .and_then(|v| v.as_str())
         .unwrap_or("stack.lock");
+
+    // Validate lockfile_path does not escape the zone directory.
+    if lockfile_path_from_zone.contains("..") {
+        bail!(
+            "lockfile_path in zone YAML contains path traversal: {:?}",
+            lockfile_path_from_zone
+        );
+    }
 
     let out_path = if let Some(ref out) = args.out {
         crate::resolve_path(out, repo_root)
@@ -109,10 +126,13 @@ pub fn run_lock(args: &LockArgs, repo_root: &Path) -> Result<u8> {
 
     if let Some(modules) = profile.get("modules").and_then(|v| v.as_array()) {
         for m in modules {
-            let mid = m
-                .get("module_id")
-                .and_then(|v| v.as_str())
-                .unwrap_or("unknown");
+            let mid = match m.get("module_id").and_then(|v| v.as_str()) {
+                Some(id) => id,
+                None => {
+                    tracing::warn!("module entry in profile missing module_id, skipping");
+                    continue;
+                }
+            };
 
             let variant = m
                 .get("variant")
@@ -130,9 +150,13 @@ pub fn run_lock(args: &LockArgs, repo_root: &Path) -> Result<u8> {
                     .cloned()
                     .unwrap_or(serde_json::json!([]));
 
+                let module_version = mdata.get("version").and_then(|v| v.as_str()).unwrap_or_else(|| {
+                    tracing::warn!(module_id = mid, "module missing version field, using '0.0.0'");
+                    "0.0.0"
+                });
                 let entry = serde_json::json!({
                     "module_id": mid,
-                    "version": mdata.get("version").and_then(|v| v.as_str()).unwrap_or("0.0.0"),
+                    "version": module_version,
                     "variant": variant,
                     "params": params,
                     "manifest_sha256": manifest_sha256,
@@ -212,22 +236,53 @@ fn resolve_generated_at(args: &LockArgs, out_path: &Path) -> Result<String> {
 
     // Try to reuse existing lockfile's timestamp for stability.
     if out_path.exists() {
-        if let Ok(content) = std::fs::read_to_string(out_path) {
-            if let Ok(existing) = serde_json::from_str::<serde_json::Value>(&content) {
-                if let Some(ts) = existing.get("generated_at").and_then(|v| v.as_str()) {
-                    if !ts.is_empty() {
-                        return Ok(ts.to_string());
+        match std::fs::read_to_string(out_path) {
+            Ok(content) => match serde_json::from_str::<serde_json::Value>(&content) {
+                Ok(existing) => {
+                    if let Some(ts) = existing.get("generated_at").and_then(|v| v.as_str()) {
+                        if !ts.is_empty() {
+                            return Ok(ts.to_string());
+                        }
                     }
                 }
+                Err(e) => {
+                    tracing::warn!(
+                        path = %out_path.display(),
+                        error = %e,
+                        "existing lockfile contains invalid JSON, ignoring for timestamp reuse"
+                    );
+                }
+            },
+            Err(e) => {
+                tracing::warn!(
+                    path = %out_path.display(),
+                    error = %e,
+                    "failed to read existing lockfile for timestamp reuse"
+                );
             }
         }
     }
 
     // Try SOURCE_DATE_EPOCH.
     if let Ok(epoch_str) = std::env::var("SOURCE_DATE_EPOCH") {
-        if let Ok(epoch) = epoch_str.parse::<i64>() {
-            if let Some(dt) = chrono::DateTime::from_timestamp(epoch, 0) {
-                return Ok(dt.format("%Y-%m-%dT%H:%M:%SZ").to_string());
+        match epoch_str.parse::<i64>() {
+            Ok(epoch) => match chrono::DateTime::from_timestamp(epoch, 0) {
+                Some(dt) => {
+                    return Ok(dt.format("%Y-%m-%dT%H:%M:%SZ").to_string());
+                }
+                None => {
+                    tracing::warn!(
+                        epoch = epoch,
+                        "SOURCE_DATE_EPOCH value is out of range for a valid timestamp"
+                    );
+                }
+            },
+            Err(e) => {
+                tracing::warn!(
+                    value = %epoch_str,
+                    error = %e,
+                    "SOURCE_DATE_EPOCH is set but contains a non-integer value"
+                );
             }
         }
     }

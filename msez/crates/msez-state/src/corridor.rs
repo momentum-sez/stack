@@ -35,7 +35,7 @@ use std::marker::PhantomData;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use msez_core::{ContentDigest, CorridorId, JurisdictionId};
+use msez_core::{ContentDigest, CorridorId, JurisdictionId, Sha256Accumulator};
 
 // ── State Types ──────────────────────────────────────────────────────
 
@@ -315,8 +315,16 @@ impl Corridor<Pending> {
     /// Activate the corridor after regulatory approval from both jurisdictions.
     ///
     /// Transitions: Pending → Active.
+    ///
+    /// Both regulatory approvals are combined into a single evidence digest
+    /// via SHA-256(approval_a || approval_b) so that neither approval is
+    /// lost from the audit trail.
     pub fn activate(self, evidence: ActivationEvidence) -> Corridor<Active> {
-        self.transmute_to(Some(evidence.regulatory_approval_a))
+        let mut acc = Sha256Accumulator::new();
+        acc.update(evidence.regulatory_approval_a.as_bytes());
+        acc.update(evidence.regulatory_approval_b.as_bytes());
+        let combined_digest = acc.finalize();
+        self.transmute_to(Some(combined_digest))
     }
 }
 

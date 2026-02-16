@@ -439,8 +439,8 @@ impl ComplianceManifold {
                     continue;
                 }
 
-                // Calculate edge cost.
-                let edge_cost = self.calculate_edge_cost(corridor, asset_value_usd);
+                // Calculate edge cost using actual neighbor as the target.
+                let edge_cost = self.calculate_edge_cost(corridor, asset_value_usd, neighbor);
                 let edge_time = corridor.total_time_hours();
 
                 // Per-hop constraints.
@@ -581,14 +581,19 @@ impl ComplianceManifold {
         count
     }
 
-    fn calculate_edge_cost(&self, corridor: &CorridorEdge, asset_value_usd: u64) -> u64 {
+    fn calculate_edge_cost(
+        &self,
+        corridor: &CorridorEdge,
+        asset_value_usd: u64,
+        actual_target: &str,
+    ) -> u64 {
         let transfer_cost = corridor.transfer_cost(asset_value_usd);
         let target_entry = self
             .jurisdictions
-            .get(&corridor.target_jurisdiction)
+            .get(actual_target)
             .map(|j| j.entry_fee_usd)
             .unwrap_or(0);
-        transfer_cost + target_entry
+        transfer_cost.saturating_add(target_entry)
     }
 
     fn reconstruct_path(
@@ -623,7 +628,7 @@ impl ComplianceManifold {
                 &corridor.source_jurisdiction
             };
 
-            let hop_cost = self.calculate_edge_cost(corridor, asset_value_usd);
+            let hop_cost = self.calculate_edge_cost(corridor, asset_value_usd, target_id);
             let hop_time = corridor.total_time_hours();
 
             hops.push(MigrationHop {

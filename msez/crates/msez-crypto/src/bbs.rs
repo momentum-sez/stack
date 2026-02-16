@@ -8,15 +8,15 @@
 //! ## Current Status
 //!
 //! This module is gated behind the `bbs-plus` Cargo feature flag.
-//! All public types and functions have correct signatures but panic
-//! with `unimplemented!()` at runtime. This allows downstream crates
-//! to reference BBS+ types for compile-time checking.
+//! All public types and functions have correct signatures but return
+//! `Err(CryptoError::NotImplemented)` at runtime. This allows downstream
+//! crates to reference BBS+ types for compile-time checking.
 //!
 //! ## Activation Plan
 //!
 //! Phase 4 will provide a concrete BBS+ implementation via an external
-//! crate (e.g., `bbs` or `bbs-plus`). At that point, the stub bodies
-//! will be replaced with real cryptographic operations.
+//! crate (e.g., `bbs` or `bbs-plus`). At that point, the error-returning
+//! stubs will be replaced with real cryptographic operations.
 //!
 //! ## Use Cases in the SEZ Stack
 //!

@@ -160,10 +160,14 @@ async fn create_asset(
 
     state.smart_assets.insert(id, record.clone());
 
-    // Persist to database (write-through).
+    // Persist to database (write-through). Failure is surfaced to the client
+    // because the in-memory record would be lost on restart, causing silent data loss.
     if let Some(pool) = &state.db_pool {
         if let Err(e) = crate::db::smart_assets::insert(pool, &record).await {
             tracing::error!(asset_id = %id, error = %e, "failed to persist smart asset to database");
+            return Err(AppError::Internal(
+                "smart asset recorded in-memory but database persist failed".to_string(),
+            ));
         }
     }
 

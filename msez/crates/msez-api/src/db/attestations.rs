@@ -95,7 +95,10 @@ fn parse_attestation_status(s: &str) -> AttestationStatus {
         "PENDING" => AttestationStatus::Pending,
         "REVOKED" => AttestationStatus::Revoked,
         "EXPIRED" => AttestationStatus::Expired,
-        _ => AttestationStatus::Pending,
+        other => {
+            tracing::warn!(status = other, "unknown attestation status in database, defaulting to Pending");
+            AttestationStatus::Pending
+        }
     }
 }
 

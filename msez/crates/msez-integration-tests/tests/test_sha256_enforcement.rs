@@ -39,10 +39,12 @@ fn sha2_dependency_only_in_core_and_crypto() {
     let root = workspace_root();
     let crates_dir = root.join("crates");
 
-    if !crates_dir.exists() {
-        // Skip test if directory structure doesn't match expected layout.
-        return;
-    }
+    assert!(
+        crates_dir.exists(),
+        "Security enforcement: crates directory not found at {:?} — \
+         test must not silently pass when directory structure is unexpected",
+        crates_dir
+    );
 
     let entries = std::fs::read_dir(&crates_dir).expect("read crates directory");
 
@@ -88,9 +90,12 @@ fn sha256_usage_only_in_allowed_files() {
     let root = workspace_root();
     let crates_dir = root.join("crates");
 
-    if !crates_dir.exists() {
-        return;
-    }
+    assert!(
+        crates_dir.exists(),
+        "Security enforcement: crates directory not found at {:?} — \
+         test must not silently pass when directory structure is unexpected",
+        crates_dir
+    );
 
     // Try using `grep -r` to find violations.
     let output = Command::new("grep")

@@ -135,7 +135,10 @@ fn parse_compliance_status(s: &str) -> AssetComplianceStatus {
         "pending" => AssetComplianceStatus::Pending,
         "non_compliant" => AssetComplianceStatus::NonCompliant,
         "partially_compliant" => AssetComplianceStatus::PartiallyCompliant,
-        _ => AssetComplianceStatus::Unevaluated,
+        other => {
+            tracing::warn!(status = other, "unknown compliance status in database, defaulting to Unevaluated");
+            AssetComplianceStatus::Unevaluated
+        }
     }
 }
 
@@ -147,7 +150,10 @@ fn parse_asset_status(s: &str) -> AssetStatus {
         "PENDING" => AssetStatus::Pending,
         "SUSPENDED" => AssetStatus::Suspended,
         "RETIRED" => AssetStatus::Retired,
-        _ => AssetStatus::Genesis,
+        other => {
+            tracing::warn!(status = other, "unknown asset status in database, defaulting to Genesis");
+            AssetStatus::Genesis
+        }
     }
 }
 
@@ -168,7 +174,17 @@ struct SmartAssetRow {
 
 impl SmartAssetRow {
     fn into_record(self) -> Option<SmartAssetRecord> {
-        let asset_type = SmartAssetType::new(self.asset_type).ok()?;
+        let asset_type = match SmartAssetType::new(self.asset_type.clone()) {
+            Ok(t) => t,
+            Err(_) => {
+                tracing::warn!(
+                    id = %self.id,
+                    asset_type = %self.asset_type,
+                    "skipping smart asset row with invalid asset_type"
+                );
+                return None;
+            }
+        };
         Some(SmartAssetRecord {
             id: self.id,
             asset_type,

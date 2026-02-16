@@ -7,16 +7,16 @@
 //! ## Current Status
 //!
 //! This module is gated behind the `poseidon2` Cargo feature flag.
-//! All public functions have correct type signatures but panic with
-//! `unimplemented!()` at runtime. This allows downstream crates to
-//! write code that references Poseidon2 types and compile-check it
-//! without a concrete implementation.
+//! All public functions have correct type signatures but return
+//! `Err(CryptoError::NotImplemented)` at runtime. This allows downstream
+//! crates to write code that references Poseidon2 types and compile-check
+//! it without a concrete implementation.
 //!
 //! ## Activation Plan
 //!
 //! Phase 4 will provide a concrete Poseidon2 implementation via an
 //! external crate (e.g., `poseidon2-plonky2` or equivalent). At that
-//! point, the `unimplemented!()` bodies will be replaced with real
+//! point, the error-returning stubs will be replaced with real
 //! hash computations and the feature flag will be enabled by default.
 //!
 //! ## Spec Reference

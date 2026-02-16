@@ -250,10 +250,14 @@ async fn create_corridor(
     let chain = ReceiptChain::new(CorridorId::from_uuid(id));
     state.receipt_chains.write().insert(id, chain);
 
-    // Persist to database (write-through).
+    // Persist to database (write-through). Failure is surfaced to the client
+    // because the in-memory record would be lost on restart, causing silent data loss.
     if let Some(pool) = &state.db_pool {
         if let Err(e) = crate::db::corridors::insert(pool, &record).await {
             tracing::error!(corridor_id = %id, error = %e, "failed to persist corridor to database");
+            return Err(AppError::Internal(
+                "corridor recorded in-memory but database persist failed".to_string(),
+            ));
         }
     }
 
@@ -401,7 +405,8 @@ async fn transition_corridor(
 
     let corridor = updated?;
 
-    // Persist state change to database (write-through).
+    // Persist state change to database (write-through). Failure is surfaced to
+    // the client because the in-memory state diverges from the database on restart.
     if let Some(pool) = &state.db_pool {
         if let Err(e) = crate::db::corridors::update_state(
             pool,
@@ -413,6 +418,9 @@ async fn transition_corridor(
         .await
         {
             tracing::error!(corridor_id = %id, error = %e, "failed to persist corridor transition to database");
+            return Err(AppError::Internal(
+                "corridor transition applied in-memory but database persist failed".to_string(),
+            ));
         }
     }
 

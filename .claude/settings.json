@@ -10,5 +10,30 @@
         ]
       }
     ]
+  },
+  "extraKnownMarketplaces": {
+    "anthropics-claude-code": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-code"
+      }
+    },
+    "kenryu42-cc-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "kenryu42/cc-marketplace"
+      }
+    },
+    "obra-superpowers-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers-marketplace"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "ralph-wiggum@anthropics-claude-code": true,
+    "safety-net@kenryu42-cc-marketplace": true,
+    "superpowers@obra-superpowers-marketplace": true
   }
 }

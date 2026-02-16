@@ -45,6 +45,9 @@ use crate::error::MassApiError;
 /// API version path for organization-info (identity endpoints).
 const ORG_API_PREFIX: &str = "organization-info/api/v1";
 
+/// API version path for consent-info (shareholder/identity endpoints).
+const CONSENT_API_PREFIX: &str = "consent-info/api/v1";
+
 // -- Typed enums matching Mass API values ------------------------------------
 
 /// Identity type -- individual or corporate entity.
@@ -374,8 +377,8 @@ impl IdentityClient {
     ) -> Result<Vec<MassShareholder>, MassApiError> {
         let endpoint = format!("GET /shareholders/organization/{organization_id}");
         let url = format!(
-            "{}consent-info/api/v1/shareholders/organization/{organization_id}",
-            self.consent_base_url
+            "{}{}/shareholders/organization/{organization_id}",
+            self.consent_base_url, CONSENT_API_PREFIX
         );
 
         let resp = crate::retry::retry_send(|| self.http.get(&url).send())

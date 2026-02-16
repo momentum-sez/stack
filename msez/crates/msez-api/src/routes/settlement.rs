@@ -382,8 +382,10 @@ async fn compute_settlement(
 )]
 async fn find_route(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     body: Result<Json<RouteRequest>, JsonRejection>,
 ) -> Result<Json<RouteResponse>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     let req = extract_validated_json(body)?;
 
     // Build the bridge graph from all active corridors.

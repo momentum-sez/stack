@@ -25,6 +25,7 @@ use msez_state::{DynCorridorState, TransitionRecord};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
+use crate::auth::{require_role, CallerIdentity, Role};
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
 use crate::state::AppState;
@@ -136,8 +137,10 @@ pub fn router() -> Router<AppState> {
 /// entry becomes the evidence for the corridor transition.
 async fn submit_trigger(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     body: Result<Json<TriggerRequest>, JsonRejection>,
 ) -> Result<Json<TriggerResponse>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     let req = extract_validated_json(body)?;
 
     // Parse the trigger type.
@@ -206,8 +209,10 @@ async fn list_policies(
 /// DELETE /v1/policies/:id — Unregister a policy.
 async fn delete_policy(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Path(policy_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    require_role(&caller, Role::ZoneAdmin)?;
     let mut engine = state.policy_engine.lock();
 
     let removed = engine.unregister_policy(&policy_id);
@@ -378,6 +383,7 @@ async fn dispatch_corridor_transition(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::auth::{CallerIdentity, Role};
     use crate::state::CorridorRecord;
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
@@ -385,9 +391,19 @@ mod tests {
     use tower::ServiceExt;
     use uuid::Uuid;
 
-    /// Helper: build the agentic router only (no auth middleware) from a given AppState.
+    fn zone_admin() -> CallerIdentity {
+        CallerIdentity {
+            role: Role::ZoneAdmin,
+            entity_id: None,
+            jurisdiction_id: None,
+        }
+    }
+
+    /// Helper: build the agentic router with CallerIdentity from a given AppState.
     fn agentic_app(state: AppState) -> Router<()> {
-        router().with_state(state)
+        router()
+            .layer(axum::Extension(zone_admin()))
+            .with_state(state)
     }
 
     /// Helper: read the response body as bytes and deserialize from JSON.

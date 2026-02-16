@@ -101,8 +101,10 @@ impl CorridorEdge {
     ///
     /// Uses u128 intermediate to prevent overflow on large asset values.
     pub fn transfer_cost(&self, asset_value_usd: u64) -> u64 {
-        let bps_cost =
-            (u128::from(asset_value_usd) * u128::from(self.transfer_fee_bps) / 10_000) as u64;
+        let bps_cost = u64::try_from(
+            u128::from(asset_value_usd) * u128::from(self.transfer_fee_bps) / 10_000,
+        )
+        .unwrap_or(u64::MAX);
         self.flat_fee_usd.saturating_add(bps_cost)
     }
 }

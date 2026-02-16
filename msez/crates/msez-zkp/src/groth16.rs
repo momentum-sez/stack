@@ -41,7 +41,7 @@ pub struct Groth16Proof {
 /// Groth16 verifying key.
 ///
 /// In Phase 2, this will wrap `ark_groth16::VerifyingKey<Bn254>`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Groth16VerifyingKey {
     /// Serialized verifying key bytes.
     pub key_bytes: Vec<u8>,
@@ -50,7 +50,7 @@ pub struct Groth16VerifyingKey {
 /// Groth16 proving key.
 ///
 /// In Phase 2, this will wrap `ark_groth16::ProvingKey<Bn254>`.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Groth16ProvingKey {
     /// Serialized proving key bytes.
     pub key_bytes: Vec<u8>,

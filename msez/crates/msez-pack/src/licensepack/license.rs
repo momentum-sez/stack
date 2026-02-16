@@ -118,20 +118,23 @@ impl License {
 
     /// Whether the license permits the specified activity.
     pub fn permits_activity(&self, activity: &str) -> bool {
-        // Check explicit permitted activities list
-        if !self.permitted_activities.is_empty()
-            && !self.permitted_activities.contains(&activity.to_string())
-        {
-            return false;
+        // Check explicit permitted activities list — acts as an allowlist gate.
+        if !self.permitted_activities.is_empty() {
+            if !self.permitted_activities.contains(&activity.to_string()) {
+                return false;
+            }
+            // Activity is in the explicit allowed list — permit it regardless
+            // of whether fine-grained permission objects also cover it.
+            return true;
         }
-        // Check permissions
+        // No explicit activities list — fall through to permission checks.
         for perm in &self.permissions {
             if perm.permits_activity(activity) {
                 return true;
             }
         }
-        // If no permissions defined but activity in permitted_activities, allow
-        self.permissions.is_empty() && self.permitted_activities.contains(&activity.to_string())
+        // No permissions defined and no explicit activities — deny.
+        false
     }
 
     /// Evaluate compliance state for the LICENSING domain.

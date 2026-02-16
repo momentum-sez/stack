@@ -32,6 +32,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+use crate::auth::{require_role, CallerIdentity, Role};
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
 use crate::state::{AppState, TaxEventRecord};
@@ -318,8 +319,10 @@ pub fn router() -> Router<AppState> {
 /// through the withholding pipeline, and persists the result.
 async fn create_tax_event(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     body: Result<Json<CreateTaxEventRequest>, JsonRejection>,
 ) -> Result<Json<TaxEventResponse>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     let req = extract_validated_json(body)?;
 
     let event_type = parse_event_type(&req.event_type)?;
@@ -591,8 +594,10 @@ async fn get_tax_obligations(
 /// report suitable for submission to the tax authority.
 async fn generate_tax_report(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     body: Result<Json<GenerateReportRequest>, JsonRejection>,
 ) -> Result<Json<TaxReportResponse>, AppError> {
+    require_role(&caller, Role::Regulator)?;
     let req = extract_validated_json(body)?;
 
     // Collect all events matching the entity, jurisdiction, and tax year.
@@ -799,15 +804,26 @@ fn parse_amount_or_zero(s: &str) -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::auth::{CallerIdentity, Role};
     use crate::state::AppState;
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
+    fn zone_admin() -> CallerIdentity {
+        CallerIdentity {
+            role: Role::ZoneAdmin,
+            entity_id: None,
+            jurisdiction_id: None,
+        }
+    }
+
     fn test_app() -> Router {
         let state = AppState::new();
-        super::router().with_state(state)
+        super::router()
+            .layer(axum::Extension(zone_admin()))
+            .with_state(state)
     }
 
     #[tokio::test]

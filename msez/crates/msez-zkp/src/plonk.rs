@@ -42,7 +42,7 @@ pub struct PlonkProof {
 /// PLONK verifying key.
 ///
 /// In Phase 2, this will wrap `halo2_proofs::plonk::VerifyingKey`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlonkVerifyingKey {
     /// Serialized verifying key bytes.
     pub key_bytes: Vec<u8>,
@@ -51,7 +51,7 @@ pub struct PlonkVerifyingKey {
 /// PLONK proving key.
 ///
 /// In Phase 2, this will wrap `halo2_proofs::plonk::ProvingKey`.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlonkProvingKey {
     /// Serialized proving key bytes.
     pub key_bytes: Vec<u8>,

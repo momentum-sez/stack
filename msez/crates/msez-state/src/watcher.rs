@@ -280,8 +280,10 @@ impl Watcher {
         // Slash percentage is applied to available (unslashed) stake, not total
         // bonded amount, so that prior slashing does not inflate the effective rate.
         let available = self.available_stake();
-        let slash_amount =
-            (u128::from(available) * u128::from(condition.slash_bps()) / 10_000) as u64;
+        let slash_amount = u64::try_from(
+            u128::from(available) * u128::from(condition.slash_bps()) / 10_000,
+        )
+        .unwrap_or(u64::MAX);
         let actual_slash = slash_amount.min(available);
         self.slashed_amount = self.slashed_amount.saturating_add(actual_slash);
         self.slash_count = self.slash_count.saturating_add(1);

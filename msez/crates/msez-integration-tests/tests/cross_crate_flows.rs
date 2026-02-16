@@ -1310,7 +1310,7 @@ fn corridor_state_change_trigger_generates_actions() {
     // Standard policies should respond to corridor state changes
     // Verify the engine processed without errors and audit trail was updated
     assert!(
-        engine.audit_trail.len() > 0,
+        !engine.audit_trail.is_empty(),
         "Audit trail should record trigger evaluation"
     );
 }
@@ -1333,7 +1333,7 @@ fn sanctions_trigger_generates_halt_or_review_action() {
     // (either Halt, Review, or NotifyRegulator)
     let _ = actions; // Document actual behavior
     assert!(
-        engine.audit_trail.len() > 0,
+        !engine.audit_trail.is_empty(),
         "Sanctions trigger should be recorded in audit trail"
     );
 }

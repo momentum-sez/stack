@@ -263,7 +263,9 @@ async fn verify_cnic(
     let client = require_mass_client(&state)?;
 
     let jurisdiction = req.jurisdiction_id.as_deref().unwrap_or("PK");
-    let entity_id = req.entity_id.unwrap_or_else(Uuid::new_v4);
+    let entity_id = req.entity_id.ok_or_else(|| {
+        AppError::Validation("entity_id is required for CNIC verification — cannot bind attestation to a non-existent entity".to_string())
+    })?;
     let entity_ref = entity_id.to_string();
 
     // Evaluate compliance tensor across identity-relevant domains.
@@ -278,7 +280,7 @@ async fn verify_cnic(
         cnic: req.cnic.clone(),
         full_name: req.full_name.clone(),
         date_of_birth: req.date_of_birth.clone(),
-        entity_id: req.entity_id,
+        entity_id: Some(entity_id),
     };
 
     let result = client
@@ -344,7 +346,9 @@ async fn verify_ntn(
     let client = require_mass_client(&state)?;
 
     let jurisdiction = req.jurisdiction_id.as_deref().unwrap_or("PK");
-    let entity_id = req.entity_id.unwrap_or_else(Uuid::new_v4);
+    let entity_id = req.entity_id.ok_or_else(|| {
+        AppError::Validation("entity_id is required for NTN verification — cannot bind attestation to a non-existent entity".to_string())
+    })?;
     let entity_ref = entity_id.to_string();
 
     // Evaluate compliance tensor across identity-relevant domains.
@@ -358,7 +362,7 @@ async fn verify_ntn(
     let mass_req = msez_mass_client::identity::NtnVerificationRequest {
         ntn: req.ntn.clone(),
         entity_name: req.entity_name.clone(),
-        entity_id: req.entity_id,
+        entity_id: Some(entity_id),
     };
 
     let result = client

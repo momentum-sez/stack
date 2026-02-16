@@ -255,22 +255,23 @@ async fn create_corridor(
         updated_at: now,
     };
 
+    // Persist to database FIRST (write-through). If DB fails, do NOT insert into
+    // memory — prevents inconsistent state where in-memory has data the client
+    // thinks was rejected.
+    if let Some(pool) = &state.db_pool {
+        if let Err(e) = crate::db::corridors::insert(pool, &record).await {
+            tracing::error!(corridor_id = %id, error = %e, "failed to persist corridor to database");
+            return Err(AppError::Internal(
+                "database persist failed — corridor not created".to_string(),
+            ));
+        }
+    }
+
     state.corridors.insert(id, record.clone());
 
     // Initialize an empty receipt chain for this corridor.
     let chain = ReceiptChain::new(CorridorId::from_uuid(id));
     state.receipt_chains.write().insert(id, chain);
-
-    // Persist to database (write-through). Failure is surfaced to the client
-    // because the in-memory record would be lost on restart, causing silent data loss.
-    if let Some(pool) = &state.db_pool {
-        if let Err(e) = crate::db::corridors::insert(pool, &record).await {
-            tracing::error!(corridor_id = %id, error = %e, "failed to persist corridor to database");
-            return Err(AppError::Internal(
-                "corridor recorded in-memory but database persist failed".to_string(),
-            ));
-        }
-    }
 
     Ok((axum::http::StatusCode::CREATED, Json(record)))
 }
@@ -418,8 +419,10 @@ async fn transition_corridor(
 
     let corridor = updated?;
 
-    // Persist state change to database (write-through). Failure is surfaced to
-    // the client because the in-memory state diverges from the database on restart.
+    // Persist state change to database (write-through). On DB failure we roll
+    // back the in-memory state to maintain consistency. The FSM validation
+    // above guarantees the transition is legal, so the DB write should only fail
+    // on infrastructure issues (connection lost, disk full, etc.).
     if let Some(pool) = &state.db_pool {
         if let Err(e) = crate::db::corridors::update_state(
             pool,
@@ -430,9 +433,17 @@ async fn transition_corridor(
         )
         .await
         {
-            tracing::error!(corridor_id = %id, error = %e, "failed to persist corridor transition to database");
+            tracing::error!(corridor_id = %id, error = %e, "DB persist failed — rolling back in-memory state");
+            // Roll back the in-memory update to keep state consistent.
+            state.corridors.try_update(&id, |c| -> Result<(), AppError> {
+                c.state = corridor.transition_log.last()
+                    .map(|r| r.from_state)
+                    .unwrap_or(DynCorridorState::Draft);
+                c.transition_log.pop();
+                Ok(())
+            });
             return Err(AppError::Internal(
-                "corridor transition applied in-memory but database persist failed".to_string(),
+                "database persist failed — corridor transition rolled back".to_string(),
             ));
         }
     }

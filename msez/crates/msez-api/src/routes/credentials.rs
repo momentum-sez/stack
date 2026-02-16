@@ -26,6 +26,7 @@ use uuid::Uuid;
 use msez_core::Timestamp;
 use msez_vc::{ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential};
 
+use crate::auth::{require_role, CallerIdentity, Role};
 use crate::compliance::{
     apply_attestations, build_evaluation_result, build_tensor, AttestationInput,
     ComplianceEvalResult,
@@ -156,9 +157,11 @@ pub fn router() -> Router<AppState> {
 )]
 async fn issue_compliance_credential(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Path(id): Path<Uuid>,
     body: Result<Json<ComplianceCredentialRequest>, JsonRejection>,
 ) -> Result<Json<ComplianceCredentialResponse>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     let req = extract_validated_json(body)?;
 
     // ── Act 1: Evaluate ─────────────────────────────────────────

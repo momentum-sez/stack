@@ -48,6 +48,7 @@ use utoipa::ToSchema;
 use chrono::{Datelike, Utc};
 use uuid::Uuid;
 
+use crate::auth::{require_role, CallerIdentity, Role};
 use crate::error::AppError;
 use crate::orchestration::{self, OrchestrationEnvelope};
 use crate::state::{AppState, TaxEventRecord};
@@ -465,8 +466,10 @@ pub struct ConsentPartyInput {
 )]
 async fn create_entity(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Json(req): Json<CreateEntityProxyRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     req.validate().map_err(AppError::Validation)?;
     let client = require_mass_client(&state)?;
 
@@ -529,8 +532,10 @@ async fn create_entity(
 )]
 async fn get_entity(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Path(id): Path<uuid::Uuid>,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     let client = require_mass_client(&state)?;
 
     match client.entities().get(id).await {
@@ -568,9 +573,11 @@ async fn get_entity(
 )]
 async fn update_entity(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Path(id): Path<uuid::Uuid>,
     Json(req): Json<UpdateEntityProxyRequest>,
 ) -> Result<Json<OrchestrationEnvelope>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     req.validate().map_err(AppError::Validation)?;
     let client = require_mass_client(&state)?;
 
@@ -637,7 +644,11 @@ async fn update_entity(
     ),
     tag = "entities"
 )]
-async fn list_entities(State(state): State<AppState>) -> Result<Json<serde_json::Value>, AppError> {
+async fn list_entities(
+    State(state): State<AppState>,
+    caller: CallerIdentity,
+) -> Result<Json<serde_json::Value>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     let client = require_mass_client(&state)?;
 
     let entities = client
@@ -675,8 +686,10 @@ async fn list_entities(State(state): State<AppState>) -> Result<Json<serde_json:
 )]
 async fn create_cap_table(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Json(req): Json<CreateCapTableProxyRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     req.validate().map_err(AppError::Validation)?;
     let client = require_mass_client(&state)?;
 
@@ -749,8 +762,10 @@ async fn create_cap_table(
 )]
 async fn get_cap_table(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Path(id): Path<uuid::Uuid>,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     let client = require_mass_client(&state)?;
 
     match client.ownership().get_cap_table(id).await {
@@ -788,8 +803,10 @@ async fn get_cap_table(
 )]
 async fn create_account(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Json(req): Json<CreateAccountProxyRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     req.validate().map_err(AppError::Validation)?;
     let client = require_mass_client(&state)?;
 
@@ -859,8 +876,10 @@ async fn create_account(
 )]
 async fn initiate_payment(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Json(req): Json<CreatePaymentProxyRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     req.validate().map_err(AppError::Validation)?;
     let client = require_mass_client(&state)?;
 
@@ -1109,8 +1128,10 @@ fn classify_payment_event_type(reference: &str) -> msez_agentic::tax::TaxEventTy
 )]
 async fn verify_identity(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Json(req): Json<VerifyIdentityProxyRequest>,
 ) -> Result<Json<OrchestrationEnvelope>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     req.validate().map_err(AppError::Validation)?;
     let client = require_mass_client(&state)?;
 
@@ -1167,8 +1188,10 @@ async fn verify_identity(
 )]
 async fn get_identity(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Path(id): Path<uuid::Uuid>,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     let client = require_mass_client(&state)?;
 
     // The Swagger-aligned identity client aggregates from org-info + consent-info.
@@ -1221,8 +1244,10 @@ async fn get_identity(
 )]
 async fn create_consent(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Json(req): Json<CreateConsentProxyRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     req.validate().map_err(AppError::Validation)?;
     let client = require_mass_client(&state)?;
 
@@ -1300,8 +1325,10 @@ async fn create_consent(
 )]
 async fn get_consent(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Path(id): Path<uuid::Uuid>,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     let client = require_mass_client(&state)?;
 
     match client.consent().get(id).await {
@@ -1433,9 +1460,21 @@ mod tests {
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
+    /// Build a test app with a ZoneAdmin identity injected for full access.
+    fn test_app() -> axum::Router<()> {
+        use crate::auth::{CallerIdentity, Role};
+        router()
+            .layer(axum::Extension(CallerIdentity {
+                role: Role::ZoneAdmin,
+                entity_id: None,
+                jurisdiction_id: None,
+            }))
+            .with_state(AppState::new())
+    }
+
     #[tokio::test]
     async fn create_entity_returns_503_without_mass_client() {
-        let app = router().with_state(AppState::new());
+        let app = test_app();
         let req = Request::builder()
             .method("POST")
             .uri("/v1/entities")
@@ -1455,7 +1494,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_entity_returns_503_without_mass_client() {
-        let app = router().with_state(AppState::new());
+        let app = test_app();
         let req = Request::builder()
             .method("GET")
             .uri("/v1/entities/550e8400-e29b-41d4-a716-446655440000")
@@ -1468,7 +1507,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_entities_returns_503_without_mass_client() {
-        let app = router().with_state(AppState::new());
+        let app = test_app();
         let req = Request::builder()
             .method("GET")
             .uri("/v1/entities")
@@ -1481,7 +1520,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_entity_returns_503_without_mass_client() {
-        let app = router().with_state(AppState::new());
+        let app = test_app();
         let req = Request::builder()
             .method("PUT")
             .uri("/v1/entities/550e8400-e29b-41d4-a716-446655440000")
@@ -1495,7 +1534,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_cap_table_returns_503_without_mass_client() {
-        let app = router().with_state(AppState::new());
+        let app = test_app();
         let req = Request::builder()
             .method("POST")
             .uri("/v1/ownership/cap-tables")
@@ -1511,7 +1550,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_cap_table_returns_503_without_mass_client() {
-        let app = router().with_state(AppState::new());
+        let app = test_app();
         let req = Request::builder()
             .method("GET")
             .uri("/v1/ownership/cap-tables/550e8400-e29b-41d4-a716-446655440000")
@@ -1524,7 +1563,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_account_returns_503_without_mass_client() {
-        let app = router().with_state(AppState::new());
+        let app = test_app();
         let req = Request::builder()
             .method("POST")
             .uri("/v1/fiscal/accounts")
@@ -1540,7 +1579,7 @@ mod tests {
 
     #[tokio::test]
     async fn initiate_payment_returns_503_without_mass_client() {
-        let app = router().with_state(AppState::new());
+        let app = test_app();
         let req = Request::builder()
             .method("POST")
             .uri("/v1/fiscal/payments")
@@ -1556,7 +1595,7 @@ mod tests {
 
     #[tokio::test]
     async fn verify_identity_returns_503_without_mass_client() {
-        let app = router().with_state(AppState::new());
+        let app = test_app();
         let req = Request::builder()
             .method("POST")
             .uri("/v1/identity/verify")
@@ -1572,7 +1611,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_identity_returns_503_without_mass_client() {
-        let app = router().with_state(AppState::new());
+        let app = test_app();
         let req = Request::builder()
             .method("GET")
             .uri("/v1/identity/550e8400-e29b-41d4-a716-446655440000")
@@ -1585,7 +1624,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_consent_returns_503_without_mass_client() {
-        let app = router().with_state(AppState::new());
+        let app = test_app();
         let req = Request::builder()
             .method("POST")
             .uri("/v1/consent")
@@ -1601,7 +1640,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_consent_returns_503_without_mass_client() {
-        let app = router().with_state(AppState::new());
+        let app = test_app();
         let req = Request::builder()
             .method("GET")
             .uri("/v1/consent/550e8400-e29b-41d4-a716-446655440000")

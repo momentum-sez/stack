@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::auth::CallerIdentity;
+use crate::auth::{require_role, CallerIdentity, Role};
 use crate::compliance::{
     apply_attestations, build_evaluation_result, build_tensor, AttestationInput,
 };
@@ -45,6 +45,14 @@ impl Validate for CreateAssetRequest {
         }
         if self.jurisdiction_id.len() > 255 {
             return Err("jurisdiction_id must not exceed 255 characters".to_string());
+        }
+        // Limit metadata size to prevent DoS via oversized payloads.
+        let metadata_size = self.metadata.to_string().len();
+        if metadata_size > 1_048_576 {
+            return Err(format!(
+                "metadata must not exceed 1 MiB, got {} bytes",
+                metadata_size
+            ));
         }
         Ok(())
     }
@@ -186,7 +194,9 @@ async fn create_asset(
 )]
 async fn submit_registry(
     State(_state): State<AppState>,
+    caller: CallerIdentity,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     Err(AppError::NotImplemented(
         "Registry VC submission is a Phase 2 feature".to_string(),
     ))

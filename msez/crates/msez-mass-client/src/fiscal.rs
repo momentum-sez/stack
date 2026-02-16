@@ -510,7 +510,9 @@ impl FiscalClient {
             self.base_url, API_PREFIX
         );
         if let Some(year) = tax_year {
-            url.push_str(&format!("&tax_year={year}"));
+            let encoded_year: String =
+                url::form_urlencoded::byte_serialize(year.as_bytes()).collect();
+            url.push_str(&format!("&tax_year={encoded_year}"));
         }
 
         let resp = crate::retry::retry_send(|| self.http.get(&url).send())

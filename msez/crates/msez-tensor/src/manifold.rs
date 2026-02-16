@@ -232,6 +232,9 @@ pub struct ComplianceDistance {
 struct DijkstraEntry {
     cost: u64,
     time: u32,
+    /// Number of hops from the source to reach this jurisdiction.
+    /// Tracked directly to avoid O(n) `previous`-chain walks.
+    hops: usize,
     jurisdiction: String,
 }
 
@@ -241,6 +244,7 @@ impl Ord for DijkstraEntry {
         other
             .cost
             .cmp(&self.cost)
+            .then_with(|| other.hops.cmp(&self.hops)) // prefer fewer hops at same cost
             .then_with(|| other.time.cmp(&self.time))
             .then_with(|| self.jurisdiction.cmp(&other.jurisdiction))
     }
@@ -379,6 +383,7 @@ impl ComplianceManifold {
         pq.push(DijkstraEntry {
             cost: 0,
             time: 0,
+            hops: 0,
             jurisdiction: source.to_string(),
         });
 
@@ -386,17 +391,22 @@ impl ComplianceManifold {
             if visited.contains(&entry.jurisdiction) {
                 continue;
             }
-            visited.insert(entry.jurisdiction.clone());
 
             if entry.jurisdiction == target {
+                visited.insert(entry.jurisdiction.clone());
                 break;
             }
 
-            // Check hop limit.
-            let hop_count = self.count_hops(&previous, &entry.jurisdiction);
-            if hop_count >= constraints.max_hops {
+            // Check hop limit BEFORE marking as visited. If a node is reached
+            // at the hop limit via the cheapest path, don't mark it visited —
+            // a higher-cost path with fewer hops may still reach this node and
+            // explore further. This prevents the visited set from permanently
+            // blocking valid paths in graphs with diamond topologies.
+            if entry.hops >= constraints.max_hops {
                 continue;
             }
+
+            visited.insert(entry.jurisdiction.clone());
 
             // Explore neighbors.
             let corridor_ids = match self.adjacency.get(&entry.jurisdiction) {
@@ -477,6 +487,7 @@ impl ComplianceManifold {
                     pq.push(DijkstraEntry {
                         cost: new_cost,
                         time: new_time,
+                        hops: entry.hops + 1,
                         jurisdiction: neighbor.clone(),
                     });
                 }
@@ -568,20 +579,6 @@ impl ComplianceManifold {
     }
 
     // ── Private helpers ─────────────────────────────────────────────
-
-    fn count_hops(
-        &self,
-        previous: &HashMap<String, Option<(String, String)>>,
-        current: &str,
-    ) -> usize {
-        let mut count = 0;
-        let mut cur = current.to_string();
-        while let Some(Some((prev, _))) = previous.get(&cur) {
-            cur = prev.clone();
-            count += 1;
-        }
-        count
-    }
 
     fn calculate_edge_cost(
         &self,

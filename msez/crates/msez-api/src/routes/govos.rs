@@ -306,14 +306,16 @@ async fn tax_revenue_dashboard(
     let reports_generated = 0usize; // Report count tracked externally.
 
     // Derive NTN count from attestations with "NTN_VERIFICATION" type.
-    // The identity.rs verify_ntn handler stores attestations with type
-    // "NTN_VERIFICATION" (uppercase) — must match exactly.
-    let entities_with_ntn = state
+    // Count unique entities, not attestation records — the same entity
+    // verified multiple times should be counted once.
+    let ntn_entities: std::collections::HashSet<uuid::Uuid> = state
         .attestations
         .list()
         .iter()
         .filter(|a| a.attestation_type == "NTN_VERIFICATION")
-        .count();
+        .map(|a| a.entity_id)
+        .collect();
+    let entities_with_ntn = ntn_entities.len();
 
     let total_withholding = format!("{} PKR", format_amount(total_withholding_cents));
 
@@ -359,12 +361,18 @@ async fn freezone_dashboard(
         .collect();
 
     let assets_list = state.smart_assets.list();
-    let non_compliant = assets_list
+
+    // Count entities (not assets) with at least one non-compliant asset.
+    // Previous implementation subtracted non-compliant ASSET count from
+    // ENTITY count — a category error (one entity can own many assets).
+    let entities_with_issues: std::collections::HashSet<uuid::Uuid> = assets_list
         .iter()
         .filter(|a| {
             a.compliance_status == crate::state::AssetComplianceStatus::NonCompliant
         })
-        .count();
+        .filter_map(|a| a.owner_entity_id)
+        .collect();
+    let non_compliant = entities_with_issues.len();
 
     let compliance_rate = if unique_entities.is_empty() {
         0.0

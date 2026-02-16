@@ -189,8 +189,12 @@ impl Validate for InstructionRequest {
             if leg.from_party.trim().is_empty() || leg.to_party.trim().is_empty() {
                 return Err(format!("leg {i}: party identifiers must be non-empty"));
             }
-            if leg.from_bic.len() > 11 || leg.to_bic.len() > 11 {
+            if leg.from_bic.trim().len() > 11 || leg.to_bic.trim().len() > 11 {
                 return Err(format!("leg {i}: BIC code must be at most 11 characters"));
+            }
+            // BIC must also be non-empty.
+            if leg.from_bic.trim().is_empty() || leg.to_bic.trim().is_empty() {
+                return Err(format!("leg {i}: BIC codes must be non-empty"));
             }
             if leg.amount <= 0 {
                 return Err(format!(

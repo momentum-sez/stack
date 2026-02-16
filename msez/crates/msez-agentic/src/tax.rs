@@ -593,9 +593,13 @@ impl WithholdingEngine {
         let rate_bps = parse_rate_bps(&rule.rate_percent);
 
         // Withholding = gross * rate / 10000 (basis points).
+        // Use i128 intermediate to prevent overflow on large transactions.
         // Round down (truncate) — withholding should never exceed the rate.
-        let withholding_cents = (gross_cents * rate_bps) / 10000;
-        let net_cents = gross_cents - withholding_cents;
+        let withholding_cents = i64::try_from(
+            (i128::from(gross_cents) * i128::from(rate_bps)) / 10000,
+        )
+        .unwrap_or(i64::MAX);
+        let net_cents = gross_cents.saturating_sub(withholding_cents);
 
         WithholdingResult {
             event_id: event.event_id,

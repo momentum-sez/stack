@@ -29,12 +29,12 @@ fn profile_descriptor_has_required_fields() {
         "version": "1.0"
     });
 
-    // All required fields are present and non-null
-    assert!(profile["profile_id"].is_string());
-    assert!(profile["profile_name"].is_string());
-    assert!(profile["jurisdiction_id"].is_string());
-    assert!(profile["modules"].is_array());
-    assert!(profile["version"].is_string());
+    // All required fields are present with correct non-empty values.
+    assert_eq!(profile["profile_id"].as_str().unwrap(), "trade-zone");
+    assert!(!profile["profile_name"].as_str().unwrap().is_empty());
+    assert_eq!(profile["jurisdiction_id"].as_str().unwrap(), "PK-RSEZ");
+    assert!(!profile["modules"].as_array().unwrap().is_empty());
+    assert!(!profile["version"].as_str().unwrap().is_empty());
 
     // Can be canonicalized
     let canonical = CanonicalBytes::new(&profile).unwrap();

@@ -27,7 +27,13 @@ fn store_json_object_artifact() {
     assert_eq!(artifact_ref.digest.to_hex().len(), 64);
 
     let resolved = store.resolve("entity", &artifact_ref.digest).unwrap();
-    assert!(resolved.is_some());
+    assert!(resolved.is_some(), "CAS resolve should return stored data");
+    // Verify the resolved content matches what was stored — not just presence.
+    let bytes = resolved.unwrap();
+    let parsed: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(parsed["entity_id"], "ent-001");
+    assert_eq!(parsed["jurisdiction"], "PK-RSEZ");
+    assert_eq!(parsed["status"], "active");
 }
 
 #[test]

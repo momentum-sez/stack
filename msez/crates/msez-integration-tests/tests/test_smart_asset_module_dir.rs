@@ -24,12 +24,12 @@ fn module_descriptor_has_required_fields() {
         "status": "active"
     });
 
-    // All required fields should be present
-    assert!(descriptor.get("family").is_some());
-    assert!(descriptor.get("name").is_some());
-    assert!(descriptor.get("version").is_some());
-    assert!(descriptor.get("domain").is_some());
-    assert!(descriptor.get("jurisdiction_scope").is_some());
+    // All required fields should be present with correct values.
+    assert_eq!(descriptor["family"].as_str().unwrap(), "corporate");
+    assert_eq!(descriptor["name"].as_str().unwrap(), "formation");
+    assert_eq!(descriptor["version"].as_str().unwrap(), "1.0.0");
+    assert_eq!(descriptor["domain"].as_str().unwrap(), "corporate");
+    assert!(!descriptor["jurisdiction_scope"].as_array().unwrap().is_empty());
 
     // Should be canonicalizable
     let canonical = CanonicalBytes::new(&descriptor);
@@ -87,11 +87,11 @@ fn module_directory_structure() {
         }
     });
 
-    // All module paths should be present
-    assert!(modules.get("corporate/formation").is_some());
-    assert!(modules.get("corporate/dissolution").is_some());
-    assert!(modules.get("tax/withholding").is_some());
-    assert!(modules.get("aml/screening").is_some());
+    // All module paths should be present with correct family values.
+    assert_eq!(modules["corporate/formation"]["family"], "corporate");
+    assert_eq!(modules["corporate/dissolution"]["family"], "corporate");
+    assert_eq!(modules["tax/withholding"]["family"], "tax");
+    assert_eq!(modules["aml/screening"]["family"], "aml");
 
     // The entire directory should canonicalize deterministically
     let d1 = sha256_digest(&CanonicalBytes::new(&modules).unwrap());

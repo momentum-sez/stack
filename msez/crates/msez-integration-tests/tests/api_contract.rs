@@ -674,8 +674,10 @@ async fn settlement_compute_valid_obligations() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let v = body_json(resp).await;
-    assert!(v["obligations_processed"].as_u64().unwrap() > 0);
-    assert!(v["reduction_bps"].as_u64().is_some());
+    let obligations = v["obligations_processed"].as_u64().unwrap();
+    assert!(obligations > 0, "should process at least one obligation");
+    let reduction = v["reduction_bps"].as_u64().expect("reduction_bps must be a valid number");
+    assert!(reduction <= 10000, "reduction_bps should not exceed 100% (10000 bps)");
 }
 
 // =========================================================================
@@ -829,7 +831,11 @@ async fn policies_list() {
     let resp = app.oneshot(get("/v1/policies")).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let v = body_json(resp).await;
-    assert!(v.is_array());
+    assert!(v.is_array(), "policies endpoint should return a JSON array");
+    // Verify array structure — even if empty, each entry should be an object.
+    for entry in v.as_array().unwrap() {
+        assert!(entry.is_object(), "each policy should be a JSON object");
+    }
 }
 
 #[tokio::test]

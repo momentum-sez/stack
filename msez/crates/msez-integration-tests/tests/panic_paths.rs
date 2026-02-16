@@ -354,9 +354,13 @@ fn netting_self_obligation_no_panic() {
         corridor_id: None,
         priority: 0,
     });
-    if add_result.is_ok() {
-        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| engine.compute_plan()));
-        assert!(result.is_ok(), "Self-obligation should not panic");
+    // Either rejected upfront (valid) or accepted — but must never panic
+    match add_result {
+        Err(_) => {} // Correctly rejected self-obligation
+        Ok(()) => {
+            let result = panic::catch_unwind(panic::AssertUnwindSafe(|| engine.compute_plan()));
+            assert!(result.is_ok(), "Self-obligation should not panic in compute_plan");
+        }
     }
 }
 
@@ -461,9 +465,13 @@ fn netting_empty_party_ids_no_panic() {
         corridor_id: None,
         priority: 0,
     });
-    if add_result.is_ok() {
-        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| engine.compute_plan()));
-        assert!(result.is_ok(), "Empty party IDs should not panic");
+    // Either rejected upfront (valid) or accepted — but must never panic
+    match add_result {
+        Err(_) => {} // Correctly rejected empty party IDs
+        Ok(()) => {
+            let result = panic::catch_unwind(panic::AssertUnwindSafe(|| engine.compute_plan()));
+            assert!(result.is_ok(), "Empty party IDs should not panic in compute_plan");
+        }
     }
 }
 
@@ -478,9 +486,13 @@ fn netting_empty_currency_no_panic() {
         corridor_id: None,
         priority: 0,
     });
-    if add_result.is_ok() {
-        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| engine.compute_plan()));
-        assert!(result.is_ok(), "NettingEngine::compute_plan must not panic with empty currency");
+    // Either rejected upfront (valid) or accepted — but must never panic
+    match add_result {
+        Err(_) => {} // Correctly rejected empty currency
+        Ok(()) => {
+            let result = panic::catch_unwind(panic::AssertUnwindSafe(|| engine.compute_plan()));
+            assert!(result.is_ok(), "NettingEngine::compute_plan must not panic with empty currency");
+        }
     }
 }
 

@@ -598,7 +598,10 @@ impl AppState {
             smart_assets: Store::new(),
             attestations: Store::new(),
             tax_events: Store::new(),
+            #[cfg(feature = "jurisdiction-pk")]
             tax_pipeline: Arc::new(Mutex::new(TaxPipeline::pakistan())),
+            #[cfg(not(feature = "jurisdiction-pk"))]
+            tax_pipeline: Arc::new(Mutex::new(TaxPipeline::default())),
             receipt_chains: Arc::new(RwLock::new(HashMap::new())),
             db_pool,
             mass_client,

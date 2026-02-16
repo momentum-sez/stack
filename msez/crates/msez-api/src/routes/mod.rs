@@ -25,6 +25,7 @@
 pub mod agentic;
 pub mod corridors;
 pub mod credentials;
+#[cfg(feature = "jurisdiction-pk")]
 pub mod govos;
 pub mod identity;
 pub mod mass_proxy;

@@ -92,7 +92,7 @@ pub fn app(state: AppState) -> Router {
         // consolidated entity identity, service status.
         .merge(routes::identity::router())
         // Tax collection pipeline — P1-009: withholding computation,
-        // tax event recording, FBR IRIS reporting.
+        // tax event recording, reporting.
         .merge(routes::tax::router())
         // SEZ Stack native routes (genuinely this codebase's domain)
         .merge(routes::corridors::router())
@@ -100,11 +100,16 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::smart_assets::router())
         .merge(routes::credentials::router())
         .merge(routes::regulator::router())
-        // GovOS Console — M-009: Pakistan sovereign deployment dashboards
-        // (GovOS Console, Tax & Revenue, Digital Free Zone, Citizen Services).
-        .merge(routes::govos::router())
         .merge(routes::agentic::router())
-        .merge(openapi::router())
+        .merge(openapi::router());
+
+    // GovOS Console — M-009: Pakistan sovereign deployment dashboards
+    // (GovOS Console, Tax & Revenue, Digital Free Zone, Citizen Services).
+    // Gated behind `jurisdiction-pk` feature — not compiled for non-Pakistan zones.
+    #[cfg(feature = "jurisdiction-pk")]
+    let api = api.merge(routes::govos::router());
+
+    let api = api
         .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
         .layer(from_fn(middleware::rate_limit::rate_limit_middleware))
         .layer(from_fn(auth::auth_middleware))

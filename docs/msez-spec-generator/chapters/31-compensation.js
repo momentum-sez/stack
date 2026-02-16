@@ -1,5 +1,5 @@
 const {
-  chapterHeading, h2,
+  chapterHeading, h2, h3,
   p, codeBlock, table,
   spacer
 } = require("../lib/primitives");
@@ -53,5 +53,20 @@ module.exports = function build_chapter31() {
     spacer(),
 
     p("Compensation guarantees: every forward step has an inverse, compensation is idempotent (re-running produces the same result), and timeout handling ensures that stuck migrations are eventually compensated. If compensation itself fails, the migration enters the Failed state and requires manual intervention with full audit trail available."),
+
+    // --- 31.3 Timeout Configuration ---
+    h2("31.3 Timeout Configuration"),
+    table(
+      ["Phase", "Default Timeout", "On Timeout", "Retry Policy"],
+      [
+        ["COMPLIANCE_CHECK", "30 seconds", "Fail migration, log diagnostic", "No retry (compliance state may change)"],
+        ["ATTESTATION_GATHERING", "5 minutes", "Fail if quorum not reached", "Retry once with extended watcher set"],
+        ["SOURCE_LOCK", "60 seconds", "Fail migration, release any partial locks", "Retry once after 10s backoff"],
+        ["TRANSIT", "2 minutes", "Rollback to source, compensate all prior steps", "No retry (state consistency risk)"],
+        ["DESTINATION_VERIFICATION", "30 seconds", "Return asset to source, compensate transit", "No retry (compliance state may change)"],
+      ],
+      [2400, 1600, 2800, 2560]
+    ),
+    spacer(),
   ];
 };

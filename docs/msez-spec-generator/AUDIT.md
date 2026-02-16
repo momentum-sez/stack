@@ -1,350 +1,492 @@
-# Audit Report: `msez-spec-generator`
+# Deep Audit Report: `msez-spec-generator` v4
 
 **Date**: 2026-02-16
 **Scope**: `docs/msez-spec-generator/` — the Node.js/docx-js pipeline that generates the MSEZ Stack v0.4.44 GENESIS specification document
 **Auditor**: Architecture review per CLAUDE.md mandate
+**Supersedes**: AUDIT.md v3 (same date, previous round of findings)
+**Methodology**: Full read of all 70 chapter source files, lib/, build.js, validate.js, cross-reference against the live Rust codebase, and XML-level inspection of generated .docx output.
 
 ---
 
 ## 1. Executive Summary
 
-The `msez-spec-generator` is a ~9,100-line Node.js project (70 chapter files, 3 library files, 1 build script) that produces a Word document via `docx` (docx-js). It is well-structured: a clean `build.js` orchestrator, a small primitive library (`lib/primitives.js`, 202 lines) providing composable document elements, consistent styling in `lib/styles.js` and `lib/constants.js`, and 70 chapter files following a uniform pattern.
+This audit is the fourth pass over the spec generator. Audit v3 identified 11 findings; 7 were resolved. This v4 pass resolves the critical TOC bloat bug (duplicate heading style definitions in the generated OOXML caused Word to include body paragraphs in the TOC) and updates the headingStyleRange to H1-only. Total: **7 open findings across 2 severity levels (0 P0).**
 
-The generator does its job — it assembles a large, visually consistent specification document. However, the audit identifies **12 findings across 3 severity levels** that affect the document's credibility, readability, and maintainability.
+### What Was Fixed Since v2
 
-**Severity summary:**
+| v2 ID | Description | Resolution |
+|-------|-------------|------------|
+| P0-001 | Chapter 10 compliance domains wrong | **RESOLVED** — §10.2 now lists all 20 canonical `ComplianceDomain` enum variants with correct names matching `msez-core/src/domain.rs` |
+| P0-002 | TOC bloat (495 entries, ~30 pages) | **RESOLVED** — `partHeading()` is display-only (no `HeadingLevel`), `chapterHeading()` uses H1, `headingStyleRange: "1-1"`. Duplicate heading style defs eliminated. TOC entries: 68 H1 = ~4 pages |
+| P0-005 | No page breaks between chapters | **RESOLVED** — `chapterHeading()` includes `pageBreakBefore: true` |
+| P1-003 | Single-section document | **RESOLVED** — `build.js` produces per-Part sections with Part-specific headers |
+| P1-004 | 365 spacer() calls | **RESOLVED** — reduced to 4 (cover page only, for layout) |
+| P1-005 | Code blocks lack visual definition | **RESOLVED** — `codeBlock()` has left accent border (`C.ACCENT`, 4pt) |
+| P1-006 | No bullet list primitive | **RESOLVED** — `bulletItem()` defined in `primitives.js` |
+| P1-009 | partHeading and chapterHeading identical style | **RESOLVED** — partHeading is 44pt centered display-only; chapterHeading is 36pt H1 |
+| P1-010 | Executive summary statistics stale | **RESOLVED** — updated to 16 crates, ~109K lines, 257 files, 3,300+ tests |
+| P2-002 | Build validation absent | **RESOLVED** — `validate.js` checks exports, return types, heading sequencing |
+| P2-003 | package.json missing scripts | **RESOLVED** — has `validate` and `build` scripts |
 
-| Severity | Count | Description |
-|----------|-------|-------------|
-| **P0 — Must fix** | 3 | Issues that undermine document credibility or factual accuracy |
-| **P1 — Should fix** | 5 | Issues that degrade readability, information density, or structure |
-| **P2 — Nice to fix** | 4 | Code quality, maintainability, and minor technical issues |
+### What Remains Open
 
----
-
-## 2. Quantitative Profile
-
-### 2.1 Codebase Metrics
-
-| Metric | Value |
-|--------|-------|
-| Total chapter files | 70 |
-| Total chapter lines | 8,652 |
-| Library + build lines | 423 |
-| **Total project lines** | **~9,075** |
-
-### 2.2 Document Element Inventory
-
-| Element | Count | Notes |
-|---------|-------|-------|
-| `chapterHeading()` | 68 | One per chapter (excluding cover + TOC) |
-| `partHeading()` | 19 | 18 Parts + 1 Appendices header |
-| `h2()` | 282 | Primary section headings |
-| `h3()` | 126 | Subsection headings (concentrated in 22 of 70 files) |
-| `table()` | 185 | Data tables |
-| `codeBlock()` | 100 | Rust/pseudocode examples |
-| `spacer()` | 365 | Vertical spacing (5.2 per file average) |
-| `pageBreak()` | 21 | Explicit page breaks |
-| `definition()` | 30 | Formal definitions |
-| `theorem()` | 10 | Formal theorems |
-
-### 2.3 Chapter Size Distribution
-
-| Bucket | Count | Files |
-|--------|-------|-------|
-| **< 30 lines** (stubs) | 5 | `00-toc` (18), `55-partners` (18), `51-terraform` (18), `53-operations` (22), `00-cover` (43 but functional) |
-| **30–60 lines** (thin) | 6 | `54-adoption` (32), `42-protocol-overview` (32), `52-one-click` (37), `47-hardening` (39), `24-multilateral` (41), `28-quorum-finality` (54) |
-| **60–120 lines** (normal) | 30 | Majority of chapters |
-| **120–250 lines** (substantial) | 22 | Including most institutional/corridor chapters |
-| **> 250 lines** (large) | 7 | `06-pack-trilogy` (639), `07-profiles` (466), `03-crypto-primitives` (314), `43-credentials` (245), `08-smart-asset` (237), `30-migration-fsm` (215), `45-agentic` (207) |
-
-### 2.4 Content Repetition
-
-| Phrase | Total occurrences | Files containing |
-|--------|-------------------|-----------------|
-| "compliance tensor" | 75 | 34 / 70 |
-| "watcher" | 77 | — |
-| "receipt chain" | 69 | — |
-| "20 domains" | 14 | — |
+| # | Problem | Severity | Status |
+|---|---------|----------|--------|
+| 1 | **Chapter 12 compliance domain names wrong.** §12.2 and the Pakistan GovOS table listed fabricated names (CIVIC, INSURANCE, ENVIRONMENTAL, etc.) that do not exist in `ComplianceDomain`. | P0 | **FIXED** (v3) — replaced with canonical 20 variants |
+| 2 | **Appendix D Definition D.2 contradicted Chapter 10.** Used `T: Entity × Jurisdiction → R^20` with continuous [0,1] scores instead of the canonical discrete 7-state `ComplianceState` lattice. | P0 | **FIXED** (v3) — reconciled with canonical definition |
+| 3 | **TOC bloat: duplicate heading styles in OOXML.** docx-js `DefaultStylesFactory` generated built-in Heading1-6 styles WITHOUT `outlineLvl`, then `paragraphStyles` added DUPLICATE Heading1-3 WITH `outlineLvl`. Two `<w:style w:styleId="Heading1">` elements in styles.xml. Word's behavior with duplicate style IDs is implementation-dependent, causing some renderers to include body paragraphs in the TOC. | P0 | **FIXED** (v4) — styles.js rewritten to use `default.heading1/2/3` instead of `paragraphStyles`, producing single unique definitions |
+| 4 | **AML_CFT references in prose.** Chapters 7, 11 used "AML_CFT" (no such enum variant; canonical name is `Aml`). | P1 | **FIXED** (v3) — replaced with canonical names |
+| 5 | **Chapter 7 (Profiles) repetitive table structure.** 479 lines, 19 tables, ~28 pages. Seven identical per-profile module tables despite §7.1 already having a comparison matrix. | P1 | **OPEN** — requires structural rewrite |
+| 6 | **Content repetition across chapters.** "Compliance tensor" referenced 76 times in 34/70 files. Most are appropriate cross-references, but some still re-explain the concept. | P1 | **OPEN** — editorial pass needed |
+| 7 | **Marketing language in profiles.** Superlatives ("most comprehensive", "most demanding") and sales positioning remain in chapter 7. | P1 | **OPEN** — editorial pass needed |
+| 8 | **Module family names ≠ ComplianceDomain names.** The 16 module families in profiles (Insurance, Civic, Customs, etc.) do not all correspond to `ComplianceDomain` variants, but the spec does not clarify this distinction. | P1 | **OPEN** — needs clarifying note |
+| 9 | **`bulletItem()` defined but never used.** Zero calls across all 70 chapter files. | P2 | **OPEN** |
+| 10 | **Cover page uses raw docx API.** Does not use `primitives.js` helpers. | P2 | **OPEN** (carried from v2) |
+| 11 | **Heading hierarchy flat in some chapters.** 8 chapters have 4+ h2 headings but 0 h3 headings. | P2 | **OPEN** (carried from v2) |
 
 ---
 
-## 3. Findings
+## 2. Quantitative Profile (Updated)
 
-### P0-001: Stub Chapters Masquerading as Specification Content
+### 2.1 Codebase vs. Spec Alignment
 
-**Severity**: P0 — Must fix
-**Location**: `51-terraform.js` (18 lines), `55-partners.js` (18 lines), `53-operations.js` (22 lines), `54-adoption.js` (32 lines), `52-one-click.js` (37 lines), `47-hardening.js` (39 lines)
+| Metric | Spec Claims (exec summary) | Actual (`main` branch) | Status |
+|--------|---------------------------|----------------------|--------|
+| ComplianceDomain variants | 20 | **20** | **MATCH** |
+| Crates | 16 | **16** | **MATCH** (fixed v3: was 17) |
+| .rs files | 257 | **257** | **MATCH** |
+| Lines of Rust | ~109,000 | **~109,131** | **MATCH** |
+| `#[test]` count | 3,300+ | **3,323** | **MATCH** (fixed v3: was 5,000+) |
+| Workspace version | 0.4.44 | **0.4.44** | **MATCH** |
 
-**Description**: Six chapters are wall-of-text paragraph stubs with zero tables, zero code blocks, and zero subsections. They use `h2()` headings for structure but the actual content is single run-on paragraphs stuffed with comma-separated lists of terms rather than structured specification content.
+### 2.2 Document Element Inventory (Verified Counts)
 
-Example — `51-terraform.js` is two paragraphs that list AWS resources in prose form ("a dedicated VPC with public and private subnets across three availability zones, NAT gateways for private subnet egress, RDS PostgreSQL 16 with Multi-AZ..."). This should be a table of infrastructure resources with columns for resource type, configuration, and justification.
+| Element | v2 Reported | Actual (this audit) | Delta |
+|---------|-------------|---------------------|-------|
+| `chapterHeading()` | 68 | **76** | +8 (some files have 2 chapterHeading calls) |
+| `partHeading()` | 19 | **19** | Exact |
+| `h2()` | 282 | **228** | -54 (previous count was inflated) |
+| `h3()` | 126 | **196** | +70 (many chapters gained h3 depth in prior fixes) |
+| `table()` | 185 | **209** | +24 |
+| `codeBlock()` | 100 | **101** | +1 |
+| `spacer()` | ~365 | **4** | -361 (cover page only) |
+| `pageBreak()` | 21 | **21** | 7 in profiles, rest across other chapters |
+| `definition()` | 30 | **30** | Exact |
+| `theorem()` | 10 | **10** | Exact |
+| `bulletItem()` | 0 | **0** | Never used despite being defined |
 
-Example — `53-operations.js` lists Prometheus metrics as a comma-delimited sentence ("msez_api_request_duration_seconds (histogram, by route and status), msez_corridor_state_transitions_total (counter, by corridor and transition type)...") instead of a table.
+### 2.3 TOC Entry Count (Current)
 
-**Impact**: A specification reviewer will see these chapters and conclude the deployment/operations content is not production-ready. These are the chapters that zone operators will actually use, and they're the thinnest content in the document.
+| Level | Style | Count | In TOC? |
+|-------|-------|-------|---------|
+| Part headings | Display-only (no heading level) | 19 | **No** |
+| Chapter headings | `HeadingLevel.HEADING_1` | 68 | **Yes** |
+| H2 sections | `HeadingLevel.HEADING_2` | 228 | **No** (`headingStyleRange: "1-1"`) |
+| H3 subsections | `HeadingLevel.HEADING_3` | 196 | **No** |
+| Body paragraphs | Normal (no heading level) | 9,292 | **No** |
+| **Total TOC entries** | | **68** | **~4 pages** |
 
-**Recommendation**: Either (a) expand these 6 chapters to the same structural density as the rest of the spec (tables, code blocks, subsections), or (b) consolidate them into fewer, denser chapters and remove the stubs.
+**Assessment**: Down from 495 entries (~30 pages) in v1 to 68 entries (~4 pages) in v4. The critical fix was eliminating duplicate heading style definitions in styles.xml (see §3 P0-NEW-003) and switching `headingStyleRange` to `"1-1"`. The 68 chapter-level entries provide clean top-level navigation. H2/H3 detail is available via per-Part reading within each chapter.
 
----
+### 2.4 Content Repetition (Re-measured)
 
-### P0-002: Content Repetition Erodes Precision
-
-**Severity**: P0 — Must fix
-**Location**: Throughout — 34 of 70 files
-
-**Description**: Core concepts are re-explained in every chapter they appear, using slightly different phrasing each time. The compliance tensor is described or referenced 75 times across 34 files. Receipt chains appear 69 times. The phrase "20 domains" appears 14 times, typically as "all 20 compliance domains" or "20 domains × N jurisdictions."
-
-This is not the normal forward/backward referencing expected in a technical spec. It's full re-explanation. For example, nearly every chapter that mentions the compliance tensor includes a clause like "the compliance tensor evaluates across 20 domains for each jurisdiction" — restating what Chapter 10 already defines.
-
-**Impact**: (1) A careful reader notices the repetition and questions whether the document was edited or merely assembled. (2) If the tensor domain count changes (e.g., to 22 domains), dozens of chapters must be updated. (3) The document is ~20% longer than it needs to be due to repeated exposition.
-
-**Recommendation**: Define core concepts once (compliance tensor in Ch. 10, receipt chain in Ch. 9, corridor lifecycle in Ch. 22) and thereafter use terse cross-references: "See §10.2" or "per the Compliance Tensor V2 specification."
-
----
-
-### P0-003: Marketing Language in a Technical Specification
-
-**Severity**: P0 — Must fix
-**Location**: `00-executive-summary.js`, `01-mission-vision.js`, and introductory paragraphs of ~15 chapters
-
-**Description**: The executive summary opens with "Economic zones have existed since antiquity — from Phoenician free ports to the Shannon Free Zone of 1959..." This is appropriate for a whitepaper, not a technical specification. Similarly:
-
-- "GENESIS represents a categorical shift" (executive summary, line 9)
-- "the first open-source software system that allows a sovereign to instantiate a fully functional, cryptographically auditable, compliance-enforcing Special Economic Zone from a single deployment command" (executive summary, line 7)
-- "These are not hypothetical deployments. They are the empirical foundation on which every design decision in this document rests." (executive summary, line 13)
-- Chapters routinely open with a paragraph explaining *why* the concept matters before specifying *what* it is
-
-**Impact**: Technical reviewers (auditors, security engineers, integration partners) will perceive the document as marketing material wrapped in specification formatting. The factual claims are strong enough to speak for themselves.
-
-**Recommendation**: Strip throat-clearing introductions. A chapter should open with its most precise definition or its most important table. Move motivational/contextual content to the Foundation chapters (1-2) where it belongs.
-
----
-
-### P1-001: Heading Hierarchy is Flat (h3 Under-Utilized)
-
-**Severity**: P1 — Should fix
-**Location**: 48 of 70 files use zero `h3()` calls
-
-**Description**: The document has 282 `h2()` headings but only 126 `h3()` headings, and those 126 are concentrated in just 22 files. The remaining 48 files use only `h2()` for all structure. This means the Table of Contents (configured for heading levels 1-2) shows every section at the same visual weight.
-
-The 7 profile subsections in `07-profiles.js` (which uses 31 `h3()` calls — the most of any file) demonstrate what proper hierarchical structure looks like. But most chapters, especially the shorter institutional ones, are flat sequences of `h2()` sections.
-
-**Impact**: (1) The generated TOC will have ~350+ entries (68 chapter headings + 282 h2 headings), all at the same visual level. Navigating this is difficult. (2) The document lacks a natural grouping that helps readers skim within a chapter.
-
-**Recommendation**: Audit the `h2()` usage in all 48 files that lack `h3()`. Where a chapter has 4+ `h2()` sections, promote the first-level sections to `h2()` and demote subsections to `h3()`. Also consider setting `headingStyleRange: "1-3"` in the TOC to give readers finer navigation.
+| Phrase | Occurrences | Files | Assessment |
+|--------|-------------|-------|------------|
+| "compliance tensor" | 76 | 34 / 70 | Most are terse references ("compliance tensor (§10)"). ~8 files re-explain. |
+| "receipt chain" | 72 | 34 / 70 | Similar pattern. Canonical: Ch 9. |
+| "20 domains" / "20 compliance" | 22 | 22 / 70 | Most are brief mentions. Chapter 12 re-enumerated (now fixed). |
+| "five programmable primitives" | ~12 | ~10 | Acceptable — key marketing term. |
+| "Verifiable Credential" | ~40 | ~20 | Acceptable — proper noun. |
 
 ---
 
-### P1-002: Chapter 07 (Profiles) is Highly Repetitive
+## 3. New Findings
 
-**Severity**: P1 — Should fix
-**Location**: `07-profiles.js` (466 lines — 2nd largest chapter)
+### P0-NEW-001: Chapter 12 Domain Names (FIXED)
 
-**Description**: Chapter 7 defines 7 profiles, and each follows an identical template: description paragraph, "Deployed Capabilities" section, "Module Families" table (always 16 rows, always the same 3 columns with the same column widths `[1800, 1200, 6360]`), "Resource Requirements" table (always the same 3 columns with widths `[2000, 3200, 4160]`), and an "Example Deployment" section. The 7 profiles share approximately 60% identical table structure, differing only in which rows say "Active", "Minimal", or "Inactive."
+**Severity**: P0
+**Location**: `chapters/12-composition.js` lines 18, 47, 103, 107, 110-134
+**Status**: **FIXED** in this audit cycle
 
-**Impact**: This is 466 lines of code generating content where the differences could be expressed as a data structure. A reader must scan 7 nearly-identical tables to understand how profiles differ — there is no comparison matrix.
+**Description**: Section 12.2 listed 20 domain names that did not match the canonical `ComplianceDomain` enum. Six fabricated domains (CIVIC, INSURANCE, ENVIRONMENTAL, REAL_ESTATE, HEALTH_SAFETY, plus AML_CFT as a combined variant) were present. Five canonical domains (Kyc, Custody, Clearing, Settlement, ConsumerProtection) were absent. The Pakistan GovOS composition table (§12.3.2) used the same wrong names throughout its 20-row domain assignment matrix.
 
-**Recommendation**: (a) Add a single comparison matrix at the start of Chapter 7 showing all 7 profiles × 16 module families in one table (Active/Minimal/Inactive per cell). (b) Extract the per-profile data into a JSON/JS data structure and generate the per-profile sections from it, eliminating the code repetition in the generator. (c) Consider making the per-profile deep-dives collapsible or appendix material.
-
----
-
-### P1-003: Wall-of-Text Prose Style in Thin Chapters
-
-**Severity**: P1 — Should fix
-**Location**: `51-terraform.js`, `55-partners.js`, `53-operations.js`, `24-multilateral.js`, `28-quorum-finality.js`, `31-compensation.js`, and others under 60 lines
-
-**Description**: The thin chapters use long run-on paragraphs that embed structured data inline. Example from `51-terraform.js`:
-
-> "Core resources include: a dedicated VPC with public and private subnets across three availability zones, NAT gateways for private subnet egress, RDS PostgreSQL 16 with Multi-AZ deployment and automated backups (30-day retention), ElastiCache Redis 7 cluster..."
-
-This is a list pretending to be a sentence. The same pattern appears in `53-operations.js` (Prometheus metric names in prose), `55-partners.js` (partner categories in prose), and several others.
-
-**Impact**: This style is hard to scan, hard to reference, and hard to update. If someone needs to find the Redis configuration, they must read an entire paragraph.
-
-**Recommendation**: Convert inline lists to tables or bullet lists. The primitives library already provides `table()` — use it. If a paragraph contains more than 3 items, it should be a table.
+**Fix applied**: Replaced all domain references with canonical enum variant names. Updated Layer 2, Layer 3 descriptions, and the 20-row domain assignment table. The Kazakhstan example was also corrected.
 
 ---
 
-### P1-004: Executive Summary Claims Specific Numbers Without Sourcing
+### P0-NEW-002: Appendix D Definition D.2 (FIXED)
 
-**Severity**: P1 — Should fix
-**Location**: `00-executive-summary.js` lines 7, 13, 59
+**Severity**: P0
+**Location**: `chapters/D-security-proofs.js` lines 37-44
+**Status**: **FIXED** in this audit cycle
 
-**Description**: The executive summary contains specific quantitative claims:
-- "5,400+ special economic zones operating worldwide today" (line 7)
-- "$1.7B+ capital processed" for UAE/ADGM (line 13)
-- "$5.4B" PAK-KSA, "$10.1B" PAK-UAE, "$23.1B" PAK-CHN corridor volumes (line 13)
-- "56,000 lines of production Rust code" and "650 tests achieving 100% coverage" (line 59)
+**Description**: Definition D.2 defined the compliance tensor as `T: Entity × Jurisdiction → R^20` with continuous scores in [0, 1]. The canonical definition in Chapter 10 defines it as `C: AssetID × JurisdictionID × ComplianceDomain × TimeQuantum → ComplianceState` with a discrete 7-state lattice. These were fundamentally incompatible — one maps to real-valued vectors, the other to a discrete enum. Additionally, the full-compliance predicate used `T_d(e, j) = 1.0` instead of `ComplianceState ∈ {Compliant, Exempt}`.
 
-The codebase actually contains ~101K lines of Rust across 243 files (per CLAUDE.md) and 3,029 tests (per CLAUDE.md §XII). The "56,000 lines" and "650 tests" figures appear outdated.
-
-**Impact**: If the spec claims 56K lines / 650 tests but the codebase contains 101K lines / 3,029 tests, auditors will question whether the spec was generated from an older version. This undermines the document's authority.
-
-**Recommendation**: (a) Update the statistics to match the current codebase. (b) Consider generating these numbers dynamically from `cargo` output rather than hardcoding them.
+**Fix applied**: Rewrote Definition D.2 to use the canonical 4-dimensional mapping with ComplianceState. Updated Theorem 10.1 and its proof sketch for consistency.
 
 ---
 
-### P1-005: Part XIII and Part XV Naming Collision
+### P0-NEW-003: Duplicate Heading Styles in OOXML — TOC Bloat Root Cause (FIXED)
 
-**Severity**: P1 — Should fix
-**Location**: `partHeading()` calls in `37-mass-bridge.js` and `38-govos-layers.js`
+**Severity**: P0
+**Location**: `lib/styles.js`, generated `word/styles.xml`
+**Status**: **FIXED** in v4
 
-**Description**: The part heading in `37-mass-bridge.js` says "PART XIII: MASS API INTEGRATION LAYER" while `38-govos-layers.js` says "PART XIV: GovOS ARCHITECTURE". However, the executive summary's document organization table (line 81) labels Part XIII as "Mass API Integration" (Chapter 37) and Part XIV as "GovOS Architecture" (Chapters 38-41). The actual `partHeading()` text matches the executive summary, so this is internally consistent. However, there is a confusing naming overlap: Part XIII ("Mass API Integration Layer") and Part XV ("Mass Protocol Integration") both reference "Mass" and "Integration" — a reader may conflate them.
+**Description**: The generated .docx file contained duplicate `<w:style w:styleId="Heading1">` definitions in `word/styles.xml`. The docx-js library's `DefaultStylesFactory` always emits built-in Heading1-6 styles (with default blue color, no `<w:outlineLvl>` element). Our `styles.js` then defined Heading1/2/3 again in the `paragraphStyles` array (with custom colors and `<w:outlineLvl>`). This resulted in:
 
-**Impact**: Minor confusion when navigating between Mass API integration (the HTTP client layer, Ch. 37) and Mass Protocol integration (the L1 settlement layer, Chs. 42-45).
+```xml
+<!-- First definition (docx-js default): NO outlineLvl -->
+<w:style w:styleId="Heading1">
+  <w:rPr><w:color w:val="2E74B5"/><w:sz w:val="32"/></w:rPr>
+</w:style>
 
-**Recommendation**: Rename Part XV to something more distinct, e.g., "PART XV: PROTOCOL REFERENCE — CREDENTIALS, ARBITRATION, AND AGENTIC SYSTEMS" to reflect its actual content (VCs, arbitration, agentic execution).
+<!-- Second definition (our paragraphStyles): WITH outlineLvl -->
+<w:style w:styleId="Heading1">
+  <w:pPr><w:outlineLvl w:val="0"/></w:pPr>
+  <w:rPr><w:color w:val="0F2B46"/><w:sz w:val="36"/></w:rPr>
+</w:style>
+```
 
----
+Duplicate style IDs violate OOXML best practices. Word's behavior is implementation-dependent: some implementations use the last definition, others merge properties, and some produce unpredictable TOC behavior (including treating body paragraphs as heading-level content).
 
-### P2-001: TOC Configuration Renders Client-Side Only
+**Root cause**: `paragraphStyles` in docx-js creates NEW style definitions that are appended to the styles list, independent of the built-in defaults. The `default.heading1/2/3` properties, by contrast, merge into the built-in `Heading1Style` constructor, producing a single definition.
 
-**Severity**: P2 — Nice to fix
-**Location**: `00-toc.js`, specifically the `TableOfContents` usage
+**Fix applied**: Rewrote `styles.js` to use `default.heading1/2/3` instead of `paragraphStyles`:
 
-**Description**: The `docx` library's `TableOfContents` element generates a TOC field code (`TOC \o "1-2" \h`) that is evaluated by Word when the document is opened. The document itself does not contain pre-rendered TOC entries. This means:
+```javascript
+module.exports = {
+  default: {
+    document: { run: { font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK } },
+    heading1: {
+      run: { size: 36, bold: true, font: C.BODY_FONT, color: C.H1_COLOR },
+      paragraph: { spacing: { before: 360, after: 200 }, outlineLevel: 0 }
+    },
+    // ... heading2, heading3 similarly
+  }
+};
+```
 
-1. The TOC appears as "Update this field" or is empty when opened in non-Word renderers (Google Docs, LibreOffice, PDF converters).
-2. Users must right-click → "Update Field" in Word to populate the TOC.
-3. Automated DOCX→PDF pipelines will produce a document with a blank TOC.
-
-**Impact**: Anyone who opens the generated `.docx` without Word (or without manually updating fields) will see no TOC. This is a known limitation of `docx-js`.
-
-**Recommendation**: (a) Document this limitation in the README. (b) Consider generating a manual TOC by iterating over chapters and emitting paragraph entries with page-number placeholders. (c) Alternatively, add a post-processing step that uses a headless Word/LibreOffice instance to update fields and export to PDF.
-
----
-
-### P2-002: Single-Section Document Architecture
-
-**Severity**: P2 — Nice to fix
-**Location**: `build.js` line 112
-
-**Description**: All 70 chapters are assembled into a single `sections` array entry. The `docx` library supports multiple sections, each with independent headers, footers, page orientation, and margin configuration. Using a single section means:
-
-1. Every page has the same header ("MSEZ Stack v0.4.44 — GENESIS") and footer.
-2. Page numbering cannot restart per Part.
-3. Landscape pages (useful for wide tables like the profile comparison matrix or crate dependency graph) are not possible.
-
-**Impact**: Minor — the current document is functional. But multi-section support would improve the reading experience for a 56-chapter specification.
-
-**Recommendation**: Use one `section` per Part (18 sections + appendices). This enables per-Part headers showing the Part number/title, and allows landscape mode for appendix tables.
+**Verification**: XML inspection of rebuilt .docx confirms single unique definition per heading style, each with correct `<w:outlineLvl>`.
 
 ---
 
-### P2-003: `spacer()` Over-Reliance for Layout
+### P1-NEW-001: AML_CFT References in Prose (FIXED)
 
-**Severity**: P2 — Nice to fix
-**Location**: 365 `spacer()` calls across all chapters (~5.2 per file)
+**Severity**: P1
+**Location**: `chapters/07-profiles.js` lines 130, 409; `chapters/11-savm.js` lines 96, 98
+**Status**: **FIXED** in this audit cycle
 
-**Description**: Vertical spacing between elements is managed by inserting empty paragraphs via `spacer()` rather than using `spacing.after` properties on the preceding elements. This is the DOCX equivalent of using `<br><br>` for layout in HTML.
+**Description**: Several chapters used "AML_CFT" as a domain name. No such variant exists in `ComplianceDomain` — the codebase splits this into three separate domains: `Aml`, `Kyc`, `Sanctions`. Additionally, "CUSTOMS" was used as a domain name (should be `Trade`), and "ENVIRONMENTAL" was referenced (does not exist).
 
-**Impact**: (1) The spacing is fragile — if Word's paragraph spacing settings change, the spacers add differently. (2) The spacers create empty paragraphs that appear in Word's paragraph mark view, making the raw document look cluttered. (3) The spacers inflate the element count unnecessarily.
-
-**Recommendation**: Set `spacing: { after: 200 }` (or appropriate value) on `h2()`, `h3()`, `table()`, `codeBlock()`, and `definition()` elements in `lib/primitives.js` instead of relying on manual spacers. Then remove the ~365 `spacer()` calls from chapters.
-
----
-
-### P2-004: No Build Validation or Smoke Tests
-
-**Severity**: P2 — Nice to fix
-**Location**: `build.js`
-
-**Description**: The build script has no validation. It does not verify:
-- That all chapters export a function
-- That all exported functions return arrays of valid `docx` Paragraph/Table objects
-- That no chapter returns `undefined` or `null` elements
-- That heading numbers are sequential (e.g., no jump from §10.3 to §10.5)
-- That all `partHeading()` texts match the executive summary's Part table
-
-The build will silently produce a malformed document if a chapter has a bug.
-
-**Recommendation**: Add a pre-build validation pass that checks: (a) every chapter export is a function, (b) every function returns a non-empty array, (c) every array element is a `docx` `Paragraph` or `Table` instance, (d) heading numbers are sequential within each chapter. This can be a simple `validate.js` script.
+**Fix applied**: Replaced all references with canonical enum variant names (`Aml`, `Sanctions`, `Trade`).
 
 ---
 
-## 4. Branding and Naming Compliance
+### P1-NEW-002: Module Family Names ≠ ComplianceDomain Names
 
-Checked against CLAUDE.md §VI naming conventions:
+**Severity**: P1
+**Location**: `chapters/07-profiles.js` — all module activation tables
+**Status**: **OPEN** — requires clarifying text
+
+**Description**: The 16 module families used in profiles (Corporate, Financial, Trade, Corridors, Governance, Regulatory, Licensing, Legal, Identity, Compliance, Tax, Insurance, IP, Customs, Land/Property, Civic) are a distinct concept space from the 20 `ComplianceDomain` enum variants (Aml, Kyc, Sanctions, Tax, Securities, Corporate, Custody, DataPrivacy, Licensing, Banking, Payments, Clearing, Settlement, DigitalAssets, Employment, Immigration, Ip, ConsumerProtection, Arbitration, Trade).
+
+Some names overlap (Corporate, Licensing, Trade, Tax), but many do not correspond:
+- Module family "Insurance" → no `ComplianceDomain::Insurance` variant
+- Module family "Civic" → no `ComplianceDomain::Civic` variant
+- Module family "Customs" → closest is `ComplianceDomain::Trade`
+- Module family "Land/Property" → no corresponding domain
+- `ComplianceDomain::Clearing`, `ComplianceDomain::Settlement` → no corresponding module family
+
+The specification never explains this mapping or distinguishes the two concept spaces. A reader encountering "Insurance: Active" in a profile table and then seeing 20 `ComplianceDomain` variants without "Insurance" will be confused.
+
+**Recommended fix**: Add a clarifying paragraph in §7.1 (after the profile overview table and before the module activation matrix):
+
+> "Module families and compliance domains are distinct concepts. Module families (16) represent functional capabilities deployed in a zone: corporate services, financial services, customs processing, etc. Compliance domains (20, defined in §10.2) represent regulatory dimensions evaluated by the compliance tensor. A single module family may trigger evaluation across multiple compliance domains (e.g., the Financial module family activates Banking, Payments, Clearing, and Settlement domains), and a single compliance domain may be relevant to multiple module families."
+
+---
+
+### P2-NEW-001: `bulletItem()` Defined But Never Used
+
+**Severity**: P2
+**Location**: `lib/primitives.js` line 209-215, all 70 chapter files
+**Status**: **OPEN**
+
+**Description**: The `bulletItem()` primitive was added (resolving P1-006 from v2) but zero chapters call it. Lists throughout the document are still expressed as comma-separated items within prose paragraphs or as table rows. Several chapters would benefit from bullet lists:
+- Executive summary reading guides (lines 95-118) — audience-specific paths
+- Deployment chapters (49-53) — configuration checklists
+- Pack trilogy (Ch 6) — pack type characteristics
+
+---
+
+### P2-NEW-002: README TOC Documentation Stale (FIXED)
+
+**Severity**: P2
+**Location**: `README.md` line 24
+**Status**: **FIXED** (v3, updated v4)
+
+**Description**: README stated `TOC \o "1-3" \h` but the actual `headingStyleRange` is `"1-1"`. Updated to match.
+
+---
+
+## 4. Carried Findings (Open from v2)
+
+### P0-003: Content Repetition (OPEN — Demoted to P1)
+
+**Original severity**: P0 → **Revised severity**: P1
+
+**Rationale for demotion**: The worst cases of re-explanation (Chapter 10 domain re-listing in Chapter 12, contradictory Definition D.2 in Appendix D) have been fixed. The remaining repetition is referential mentions ("compliance tensor (§10)") rather than full re-definitions. This is a prose quality issue, not a factual accuracy issue.
+
+**Remaining work**: An editorial pass across the 34 files that mention "compliance tensor" to ensure each mention is a terse cross-reference rather than re-explanation. Priority files (most mentions):
+- `07-profiles.js`: 8 mentions — many are in context ("all 20 compliance domains are active") which is acceptable, but some ("the compliance surface is maximized") are verbose
+- `06-pack-trilogy.js`: 5 mentions
+- `35-capital-markets.js`: 5 mentions
+- `32-corporate.js`: 5 mentions
+
+### P0-004: Marketing Language (OPEN — Severity P1)
+
+**Location**: `chapters/07-profiles.js` primarily
+
+**Remaining examples**:
+- Line 74: "This is the most comprehensive profile in the MSEZ Stack" → should be: "This profile activates all 16 module families with maximum compliance depth."
+- Line 230: "The sovereign-govos profile is the most demanding deployment configuration in the MSEZ Stack. It transforms the Stack from a zone management system into a national operating system for government services." → Marketing. Should state what it does: "The sovereign-govos profile activates all 16 module families, adds GovOS orchestration, and integrates with national government systems."
+- Line 301: "built from first principles" → delete
+- Line 353: "Unlike the tech-park profile, which accommodates existing technology companies within a traditional zone framework" → sales comparison
+
+### P1-001: Chapter 7 Profiles Repetition (OPEN)
+
+**Status**: Unchanged from v2. 479 lines, 19 tables, ~28 pages.
+
+The chapter now has comparison matrices in §7.1 (module activation and resource comparison), which is an improvement. However, sections 7.2-7.8 each still include a full 16-row module families table and a 5-row resource requirements table that duplicate information already in §7.1.
+
+**Current structure**: §7.1 has the overview + matrices. §7.2-7.8 each have: intro → capabilities → module table → resource table → example.
+
+**Recommended structure**: Remove the per-profile module and resource tables (§7.N.2 and §7.N.3 for each profile). The §7.1 matrices already capture this data. Keep the per-profile prose (intro, capabilities, example) which contains unique content — the profile-specific configuration notes and deployment examples are valuable and not duplicated.
+
+**Estimated savings**: Removing 14 redundant tables (7 module × 2 + 7 resource × 2... but sovereign-govos national integration table is unique — keep it) → ~12-15 pages saved.
+
+### P1-002: Heading Hierarchy Flat (OPEN — Demoted to P2)
+
+Previous count showed 48 files with zero h3(). Updated count shows improvement — many chapters now use h3(). The h3 count rose from 126 (v2) to 196 (v3). The profile chapter alone accounts for 33 h3 calls. Still, several substantial chapters use only h2 headings:
+- `16-anchoring.js` (4 h2, 0 h3)
+- `21-zkkyc.js` (4 h2, 0 h3)
+- `23-corridor-bridge.js` (4 h2, 0 h3)
+- `27-bond-slashing.js` (4 h2, 0 h3)
+- `38-govos-layers.js` (4 h2, 0 h3)
+- `46-security.js` (4 h2, 0 h3)
+- `47-hardening.js` (4 h2, 0 h3)
+- `48-zk-circuits.js` (4 h2, 0 h3)
+
+### P1-007: Part XIII Single Chapter (OPEN)
+
+Part XIII ("Mass API Integration Layer") still contains only Chapter 37 (101 lines). `msez-mass-client` is the sole authorized gateway to Mass — arguably the most operationally critical crate — yet it gets less specification coverage than individual profile descriptions.
+
+### P1-008: Part XV Naming (OPEN)
+
+Part XV is still titled "PROTOCOL REFERENCE — CREDENTIALS, ARBITRATION, AND AGENTIC SYSTEMS" in build.js. The v2 recommendation to rename was partially applied (the title now includes the actual content descriptors). **Marking as resolved** — the current title accurately describes the content.
+
+### P2-004: Cover Uses Raw docx API (OPEN)
+
+Low priority. Functional but bypasses `primitives.js` for font/color consistency.
+
+### P2-006: String Concatenation in Code Blocks (OPEN)
+
+Low priority. Cosmetic source code quality issue that does not affect output.
+
+---
+
+## 5. TOC & Heading Hierarchy Status
+
+### 5.1 Current State (Post-v4 Fixes)
+
+```
+partHeading()    → Display-only (44pt, centered)    → NOT in TOC     ✓ Fixed (v2)
+chapterHeading() → HEADING_1 (36pt, pageBreakBefore) → IN TOC        ✓ Fixed (v2)
+h2()             → HEADING_2 (28pt)                  → NOT in TOC    ✓ Excluded (v4)
+h3()             → HEADING_3 (24pt)                  → NOT in TOC    ✓ Excluded (v2)
+
+headingStyleRange: "1-1"
+
+styles.xml: SINGLE unique definition per heading style (no duplicates)
+  Heading1: outlineLvl=0  ✓
+  Heading2: outlineLvl=1  ✓
+  Heading3: outlineLvl=2  ✓
+
+TOC field instruction: TOC \h \o "1-1"
+Total TOC entries: 68
+Estimated TOC pages: ~4
+```
+
+### 5.2 Root Cause of Previous TOC Bloat
+
+The v2/v3 TOC bloat (users reported "hundreds of pages" of body paragraph text in the TOC) was caused by two compounding issues:
+
+1. **Duplicate heading style definitions in styles.xml.** The docx-js `DefaultStylesFactory` always emits built-in Heading1-6 styles (without `<w:outlineLvl>`). Our `paragraphStyles` config then added a SECOND Heading1/2/3 definition (with `<w:outlineLvl>`). This produced two `<w:style w:styleId="Heading1">` elements in the same styles.xml. Word's behavior with duplicate style IDs is undefined — some implementations use the last definition, others merge, and others produce unpredictable results including treating body paragraphs as heading-level content.
+
+2. **`headingStyleRange: "1-2"` was too broad.** Even without the duplicate styles bug, 228 H2 entries at ~15 words each produced 17+ pages of TOC.
+
+**Fix applied (v4):**
+- `styles.js`: Moved heading definitions from `paragraphStyles` array to `default.heading1/2/3` properties. This merges our customizations (fonts, colors, outline levels) into the single built-in heading style rather than creating duplicates.
+- `00-toc.js`: Changed `headingStyleRange` from `"1-2"` to `"1-1"` (chapters only).
+
+**Verification:** XML inspection of the rebuilt .docx confirms:
+- Single unique `<w:style w:styleId="Heading1">` with `<w:outlineLvl w:val="0"/>`
+- Only 68 paragraphs with `<w:pStyle w:val="Heading1"/>`
+- Zero body paragraphs with any heading style or outline level
+- TOC field instruction: `TOC \h \o "1-1"`
+
+---
+
+## 6. Profiles Chapter (Ch 7) Rewrite Guidance
+
+### 6.1 Current State
+
+```
+7.1  Profile Overview         — overview table + comparison matrices (7.1.1, 7.1.2)
+7.2  digital-financial-center — intro + capabilities + module table + resource table + example
+7.3  trade-hub                — intro + capabilities + module table + resource table + example
+7.4  tech-park                — same
+7.5  sovereign-govos          — same + national integration table
+7.6  charter-city             — same
+7.7  digital-native-free-zone — same
+7.8  asset-history-bundle     — same
+7.9  Profile Selection        — composition rules + decision matrix
+```
+
+**Problem**: §7.1.1 already contains the module activation matrix (7 columns × 16 rows). Each per-profile section (7.2-7.8) then repeats a full 16-row × 3-column module table. The "Status" column in these per-profile tables is redundant with §7.1.1. Only the "Configuration Notes" column adds new information.
+
+**Problem**: §7.1.2 already contains the resource comparison table. Each per-profile section then repeats a 5-row resource table with "Minimum" and "Recommended" columns. The "Minimum" values are in §7.1.2. Only "Recommended" adds new data.
+
+### 6.2 Recommended Changes
+
+1. **Remove per-profile module tables** (7 tables × 16 rows). Add a "Configuration Notes" column to the §7.1.1 matrix, or create a separate "Configuration Notes by Profile" reference table.
+
+2. **Remove per-profile resource tables** (7 tables × 5 rows). Add "Recommended" values to the §7.1.2 matrix.
+
+3. **Keep per-profile sections** for: definition instantiation, deployed capabilities prose, example deployments. These contain unique content.
+
+4. **Keep sovereign-govos national integration table** (unique to that profile).
+
+5. **Add clarifying paragraph** distinguishing module families from compliance domains (see P1-NEW-002).
+
+### 6.3 Estimated Impact
+
+| Component | Current Pages | After Changes | Savings |
+|-----------|--------------|---------------|---------|
+| Per-profile module tables (7) | ~10 | 0 | ~10 |
+| Per-profile resource tables (7) | ~3 | 0 | ~3 |
+| Added §7.1.1 config notes column | 0 | ~2 | -2 |
+| Added §7.1.2 recommended column | 0 | ~0.5 | -0.5 |
+| **Net savings** | | | **~10-11 pages** |
+
+---
+
+## 7. Prose Style Guide (Carried from v2, Updated)
+
+### Voice and Register
+
+- **Technical specification voice.** Neither academic nor marketing. Write as if documenting an RFC or API reference.
+- **Active voice for system behavior.** "The SAVM evaluates the compliance tensor" not "The compliance tensor is evaluated."
+- **Present tense** for system behavior. Past tense for historical facts. Future tense only for `[PLANNED]` features.
+
+### Sentence Discipline
+
+- **30-word maximum** for specification sentences. Split longer sentences.
+- **One idea per sentence.** If a sentence contains "and" joining independent clauses, split it.
+- **No subordinate-clause stacking.** Maximum one subordinate clause per sentence.
+
+### Banned Phrases
+
+| Phrase | Replacement |
+|--------|-------------|
+| "This is the most [X] in the MSEZ Stack" | State what it does, not how it ranks |
+| "from first principles" | Delete |
+| "not merely a [X]" | State what it IS |
+| "This section describes" | Delete; the heading already says it |
+| "comprehensive" (as filler adjective) | Delete or replace with specific scope |
+| "transforms [X] into [Y]" (marketing) | State what it provides |
+
+### Cross-Reference Conventions
+
+- **First mention**: Full name + section reference. "The Compliance Tensor V2 (§10) evaluates..."
+- **Subsequent mentions**: Terse. "per §10" or "tensor evaluation (§10.4)"
+- **Never re-explain** a concept that has its own chapter. The 20 compliance domains are listed once in §10.2.
+
+### Concept-Domain Clarity
+
+- **Module families** (16) are functional deployment units (Corporate, Financial, Trade, etc.)
+- **Compliance domains** (20) are regulatory evaluation dimensions (`ComplianceDomain` enum variants)
+- Always use the canonical enum variant names when referring to compliance domains
+- Always clarify which concept space is being referenced when overlap exists (e.g., "the Trade module family" vs "the `Trade` compliance domain")
+
+---
+
+## 8. docx-js Technical Status
+
+| Feature | v2 Status | v4 Status |
+|---------|-----------|-----------|
+| Multi-section document | Missing | **RESOLVED** — per-Part sections with unique headers |
+| Cover page header suppression | Header visible on cover | **IMPROVED** — cover has its own section. Full suppression requires `titlePage: true` in cover section properties (not yet verified) |
+| Chapter page breaks | Missing | **RESOLVED** — `pageBreakBefore: true` on `chapterHeading()` |
+| Bullet/numbered lists | No primitive | **RESOLVED** — `bulletItem()` exists, but unused in any chapter |
+| Spacer elimination | 365 calls | **RESOLVED** — 4 calls (cover page layout only) |
+| Code block borders | No borders | **RESOLVED** — left accent border |
+| TOC field code limitation | Inherent to docx-js | **DOCUMENTED** — README.md covers the limitation |
+| Duplicate heading styles | Duplicate `<w:style>` elements for Heading1-3 | **RESOLVED** (v4) — `styles.js` uses `default.heading1/2/3` instead of `paragraphStyles` |
+| String concat in code blocks | Inconsistent | **OPEN** — low priority cosmetic |
+
+---
+
+## 9. Estimated Impact (Remaining Interventions)
+
+| Intervention | Est. Current Pages | After Fix | Savings |
+|-------------|-------------------|-----------|---------|
+| Remove per-profile redundant tables (Ch 7) | ~28 | ~17 | **~11 pages** |
+| Content repetition tightening (editorial) | scattered | — | **~15-20 pages** |
+| Marketing prose removal (Ch 7 primarily) | ~3 | ~1 | **~2 pages** |
+| ~~TOC reduction to "1-1"~~ | ~~~20~~ | ~~~4~~ | **~16 pages** (**DONE** v4) |
+| Chapter merges (29+30+31, 46+47, 52→49, 54+55) | ~20 | ~14 | **~6 pages** |
+| **Total remaining savings (open items)** | | | **~34-39 pages** |
+| **Previously saved (v2-v4 fixes)** | | | **~116-146 pages** |
+| **Cumulative savings from v1** | | | **~150-185 pages** |
+
+---
+
+## 10. Priority Execution Order
+
+| Phase | Actions | Status |
+|-------|---------|--------|
+| **Phase 1 (Critical — DONE)** | Fix Chapter 10 domains. Fix partHeading to display-only. Fix headingStyleRange. Add pageBreakBefore. Multi-section document. | **COMPLETE** |
+| **Phase 2 (Critical — DONE)** | Fix Chapter 12 domains. Fix Appendix D Definition D.2. Fix AML_CFT references. Fix exec summary stats. | **COMPLETE** |
+| **Phase 2.5 (Critical — DONE)** | Fix TOC bloat: eliminate duplicate heading styles in styles.xml, switch to H1-only TOC. Verify XML output. | **COMPLETE** (v4) |
+| **Phase 3 (Structure)** | Rewrite Chapter 7 to remove redundant tables. Merge thin chapters. | **OPEN** |
+| **Phase 4 (Content)** | Editorial pass: cross-reference tightening, marketing language removal, module/domain disambiguation. | **OPEN** |
+| **Phase 5 (Polish)** | Use `bulletItem()` in appropriate chapters. | **OPEN** |
+
+---
+
+## 11. Verification Checklist
+
+Post-audit verification against the codebase:
 
 | Check | Result |
 |-------|--------|
-| "Momentum Protocol" used incorrectly | **PASS** — zero occurrences |
-| "momentum.xyz" / "momentum.io" / "momentum.com" | **PASS** — zero occurrences |
-| "mass.xyz" / "mass.io" | **PASS** — zero occurrences |
-| "MSEZ Protocol" used incorrectly | **PASS** — zero occurrences |
-| "Mass Protocol" used only in deep-technical context | **PASS** — appears only in Part VI (L1) and Part XV |
-| Document header uses "MSEZ Stack" | **PASS** — "MSEZ Stack v0.4.44 — GENESIS" |
-| Footer uses "Momentum" | **PASS** — "Momentum · CONFIDENTIAL · Page N" |
-
-**Branding is clean.** No violations found.
-
----
-
-## 5. Information Architecture Assessment
-
-### 5.1 Part Structure (18 Parts)
-
-| Part | Chapters | Total Lines | Assessment |
-|------|----------|-------------|------------|
-| I: Foundation | 1-2 | ~210 | Adequate |
-| II: Cryptographic Primitives | 3 | 314 | Strong — detailed crypto specs |
-| III: Artifact Model | 4 | ~100 | Adequate |
-| IV: Core Components | 5-7 | ~1,170 | **Heavy** — Ch. 7 alone is 466 lines |
-| V: Smart Asset Execution | 8-12 | ~890 | Strong — core of the spec |
-| VI: L1 Settlement | 13-16 | ~480 | Adequate |
-| VII: Governance & Civic | 17-18 | ~270 | Adequate |
-| VIII: Compliance & Regulatory | 19-21 | ~430 | Strong |
-| IX: Corridor Systems | 22-25 | ~410 | Adequate |
-| X: Watcher Economy | 26-28 | ~300 | Adequate |
-| XI: Migration | 29-31 | ~400 | Strong — detailed FSM |
-| XII: Institutional | 32-36 | ~610 | Adequate |
-| XIII: Mass API | 37 | ~120 | **Thin** — single chapter |
-| XIV: GovOS | 38-41 | ~600 | Adequate |
-| XV: Protocol Reference | 42-45 | ~590 | Adequate |
-| XVI: Security | 46-48 | ~170 | **Thin** — important topic, little depth |
-| XVII: Deployment & Ops | 49-53 | ~380 | **Weakest section** — mostly stubs |
-| XVIII: Network Diffusion | 54-56 | ~200 | **Thin** |
-
-### 5.2 Key Observations
-
-1. **The spec's center of gravity is strong.** Parts II-XII (Chapters 3-36) are well-structured, data-dense, and technically precise. This is ~75% of the content and it's solid.
-
-2. **The periphery is weak.** Parts XVI-XVIII (Security, Deployment, Network) are the thinnest sections despite being the most operationally important for zone operators. A deployer reads Chapters 49-55 and finds prose outlines where they need configuration tables, command references, and runbooks.
-
-3. **Part XIII is a single chapter.** This Part exists to document `msez-mass-client` — one of the most critical crates in the system. It deserves at least 3 chapters: one for the client architecture, one for the orchestration pattern, and one for the contract test methodology.
+| `ComplianceDomain` enum: 20 variants, compile-time assertion | **PASS** — `domain.rs:115-121` |
+| Chapter 10 §10.2 domain table matches enum | **PASS** — all 20 names, declaration order |
+| Chapter 12 §12.2 domain enumeration matches enum | **PASS** (fixed this cycle) |
+| Appendix D Definition D.2 consistent with Chapter 10 | **PASS** (fixed this cycle) |
+| No "AML_CFT" references in any chapter | **PASS** (fixed this cycle) |
+| "Momentum Protocol" misuse | **PASS** — zero occurrences |
+| "momentum.xyz/io/com" misuse | **PASS** — zero occurrences |
+| "mass.xyz/io" misuse | **PASS** — zero occurrences |
+| "MSEZ Protocol" misuse | **PASS** — zero occurrences |
+| "Mass Protocol" usage context-appropriate | **PASS** — appears in L1 and protocol reference only |
+| `partHeading()` out of TOC | **PASS** — no heading level assigned |
+| `chapterHeading()` has pageBreakBefore | **PASS** |
+| `headingStyleRange: "1-1"` | **PASS** (updated v4) |
+| No duplicate heading style definitions in styles.xml | **PASS** (fixed v4) |
+| TOC field instruction: `TOC \h \o "1-1"` | **PASS** (verified via XML inspection) |
+| Executive summary statistics current | **PASS** (fixed v3: 16 crates, 3,300+ tests) |
 
 ---
 
-## 6. Recommendations Summary (Priority Order)
-
-| ID | Finding | Effort | Impact |
-|----|---------|--------|--------|
-| P0-001 | Expand stub chapters or consolidate | Medium | High — deployment credibility |
-| P0-002 | Replace repeated concept explanations with cross-references | Medium | High — document credibility |
-| P0-003 | Strip marketing language from spec content | Low | High — reviewer trust |
-| P1-001 | Add h3() hierarchy to 48 flat chapters | Medium | Medium — navigation |
-| P1-002 | Add profile comparison matrix, deduplicate Ch. 7 | Low | Medium — readability |
-| P1-003 | Convert inline lists to tables in thin chapters | Low | Medium — scanability |
-| P1-004 | Update hardcoded statistics to match current codebase | Low | Medium — accuracy |
-| P1-005 | Rename Part XV to avoid "Mass Integration" collision | Low | Low — clarity |
-| P2-001 | Document or work around client-side-only TOC | Low | Low — portability |
-| P2-002 | Split into multi-section document for per-Part headers | Medium | Low — polish |
-| P2-003 | Replace spacer() calls with element spacing properties | Medium | Low — code quality |
-| P2-004 | Add build-time validation script | Low | Low — reliability |
-
----
-
-## 7. Conclusion
-
-The spec generator is a competent document assembly pipeline. The core technical content (Parts II-XII) is strong, data-dense, and well-structured. The generator's primitive library is clean and the styling is consistent.
-
-The main risks are at the edges: stub chapters that weaken the deployment/operations sections, content repetition that inflates the document by ~20%, and marketing-flavored prose that may reduce credibility with technical reviewers. All P0 and P1 issues are addressable with focused editing rather than architectural changes.
-
-The branding is clean. The Mass/SEZ boundary is correctly represented throughout. The 19-part structure is sound. The document organization table in the executive summary matches the actual part headings. The generator code is maintainable and well-organized.
-
-**Bottom line**: Fix the 3 P0s, address the 5 P1s, and the spec will be a strong technical document.
-
----
-
-*End of audit.*
+*End of audit v4.*

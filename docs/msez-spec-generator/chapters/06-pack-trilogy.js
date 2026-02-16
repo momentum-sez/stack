@@ -1,12 +1,12 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  definition, codeBlock, table, pageBreak
+  definition, codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter06() {
   return [
-    pageBreak(),
+    // No pageBreak() needed here — chapterHeading() has pageBreakBefore: true built in.
     chapterHeading("Chapter 6: The Pack Trilogy"),
     p("The Pack Trilogy \u2014 lawpacks, regpacks, and licensepacks \u2014 provides comprehensive, cryptographically verifiable snapshots of jurisdictional state across all temporal frequencies:"),
     table(

@@ -1,7 +1,7 @@
 const {
   Paragraph, TextRun, Table, TableRow, TableCell,
   HeadingLevel, AlignmentType, BorderStyle, WidthType,
-  ShadingType, PageBreak
+  ShadingType, PageBreak, TabStopType, TabStopPosition
 } = require("docx");
 
 const C = require("./constants");
@@ -48,22 +48,33 @@ function code(text) {
 
 // --- Headings ---
 
-/** Part heading (e.g., "PART I: FOUNDATION") - includes page break */
+/** Part heading (e.g., "PART I: FOUNDATION") - display-only, NOT in TOC.
+ *  Uses centered 44pt text without a heading level so it does not appear
+ *  in the Table of Contents. Includes a page break before. */
 function partHeading(text) {
   return [
     new Paragraph({ children: [new PageBreak()] }),
     new Paragraph({
-      heading: HeadingLevel.HEADING_1,
-      spacing: { before: 0, after: 300 },
-      children: [new TextRun({ text: text.toUpperCase(), bold: true, font: C.BODY_FONT, size: 36, color: C.H1_COLOR })]
+      // NO heading: HeadingLevel — keeps this out of the TOC
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 2000, after: 300 },
+      children: [new TextRun({
+        text: text.toUpperCase(),
+        bold: true,
+        font: C.BODY_FONT,
+        size: 44,       // Larger than H1 (36) for visual distinction
+        color: C.H1_COLOR
+      })]
     })
   ];
 }
 
-/** Chapter heading (e.g., "Chapter 1: Mission and Vision") */
+/** Chapter heading (e.g., "Chapter 1: Mission and Vision").
+ *  Includes pageBreakBefore so every chapter starts on a new page. */
 function chapterHeading(text) {
   return new Paragraph({
     heading: HeadingLevel.HEADING_1,
+    pageBreakBefore: true,
     children: [new TextRun({ text, bold: true, font: C.BODY_FONT, size: 36, color: C.H1_COLOR })]
   });
 }
@@ -116,13 +127,19 @@ function theorem(label, text) {
 
 // --- Code Blocks ---
 
-/** Multi-line code block. Pass a string; it splits on \n. */
+/** Multi-line code block. Pass a string; it splits on \n.
+ *  Renders with gray background, left accent border, and indent for
+ *  visual distinction from body text. */
 function codeBlock(codeString) {
   const lines = codeString.split("\n");
   return lines.map((line, i) =>
     new Paragraph({
       spacing: { after: i === lines.length - 1 ? 200 : 0, line: 240 },
       shading: { type: ShadingType.CLEAR, fill: C.CODE_BG },
+      border: {
+        left: { style: BorderStyle.SINGLE, size: 4, color: C.ACCENT, space: 8 },
+      },
+      indent: { left: 360 },
       children: [new TextRun({ text: line || " ", font: C.CODE_FONT, size: C.CODE_SIZE, color: C.CODE_TEXT })]
     })
   );
@@ -188,6 +205,15 @@ function evenWidths(n) {
   return widths;
 }
 
+/** Bullet list item. Uses the "bullets" numbering reference from build.js. */
+function bulletItem(text) {
+  return new Paragraph({
+    numbering: { reference: "bullets", level: 0 },
+    spacing: { after: 60, line: 276 },
+    children: [new TextRun({ text, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK })]
+  });
+}
+
 /** Vertical spacer */
 function spacer(after = 200) {
   return new Paragraph({ spacing: { after }, children: [] });
@@ -203,5 +229,5 @@ module.exports = {
   partHeading, chapterHeading, h2, h3,
   definition, theorem,
   codeBlock, table, evenWidths,
-  spacer, pageBreak
+  bulletItem, spacer, pageBreak
 };

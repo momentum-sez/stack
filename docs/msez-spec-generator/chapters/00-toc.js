@@ -11,7 +11,7 @@ module.exports = function build_toc() {
     }),
     new TableOfContents("Table of Contents", {
       hyperlink: true,
-      headingStyleRange: "1-3",
+      headingStyleRange: "1-1",  // Chapters (H1) only — ~76 entries, ~5 pages. H2/H3 excluded from global TOC. Per-Part mini-TOCs provide granular navigation.
     }),
     pageBreak()
   ];

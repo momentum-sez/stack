@@ -4,7 +4,7 @@ module.exports = function build_executive_summary() {
   return [
     chapterHeading("Executive Summary"),
 
-    p("The Momentum Open Source SEZ Stack (version 0.4.44, GENESIS) is a software system for instantiating cryptographically auditable, compliance-enforcing Special Economic Zones. It is implemented in Rust (2024 edition), organized as 16 crates totaling approximately 101,000 lines of production code with 3,029 tests. This specification documents its complete technical architecture in 56 chapters across 18 Parts, plus 11 appendices."),
+    p("The Momentum Open Source SEZ Stack (version 0.4.44, GENESIS) is a software system for instantiating cryptographically auditable, compliance-enforcing Special Economic Zones. It is implemented in Rust (2024 edition), organized as 16 crates totaling approximately 109,000 lines of production code across 257 source files with over 3,300 tests. This specification documents its complete technical architecture in 56 chapters across 18 Parts, plus 11 appendices."),
 
     p("The architecture enforces a strict separation between two systems. Mass provides five jurisdiction-agnostic programmable primitives (Entities, Ownership, Fiscal, Identity, Consent) deployed as live Java/Spring Boot production APIs. The MSEZ Stack is the jurisdictional orchestration layer that makes those primitives compliance-aware through a compliance tensor (\u00a710), pack trilogy (\u00a76), corridor system (\u00a722), and verifiable credentials (\u00a743). This separation is the central architectural invariant: Mass owns business object CRUD; the MSEZ Stack owns jurisdictional context, compliance evaluation, and cryptographic attestation."),
 
@@ -55,7 +55,7 @@ module.exports = function build_executive_summary() {
       ],
       [2400, 1800, 5160]
     ),
-    p("The complete v0.4.44 implementation comprises sixteen module families totaling 298 modules across approximately 101,000 lines of production Rust code (243 source files, 16 crates), with 3,029 tests covering all critical paths."),
+    p("The complete v0.4.44 implementation comprises sixteen module families totaling 298 modules across approximately 109,000 lines of production Rust code (257 source files, 16 crates), with over 3,300 tests covering all critical paths."),
 
     h3("Document Organization"),
 
@@ -117,6 +117,6 @@ module.exports = function build_executive_summary() {
       "should focus on Part VIII (Compliance Architecture, Manifold, zkKYC) for the compliance evaluation model, Part V Chapter 10 (Compliance Tensor V2) for the 20-domain compliance representation, Part IV Chapter 6 (Pack Trilogy) for how legislation and regulation are encoded as machine-readable packs, and Part XI (Migration Protocol) for cross-jurisdictional entity portability."
     ]),
 
-    pageBreak()
+    // pageBreak() removed — chapterHeading() now includes pageBreakBefore: true
   ];
 };

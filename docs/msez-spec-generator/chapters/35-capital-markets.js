@@ -1,12 +1,12 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  pageBreak, table
+  table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter35() {
   return [
-    pageBreak(),
+    // No pageBreak() needed here — chapterHeading() has pageBreakBefore: true built in.
     chapterHeading("Chapter 35: Capital Markets Module Family"),
 
     // --- 35.1 Module Overview ---

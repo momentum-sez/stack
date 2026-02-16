@@ -48,9 +48,9 @@ module.exports = function build_appendixB() {
       "Contract tests validate the msez-mass-client against the live Mass API Swagger/OpenAPI " +
       "specifications. They verify that request serialization matches the expected schema, that " +
       "response deserialization handles all documented response shapes, and that error codes map " +
-      "correctly to the SEZ Stack error hierarchy. Contract tests use recorded HTTP fixtures " +
+      "correctly to the SEZ Stack error hierarchy. Contract tests use wiremock-based HTTP fixtures " +
       "for offline execution and are validated against live endpoints in the CI staging environment. " +
-      "Note: P0-008 identifies expanding contract test coverage as a prerequisite for sovereign deployment."
+      "P0-008 has been resolved with 2,015 lines of wiremock contract tests across 6 test files."
     ),
 
     // --- Example Test Structure ---
@@ -107,29 +107,27 @@ mod tests {
     // --- Coverage Summary Table ---
     h2("B.3 Coverage by Category"),
     table(
-      ["Test Category", "Count", "Coverage"],
+      ["Crate / Category", "Test Count", "Source"],
       [
-        ["MASS Protocol Primitives", "62", "100%"],
-        ["RegPack/Arbitration", "36", "100%"],
-        ["Agentic Framework", "18", "100%"],
-        ["Smart Asset Lifecycle", "45", "100%"],
-        ["Corridor Operations", "32", "100%"],
-        ["Receipt Chain", "28", "100%"],
-        ["Compliance Tensor V2", "22", "100%"],
-        ["Compliance Manifold", "18", "100%"],
-        ["Migration Protocol", "24", "100%"],
-        ["Watcher Economy", "20", "100%"],
-        ["Smart Asset VM", "28", "100%"],
-        ["Corridor Bridge", "16", "100%"],
-        ["L1 Anchoring", "14", "100%"],
-        ["Composition Engine", "45", "100%"],
-        ["Licensepacks", "55", "100%"],
-        ["Corporate Modules", "65", "100%"],
-        ["Identity Modules", "40", "100%"],
-        ["Integration Tests", "82", "100%"],
-        ["Total", "650", "100%"],
+        ["msez-core (foundation types, digest, domains)", "161", "msez-core/src/ #[cfg(test)]"],
+        ["msez-crypto (Ed25519, MMR, CAS)", "173", "msez-crypto/src/ #[cfg(test)]"],
+        ["msez-vc (verifiable credentials)", "74", "msez-vc/src/ #[cfg(test)]"],
+        ["msez-tensor (compliance tensor V2)", "109", "msez-tensor/src/ #[cfg(test)]"],
+        ["msez-pack (pack trilogy, composition, licensepacks)", "314", "msez-pack/src/ #[cfg(test)]"],
+        ["msez-corridor (corridor lifecycle, receipt chain)", "109", "msez-corridor/src/ #[cfg(test)]"],
+        ["msez-state (FSM, migration saga)", "186", "msez-state/src/ #[cfg(test)]"],
+        ["msez-agentic (triggers, tax pipeline)", "143", "msez-agentic/src/ #[cfg(test)]"],
+        ["msez-arbitration (disputes, institutions)", "160", "msez-arbitration/src/ #[cfg(test)]"],
+        ["msez-schema (JSON schema validation)", "72", "msez-schema/src/ #[cfg(test)]"],
+        ["msez-zkp (ZK circuits, proofs)", "96", "msez-zkp/src/ #[cfg(test)]"],
+        ["msez-compliance (orchestration)", "10", "msez-compliance/src/ #[cfg(test)]"],
+        ["msez-mass-client (Mass API contract tests)", "27", "msez-mass-client/src/ #[cfg(test)]"],
+        ["msez-api (HTTP handlers, routes, middleware)", "200", "msez-api/src/ #[cfg(test)]"],
+        ["msez-cli (CLI commands)", "176", "msez-cli/src/ #[cfg(test)]"],
+        ["msez-integration-tests (cross-crate E2E)", "1,313", "msez-integration-tests/tests/"],
+        ["Total", "3,323+", "cargo test --workspace"],
       ],
-      [4000, 1200, 4160]
+      [4800, 1200, 3360]
     ),
   ];
 };

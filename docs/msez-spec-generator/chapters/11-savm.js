@@ -1,12 +1,12 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table, pageBreak, definition
+  codeBlock, table, definition
 } = require("../lib/primitives");
 
 module.exports = function build_chapter11() {
   return [
-    pageBreak(),
+    // No pageBreak() needed here — chapterHeading() has pageBreakBefore: true built in.
     chapterHeading("Chapter 11: Smart Asset Virtual Machine"),
 
     // --- 11.1 Architecture ---
@@ -92,9 +92,9 @@ module.exports = function build_chapter11() {
       "\n" +
       "PUSH entity_id          // Stack: [entity_id]\n" +
       "PUSH jurisdiction_pak   // Stack: [entity_id, PAK]\n" +
-      "PUSH domain_aml_cft     // Stack: [entity_id, PAK, AML_CFT]\n" +
+      "PUSH domain_aml         // Stack: [entity_id, PAK, Aml]\n" +
       "TENSOR_GET              // Gas: 10,000. Stack: [aml_status]\n" +
-      "// aml_status = COMPLIANT (tensor cell PAK x AML_CFT)\n" +
+      "// aml_status = COMPLIANT (tensor cell PAK x Aml)\n" +
       "\n" +
       "// Step 2: Verify FATF compliance via ZK proof\n" +
       "PUSH fatf_proof_ref     // Stack: [aml_status, fatf_proof]\n" +

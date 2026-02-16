@@ -1,4 +1,4 @@
-const { chapterHeading, h2, h3, p, p_runs, bold, table, codeBlock, spacer } = require("../lib/primitives");
+const { chapterHeading, h2, h3, p, p_runs, bold, table, codeBlock } = require("../lib/primitives");
 
 module.exports = function build_appendixB() {
   return [
@@ -12,7 +12,6 @@ module.exports = function build_appendixB() {
       "integration. All tests run in the standard Rust test harness via cargo test --workspace, " +
       "with no external test frameworks or Python dependencies."
     ),
-    spacer(),
 
     h3("B.1.1 Unit Tests"),
     p(
@@ -53,7 +52,6 @@ module.exports = function build_appendixB() {
       "for offline execution and are validated against live endpoints in the CI staging environment. " +
       "Note: P0-008 identifies expanding contract test coverage as a prerequisite for sovereign deployment."
     ),
-    spacer(),
 
     // --- Example Test Structure ---
     h2("B.2 Example Test Structure"),
@@ -105,7 +103,6 @@ mod tests {
     }
 }`
     ),
-    spacer(),
 
     // --- Coverage Summary Table ---
     h2("B.3 Coverage by Category"),
@@ -134,6 +131,5 @@ mod tests {
       ],
       [4000, 1200, 4160]
     ),
-    spacer(),
   ];
 };

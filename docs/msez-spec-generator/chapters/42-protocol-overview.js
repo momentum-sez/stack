@@ -1,7 +1,7 @@
 const {
   partHeading, chapterHeading, h2,
   p,
-  table, spacer
+  table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter42() {
@@ -27,6 +27,5 @@ module.exports = function build_chapter42() {
       ],
       [2200, 2800, 4360]
     ),
-    spacer(),
   ];
 };

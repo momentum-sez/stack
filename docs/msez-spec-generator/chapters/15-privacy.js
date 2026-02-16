@@ -1,8 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table,
-  spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter15() {
@@ -22,7 +21,6 @@ module.exports = function build_chapter15() {
       ],
       [3000, 2800, 3560]
     ),
-    spacer(),
 
     // --- 15.2 Transaction Privacy ---
     h2("15.2 Transaction Privacy"),
@@ -48,7 +46,6 @@ module.exports = function build_chapter15() {
       "    pub enc_ciphertext_len: u32,         // 580 bytes for standard notes\n" +
       "}"
     ),
-    spacer(),
 
     // --- 15.3.1 Metadata Protection ---
     h3("15.3.1 Metadata Protection"),
@@ -72,6 +69,5 @@ module.exports = function build_chapter15() {
       ],
       [1600, 1400, 1500, 1400, 1600, 1860]
     ),
-    spacer(),
   ];
 };

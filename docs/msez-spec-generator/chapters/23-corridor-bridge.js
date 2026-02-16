@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2,
   p, p_runs, bold,
-  codeBlock, table, spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter23() {
@@ -26,7 +26,6 @@ module.exports = function build_chapter23() {
       "    pub state: BridgeTransferState,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 23.2 Path Discovery ---
     h2("23.2 Path Discovery"),
@@ -41,7 +40,6 @@ module.exports = function build_chapter23() {
       ],
       [2400, 3200, 3760]
     ),
-    spacer(),
     p("When no direct corridor exists between source and destination, the router identifies multi-hop paths through intermediary corridors, subject to the constraint that every intermediary must satisfy compliance requirements for the asset class being transferred. Path discovery results are cached with corridor-state-dependent invalidation."),
 
     // --- 23.3 Atomic Execution ---
@@ -59,7 +57,6 @@ module.exports = function build_chapter23() {
       ],
       [1600, 4200, 3560]
     ),
-    spacer(),
     p("Failure at any phase triggers a deterministic rollback that restores all corridors to their pre-transfer state. The rollback is idempotent and uses the same compensation pattern as the migration saga."),
 
     // --- 23.4 Fee Computation ---
@@ -77,6 +74,5 @@ module.exports = function build_chapter23() {
       "    pub valid_until: DateTime<Utc>,\n" +
       "}"
     ),
-    spacer(),
   ];
 };

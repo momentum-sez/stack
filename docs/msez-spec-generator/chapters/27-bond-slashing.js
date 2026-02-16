@@ -1,6 +1,6 @@
 const {
   chapterHeading, h2,
-  p, codeBlock, table, spacer
+  p, codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter27() {
@@ -46,7 +46,6 @@ module.exports = function build_chapter27() {
       ],
       [2000, 2000, 3000, 2360]
     ),
-    spacer(),
 
     // --- 27.3 Bond Lifecycle ---
     h2("27.3 Bond Lifecycle"),
@@ -63,11 +62,9 @@ module.exports = function build_chapter27() {
       ],
       [1400, 3960, 1600, 2400]
     ),
-    spacer(),
 
     // --- 27.4 Quorum Staleness Requirements ---
     h2("27.4 Quorum Staleness Requirements"),
     p("To prevent compliance attestations from relying on outdated information, the protocol enforces quorum staleness bounds. Every attestation quorum must satisfy the following: (1) at least two-thirds of participating watchers must have refreshed their evidence within the staleness window, which is jurisdiction-dependent but defaults to 24 hours; (2) no individual attestation within the quorum may reference evidence older than the maximum staleness threshold (72 hours by default); (3) if any watcher in a quorum submits an attestation that references evidence past its expiry timestamp, that attestation is excluded from the quorum tally and the watcher is flagged for SC2 review. These bounds ensure that compliance state reflects current regulatory reality rather than stale snapshots, which is critical for jurisdictions with rapidly changing sanctions lists or regulatory calendars."),
-    spacer(),
   ];
 };

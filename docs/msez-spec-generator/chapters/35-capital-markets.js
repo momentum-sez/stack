@@ -1,8 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  pageBreak, table,
-  spacer
+  pageBreak, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter35() {
@@ -28,7 +27,6 @@ module.exports = function build_chapter35() {
       ],
       [2400, 6960]
     ),
-    spacer(),
 
     // --- 35.2 Module Specifications ---
     h2("35.2 Module Specifications"),
@@ -47,7 +45,6 @@ module.exports = function build_chapter35() {
       ],
       [1800, 2600, 2600, 2360]
     ),
-    spacer(),
 
     // --- 35.2.2 Trading Module ---
     h3("35.2.2 Trading Module"),
@@ -62,7 +59,6 @@ module.exports = function build_chapter35() {
       ],
       [1800, 2800, 2400, 2360]
     ),
-    spacer(),
     p_runs([bold("Order Types."), " The following order types are supported, each with specific execution semantics and validity constraints."]),
     table(
       ["Order Type", "Execution Behavior", "Validity"],
@@ -76,7 +72,6 @@ module.exports = function build_chapter35() {
       ],
       [2200, 4960, 2200]
     ),
-    spacer(),
 
     // --- 35.2.3 Post-Trade Module ---
     h3("35.2.3 Post-Trade Module"),
@@ -104,7 +99,6 @@ module.exports = function build_chapter35() {
       ],
       [1800, 2600, 2600, 2360]
     ),
-    spacer(),
 
     // --- 35.2.7 Corporate Actions Module ---
     h3("35.2.7 Corporate Actions Module"),
@@ -120,7 +114,6 @@ module.exports = function build_chapter35() {
       ],
       [1800, 2600, 2600, 2360]
     ),
-    spacer(),
     p_runs([bold("Voluntary Corporate Actions."), " These actions require a holder election within a specified deadline. The module tracks elections, applies defaults for non-respondents, and settles based on chosen options."]),
     table(
       ["Action", "Holder Decision", "Deadline Handling", "Processing"],
@@ -132,7 +125,6 @@ module.exports = function build_chapter35() {
       ],
       [1800, 2600, 2600, 2360]
     ),
-    spacer(),
 
     // --- 35.2.8 Surveillance Module ---
     h3("35.2.8 Surveillance Module"),

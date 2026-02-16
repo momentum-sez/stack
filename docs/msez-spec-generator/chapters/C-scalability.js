@@ -1,4 +1,4 @@
-const { chapterHeading, h2, h3, p, p_runs, bold, table, spacer } = require("../lib/primitives");
+const { chapterHeading, h2, h3, p, p_runs, bold, table } = require("../lib/primitives");
 
 module.exports = function build_appendixC() {
   return [
@@ -12,7 +12,6 @@ module.exports = function build_appendixC() {
       "Operators who adjust one switch without considering its cluster will encounter " +
       "degraded performance or correctness violations."
     ),
-    spacer(),
 
     h3("C.1.1 Throughput Cluster (S1, S2, S3, S4)"),
     p(
@@ -55,7 +54,6 @@ module.exports = function build_appendixC() {
       "slashing risk. The compliance tensor evaluation incorporates S8 to determine whether " +
       "cached pack evaluations are still valid."
     ),
-    spacer(),
 
     // --- Switch Reference Table (existing) ---
     h2("C.2 Switch Definitions"),
@@ -78,7 +76,6 @@ module.exports = function build_appendixC() {
       ],
       [2400, 1400, 2800, 2760]
     ),
-    spacer(),
 
     // --- Deployment Scenario Table ---
     h2("C.3 Deployment Profiles"),
@@ -89,7 +86,6 @@ module.exports = function build_appendixC() {
       "Sovereign-GovOS is the target profile for national-scale deployments processing real capital " +
       "across jurisdictions with full regulatory compliance."
     ),
-    spacer(),
     table(
       ["Switch", "Minimal", "Standard", "Enterprise", "Sovereign-GovOS"],
       [
@@ -109,7 +105,6 @@ module.exports = function build_appendixC() {
       ],
       [2400, 1400, 1600, 1800, 2160]
     ),
-    spacer(),
 
     p_runs([bold("Minimal: "), "Single-shard, relaxed bounds, no DA enforcement. Suitable for local development, " +
       "unit testing, and rapid iteration. Not suitable for any data with real economic value."]),
@@ -121,6 +116,5 @@ module.exports = function build_appendixC() {
       "availability guarantees. Required for national-scale deployment where the SEZ Stack serves as the " +
       "jurisdictional compliance backbone for government operations. S13 must be Enforced, S7 must be at " +
       "least 5-of-7, and S8 must be 1h or less to satisfy regulatory requirements for real-time compliance attestation."]),
-    spacer(),
   ];
 };

@@ -1,6 +1,6 @@
 const {
   chapterHeading, h2, h3,
-  p, codeBlock, table, theorem, spacer
+  p, codeBlock, table, theorem
 } = require("../lib/primitives");
 
 module.exports = function build_chapter28() {
@@ -25,7 +25,6 @@ module.exports = function build_chapter28() {
       "    BondWeighted { min_weight_fraction: f64 },\n" +
       "}"
     ),
-    spacer(),
 
     // --- 28.2 Finality Levels ---
     h2("28.2 Finality Levels"),
@@ -39,7 +38,6 @@ module.exports = function build_chapter28() {
       ],
       [2000, 3600, 3760]
     ),
-    spacer(),
 
     theorem("Theorem 28.1 (Watcher Accountability).", "The slashing mechanism ensures watcher accountability. Dishonest attestations result in provable collateral loss. Given a conflicting attestation pair from the same watcher for the same (asset, jurisdiction, domain) tuple, the slashing contract verifies signatures, confirms conflict, and executes bond forfeiture."),
 
@@ -56,7 +54,6 @@ module.exports = function build_chapter28() {
       ],
       [2400, 2600, 4360]
     ),
-    spacer(),
 
     // --- 28.4 Finality Upgrade Path ---
     h2("28.4 Finality Upgrade Path"),
@@ -70,6 +67,5 @@ module.exports = function build_chapter28() {
       ],
       [2400, 2800, 2000, 2160]
     ),
-    spacer(),
   ];
 };

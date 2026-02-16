@@ -1,7 +1,7 @@
 const {
   partHeading, chapterHeading, h2, h3,
   p, p_runs, bold,
-  table, spacer
+  table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter54() {
@@ -23,7 +23,6 @@ module.exports = function build_chapter54() {
       ],
       [2400, 2800, 4160]
     ),
-    spacer(),
 
     // --- 54.2 Network Bootstrapping ---
     h2("54.2 Network Bootstrapping"),
@@ -39,6 +38,5 @@ module.exports = function build_chapter54() {
       ],
       [1400, 4200, 3760]
     ),
-    spacer(),
   ];
 };

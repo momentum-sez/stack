@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  table, spacer
+  table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter36() {
@@ -32,7 +32,6 @@ module.exports = function build_chapter36() {
       ],
       [1400, 1800, 3560, 2600]
     ),
-    spacer(),
 
     // --- 36.2.2 Trade Documents Module ---
     h3("36.2.2 Trade Documents Module"),
@@ -50,7 +49,6 @@ module.exports = function build_chapter36() {
       ],
       [1800, 1800, 2600, 3160]
     ),
-    spacer(),
 
     // --- 36.2.3 Supply Chain Finance Module ---
     h3("36.2.3 Supply Chain Finance Module"),
@@ -66,7 +64,6 @@ module.exports = function build_chapter36() {
       ],
       [1800, 2800, 2600, 2160]
     ),
-    spacer(),
 
     // --- 36.2.4 Customs Module ---
     h3("36.2.4 Customs Module"),

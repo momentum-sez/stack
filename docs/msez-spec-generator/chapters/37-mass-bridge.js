@@ -1,7 +1,7 @@
 const {
   partHeading, chapterHeading, h2,
   p, p_runs, bold,
-  codeBlock, table, spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter37() {
@@ -60,8 +60,6 @@ pub trait JurisdictionalContext: Send + Sync {
 }`
     ),
 
-    spacer(),
-
     // --- 37.2 Mass Primitive Mapping ---
     h2("37.2 Mass Primitive Mapping"),
     p("Each of the five Mass primitives calls specific bridge methods:"),
@@ -78,8 +76,6 @@ pub trait JurisdictionalContext: Send + Sync {
       [1600, 3000, 4760]
     ),
 
-    spacer(),
-
     // --- 37.3 The Organs ---
     h2("37.3 The Organs"),
     p("The Organs are regulated interface implementations that make Mass deployable in licensed environments:"),
@@ -93,8 +89,6 @@ pub trait JurisdictionalContext: Send + Sync {
       ],
       [1800, 4200, 3360]
     ),
-
-    spacer(),
 
     p("Each Organ implements a subset of Mass API functionality within a specific regulatory regime. The Organ does not change Mass API behavior; it adds the regulatory licenses and operational compliance required for lawful operation. The MSEZ Stack provides the jurisdictional context that each Organ requires through the JurisdictionalContext trait."),
   ];

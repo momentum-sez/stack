@@ -1,8 +1,7 @@
 const {
   partHeading, chapterHeading, h2, h3,
   p, p_runs, bold,
-  definition, codeBlock, table,
-  spacer, pageBreak
+  definition, codeBlock, table, pageBreak
 } = require("../lib/primitives");
 
 module.exports = function build_chapter08() {
@@ -29,7 +28,6 @@ module.exports = function build_chapter08() {
       "    pub state_machine: StateMachineSpec,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 8.2 Design Invariants ---
     h2("8.2 Design Invariants"),
@@ -45,7 +43,6 @@ module.exports = function build_chapter08() {
       ],
       [800, 2200, 6360]
     ),
-    spacer(),
 
     // --- 8.3 Asset Lifecycle ---
     h2("8.3 Asset Lifecycle"),
@@ -81,7 +78,6 @@ module.exports = function build_chapter08() {
       ],
       [1400, 4760, 3200]
     ),
-    spacer(),
 
     // --- 8.4 Smart Assets as Autonomous Agents ---
     h2("8.4 Smart Assets as Autonomous Agents"),
@@ -190,7 +186,6 @@ module.exports = function build_chapter08() {
       ],
       [1200, 2200, 3360, 2600]
     ),
-    spacer(),
 
     // --- 8.5 Content-Addressed Storage ---
     h2("8.5 Content-Addressed Storage"),
@@ -228,7 +223,6 @@ module.exports = function build_chapter08() {
       "        ├── latest.json            # Most recent compliance tensor snapshot\n" +
       "        └── <timestamp>.json       # Historical snapshots by ISO-8601 timestamp"
     ),
-    spacer(),
     h3("8.5.2 Storage Invariants"),
     p_runs([bold("Content integrity."), " Every artifact's filename is its SHA-256 digest. On retrieval, the digest is recomputed and compared. Any mismatch indicates corruption or tampering and causes an immediate rejection. All digest computation flows through CanonicalBytes::new() as specified in the crate dependency invariants."]),
     p_runs([bold("Append-only semantics."), " Once written, a CAS artifact is never modified or deleted during normal operation. The receipt chain for each asset is strictly append-only: new receipts reference the previous chain head, forming a hash-linked sequence."]),

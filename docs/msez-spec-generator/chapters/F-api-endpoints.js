@@ -1,4 +1,4 @@
-const { chapterHeading, table, spacer, h2, p } = require("../lib/primitives");
+const { chapterHeading, table, h2, p } = require("../lib/primitives");
 
 module.exports = function build_appendixF() {
   return [
@@ -17,11 +17,9 @@ module.exports = function build_appendixF() {
       ],
       [2000, 3400, 3960]
     ),
-    spacer(),
 
     h2("F.2 SEZ Stack API Routes (msez-api, Axum)"),
     p("The SEZ Stack exposes its own HTTP API via msez-api. These routes compose compliance evaluation, Mass API orchestration, credential issuance, and corridor management into jurisdiction-aware operations."),
-    spacer(),
 
     table(
       ["Route Group", "Method", "Path", "Description"],
@@ -63,9 +61,7 @@ module.exports = function build_appendixF() {
       ],
       [1400, 700, 3000, 4260]
     ),
-    spacer(),
 
     p("Note: Mass Proxy routes are transitional. The target architecture replaces each passthrough with an orchestration endpoint that composes compliance evaluation, Mass API calls, VC issuance, and corridor state updates into a single atomic operation."),
-    spacer(),
   ];
 };

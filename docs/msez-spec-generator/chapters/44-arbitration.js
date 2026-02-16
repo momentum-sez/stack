@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table, spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter44() {
@@ -38,7 +38,6 @@ pub enum EnforcementAction {
     CorridorSuspension { corridor_id: CorridorId },
 }`
     ),
-    spacer(),
 
     // --- 44.2.1 Dispute Filing Process ---
     h3("44.2.1 Dispute Filing Process"),
@@ -55,7 +54,6 @@ pub enum EnforcementAction {
       ],
       [1200, 2400, 5760]
     ),
-    spacer(),
     p_runs([bold("State Machine."), " The dispute lifecycle is modeled as a finite state machine with states: Filed, JurisdictionResolved, CounterpartyNotified, TribunalFormed, InProceedings, RulingIssued, EnforcementExecuted, Appealed, and Closed. Transitions are guarded by temporal constraints (response windows, filing deadlines) and authorization checks (only tribunal members can advance from InProceedings to RulingIssued)."]),
 
     // --- 44.2.2 Evidence Packages ---
@@ -94,7 +92,6 @@ pub enum EvidenceCategory {
     WatcherAttestation,
 }`
     ),
-    spacer(),
     p_runs([bold("Verification."), " When an evidence package is submitted, the system verifies: (1) the submitter is a recognized party to the dispute, (2) the package digest matches the SHA-256 hash computed over all evidence items via CanonicalBytes, (3) the Ed25519 signature is valid for the submitter's public key, and (4) all content-addressed references resolve to valid objects in the CAS. Evidence packages are immutable once submitted; amendments require a new package referencing the original."]),
 
     // --- 44.2.3 Escrow Management ---
@@ -111,8 +108,6 @@ pub enum EvidenceCategory {
       ],
       [1600, 2400, 5360]
     ),
-    spacer(),
     p_runs([bold("Cross-Border Escrow."), " For disputes spanning multiple jurisdictions (e.g., a PAK-UAE corridor dispute), escrow accounts are created in the jurisdiction specified by the governing law clause. Currency conversion, if required, uses the SBP or central bank rate locked at the time of escrow activation. The compliance tensor is evaluated to ensure escrow operations satisfy both jurisdictions' regulatory requirements, including sanctions screening and withholding tax implications on escrowed returns."]),
-    spacer(),
   ];
 };

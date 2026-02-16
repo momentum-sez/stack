@@ -1,8 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  definition, codeBlock, table,
-  spacer, pageBreak
+  definition, codeBlock, table, pageBreak
 } = require("../lib/primitives");
 
 module.exports = function build_chapter06() {
@@ -19,7 +18,6 @@ module.exports = function build_chapter06() {
       ],
       [2000, 4200, 3160]
     ),
-    spacer(),
     p("Each pack type follows the same content-addressed pattern: deterministic canonicalization of all fields via CanonicalBytes, SHA-256 digest computation over a versioned prefix, and cryptographic binding to corridor state through digest inclusion. This guarantees that any two systems processing the same jurisdictional data produce identical digests, enabling offline verification and cross-zone audit trails without central coordination."),
 
     // --- 6.1 Lawpack System ---
@@ -37,7 +35,6 @@ module.exports = function build_chapter06() {
       ],
       [2600, 1800, 4960]
     ),
-    spacer(),
     ...codeBlock(
       "/// A lawpack: content-addressed bundle of legislation in Akoma Ntoso.\n" +
       "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +
@@ -58,7 +55,6 @@ module.exports = function build_chapter06() {
       "    pub effective_date: chrono::NaiveDate,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 6.1.1 Akoma Ntoso Encoding Example ---
     h3("6.1.1 Akoma Ntoso Encoding Example"),
@@ -116,7 +112,6 @@ module.exports = function build_chapter06() {
       '</akomaNtoso>'
     ),
     p("The marker element in section 153 creates a cross-reference to the regpack WHT rate table. At compliance evaluation time, the tensor engine resolves this reference to the current SRO-specified rates, ensuring that the lawpack's static legal obligation is evaluated against the regpack's dynamic rate schedule. This separation of law (lawpack) from current rates (regpack) is the Pack Trilogy's fundamental design principle."),
-    spacer(),
 
     // --- 6.2 Lawpack Composition ---
     h2("6.2 Lawpack Composition"),
@@ -141,7 +136,6 @@ module.exports = function build_chapter06() {
       ],
       [2400, 2000, 4960]
     ),
-    spacer(),
     ...codeBlock(
       "/// A regpack: machine-readable regulatory state.\n" +
       "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +
@@ -158,7 +152,6 @@ module.exports = function build_chapter06() {
       "}"
     ),
     p("RegPack digests provide cryptographic commitments to regulatory state at specific times. Corridor bindings include RegPack digests to establish the regulatory context. The \u03C0sanctions ZK circuit enables privacy-preserving sanctions verification with approximately 18,000 constraints."),
-    spacer(),
 
     // --- 6.4.1 SBP Exchange Rate Encoding ---
     h3("6.4.1 SBP Exchange Rate Encoding"),
@@ -197,7 +190,6 @@ module.exports = function build_chapter06() {
       '}'
     ),
     p("The distinction between TT (telegraphic transfer) and OD (on-demand) rates is critical for corridor settlement: TT rates apply to electronic transfers through SBP Raast, while OD rates apply to negotiable instruments. The PAK-UAE trade corridor uses buying_tt and selling_tt exclusively."),
-    spacer(),
 
     // --- 6.5 Licensepack System (v0.4.44) ---
     h2("6.5 Licensepack System (v0.4.44)"),
@@ -215,7 +207,6 @@ module.exports = function build_chapter06() {
       ],
       [1600, 3200, 4560]
     ),
-    spacer(),
     p("The top-level Licensepack container holds jurisdiction identity, metadata, license type definitions, individual license records, and license holder profiles. BTreeMap ordering guarantees deterministic iteration for digest computation:"),
     ...codeBlock(
       "/// Content-addressed snapshot of jurisdictional licensing state.\n" +
@@ -236,12 +227,10 @@ module.exports = function build_chapter06() {
       "    pub holders: BTreeMap<String, LicenseHolder>,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 6.5.1 License Data Model ---
     h3("6.5.1 License Data Model"),
     p("The license data model comprises four layers: status lifecycle, domain classification, individual license records with conditions/permissions/restrictions, and license holder profiles."),
-    spacer(),
 
     p_runs([bold("License Status."), " Six status values track the license lifecycle. Terminal states (Revoked, Expired, Surrendered) cannot transition back to Active:"]),
     table(
@@ -256,7 +245,6 @@ module.exports = function build_chapter06() {
       ],
       [1400, 3960, 1200, 2800]
     ),
-    spacer(),
     ...codeBlock(
       "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]\n" +
       "#[serde(rename_all = \"snake_case\")]\n" +
@@ -275,7 +263,6 @@ module.exports = function build_chapter06() {
       "    }\n" +
       "}"
     ),
-    spacer(),
 
     p_runs([bold("License Domains."), " Six domain categories classify licenses by regulatory scope:"]),
     table(
@@ -290,7 +277,6 @@ module.exports = function build_chapter06() {
       ],
       [1400, 3160, 4800]
     ),
-    spacer(),
     ...codeBlock(
       "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]\n" +
       "#[serde(rename_all = \"snake_case\")]\n" +
@@ -303,7 +289,6 @@ module.exports = function build_chapter06() {
       "    Mixed,\n" +
       "}"
     ),
-    spacer(),
 
     p_runs([bold("License Record."), " Each License struct represents an individual license issued by a regulator to a holder. The record carries conditions (ongoing requirements), permissions (authorized activities with scope and limits), and restrictions (blocked activities, jurisdictions, products):"]),
     ...codeBlock(
@@ -330,7 +315,6 @@ module.exports = function build_chapter06() {
       "    pub restrictions: Vec<LicenseRestriction>,\n" +
       "}"
     ),
-    spacer(),
 
     p_runs([bold("Conditions."), " A LicenseCondition represents an ongoing obligation the holder must satisfy, such as minimum capital requirements, operational standards, or reporting frequency. Conditions carry metric, threshold, operator, and currency fields for quantitative evaluation:"]),
     ...codeBlock(
@@ -347,7 +331,6 @@ module.exports = function build_chapter06() {
       "    pub status: String,           // \"active\", \"waived\", \"expired\"\n" +
       "}"
     ),
-    spacer(),
 
     p_runs([bold("Permissions."), " A LicensePermission grants the holder authorization to perform a specific activity, optionally with scope constraints (geographic, product) and limits (transaction size, volume):"]),
     ...codeBlock(
@@ -361,7 +344,6 @@ module.exports = function build_chapter06() {
       "    pub status: String,  // \"active\", \"revoked\"\n" +
       "}"
     ),
-    spacer(),
 
     p_runs([bold("Restrictions."), " A LicenseRestriction blocks specific activities, jurisdictions, products, or client types. A wildcard \"*\" in blocked_jurisdictions blocks all except those listed in allowed_jurisdictions:"]),
     ...codeBlock(
@@ -379,7 +361,6 @@ module.exports = function build_chapter06() {
       "    pub status: String,  // \"active\", \"waived\"\n" +
       "}"
     ),
-    spacer(),
 
     p_runs([bold("License Holder."), " The LicenseHolder struct profiles the entity that holds one or more licenses. It carries identity, ownership, and contact information that supports cross-zone verification through DID resolution:"]),
     ...codeBlock(
@@ -400,12 +381,10 @@ module.exports = function build_chapter06() {
       "    pub group_structure: BTreeMap<String, serde_json::Value>,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 6.5.2 License Verification ---
     h3("6.5.2 License Verification"),
     p("The Licensepack.verify_license method performs full authorization verification for a given holder DID, activity, and evaluation date. The verification algorithm proceeds in strict order: (1) resolve all licenses held by the DID, (2) for each license evaluate compliance state, (3) return on first COMPLIANT match, (4) if no COMPLIANT license found, return the best non-compliant state with priority ordering SUSPENDED > PENDING > NON_COMPLIANT."),
-    spacer(),
     ...codeBlock(
       "impl Licensepack {\n" +
       "    /// Verify if a holder has a valid license for an activity.\n" +
@@ -440,7 +419,6 @@ module.exports = function build_chapter06() {
       "    }\n" +
       "}"
     ),
-    spacer(),
     p("Per-license compliance evaluation (License.evaluate_compliance) applies six checks in sequence. Each check can short-circuit to a terminal state:"),
     table(
       ["Step", "Check", "Failure State"],
@@ -455,12 +433,10 @@ module.exports = function build_chapter06() {
       [600, 4960, 3800]
     ),
     p("Only if all six checks pass does the license evaluate as COMPLIANT. The separation of permitted_activities (simple string list) from permissions (structured grants with scope and limits) allows both coarse-grained and fine-grained authorization models."),
-    spacer(),
 
     // --- 6.5.3 Compliance Tensor Integration ---
     h3("6.5.3 Compliance Tensor Integration"),
     p("Licensepacks populate the LICENSING domain of the Compliance Tensor (§10). The LICENSING domain must reach a permissive state for any corridor operation to proceed. The mapping from license status to tensor state follows the ComplianceState lattice (§10.2): NON_COMPLIANT < SUSPENDED < UNKNOWN < PENDING < COMPLIANT."),
-    spacer(),
     table(
       ["License Status", "Tensor State", "Effect on Corridor Operations"],
       [
@@ -475,7 +451,6 @@ module.exports = function build_chapter06() {
       ],
       [2800, 2200, 4360]
     ),
-    spacer(),
     ...codeBlock(
       "/// Compliance tensor states for the LICENSING domain.\n" +
       "///\n" +
@@ -490,7 +465,6 @@ module.exports = function build_chapter06() {
       "    Unknown,\n" +
       "}"
     ),
-    spacer(),
     p("The evaluate_license_compliance utility function provides a standalone entry point for the compliance tensor engine to query license state without constructing a full verification context:"),
     ...codeBlock(
       "/// Evaluate licensing compliance for an activity.\n" +
@@ -507,12 +481,10 @@ module.exports = function build_chapter06() {
       "    }\n" +
       "}"
     ),
-    spacer(),
 
     // --- 6.5.4 Licensepack Schemas ---
     h3("6.5.4 Licensepack Schemas"),
     p("Three JSON schemas define the complete licensepack structure. These schemas are part of the 116 schemas in msez-schema and are validated at pack build time, pack load time, and before digest computation:"),
-    spacer(),
     table(
       ["Schema", "Purpose", "Key Definitions"],
       [
@@ -522,7 +494,6 @@ module.exports = function build_chapter06() {
       ],
       [2800, 2200, 4360]
     ),
-    spacer(),
     p("The lock schema enables reproducible builds. A licensepack lock file captures the exact digest, artifact URI, and byte length at build time, ensuring that subsequent loads retrieve the identical content-addressed snapshot:"),
     ...codeBlock(
       "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +
@@ -553,12 +524,10 @@ module.exports = function build_chapter06() {
       "    pub byte_length: i64,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 6.5.5 Zone Integration ---
     h3("6.5.5 Zone Integration"),
     p("Zones specify licensepack requirements in zone.yaml through LicensepackRef entries. Each reference binds a jurisdiction, domain, and digest to the zone, enabling the zone build process to resolve and verify the exact licensing state snapshot that applies. The resolve_licensepack_refs function parses zone manifests and validates digest format before constructing references:"),
-    spacer(),
     ...codeBlock(
       "#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]\n" +
       "pub struct LicensepackRef {\n" +
@@ -568,7 +537,6 @@ module.exports = function build_chapter06() {
       "    pub as_of_date: Option<String>,\n" +
       "}"
     ),
-    spacer(),
     p("Refresh policies are configured per domain within the zone specification. Higher-risk domains require more frequent updates:"),
     table(
       ["Domain", "Refresh Interval", "Max Staleness", "Rationale"],
@@ -582,7 +550,6 @@ module.exports = function build_chapter06() {
       ],
       [1400, 1800, 1800, 4360]
     ),
-    spacer(),
     p("A zone manifest example showing licensepack binding for the PAK-KP-RSEZ zone:"),
     ...codeBlock(
       '# zone.yaml (fragment)\n' +
@@ -609,12 +576,10 @@ module.exports = function build_chapter06() {
       '    interval_seconds: 86400\n' +
       '    max_staleness_seconds: 86400'
     ),
-    spacer(),
 
     // --- 6.6 Licensepack Digest Computation ---
     h2("6.6 Licensepack Digest Computation"),
     p("Licensepack digests follow the same content-addressed pattern as lawpack and regpack digests: deterministic canonicalization via CanonicalBytes, SHA-256 hashing over a versioned prefix, and BTreeMap-ordered iteration. The digest algorithm processes components in a fixed sequence to guarantee cross-platform reproducibility:"),
-    spacer(),
     ...codeBlock(
       'SHA256(\n' +
       '    b"msez-licensepack-v1\\0"\n' +
@@ -633,7 +598,6 @@ module.exports = function build_chapter06() {
       '        "holders/{holder_id}\\0" + canonical(holder_data) + b"\\0"\n' +
       ')'
     ),
-    spacer(),
     p("Key invariants: (1) All canonicalization goes through CanonicalBytes::from_value, which rejects floating-point numbers to ensure deterministic JSON serialization. (2) BTreeMap iteration provides sorted key ordering without explicit sort steps. (3) Null-byte delimiters prevent prefix collisions. (4) Adding, removing, or modifying any license, condition, permission, restriction, or holder produces a different digest. (5) The compute_delta method compares two licensepack snapshots to produce a structured diff (licenses granted, revoked, suspended, reinstated) for audit trails."),
   ];
 };

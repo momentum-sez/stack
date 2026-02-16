@@ -1,6 +1,6 @@
 const {
   partHeading, chapterHeading, h2, h3, p, p_runs, bold,
-  definition, table, codeBlock, spacer, pageBreak
+  definition, table, codeBlock, pageBreak
 } = require("../lib/primitives");
 
 module.exports = function build_chapter03() {
@@ -44,7 +44,6 @@ impl Poseidon2Hasher {
     }
 }`
     ),
-    spacer(),
 
     // --- 3.2 The Canonical Digest Bridge ---
     h2("3.2 The Canonical Digest Bridge"),
@@ -84,7 +83,6 @@ impl CanonicalDigest {
     }
 }`
     ),
-    spacer(),
 
     // --- 3.3 Commitment Schemes ---
     h2("3.3 Commitment Schemes"),
@@ -114,7 +112,6 @@ pub struct KzgCommitment {
     pub degree: usize,
 }`
     ),
-    spacer(),
 
     // --- 3.4 Nullifier System ---
     h2("3.4 Nullifier System"),
@@ -151,7 +148,6 @@ pub struct BbsCredential {
     pub schema_digest: CanonicalDigest, // Schema identifying attribute semantics
 }`
     ),
-    spacer(),
 
     // --- 3.6 Zero-Knowledge Proof Systems ---
     h2("3.6 Zero-Knowledge Proof Systems"),
@@ -169,7 +165,6 @@ pub struct BbsCredential {
       ],
       [1800, 2800, 1400, 1560, 1800]
     ),
-    spacer(),
 
     p("The Stack defines twelve circuit types that compose these proof systems for specific governance operations."),
 
@@ -191,7 +186,6 @@ pub struct BbsCredential {
       ],
       [2600, 1600, 5160]
     ),
-    spacer(),
 
     // --- 3.7 Nullifier System ---
     h2("3.7 Nullifier System"),
@@ -309,6 +303,5 @@ impl NullifierSet {
     }
 }`
     ),
-    spacer(),
   ];
 };

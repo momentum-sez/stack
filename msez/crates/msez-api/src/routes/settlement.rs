@@ -505,11 +505,9 @@ async fn generate_instructions(
     let mut errors = Vec::new();
 
     for (i, leg) in req.legs.iter().enumerate() {
-        let msg_id = format!(
-            "MSEZ-{}-{:03}",
-            corridor_id.to_string().split('-').next().unwrap_or("????"),
-            i
-        );
+        let corridor_str = corridor_id.to_string();
+        let corridor_prefix = corridor_str.split('-').next().unwrap_or("0000");
+        let msg_id = format!("MSEZ-{corridor_prefix}-{i:03}");
 
         let instruction = SettlementInstruction {
             message_id: msg_id,

@@ -101,6 +101,17 @@ impl Validate for CreateEntityProxyRequest {
                     "beneficial_owners[{i}].ownership_percentage must not be empty"
                 ));
             }
+            // Validate ownership percentage is a valid number in [0, 100].
+            let pct: f64 = bo.ownership_percentage.parse().map_err(|_| {
+                format!(
+                    "beneficial_owners[{i}].ownership_percentage must be a valid decimal number"
+                )
+            })?;
+            if !(0.0..=100.0).contains(&pct) {
+                return Err(format!(
+                    "beneficial_owners[{i}].ownership_percentage must be between 0 and 100, got {pct}"
+                ));
+            }
         }
         Ok(())
     }
@@ -1019,15 +1030,20 @@ async fn generate_payment_tax_event(
     };
     let mut total_wht_cents: i64 = 0;
     for w in &withholdings {
-        total_wht_cents = total_wht_cents.saturating_add(
-            parse_amount(&w.withholding_amount).unwrap_or_else(|| {
-                tracing::warn!(
+        match parse_amount(&w.withholding_amount) {
+            Some(cents) => {
+                total_wht_cents = total_wht_cents.saturating_add(cents);
+            }
+            None => {
+                tracing::error!(
                     withholding_amount = %w.withholding_amount,
-                    "failed to parse withholding amount — recording as 0 cents",
+                    rule_id = %w.rule_id,
+                    "failed to parse withholding amount — aborting tax event to \
+                     avoid recording understated withholding",
                 );
-                0
-            }),
-        );
+                return;
+            }
+        }
     }
     let net_cents = gross_cents.saturating_sub(total_wht_cents);
 

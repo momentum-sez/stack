@@ -558,23 +558,38 @@ impl WithholdingEngine {
             return false;
         }
 
-        // Threshold check. An unparseable threshold_min silently becoming 0
-        // would cause the rule to match ALL amounts — log the anomaly.
-        let min = parse_amount(&rule.threshold_min).unwrap_or_else(|| {
-            tracing::warn!(
-                threshold_min = %rule.threshold_min,
-                section = %rule.statutory_section,
-                "unparseable threshold_min in withholding rule — defaulting to 0"
-            );
-            0
-        });
+        // Threshold check — fail-closed: if thresholds can't be parsed,
+        // don't match the rule rather than silently removing bounds.
+        let min = match parse_amount(&rule.threshold_min) {
+            Some(v) => v,
+            None => {
+                tracing::error!(
+                    threshold_min = %rule.threshold_min,
+                    rule_id = %rule.rule_id,
+                    section = %rule.statutory_section,
+                    "unparseable threshold_min — rule will not match (fail-closed)"
+                );
+                return false;
+            }
+        };
         if gross < min {
             return false;
         }
 
         if let Some(ref max_str) = rule.threshold_max {
-            if let Some(max) = parse_amount(max_str) {
-                if gross >= max {
+            match parse_amount(max_str) {
+                Some(max) => {
+                    if gross >= max {
+                        return false;
+                    }
+                }
+                None => {
+                    tracing::error!(
+                        threshold_max = %max_str,
+                        rule_id = %rule.rule_id,
+                        section = %rule.statutory_section,
+                        "unparseable threshold_max — rule will not match (fail-closed)"
+                    );
                     return false;
                 }
             }
@@ -590,16 +605,23 @@ impl WithholdingEngine {
         rule: &WithholdingRule,
         gross_cents: i64,
     ) -> WithholdingResult {
-        let rate_bps = parse_rate_bps(&rule.rate_percent).unwrap_or_else(|| {
-            tracing::error!(
-                rate = %rule.rate_percent,
-                rule_id = %rule.rule_id,
-                section = %rule.statutory_section,
-                "unparseable rate_percent in withholding rule — treating as 0 bps; \
-                 THIS IS A DATA ERROR that will result in zero withholding"
-            );
-            0
-        });
+        let rate_bps = match parse_rate_bps(&rule.rate_percent) {
+            Some(bps) => bps,
+            None => {
+                tracing::error!(
+                    rate = %rule.rate_percent,
+                    rule_id = %rule.rule_id,
+                    section = %rule.statutory_section,
+                    "unparseable rate_percent in withholding rule — fail-closed: \
+                     treating as maximum rate (10000 bps = 100%) to prevent tax loss"
+                );
+                // Fail-closed: unparseable rate produces maximum withholding,
+                // not zero. This ensures tax revenue is never lost due to
+                // corrupted rule data. The entity can dispute the withholding
+                // through the arbitration system.
+                10_000
+            }
+        };
 
         // Withholding = gross * rate / 10000 (basis points).
         // Use i128 intermediate to prevent overflow on large transactions.
@@ -1046,7 +1068,18 @@ pub fn generate_report(params: &ReportParams, results: &[WithholdingResult]) -> 
 
     for r in results {
         if !r.currency.is_empty() {
-            currency.clone_from(&r.currency);
+            if currency.is_empty() {
+                currency.clone_from(&r.currency);
+            } else if r.currency != currency {
+                tracing::error!(
+                    expected = %currency,
+                    found = %r.currency,
+                    rule_id = %r.rule_id,
+                    "currency mismatch in tax report aggregation — skipping result \
+                     to prevent mixing currencies in FBR IRIS submission"
+                );
+                continue;
+            }
         }
 
         let gross = parse_amount(&r.gross_amount).unwrap_or_else(|| {
@@ -1197,14 +1230,18 @@ pub fn parse_amount(s: &str) -> Option<i64> {
         let integer_part = s[..dot_pos].parse::<i64>().ok()?;
         let frac_str = &s[dot_pos + 1..];
 
+        // Validate fractional part is ASCII digits only — reject non-ASCII
+        // characters that could cause misalignment with byte slicing.
+        if !frac_str.chars().all(|c| c.is_ascii_digit()) {
+            return None;
+        }
+
         // Pad or truncate to exactly 2 decimal places.
-        // Use chars().take(2) instead of byte slicing to avoid UTF-8 boundary
-        // panic if the fractional part contains non-ASCII characters.
         let frac_cents = match frac_str.len() {
             0 => 0i64,
             1 => frac_str.parse::<i64>().ok()? * 10,
             2 => frac_str.parse::<i64>().ok()?,
-            _ => frac_str.chars().take(2).collect::<String>().parse::<i64>().ok()?,
+            _ => frac_str[..2].parse::<i64>().ok()?,
         };
 
         let sign: i64 = if integer_part < 0 || s.starts_with('-') {
@@ -1240,18 +1277,29 @@ fn parse_rate_bps(rate_str: &str) -> Option<i64> {
     if rate_str.is_empty() {
         return None;
     }
+    // Reject negative or explicitly-signed rates — tax withholding rates
+    // must be non-negative. A negative rate would produce a refund.
+    if rate_str.starts_with('-') || rate_str.starts_with('+') {
+        return None;
+    }
     if let Some(dot_pos) = rate_str.find('.') {
         let integer_part = rate_str[..dot_pos].parse::<i64>().ok()?;
         let frac_str = &rate_str[dot_pos + 1..];
-        // Use chars().take(2) instead of byte slicing to avoid UTF-8 boundary panic.
+        // Validate fractional part is ASCII digits only to prevent
+        // misalignment on multi-byte UTF-8 characters.
+        if !frac_str.chars().all(|c| c.is_ascii_digit()) {
+            return None;
+        }
         let frac = match frac_str.len() {
             0 => 0i64,
             1 => frac_str.parse::<i64>().ok()? * 10,
-            _ => frac_str.chars().take(2).collect::<String>().parse::<i64>().ok()?,
+            _ => frac_str[..2].parse::<i64>().ok()?,
         };
-        Some(integer_part.saturating_mul(100).saturating_add(frac))
+        // Use checked arithmetic to reject overflow instead of silently
+        // capping at i64::MAX via saturating_mul.
+        integer_part.checked_mul(100).and_then(|v| v.checked_add(frac))
     } else {
-        rate_str.parse::<i64>().ok().map(|v| v.saturating_mul(100))
+        rate_str.parse::<i64>().ok().and_then(|v| v.checked_mul(100))
     }
 }
 

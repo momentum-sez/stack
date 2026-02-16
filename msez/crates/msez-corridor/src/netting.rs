@@ -403,12 +403,19 @@ impl NettingEngine {
         // Integer-only netting efficiency in basis points (0–10000).
         // Avoids f64 non-determinism so SettlementPlan is CanonicalBytes-compatible.
         let reduction_bps = if gross_total > 0 {
-            // Clamp to non-negative: if net_total > gross_total (should not happen
-            // but defensive), reduced would be 0 rather than wrapping via `as u128`.
-            let reduced = gross_total.saturating_sub(net_total).max(0);
-            let reduced_u128 = reduced as u128;
+            if net_total > gross_total {
+                // Net settlement exceeds gross obligations — this indicates
+                // a bug in settlement_legs generation. Fail instead of masking.
+                return Err(NettingError::Infeasible {
+                    reason: format!(
+                        "net_total ({net_total}) exceeds gross_total ({gross_total}): \
+                         settlement legs generated more value than input obligations"
+                    ),
+                });
+            }
+            let reduced = (gross_total - net_total) as u128;
             let gross_u128 = gross_total as u128;
-            ((reduced_u128 * 10_000) / gross_u128).min(10_000) as u32
+            ((reduced * 10_000) / gross_u128).min(10_000) as u32
         } else {
             0
         };

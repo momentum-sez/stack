@@ -300,6 +300,13 @@ async fn tax_revenue_dashboard(
         // from format_amount(). Using parse_amount() avoids f64 precision loss.
         if let Some(cents) = parse_amount(&event.withholding_amount) {
             total_withholding_cents = total_withholding_cents.saturating_add(cents);
+        } else {
+            tracing::warn!(
+                event_id = %event.id,
+                withholding_amount = %event.withholding_amount,
+                "failed to parse withholding amount for GovOS tax revenue dashboard — \
+                 event excluded from total withholding aggregate"
+            );
         }
     }
 

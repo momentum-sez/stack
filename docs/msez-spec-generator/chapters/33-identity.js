@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold, table,
-  spacer, pageBreak, codeBlock
+  codeBlock, bulletItem
 } = require("../lib/primitives");
 
 module.exports = function build_chapter33() {
@@ -59,11 +59,20 @@ module.exports = function build_chapter33() {
 
     // --- 33.4 Credentials Module ---
     h2("33.4 Credentials Module"),
-    p("The Credentials Module issues, verifies, and manages W3C Verifiable Credentials for all identity attestations. Credentials are issued using Ed25519 proofs with BBS+ selective disclosure support. Credential types include: KYC Tier Attestation, Beneficial Ownership Certificate, Formation Certificate, Compliance Attestation, and Professional Qualification. All credentials are anchored to the receipt chain and corridor state."),
+    p("The Credentials Module issues, verifies, and manages W3C Verifiable Credentials for all identity attestations. Credentials are issued using Ed25519 proofs with BBS+ selective disclosure support. All credentials are anchored to the receipt chain and corridor state. Credential types:"),
+    bulletItem("KYC Tier Attestation"),
+    bulletItem("Beneficial Ownership Certificate"),
+    bulletItem("Formation Certificate"),
+    bulletItem("Compliance Attestation"),
+    bulletItem("Professional Qualification"),
 
     // --- 33.5 Binding Module ---
     h2("33.5 Binding Module"),
-    p("The Binding Module creates verifiable links between decentralized identifiers and external identity systems. Bindings include: CNIC binding (Pakistan national ID via NADRA integration), NTN binding (Pakistan tax number via FBR), passport binding (ICAO 9303 MRZ verification), and corporate registry binding (SECP, DIFC, ADGM). Each binding produces a Verifiable Credential that can be selectively disclosed without revealing the underlying identity document."),
+    p("The Binding Module creates verifiable links between decentralized identifiers and external identity systems. Each binding produces a Verifiable Credential that can be selectively disclosed without revealing the underlying identity document. Supported bindings:"),
+    bulletItem("CNIC binding: Pakistan national ID via NADRA integration"),
+    bulletItem("NTN binding: Pakistan tax number via FBR IRIS"),
+    bulletItem("Passport binding: ICAO 9303 MRZ verification"),
+    bulletItem("Corporate registry binding: SECP, DIFC, ADGM"),
 
     // --- 33.6 Identity Recovery Module ---
     h2("33.6 Identity Recovery Module"),

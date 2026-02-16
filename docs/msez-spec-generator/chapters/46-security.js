@@ -1,7 +1,7 @@
 const {
   partHeading, chapterHeading, h2,
   p, p_runs, bold,
-  table
+  table, bulletItem
 } = require("../lib/primitives");
 
 module.exports = function build_chapter46() {
@@ -12,7 +12,12 @@ module.exports = function build_chapter46() {
 
     // --- 46.1 Threat Model ---
     h2("46.1 Threat Model"),
-    p("The security architecture addresses five threat categories: external adversaries (network-level attacks, API abuse, credential theft), insider threats (compromised administrators, rogue watchers, collusion), state-level adversaries (jurisdiction-level censorship, forced key disclosure, traffic analysis), cryptographic threats (quantum computing, side-channel attacks, implementation flaws), and systemic threats (cascade failures, consensus deadlocks, economic attacks on watcher bonds)."),
+    p("The security architecture addresses five threat categories:"),
+    bulletItem("External adversaries: network-level attacks, API abuse, credential theft"),
+    bulletItem("Insider threats: compromised administrators, rogue watchers, collusion"),
+    bulletItem("State-level adversaries: jurisdiction-level censorship, forced key disclosure, traffic analysis"),
+    bulletItem("Cryptographic threats: quantum computing, side-channel attacks, implementation flaws"),
+    bulletItem("Systemic threats: cascade failures, consensus deadlocks, economic attacks on watcher bonds"),
     table(
       ["Threat", "Mitigation", "Detection"],
       [

@@ -1,6 +1,6 @@
 const {
   chapterHeading, h2, h3, p, p_runs, bold,
-  table, codeBlock, spacer, pageBreak
+  table, codeBlock
 } = require("../lib/primitives");
 
 module.exports = function build_chapter02() {

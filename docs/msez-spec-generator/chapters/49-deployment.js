@@ -1,7 +1,7 @@
 const {
   partHeading, chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table
+  codeBlock, table, bulletItem
 } = require("../lib/primitives");
 
 module.exports = function build_chapter49() {
@@ -68,7 +68,10 @@ ENTRYPOINT ["/usr/local/bin/msez"]`
 
     // --- 49.3 Resource Scaling Guidelines ---
     h2("49.3 Resource Scaling Guidelines"),
-    p("Resource allocation scales with three primary drivers: jurisdictional breadth (number of active jurisdictions and their regulatory complexity), corridor throughput (transactions per second across all active corridors), and credential volume (VCs issued and verified per day)."),
+    p("Resource allocation scales with three primary drivers:"),
+    bulletItem("Jurisdictional breadth: number of active jurisdictions and their regulatory complexity"),
+    bulletItem("Corridor throughput: transactions per second across all active corridors"),
+    bulletItem("Credential volume: VCs issued and verified per day"),
     table(
       ["Scaling Dimension", "Metric", "Threshold", "Action"],
       [

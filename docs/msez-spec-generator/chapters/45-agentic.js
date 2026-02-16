@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table
+  codeBlock, table, bulletItem
 } = require("../lib/primitives");
 
 module.exports = function build_chapter45() {
@@ -136,7 +136,13 @@ pub enum Trigger {
 
     // --- 45.2 Standard Policy Library ---
     h2("45.2 Standard Policy Library"),
-    p("The standard policy library provides pre-built responses to common triggers. Policies are composable: a single trigger can activate multiple policies, and policies can chain to produce cascading actions. Standard policies include: automatic compliance re-evaluation on sanctions list update, license renewal notification 90/60/30 days before expiry, corridor suspension on compliance state degradation to NonCompliant, automatic tax withholding computation on payment execution, governance escalation when a proposal deadline passes without quorum, and regulatory filing generation on calendar-driven deadlines."),
+    p("The standard policy library provides pre-built responses to common triggers. Policies are composable: a single trigger can activate multiple policies, and policies can chain to produce cascading actions. Standard policies:"),
+    bulletItem("Automatic compliance re-evaluation on sanctions list update"),
+    bulletItem("License renewal notification 90/60/30 days before expiry"),
+    bulletItem("Corridor suspension on compliance state degradation to NonCompliant"),
+    bulletItem("Automatic tax withholding computation on payment execution"),
+    bulletItem("Governance escalation when a proposal deadline passes without quorum"),
+    bulletItem("Regulatory filing generation on calendar-driven deadlines"),
 
     // --- 45.3 Policy Composition ---
     h2("45.3 Policy Composition"),

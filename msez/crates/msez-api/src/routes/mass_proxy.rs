@@ -616,12 +616,8 @@ async fn update_entity(
         .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
 
     // Step 5 & 6: Post-operation orchestration (VC issuance + attestation storage).
-    let envelope = orchestration::orchestrate_entity_update(
-        &state,
-        id,
-        jurisdiction_id,
-        mass_response,
-    );
+    let envelope =
+        orchestration::orchestrate_entity_update(&state, id, jurisdiction_id, mass_response);
 
     Ok(Json(envelope))
 }
@@ -787,8 +783,7 @@ async fn create_account(
     // tensor evaluation for the correct jurisdiction (PK, AE, US, CN, etc.).
     let entity_id = req.entity_id;
     let currency = req.currency.clone();
-    let inferred_jurisdiction =
-        orchestration::infer_jurisdiction(&currency);
+    let inferred_jurisdiction = orchestration::infer_jurisdiction(&currency);
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
         inferred_jurisdiction,
         &entity_id.to_string(),
@@ -854,8 +849,7 @@ async fn initiate_payment(
     // evaluation. Covers all deployment corridors (PAK↔UAE, PAK↔KSA, PAK↔CHN).
     let from_account_id = req.from_account_id;
     let currency = req.currency.clone();
-    let inferred_jurisdiction =
-        orchestration::infer_jurisdiction(&currency);
+    let inferred_jurisdiction = orchestration::infer_jurisdiction(&currency);
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
         inferred_jurisdiction,
         &from_account_id.to_string(),
@@ -1169,10 +1163,9 @@ async fn create_consent(
 
     // Step 3: Mass API call — map proxy DTO → Swagger-aligned mass-client types.
     let operation_type: msez_mass_client::consent::MassConsentOperationType =
-        serde_json::from_value(serde_json::Value::String(req.consent_type.clone()))
-            .map_err(|e| AppError::Validation(format!(
-                "unknown consent type '{}': {e}", req.consent_type,
-            )))?;
+        serde_json::from_value(serde_json::Value::String(req.consent_type.clone())).map_err(
+            |e| AppError::Validation(format!("unknown consent type '{}': {e}", req.consent_type,)),
+        )?;
 
     // Extract organization_id from the first party, or use description as fallback.
     let organization_id = req

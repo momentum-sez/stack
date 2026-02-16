@@ -668,30 +668,30 @@ pub fn infer_jurisdiction(currency: &str) -> &str {
 fn infer_jurisdiction_from_currency(currency: &str) -> &str {
     match currency.to_uppercase().as_str() {
         // Active deployment targets
-        "PKR" => "PK",   // Pakistan
-        "AED" => "AE",   // UAE (ADGM, DIFC, 27 free zones)
-        "USD" => "US",   // United States (also used in BVI)
-        "GBP" => "GB",   // United Kingdom
-        "EUR" => "EU",   // European Union
-        "SGD" => "SG",   // Singapore
+        "PKR" => "PK",         // Pakistan
+        "AED" => "AE",         // UAE (ADGM, DIFC, 27 free zones)
+        "USD" => "US",         // United States (also used in BVI)
+        "GBP" => "GB",         // United Kingdom
+        "EUR" => "EU",         // European Union
+        "SGD" => "SG",         // Singapore
         "CNY" | "RMB" => "CN", // China (Hainan SEZ)
-        "SAR" => "SA",   // Saudi Arabia (PAK↔KSA corridor)
-        "KYD" => "KY",   // Cayman Islands
-        "SCR" => "SC",   // Seychelles
-        "KZT" => "KZ",   // Kazakhstan (Alatau City / AIFC)
-        "HKD" => "HK",   // Hong Kong
+        "SAR" => "SA",         // Saudi Arabia (PAK↔KSA corridor)
+        "KYD" => "KY",         // Cayman Islands
+        "SCR" => "SC",         // Seychelles
+        "KZT" => "KZ",         // Kazakhstan (Alatau City / AIFC)
+        "HKD" => "HK",         // Hong Kong
         // Additional corridors and common currencies
-        "BHD" => "BH",   // Bahrain
-        "OMR" => "OM",   // Oman
-        "QAR" => "QA",   // Qatar
-        "KWD" => "KW",   // Kuwait
-        "INR" => "IN",   // India
-        "JPY" => "JP",   // Japan
-        "CHF" => "CH",   // Switzerland
-        "CAD" => "CA",   // Canada
-        "AUD" => "AU",   // Australia
-        "MYR" => "MY",   // Malaysia
-        "TRY" => "TR",   // Türkiye
+        "BHD" => "BH", // Bahrain
+        "OMR" => "OM", // Oman
+        "QAR" => "QA", // Qatar
+        "KWD" => "KW", // Kuwait
+        "INR" => "IN", // India
+        "JPY" => "JP", // Japan
+        "CHF" => "CH", // Switzerland
+        "CAD" => "CA", // Canada
+        "AUD" => "AU", // Australia
+        "MYR" => "MY", // Malaysia
+        "TRY" => "TR", // Türkiye
         _ => "UNKNOWN",
     }
 }

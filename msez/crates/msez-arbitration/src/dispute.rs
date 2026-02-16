@@ -560,10 +560,7 @@ pub fn institution_registry() -> Vec<ArbitrationInstitution> {
             supported_dispute_types: DisputeType::all().to_vec(),
             emergency_arbitrator: false,
             expedited_procedure: true,
-            enforcement_jurisdictions: vec![
-                "pk".to_string(),
-                "new_york_convention".to_string(),
-            ],
+            enforcement_jurisdictions: vec!["pk".to_string(), "new_york_convention".to_string()],
         },
         ArbitrationInstitution {
             id: "pak-kcdr".to_string(),
@@ -572,10 +569,7 @@ pub fn institution_registry() -> Vec<ArbitrationInstitution> {
             supported_dispute_types: DisputeType::all().to_vec(),
             emergency_arbitrator: true,
             expedited_procedure: true,
-            enforcement_jurisdictions: vec![
-                "pk".to_string(),
-                "new_york_convention".to_string(),
-            ],
+            enforcement_jurisdictions: vec!["pk".to_string(), "new_york_convention".to_string()],
         },
     ]
 }
@@ -1550,7 +1544,10 @@ mod tests {
         }
         // International institutions support all 8 types.
         let intl_ids = ["difc-lcia", "siac", "icc", "aifc-iac"];
-        for inst in registry.iter().filter(|i| intl_ids.contains(&i.id.as_str())) {
+        for inst in registry
+            .iter()
+            .filter(|i| intl_ids.contains(&i.id.as_str()))
+        {
             assert_eq!(
                 inst.supported_dispute_types.len(),
                 8,
@@ -1559,7 +1556,10 @@ mod tests {
             );
         }
         // ATIR (tax tribunal) supports a subset of dispute types.
-        let atir = registry.iter().find(|i| i.id == "pak-atir").expect("pak-atir");
+        let atir = registry
+            .iter()
+            .find(|i| i.id == "pak-atir")
+            .expect("pak-atir");
         assert_eq!(atir.supported_dispute_types.len(), 3);
     }
 

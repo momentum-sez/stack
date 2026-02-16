@@ -64,8 +64,11 @@ impl MassClient {
                 let mut headers = reqwest::header::HeaderMap::new();
                 headers.insert(
                     reqwest::header::AUTHORIZATION,
-                    reqwest::header::HeaderValue::from_str(&format!("Bearer {}", config.api_token.as_str()))
-                        .map_err(|_| MassApiError::Config(config::ConfigError::MissingToken))?,
+                    reqwest::header::HeaderValue::from_str(&format!(
+                        "Bearer {}",
+                        config.api_token.as_str()
+                    ))
+                    .map_err(|_| MassApiError::Config(config::ConfigError::MissingToken))?,
                 );
                 headers
             })

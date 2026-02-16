@@ -7,9 +7,9 @@
 
 use std::collections::BTreeMap;
 
-use serde::{Deserialize, Serialize};
 use msez_core::digest::Sha256Accumulator;
 use msez_core::{CanonicalBytes, ContentDigest, JurisdictionId};
+use serde::{Deserialize, Serialize};
 
 use super::components::LicenseHolder;
 use super::license::{License, LicenseTypeDefinition, LicensepackMetadata};

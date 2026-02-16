@@ -79,22 +79,23 @@ impl LicenseCondition {
 /// Compare two date strings in YYYY-MM-DD format.
 ///
 /// Returns `true` if date `a` is strictly before date `b`.
-/// If either date fails to parse, logs a warning and returns `false`
-/// (defensive: treat unparseable dates as "not before" rather than
-/// risk incorrect lexicographic ordering of malformed date strings).
+/// If either date fails to parse, logs a warning and returns `true`
+/// (fail-safe: in a compliance context this function gates license/condition
+/// expiry checks, so malformed dates must be treated as "already expired"
+/// rather than silently keeping an invalid license active).
 pub(crate) fn date_before(a: &str, b: &str) -> bool {
     let da = match chrono::NaiveDate::parse_from_str(a, "%Y-%m-%d") {
         Ok(d) => d,
         Err(_) => {
-            tracing::warn!(date = %a, "invalid date format in date_before — treating as not-before");
-            return false;
+            tracing::warn!(date = %a, "invalid date format in date_before — fail-safe: treating as expired");
+            return true;
         }
     };
     let db = match chrono::NaiveDate::parse_from_str(b, "%Y-%m-%d") {
         Ok(d) => d,
         Err(_) => {
-            tracing::warn!(date = %b, "invalid date format in date_before — treating as not-before");
-            return false;
+            tracing::warn!(date = %b, "invalid date format in date_before — fail-safe: treating as expired");
+            return true;
         }
     };
     da < db

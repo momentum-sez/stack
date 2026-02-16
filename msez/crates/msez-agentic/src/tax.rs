@@ -1209,16 +1209,28 @@ pub fn parse_amount(s: &str) -> Option<i64> {
 fn parse_rate_bps(rate_str: &str) -> i64 {
     let rate_str = rate_str.trim();
     if let Some(dot_pos) = rate_str.find('.') {
-        let integer_part = rate_str[..dot_pos].parse::<i64>().unwrap_or(0);
+        let integer_part = rate_str[..dot_pos].parse::<i64>().unwrap_or_else(|_| {
+            tracing::warn!(rate = %rate_str, "invalid integer part in rate — defaulting to 0 bps");
+            0
+        });
         let frac_str = &rate_str[dot_pos + 1..];
         let frac = match frac_str.len() {
             0 => 0i64,
-            1 => frac_str.parse::<i64>().unwrap_or(0) * 10,
-            _ => frac_str[..2].parse::<i64>().unwrap_or(0),
+            1 => frac_str.parse::<i64>().unwrap_or_else(|_| {
+                tracing::warn!(rate = %rate_str, "invalid fractional part in rate — defaulting to 0");
+                0
+            }) * 10,
+            _ => frac_str[..2].parse::<i64>().unwrap_or_else(|_| {
+                tracing::warn!(rate = %rate_str, "invalid fractional part in rate — defaulting to 0");
+                0
+            }),
         };
         integer_part.saturating_mul(100).saturating_add(frac)
     } else {
-        rate_str.parse::<i64>().unwrap_or(0).saturating_mul(100)
+        rate_str.parse::<i64>().unwrap_or_else(|_| {
+            tracing::warn!(rate = %rate_str, "invalid rate string — defaulting to 0 bps");
+            0
+        }).saturating_mul(100)
     }
 }
 

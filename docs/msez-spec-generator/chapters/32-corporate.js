@@ -29,8 +29,11 @@ module.exports = function build_chapter32() {
     ),
     spacer(),
 
-    // --- 32.2 Formation Module ---
-    h2("32.2 Formation Module"),
+    // --- 32.2 Module Specifications ---
+    h2("32.2 Module Specifications"),
+
+    // --- 32.2.1 Formation Module ---
+    h3("32.2.1 Formation Module"),
     p("The Formation Module orchestrates entity creation across jurisdictions. It composes Mass API entity creation with compliance tensor evaluation, lawpack checking (e.g., Companies Act requirements), regpack verification (sanctions screening, calendar awareness), and licensepack validation (registry-specific requirements). Upon successful formation, the module issues a Formation Verifiable Credential."),
     p_runs([bold("Pakistan Example."), " Formation of a Private Limited Company under Companies Act 2017 requires: SECP name availability check, digital NTN binding via FBR integration, minimum two directors (CNIC-verified via NADRA), registered office in SEZ jurisdiction, and authorized capital declaration. The Formation Module orchestrates all checks through msez-mass-client to organization-info.api.mass.inc, evaluates compliance via msez-tensor for PAK jurisdiction across all 20 domains, and issues a Formation VC anchored to the corridor state."]),
     p_runs([bold("Schema coverage."), " The formation workflow is validated by msez-schema, which maintains 116 JSON Schema definitions across all corporate modules. Formation-related schemas cover entity type specifications, director requirements, registered office validation, capital structure declarations, and registry integration configurations. Schema validation runs at both the API boundary (msez-api route handlers) and the Mass client boundary (msez-mass-client request/response validation)."]),
@@ -55,8 +58,8 @@ module.exports = function build_chapter32() {
     ),
     spacer(),
 
-    // --- 32.3 Beneficial Ownership Module ---
-    h2("32.3 Beneficial Ownership Module"),
+    // --- 32.2.2 Beneficial Ownership Module ---
+    h3("32.2.2 Beneficial Ownership Module"),
     p("The Beneficial Ownership Module tracks ultimate beneficial owners across jurisdictional requirements. It enforces FATF Recommendation 24 compliance, manages ownership thresholds (typically 10-25% depending on jurisdiction), and issues Beneficial Ownership Verifiable Credentials. The module integrates with organization-info.api.mass.inc for ownership records and msez-tensor for cross-jurisdictional threshold evaluation."),
     ...codeBlock(
       "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +
@@ -78,8 +81,8 @@ module.exports = function build_chapter32() {
     ),
     spacer(),
 
-    // --- 32.4 Capitalization Table Module ---
-    h2("32.4 Capitalization Table Module"),
+    // --- 32.2.3 Cap Table Module ---
+    h3("32.2.3 Cap Table Module"),
     p("The Capitalization Table Module manages securities issuance, SAFEs, convertible instruments, and vesting schedules. It interfaces exclusively with investment-info (Heroku) through msez-mass-client for all cap table CRUD operations. The SEZ Stack adds compliance verification (securities law by jurisdiction), credential issuance for ownership certificates, and corridor-aware transfer restrictions."),
     p("Share transfers require compliance tensor evaluation for both source and destination jurisdictions, sanctions screening via regpack, and may require regulatory approval depending on the entity type and jurisdiction. The module maintains a complete audit trail of all cap table events as Verifiable Credentials."),
     ...codeBlock(
@@ -94,10 +97,10 @@ module.exports = function build_chapter32() {
     ),
     spacer(),
 
-    // --- 32.5 Secretarial Module ---
-    h2("32.5 Secretarial Module"),
+    // --- 32.2.4 Secretarial Module ---
+    h3("32.2.4 Secretarial Module"),
     p("The Secretarial Module manages board resolutions, meeting minutes, statutory filings, and corporate governance records. It integrates with consent.api.mass.inc for multi-party approval workflows and issues Governance Verifiable Credentials for board decisions. The module enforces quorum requirements, notice periods, and voting thresholds defined in the entity's constitutional documents."),
-    h3("32.5.1 Resolution Types"),
+    h3("32.2.4.1 Resolution Types"),
     p("The Secretarial Module supports a comprehensive taxonomy of corporate resolution types. Each resolution type carries distinct quorum requirements, notice periods, voting thresholds, and regulatory filing obligations that vary by jurisdiction. The compliance tensor evaluates applicable governance rules across the Governance domain for the entity's jurisdiction."),
     table(
       ["Resolution Type", "Description", "Typical Threshold"],
@@ -114,15 +117,15 @@ module.exports = function build_chapter32() {
     ),
     spacer(),
 
-    // --- 32.6 Annual Compliance Module ---
-    h2("32.6 Annual Compliance Module"),
+    // --- 32.2.5 Annual Compliance Module ---
+    h3("32.2.5 Annual Compliance Module"),
     p("The Annual Compliance Module tracks and orchestrates periodic regulatory obligations: annual returns, financial statement filings, license renewals, tax filings, and audit requirements. It uses msez-agentic triggers to generate automatic reminders and initiate filing workflows before deadlines."),
     p_runs([bold("Pakistan Example."), " Annual return filing with SECP (Form A), annual financial statements, FBR income tax return, withholding tax statements, and Sales Tax returns are all tracked with jurisdiction-specific deadlines from the regpack filing calendar."]),
 
-    // --- 32.7 Dissolution Module ---
-    h2("32.7 Dissolution Module"),
+    // --- 32.2.6 Dissolution Module ---
+    h3("32.2.6 Dissolution Module"),
     p("The Dissolution Module manages entity winding-up processes including creditor notification, asset distribution, regulatory de-registration, and final compliance attestation. It coordinates with treasury-info.api.mass.inc for final distributions and issues Dissolution Verifiable Credentials upon completion. The module enforces jurisdiction-specific winding-up procedures and timelines."),
-    h3("32.7.1 Dissolution Stages"),
+    h3("32.2.6.1 Dissolution Stages"),
     p("Dissolution proceeds through ten sequential stages. Each stage must complete before the next begins, enforced by the corridor lifecycle FSM in msez-state. The compliance tensor is re-evaluated at each stage transition to ensure ongoing regulatory compliance throughout the winding-up process."),
     table(
       ["Stage", "Description", "Timeline"],

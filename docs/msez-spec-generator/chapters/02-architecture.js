@@ -1,5 +1,5 @@
 const {
-  chapterHeading, h2, p, p_runs, bold,
+  chapterHeading, h2, h3, p, p_runs, bold,
   table, codeBlock, spacer, pageBreak
 } = require("../lib/primitives");
 
@@ -58,8 +58,8 @@ module.exports = function build_chapter02() {
     ),
     spacer(),
 
-    // --- 2.3 PHOENIX Module Suite ---
-    h2("2.3 PHOENIX Module Suite"),
+    // --- 2.2.1 PHOENIX Module Suite ---
+    h3("2.2.1 PHOENIX Module Suite"),
 
     p("The Rust implementation is organized as a Cargo workspace with the following crates, each mapping to a specific domain within the Stack architecture."),
 
@@ -86,8 +86,8 @@ module.exports = function build_chapter02() {
     ),
     spacer(),
 
-    // --- 2.4 Rust Workspace Structure ---
-    h2("2.4 Rust Workspace Structure"),
+    // --- 2.2.2 Rust Workspace Structure ---
+    h3("2.2.2 Rust Workspace Structure"),
 
     p("The workspace is structured as a flat collection of crates with explicit dependency declarations. The dependency graph is acyclic, with msez-core at the root and msez-api as the composition point."),
 
@@ -113,8 +113,8 @@ module.exports = function build_chapter02() {
     ),
     spacer(),
 
-    // --- 2.5 Live Deployments ---
-    h2("2.5 Live Deployments"),
+    // --- 2.3 Live Deployments ---
+    h2("2.3 Live Deployments"),
 
     p("The architecture is validated by production deployments across multiple jurisdictions and deployment models."),
 

@@ -1,5 +1,5 @@
 const {
-  chapterHeading, h2,
+  chapterHeading, h2, h3,
   p, p_runs, bold,
   codeBlock, table, spacer
 } = require("../lib/primitives");
@@ -31,17 +31,17 @@ module.exports = function build_chapter50() {
     ),
     spacer(),
 
-    // --- 50.2 Container Definitions ---
-    h2("50.2 Container Definitions"),
+    // --- 50.1.1 Container Definitions ---
+    h3("50.1.1 Container Definitions"),
     p("All application containers use multi-stage Docker builds. The build stage compiles Rust code with cargo build --release in a rust:1.77-slim image. The runtime stage copies only the compiled binary into an alpine:3.19 base image, producing final images under 50 MB. Each service defines health check commands, resource limits (CPU and memory), restart policies (unless-stopped), and explicit dependency ordering via depends_on with condition: service_healthy. Environment variables are injected from a shared .env file with service-specific overrides."),
 
-    // --- 50.3 Database Initialization ---
-    h2("50.3 Database Initialization"),
+    // --- 50.2 Database Initialization ---
+    h2("50.2 Database Initialization"),
     p("PostgreSQL initialization is handled by SQLx migrations embedded in the msez-api binary. On first startup, the API server runs all pending migrations before accepting traffic. The migration system creates tables for corridor state, tensor snapshots, verifiable credential audit logs, agentic policy state, and audit event hash chains. A readiness probe on /healthz confirms that migrations have completed and the database connection pool is active. The postgres service mounts a named volume for data persistence across container restarts."),
     spacer(),
 
-    // --- 50.4 Database Schema: init-db.sql ---
-    h2("50.4 Database Schema: init-db.sql"),
+    // --- 50.2.1 Database Schema: init-db.sql ---
+    h3("50.2.1 Database Schema: init-db.sql"),
     p("The init-db.sql script (mounted into the postgres container's /docker-entrypoint-initdb.d/) creates seven databases to enforce domain isolation. Each database corresponds to a distinct bounded context within the SEZ Stack, preventing cross-domain query coupling and enabling independent backup and scaling policies."),
     table(
       ["Database", "Owner", "Purpose"],
@@ -59,8 +59,8 @@ module.exports = function build_chapter50() {
     spacer(),
     p_runs([bold("Isolation Rationale."), " Separate databases (rather than schemas within a single database) enable independent pg_dump/pg_restore for each domain, separate connection pool limits per domain in PgBouncer, and the ability to place high-write databases (audit_events, corridor_state) on faster storage while keeping lower-write databases (pack_registry, migration_log) on standard storage."]),
 
-    // --- 50.5 Dockerfile Structure ---
-    h2("50.5 Dockerfile Structure"),
+    // --- 50.3 Dockerfile Structure ---
+    h2("50.3 Dockerfile Structure"),
     p("All application images (msez-api, msez-worker) use an identical multi-stage build pattern. The build is split into three stages to maximize layer caching and minimize final image size."),
     ...codeBlock(
 `# Stage 1: Chef — dependency caching layer

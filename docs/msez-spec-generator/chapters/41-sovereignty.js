@@ -1,5 +1,5 @@
 const {
-  chapterHeading, h2,
+  chapterHeading, h2, h3,
   p, p_runs, bold,
   table, spacer
 } = require("../lib/primitives");
@@ -25,7 +25,9 @@ module.exports = function build_chapter41() {
 
     p("Phase 1 (Months 1-6): Deploy core Mass primitives, connect national systems, begin AI training. Phase 2 (Months 7-12): Scale to all ministries, activate bilateral corridors, deploy full licensing. Phase 3 (Months 13-18): Optimize AI models, measure tax collection improvements, launch analytics dashboards. Phase 4 (Months 19-24): Transfer complete operational control to Pakistani engineers. Momentum retains advisory role only."),
 
-    h2("Phase 1 — Foundation (Months 1-6)"),
+    h2("41.1 Handover Phases"),
+
+    h3("Phase 1 — Foundation (Months 1-6)"),
 
     p("The Foundation phase establishes the core infrastructure and connects the primary national systems. This phase operates with a joint Momentum-Pakistan engineering team, with Momentum engineers leading and Pakistani counterparts embedded at every level."),
 
@@ -42,7 +44,7 @@ module.exports = function build_chapter41() {
       [600, 1800, 3600, 3360]
     ),
 
-    h2("Phase 2 — Expansion (Months 7-12)"),
+    h3("Phase 2 — Expansion (Months 7-12)"),
 
     table(
       ["Month", "Milestone", "Deliverable", "Exit Criteria"],
@@ -57,7 +59,7 @@ module.exports = function build_chapter41() {
       [600, 1800, 3600, 3360]
     ),
 
-    h2("Phase 3 — Optimization (Months 13-18)"),
+    h3("Phase 3 — Optimization (Months 13-18)"),
 
     table(
       ["Month", "Milestone", "Deliverable", "Exit Criteria"],
@@ -72,7 +74,7 @@ module.exports = function build_chapter41() {
       [600, 1800, 3600, 3360]
     ),
 
-    h2("Phase 4 — Handover (Months 19-24)"),
+    h3("Phase 4 — Handover (Months 19-24)"),
 
     table(
       ["Month", "Milestone", "Deliverable", "Exit Criteria"],
@@ -89,7 +91,7 @@ module.exports = function build_chapter41() {
 
     spacer(),
 
-    h2("Key Personnel Requirements"),
+    h2("41.2 Key Personnel Requirements"),
 
     p("Successful execution of the 24-month handover requires dedicated personnel on both the Momentum and Pakistani sides. The following table specifies minimum staffing by role category and phase. Pakistani personnel are embedded with Momentum engineers from Phase 1, ensuring continuous knowledge transfer rather than a single handover event."),
 
@@ -112,7 +114,7 @@ module.exports = function build_chapter41() {
 
     spacer(),
 
-    h2("Success Metrics"),
+    h2("41.3 Success Metrics"),
 
     p("The following metrics define success at each phase gate. Phase advancement requires all metrics for the current phase to be met. Metrics are measured independently by both Momentum and the Pakistani government, with discrepancies resolved through the project steering committee."),
 

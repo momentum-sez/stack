@@ -44,28 +44,28 @@ module.exports = function build_chapter05() {
     ),
     spacer(),
 
-    // --- 5.2 Governance Module ---
-    h2("5.2 Governance Module"),
+    // --- 5.1.1 Governance Module ---
+    h3("5.1.1 Governance Module"),
     p("The Governance module implements institutional decision-making processes including constitutional frameworks, voting mechanisms, amendment procedures, and stakeholder coordination. Constitutional frameworks define the fundamental rules governing zone operations. The Stack supports hierarchical constitutions with multiple amendment thresholds. Core provisions may require supermajority approval or external ratification, while operational policies may be modifiable through administrative action. Voting mechanisms support multiple models including token-weighted voting, one-entity-one-vote, quadratic voting, and conviction voting."),
 
-    // --- 5.3 Financial Module ---
-    h2("5.3 Financial Module"),
+    // --- 5.2 Financial Module ---
+    h2("5.2 Financial Module"),
     p("The Financial module provides banking and payment infrastructure: account management, payment processing, foreign exchange, custody services, and capital markets integration. Account management supports both fiat and digital asset accounts. Fiat accounts integrate with traditional banking rails through the Mass Treasury API. Custody services provide institutional-grade asset protection with multi-signature wallets, configurable quorum policies, time-locked releases, and automated compliance holds."),
 
-    // --- 5.4 Regulatory Module ---
-    h2("5.4 Regulatory Module"),
+    // --- 5.3 Regulatory Module ---
+    h2("5.3 Regulatory Module"),
     p("The Regulatory module implements compliance frameworks required for lawful economic activity: identity verification, transaction monitoring, sanctions screening, and regulatory reporting. Identity verification follows zkKYC principles. Transaction monitoring operates through configurable rule engines evaluated against jurisdiction-specific rules."),
 
-    // --- 5.5 Licensing Module ---
-    h2("5.5 Licensing Module"),
+    // --- 5.3.1 Licensing Module ---
+    h3("5.3.1 Licensing Module"),
     p("The Licensing module manages business authorization: license application processing, compliance monitoring, renewal management, and portability across compatible jurisdictions. License portability enables mutual recognition across compatible jurisdictions through credential verification."),
 
-    // --- 5.6 Legal Module ---
-    h2("5.6 Legal Module"),
+    // --- 5.3.2 Legal Module ---
+    h3("5.3.2 Legal Module"),
     p("The Legal module provides infrastructure for contract management, dispute resolution, and enforcement. Enforcement mechanisms translate legal determinations into system actions. Arbitration rulings encoded as Verifiable Credentials trigger automatic state transitions in affected Smart Assets."),
 
-    // --- 5.7 Operational Module ---
-    h2("5.7 Operational Module"),
+    // --- 5.3.3 Operational Module ---
+    h3("5.3.3 Operational Module"),
     p("The Operational module provides administrative functionality for zone management: human resources, procurement, facility management, and general administration."),
   ];
 };

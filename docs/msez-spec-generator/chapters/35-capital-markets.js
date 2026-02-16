@@ -1,5 +1,5 @@
 const {
-  chapterHeading, h2,
+  chapterHeading, h2, h3,
   p, p_runs, bold,
   pageBreak, table,
   spacer
@@ -30,8 +30,11 @@ module.exports = function build_chapter35() {
     ),
     spacer(),
 
-    // --- 35.2 Securities Issuance Module ---
-    h2("35.2 Securities Issuance Module"),
+    // --- 35.2 Module Specifications ---
+    h2("35.2 Module Specifications"),
+
+    // --- 35.2.1 Securities Issuance Module ---
+    h3("35.2.1 Securities Issuance Module"),
     p("The Securities Issuance Module orchestrates primary issuance of equity, debt, and hybrid instruments. It manages offering document generation (via Mass templating-engine), investor qualification verification (via compliance tensor), allocation computation, and settlement. Each issued security is represented as a Smart Asset with full lifecycle tracking through the receipt chain."),
     p_runs([bold("Issuance Types."), " The module supports the following primary issuance mechanisms, each with distinct regulatory requirements evaluated through the compliance tensor."]),
     table(
@@ -46,8 +49,8 @@ module.exports = function build_chapter35() {
     ),
     spacer(),
 
-    // --- 35.3 Trading Module ---
-    h2("35.3 Trading Module"),
+    // --- 35.2.2 Trading Module ---
+    h3("35.2.2 Trading Module"),
     p("The Trading Module provides order management, matching, and execution services. It supports limit orders, market orders, and negotiated trades with jurisdiction-specific pre-trade compliance checks. All trades generate receipts anchored to the corridor state and are subject to real-time compliance tensor evaluation."),
     p_runs([bold("Market Structures."), " The module supports multiple market structure configurations, selected per venue and jurisdiction via the regpack."]),
     table(
@@ -75,20 +78,20 @@ module.exports = function build_chapter35() {
     ),
     spacer(),
 
-    // --- 35.4 Post-Trade Module ---
-    h2("35.4 Post-Trade Module"),
+    // --- 35.2.3 Post-Trade Module ---
+    h3("35.2.3 Post-Trade Module"),
     p("The Post-Trade Module handles trade confirmation, affirmation, and allocation. It implements T+0 to T+3 settlement cycles depending on jurisdiction and instrument type. The module integrates with the clearing and DVP modules for final settlement and generates post-trade Verifiable Credentials."),
 
-    // --- 35.5 CSD Module ---
-    h2("35.5 CSD Module"),
+    // --- 35.2.4 CSD Module ---
+    h3("35.2.4 CSD Module"),
     p("The CSD Module provides central securities depository functionality including securities registry maintenance, ownership transfer recording, and corporate action processing. It interfaces with investment-info through msez-mass-client for cap table updates and maintains an immutable audit trail of all registry changes as receipt chain entries."),
 
-    // --- 35.6 Clearing Module ---
-    h2("35.6 Clearing Module"),
+    // --- 35.2.5 Clearing Module ---
+    h3("35.2.5 Clearing Module"),
     p("The Clearing Module implements multilateral netting, novation, and margin management. It computes net obligations across counterparties and corridors, manages collateral requirements, and produces settlement instructions for the DVP module. The module supports both central counterparty (CCP) and bilateral clearing models."),
 
-    // --- 35.7 DVP-PVP Module ---
-    h2("35.7 DVP-PVP Module"),
+    // --- 35.2.6 DVP-PVP Module ---
+    h3("35.2.6 DVP-PVP Module"),
     p("The DVP-PVP Module ensures atomic delivery-versus-payment and payment-versus-payment settlement. Securities delivery (via CSD) and payment (via treasury-info.api.mass.inc) are locked in an atomic transaction. If either leg fails, both are rolled back. Cross-currency settlements use the PVP mechanism with FX rates sourced from the regpack."),
     p_runs([bold("Settlement Models."), " The module supports four settlement models as defined by BIS/CPMI standards. The applicable model is determined by jurisdiction, instrument type, and clearing configuration."]),
     table(
@@ -103,8 +106,8 @@ module.exports = function build_chapter35() {
     ),
     spacer(),
 
-    // --- 35.8 Corporate Actions Module ---
-    h2("35.8 Corporate Actions Module"),
+    // --- 35.2.7 Corporate Actions Module ---
+    h3("35.2.7 Corporate Actions Module"),
     p("The Corporate Actions Module processes dividends, stock splits, rights issues, mergers, and other corporate events. It computes entitlements from cap table data (via investment-info), generates payment instructions (via treasury-info.api.mass.inc), and updates the securities registry. Corporate action announcements and outcomes are issued as Verifiable Credentials."),
     p_runs([bold("Mandatory Corporate Actions."), " These actions apply automatically to all holders without requiring a decision. The module processes them on the effective date using cap table data from investment-info."]),
     table(
@@ -131,8 +134,8 @@ module.exports = function build_chapter35() {
     ),
     spacer(),
 
-    // --- 35.9 Surveillance Module ---
-    h2("35.9 Surveillance Module"),
+    // --- 35.2.8 Surveillance Module ---
+    h3("35.2.8 Surveillance Module"),
     p("The Surveillance Module monitors trading activity for market abuse, insider trading, and regulatory violations. It applies jurisdiction-specific surveillance rules from the regpack and generates alerts and suspicious transaction reports. The module integrates with the compliance tensor for real-time evaluation against 20 compliance domains."),
   ];
 };

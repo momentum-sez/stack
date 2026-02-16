@@ -1,5 +1,5 @@
 const {
-  chapterHeading, h2,
+  chapterHeading, h2, h3,
   p, p_runs, bold,
   codeBlock, table, spacer, pageBreak
 } = require("../lib/primitives");
@@ -17,8 +17,8 @@ module.exports = function build_chapter12() {
     h2("12.2 Domain Enumeration"),
     p("The composition engine operates across all twenty compliance domains defined in the compliance tensor: CIVIC, CORPORATE, COMMERCIAL, FINANCIAL, SECURITIES, BANKING, PAYMENTS, DIGITAL_ASSETS, TAX, AML_CFT, DATA_PROTECTION, ARBITRATION, LICENSING, INSURANCE, ENVIRONMENTAL, LABOR, INTELLECTUAL_PROPERTY, IMMIGRATION, REAL_ESTATE, and HEALTH_SAFETY. Each domain is composed independently, allowing jurisdiction-specific overrides at domain granularity. Conflict resolution follows the strictest-rule-wins principle: when two jurisdictions impose different requirements on the same domain, the more restrictive requirement prevails."),
 
-    // --- 12.3 Composition Data Model ---
-    h2("12.3 Composition Data Model"),
+    // --- 12.2.1 Composition Data Model ---
+    h3("12.2.1 Composition Data Model"),
     ...codeBlock(
       "/// A composed multi-jurisdiction zone configuration.\n" +
       "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +
@@ -48,12 +48,12 @@ module.exports = function build_chapter12() {
       "The Astana International Financial Centre (AIFC) composes three jurisdiction layers: Kazakhstan national law (base layer providing CIVIC, CORPORATE, TAX, and LABOR domains), AIFC common law framework (overlay replacing COMMERCIAL, FINANCIAL, SECURITIES, BANKING, and ARBITRATION with English common law equivalents), and FATF/EAG mutual evaluation requirements (overlay strengthening AML_CFT domain to meet enhanced due diligence standards). The resulting composition has 20 domains with 8 overridden by the AIFC layer, producing a compliance tensor of shape (3, 20) with 60 cells."
     ]),
 
-    // --- 12.4 Composition Validation ---
-    h2("12.4 Composition Validation"),
+    // --- 12.3 Composition Validation ---
+    h2("12.3 Composition Validation"),
     p("Composition validation enforces four constraints: completeness (all twenty compliance domains must be covered by at least one jurisdiction layer), consistency (no two layers may impose contradictory requirements on the same domain without an explicit conflict resolution rule), temporal validity (all referenced lawpacks, regpacks, and licensepacks must have overlapping validity periods covering the composition effective date), and digest integrity (the composition digest must equal the SHA-256 hash of the canonical serialization of all layers, ensuring tamper detection)."),
 
-    // --- 12.5 Composition Factory ---
-    h2("12.5 Composition Factory"),
+    // --- 12.3.1 Composition Factory ---
+    h3("12.3.1 Composition Factory"),
     p("The compose_zone factory function accepts a zone identifier, a list of jurisdiction identifiers with their pack references, and an optional set of domain override policies. It fetches the referenced packs, validates completeness and consistency, resolves conflicts using the strictest-rule-wins principle, computes the composition digest, and returns a ComposedJurisdiction. The factory is idempotent: given the same inputs and pack versions, it always produces the same composition digest."),
     ...codeBlock(
       "/// Compose a multi-jurisdiction zone from pack references.\n" +
@@ -93,8 +93,8 @@ module.exports = function build_chapter12() {
     ),
     spacer(),
 
-    // --- 12.6 Composition Example: Pakistan GovOS ---
-    h2("12.6 Composition Example: Pakistan GovOS"),
+    // --- 12.3.2 Composition Example: Pakistan GovOS ---
+    h3("12.3.2 Composition Example: Pakistan GovOS"),
     p("The Pakistan GovOS deployment composes three jurisdiction layers into a single zone configuration: the Pakistan national base layer, the SEZ overlay providing special economic zone exemptions, and the FATF overlay strengthening AML/CFT and financial monitoring. The resulting composition covers all 20 compliance domains with a tensor shape of (3, 20) yielding 60 cells."),
     p_runs([
       bold("Layer 1 — PAK Base (Pakistan National Law). "),
@@ -139,8 +139,8 @@ module.exports = function build_chapter12() {
     spacer(),
     p("The composition digest is computed as SHA-256 over the canonical serialization of all three layers, their pack references, and the domain override matrix. This digest is embedded in every corridor state and verifiable credential issued under the Pakistan GovOS zone, binding all compliance attestations to a specific, reproducible regulatory snapshot."),
 
-    // --- 12.7 Generated Artifacts ---
-    h2("12.7 Generated Artifacts"),
+    // --- 12.3.3 Generated Artifacts ---
+    h3("12.3.3 Generated Artifacts"),
     p("The composition engine produces three artifacts: zone.yaml (the human-readable zone configuration specifying jurisdiction layers, domain assignments, and override policies), stack.lock (the machine-readable lockfile pinning exact pack versions with their content-addressed digests, ensuring reproducible builds), and composition_digest (the SHA-256 commitment over the entire composed configuration, embedded in corridor state and verifiable credentials to bind compliance attestations to a specific regulatory snapshot)."),
   ];
 };

@@ -81,9 +81,12 @@ impl Validate for CreateTaxEventRequest {
         if self.gross_amount.trim().is_empty() {
             return Err("gross_amount must not be empty".to_string());
         }
-        // Validate gross_amount is a parseable non-negative number.
+        // Validate gross_amount is a parseable, finite, non-negative number.
         let trimmed = self.gross_amount.trim();
         match trimmed.parse::<f64>() {
+            Ok(v) if !v.is_finite() => {
+                return Err("gross_amount must be a finite number".to_string());
+            }
             Ok(v) if v < 0.0 => {
                 return Err("gross_amount must not be negative".to_string());
             }

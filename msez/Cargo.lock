@@ -1434,6 +1434,7 @@ dependencies = [
  "tempfile",
  "tracing",
  "tracing-subscriber",
+ "zeroize",
 ]
 
 [[package]]

@@ -186,7 +186,10 @@ async fn submit_trigger(
 /// GET /v1/policies — List all registered policies.
 async fn list_policies(
     State(state): State<AppState>,
+    caller: CallerIdentity,
 ) -> Result<Json<Vec<serde_json::Value>>, AppError> {
+    // Policy configuration is operational data — require at least EntityOperator.
+    require_role(&caller, Role::EntityOperator)?;
     let engine = state.policy_engine.lock();
 
     let policies: Vec<serde_json::Value> = engine

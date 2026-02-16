@@ -152,37 +152,9 @@ fn cmd_verify(cas: &ContentAddressedStore, artifact_type: &str, digest_hex: &str
 }
 
 /// Parse a hex digest string into a ContentDigest.
-///
-/// Since ContentDigest doesn't expose a public constructor from raw bytes,
-/// we compute it by canonicalizing a synthetic value that produces the same
-/// digest. For resolve operations, we read the file directly using the hex
-/// as a filename lookup.
 fn parse_digest_hex(hex: &str) -> Result<ContentDigest> {
-    if hex.len() != 64 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
-        bail!(
-            "invalid digest: must be 64 hex characters, got {}",
-            hex.len()
-        );
-    }
-
-    // The CAS resolves by constructing the path from the hex string directly.
-    // We need a ContentDigest object. Since the resolve method needs a digest
-    // to build the path, and ContentDigest only comes from sha256_digest(),
-    // we use a workaround: compute a digest from a value and then check if
-    // the file exists at the expected path.
-    //
-    // For the CLI, the CAS uses ContentDigest::to_hex() to build paths.
-    // We can construct a "synthetic" ContentDigest by computing sha256 of
-    // some known value and then looking up by filename directly.
-    //
-    // However, the clean approach is to note that ContentAddressedStore::resolve
-    // needs a ContentDigest. The only way to construct one is via sha256_digest.
-    //
-    // For Phase 1 CLI, we use a direct filesystem lookup instead.
-    bail!(
-        "direct digest lookup not yet supported in Phase 1 CLI. \
-         Use the Python CLI for digest-based resolve operations."
-    )
+    ContentDigest::from_hex(hex)
+        .map_err(|e| anyhow::anyhow!("invalid digest: {e}"))
 }
 
 #[cfg(test)]
@@ -226,7 +198,7 @@ mod tests {
         let result = parse_digest_hex("abc123");
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("64 hex characters"));
+        assert!(err_msg.contains("64 hex char"), "expected '64 hex char' in: {err_msg}");
     }
 
     #[test]
@@ -235,18 +207,15 @@ mod tests {
             parse_digest_hex("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz");
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("64 hex characters") || err_msg.contains("invalid digest"));
+        assert!(err_msg.contains("invalid digest"), "expected 'invalid digest' in: {err_msg}");
     }
 
     #[test]
-    fn parse_digest_hex_valid_hex_returns_error_phase1() {
-        // 64 valid hex characters.
+    fn parse_digest_hex_valid_hex_succeeds() {
         let valid_hex = "a".repeat(64);
         let result = parse_digest_hex(&valid_hex);
-        // Phase 1 always bails with "not yet supported".
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("Phase 1") || err_msg.contains("not yet supported"));
+        assert!(result.is_ok(), "valid 64-char hex should parse successfully");
+        assert_eq!(result.unwrap().to_hex(), valid_hex);
     }
 
     #[test]
@@ -308,14 +277,15 @@ mod tests {
     }
 
     #[test]
-    fn cmd_resolve_valid_hex_returns_phase1_error() {
+    fn cmd_resolve_valid_hex_not_found() {
         let dir = tempfile::tempdir().unwrap();
         let cas = ContentAddressedStore::new(dir.path());
 
         let valid_hex = "b".repeat(64);
         let result = cmd_resolve(&cas, "receipt", &valid_hex);
-        // Phase 1 limitation.
-        assert!(result.is_err());
+        // Digest parses successfully but artifact is not in the store.
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 1, "exit code 1 = not found");
     }
 
     #[test]
@@ -328,14 +298,15 @@ mod tests {
     }
 
     #[test]
-    fn cmd_verify_valid_hex_returns_phase1_error() {
+    fn cmd_verify_valid_hex_not_found() {
         let dir = tempfile::tempdir().unwrap();
         let cas = ContentAddressedStore::new(dir.path());
 
         let valid_hex = "c".repeat(64);
         let result = cmd_verify(&cas, "receipt", &valid_hex);
-        // Phase 1 limitation.
-        assert!(result.is_err());
+        // Digest parses successfully but artifact is not in the store.
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 1, "exit code 1 = not found");
     }
 
     #[test]

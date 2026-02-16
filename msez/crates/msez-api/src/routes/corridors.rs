@@ -294,13 +294,15 @@ async fn create_corridor(
 )]
 async fn list_corridors(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Query(pagination): Query<PaginationParams>,
-) -> Json<Vec<CorridorRecord>> {
+) -> Result<Json<Vec<CorridorRecord>>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     let all = state.corridors.list();
     let offset = pagination.effective_offset().min(all.len());
     let limit = pagination.effective_limit();
     let page = all.into_iter().skip(offset).take(limit).collect();
-    Json(page)
+    Ok(Json(page))
 }
 
 /// GET /v1/corridors/:id — Get a corridor.
@@ -316,8 +318,10 @@ async fn list_corridors(
 )]
 async fn get_corridor(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Path(id): Path<Uuid>,
 ) -> Result<Json<CorridorRecord>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     state
         .corridors
         .get(&id)
@@ -470,8 +474,11 @@ async fn transition_corridor(
 )]
 async fn propose_receipt(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     body: Result<Json<ProposeReceiptRequest>, JsonRejection>,
 ) -> Result<(axum::http::StatusCode, Json<ReceiptProposalResponse>), AppError> {
+    // Receipt proposal is a state-mutating operation — require EntityOperator.
+    require_role(&caller, Role::EntityOperator)?;
     let req = extract_validated_json(body)?;
 
     // Acquire the receipt chain for this corridor.
@@ -546,8 +553,11 @@ async fn propose_receipt(
 )]
 async fn fork_resolve(
     State(_state): State<AppState>,
+    caller: CallerIdentity,
     body: Result<Json<ForkResolveRequest>, JsonRejection>,
 ) -> Result<Json<ForkResolveResponse>, AppError> {
+    // Fork resolution is an administrative action — require ZoneAdmin.
+    require_role(&caller, Role::ZoneAdmin)?;
     let req = extract_validated_json(body)?;
 
     // Parse timestamps.

@@ -697,6 +697,17 @@ async fn create_cap_table(
     }
 
     // Step 3: Mass API call — map proxy DTO → Swagger-aligned mass-client types.
+    //
+    // The Mass investment-info CreateCapTable endpoint accepts a single share
+    // class (authorized_shares + par_value). If the caller provides multiple
+    // share classes, reject explicitly rather than silently dropping extras.
+    if req.share_classes.len() > 1 {
+        return Err(AppError::Validation(
+            "Mass investment-info API supports a single share class per cap table creation. \
+             Multiple share classes must be added individually after creation."
+                .to_string(),
+        ));
+    }
     let mass_req = msez_mass_client::ownership::CreateCapTableRequest {
         organization_id: req.entity_id.to_string(),
         authorized_shares: req.share_classes.first().map(|sc| sc.authorized_shares),
@@ -976,13 +987,17 @@ async fn generate_payment_tax_event(
         pipeline.process_event(&event)
     };
 
-    let gross_cents = parse_amount(amount).unwrap_or_else(|| {
-        tracing::warn!(
-            amount = amount,
-            "failed to parse payment amount for tax event — recording as 0 cents",
-        );
-        0
-    });
+    let gross_cents = match parse_amount(amount) {
+        Some(cents) => cents,
+        None => {
+            tracing::error!(
+                amount = amount,
+                "failed to parse payment amount for tax event — aborting tax event generation \
+                 to avoid recording inconsistent data",
+            );
+            return;
+        }
+    };
     let mut total_wht_cents: i64 = 0;
     for w in &withholdings {
         total_wht_cents = total_wht_cents.saturating_add(
@@ -1163,9 +1178,21 @@ async fn get_identity(
         .get_composite_identity(&id.to_string())
         .await
     {
-        Ok(identity) => serde_json::to_value(identity)
-            .map(Json)
-            .map_err(|e| AppError::Internal(format!("serialization error: {e}"))),
+        Ok(identity) => {
+            // Check if the composite identity is effectively empty (all sub-queries
+            // returned no data). Return 404 instead of an empty 200.
+            let val = serde_json::to_value(&identity)
+                .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
+            let is_empty = identity.members.is_empty()
+                && identity.directors.is_empty()
+                && identity.shareholders.is_empty();
+            if is_empty {
+                return Err(AppError::not_found(format!(
+                    "no identity data found for entity {id}"
+                )));
+            }
+            Ok(Json(val))
+        }
         Err(e) => Err(AppError::upstream(format!("Mass API error: {e}"))),
     }
 }

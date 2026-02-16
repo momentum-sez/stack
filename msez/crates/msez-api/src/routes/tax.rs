@@ -414,8 +414,10 @@ async fn create_tax_event(
 /// GET /v1/tax/events — List tax events with optional filtering.
 async fn list_tax_events(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Query(params): Query<TaxEventQueryParams>,
 ) -> Result<Json<Vec<TaxEventRecord>>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     let limit = params.limit.unwrap_or(100).min(1000);
     let offset = params.offset.unwrap_or(0);
 
@@ -450,8 +452,10 @@ async fn list_tax_events(
 /// GET /v1/tax/events/:id — Get a tax event by ID.
 async fn get_tax_event(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Path(id): Path<Uuid>,
 ) -> Result<Json<TaxEventRecord>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     state
         .tax_events
         .get(&id)
@@ -465,8 +469,10 @@ async fn get_tax_event(
 /// data and returns the computed results without recording a tax event.
 async fn compute_withholding(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     body: Result<Json<CreateTaxEventRequest>, JsonRejection>,
 ) -> Result<Json<Vec<WithholdingResultResponse>>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     let req = extract_validated_json(body)?;
 
     let event_type = parse_event_type(&req.event_type)?;
@@ -506,9 +512,11 @@ async fn compute_withholding(
 /// and categories, producing a summary of total obligations and withholdings.
 async fn get_tax_obligations(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Path(entity_id): Path<Uuid>,
     Query(params): Query<TaxEventQueryParams>,
 ) -> Result<Json<TaxObligationSummary>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     let all = state.tax_events.list();
     let entity_events: Vec<&TaxEventRecord> = all
         .iter()
@@ -692,8 +700,10 @@ async fn generate_tax_report(
 /// GET /v1/tax/rules — List loaded withholding rules.
 async fn list_withholding_rules(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Query(params): Query<RulesQueryParams>,
 ) -> Result<Json<Vec<WithholdingRuleResponse>>, AppError> {
+    require_role(&caller, Role::EntityOperator)?;
     let pipeline = state.tax_pipeline.lock();
     let jurisdiction = params.jurisdiction_id.as_deref().unwrap_or("PK");
 

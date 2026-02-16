@@ -37,7 +37,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(mass_config) => {
             tracing::info!("Mass API client configured");
             match msez_mass_client::MassClient::new(mass_config) {
-                Ok(client) => Some(client),
+                Ok(client) => {
+                    // Validate connectivity to Mass APIs at startup.
+                    // Don't hard-fail — some zones may intentionally run
+                    // with a subset of primitives reachable.
+                    let health = client.health_check().await;
+                    for name in &health.reachable {
+                        tracing::info!(service = %name, "Mass API reachable");
+                    }
+                    for (name, err) in &health.unreachable {
+                        tracing::warn!(
+                            service = %name,
+                            error = %err,
+                            "Mass API unreachable at startup — proxy endpoints for this service will fail"
+                        );
+                    }
+                    if health.all_healthy() {
+                        tracing::info!("All Mass APIs reachable");
+                    } else {
+                        tracing::warn!(
+                            reachable = health.reachable.len(),
+                            unreachable = health.unreachable.len(),
+                            "Some Mass APIs unreachable — readiness probe will report unhealthy"
+                        );
+                    }
+                    Some(client)
+                }
                 Err(e) => {
                     tracing::error!("Failed to create Mass API client: {e}");
                     return Err(e.into());

@@ -1536,10 +1536,10 @@ mod tests {
                 "institution {} has no supported dispute types",
                 inst.id
             );
+            // Verify institution has a valid id (non-empty).
             assert!(
-                inst.expedited_procedure || !inst.expedited_procedure,
-                "institution {} exists",
-                inst.id
+                !inst.id.is_empty(),
+                "institution should have a non-empty id"
             );
         }
         // International institutions support all 8 types.

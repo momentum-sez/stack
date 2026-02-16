@@ -463,7 +463,7 @@ mod tests {
         instr.currency = "USD".into();
         instr.from_account = "circle-wallet-001".into();
         instr.to_account = "circle-wallet-002".into();
-        instr.amount = 100_00;
+        instr.amount = 10_000;
 
         let result = adapter.initiate_payment(&instr);
         assert!(result.is_err());

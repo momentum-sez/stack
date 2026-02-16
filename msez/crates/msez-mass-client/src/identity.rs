@@ -337,9 +337,11 @@ impl IdentityClient {
         &self,
         organization_id: &str,
     ) -> Result<Vec<MassDirector>, MassApiError> {
+        let encoded_org_id: String =
+            url::form_urlencoded::byte_serialize(organization_id.as_bytes()).collect();
         let endpoint = format!("GET /board/{organization_id}");
         let url = format!(
-            "{}{}/board/{organization_id}",
+            "{}{}/board/{encoded_org_id}",
             self.org_base_url, ORG_API_PREFIX
         );
 
@@ -375,9 +377,11 @@ impl IdentityClient {
         &self,
         organization_id: &str,
     ) -> Result<Vec<MassShareholder>, MassApiError> {
+        let encoded_org_id: String =
+            url::form_urlencoded::byte_serialize(organization_id.as_bytes()).collect();
         let endpoint = format!("GET /shareholders/organization/{organization_id}");
         let url = format!(
-            "{}{}/shareholders/organization/{organization_id}",
+            "{}{}/shareholders/organization/{encoded_org_id}",
             self.consent_base_url, CONSENT_API_PREFIX
         );
 

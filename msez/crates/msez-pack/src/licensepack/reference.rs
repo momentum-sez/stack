@@ -94,6 +94,11 @@ pub fn resolve_licensepack_refs(zone: &serde_json::Value) -> PackResult<Vec<Lice
                 .unwrap_or("")
                 .to_string();
             if jid.is_empty() || domain.is_empty() {
+                tracing::warn!(
+                    jurisdiction_id = %jid,
+                    domain = %domain,
+                    "licensepack reference has empty jurisdiction_id or domain — skipping"
+                );
                 continue;
             }
             if !digest.is_empty() && parser::is_valid_sha256(&digest) {

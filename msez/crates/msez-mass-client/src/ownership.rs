@@ -247,9 +247,11 @@ impl OwnershipClient {
         &self,
         organization_id: &str,
     ) -> Result<Option<MassCapTable>, MassApiError> {
+        let encoded_org_id: String =
+            url::form_urlencoded::byte_serialize(organization_id.as_bytes()).collect();
         let endpoint = format!("GET /capTables/organization/{organization_id}");
         let url = format!(
-            "{}{}/capTables/organization/{organization_id}",
+            "{}{}/capTables/organization/{encoded_org_id}",
             self.consent_base_url, CONSENT_API_PREFIX
         );
 
@@ -290,9 +292,11 @@ impl OwnershipClient {
         &self,
         organization_id: &str,
     ) -> Result<Vec<MassShareClass>, MassApiError> {
+        let encoded_org_id: String =
+            url::form_urlencoded::byte_serialize(organization_id.as_bytes()).collect();
         let endpoint = format!("GET /shareClasses/organization/{organization_id}");
         let url = format!(
-            "{}{}/shareClasses/organization/{organization_id}",
+            "{}{}/shareClasses/organization/{encoded_org_id}",
             self.consent_base_url, CONSENT_API_PREFIX
         );
 

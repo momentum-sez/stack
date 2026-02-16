@@ -289,12 +289,23 @@ impl VerifiableCredential {
     where
         F: Fn(&str) -> Result<VerifyingKey, String>,
     {
+        // A credential with zero proofs MUST fail verification. Returning an
+        // empty Vec is dangerous because `[].iter().all(|r| r.ok)` evaluates
+        // to `true` (vacuous truth), which would silently accept unsigned
+        // credentials. Return an explicit failure entry instead.
+        let proofs = self.proof.as_list();
+        if proofs.is_empty() {
+            return vec![ProofResult {
+                verification_method: String::new(),
+                ok: false,
+                error: "credential has no proofs attached".to_string(),
+            }];
+        }
+
         // Check expiration before spending CPU on signature verification.
         if let Some(expiration) = self.expiration_date {
             if expiration < Utc::now() {
-                return self
-                    .proof
-                    .as_list()
+                return proofs
                     .iter()
                     .map(|p| ProofResult {
                         verification_method: p.verification_method.clone(),
@@ -308,9 +319,7 @@ impl VerifiableCredential {
         let canonical = match self.signing_input() {
             Ok(c) => c,
             Err(e) => {
-                return self
-                    .proof
-                    .as_list()
+                return proofs
                     .iter()
                     .map(|p| ProofResult {
                         verification_method: p.verification_method.clone(),
@@ -321,8 +330,7 @@ impl VerifiableCredential {
             }
         };
 
-        self.proof
-            .as_list()
+        proofs
             .iter()
             .map(|proof| {
                 let vm = proof.verification_method.clone();
@@ -347,6 +355,11 @@ impl VerifiableCredential {
     where
         F: Fn(&str) -> Result<VerifyingKey, String>,
     {
+        // Reject credentials with no proofs before spending CPU on anything.
+        if self.proof.as_list().is_empty() {
+            return Err(VcError::NoProofs);
+        }
+
         // Check expiration before spending CPU on signature verification.
         // An expired credential is invalid regardless of signature validity.
         if let Some(expiration) = self.expiration_date {
@@ -358,9 +371,6 @@ impl VerifiableCredential {
         }
 
         let results = self.verify(resolve_key);
-        if results.is_empty() {
-            return Err(VcError::NoProofs);
-        }
         for r in &results {
             if !r.ok {
                 return Err(VcError::VerificationFailed(format!(
@@ -774,9 +784,16 @@ mod tests {
         let sk = SigningKey::generate(&mut OsRng);
         let vk = sk.verifying_key();
         let vc = make_test_vc();
-        // No proofs attached
+        // No proofs attached — verify() must return an explicit failure, not
+        // an empty Vec (which would be vacuously true under `.all()`).
         let results = vc.verify(make_key_resolver(vk));
-        assert!(results.is_empty());
+        assert_eq!(results.len(), 1);
+        assert!(!results[0].ok, "unsigned credential must fail verification");
+        assert!(
+            results[0].error.contains("no proofs"),
+            "error should mention missing proofs: {}",
+            results[0].error
+        );
     }
 
     #[test]

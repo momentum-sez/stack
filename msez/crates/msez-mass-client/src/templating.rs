@@ -226,8 +226,10 @@ impl TemplatingClient {
     ///
     /// Calls `GET {base_url}/templating-engine/api/v1/template/{id}`.
     pub async fn get_template(&self, id: &str) -> Result<Option<Template>, MassApiError> {
+        let encoded_id: String =
+            url::form_urlencoded::byte_serialize(id.as_bytes()).collect();
         let endpoint = format!("GET /template/{id}");
-        let url = format!("{}{}/template/{id}", self.base_url, API_PREFIX);
+        let url = format!("{}{}/template/{encoded_id}", self.base_url, API_PREFIX);
 
         let resp = crate::retry::retry_send(|| self.http.get(&url).send())
             .await
@@ -272,10 +274,14 @@ impl TemplatingClient {
 
         let mut params = Vec::new();
         if let Some(eid) = entity_id {
-            params.push(format!("entityId={eid}"));
+            let encoded: String =
+                url::form_urlencoded::byte_serialize(eid.as_bytes()).collect();
+            params.push(format!("entityId={encoded}"));
         }
         if let Some(fg) = filter_grouping {
-            params.push(format!("filterGrouping={fg}"));
+            let encoded: String =
+                url::form_urlencoded::byte_serialize(fg.as_bytes()).collect();
+            params.push(format!("filterGrouping={encoded}"));
         }
         if !params.is_empty() {
             url.push('?');
@@ -314,8 +320,10 @@ impl TemplatingClient {
         &self,
         submission_id: &str,
     ) -> Result<Option<SubmissionResponse>, MassApiError> {
+        let encoded_id: String =
+            url::form_urlencoded::byte_serialize(submission_id.as_bytes()).collect();
         let endpoint = format!("GET /submission/{submission_id}");
-        let url = format!("{}{}/submission/{submission_id}", self.base_url, API_PREFIX);
+        let url = format!("{}{}/submission/{encoded_id}", self.base_url, API_PREFIX);
 
         let resp = crate::retry::retry_send(|| self.http.get(&url).send())
             .await

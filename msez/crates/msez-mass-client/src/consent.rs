@@ -318,9 +318,11 @@ impl ConsentClient {
         &self,
         organization_id: &str,
     ) -> Result<Vec<MassConsent>, MassApiError> {
+        let encoded_org_id: String =
+            url::form_urlencoded::byte_serialize(organization_id.as_bytes()).collect();
         let endpoint = format!("GET /consents/organization/{organization_id}");
         let url = format!(
-            "{}{}/consents/organization/{organization_id}",
+            "{}{}/consents/organization/{encoded_org_id}",
             self.base_url, API_PREFIX
         );
 

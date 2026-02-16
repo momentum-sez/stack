@@ -1,18 +1,41 @@
 const {
-  chapterHeading, h2,
-  p
+  chapterHeading, h2, h3,
+  p, p_runs, bold,
+  table, spacer
 } = require("../lib/primitives");
 
 module.exports = function build_chapter55() {
   return [
     chapterHeading("Chapter 55: Partner Network"),
 
-    // --- 55.1 Implementation Partners ---
-    h2("55.1 Implementation Partners"),
-    p("Implementation partners fall into three categories. Jurisdictional partners are government agencies and free zone authorities that deploy the MSEZ Stack as sovereign infrastructure, contributing lawpacks, regpacks, and licensepacks for their regulatory frameworks. Operational partners are corporate service providers, banks, and financial institutions that run Mass API integrations and process real transactions through the corridor network. Integration partners are technology firms that build on the MSEZ Stack API, extending the platform with industry-specific modules, custom compliance domains, and specialized credential types."),
+    // --- 55.1 Partner Categories ---
+    h2("55.1 Partner Categories"),
+    p("Partners are classified into three tiers based on their integration depth with the MSEZ Stack and Mass APIs."),
+    table(
+      ["Category", "Role", "Integration Level", "Examples"],
+      [
+        ["Jurisdictional", "Government agencies and free zone authorities deploying sovereign infrastructure", "Full stack deployment; contribute lawpacks, regpacks, and licensepacks", "Pakistan PDA, UAE ADGM, Dubai FZC, Kazakhstan AIFC"],
+        ["Operational", "Corporate service providers, banks, and financial institutions processing transactions", "Mass API integration; corridor participation; credential issuance", "Northern Trust (custody), SBP (payments), SECP (corporate registry)"],
+        ["Integration", "Technology firms building on the MSEZ Stack API", "API consumer; custom modules, compliance domains, credential types", "KYC providers, legal-tech firms, regtech platforms"],
+      ],
+      [1600, 3200, 2400, 2160]
+    ),
+    spacer(),
 
     // --- 55.2 Technology Partners ---
     h2("55.2 Technology Partners"),
-    p("Technology partner infrastructure spans five layers. Cloud infrastructure partners provide sovereign-compliant hosting with data residency guarantees required by jurisdictional deployments. Identity partners provide KYC/KYB verification services, biometric authentication, and government identity system integrations (NADRA in Pakistan, ICA in UAE). Payment partners provide banking rails, SWIFT connectivity, real-time payment system integration (SBP Raast in Pakistan), and foreign exchange services. Legal technology partners provide Akoma Ntoso legislative document processing, regulatory change monitoring, and automated legal analysis for lawpack maintenance. Security partners provide penetration testing, cryptographic audits, and compliance certification services required for sovereign deployment approval."),
+    p("Technology partner infrastructure is organized across five integration layers."),
+    table(
+      ["Layer", "Function", "Requirements", "Integration Point"],
+      [
+        ["Cloud Infrastructure", "Sovereign-compliant hosting with data residency guarantees", "Jurisdiction-local data centers, ISO 27001, SOC 2 Type II", "Terraform modules, Kubernetes operators"],
+        ["Identity", "KYC/KYB verification, biometric auth, government ID integration", "NADRA (PAK), ICA (UAE), AIFC registry (KAZ) adapters", "msez-mass-client IdentityClient"],
+        ["Payments", "Banking rails, SWIFT, real-time payment systems, FX", "SBP Raast (PAK), UAEPGS (UAE), SAMA SARIE (KSA)", "msez-mass-client FiscalClient"],
+        ["Legal Technology", "Akoma Ntoso processing, regulatory change monitoring", "Legislative corpus parsing, SRO tracking, gazette monitoring", "msez-pack lawpack/regpack pipeline"],
+        ["Security", "Penetration testing, cryptographic audit, compliance certification", "Annual pen test, quarterly vulnerability scan, ZK circuit audit", "Pre-deployment gate in CI/CD"],
+      ],
+      [1600, 2600, 2600, 2560]
+    ),
+    spacer(),
   ];
 };

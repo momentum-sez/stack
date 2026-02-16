@@ -1,22 +1,20 @@
 const fs = require("fs");
 const path = require("path");
 const { Document, Packer, Header, Footer, Paragraph, TextRun,
-        PageNumber, AlignmentType } = require("docx");
+        PageNumber, AlignmentType, PageBreak } = require("docx");
 const styles = require("./lib/styles");
 const C = require("./lib/constants");
+const { getChapterTitles, pageBreak } = require("./lib/primitives");
+const { buildTocEntries } = require("./chapters/00-toc");
 
-// ---------- Part-to-chapter mapping ----------
+// ---------- Front matter (handled separately for TOC injection) ----------
+const build_cover = require("./chapters/00-cover");
+const build_toc_header = require("./chapters/00-toc");
+const build_exec_summary = require("./chapters/00-executive-summary");
+
+// ---------- Content sections (Part I through Appendices) ----------
 // Each section groups chapters under a Part heading.
-// partTitle: null means front matter (default header, no part label).
-const SECTIONS = [
-  {
-    partTitle: null,
-    chapters: [
-      require("./chapters/00-cover"),
-      require("./chapters/00-toc"),
-      require("./chapters/00-executive-summary"),
-    ]
-  },
+const CONTENT_SECTIONS = [
   {
     partTitle: "PART I: FOUNDATION",
     chapters: [
@@ -216,17 +214,7 @@ const defaultFooter = new Footer({
   })]
 });
 
-// ---------- Build sections ----------
-
-console.log("Assembling document sections...");
-
-let totalElements = 0;
-
-const docSections = SECTIONS.map((sec) => {
-  const children = flatten(sec.chapters.map(fn => fn()));
-  totalElements += children.length;
-  const label = sec.partTitle || "Front Matter";
-  console.log(`  ${label}: ${children.length} elements`);
+function makeSection(partTitle, children) {
   return {
     properties: {
       page: {
@@ -234,12 +222,63 @@ const docSections = SECTIONS.map((sec) => {
         margin: { top: C.MARGIN, right: C.MARGIN, bottom: C.MARGIN, left: C.MARGIN }
       }
     },
-    headers: { default: makeHeader(sec.partTitle) },
+    headers: { default: makeHeader(partTitle) },
     footers: { default: defaultFooter },
     children: children,
   };
+}
+
+// ---------- Two-pass build ----------
+// Pass 1: Build executive summary + all content sections.
+//         This populates the chapter title registry via chapterHeading().
+// Pass 2: Generate static TOC from the registry, assemble front matter.
+
+console.log("Assembling document sections...");
+let totalElements = 0;
+
+// Pass 1a: Build executive summary (registers "Executive Summary" title first)
+const execSummaryElements = flatten(build_exec_summary());
+
+// Pass 1b: Build all content sections
+const contentDocSections = CONTENT_SECTIONS.map((sec) => {
+  const children = flatten(sec.chapters.map(fn => fn()));
+  totalElements += children.length;
+  console.log(`  ${sec.partTitle}: ${children.length} elements`);
+  return makeSection(sec.partTitle, children);
 });
 
+// Pass 2: Generate static TOC from the title registry
+const allTitles = getChapterTitles();
+console.log(`  Registered ${allTitles.length} chapter titles for TOC`);
+
+// Build the Part structure for TOC generation:
+// First entry is front matter (Executive Summary)
+const tocParts = [
+  { partTitle: null, chapterCount: 1 }, // Executive Summary
+  ...CONTENT_SECTIONS.map(sec => ({
+    partTitle: sec.partTitle,
+    chapterCount: sec.chapters.length
+  }))
+];
+
+const coverElements = flatten(build_cover());
+const tocHeaderElements = flatten(build_toc_header());
+const tocEntries = buildTocEntries(tocParts, allTitles);
+
+const frontMatterChildren = [
+  ...coverElements,
+  ...tocHeaderElements,
+  ...tocEntries,
+  pageBreak(),
+  ...execSummaryElements,
+];
+totalElements += frontMatterChildren.length;
+console.log(`  Front Matter: ${frontMatterChildren.length} elements (incl. ${tocEntries.length} TOC entries)`);
+
+const frontMatterSection = makeSection(null, frontMatterChildren);
+
+// Combine: front matter + all content sections
+const docSections = [frontMatterSection, ...contentDocSections];
 console.log(`Total elements: ${totalElements}`);
 
 // Assemble document

@@ -6,6 +6,10 @@ const {
 
 const C = require("./constants");
 
+// --- Title Registry (for static TOC generation) ---
+const _chapterTitles = [];
+function getChapterTitles() { return _chapterTitles.slice(); }
+
 // --- Text Primitives ---
 
 /** Body paragraph */
@@ -72,6 +76,7 @@ function partHeading(text) {
 /** Chapter heading (e.g., "Chapter 1: Mission and Vision").
  *  Includes pageBreakBefore so every chapter starts on a new page. */
 function chapterHeading(text) {
+  _chapterTitles.push(text);
   return new Paragraph({
     heading: HeadingLevel.HEADING_1,
     pageBreakBefore: true,
@@ -229,5 +234,6 @@ module.exports = {
   partHeading, chapterHeading, h2, h3,
   definition, theorem,
   codeBlock, table, evenWidths,
-  bulletItem, spacer, pageBreak
+  bulletItem, spacer, pageBreak,
+  getChapterTitles
 };

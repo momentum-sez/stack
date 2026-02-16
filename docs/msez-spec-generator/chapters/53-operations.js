@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  table, spacer
+  table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter53() {
@@ -27,7 +27,6 @@ module.exports = function build_chapter53() {
       ],
       [3200, 1200, 2200, 2760]
     ),
-    spacer(),
 
     h3("53.1.2 Alert Rules"),
     table(
@@ -43,7 +42,6 @@ module.exports = function build_chapter53() {
       ],
       [2200, 3200, 1200, 2760]
     ),
-    spacer(),
 
     // --- 53.2 Incident Response ---
     h2("53.2 Incident Response"),
@@ -57,7 +55,6 @@ module.exports = function build_chapter53() {
       ],
       [1400, 2400, 1200, 1400, 2960]
     ),
-    spacer(),
     p("Each incident produces a post-incident review (PIR) within 48 hours of resolution. The PIR documents the timeline, root cause, impact assessment, remediation steps, and preventive actions. PIR findings feed back into alert rule tuning, runbook updates, and capacity planning."),
 
     // --- 53.3 Change Management ---
@@ -74,7 +71,6 @@ module.exports = function build_chapter53() {
       ],
       [1200, 1200, 1400, 2800, 2760]
     ),
-    spacer(),
     p("Infrastructure changes (Terraform) require plan output review and explicit approval before apply. Database migrations run in a maintenance window with pre-migration backup verification."),
   ];
 };

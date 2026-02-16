@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  table, codeBlock, spacer
+  table, codeBlock
 } = require("../lib/primitives");
 
 module.exports = function build_chapter47() {
@@ -23,7 +23,6 @@ module.exports = function build_chapter47() {
       ],
       [2000, 2800, 2400, 2160]
     ),
-    spacer(),
 
     // --- 47.2 Thread Safety ---
     h2("47.2 Thread Safety"),
@@ -39,7 +38,6 @@ module.exports = function build_chapter47() {
       ],
       [2200, 3800, 3360]
     ),
-    spacer(),
 
     // --- 47.3 Cryptographic Utilities ---
     h2("47.3 Cryptographic Hardening"),
@@ -55,7 +53,6 @@ module.exports = function build_chapter47() {
       ],
       [2000, 2800, 1600, 2960]
     ),
-    spacer(),
 
     // --- 47.4 Rust Security Guarantees ---
     h2("47.4 Rust Security Guarantees"),
@@ -71,6 +68,5 @@ module.exports = function build_chapter47() {
       ],
       [1800, 3200, 4360]
     ),
-    spacer(),
   ];
 };

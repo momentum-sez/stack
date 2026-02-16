@@ -361,9 +361,7 @@ async fn freezone_dashboard(
     let assets_list = state.smart_assets.list();
     let non_compliant = assets_list
         .iter()
-        .filter(|a| {
-            a.compliance_status == crate::state::AssetComplianceStatus::NonCompliant
-        })
+        .filter(|a| a.compliance_status == crate::state::AssetComplianceStatus::NonCompliant)
         .count();
 
     let compliance_rate = if unique_entities.is_empty() {
@@ -456,10 +454,7 @@ async fn citizen_dashboard(
     let events = state.tax_events.list();
     let (filed_count, outstanding_count) = match caller.entity_id {
         Some(eid) => {
-            let entity_events: Vec<_> = events
-                .iter()
-                .filter(|e| e.entity_id == eid)
-                .collect();
+            let entity_events: Vec<_> = events.iter().filter(|e| e.entity_id == eid).collect();
             let filed = entity_events
                 .iter()
                 .filter(|e| e.withholding_executed)

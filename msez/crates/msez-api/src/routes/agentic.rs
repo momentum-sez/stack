@@ -141,12 +141,10 @@ async fn submit_trigger(
     let req = extract_validated_json(body)?;
 
     // Parse the trigger type.
-    let trigger_type: TriggerType = serde_json::from_value(serde_json::Value::String(
-        req.trigger_type.clone(),
-    ))
-    .map_err(|e| AppError::Validation(format!(
-        "unknown trigger type: '{}': {e}", req.trigger_type,
-    )))?;
+    let trigger_type: TriggerType =
+        serde_json::from_value(serde_json::Value::String(req.trigger_type.clone())).map_err(
+            |e| AppError::Validation(format!("unknown trigger type: '{}': {e}", req.trigger_type,)),
+        )?;
 
     // Build the trigger.
     let trigger = Trigger::new(trigger_type, req.data.clone().unwrap_or_default());

@@ -1,7 +1,7 @@
 const {
   partHeading, chapterHeading, h2,
   p, p_runs, bold,
-  table, spacer
+  table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter38() {
@@ -25,8 +25,6 @@ module.exports = function build_chapter38() {
       [800, 2400, 6160]
     ),
 
-    spacer(),
-
     p_runs([bold("Layer 01 — Experience."), " The Experience Layer provides all citizen-facing and government-officer-facing interfaces. This includes the GovOS Console (administrative dashboards for ministry officials), citizen portals (tax filing, license applications, entity registration), and AI-powered interfaces (natural language queries against government data). The Experience Layer never contains business logic; it calls the Platform Engine for all operations."]),
 
     h2("Layer 01: Experience Portals"),
@@ -44,8 +42,6 @@ module.exports = function build_chapter38() {
       ],
       [1400, 1600, 3200, 3160]
     ),
-
-    spacer(),
 
     p_runs([bold("Layer 02 — Platform Engine."), " The Platform Engine is the five Mass primitives (Entities, Ownership, Fiscal, Identity, Consent) plus the regulated Organs (Center of Mass, Torque, Inertia) plus supporting infrastructure (templating engine, notification service, document storage). This layer provides the transactional capabilities that power all government operations."]),
 
@@ -70,8 +66,6 @@ module.exports = function build_chapter38() {
       [2200, 1800, 5360]
     ),
 
-    spacer(),
-
     p_runs([bold("Layer 03 — Jurisdictional Configuration."), " The Jurisdictional Configuration layer is the MSEZ Pack Trilogy encoding Pakistani law, regulation, and licensing requirements in machine-readable format. Lawpacks encode the Income Tax Ordinance 2001, Sales Tax Act 1990, Companies Act 2017, and all relevant SROs. Regpacks encode SBP rates, FATF sanctions lists, and filing calendars. Licensepacks encode SECP, BOI, PTA, PEMRA, and provincial authority requirements."]),
 
     h2("Layer 03: Akoma Ntoso Act Registry"),
@@ -95,8 +89,6 @@ module.exports = function build_chapter38() {
       [2800, 3200, 3360]
     ),
 
-    spacer(),
-
     p_runs([bold("Layer 04 — National System Integration."), " The National System Integration layer connects GovOS to existing Pakistani government systems. This includes FBR IRIS (tax administration), SBP Raast (instant payments), NADRA (identity verification), SECP (company registration), SBP RTGS (large-value settlements), and Pakistan Single Window (trade facilitation). Mass enhances these systems; it never replaces them. Integration is additive and reversible."]),
 
     h2("Layer 04: National System Integration Methods"),
@@ -116,6 +108,5 @@ module.exports = function build_chapter38() {
       [1600, 1400, 2200, 2400, 1760]
     ),
 
-    spacer(),
   ];
 };

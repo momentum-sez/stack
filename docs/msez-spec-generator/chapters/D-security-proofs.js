@@ -1,4 +1,4 @@
-const { chapterHeading, h2, h3, p, p_runs, bold, definition, theorem, table, spacer } = require("../lib/primitives");
+const { chapterHeading, h2, h3, p, p_runs, bold, definition, theorem, table } = require("../lib/primitives");
 
 module.exports = function build_appendixD() {
   return [
@@ -20,7 +20,6 @@ module.exports = function build_appendixD() {
       ],
       [2800, 6560]
     ),
-    spacer(),
 
     // --- Formal Definitions ---
     h2("D.2 Formal Definitions"),
@@ -37,11 +36,14 @@ module.exports = function build_appendixD() {
 
     definition(
       "Definition D.2 (Compliance Tensor).",
-      "A compliance tensor T is a mapping T: Entity x Jurisdiction -> R^20 where each component " +
-      "T_d(e, j) in [0, 1] represents the compliance score for entity e in jurisdiction j across " +
-      "compliance domain d in ComplianceDomain. The tensor is computed by composing evaluations " +
-      "from the pack trilogy: T_d(e, j) = compose(lawpack_d(j), regpack_d(j), licensepack_d(e, j)). " +
-      "An entity is fully compliant iff for all d, T_d(e, j) = 1.0."
+      "A compliance tensor C is a function C: AssetID x JurisdictionID x ComplianceDomain x " +
+      "TimeQuantum -> ComplianceState, where ComplianceState is a discrete 7-state lattice with " +
+      "ordering NonCompliant < Expired < Suspended < Unknown < Pending < {Compliant, Exempt} " +
+      "(Compliant and Exempt form an incomparable top pair). For a given asset a, jurisdiction j, " +
+      "domain d, and time quantum t, C(a, j, d, t) is computed by composing evaluations from the " +
+      "pack trilogy: C(a, j, d, t) = compose(lawpack_d(j, t), regpack_d(j, t), licensepack_d(a, j, t)). " +
+      "An asset is fully compliant in jurisdiction j at time t iff for all d in ComplianceDomain, " +
+      "C(a, j, d, t) in {Compliant, Exempt}."
     ),
 
     definition(
@@ -70,7 +72,6 @@ module.exports = function build_appendixD() {
       "iff its nullifier nf is not in NS. Double-spend is prevented because spending r requires " +
       "publishing nf, and a second spend attempt would produce the same nf, which is already in NS."
     ),
-    spacer(),
 
     // --- Proof Sketches ---
     h2("D.3 Proof Sketches"),
@@ -103,27 +104,27 @@ module.exports = function build_appendixD() {
       "the corridor-specific policy (longest chain, highest compliance score, or manual arbitration). " +
       "In all cases, neither fork can be silently discarded -- both are recorded for audit. QED."
     ),
-    spacer(),
 
     h3("D.3.2 Theorem 10.1: Compliance Soundness"),
     theorem(
       "Theorem 10.1.",
-      "Given a compliance tensor evaluation T_d(e, j) = 1.0 for all domains d, the corresponding " +
-      "compliance proof pi is sound: no polynomial-time adversary can produce a proof pi' that " +
-      "causes a verifier to accept a non-compliant entity as compliant."
+      "Given a compliance tensor evaluation where C(a, j, d, t) in {Compliant, Exempt} for all " +
+      "domains d, the corresponding compliance proof pi is sound: no polynomial-time adversary can " +
+      "produce a proof pi' that causes a verifier to accept a non-compliant asset as compliant."
     ),
     p_runs([bold("Proof sketch. "), "By reduction to the binding property of cryptographic commitments."]),
     p(
       "The compliance proof pi contains: (a) a commitment to the pack trilogy state (lawpack hash, " +
-      "regpack hash, licensepack hash), (b) the tensor evaluation result, and (c) a signature by " +
-      "the evaluating node's Ed25519 key. To forge pi', an adversary must either: (i) find a " +
-      "collision in SHA-256 to substitute a different pack state under the same commitment (infeasible " +
-      "by collision resistance), (ii) forge the Ed25519 signature (infeasible by EUF-CMA security), " +
-      "or (iii) manipulate the tensor evaluation function to produce 1.0 for a non-compliant entity " +
-      "(prevented by deterministic evaluation from committed pack state). Since all three attack " +
-      "vectors are computationally infeasible, the proof is sound. QED."
+      "regpack hash, licensepack hash), (b) the tensor evaluation result (a vector of ComplianceState " +
+      "values across all 20 domains), and (c) a signature by the evaluating node's Ed25519 key. " +
+      "To forge pi', an adversary must either: (i) find a collision in SHA-256 to substitute a " +
+      "different pack state under the same commitment (infeasible by collision resistance), (ii) forge " +
+      "the Ed25519 signature (infeasible by EUF-CMA security), or (iii) manipulate the tensor " +
+      "evaluation function to produce Compliant or Exempt for a non-compliant asset (prevented by " +
+      "deterministic evaluation from committed pack state, where each domain's ComplianceState is " +
+      "computed from the lattice meet of the lawpack, regpack, and licensepack evaluations). Since " +
+      "all three attack vectors are computationally infeasible, the proof is sound. QED."
     ),
-    spacer(),
 
     h3("D.3.3 Theorem 28.1: Watcher Accountability"),
     theorem(
@@ -143,7 +144,6 @@ module.exports = function build_appendixD() {
       "receipt chain and SHA-256 is collision-resistant, w cannot claim the canonical chain was " +
       "ambiguous. The slashing contract transfers the prescribed fraction of B_w. QED."
     ),
-    spacer(),
 
     h3("D.3.4 Theorem 30.1: Migration Atomicity"),
     theorem(
@@ -171,7 +171,6 @@ module.exports = function build_appendixD() {
       "bound S10 ensures that if the saga has not reached phase 7 within the allotted time, automatic " +
       "rollback is triggered, executing all recorded compensating actions. QED."
     ),
-    spacer(),
 
     h3("D.3.5 Theorem 32.1: Double-Spend Resistance"),
     theorem(
@@ -189,6 +188,5 @@ module.exports = function build_appendixD() {
       "ownership proof -- this is prevented by the binding between sk and the ownership credential. " +
       "The append-only property of NS ensures that once a nullifier is published, it cannot be removed. QED."
     ),
-    spacer(),
   ];
 };

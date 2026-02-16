@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  table, spacer
+  table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter56() {
@@ -21,7 +21,6 @@ module.exports = function build_chapter56() {
       ],
       [2400, 1400, 3000, 2560]
     ),
-    spacer(),
 
     // --- 56.1 Network Topology ---
     h2("56.1 Network Topology"),
@@ -40,7 +39,6 @@ module.exports = function build_chapter56() {
       ],
       [1600, 1600, 3560, 2600]
     ),
-    spacer(),
 
     h3("56.1.2 Corridor Edges"),
     p("Corridors form the edges of the network graph. Each corridor is a bidirectional channel between two jurisdiction nodes that carries trade transactions, settlement instructions, credential exchanges, and compliance attestations. The three active corridors connect Pakistan's $38.6B in bilateral trade with its three largest trading partners. Corridor edges are weighted by annual trade volume, which determines settlement netting frequency, liquidity reserve requirements, and compliance evaluation priority."),
@@ -53,7 +51,6 @@ module.exports = function build_chapter56() {
       ],
       [1400, 1400, 1400, 1000, 4160]
     ),
-    spacer(),
 
     // --- 56.2 Aggregate Metrics ---
     h2("56.2 Aggregate Metrics"),
@@ -72,7 +69,6 @@ module.exports = function build_chapter56() {
       ],
       [2200, 1800, 5360]
     ),
-    spacer(),
 
     p_runs([
       bold("Infrastructure scale. "),
@@ -98,7 +94,6 @@ module.exports = function build_chapter56() {
       ],
       [1000, 1400, 1800, 1600, 3560]
     ),
-    spacer(),
 
     h3("56.3.2 Growth Drivers"),
     p("Three factors drive network growth acceleration. First, the pack trilogy architecture (lawpacks, regpacks, licensepacks) reduces new jurisdiction onboarding from months to weeks once the regulatory content is digitized into Akoma Ntoso format. Second, the compliance tensor (§10) generalizes across jurisdictions with jurisdiction-specific weightings. Third, corridor infrastructure is symmetric and composable: the same receipt chain, netting, and settlement mechanisms that power PAK-UAE apply to any new bilateral, reducing corridor deployment to configuration rather than custom development."),
@@ -142,7 +137,6 @@ module.exports = function build_chapter56() {
       ],
       [1600, 1200, 1800, 2800, 1960]
     ),
-    spacer(),
 
     p("Upon completion of the Q4 2026 expansion, the Momentum network will span 10 jurisdictions across four continents (Asia, Middle East, Africa, Central Asia) with 10 or more bilateral corridors forming a dense settlement mesh. The network will cover combined bilateral trade volumes exceeding $200B annually, with multilateral netting reducing settlement friction across the entire mesh. Each jurisdiction will operate a full SEZ Stack deployment with jurisdiction-specific pack configurations, connected through the corridor network with mutual credential recognition and cross-border compliance tensor evaluation."),
   ];

@@ -1,4 +1,4 @@
-const { chapterHeading, table, spacer, pageBreak, p, h2 } = require("../lib/primitives");
+const { chapterHeading, table, pageBreak, p, h2 } = require("../lib/primitives");
 
 module.exports = function build_appendixK() {
   return [
@@ -21,11 +21,9 @@ module.exports = function build_appendixK() {
       ],
       [800, 4400, 4160]
     ),
-    spacer(),
 
     h2("K.1 Success Criteria and KPIs"),
     p("Each checklist milestone has quantifiable success criteria. The following table defines the key performance indicators (KPIs) that must be met before a milestone is considered complete."),
-    spacer(),
 
     table(
       ["Phase", "KPI", "Target", "Measurement Method"],
@@ -75,15 +73,12 @@ module.exports = function build_appendixK() {
       ],
       [600, 2600, 2800, 3360]
     ),
-    spacer(),
 
     pageBreak(),
     p("End of Specification", { bold: true, size: 28 }),
-    spacer(200),
     p("Momentum Open Source SEZ Stack"),
     p("Version 0.4.44 \u2014 GENESIS"),
     p("February 2026"),
-    spacer(200),
     p("For questions or feedback, contact:"),
     p("Momentum"),
     p("https://github.com/momentum-sez/stack"),

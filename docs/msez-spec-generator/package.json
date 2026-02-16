@@ -7,6 +7,8 @@
     "lib": "lib"
   },
   "scripts": {
+    "validate": "node validate.js",
+    "build": "node build.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

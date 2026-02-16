@@ -1,8 +1,7 @@
 const {
   partHeading, chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table,
-  spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter32() {
@@ -27,7 +26,6 @@ module.exports = function build_chapter32() {
       ],
       [2200, 3600, 3560]
     ),
-    spacer(),
 
     // --- 32.2 Module Specifications ---
     h2("32.2 Module Specifications"),
@@ -56,7 +54,6 @@ module.exports = function build_chapter32() {
       "    pub formation_fee: Amount,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 32.2.2 Beneficial Ownership Module ---
     h3("32.2.2 Beneficial Ownership Module"),
@@ -79,7 +76,6 @@ module.exports = function build_chapter32() {
       "    pub verification_method: VerificationType,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 32.2.3 Cap Table Module ---
     h3("32.2.3 Cap Table Module"),
@@ -95,7 +91,6 @@ module.exports = function build_chapter32() {
       "    pub exemptions: Vec<SecuritiesExemption>,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 32.2.4 Secretarial Module ---
     h3("32.2.4 Secretarial Module"),
@@ -115,7 +110,6 @@ module.exports = function build_chapter32() {
       ],
       [2200, 4960, 2200]
     ),
-    spacer(),
 
     // --- 32.2.5 Annual Compliance Module ---
     h3("32.2.5 Annual Compliance Module"),
@@ -143,6 +137,5 @@ module.exports = function build_chapter32() {
       ],
       [1800, 5760, 1800]
     ),
-    spacer(),
   ];
 };

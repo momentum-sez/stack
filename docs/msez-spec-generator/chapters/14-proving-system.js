@@ -1,8 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table,
-  spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter14() {
@@ -37,7 +36,6 @@ module.exports = function build_chapter14() {
       "    }\n" +
       "}"
     ),
-    spacer(),
 
     // --- 14.2 Proof Aggregation ---
     h2("14.2 Proof Aggregation"),
@@ -52,7 +50,6 @@ module.exports = function build_chapter14() {
       ],
       [1800, 2800, 2800, 1960]
     ),
-    spacer(),
 
     // --- 14.2.1 Recursive Composition ---
     h3("14.2.1 Recursive Composition"),
@@ -73,7 +70,6 @@ module.exports = function build_chapter14() {
       ],
       [3200, 2000, 4160]
     ),
-    spacer(),
 
     // --- 14.3 Proof Portability ---
     h2("14.3 Proof Portability"),
@@ -91,6 +87,5 @@ module.exports = function build_chapter14() {
       ],
       [2000, 2000, 2200, 3160]
     ),
-    spacer(),
   ];
 };

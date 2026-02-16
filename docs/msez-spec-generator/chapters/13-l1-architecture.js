@@ -1,8 +1,7 @@
 const {
   partHeading, chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table,
-  spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter13() {
@@ -25,7 +24,6 @@ module.exports = function build_chapter13() {
       ],
       [2400, 2800, 4160]
     ),
-    spacer(),
 
     // --- 13.2 State Model ---
     h2("13.2 State Model"),
@@ -46,7 +44,6 @@ module.exports = function build_chapter13() {
       ],
       [2400, 2400, 1800, 2760]
     ),
-    spacer(),
 
     // --- 13.3 Sharding Architecture ---
     h2("13.3 Sharding Architecture"),
@@ -64,7 +61,6 @@ module.exports = function build_chapter13() {
       "    pub treaty_set: Vec<TreatyId>,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 13.3.1 Jurisdictional Virtual Machine (JVM) ---
     h3("13.3.1 Jurisdictional Virtual Machine (JVM)"),
@@ -85,7 +81,6 @@ module.exports = function build_chapter13() {
       "    pub license_checks: Vec<LicenseCheck>,\n" +
       "}"
     ),
-    spacer(),
 
     // --- 13.3.2 Asset Orbit Protocol ---
     h3("13.3.2 Asset Orbit Protocol"),
@@ -103,6 +98,5 @@ module.exports = function build_chapter13() {
       ],
       [2000, 2400, 1800, 3160]
     ),
-    spacer(),
   ];
 };

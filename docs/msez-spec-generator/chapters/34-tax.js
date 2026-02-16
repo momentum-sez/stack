@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table, spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter34() {
@@ -31,7 +31,6 @@ module.exports = function build_chapter34() {
       "    pub status: TaxEventStatus,\n" +
       "}"
     ),
-    spacer(),
 
     p_runs([bold("Tax Regime Types."), " The Tax Framework Module supports the following regime types, each defining how taxable income is sourced and computed. Jurisdiction packs declare which regime applies, and the tensor evaluator selects the correct computation path accordingly."]),
     table(
@@ -46,7 +45,6 @@ module.exports = function build_chapter34() {
       ],
       [1800, 4560, 3000]
     ),
-    spacer(),
 
     // --- 34.2.1 Fee Schedules Module ---
     h3("34.2.1 Fee Schedules Module"),
@@ -64,7 +62,6 @@ module.exports = function build_chapter34() {
       ],
       [2000, 1800, 1800, 3760]
     ),
-    spacer(),
 
     // --- 34.2.2 Incentive Programs Module ---
     h3("34.2.2 Incentive Programs Module"),
@@ -82,7 +79,6 @@ module.exports = function build_chapter34() {
       ],
       [1600, 3000, 1600, 3160]
     ),
-    spacer(),
 
     // --- 34.2.3 International Reporting Module ---
     h3("34.2.3 International Reporting Module"),

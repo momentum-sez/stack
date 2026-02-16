@@ -32,8 +32,8 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use serde::{Deserialize, Serialize};
 use msez_core::digest::Sha256Accumulator;
+use serde::{Deserialize, Serialize};
 
 use msez_core::{CanonicalBytes, ContentDigest, JurisdictionId};
 

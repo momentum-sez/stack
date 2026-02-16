@@ -1059,12 +1059,8 @@ fn serde_rt_jurisdiction_id_rejects_invalid() {
 // msez-arbitration: Full struct round-trip tests
 // =========================================================================
 
-use msez_arbitration::dispute::{
-    ArbitrationInstitution, Claim, Dispute, Money, Party as ArbParty,
-};
-use msez_arbitration::enforcement::{
-    EnforcementAction, EnforcementOrder, EnforcementPrecondition,
-};
+use msez_arbitration::dispute::{ArbitrationInstitution, Claim, Dispute, Money, Party as ArbParty};
+use msez_arbitration::enforcement::{EnforcementAction, EnforcementOrder, EnforcementPrecondition};
 use msez_arbitration::escrow::{EscrowAccount, EscrowTransaction, ReleaseCondition};
 use msez_arbitration::evidence::{
     AuthenticityAttestation, AuthenticityType, ChainOfCustodyEntry, EvidenceType,

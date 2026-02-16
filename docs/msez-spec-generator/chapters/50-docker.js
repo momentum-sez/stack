@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table, spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter50() {
@@ -29,7 +29,6 @@ module.exports = function build_chapter50() {
       ],
       [1800, 2200, 800, 4560]
     ),
-    spacer(),
 
     // --- 50.1.1 Container Definitions ---
     h3("50.1.1 Container Definitions"),
@@ -38,7 +37,6 @@ module.exports = function build_chapter50() {
     // --- 50.2 Database Initialization ---
     h2("50.2 Database Initialization"),
     p("PostgreSQL initialization is handled by SQLx migrations embedded in the msez-api binary. On first startup, the API server runs all pending migrations before accepting traffic. The migration system creates tables for corridor state, tensor snapshots, verifiable credential audit logs, agentic policy state, and audit event hash chains. A readiness probe on /healthz confirms that migrations have completed and the database connection pool is active. The postgres service mounts a named volume for data persistence across container restarts."),
-    spacer(),
 
     // --- 50.2.1 Database Schema: init-db.sql ---
     h3("50.2.1 Database Schema: init-db.sql"),
@@ -56,7 +54,6 @@ module.exports = function build_chapter50() {
       ],
       [1600, 1200, 6560]
     ),
-    spacer(),
     p_runs([bold("Isolation Rationale."), " Separate databases (rather than schemas within a single database) enable independent pg_dump/pg_restore for each domain, separate connection pool limits per domain in PgBouncer, and the ability to place high-write databases (audit_events, corridor_state) on faster storage while keeping lower-write databases (pack_registry, migration_log) on standard storage."]),
 
     // --- 50.3 Dockerfile Structure ---
@@ -85,7 +82,6 @@ HEALTHCHECK --interval=10s --timeout=3s --retries=3 \\
   CMD wget -qO- http://localhost:3100/healthz || exit 1
 ENTRYPOINT ["/usr/local/bin/msez-api"]`
     ),
-    spacer(),
     p_runs([bold("Build Caching."), " The cargo-chef pattern (Stage 1) pre-computes a dependency recipe from Cargo.toml and Cargo.lock, then builds all dependencies in a cached layer before copying source code. This means source-only changes do not re-download or re-compile dependencies, reducing incremental build times from 10+ minutes to under 2 minutes."]),
     p_runs([bold("Image Size."), " The final runtime image contains only the statically-linked binary, CA certificates (for TLS to Mass APIs and Vault), and libgcc (required by the Rust allocator on musl). The resulting image is typically 35-45 MB, compared to 1.5+ GB for the build stage. No compiler, source code, or build artifacts are present in the production image."]),
     p_runs([bold("Security Hardening."), " The runtime container runs as a non-root user (uid 1000). No shell is included in the final image beyond what Alpine provides. The HEALTHCHECK directive enables Docker and orchestrators to detect unresponsive containers and trigger automatic restarts. Resource limits (CPU and memory) are enforced at the Docker Compose level, not in the Dockerfile, to allow per-profile tuning."]),

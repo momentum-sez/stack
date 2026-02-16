@@ -190,10 +190,7 @@ fn policy_evaluation_is_deterministic() {
     );
 
     for (a1, a2) in actions1.iter().zip(actions2.iter()) {
-        assert_eq!(
-            a1.action, a2.action,
-            "determinism: action types must match"
-        );
+        assert_eq!(a1.action, a2.action, "determinism: action types must match");
         assert_eq!(
             a1.policy_id, a2.policy_id,
             "determinism: policy IDs must match"

@@ -1,8 +1,7 @@
 const {
   partHeading, chapterHeading, h2, h3,
   p, p_runs, bold, code, table,
-  codeBlock,
-  spacer
+  codeBlock
 } = require("../lib/primitives");
 
 module.exports = function build_chapter29() {
@@ -13,7 +12,6 @@ module.exports = function build_chapter29() {
     // --- 29.1 Migration Request ---
     h2("29.1 Migration Request"),
     p("The Migration Protocol orchestrates Smart Asset movement between jurisdictions while maintaining continuous compliance and operational integrity. Every migration begins with the construction and cryptographic signing of a MigrationRequest, which captures the full intent of the cross-jurisdictional transfer. The request binds the asset's current state commitment to the desired corridor, establishes fee constraints, and carries the owner's Ed25519 signature authorizing the operation."),
-    spacer(),
 
     ...codeBlock(
       "pub struct MigrationRequest {\n" +
@@ -50,7 +48,6 @@ module.exports = function build_chapter29() {
       "    pub priority: MigrationPriority,\n" +
       "}"
     ),
-    spacer(),
 
     h3("29.1.1 Field Semantics"),
     p_runs([bold("request_id"), " — A globally unique identifier (UUID v7 with embedded timestamp) that serves as the correlation key across all saga steps, compensation records, and audit log entries throughout the migration lifecycle."]),
@@ -62,12 +59,10 @@ module.exports = function build_chapter29() {
     p_runs([bold("owner_signature"), " — Ed25519 signature computed over the canonical serialization of all fields preceding it (request_id through deadline). Verified against the asset's registered owner public key before the saga begins."]),
     p_runs([bold("max_fee / fee_currency"), " — Fee constraints for the migration. The engine estimates corridor fees before proceeding; if the estimate exceeds ", code("max_fee"), ", the request is rejected without entering the saga. Fee currency must be supported by the treasury primitive in both jurisdictions."]),
     p_runs([bold("priority"), " — Determines queue position and operational parameters. ", code("Critical"), " priority migrations require higher watcher bonds and are processed ahead of the normal queue. ", code("Expedited"), " migrations receive priority but with standard bond requirements."]),
-    spacer(),
 
     // --- 29.2 Migration Phases ---
     h2("29.2 Migration Phases"),
     p("The migration protocol decomposes cross-jurisdictional asset transfer into eight discrete phases. Each phase has a well-defined entry condition, action, exit condition, and compensation action. The saga pattern guarantees that if any phase fails, all previously completed phases are compensated in reverse order, restoring the system to its pre-migration state."),
-    spacer(),
     table(
       ["Phase", "Action", "Compensation"],
       [
@@ -82,7 +77,6 @@ module.exports = function build_chapter29() {
       ],
       [2800, 3600, 2960]
     ),
-    spacer(),
 
     h3("29.2.1 Phase Details"),
     p_runs([bold("Phase 1 — INITIATED. "), "The migration request is deserialized, the owner signature is verified against the asset's registered public key, and structural validation ensures all required fields are present and well-formed. The request_id is registered in the migration log to prevent duplicate submissions. If the deadline has already passed, the request is rejected immediately without entering the saga."]),
@@ -93,6 +87,5 @@ module.exports = function build_chapter29() {
     p_runs([bold("Phase 6 — DESTINATION_VERIFICATION. "), "The destination jurisdiction independently verifies the incoming asset state. This includes re-evaluating compliance against destination-specific rules, verifying all attestation VCs, confirming the source-lock proof, and validating the asset state commitment. If verification fails, the asset state is returned to the source jurisdiction and compensation unlocks the source-locked asset."]),
     p_runs([bold("Phase 7 — DESTINATION_UNLOCK. "), "The asset is materialized in the destination jurisdiction with a new jurisdiction-specific identifier while retaining its canonical asset_id. The destination corridor authority signs an acceptance receipt, which is appended to the receipt chain. The asset becomes active in the destination jurisdiction. This phase has no compensation action because it is immediately followed by completion."]),
     p_runs([bold("Phase 8 — COMPLETED. "), "The migration is marked as successfully completed. The source jurisdiction's lock record is finalized (marked as migrated rather than active), the corridor receipt chain is sealed, and a Migration Completion VC is issued to the asset owner. This VC serves as a portable proof of lawful cross-jurisdictional transfer. The migration log entry is closed."]),
-    spacer(),
   ];
 };

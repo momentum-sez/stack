@@ -1,4 +1,4 @@
-const { partHeading, chapterHeading, h2, p, p_runs, bold, table, spacer } = require("../lib/primitives");
+const { partHeading, chapterHeading, h2, p, p_runs, bold, table } = require("../lib/primitives");
 
 module.exports = function build_appendixA() {
   return [
@@ -27,7 +27,6 @@ module.exports = function build_appendixA() {
       "verifiable credential issuance, and autonomous policy enforcement -- all orchestrated above the " +
       "five Mass programmable primitives (Entities, Ownership, Fiscal, Identity, Consent)."
     ),
-    spacer(),
 
     // --- Version Table with Milestone Annotations ---
     h2("A.2 Version Log"),
@@ -47,7 +46,6 @@ module.exports = function build_appendixA() {
       ],
       [1000, 1100, 1400, 5860]
     ),
-    spacer(),
 
     // --- Milestone Summary ---
     h2("A.3 Milestone Definitions"),
@@ -59,6 +57,5 @@ module.exports = function build_appendixA() {
     p_runs([bold("AGENTIC (0.4.42): "), "Autonomous operation layer with trigger taxonomy (20 types x 5 domains), policy evaluation, and ZK L1 anchoring for provable compliance."]),
     p_runs([bold("PHOENIX (0.4.43): "), "Second-generation compliance infrastructure: Tensor V2 with 20 compliance domains, Manifold for cross-corridor path optimization, SAVM for deterministic asset execution, Watcher Economy with bonding/slashing, and Migration/Bridge protocols."]),
     p_runs([bold("GENESIS (0.4.44): "), "Production-ready milestone. Complete Mass/SEZ separation, pure Rust codebase, licensepack system for live registry integration, composition engine for multi-pack evaluation, and GovOS architecture for sovereign deployment."]),
-    spacer(),
   ];
 };

@@ -1,10 +1,10 @@
-const { chapterHeading, h2, h3, p, p_runs, bold, italic, table, spacer, pageBreak } = require("../lib/primitives");
+const { chapterHeading, h2, h3, p, p_runs, bold, italic, table, pageBreak } = require("../lib/primitives");
 
 module.exports = function build_executive_summary() {
   return [
     chapterHeading("Executive Summary"),
 
-    p("The Momentum Open Source SEZ Stack (version 0.4.44, GENESIS) is a software system for instantiating cryptographically auditable, compliance-enforcing Special Economic Zones. It is implemented in Rust (2024 edition), organized as 17 crates totaling approximately 109,000 lines of production code across 257 source files with over 5,000 tests. This specification documents its complete technical architecture in 56 chapters across 18 Parts, plus 11 appendices."),
+    p("The Momentum Open Source SEZ Stack (version 0.4.44, GENESIS) is a software system for instantiating cryptographically auditable, compliance-enforcing Special Economic Zones. It is implemented in Rust (2024 edition), organized as 16 crates totaling approximately 109,000 lines of production code across 257 source files with over 3,300 tests. This specification documents its complete technical architecture in 56 chapters across 18 Parts, plus 11 appendices."),
 
     p("The architecture enforces a strict separation between two systems. Mass provides five jurisdiction-agnostic programmable primitives (Entities, Ownership, Fiscal, Identity, Consent) deployed as live Java/Spring Boot production APIs. The MSEZ Stack is the jurisdictional orchestration layer that makes those primitives compliance-aware through a compliance tensor (\u00a710), pack trilogy (\u00a76), corridor system (\u00a722), and verifiable credentials (\u00a743). This separation is the central architectural invariant: Mass owns business object CRUD; the MSEZ Stack owns jurisdictional context, compliance evaluation, and cryptographic attestation."),
 
@@ -35,7 +35,6 @@ module.exports = function build_executive_summary() {
       ],
       [2400, 3600, 3360]
     ),
-    spacer(),
 
     h3("Version 0.4.44 Highlights"),
     table(
@@ -56,9 +55,8 @@ module.exports = function build_executive_summary() {
       ],
       [2400, 1800, 5160]
     ),
-    p("The complete v0.4.44 implementation comprises sixteen module families totaling 298 modules across approximately 109,000 lines of production Rust code (257 source files, 17 crates), with over 5,000 tests covering all critical paths."),
+    p("The complete v0.4.44 implementation comprises sixteen module families totaling 298 modules across approximately 109,000 lines of production Rust code (257 source files, 16 crates), with over 3,300 tests covering all critical paths."),
 
-    spacer(),
     h3("Document Organization"),
 
     p("This specification is organized into eighteen Parts that progress from foundational concepts through cryptographic infrastructure, compliance and governance systems, cross-border corridors, institutional modules, sovereign deployment architecture, security hardening, and operational deployment. Each Part is self-contained enough to be read independently by a domain specialist, but the Parts build on each other in a deliberate sequence: the cryptographic primitives of Part II underpin the compliance tensor of Part V, which feeds the corridor systems of Part IX, which rely on the watcher economy of Part X for attestation finality. The following table maps each Part to its constituent chapters and scope."),
@@ -80,18 +78,16 @@ module.exports = function build_executive_summary() {
         ["XII", "Institutional Infrastructure", "32\u201336", "Corporate services (formation through dissolution), identity and credentialing, tax and revenue, capital markets (issuance through settlement), trade and commerce"],
         ["XIII", "Mass API Integration", "37", "The msez-mass-bridge crate, JurisdictionalContext trait, typed client mapping to all five Mass primitives"],
         ["XIV", "GovOS Architecture", "38\u201341", "Four-layer sovereign deployment model, Sovereign AI spine, tax collection pipeline, sovereignty handover protocol"],
-        ["XV", "Mass Protocol Integration", "42\u201345", "Protocol overview, verifiable credentials (W3C VC, Ed25519 proofs), arbitration system, agentic execution framework"],
+        ["XV", "Protocol Reference", "42\u201345", "Protocol overview, verifiable credentials (W3C VC, Ed25519 proofs), arbitration system, agentic execution framework"],
         ["XVI", "Security and Hardening", "46\u201348", "Security architecture, production hardening checklist, zero-knowledge proof circuit specifications"],
         ["XVII", "Deployment and Operations", "49\u201353", "Deployment architecture, Docker infrastructure (12-service orchestration), AWS Terraform (VPC, EKS, RDS), one-click deployment, operations management"],
         ["XVIII", "Network Diffusion", "54\u201356", "Adoption strategy, partner network, current network topology and status"],
       ],
       [540, 1800, 1080, 5940]
     ),
-    spacer(),
 
     p("Eleven appendices follow the main body: version history (A), test coverage summary (B), scalability switch reference (C), security proofs (D), Rust crate dependency graph (E), Mass API endpoint reference (F), jurisdiction template reference (G), CLI reference (H), module directory structure (I), conformance levels (J), and GovOS deployment checklist (K). The appendices serve as operational reference material; they are not required reading for understanding the architecture but are essential for implementors and auditors."),
 
-    spacer(),
     h3("Reading Guide"),
 
     p("This specification serves multiple audiences. Rather than reading all 56 chapters sequentially, each audience should follow the path most relevant to their concerns."),

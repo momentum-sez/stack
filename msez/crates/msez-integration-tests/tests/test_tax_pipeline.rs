@@ -60,7 +60,10 @@ fn event_type_default_category_mapping_is_consistent() {
         (TaxEventType::RentPayment, TaxCategory::IncomeTax),
         (TaxEventType::CashWithdrawal, TaxCategory::IncomeTax),
         (TaxEventType::SaleToUnregistered, TaxCategory::IncomeTax),
-        (TaxEventType::CrossBorderPayment, TaxCategory::CrossBorderWithholding),
+        (
+            TaxEventType::CrossBorderPayment,
+            TaxCategory::CrossBorderWithholding,
+        ),
         (TaxEventType::CapitalGainDisposal, TaxCategory::CapitalGains),
         (TaxEventType::ImportOfGoods, TaxCategory::CustomsDuty),
         (TaxEventType::ExportOfGoods, TaxCategory::CustomsDuty),
@@ -262,7 +265,10 @@ fn withholding_goods_filer_section_153() {
     assert_eq!(r.withholding_amount, "4500.00");
     assert_eq!(r.net_amount, "95500.00");
     assert_eq!(r.statutory_section, "ITO 2001 Section 153(1)(a)");
-    assert!(!r.is_final_tax, "goods WHT under S153 is adjustable, not final");
+    assert!(
+        !r.is_final_tax,
+        "goods WHT under S153 is adjustable, not final"
+    );
     assert_eq!(r.currency, "PKR");
     assert_eq!(r.tax_category, TaxCategory::IncomeTax);
 }
@@ -453,7 +459,11 @@ fn withholding_dividend_rates_and_final_tax() {
 fn withholding_crossborder_uniform_rate() {
     let engine = WithholdingEngine::with_pakistan_rules();
 
-    for filer_status in &[FilerStatus::Filer, FilerStatus::NonFiler, FilerStatus::LateFiler] {
+    for filer_status in &[
+        FilerStatus::Filer,
+        FilerStatus::NonFiler,
+        FilerStatus::LateFiler,
+    ] {
         let mut event = TaxEvent::new(
             Uuid::new_v4(),
             TaxEventType::CrossBorderPayment,
@@ -1023,7 +1033,11 @@ fn report_aggregates_multiple_event_types() {
     all_results.extend(engine.compute(&event2));
     all_results.extend(engine.compute(&event3));
 
-    assert_eq!(all_results.len(), 3, "three events should produce three results");
+    assert_eq!(
+        all_results.len(),
+        3,
+        "three events should produce three results"
+    );
 
     let report = generate_report(
         &ReportParams {
@@ -1614,20 +1628,12 @@ fn tax_and_agentic_taxonomies_are_independently_complete() {
 
     // Tax event types: 16 variants covering all Pakistani tax statutes.
     let tax_types = TaxEventType::all();
-    assert_eq!(
-        tax_types.len(),
-        16,
-        "TaxEventType should have 16 variants"
-    );
+    assert_eq!(tax_types.len(), 16, "TaxEventType should have 16 variants");
 
     // Every tax event type has a non-empty string representation.
     for t in tax_types {
         let s = t.as_str();
-        assert!(
-            !s.is_empty(),
-            "TaxEventType::{:?} has empty as_str()",
-            t
-        );
+        assert!(!s.is_empty(), "TaxEventType::{:?} has empty as_str()", t);
     }
 
     // Tax categories: 7 variants.
@@ -1858,10 +1864,7 @@ fn withholding_result_serde_roundtrip() {
     );
     assert_eq!(deserialized.net_amount, results[0].net_amount);
     assert_eq!(deserialized.tax_category, results[0].tax_category);
-    assert_eq!(
-        deserialized.statutory_section,
-        results[0].statutory_section
-    );
+    assert_eq!(deserialized.statutory_section, results[0].statutory_section);
     assert_eq!(deserialized.is_final_tax, results[0].is_final_tax);
 }
 

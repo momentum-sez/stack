@@ -1,8 +1,7 @@
 const {
   partHeading, chapterHeading, h2, h3,
   p, p_runs, bold,
-  definition, codeBlock, table,
-  spacer
+  definition, codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter19() {
@@ -76,7 +75,6 @@ pub enum ViolationSeverity {
     Critical,
 }`
     ),
-    spacer(),
 
     h3("19.1.2 Enforcement Mechanisms"),
     p("Enforcement mechanisms are classified by timing relative to the transaction lifecycle. Pre-transaction enforcement prevents non-compliant transactions from executing. Post-transaction enforcement monitors completed transactions and triggers reporting or remediation. Continuous enforcement applies to ongoing obligations that persist beyond any single transaction."),
@@ -95,7 +93,6 @@ pub enum ViolationSeverity {
       ],
       [1400, 1800, 2800, 3360]
     ),
-    spacer(),
 
     h3("19.1.3 Violation Handling and Escalation Paths"),
     p("When a compliance predicate evaluates to false, the system follows the rule's configured escalation path. Escalation paths define a sequence of actions with increasing severity, timeouts between levels, and responsible parties at each level."),
@@ -111,12 +108,10 @@ pub enum ViolationSeverity {
       [1400, 2400, 1200, 2200, 2160]
     ),
     p("Escalation paths are configurable per jurisdiction, per compliance domain, and per violation severity. Critical-severity violations skip directly to L3 or L4 depending on the rule configuration. De-escalation is possible when the underlying condition is remediated: the entity provides missing documentation, obtains required licenses, or resolves the flagged condition. De-escalation requires affirmative action by the responsible party at the current level."),
-    spacer(),
 
     h3("19.1.4 Rule Engine Configuration"),
     p("The compliance rule engine loads rules from the Pack Trilogy at zone initialization and reloads when packs are updated. Rules are indexed by compliance domain and jurisdiction for efficient lookup. At evaluation time, the engine collects all applicable rules for the transaction's compliance domains and jurisdictions, evaluates each predicate against the transaction context, and returns a ComplianceVerdict that aggregates results across all rules."),
     p("Rule evaluation is deterministic: given the same transaction context, entity context, and pack state, the engine always produces the same verdict. This property is essential for audit reproducibility and dispute resolution. The engine supports dry-run evaluation, allowing entities to pre-check compliance before submitting transactions."),
-    spacer(),
 
     // --- 19.2 Identity Verification ---
     h2("19.2 Identity Verification"),
@@ -134,11 +129,9 @@ pub enum ViolationSeverity {
       ],
       [1600, 3200, 2200, 2360]
     ),
-    spacer(),
 
     h3("19.2.2 Re-Verification Triggers"),
     p("Re-verification is triggered by any of the following events: credential expiration (per the validity period encoded in the VC), material change in beneficial ownership (detected through Mass ownership primitive updates), change in risk profile (transaction patterns exceed tier thresholds), regulatory directive (zone authority mandates re-verification for a class of entities), adverse media or sanctions list update (detected through continuous regpack monitoring). Re-verification suspends the entity's current tier privileges until completed."),
-    spacer(),
 
     // --- 19.3 Transaction Monitoring ---
     h2("19.3 Transaction Monitoring"),
@@ -158,13 +151,11 @@ pub enum ViolationSeverity {
       ],
       [1800, 3200, 1800, 2560]
     ),
-    spacer(),
 
     h3("19.3.2 Privacy-Preserving Monitoring"),
     p("Transaction monitoring operates on encrypted or committed transaction data wherever possible. The zkKYC model ensures that monitoring rules can verify compliance predicates (e.g., 'sender has valid KYC at Tier 2 or above') without accessing the underlying identity data. Pattern detection operates on aggregate statistics (transaction counts, volume sums) rather than individual transaction details. When a pattern triggers an alert, investigation access to the underlying data requires formal authorization from the zone compliance committee, creating an auditable access trail."),
 
     h3("19.3.3 Investigation Procedures"),
     p("When the monitoring engine flags activity, it initiates a structured investigation workflow. The alert is assigned to a compliance officer with appropriate clearance. The officer may request data access elevation, which requires committee approval and is logged as a consent record through the Mass consent primitive. Investigation findings are recorded as evidence packages compatible with the dispute resolution system. If the investigation confirms a violation, the enforcement escalation path is activated at the appropriate level."),
-    spacer(),
   ];
 };

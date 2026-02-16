@@ -110,7 +110,10 @@ fn institution_supports_dispute_types() {
 
     // International institutions (DIFC-LCIA, SIAC, ICC, AIFC-IAC) support all dispute types.
     let international_ids = ["difc-lcia", "siac", "icc", "aifc-iac"];
-    for institution in registry.iter().filter(|i| international_ids.contains(&i.id.as_str())) {
+    for institution in registry
+        .iter()
+        .filter(|i| international_ids.contains(&i.id.as_str()))
+    {
         assert_eq!(
             institution.supported_dispute_types.len(),
             DisputeType::all().len(),

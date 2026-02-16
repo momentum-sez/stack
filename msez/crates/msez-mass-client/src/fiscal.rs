@@ -288,7 +288,10 @@ impl FiscalClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
+            let body = resp
+                .text()
+                .await
+                .unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint: endpoint.into(),
                 status,
@@ -322,8 +325,7 @@ impl FiscalClient {
         );
 
         if let Some(n) = name {
-            let encoded_name: String =
-                url::form_urlencoded::byte_serialize(n.as_bytes()).collect();
+            let encoded_name: String = url::form_urlencoded::byte_serialize(n.as_bytes()).collect();
             url.push_str(&format!("&name={encoded_name}"));
         }
 
@@ -336,7 +338,10 @@ impl FiscalClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
+            let body = resp
+                .text()
+                .await
+                .unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint: endpoint.into(),
                 status,
@@ -372,7 +377,10 @@ impl FiscalClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
+            let body = resp
+                .text()
+                .await
+                .unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint,
                 status,
@@ -408,7 +416,10 @@ impl FiscalClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
+            let body = resp
+                .text()
+                .await
+                .unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint: endpoint.into(),
                 status,
@@ -444,7 +455,10 @@ impl FiscalClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
+            let body = resp
+                .text()
+                .await
+                .unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint,
                 status,
@@ -480,7 +494,10 @@ impl FiscalClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
+            let body = resp
+                .text()
+                .await
+                .unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint: endpoint.into(),
                 status,
@@ -522,7 +539,10 @@ impl FiscalClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
+            let body = resp
+                .text()
+                .await
+                .unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint,
                 status,
@@ -557,7 +577,10 @@ impl FiscalClient {
 
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
+            let body = resp
+                .text()
+                .await
+                .unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
             return Err(MassApiError::ApiError {
                 endpoint: endpoint.into(),
                 status,

@@ -138,11 +138,18 @@ fn jurisdiction_id_unicode_no_panic() {
 fn jurisdiction_id_very_long_string() {
     let long = "A".repeat(10_000);
     let result = panic::catch_unwind(|| JurisdictionId::new(&long));
-    assert!(result.is_ok(), "JurisdictionId::new must not panic on 10K-char string");
+    assert!(
+        result.is_ok(),
+        "JurisdictionId::new must not panic on 10K-char string"
+    );
     // Must be deterministic.
     let r1 = JurisdictionId::new(&long);
     let r2 = JurisdictionId::new(&long);
-    assert_eq!(r1.is_ok(), r2.is_ok(), "JurisdictionId::new must be deterministic for same input");
+    assert_eq!(
+        r1.is_ok(),
+        r2.is_ok(),
+        "JurisdictionId::new must be deterministic for same input"
+    );
 }
 
 #[test]
@@ -214,7 +221,10 @@ fn entity_id_nil_uuid() {
     // Nil UUID is a valid UUID format — EntityId should accept it since it wraps Uuid.
     let nil_uuid = "00000000-0000-0000-0000-000000000000";
     let result: Result<msez_core::EntityId, _> = serde_json::from_str(&format!("\"{}\"", nil_uuid));
-    assert!(result.is_ok(), "Nil UUID is a valid UUID format and must be accepted by EntityId");
+    assert!(
+        result.is_ok(),
+        "Nil UUID is a valid UUID format and must be accepted by EntityId"
+    );
 }
 
 // =========================================================================
@@ -243,7 +253,11 @@ fn timestamp_leap_second() {
     // Leap second — chrono normalizes :60 to :59 or :00 of the next minute.
     // Must not panic. Must be deterministic.
     let result2 = Timestamp::from_rfc3339("2015-06-30T23:59:60Z");
-    assert_eq!(result.is_ok(), result2.is_ok(), "leap second parsing must be deterministic");
+    assert_eq!(
+        result.is_ok(),
+        result2.is_ok(),
+        "leap second parsing must be deterministic"
+    );
 }
 
 // =========================================================================
@@ -270,7 +284,11 @@ fn content_digest_mixed_case() {
     let result = ContentDigest::from_hex(&hex);
     // Mixed case: must not panic. Must be deterministic across calls.
     let result2 = ContentDigest::from_hex(&hex);
-    assert_eq!(result.is_ok(), result2.is_ok(), "ContentDigest::from_hex must be deterministic");
+    assert_eq!(
+        result.is_ok(),
+        result2.is_ok(),
+        "ContentDigest::from_hex must be deterministic"
+    );
 }
 
 // =========================================================================
@@ -1089,7 +1107,10 @@ fn pack_sanctions_checker_threshold_zero_returns_all_matches() {
     // With threshold 0.0, any name should match — this tests extreme threshold.
     // Regardless of match outcome, must not panic and must be deterministic.
     let result2 = checker.check_entity("Completely Different Name", None, 0.0);
-    assert_eq!(result.matched, result2.matched, "sanctions check must be deterministic");
+    assert_eq!(
+        result.matched, result2.matched,
+        "sanctions check must be deterministic"
+    );
 }
 
 #[test]
@@ -1144,7 +1165,10 @@ fn pack_sanctions_checker_identifier_matching() {
     // Identifier-based matching is not yet implemented — name mismatch means no match.
     // Verify determinism: repeated calls with same input produce same result.
     let result2 = checker.check_entity("Different Name", Some(&query_ids), 0.9);
-    assert_eq!(result.matched, result2.matched, "ID-based sanctions check must be deterministic");
+    assert_eq!(
+        result.matched, result2.matched,
+        "ID-based sanctions check must be deterministic"
+    );
 }
 
 #[test]
@@ -1177,7 +1201,10 @@ fn pack_validate_compliance_domain_all_known_domains() {
     for domain in &domains {
         let result = validate_compliance_domain(domain);
         // All 20 domains listed above must be recognized as valid.
-        assert!(result.is_ok(), "domain '{domain}' must be recognized as a valid ComplianceDomain");
+        assert!(
+            result.is_ok(),
+            "domain '{domain}' must be recognized as a valid ComplianceDomain"
+        );
     }
 }
 
@@ -1187,7 +1214,10 @@ fn pack_ensure_json_compatible_float_rejected() {
     // Floats like 1.1 have non-deterministic serialization across platforms.
     let value = json!({"amount": 1.1});
     let result = ensure_json_compatible(&value, "", "float-test");
-    assert!(result.is_err(), "BUG-039: ensure_json_compatible must reject floats");
+    assert!(
+        result.is_err(),
+        "BUG-039: ensure_json_compatible must reject floats"
+    );
 }
 
 #[test]
@@ -1412,7 +1442,11 @@ fn mmr_append_mixed_case_hex() {
     // Mixed case hex: must not panic. Determinism check.
     let mut mmr2 = MerkleMountainRange::new();
     let result2 = mmr2.append(&hex);
-    assert_eq!(result.is_ok(), result2.is_ok(), "MMR append with mixed case must be deterministic");
+    assert_eq!(
+        result.is_ok(),
+        result2.is_ok(),
+        "MMR append with mixed case must be deterministic"
+    );
 }
 
 #[test]

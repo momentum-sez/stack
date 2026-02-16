@@ -1,4 +1,4 @@
-const { chapterHeading, p, table, spacer, h2, codeBlock } = require("../lib/primitives");
+const { chapterHeading, p, table, h2, codeBlock } = require("../lib/primitives");
 
 module.exports = function build_appendixH() {
   return [
@@ -20,10 +20,8 @@ module.exports = function build_appendixH() {
       ],
       [1800, 3200, 4360]
     ),
-    spacer(),
 
     h2("H.1 Example Usage"),
-    spacer(),
 
     p("Initialize a Pakistan GovOS deployment with sovereign profile:"),
     ...codeBlock(
@@ -33,7 +31,6 @@ module.exports = function build_appendixH() {
       "  --regpack ./packs/pakistan/regpack.json \\\n" +
       "  --licensepack ./packs/pakistan/licensepack.json"
     ),
-    spacer(),
 
     p("Import a lawpack from Akoma Ntoso XML source and verify its integrity:"),
     ...codeBlock(
@@ -52,7 +49,6 @@ module.exports = function build_appendixH() {
       "msez pack diff --type regpack \\\n" +
       "  --from v2025.12 --to v2026.02 --jurisdiction PAK"
     ),
-    spacer(),
 
     p("Deploy infrastructure to Kubernetes and verify health:"),
     ...codeBlock(
@@ -67,7 +63,6 @@ module.exports = function build_appendixH() {
       "# Verify a specific service\n" +
       "msez verify --service treasury-proxy"
     ),
-    spacer(),
 
     p("Manage trade corridors:"),
     ...codeBlock(
@@ -81,7 +76,6 @@ module.exports = function build_appendixH() {
       "# Synchronize corridor state and trigger netting\n" +
       "msez corridor sync --id PAK-UAE --force-reconcile"
     ),
-    spacer(),
 
     p("Run database migrations:"),
     ...codeBlock(
@@ -94,7 +88,6 @@ module.exports = function build_appendixH() {
       "# Check migration status\n" +
       "msez migrate status --database-url postgres://localhost/msez"
     ),
-    spacer(),
 
     p("Artifact graph verification and attestation:"),
     ...codeBlock(
@@ -106,7 +99,6 @@ module.exports = function build_appendixH() {
       "  --signing-key ./keys/release.ed25519 \\\n" +
       "  --output ./releases/v0.4.44.bundle"
     ),
-    spacer(),
 
     p("Evaluate compliance tensor for an entity:"),
     ...codeBlock(
@@ -125,7 +117,6 @@ module.exports = function build_appendixH() {
       "  --entity-id ent_01HX3K9M7V \\\n" +
       "  --jurisdiction PAK --reason \"quarterly-review\""
     ),
-    spacer(),
 
     p("Watcher economy operations:"),
     ...codeBlock(
@@ -145,7 +136,6 @@ module.exports = function build_appendixH() {
       "  --corridor PAK-UAE \\\n" +
       "  --receipt-hash sha256:abc123..."
     ),
-    spacer(),
 
     p("GovOS lifecycle management:"),
     ...codeBlock(
@@ -163,6 +153,5 @@ module.exports = function build_appendixH() {
       "  --recipient-key ./keys/pak-ops-team.ed25519.pub \\\n" +
       "  --sla-document ./agreements/handover-sla.vc.json"
     ),
-    spacer(),
   ];
 };

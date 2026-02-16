@@ -1,7 +1,7 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table, spacer
+  codeBlock, table
 } = require("../lib/primitives");
 
 module.exports = function build_chapter52() {
@@ -28,7 +28,6 @@ msez verify --zone my-zone --checks health,compliance,connectivity
 # 5. Activate corridors for cross-border operations
 msez corridor activate --from AE-ADGM --to PK-PSEZ --corridor-type bilateral`
     ),
-    spacer(),
 
     h3("52.1.1 Step Details"),
     table(
@@ -42,7 +41,6 @@ msez corridor activate --from AE-ADGM --to PK-PSEZ --corridor-type bilateral`
       ],
       [1200, 1600, 1200, 2400, 2960]
     ),
-    spacer(),
 
     // --- 52.2 Deployment Targets ---
     h2("52.2 Deployment Targets"),
@@ -56,7 +54,6 @@ msez corridor activate --from AE-ADGM --to PK-PSEZ --corridor-type bilateral`
       ],
       [1600, 1600, 1600, 2200, 2360]
     ),
-    spacer(),
 
     h3("52.2.1 AWS Deployment Pipeline"),
     p("Running msez deploy --target aws --region me-south-1 executes the following pipeline: validate AWS credentials and check resource quotas, apply Terraform with auto-approve, wait for EKS node readiness, deploy MSEZ workloads via Helm, run the verification suite, and output the API endpoint URL. Rollback on failure is automatic: the script captures Terraform state before apply and reverts on any provisioning error."),
@@ -71,6 +68,5 @@ msez corridor activate --from AE-ADGM --to PK-PSEZ --corridor-type bilateral`
       ],
       [1200, 3200, 1200, 3760]
     ),
-    spacer(),
   ];
 };

@@ -53,7 +53,9 @@ fn pakistan_analytics_to_corridor_partners() {
     let partners = ["ae", "sa", "cn"];
     for partner in &partners {
         assert!(
-            enforcer.check(DataCategory::Analytics, partner).is_allowed(),
+            enforcer
+                .check(DataCategory::Analytics, partner)
+                .is_allowed(),
             "analytics should be shareable with corridor partner {partner}"
         );
     }
@@ -155,5 +157,7 @@ fn policy_json_roundtrip() {
     // The enforcer built from recovered policy should behave identically.
     let enforcer = SovereigntyEnforcer::new(recovered);
     assert!(!enforcer.check(DataCategory::Pii, "ae").is_allowed());
-    assert!(enforcer.check(DataCategory::PublicRegulatory, "us").is_allowed());
+    assert!(enforcer
+        .check(DataCategory::PublicRegulatory, "us")
+        .is_allowed());
 }

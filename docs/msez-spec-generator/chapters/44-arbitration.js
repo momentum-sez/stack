@@ -1,5 +1,5 @@
 const {
-  chapterHeading, h2,
+  chapterHeading, h2, h3,
   p, p_runs, bold,
   codeBlock, table, spacer
 } = require("../lib/primitives");
@@ -40,8 +40,8 @@ pub enum EnforcementAction {
     ),
     spacer(),
 
-    // --- 44.3 Dispute Filing Process ---
-    h2("44.3 Dispute Filing Process"),
+    // --- 44.2.1 Dispute Filing Process ---
+    h3("44.2.1 Dispute Filing Process"),
     p("Dispute filing follows a deterministic six-step process that ensures jurisdictional correctness, evidence integrity, and institutional routing. Each step produces auditable state transitions recorded in the corridor state machine."),
     table(
       ["Step", "Action", "System Behavior"],
@@ -58,8 +58,8 @@ pub enum EnforcementAction {
     spacer(),
     p_runs([bold("State Machine."), " The dispute lifecycle is modeled as a finite state machine with states: Filed, JurisdictionResolved, CounterpartyNotified, TribunalFormed, InProceedings, RulingIssued, EnforcementExecuted, Appealed, and Closed. Transitions are guarded by temporal constraints (response windows, filing deadlines) and authorization checks (only tribunal members can advance from InProceedings to RulingIssued)."]),
 
-    // --- 44.4 Evidence Packages ---
-    h2("44.4 Evidence Packages"),
+    // --- 44.2.2 Evidence Packages ---
+    h3("44.2.2 Evidence Packages"),
     p("Evidence packages are cryptographically sealed collections of documents, transaction records, and attestations submitted by parties during arbitration proceedings. Each package is content-addressed and tamper-evident."),
     ...codeBlock(
 `/// A sealed evidence package submitted during arbitration.
@@ -97,8 +97,8 @@ pub enum EvidenceCategory {
     spacer(),
     p_runs([bold("Verification."), " When an evidence package is submitted, the system verifies: (1) the submitter is a recognized party to the dispute, (2) the package digest matches the SHA-256 hash computed over all evidence items via CanonicalBytes, (3) the Ed25519 signature is valid for the submitter's public key, and (4) all content-addressed references resolve to valid objects in the CAS. Evidence packages are immutable once submitted; amendments require a new package referencing the original."]),
 
-    // --- 44.5 Escrow Management ---
-    h2("44.5 Escrow Management"),
+    // --- 44.2.3 Escrow Management ---
+    h3("44.2.3 Escrow Management"),
     p("When a dispute involves monetary claims, the arbitration system can place disputed amounts in escrow. Escrow is managed through the fiscal primitive (treasury-info) via msez-mass-client, with the SEZ Stack providing the jurisdictional and compliance overlay."),
     table(
       ["Escrow State", "Trigger", "Effect"],

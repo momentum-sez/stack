@@ -1,5 +1,5 @@
 const {
-  chapterHeading, h2,
+  chapterHeading, h2, h3,
   p, p_runs, bold, definition, theorem,
   codeBlock, table, spacer
 } = require("../lib/primitives");
@@ -33,13 +33,13 @@ module.exports = function build_chapter09() {
     definition("Definition 9.1 (MMR Checkpoint).", "An MMR checkpoint contains: asset_id and checkpoint_seq for identity; receipt_range indicating the covered receipts; mmr_root and state_commitment for cryptographic binding; watcher_attestations for validation; and optional l1_anchor for settlement layer integration."),
     p("MMR checkpoints serve as periodic summaries of receipt chain state. They enable efficient verification without replaying the entire chain, support pruning of historical receipts, and provide natural integration points with the agentic framework. Watchers attest to checkpoint validity, and their attestations are accumulated into the checkpoint record. The agentic trigger system monitors checkpoint creation to initiate settlement layer anchoring when configured."),
 
-    // --- 9.3 Fork Resolution ---
-    h2("9.3 Fork Resolution"),
+    // --- 9.2.1 Fork Resolution ---
+    h3("9.2.1 Fork Resolution"),
     p("Fork detection occurs when two receipts reference the same prev_digest with different transitions. The receipt chain architecture treats forks as exceptional but recoverable events. Resolution follows a deterministic protocol: the fork is detected by watchers or participants, competing branches are evaluated against compliance predicates and timestamp ordering, and the canonical branch is selected through a combination of watcher consensus and corridor-level arbitration. Non-canonical receipts are preserved in an evidence package for audit purposes."),
     theorem("Theorem 9.1 (Object Survivability).", "A Smart Asset with a valid receipt chain maintains full operational capability without connectivity to any external system, including the MASS L1 settlement layer. Proof: The receipt chain provides total ordering, the Compliance Tensor carries compliance state, and the state machine specification enables deterministic execution. No external oracle is required for continued operation."),
 
-    // --- 9.4 Receipt Verification Process ---
-    h2("9.4 Receipt Verification Process"),
+    // --- 9.3 Receipt Verification Process ---
+    h2("9.3 Receipt Verification Process"),
     p("A verifier checking a receipt chain performs the following steps in order. First, the verifier obtains the chain head digest and the set of receipts to verify, either the full chain or a suffix anchored to a trusted MMR checkpoint."),
     p_runs([
       bold("Step 1 — Structural Integrity. "),
@@ -67,8 +67,8 @@ module.exports = function build_chapter09() {
     ]),
     spacer(),
 
-    // --- 9.5 Receipt Chain Operations ---
-    h2("9.5 Receipt Chain Operations"),
+    // --- 9.3.1 Receipt Chain Operations ---
+    h3("9.3.1 Receipt Chain Operations"),
     p("The receipt chain supports five core operations. Each operation has defined preconditions, effects, and failure modes."),
     table(
       ["Operation", "Description", "Preconditions", "Output"],

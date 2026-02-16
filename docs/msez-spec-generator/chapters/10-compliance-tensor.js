@@ -1,5 +1,5 @@
 const {
-  chapterHeading, h2,
+  chapterHeading, h2, h3,
   p, p_runs, bold,
   definition, codeBlock, table,
   spacer, pageBreak
@@ -103,7 +103,7 @@ module.exports = function build_chapter10() {
     spacer(),
 
     // --- 10.3.1 Lattice Operations ---
-    h2("10.3.1 Lattice Operations: Meet and Join"),
+    h3("10.3.1 Lattice Operations: Meet and Join"),
     p("The meet (\u2227) operation computes the greatest lower bound (pessimistic composition). When composing compliance across multiple domains or jurisdictions, meet ensures the result reflects the weakest link. The join (\u2228) operation computes the least upper bound (optimistic composition), used when any single passing domain suffices."),
     definition(
       "Definition 10.6 (Meet / Greatest Lower Bound).",
@@ -182,7 +182,7 @@ module.exports = function build_chapter10() {
     spacer(),
 
     // --- 10.5 Cross-Border Compliance Verification ---
-    h2("10.5 Cross-Border Compliance Verification"),
+    h3("10.4.1 Cross-Border Compliance Verification"),
     definition(
       "Definition 10.5 (Cross-Border Predicate).",
       "For transfer from jurisdiction J1 to J2: verify export requirements from source, verify import requirements at destination, compute combined compliance using pessimistic meet operation, and return true only if combined state is COMPLIANT or EXEMPT."

@@ -1,5 +1,5 @@
 const {
-  partHeading, chapterHeading, h2,
+  partHeading, chapterHeading, h2, h3,
   p, p_runs, bold,
   codeBlock, table, spacer
 } = require("../lib/primitives");
@@ -39,8 +39,8 @@ module.exports = function build_chapter49() {
     ),
     spacer(),
 
-    // --- 49.3 Rust Binary Deployment ---
-    h2("49.3 Rust Binary Deployment"),
+    // --- 49.2.1 Rust Binary Deployment ---
+    h3("49.2.1 Rust Binary Deployment"),
     p("The msez CLI is a single statically-linked binary compiled from the msez-cli crate. No runtime dependencies beyond libc. Container images use Alpine Linux with the msez binary, producing images under 50 MB."),
     ...codeBlock(
 `# Build the release binary
@@ -54,8 +54,8 @@ ENTRYPOINT ["/usr/local/bin/msez"]`
     ),
     spacer(),
 
-    // --- 49.4 Deployment Topology ---
-    h2("49.4 Deployment Topology"),
+    // --- 49.2.2 Deployment Topology ---
+    h3("49.2.2 Deployment Topology"),
     p("Each deployment profile defines a specific service topology. The topology determines how the msez-api server, PostgreSQL, Redis, observability stack, and external integrations connect. All profiles share the same binary artifacts; the difference is in replica count, resource allocation, and network segmentation."),
     table(
       ["Profile", "API Instances", "Database", "Cache", "Observability", "Network"],
@@ -70,8 +70,8 @@ ENTRYPOINT ["/usr/local/bin/msez"]`
     spacer(),
     p_runs([bold("Service Connectivity."), " In all profiles, msez-api is the sole ingress point for external traffic. It connects to PostgreSQL for state persistence, Redis for caching and rate limiting, and Mass APIs (organization-info, treasury-info, consent, investment-info) via msez-mass-client over HTTPS. The worker service (msez-worker) shares the same database and Redis instances but has no external-facing ports. Vault provides secrets to all application services at startup via environment variable injection or the Vault agent sidecar."]),
 
-    // --- 49.5 Resource Scaling Guidelines ---
-    h2("49.5 Resource Scaling Guidelines"),
+    // --- 49.3 Resource Scaling Guidelines ---
+    h2("49.3 Resource Scaling Guidelines"),
     p("Resource allocation scales with three primary drivers: jurisdictional breadth (number of active jurisdictions and their regulatory complexity), corridor throughput (transactions per second across all active corridors), and credential volume (VCs issued and verified per day)."),
     table(
       ["Scaling Dimension", "Metric", "Threshold", "Action"],

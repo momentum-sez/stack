@@ -1,5 +1,5 @@
 const {
-  chapterHeading, h2,
+  chapterHeading, h2, h3,
   p, p_runs, bold,
   codeBlock, table, spacer
 } = require("../lib/primitives");
@@ -48,8 +48,8 @@ module.exports = function build_chapter34() {
     ),
     spacer(),
 
-    // --- 34.3 Fee Schedules Module ---
-    h2("34.3 Fee Schedules Module"),
+    // --- 34.2.1 Fee Schedules Module ---
+    h3("34.2.1 Fee Schedules Module"),
     p("The Fee Schedules Module manages SEZ-specific fee structures for entity formation, annual maintenance, transaction processing, and corridor usage. Fee schedules are jurisdiction-specific and may include tiered pricing, volume discounts, and incentive program credits. All fees are collected through treasury-info.api.mass.inc with full audit trail."),
     p_runs([bold("Fee Schedule Examples."), " The following table illustrates typical fee ranges across SEZ jurisdictions. Actual fees are loaded from the regpack for each jurisdiction and may be adjusted by incentive program credits."]),
     table(
@@ -66,8 +66,8 @@ module.exports = function build_chapter34() {
     ),
     spacer(),
 
-    // --- 34.4 Incentive Programs Module ---
-    h2("34.4 Incentive Programs Module"),
+    // --- 34.2.2 Incentive Programs Module ---
+    h3("34.2.2 Incentive Programs Module"),
     p("The Incentive Programs Module tracks tax holidays, reduced rates, exemptions, and credits available within SEZ jurisdictions. It evaluates entity eligibility based on formation date, activity type, investment amount, and employment targets. Incentive claims are verified against lawpack provisions (e.g., SEZ Act 2012 Schedule II exemptions) and issued as Verifiable Credentials."),
     p_runs([bold("Incentive Program Types."), " The following programs are supported. Each program type defines eligibility criteria, benefit computation, duration limits, and clawback conditions. The compliance tensor evaluates program applicability per entity per jurisdiction."]),
     table(
@@ -84,8 +84,8 @@ module.exports = function build_chapter34() {
     ),
     spacer(),
 
-    // --- 34.5 International Reporting Module ---
-    h2("34.5 International Reporting Module"),
+    // --- 34.2.3 International Reporting Module ---
+    h3("34.2.3 International Reporting Module"),
     p("The International Reporting Module generates cross-border tax reports including CRS (Common Reporting Standard) disclosures, FATCA reporting, transfer pricing documentation, and country-by-country reporting. It aggregates data from Mass APIs through msez-mass-client and applies jurisdiction-specific reporting formats and thresholds from the regpack."),
     p_runs([bold("CRS and FATCA Reporting Thresholds."), " The module applies jurisdiction-specific reporting thresholds to determine which accounts and entities must be reported. Under CRS, individual accounts with aggregate balances below $250,000 USD equivalent at year-end are subject to simplified due diligence, while those above require enhanced procedures. Entity accounts with aggregate balances above $1,000,000 USD equivalent require look-through to controlling persons. Under FATCA, thresholds for US persons are $50,000 (domestic institutions) or $200,000/$300,000 (foreign institutions, single/joint). The module automatically classifies accounts against these thresholds using balance data from treasury-info.api.mass.inc and beneficial ownership data from organization-info.api.mass.inc."]),
   ];

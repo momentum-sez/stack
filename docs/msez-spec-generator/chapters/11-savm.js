@@ -1,5 +1,5 @@
 const {
-  chapterHeading, h2,
+  chapterHeading, h2, h3,
   p, p_runs, bold,
   codeBlock, table,
   spacer, pageBreak, definition
@@ -36,7 +36,7 @@ module.exports = function build_chapter11() {
     spacer(),
 
     // --- 11.3 Compliance Coprocessor ---
-    h2("11.3 Compliance Coprocessor"),
+    h3("11.2.1 Compliance Coprocessor"),
     p_runs([
       bold("Tensor Operations. "),
       "The coprocessor provides direct access to the compliance tensor through TENSOR_GET and TENSOR_SET instructions. TENSOR_GET retrieves the compliance state for a given (asset, jurisdiction, domain) triple. TENSOR_SET updates a tensor cell with a new compliance state, requiring an attestation reference and valid authority signature."
@@ -69,7 +69,7 @@ module.exports = function build_chapter11() {
     spacer(),
 
     // --- 11.4 Gas Metering ---
-    h2("11.4 Gas Metering"),
+    h3("11.2.2 Gas Metering"),
     table(
       ["Category", "Base Gas", "Notes"],
       [
@@ -86,7 +86,7 @@ module.exports = function build_chapter11() {
     spacer(),
 
     // --- 11.5 SAVM Execution Context ---
-    h2("11.5 SAVM Execution Context"),
+    h2("11.3 Execution Context"),
     p("The SAVM execution context encapsulates all state required to execute a compliance-aware smart asset program. The following example traces a complete compliance check execution flow for a cross-border payment from a Pakistan SEZ entity to a UAE free zone counterparty."),
     definition("Example 11.1 (Cross-Border Payment Compliance Check).", "An entity in KSEZ (Karachi SEZ) initiates a USD 250,000 payment to a DMCC (Dubai) counterparty. The SAVM executes the compliance verification bytecode with the following flow:"),
     ...codeBlock(
@@ -135,7 +135,7 @@ module.exports = function build_chapter11() {
     p("The execution consumed 115,015 gas units across four tensor lookups (40,000), one ZK verification (75,000), three boolean operations (15), and one attestation write (10,000). The compliance coprocessor handled all cryptographic operations transparently, and the final ATTEST instruction recorded the compliance result as a new tensor cell update bound to the execution receipt."),
 
     // --- 11.6 Execution Receipts ---
-    h2("11.6 Execution Receipts"),
+    h3("11.3.1 Execution Receipts"),
     p("Every SAVM execution produces a receipt containing the execution digest (SHA-256 of bytecode, input, and context), gas consumed, storage mutations as a set of key-value diffs, compliance tensor updates referencing affected cells and new states, emitted logs, and the execution outcome (success, revert, or out-of-gas). Receipts form an append-only chain, with each receipt referencing the digest of its predecessor. The receipt chain provides a complete audit trail of all programmable asset operations within a jurisdiction."),
     ...codeBlock(
       "/// Receipt produced by every SAVM execution.\n" +

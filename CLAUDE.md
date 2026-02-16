@@ -1,8 +1,8 @@
 # CLAUDE.md — Momentum SEZ Stack + Mass API: Operational Anchor
 
-**Version**: 6.0 — February 2026  
-**Scope**: All development, audit, and deployment operations on `momentum-sez/stack`  
-**Authority**: Supersedes all prior CLAUDE.md versions. Based on Architecture Audit v6.0.
+**Version**: 7.0 — February 2026
+**Scope**: All development, audit, and deployment operations on `momentum-sez/stack`
+**Authority**: Supersedes all prior CLAUDE.md versions. Based on Architecture Audit v7.0.
 
 ---
 
@@ -26,6 +26,11 @@ You are the principal systems architect for Momentum's sovereign digital infrast
 - Modules that re-export everything from children without adding any items or narrowing visibility
 - Constants defined but referenced only in tests
 - `#[allow(dead_code)]` annotations — if the code is dead, delete it; don't annotate it
+- Mock implementations that return `Ok(())` without exercising any logic
+- Compliance tensor evaluations that return `Compliant` for all domains without actually checking anything
+- VC issuance that issues credentials without performing the compliance check they attest to
+- Corridor state transitions that skip the FSM validation in `msez-state`
+- `msez-mass-client` response types that have drifted from the corresponding Mass API Swagger spec
 
 **Verification.** After every substantial code change:
 1. `cargo check --workspace` — zero warnings
@@ -87,7 +92,7 @@ The SEZ Stack sits **ABOVE** Mass. It provides the jurisdictional context — th
 | `msez-zkp` | Zero-Knowledge | Sealed `ProofSystem` trait, CDB (Canonical Digest Bridge) computation, circuit definitions for compliance/identity/migration/settlement (stubs with mock implementations) |
 | `msez-compliance` | Orchestration | Composes tensor evaluation with pack checking. Builds jurisdiction-specific tensors. |
 | `msez-mass-client` | Mass API Gateway | **Typed HTTP client for all five Mass primitives. SOLE AUTHORIZED PATH to Mass.** Sub-clients: EntityClient, OwnershipClient, FiscalClient, IdentityClient, ConsentClient, TemplatingClient. With retry logic and config from env. |
-| `msez-api` | HTTP Server | Axum server exposing: orchestration endpoints (mass_proxy), corridor routes, smart asset routes, regulator console, agentic routes, settlement routes, tax routes, identity routes, credential routes. OpenAPI via utoipa. Auth middleware. Rate limiting. Postgres persistence (SQLx). |
+| `msez-api` | HTTP Server | Axum server exposing: orchestration endpoints (mass_proxy), corridor routes, smart asset routes, regulator console, GovOS Console (4 dashboards), agentic routes, settlement routes, tax routes, identity routes, credential routes. OpenAPI via utoipa. Auth middleware. Rate limiting. Health probes. Postgres persistence (SQLx). |
 | `msez-cli` | CLI | Zone validation, building, locking, signing, verification. VC keygen/sign/verify. Corridor state operations. Artifact CAS operations. |
 | `msez-integration-tests` | Testing | 60+ integration test files covering cross-crate flows, serde fidelity, API contracts, security penetration, adversarial scenarios |
 
@@ -229,6 +234,68 @@ These findings are from Architecture Audit v6.0. Address in priority order.
 | S-008 | Rate limiting configuration undocumented | Per-category configs documented: reads (1000/min), writes (200/min), tax (500/min), compliance (100/min) |
 | S-014 | Corridor netting untested | `test_netting_settlement.rs`: 7 tests covering bilateral, multilateral, determinism, edge cases |
 | S-019 | Trigger taxonomy unvalidated | `test_trigger_taxonomy_validation.rs`: 12 tests covering 20 trigger types, serde, determinism, domain classification |
+| M-009 | GovOS Console routes not defined | `msez-api/src/routes/govos.rs`: 4 dashboard routes — GovOS Console (`/v1/govos/console`), Tax & Revenue (`/v1/govos/tax-revenue`), Digital Free Zone (`/v1/govos/freezone`), Citizen Tax & Services (`/v1/govos/citizen`). 6 handler tests. |
+| S-013 | Pakistan license mappings missing | `msez-pack/src/licensepack/pakistan.rs`: 5 regulatory authorities (SECP, SBP, PTA, PEMRA, DRAP) with 17 license type definitions. 12 tests covering authority coverage, serialization, uniqueness. |
+
+---
+
+## IV-B. SPECIFICATION-REALITY GAP FLAGS
+
+Capabilities claimed in the Technical Specification v0.4.44 vs actual implementation status:
+
+| Capability | Status | Location |
+|-----------|--------|----------|
+| Five programmable primitives (CRUD) | `[IMPLEMENTED]` | Mass APIs (Java, external) |
+| Compliance tensor (20 domains) | `[IMPLEMENTED]` | `msez-tensor`, `msez-core/src/domain.rs` |
+| Pack trilogy (lawpacks, regpacks, licensepacks) | `[IMPLEMENTED]` | `msez-pack` (1,222-line composition engine) |
+| Corridor lifecycle FSM | `[IMPLEMENTED]` | `msez-state`, `msez-corridor` |
+| Verifiable Credentials (Ed25519Signature2020) | `[IMPLEMENTED]` | `msez-vc` |
+| Write-path orchestration (all 5 primitives) | `[IMPLEMENTED]` | `msez-api/src/routes/mass_proxy.rs` |
+| Tax collection pipeline (Pakistan) | `[IMPLEMENTED]` | `msez-agentic/src/tax.rs`, `msez-api/src/routes/tax.rs` |
+| Identity aggregation facade | `[IMPLEMENTED]` | `msez-mass-client/src/identity.rs` (graceful degradation) |
+| Data sovereignty enforcement | `[IMPLEMENTED]` | `msez-core/src/sovereignty.rs` |
+| Payment rail adapters (Raast, RTGS, Circle) | `[STUB]` | `msez-corridor/src/payment_rail.rs` (trait + 3 stubs) |
+| BBS+ selective disclosure | `[STUB]` | `msez-vc` (trait defined, no impl) |
+| ZKP circuits (12 types) | `[STUB]` | `msez-zkp` (sealed ProofSystem trait, mock impls) |
+| Smart Asset VM (SAVM) | `[PLANNED]` | Not implemented — FSM in `msez-state` only |
+| Settlement layer (L1, DAG consensus) | `[PLANNED]` | Not implemented |
+| Dedicated identity-info.api.mass.inc | `[PLANNED]` | Java service needed; Rust client ready |
+| GovOS Console (40+ ministries) | `[PARTIAL]` | `msez-api/src/routes/govos.rs` (structural routes, awaiting Mass API integration) |
+
+---
+
+## IV-C. PAKISTAN GovOS DEPLOYMENT CHECKLIST
+
+| Component | Status | Crate/File |
+|-----------|--------|-----------|
+| FBR IRIS integration (NTN verification) | `[IMPLEMENTED]` | `msez-mass-client/src/identity.rs` (`verify_ntn()`) |
+| SBP Raast adapter | `[STUB]` | `msez-corridor/src/payment_rail.rs` (`RaastAdapter`) |
+| NADRA CNIC verification | `[IMPLEMENTED]` | `msez-mass-client/src/identity.rs` (`verify_cnic()`) |
+| SECP registration flow | `[IMPLEMENTED]` | `msez-pack/src/licensepack/pakistan.rs` (SECP license types) |
+| Pakistan arbitration institutions | `[IMPLEMENTED]` | `msez-arbitration/src/dispute.rs` (ATIR, ADR Centre, KCDR) |
+| Pakistan withholding rules (S153) | `[IMPLEMENTED]` | `msez-agentic/src/tax.rs` (`WithholdingEngine::with_pakistan_rules()`) |
+| Data sovereignty (Pakistan GovOS policy) | `[IMPLEMENTED]` | `msez-core/src/sovereignty.rs` (`pakistan_govos()`) |
+| GovOS Console routes | `[IMPLEMENTED]` | `msez-api/src/routes/govos.rs` (4 dashboards) |
+| Pakistan license mappings (5 authorities) | `[IMPLEMENTED]` | `msez-pack/src/licensepack/pakistan.rs` (SECP, SBP, PTA, PEMRA, DRAP) |
+| Corridor state (PAK↔UAE, PAK↔KSA, PAK↔CHN) | `[IMPLEMENTED]` | `msez-corridor`, `msez-api/src/routes/corridors.rs` |
+| Ministry dashboard integration (40+) | `[PARTIAL]` | Route structure in place; entity counts require Mass API integration |
+| Dedicated identity-info.api.mass.inc | `[PLANNED]` | Java service required (B-001 from audit v7.0) |
+
+---
+
+## IV-D. INTEGRATION POINT REGISTRY
+
+| External System | Adapter Status | Crate/Location | Test Coverage |
+|----------------|---------------|----------------|---------------|
+| FBR IRIS (tax authority) | `[IMPLEMENTED]` | `msez-mass-client/src/identity.rs`, `msez-api/src/routes/tax.rs` | E2E in `test_tax_pipeline_e2e.rs` |
+| SBP Raast (instant payments) | `[STUB]` | `msez-corridor/src/payment_rail.rs` | Unit tests (returns NotConfigured) |
+| NADRA (national identity) | `[IMPLEMENTED]` | `msez-mass-client/src/identity.rs` | Contract tests in `identity_client_test.rs` |
+| SECP (securities commission) | `[IMPLEMENTED]` | `msez-pack/src/licensepack/pakistan.rs` | 12 tests |
+| SWIFT (pacs.008) | `[STUB]` | `msez-corridor/src/swift.rs` | Unit tests |
+| Circle USDC | `[STUB]` | `msez-corridor/src/payment_rail.rs` | Unit tests |
+| OFAC sanctions list | `[IMPLEMENTED]` | `msez-pack/src/regpack.rs` (sanctions sync) | Integration tests |
+| EU sanctions list | `[IMPLEMENTED]` | `msez-pack/src/regpack.rs` | Integration tests |
+| UN sanctions list | `[IMPLEMENTED]` | `msez-pack/src/regpack.rs` | Integration tests |
 
 ---
 
@@ -241,7 +308,14 @@ These invariants must hold at all times. Violating any is a blocking code review
 3. **No cycles in the dependency graph.**
 4. **`msez-api` is the only crate that composes all others.** No other crate depends on `msez-api`.
 5. **All SHA-256 computation flows through `msez-core::digest`.** Three-tier model: (a) serializable domain objects → `CanonicalBytes::new()` + `sha256_digest()`, (b) raw bytes → `sha256_raw()`, (c) streaming multi-part → `Sha256Accumulator`. Direct `sha2::Sha256` usage outside `msez-core` is permitted ONLY for MMR node hashing in `msez-crypto` (needs raw `[u8; 32]`, not hex). Grep for `sha2::Sha256` — it should appear only in `msez-core/src/canonical.rs`, `msez-core/src/digest.rs`, and `msez-crypto/src/mmr.rs`.
-6. **`ComplianceDomain` is defined once in `msez-core`.** 20 variants. Exhaustive match everywhere. No other crate defines its own domain enum.
+6. **`ComplianceDomain` is defined once in `msez-core`.** 20 variants. Exhaustive match everywhere. No other crate defines its own domain enum. Compile-time assertion enforces `COUNT == 20`.
+
+**Canonical 20 ComplianceDomain Variants:**
+```
+Aml, Kyc, Sanctions, Tax, Securities, Corporate, Custody, DataPrivacy,
+Licensing, Banking, Payments, Clearing, Settlement, DigitalAssets,
+Employment, Immigration, Ip, ConsumerProtection, Arbitration, Trade
+```
 
 **Dependency tree (leaf → root):**
 ```
@@ -408,7 +482,7 @@ The codebase is production-ready when:
 
 ---
 
-**End of CLAUDE.md v6.0**
+**End of CLAUDE.md v7.0**
 
 Momentum · `momentum.inc`  
 Mass · `mass.inc`  

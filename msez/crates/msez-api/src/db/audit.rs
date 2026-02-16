@@ -22,14 +22,25 @@ pub struct AuditEvent {
 ///
 /// Computes the event hash by chaining with the previous event's hash.
 /// If no previous event exists, the chain starts with a zero hash.
+///
+/// ## Atomicity
+///
+/// Uses a Postgres transaction with `FOR UPDATE` on the most recent event
+/// to serialize concurrent appends and prevent hash chain forks (TOCTOU).
+/// Without this lock, two concurrent appends could both read the same
+/// `previous_hash` and create divergent chains.
 pub async fn append(pool: &PgPool, event: AuditEvent) -> Result<Uuid, sqlx::Error> {
     let id = Uuid::new_v4();
 
-    // Fetch the most recent event hash for chain integrity.
-    let previous_hash: Option<String> =
-        sqlx::query_scalar("SELECT event_hash FROM audit_events ORDER BY created_at DESC LIMIT 1")
-            .fetch_optional(pool)
-            .await?;
+    let mut tx = pool.begin().await?;
+
+    // Fetch the most recent event hash under an exclusive lock to prevent
+    // concurrent appends from reading the same previous_hash (TOCTOU).
+    let previous_hash: Option<String> = sqlx::query_scalar(
+        "SELECT event_hash FROM audit_events ORDER BY created_at DESC LIMIT 1 FOR UPDATE",
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
 
     let prev = previous_hash
         .as_deref()
@@ -38,9 +49,16 @@ pub async fn append(pool: &PgPool, event: AuditEvent) -> Result<Uuid, sqlx::Erro
     // Compute event hash via CanonicalBytes — deterministic JSON canonicalization
     // with sorted keys, not fragile string concatenation. Keys are alphabetically
     // sorted in the json!() literal to match JCS output for readability.
+    //
+    // All user-controlled fields (actor_did, metadata) are included in the hash
+    // so that tampering with ANY column breaks the chain.
+    let metadata_str = serde_json::to_string(&event.metadata)
+        .map_err(|e| sqlx::Error::Protocol(format!("metadata serialization error: {e}")))?;
     let hash_object = serde_json::json!({
         "action": &event.action,
+        "actor_did": &event.actor_did,
         "event_type": &event.event_type,
+        "metadata": &metadata_str,
         "previous_hash": prev,
         "resource_id": event.resource_id.to_string(),
         "resource_type": &event.resource_type,
@@ -63,13 +81,22 @@ pub async fn append(pool: &PgPool, event: AuditEvent) -> Result<Uuid, sqlx::Erro
     .bind(&event.metadata)
     .bind(prev)
     .bind(&event_hash)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
+
+    tx.commit().await?;
 
     Ok(id)
 }
 
+/// Maximum rows returned from a resource event query to prevent unbounded
+/// memory allocation from resources with extremely long audit trails.
+const EVENTS_MAX_ROWS: i64 = 50_000;
+
 /// Query audit events for a specific resource.
+///
+/// Returns at most [`EVENTS_MAX_ROWS`] records (oldest first) to prevent
+/// unbounded memory growth.
 pub async fn events_for_resource(
     pool: &PgPool,
     resource_type: &str,
@@ -80,10 +107,11 @@ pub async fn events_for_resource(
          action, metadata, previous_hash, event_hash, created_at
          FROM audit_events
          WHERE resource_type = $1 AND resource_id = $2
-         ORDER BY created_at ASC",
+         ORDER BY created_at ASC LIMIT $3",
     )
     .bind(resource_type)
     .bind(resource_id)
+    .bind(EVENTS_MAX_ROWS)
     .fetch_all(pool)
     .await
 }

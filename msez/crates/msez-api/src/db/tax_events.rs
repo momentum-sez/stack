@@ -73,7 +73,13 @@ pub async fn get_by_id(pool: &PgPool, id: Uuid) -> Result<Option<TaxEventRecord>
     Ok(row.map(TaxEventRow::into_record))
 }
 
+/// Maximum rows returned from a list query to prevent unbounded memory growth.
+const LIST_MAX_ROWS: i64 = 10_000;
+
 /// List tax events by entity ID, with optional jurisdiction and tax year filters.
+///
+/// Returns at most [`LIST_MAX_ROWS`] records to prevent unbounded memory
+/// allocation from entities with very large tax event histories.
 pub async fn list_by_entity(
     pool: &PgPool,
     entity_id: Uuid,
@@ -81,64 +87,67 @@ pub async fn list_by_entity(
     tax_year: Option<&str>,
 ) -> Result<Vec<TaxEventRecord>, sqlx::Error> {
     // Build the query dynamically based on provided filters.
-    let mut query = String::from(
-        "SELECT id, entity_id, event_type, tax_category, jurisdiction_id,
-         gross_amount, withholding_amount, net_amount, currency, tax_year,
-         ntn, filer_status, statutory_section, withholding_executed,
-         mass_payment_id, rules_applied, created_at
-         FROM tax_events WHERE entity_id = $1",
-    );
-
-    let mut param_idx = 2;
-
-    if jurisdiction_id.is_some() {
-        query.push_str(&format!(" AND jurisdiction_id = ${param_idx}"));
-        param_idx += 1;
-    }
-
-    if tax_year.is_some() {
-        query.push_str(&format!(" AND tax_year = ${param_idx}"));
-    }
-
-    query.push_str(" ORDER BY created_at DESC");
-
-    // SQLx doesn't have a great dynamic query builder, so we use conditional binding.
-    // For simplicity, use the most common case (entity + optional filters) with raw SQL.
+    // Each branch appends `LIMIT $N` as the final parameter for safety.
     let rows = match (jurisdiction_id, tax_year) {
         (Some(jid), Some(ty)) => {
-            sqlx::query_as::<_, TaxEventRow>(&query)
-                .bind(entity_id)
-                .bind(jid)
-                .bind(ty)
-                .fetch_all(pool)
-                .await?
+            sqlx::query_as::<_, TaxEventRow>(
+                "SELECT id, entity_id, event_type, tax_category, jurisdiction_id,
+                 gross_amount, withholding_amount, net_amount, currency, tax_year,
+                 ntn, filer_status, statutory_section, withholding_executed,
+                 mass_payment_id, rules_applied, created_at
+                 FROM tax_events WHERE entity_id = $1 AND jurisdiction_id = $2 AND tax_year = $3
+                 ORDER BY created_at DESC LIMIT $4",
+            )
+            .bind(entity_id)
+            .bind(jid)
+            .bind(ty)
+            .bind(LIST_MAX_ROWS)
+            .fetch_all(pool)
+            .await?
         }
         (Some(jid), None) => {
-            sqlx::query_as::<_, TaxEventRow>(&query)
-                .bind(entity_id)
-                .bind(jid)
-                .fetch_all(pool)
-                .await?
+            sqlx::query_as::<_, TaxEventRow>(
+                "SELECT id, entity_id, event_type, tax_category, jurisdiction_id,
+                 gross_amount, withholding_amount, net_amount, currency, tax_year,
+                 ntn, filer_status, statutory_section, withholding_executed,
+                 mass_payment_id, rules_applied, created_at
+                 FROM tax_events WHERE entity_id = $1 AND jurisdiction_id = $2
+                 ORDER BY created_at DESC LIMIT $3",
+            )
+            .bind(entity_id)
+            .bind(jid)
+            .bind(LIST_MAX_ROWS)
+            .fetch_all(pool)
+            .await?
         }
         (None, Some(ty)) => {
-            // Rebuild query for this case since param index differs.
-            let q = "SELECT id, entity_id, event_type, tax_category, jurisdiction_id,
-                     gross_amount, withholding_amount, net_amount, currency, tax_year,
-                     ntn, filer_status, statutory_section, withholding_executed,
-                     mass_payment_id, rules_applied, created_at
-                     FROM tax_events WHERE entity_id = $1 AND tax_year = $2
-                     ORDER BY created_at DESC";
-            sqlx::query_as::<_, TaxEventRow>(q)
-                .bind(entity_id)
-                .bind(ty)
-                .fetch_all(pool)
-                .await?
+            sqlx::query_as::<_, TaxEventRow>(
+                "SELECT id, entity_id, event_type, tax_category, jurisdiction_id,
+                 gross_amount, withholding_amount, net_amount, currency, tax_year,
+                 ntn, filer_status, statutory_section, withholding_executed,
+                 mass_payment_id, rules_applied, created_at
+                 FROM tax_events WHERE entity_id = $1 AND tax_year = $2
+                 ORDER BY created_at DESC LIMIT $3",
+            )
+            .bind(entity_id)
+            .bind(ty)
+            .bind(LIST_MAX_ROWS)
+            .fetch_all(pool)
+            .await?
         }
         (None, None) => {
-            sqlx::query_as::<_, TaxEventRow>(&query)
-                .bind(entity_id)
-                .fetch_all(pool)
-                .await?
+            sqlx::query_as::<_, TaxEventRow>(
+                "SELECT id, entity_id, event_type, tax_category, jurisdiction_id,
+                 gross_amount, withholding_amount, net_amount, currency, tax_year,
+                 ntn, filer_status, statutory_section, withholding_executed,
+                 mass_payment_id, rules_applied, created_at
+                 FROM tax_events WHERE entity_id = $1
+                 ORDER BY created_at DESC LIMIT $2",
+            )
+            .bind(entity_id)
+            .bind(LIST_MAX_ROWS)
+            .fetch_all(pool)
+            .await?
         }
     };
 

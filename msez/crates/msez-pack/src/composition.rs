@@ -77,9 +77,18 @@ fn lazy_static_regex(s: &str) -> bool {
     if tail.is_empty() {
         return false;
     }
+    let mut prev_was_hyphen = false;
     for ch in tail.bytes() {
         if !ch.is_ascii_lowercase() && !ch.is_ascii_digit() && ch != b'-' {
             return false;
+        }
+        if ch == b'-' {
+            if prev_was_hyphen {
+                return false; // reject double hyphens
+            }
+            prev_was_hyphen = true;
+        } else {
+            prev_was_hyphen = false;
         }
     }
     // No trailing hyphen

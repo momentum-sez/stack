@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+use crate::auth::{require_role, CallerIdentity, Role};
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
 use crate::state::{AppState, CorridorRecord};
@@ -236,8 +237,10 @@ pub fn router() -> Router<AppState> {
 )]
 async fn create_corridor(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     body: Result<Json<CreateCorridorRequest>, JsonRejection>,
 ) -> Result<(axum::http::StatusCode, Json<CorridorRecord>), AppError> {
+    require_role(&caller, Role::ZoneAdmin)?;
     let req = extract_validated_json(body)?;
     let now = Utc::now();
     let id = Uuid::new_v4();
@@ -342,9 +345,11 @@ async fn get_corridor(
 )]
 async fn transition_corridor(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Path(id): Path<Uuid>,
     body: Result<Json<TransitionCorridorRequest>, JsonRejection>,
 ) -> Result<Json<CorridorRecord>, AppError> {
+    require_role(&caller, Role::ZoneAdmin)?;
     let req = extract_validated_json(body)?;
 
     // Parse the target state.
@@ -789,14 +794,25 @@ mod tests {
 
     // ── Handler integration tests ──────────────────────────────────
 
+    use crate::auth::{CallerIdentity, Role};
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
-    /// Helper: build the corridors router with a fresh AppState.
+    fn zone_admin() -> CallerIdentity {
+        CallerIdentity {
+            role: Role::ZoneAdmin,
+            entity_id: None,
+            jurisdiction_id: None,
+        }
+    }
+
+    /// Helper: build the corridors router with a fresh AppState and ZoneAdmin identity.
     fn test_app() -> Router<()> {
-        router().with_state(AppState::new())
+        router()
+            .layer(axum::Extension(zone_admin()))
+            .with_state(AppState::new())
     }
 
     /// Helper: read the response body as bytes and deserialize from JSON.
@@ -878,7 +894,7 @@ mod tests {
     #[tokio::test]
     async fn handler_list_corridors_after_create_returns_one() {
         let state = AppState::new();
-        let app = router().with_state(state.clone());
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state.clone());
 
         // Create a corridor.
         let create_req = Request::builder()
@@ -926,7 +942,7 @@ mod tests {
     #[tokio::test]
     async fn handler_get_corridor_found_returns_200() {
         let state = AppState::new();
-        let app = router().with_state(state.clone());
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state.clone());
 
         // Create a corridor.
         let create_req = Request::builder()
@@ -974,7 +990,7 @@ mod tests {
     #[tokio::test]
     async fn handler_transition_corridor_returns_200() {
         let state = AppState::new();
-        let app = router().with_state(state.clone());
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state.clone());
 
         // A valid 64-char hex string (a proper SHA-256 digest).
         let evidence_hex = "a".repeat(64);
@@ -1063,7 +1079,7 @@ mod tests {
     #[tokio::test]
     async fn handler_transition_corridor_invalid_state_returns_422() {
         let state = AppState::new();
-        let app = router().with_state(state.clone());
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state.clone());
 
         // Create a corridor.
         let create_req = Request::builder()
@@ -1092,7 +1108,7 @@ mod tests {
     async fn handler_transition_corridor_bad_json_returns_422() {
         // BUG-038: JSON parse errors now return 422 (Unprocessable Entity).
         let state = AppState::new();
-        let app = router().with_state(state.clone());
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state.clone());
 
         // Create a corridor.
         let create_req = Request::builder()
@@ -1160,7 +1176,7 @@ mod tests {
     #[tokio::test]
     async fn propose_receipt_returns_valid_digest_and_mmr_root() {
         let state = AppState::new();
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state);
 
         let corridor_id = create_test_corridor(&app).await;
         let (status, receipt) = propose_test_receipt(
@@ -1189,7 +1205,7 @@ mod tests {
     #[tokio::test]
     async fn two_receipts_form_chain() {
         let state = AppState::new();
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state);
 
         let corridor_id = create_test_corridor(&app).await;
 
@@ -1255,7 +1271,7 @@ mod tests {
     #[tokio::test]
     async fn propose_receipt_null_payload_returns_422() {
         let state = AppState::new();
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state);
 
         let corridor_id = create_test_corridor(&app).await;
         let body_str = serde_json::to_string(&serde_json::json!({
@@ -1293,8 +1309,8 @@ mod tests {
     async fn propose_receipt_deterministic_digest() {
         // Two proposals with the same payload should produce the same next_root.
         let state = AppState::new();
-        let app = router().with_state(state.clone());
-        let app2 = router().with_state(state);
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state.clone());
+        let app2 = router().layer(axum::Extension(zone_admin())).with_state(state);
 
         let corridor_id_a = create_test_corridor(&app).await;
         let corridor_id_b = create_test_corridor(&app2).await;
@@ -1454,7 +1470,7 @@ mod tests {
     #[tokio::test]
     async fn transition_draft_to_pending_succeeds() {
         let state = AppState::new();
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state);
 
         let id = create_test_corridor(&app).await;
         let (status, resp) = create_and_transition(&app, id, "PENDING").await;
@@ -1471,7 +1487,7 @@ mod tests {
     async fn transition_draft_to_active_returns_409() {
         // DRAFT -> ACTIVE is illegal (must go through PENDING first).
         let state = AppState::new();
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state);
 
         let id = create_test_corridor(&app).await;
         let (status, resp) = create_and_transition(&app, id, "ACTIVE").await;
@@ -1490,7 +1506,7 @@ mod tests {
         // DRAFT -> DEPRECATED is the most egregious illegal transition the old
         // handler allowed. The typestate machine makes this impossible.
         let state = AppState::new();
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state);
 
         let id = create_test_corridor(&app).await;
         let (status, resp) = create_and_transition(&app, id, "DEPRECATED").await;
@@ -1508,7 +1524,7 @@ mod tests {
     async fn transition_deprecated_to_anything_returns_409() {
         // DEPRECATED is terminal. No transitions out.
         let state = AppState::new();
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state);
 
         let id = create_test_corridor(&app).await;
 
@@ -1534,7 +1550,7 @@ mod tests {
     async fn full_lifecycle_draft_to_deprecated() {
         // Walk the full happy path: DRAFT -> PENDING -> ACTIVE -> HALTED -> DEPRECATED.
         let state = AppState::new();
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state);
 
         let id = create_test_corridor(&app).await;
 
@@ -1578,7 +1594,7 @@ mod tests {
     async fn suspend_and_resume_cycle() {
         // DRAFT -> PENDING -> ACTIVE -> SUSPENDED -> ACTIVE.
         let state = AppState::new();
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state);
 
         let id = create_test_corridor(&app).await;
         create_and_transition(&app, id, "PENDING").await;
@@ -1605,7 +1621,7 @@ mod tests {
         // Send target_state: "OPERATIONAL" (the defective Python v1 name).
         // This test proves audit finding §2.3 is enforced at the API boundary.
         let state = AppState::new();
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state);
 
         let id = create_test_corridor(&app).await;
         let body = r#"{"target_state":"OPERATIONAL"}"#;
@@ -1628,7 +1644,7 @@ mod tests {
         // SUSPENDED -> HALTED is not in the transition graph.
         // Only SUSPENDED -> ACTIVE is valid.
         let state = AppState::new();
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state);
 
         let id = create_test_corridor(&app).await;
         create_and_transition(&app, id, "PENDING").await;
@@ -1643,7 +1659,7 @@ mod tests {
     async fn halted_cannot_transition_to_active() {
         // HALTED -> ACTIVE is not valid. Only HALTED -> DEPRECATED.
         let state = AppState::new();
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state);
 
         let id = create_test_corridor(&app).await;
         create_and_transition(&app, id, "PENDING").await;
@@ -1657,7 +1673,7 @@ mod tests {
     #[tokio::test]
     async fn evidence_digest_validation_rejects_invalid_hex() {
         let state = AppState::new();
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(zone_admin())).with_state(state);
 
         let id = create_test_corridor(&app).await;
         // Send an evidence_digest that is not valid 64-char hex.

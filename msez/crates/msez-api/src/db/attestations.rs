@@ -59,7 +59,13 @@ pub async fn get_by_id(pool: &PgPool, id: Uuid) -> Result<Option<AttestationReco
     Ok(row.map(AttestationRow::into_record))
 }
 
+/// Maximum rows returned from a list query to prevent unbounded memory growth.
+const LIST_MAX_ROWS: i64 = 10_000;
+
 /// List attestations by entity ID.
+///
+/// Returns at most [`LIST_MAX_ROWS`] records to prevent unbounded memory
+/// allocation from entities with very large attestation histories.
 pub async fn list_by_entity(
     pool: &PgPool,
     entity_id: Uuid,
@@ -67,9 +73,10 @@ pub async fn list_by_entity(
     let rows = sqlx::query_as::<_, AttestationRow>(
         "SELECT id, entity_id, attestation_type, issuer, status,
          jurisdiction_id, issued_at, expires_at, details
-         FROM attestations WHERE entity_id = $1 ORDER BY issued_at DESC",
+         FROM attestations WHERE entity_id = $1 ORDER BY issued_at DESC LIMIT $2",
     )
     .bind(entity_id)
+    .bind(LIST_MAX_ROWS)
     .fetch_all(pool)
     .await?;
 

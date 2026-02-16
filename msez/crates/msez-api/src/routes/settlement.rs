@@ -22,6 +22,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+use crate::auth::{require_role, CallerIdentity, Role};
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
 use crate::state::AppState;
@@ -289,9 +290,11 @@ pub fn router() -> Router<AppState> {
 )]
 async fn compute_settlement(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Path(corridor_id): Path<Uuid>,
     body: Result<Json<SettlementComputeRequest>, JsonRejection>,
 ) -> Result<Json<SettlementPlanResponse>, AppError> {
+    require_role(&caller, Role::Regulator)?;
     // Verify the corridor exists.
     let _corridor = state
         .corridors
@@ -477,9 +480,11 @@ async fn find_route(
 )]
 async fn generate_instructions(
     State(state): State<AppState>,
+    caller: CallerIdentity,
     Path(corridor_id): Path<Uuid>,
     body: Result<Json<InstructionRequest>, JsonRejection>,
 ) -> Result<Json<InstructionResponse>, AppError> {
+    require_role(&caller, Role::Regulator)?;
     let req = extract_validated_json(body)?;
 
     // Verify the corridor exists.
@@ -545,6 +550,7 @@ async fn generate_instructions(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::auth::{CallerIdentity, Role};
     use crate::state::{AppState, CorridorRecord};
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
@@ -554,6 +560,14 @@ mod tests {
     use msez_state::DynCorridorState;
     use tower::ServiceExt;
 
+    fn regulator() -> CallerIdentity {
+        CallerIdentity {
+            role: Role::Regulator,
+            entity_id: None,
+            jurisdiction_id: Some("PK".to_string()),
+        }
+    }
+
     /// Helper: read the response body as JSON.
     async fn body_json<T: serde::de::DeserializeOwned>(resp: axum::response::Response) -> T {
         let bytes = resp.into_body().collect().await.unwrap().to_bytes();
@@ -562,7 +576,9 @@ mod tests {
 
     /// Helper: build a test app with the settlement router.
     fn test_app() -> Router<()> {
-        router().with_state(AppState::new())
+        router()
+            .layer(axum::Extension(regulator()))
+            .with_state(AppState::new())
     }
 
     /// Helper: create a corridor directly in AppState and return its UUID.
@@ -606,7 +622,7 @@ mod tests {
             ]
         });
 
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(regulator())).with_state(state);
         let req = Request::builder()
             .method("POST")
             .uri(format!("/v1/corridors/{corridor_id}/settlement/compute"))
@@ -660,7 +676,7 @@ mod tests {
 
         let body = serde_json::json!({ "obligations": [] });
 
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(regulator())).with_state(state);
         let req = Request::builder()
             .method("POST")
             .uri(format!("/v1/corridors/{corridor_id}/settlement/compute"))
@@ -686,7 +702,7 @@ mod tests {
             ]
         });
 
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(regulator())).with_state(state);
         let req = Request::builder()
             .method("POST")
             .uri(format!("/v1/corridors/{corridor_id}/settlement/compute"))
@@ -715,7 +731,7 @@ mod tests {
             ]
         });
 
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(regulator())).with_state(state);
         let req = Request::builder()
             .method("POST")
             .uri(format!("/v1/corridors/{corridor_id}/settlement/compute"))
@@ -749,7 +765,7 @@ mod tests {
             "target": "kz-aifc"
         });
 
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(regulator())).with_state(state);
         let req = Request::builder()
             .method("POST")
             .uri("/v1/corridors/route")
@@ -781,7 +797,7 @@ mod tests {
             "target": "kz-aifc"
         });
 
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(regulator())).with_state(state);
         let req = Request::builder()
             .method("POST")
             .uri("/v1/corridors/route")
@@ -847,7 +863,7 @@ mod tests {
             "target": "ae-difc"
         });
 
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(regulator())).with_state(state);
         let req = Request::builder()
             .method("POST")
             .uri("/v1/corridors/route")
@@ -869,7 +885,7 @@ mod tests {
             "target": "ae-difc"
         });
 
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(regulator())).with_state(state);
         let req = Request::builder()
             .method("POST")
             .uri("/v1/corridors/route")
@@ -893,7 +909,7 @@ mod tests {
             "default_settlement_time_secs": 7200
         });
 
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(regulator())).with_state(state);
         let req = Request::builder()
             .method("POST")
             .uri("/v1/corridors/route")
@@ -929,7 +945,7 @@ mod tests {
             }]
         });
 
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(regulator())).with_state(state);
         let req = Request::builder()
             .method("POST")
             .uri(format!("/v1/corridors/{corridor_id}/settlement/instruct"))
@@ -988,7 +1004,7 @@ mod tests {
 
         let body = serde_json::json!({ "legs": [] });
 
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(regulator())).with_state(state);
         let req = Request::builder()
             .method("POST")
             .uri(format!("/v1/corridors/{corridor_id}/settlement/instruct"))
@@ -1017,7 +1033,7 @@ mod tests {
             }]
         });
 
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(regulator())).with_state(state);
         let req = Request::builder()
             .method("POST")
             .uri(format!("/v1/corridors/{corridor_id}/settlement/instruct"))
@@ -1063,7 +1079,7 @@ mod tests {
             ]
         });
 
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(regulator())).with_state(state);
         let req = Request::builder()
             .method("POST")
             .uri(format!("/v1/corridors/{corridor_id}/settlement/instruct"))
@@ -1099,7 +1115,7 @@ mod tests {
             }]
         });
 
-        let app = router().with_state(state);
+        let app = router().layer(axum::Extension(regulator())).with_state(state);
         let req = Request::builder()
             .method("POST")
             .uri(format!("/v1/corridors/{corridor_id}/settlement/instruct"))

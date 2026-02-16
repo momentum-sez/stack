@@ -1,12 +1,12 @@
 const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
-  codeBlock, table, spacer, pageBreak
+  codeBlock, table, spacer
 } = require("../lib/primitives");
 
 module.exports = function build_chapter12() {
   return [
-    pageBreak(),
+    // No pageBreak() needed here — chapterHeading() has pageBreakBefore: true built in.
     chapterHeading("Chapter 12: Multi-Jurisdiction Composition Engine (v0.4.44)"),
 
     // --- 12.1 Design Thesis ---

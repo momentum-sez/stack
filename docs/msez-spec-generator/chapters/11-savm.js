@@ -2,12 +2,12 @@ const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
   codeBlock, table,
-  spacer, pageBreak, definition
+  spacer, definition
 } = require("../lib/primitives");
 
 module.exports = function build_chapter11() {
   return [
-    pageBreak(),
+    // No pageBreak() needed here — chapterHeading() has pageBreakBefore: true built in.
     chapterHeading("Chapter 11: Smart Asset Virtual Machine"),
 
     // --- 11.1 Architecture ---

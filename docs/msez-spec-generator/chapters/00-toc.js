@@ -11,7 +11,7 @@ module.exports = function build_toc() {
     }),
     new TableOfContents("Table of Contents", {
       hyperlink: true,
-      headingStyleRange: "1-3",
+      headingStyleRange: "1-2",  // Chapters (H1) + Sections (H2) only. Part display headings excluded (no heading level). H3 subsections excluded.
     }),
     pageBreak()
   ];

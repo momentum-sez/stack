@@ -1,12 +1,12 @@
 const {
   chapterHeading, h2, h3,
-  p, p_runs, bold, pageBreak, table,
+  p, p_runs, bold, table,
   spacer, codeBlock
 } = require("../lib/primitives");
 
 module.exports = function build_chapter33() {
   return [
-    pageBreak(),
+    // No pageBreak() needed here — chapterHeading() has pageBreakBefore: true built in.
     chapterHeading("Chapter 33: Identity and Credentialing Module Family"),
 
     // --- 33.1 Module Overview ---

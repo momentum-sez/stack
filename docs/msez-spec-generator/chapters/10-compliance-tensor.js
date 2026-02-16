@@ -2,12 +2,12 @@ const {
   chapterHeading, h2, h3,
   p, p_runs, bold,
   definition, codeBlock, table,
-  spacer, pageBreak
+  spacer
 } = require("../lib/primitives");
 
 module.exports = function build_chapter10() {
   return [
-    pageBreak(),
+    // pageBreak() removed — chapterHeading() now includes pageBreakBefore: true
     chapterHeading("Chapter 10: Compliance Tensor V2"),
 
     // --- 10.1 Mathematical Definition ---
@@ -57,33 +57,35 @@ module.exports = function build_chapter10() {
     spacer(),
 
     // --- 10.2 Compliance Domains ---
+    // IMPORTANT: These 20 domains match the ComplianceDomain enum in
+    // msez-core/src/domain.rs exactly. Any change here must be reflected there and vice versa.
     h2("10.2 Compliance Domains"),
-    p("Twenty compliance domains span the regulatory landscape:"),
+    p("Twenty compliance domains span the regulatory landscape. These are the canonical variants of the ComplianceDomain enum in msez-core, listed in declaration order. The Rust compiler enforces exhaustive match on this enum \u2014 adding a domain forces every handler in the codebase to address it."),
     table(
-      ["Domain", "Description"],
+      ["Domain", "Enum Variant", "Description"],
       [
-        ["CIVIC", "Civic obligations including residency, nationality, and public registry requirements"],
-        ["CORPORATE", "Corporate governance, formation, director duties, and beneficial ownership"],
-        ["COMMERCIAL", "Commercial law including contracts, trade, and consumer protection"],
-        ["FINANCIAL", "Financial regulation including prudential requirements and capital adequacy"],
-        ["SECURITIES", "Securities law including issuance, trading, and disclosure obligations"],
-        ["BANKING", "Banking regulation including deposit-taking, lending, and reserve requirements"],
-        ["PAYMENTS", "Payment systems regulation including e-money, remittance, and settlement"],
-        ["DIGITAL_ASSETS", "Digital asset regulation including classification, custody, and exchange"],
-        ["TAX", "Tax obligations including income, withholding, VAT/GST, and transfer pricing"],
-        ["AML_CFT", "Anti-money laundering and counter-terrorism financing requirements"],
-        ["DATA_PROTECTION", "Data protection and privacy including cross-border transfer restrictions"],
-        ["ARBITRATION", "Dispute resolution including arbitration, mediation, and enforcement"],
-        ["LICENSING", "Licensing requirements including permits, registrations, and renewals"],
-        ["INSURANCE", "Insurance regulation including mandatory coverage, reinsurance, and solvency requirements"],
-        ["ENVIRONMENTAL", "Environmental compliance including emissions, waste management, and impact assessments"],
-        ["LABOR", "Labor law including employment contracts, workplace safety, and collective bargaining"],
-        ["INTELLECTUAL_PROPERTY", "Intellectual property including patents, trademarks, copyrights, and trade secrets"],
-        ["IMMIGRATION", "Immigration requirements including work permits, visas, and foreign worker quotas"],
-        ["REAL_ESTATE", "Real estate regulation including land ownership, zoning, and foreign ownership restrictions"],
-        ["HEALTH_SAFETY", "Health and safety regulation including occupational hazards, public health, and product safety"],
+        ["AML", "Aml", "Anti-money laundering: transaction monitoring, suspicious activity reporting"],
+        ["KYC", "Kyc", "Know Your Customer: identity verification, due diligence"],
+        ["Sanctions", "Sanctions", "Sanctions screening: OFAC, UN, EU consolidated lists"],
+        ["Tax", "Tax", "Tax compliance: withholding, reporting, filing obligations"],
+        ["Securities", "Securities", "Securities regulation: issuance, trading, disclosure"],
+        ["Corporate", "Corporate", "Corporate governance: formation, dissolution, beneficial ownership"],
+        ["Custody", "Custody", "Custody requirements: asset safekeeping, segregation"],
+        ["Data Privacy", "DataPrivacy", "Data privacy: GDPR, PDPA, cross-border data transfer restrictions"],
+        ["Licensing", "Licensing", "Licensing: business license validity, professional certifications"],
+        ["Banking", "Banking", "Banking regulation: reserve requirements, capital adequacy"],
+        ["Payments", "Payments", "Payment services: PSP licensing, payment instrument rules"],
+        ["Clearing", "Clearing", "Clearing and settlement: CCP rules, netting, finality"],
+        ["Settlement", "Settlement", "Settlement finality: delivery-versus-payment, settlement cycles"],
+        ["Digital Assets", "DigitalAssets", "Digital asset regulation: token classification, exchange licensing"],
+        ["Employment", "Employment", "Employment law: labor contracts, social security, withholding"],
+        ["Immigration", "Immigration", "Immigration: work permits, visa sponsorship, residency"],
+        ["IP", "Ip", "Intellectual property: patent, trademark, trade secret"],
+        ["Consumer Protection", "ConsumerProtection", "Consumer protection: disclosure, dispute resolution, warranties"],
+        ["Arbitration", "Arbitration", "Arbitration: dispute resolution frameworks, enforcement"],
+        ["Trade", "Trade", "Trade regulation: import/export controls, customs, tariffs"],
       ],
-      [2400, 6960]
+      [1800, 2000, 5560]
     ),
     spacer(),
 

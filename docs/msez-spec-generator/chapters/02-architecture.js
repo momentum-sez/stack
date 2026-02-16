@@ -1,12 +1,11 @@
 const {
   chapterHeading, h2, h3, p, p_runs, bold,
-  table, codeBlock, spacer, pageBreak
+  table, codeBlock, spacer
 } = require("../lib/primitives");
 
 module.exports = function build_chapter02() {
   return [
-    pageBreak(),
-
+    // No pageBreak() needed here — chapterHeading() has pageBreakBefore: true built in.
     chapterHeading("Chapter 2: Architecture Overview"),
 
     p("The SEZ Stack is organized as a layered architecture where each layer has a well-defined responsibility and interacts only with adjacent layers. This section provides the structural overview; subsequent chapters specify each component in detail."),

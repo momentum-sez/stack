@@ -27,6 +27,7 @@
 //! | `/v1/policies/*`      | [`routes::agentic`]        | Policy Mgmt (SEZ)   |
 //! | `/v1/tax/*`           | [`routes::tax`]            | Tax Pipeline (SEZ)  |
 //! | `/v1/regulator/*`     | [`routes::regulator`]      | Regulator (SEZ)     |
+//! | `/v1/govos/*`         | [`routes::govos`]          | GovOS Console (SEZ) |
 //!
 //! ## Middleware Stack (execution order)
 //!
@@ -99,6 +100,9 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::smart_assets::router())
         .merge(routes::credentials::router())
         .merge(routes::regulator::router())
+        // GovOS Console — M-009: Pakistan sovereign deployment dashboards
+        // (GovOS Console, Tax & Revenue, Digital Free Zone, Citizen Services).
+        .merge(routes::govos::router())
         .merge(routes::agentic::router())
         .merge(openapi::router())
         .layer(DefaultBodyLimit::max(2 * 1024 * 1024))

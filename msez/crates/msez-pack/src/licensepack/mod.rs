@@ -1,7 +1,8 @@
 //! # Licensepack — License Lifecycle Management
 //!
 //! Manages the full lifecycle of business licenses, professional certifications,
-//! and regulatory authorizations (15+ categories for Pakistan deployment).
+//! and regulatory authorizations. Pakistan deployment covers 5 authorities
+//! (SECP, SBP, PTA, PEMRA, DRAP) with 17+ license type definitions.
 //!
 //! ## Module Structure
 //!
@@ -36,6 +37,7 @@
 pub mod components;
 pub mod license;
 pub mod pack;
+pub mod pakistan;
 pub mod reference;
 pub mod types;
 
@@ -48,4 +50,5 @@ pub use reference::{
     canonical_json_bytes, evaluate_license_compliance, resolve_licensepack_refs,
     LicensepackArtifactInfo, LicensepackLock, LicensepackLockInfo, LicensepackRef,
 };
+pub use pakistan::{pakistan_license_types, pakistan_regulators};
 pub use types::{LicenseComplianceState, LicenseDomain, LicenseStatus};

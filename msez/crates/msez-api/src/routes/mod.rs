@@ -14,6 +14,9 @@
 //! - `smart_assets` — Smart asset lifecycle (SEZ Stack domain).
 //! - `credentials` — VC issuance on compliance evaluation, VC verification.
 //! - `regulator` — Read-only regulator console (SEZ Stack domain).
+//! - `govos` — GovOS Console dashboards for Pakistan sovereign deployment:
+//!   GovOS Console (40+ ministries), Tax & Revenue, Digital Free Zone,
+//!   Citizen Tax & Services (M-009).
 //! - `agentic` — Autonomous policy engine: trigger ingestion, policy management,
 //!   and reactive corridor transitions via the typestate machine.
 //! - `tax` — Tax collection pipeline: event recording, withholding computation,
@@ -22,6 +25,7 @@
 pub mod agentic;
 pub mod corridors;
 pub mod credentials;
+pub mod govos;
 pub mod identity;
 pub mod mass_proxy;
 pub mod regulator;

@@ -136,6 +136,7 @@ async fn liveness() -> &'static str {
 /// - Policy engine lock is acquirable (not deadlocked).
 /// - In-memory stores are accessible.
 /// - Database connection is healthy (when configured).
+/// - Mass API connectivity (when client is configured).
 ///
 /// Returns 200 "ready" or 503 with a diagnostic message.
 async fn readiness(State(state): State<AppState>) -> impl IntoResponse {
@@ -161,6 +162,23 @@ async fn readiness(State(state): State<AppState>) -> impl IntoResponse {
         if let Err(e) = sqlx::query("SELECT 1").execute(pool).await {
             tracing::warn!("Database health check failed: {e}");
             return (StatusCode::SERVICE_UNAVAILABLE, "database unreachable").into_response();
+        }
+    }
+
+    // Verify Mass API connectivity (when client is configured).
+    // If mass_client is None, the server already returns 503 on proxy routes,
+    // so the readiness probe passes — the zone may intentionally run without Mass.
+    if let Some(mass_client) = &state.mass_client {
+        let result = mass_client.health_check().await;
+        if !result.all_healthy() {
+            let services: Vec<String> = result
+                .unreachable
+                .iter()
+                .map(|(name, err)| format!("{name}: {err}"))
+                .collect();
+            let msg = format!("mass api unreachable: {}", services.join("; "));
+            tracing::warn!("{}", msg);
+            return (StatusCode::SERVICE_UNAVAILABLE, msg).into_response();
         }
     }
 

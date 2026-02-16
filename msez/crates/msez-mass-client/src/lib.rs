@@ -44,6 +44,24 @@ pub use msez_core::{Cnic, Did, EntityId, JurisdictionId, Ntn};
 
 use std::time::Duration;
 
+/// Result of a health check against the Mass API services.
+///
+/// Reports which core services are reachable and which are not.
+#[derive(Debug, Clone)]
+pub struct HealthCheckResult {
+    /// Services that responded successfully.
+    pub reachable: Vec<String>,
+    /// Services that failed with error details.
+    pub unreachable: Vec<(String, String)>,
+}
+
+impl HealthCheckResult {
+    /// Whether all checked services are reachable.
+    pub fn all_healthy(&self) -> bool {
+        self.unreachable.is_empty()
+    }
+}
+
 /// Top-level Mass API client. Holds sub-clients for each primitive.
 #[derive(Debug, Clone)]
 pub struct MassClient {
@@ -53,6 +71,10 @@ pub struct MassClient {
     identity: identity::IdentityClient,
     consent: consent::ConsentClient,
     templating: templating::TemplatingClient,
+    /// HTTP client for health checks (short timeout, no auth required).
+    health_http: reqwest::Client,
+    /// Base URLs for health check probing (service_name → URL).
+    health_urls: Vec<(String, url::Url)>,
 }
 
 impl MassClient {
@@ -78,6 +100,27 @@ impl MassClient {
                 source: e,
             })?;
 
+        // Short-timeout client for health checks (no auth headers needed).
+        let health_http = reqwest::Client::builder()
+            .timeout(Duration::from_secs(3))
+            .build()
+            .map_err(|e| MassApiError::Http {
+                endpoint: "health_client_init".into(),
+                source: e,
+            })?;
+
+        // Collect the distinct Mass API base URLs for health probing.
+        // Use the Swagger docs endpoint as the health target — it's
+        // lightweight and always available on Spring Boot services.
+        let health_urls = vec![
+            (
+                "organization-info".to_string(),
+                config.organization_info_url.clone(),
+            ),
+            ("treasury-info".to_string(), config.treasury_info_url.clone()),
+            ("consent-info".to_string(), config.consent_info_url.clone()),
+        ];
+
         Ok(Self {
             entities: entities::EntityClient::new(
                 http.clone(),
@@ -100,6 +143,8 @@ impl MassClient {
             ),
             consent: consent::ConsentClient::new(http.clone(), config.consent_info_url),
             templating: templating::TemplatingClient::new(http, config.templating_engine_url),
+            health_http,
+            health_urls,
         })
     }
 
@@ -131,5 +176,49 @@ impl MassClient {
     /// Access the templating-engine client.
     pub fn templating(&self) -> &templating::TemplatingClient {
         &self.templating
+    }
+
+    /// Probe connectivity to the core Mass API services.
+    ///
+    /// Sends a lightweight GET request to each service's Swagger/API docs
+    /// endpoint (which responds without authentication on Spring Boot services).
+    /// Uses a 3-second timeout to avoid blocking the readiness probe.
+    ///
+    /// Returns a [`HealthCheckResult`] with reachable and unreachable services.
+    /// Does not retry — the readiness probe will be called again by the
+    /// orchestrator (K8s, Docker health check).
+    pub async fn health_check(&self) -> HealthCheckResult {
+        let mut reachable = Vec::new();
+        let mut unreachable = Vec::new();
+
+        for (name, base_url) in &self.health_urls {
+            // Spring Boot actuator health endpoint. Falls back to a
+            // simple GET to the context path if actuator is not configured.
+            let health_url = format!("{}{}/v3/api-docs", base_url, name);
+            match self.health_http.get(&health_url).send().await {
+                Ok(resp) if resp.status().is_success() || resp.status().is_redirection() => {
+                    reachable.push(name.clone());
+                }
+                Ok(resp) => {
+                    // Got an HTTP response (service is reachable) but not
+                    // a success status. For health purposes, any response
+                    // from the server means the service is alive.
+                    tracing::debug!(
+                        service = %name,
+                        status = %resp.status(),
+                        "Mass API responded with non-success status (still reachable)"
+                    );
+                    reachable.push(name.clone());
+                }
+                Err(e) => {
+                    unreachable.push((name.clone(), e.to_string()));
+                }
+            }
+        }
+
+        HealthCheckResult {
+            reachable,
+            unreachable,
+        }
     }
 }

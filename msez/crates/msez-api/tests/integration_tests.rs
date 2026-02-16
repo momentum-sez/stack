@@ -914,3 +914,65 @@ async fn test_openapi_contains_all_routes() {
         );
     }
 }
+
+// -- Mass API Health Gating (Deployment Blocker #1) ---------------------------
+
+#[tokio::test]
+async fn test_readiness_probe_passes_without_mass_client() {
+    // When mass_client is None, the readiness probe should pass.
+    // The server already returns 503 on proxy routes in this case.
+    let app = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/health/readiness")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = body_string(response).await;
+    assert_eq!(body, "ready");
+}
+
+#[tokio::test]
+async fn test_readiness_probe_fails_with_unreachable_mass_client() {
+    // When mass_client is Some but Mass APIs are unreachable, readiness
+    // should return 503.
+    let mass_config = msez_mass_client::MassApiConfig {
+        organization_info_url: "http://127.0.0.1:1".parse().unwrap(),
+        investment_info_url: "http://127.0.0.1:2".parse().unwrap(),
+        treasury_info_url: "http://127.0.0.1:3".parse().unwrap(),
+        consent_info_url: "http://127.0.0.1:4".parse().unwrap(),
+        identity_info_url: None,
+        templating_engine_url: "http://127.0.0.1:5".parse().unwrap(),
+        api_token: zeroize::Zeroizing::new("test-token".into()),
+        timeout_secs: 1,
+    };
+    let mass_client = msez_mass_client::MassClient::new(mass_config).unwrap();
+
+    let config = AppConfig {
+        port: 8080,
+        auth_token: None,
+    };
+    let state = AppState::try_with_config(config, Some(mass_client), None)
+        .expect("failed to create AppState");
+    let app = msez_api::app(state);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/health/readiness")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let body = body_string(response).await;
+    assert!(
+        body.contains("mass api unreachable"),
+        "Expected 'mass api unreachable' in body, got: {body}"
+    );
+}

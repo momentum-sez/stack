@@ -216,8 +216,15 @@ impl SovereigntyEnforcer {
         category: DataCategory,
         target_jurisdiction: &str,
     ) -> SovereigntyVerdict {
+        // Case-insensitive comparison: jurisdiction IDs may arrive in mixed
+        // case from different subsystems (e.g., "PK" from policy, "pk" from
+        // currency-to-jurisdiction mapping). Normalise to lowercase for all
+        // comparisons to prevent accidental bypasses.
+        let target_lower = target_jurisdiction.to_ascii_lowercase();
+        let home_lower = self.policy.jurisdiction_id.as_str().to_ascii_lowercase();
+
         // Same-jurisdiction transfers are always allowed.
-        if target_jurisdiction == self.policy.jurisdiction_id.as_str() {
+        if target_lower == home_lower {
             return SovereigntyVerdict::Allowed;
         }
 
@@ -234,7 +241,9 @@ impl SovereigntyEnforcer {
         // Check the allowed targets for this category.
         match self.policy.allowed_targets.get(&category) {
             Some(targets) => {
-                if targets.contains("*") || targets.contains(target_jurisdiction) {
+                if targets.contains("*")
+                    || targets.iter().any(|t| t.to_ascii_lowercase() == target_lower)
+                {
                     SovereigntyVerdict::Allowed
                 } else {
                     SovereigntyVerdict::Denied(format!(

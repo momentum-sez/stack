@@ -81,19 +81,35 @@ impl Validate for CreateTaxEventRequest {
         if self.gross_amount.trim().is_empty() {
             return Err("gross_amount must not be empty".to_string());
         }
-        // Validate gross_amount is a parseable, finite, non-negative number.
+        // Validate gross_amount is a parseable, non-negative number.
+        //
+        // We validate the string format without converting to f64, which would
+        // silently accept imprecise values (e.g., 0.1 + 0.2 != 0.3 in IEEE 754).
+        // The amount string must match the pattern: optional digits, optional
+        // decimal point followed by digits. The tax pipeline's `parse_amount`
+        // function handles the actual integer-cents conversion.
         let trimmed = self.gross_amount.trim();
-        match trimmed.parse::<f64>() {
-            Ok(v) if !v.is_finite() => {
-                return Err("gross_amount must be a finite number".to_string());
-            }
-            Ok(v) if v < 0.0 => {
-                return Err("gross_amount must not be negative".to_string());
-            }
-            Err(_) => {
-                return Err("gross_amount must be a valid number".to_string());
-            }
-            _ => {}
+        if trimmed.starts_with('-') {
+            return Err("gross_amount must not be negative".to_string());
+        }
+        // Accept: "123", "123.45", "0.50", ".50"
+        let valid_amount = {
+            let mut saw_dot = false;
+            let mut saw_digit = false;
+            trimmed.chars().all(|c| {
+                if c.is_ascii_digit() {
+                    saw_digit = true;
+                    true
+                } else if c == '.' && !saw_dot {
+                    saw_dot = true;
+                    true
+                } else {
+                    false
+                }
+            }) && saw_digit
+        };
+        if !valid_amount {
+            return Err("gross_amount must be a valid decimal number (e.g., \"1000.50\")".to_string());
         }
         if self.currency.trim().is_empty() || self.currency.len() > 5 {
             return Err("currency must be 1-5 characters".to_string());

@@ -944,12 +944,19 @@ async fn generate_payment_tax_event(
     jurisdiction_id: &str,
     reference: &str,
 ) {
-    use msez_agentic::tax::{format_amount, parse_amount, FilerStatus, TaxEvent, TaxEventType};
+    use msez_agentic::tax::{format_amount, parse_amount, FilerStatus, TaxEvent};
 
     let fiscal_year = current_pk_fiscal_year();
+
+    // Classify the tax event type based on the payment reference.
+    // The reference string from the proxy request may encode the payment
+    // purpose (e.g., "salary:", "services:", "rent:"). Default to
+    // PaymentForGoods if no classification prefix is found.
+    let event_type = classify_payment_event_type(reference);
+
     let event = TaxEvent::new(
         from_account_id,
-        TaxEventType::PaymentForGoods,
+        event_type,
         jurisdiction_id,
         amount,
         currency,
@@ -984,8 +991,12 @@ async fn generate_payment_tax_event(
 
     let record = TaxEventRecord {
         id: Uuid::new_v4(),
+        // NOTE: from_account_id is used here as the entity reference. In a
+        // fully integrated pipeline, the entity_id should be resolved from
+        // the account's owning entity via Mass treasury-info. For now, the
+        // account UUID serves as the linkage key.
         entity_id: from_account_id,
-        event_type: "payment_for_goods".to_string(),
+        event_type: event.event_type.as_str().to_string(),
         tax_category: withholdings
             .first()
             .map(|w| w.tax_category.to_string())
@@ -1022,6 +1033,31 @@ async fn generate_payment_tax_event(
         if let Err(e) = crate::db::tax_events::insert(pool, &record).await {
             tracing::error!(tax_event_id = %record.id, error = %e, "failed to persist auto-generated tax event");
         }
+    }
+}
+
+/// Classify the payment event type from the payment reference string.
+///
+/// The payment reference may encode the purpose of the payment using a
+/// prefix convention. This enables correct Section 153/149/151/etc.
+/// classification for withholding computation.
+fn classify_payment_event_type(reference: &str) -> msez_agentic::tax::TaxEventType {
+    use msez_agentic::tax::TaxEventType;
+    let lower = reference.to_ascii_lowercase();
+    if lower.starts_with("salary") || lower.contains("salary") || lower.contains("payroll") {
+        TaxEventType::SalaryPayment
+    } else if lower.starts_with("service") || lower.contains("services") {
+        TaxEventType::PaymentForServices
+    } else if lower.starts_with("rent") || lower.contains("rental") {
+        TaxEventType::RentPayment
+    } else if lower.starts_with("dividend") || lower.contains("dividend") {
+        TaxEventType::DividendDistribution
+    } else if lower.starts_with("interest") || lower.contains("profit on debt") {
+        TaxEventType::ProfitOnDebt
+    } else if lower.starts_with("cross-border") || lower.contains("international") {
+        TaxEventType::CrossBorderPayment
+    } else {
+        TaxEventType::PaymentForGoods
     }
 }
 

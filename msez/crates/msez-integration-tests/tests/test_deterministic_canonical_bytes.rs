@@ -126,15 +126,25 @@ fn float_rejection() {
 
 #[test]
 fn float_zero_handling() {
-    // serde_json normalizes 0.0 to the integer 0, so CanonicalBytes::new
-    // succeeds. This is acceptable — the critical invariant is that
-    // non-zero floats (like 3.14) are rejected (tested above).
+    // serde_json's `json!(0.0)` stores the value as `Number::Float(0.0)`
+    // internally — it does NOT normalize to integer 0. The float checker in
+    // CanonicalBytes correctly rejects this because `is_i64()` and `is_u64()`
+    // return false for `Number::from_f64(0.0)`. This is the desired behavior:
+    // all floats are rejected regardless of value. Use integer literals or
+    // string amounts for monetary values.
     let data = json!({"amount": 0.0});
     let result = CanonicalBytes::new(&data);
-    // serde_json encodes 0.0 as integer 0, so canonicalization succeeds.
     assert!(
-        result.is_ok(),
-        "serde_json normalizes 0.0 to integer 0 — canonicalization should succeed"
+        result.is_err(),
+        "0.0 stored as f64 in serde_json must be rejected — use integer 0 instead"
+    );
+
+    // Verify integer zero works correctly.
+    let data_int = json!({"amount": 0});
+    let result_int = CanonicalBytes::new(&data_int);
+    assert!(
+        result_int.is_ok(),
+        "integer 0 should be accepted by canonicalization"
     );
 }
 

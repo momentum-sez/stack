@@ -611,7 +611,29 @@ fn issue_and_store(
         }
     };
 
-    let entity_uuid = Uuid::parse_str(entity_reference).unwrap_or_else(|_| Uuid::new_v4());
+    let entity_uuid = Uuid::parse_str(entity_reference).unwrap_or_else(|_| {
+        // When entity_reference is not a valid UUID (e.g., it's a string ID
+        // from the Mass API response), derive a deterministic UUID from the
+        // reference string. This ensures the same entity_reference always maps
+        // to the same attestation linkage UUID, rather than generating random
+        // UUIDs that would be unlinkable to the original entity.
+        tracing::warn!(
+            entity_reference = entity_reference,
+            "entity_reference is not a valid UUID — using digest-derived UUID for attestation linkage",
+        );
+        let hex = msez_core::sha256_raw(entity_reference.as_bytes());
+        // Use first 32 hex characters to construct a deterministic UUID.
+        // Insert hyphens at UUID positions: 8-4-4-4-12.
+        let uuid_str = format!(
+            "{}-{}-{}-{}-{}",
+            &hex[..8],
+            &hex[8..12],
+            &hex[12..16],
+            &hex[16..20],
+            &hex[20..32],
+        );
+        Uuid::parse_str(&uuid_str).unwrap_or_else(|_| Uuid::nil())
+    });
 
     let attestation_id = store_attestation(
         state,

@@ -45,11 +45,11 @@ impl JurisdictionId {
     /// Returns [`ValidationError::InvalidJurisdictionId`] if the string is
     /// empty or whitespace-only.
     pub fn new(value: impl Into<String>) -> Result<Self, ValidationError> {
-        let s = value.into();
-        if s.trim().is_empty() {
+        let trimmed = value.into().trim().to_string();
+        if trimmed.is_empty() {
             return Err(ValidationError::InvalidJurisdictionId);
         }
-        Ok(Self(s))
+        Ok(Self(trimmed))
     }
 
     /// Access the jurisdiction identifier string.

@@ -48,6 +48,9 @@ const MAX_QUERY_LIMIT: usize = 1000;
 impl Validate for QueryAttestationsRequest {
     fn validate(&self) -> Result<(), String> {
         if let Some(limit) = self.limit {
+            if limit == 0 {
+                return Err("limit must be >= 1".to_string());
+            }
             if limit > MAX_QUERY_LIMIT {
                 return Err(format!("limit must be <= {MAX_QUERY_LIMIT}"));
             }

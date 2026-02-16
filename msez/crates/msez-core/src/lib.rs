@@ -28,6 +28,7 @@ pub mod domain;
 pub mod error;
 pub mod identity;
 pub mod jurisdiction;
+pub mod sovereignty;
 pub mod temporal;
 
 // Re-export primary types at crate root for ergonomic imports.
@@ -39,4 +40,5 @@ pub use domain::ComplianceDomain;
 pub use error::{CanonicalizationError, MsezError, ValidationError};
 pub use identity::{Cnic, Did, EntityId, MigrationId, Ntn, PassportNumber, WatcherId};
 pub use jurisdiction::{CorridorId, JurisdictionId};
+pub use sovereignty::{DataCategory, SovereigntyEnforcer, SovereigntyPolicy, SovereigntyVerdict};
 pub use temporal::Timestamp;

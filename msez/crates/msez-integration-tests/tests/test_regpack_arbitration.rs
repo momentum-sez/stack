@@ -97,7 +97,7 @@ fn arbitration_institution_registration() {
 }
 
 #[test]
-fn institution_supports_all_dispute_types() {
+fn institution_supports_dispute_types() {
     let registry = msez_arbitration::institution_registry();
 
     for institution in &registry {
@@ -106,14 +106,30 @@ fn institution_supports_all_dispute_types() {
             "Institution {} must support at least one dispute type",
             institution.id
         );
+    }
 
-        // All top-tier institutions should support all dispute types.
+    // International institutions (DIFC-LCIA, SIAC, ICC, AIFC-IAC) support all dispute types.
+    let international_ids = ["difc-lcia", "siac", "icc", "aifc-iac"];
+    for institution in registry.iter().filter(|i| international_ids.contains(&i.id.as_str())) {
         assert_eq!(
             institution.supported_dispute_types.len(),
             DisputeType::all().len(),
-            "Institution {} should support all {} dispute types",
+            "International institution {} should support all {} dispute types",
             institution.id,
             DisputeType::all().len()
+        );
+    }
+
+    // Specialized institutions (e.g., ATIR tax tribunal) support a subset.
+    let atir = registry.iter().find(|i| i.id == "pak-atir");
+    if let Some(atir) = atir {
+        assert!(
+            atir.supported_dispute_types.len() < DisputeType::all().len(),
+            "ATIR (tax tribunal) should support a subset of dispute types"
+        );
+        assert!(
+            atir.supported_dispute_types.len() >= 1,
+            "ATIR should support at least one dispute type"
         );
     }
 }

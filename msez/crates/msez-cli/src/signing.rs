@@ -14,7 +14,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
-use clap::{Args, Subcommand};
+use clap::{Args, Subcommand, ValueEnum};
 use rand_core::OsRng;
 
 use msez_core::CanonicalBytes;
@@ -25,6 +25,15 @@ use msez_crypto::{Ed25519Signature, SigningKey, VerifyingKey};
 pub struct SigningArgs {
     #[command(subcommand)]
     pub command: SigningCommand,
+}
+
+/// Output format for keygen.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum KeyFormat {
+    /// Hex-encoded .key and .pub files (default).
+    Hex,
+    /// JWK (JSON Web Key) format — single .jwk file with kty, crv, x, d fields.
+    Jwk,
 }
 
 /// Signing subcommands.
@@ -38,6 +47,9 @@ pub enum SigningCommand {
         /// Prefix for the key filenames (default: "msez").
         #[arg(long, default_value = "msez")]
         prefix: String,
+        /// Output format: hex (default) or jwk.
+        #[arg(long, default_value = "hex")]
+        format: KeyFormat,
     },
 
     /// Sign a JSON document with Ed25519.
@@ -67,9 +79,16 @@ pub enum SigningCommand {
 /// Execute the signing subcommand.
 pub fn run_signing(args: &SigningArgs, repo_root: &Path) -> Result<u8> {
     match &args.command {
-        SigningCommand::Keygen { output, prefix } => {
+        SigningCommand::Keygen {
+            output,
+            prefix,
+            format,
+        } => {
             let resolved_output = crate::resolve_path(output, repo_root);
-            cmd_keygen(&resolved_output, prefix)
+            match format {
+                KeyFormat::Hex => cmd_keygen(&resolved_output, prefix),
+                KeyFormat::Jwk => cmd_keygen_jwk(&resolved_output, prefix),
+            }
         }
         SigningCommand::Sign { key, file } => {
             let resolved_key = crate::resolve_path(key, repo_root);
@@ -122,6 +141,118 @@ fn cmd_keygen(output_dir: &Path, prefix: &str) -> Result<u8> {
     println!("  Public key (hex): {vk_hex}");
 
     Ok(0)
+}
+
+/// Generate a new Ed25519 keypair and write as a JWK file.
+///
+/// Produces a single `.jwk` file containing a JSON Web Key with `kty`, `crv`,
+/// `x` (public key), and `d` (private key) fields in base64url encoding per
+/// RFC 8037 (CFRG Elliptic Curves).
+fn cmd_keygen_jwk(output_dir: &Path, prefix: &str) -> Result<u8> {
+    std::fs::create_dir_all(output_dir).with_context(|| {
+        format!(
+            "failed to create output directory: {}",
+            output_dir.display()
+        )
+    })?;
+
+    let sk = SigningKey::generate(&mut OsRng);
+    let vk = sk.verifying_key();
+
+    let x = base64url_encode(&vk.as_bytes());
+    let d = base64url_encode(&sk.to_bytes());
+
+    let jwk = serde_json::json!({
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": x,
+        "d": d,
+        "kid": format!("{prefix}-key-1")
+    });
+
+    let jwk_path = output_dir.join(format!("{prefix}.jwk"));
+    let jwk_str = serde_json::to_string_pretty(&jwk).context("failed to serialize JWK")?;
+    std::fs::write(&jwk_path, &jwk_str)
+        .with_context(|| format!("failed to write JWK: {}", jwk_path.display()))?;
+
+    println!("OK: generated Ed25519 keypair (JWK format)");
+    println!("  JWK file: {}", jwk_path.display());
+    println!("  Key ID:   {prefix}-key-1");
+
+    Ok(0)
+}
+
+/// Encode bytes as base64url (no padding) per RFC 4648 §5.
+///
+/// Used for JWK `x` and `d` fields. Ed25519 keys are 32 bytes, so this
+/// produces a 43-character string (ceil(32 * 4/3) = 43 with no padding).
+fn base64url_encode(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8; 64] =
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+    let mut result = String::with_capacity((bytes.len() * 4).div_ceil(3));
+    let chunks = bytes.chunks(3);
+
+    for chunk in chunks {
+        let b0 = chunk[0] as u32;
+        let b1 = if chunk.len() > 1 { chunk[1] as u32 } else { 0 };
+        let b2 = if chunk.len() > 2 { chunk[2] as u32 } else { 0 };
+
+        let triple = (b0 << 16) | (b1 << 8) | b2;
+
+        result.push(ALPHABET[((triple >> 18) & 0x3F) as usize] as char);
+        result.push(ALPHABET[((triple >> 12) & 0x3F) as usize] as char);
+
+        if chunk.len() > 1 {
+            result.push(ALPHABET[((triple >> 6) & 0x3F) as usize] as char);
+        }
+        if chunk.len() > 2 {
+            result.push(ALPHABET[(triple & 0x3F) as usize] as char);
+        }
+    }
+
+    result
+}
+
+/// Decode base64url (no padding) per RFC 4648 §5.
+///
+/// Used for reading JWK `x` and `d` fields back in tests.
+#[cfg(test)]
+fn base64url_decode(s: &str) -> Result<Vec<u8>> {
+    let mut result = Vec::with_capacity(s.len() * 3 / 4);
+    let bytes = s.as_bytes();
+    let chunks = bytes.chunks(4);
+
+    for chunk in chunks {
+        let vals: Vec<u32> = chunk
+            .iter()
+            .map(|&c| match c {
+                b'A'..=b'Z' => Ok((c - b'A') as u32),
+                b'a'..=b'z' => Ok((c - b'a' + 26) as u32),
+                b'0'..=b'9' => Ok((c - b'0' + 52) as u32),
+                b'-' => Ok(62),
+                b'_' => Ok(63),
+                _ => Err(anyhow::anyhow!("invalid base64url character: {}", c as char)),
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        if vals.len() >= 2 {
+            let combined = (vals[0] << 18)
+                | (vals[1] << 12)
+                | (if vals.len() > 2 { vals[2] } else { 0 } << 6)
+                | (if vals.len() > 3 { vals[3] } else { 0 });
+
+            result.push(((combined >> 16) & 0xFF) as u8);
+            if vals.len() > 2 {
+                result.push(((combined >> 8) & 0xFF) as u8);
+            }
+            if vals.len() > 3 {
+                result.push((combined & 0xFF) as u8);
+            }
+        }
+    }
+
+    Ok(result)
 }
 
 /// Sign a JSON document with an Ed25519 private key.
@@ -525,6 +656,7 @@ mod tests {
             command: SigningCommand::Keygen {
                 output: dir.path().to_path_buf(),
                 prefix: "mykey".to_string(),
+                format: KeyFormat::Hex,
             },
         };
         let result = run_signing(&args, dir.path());
@@ -583,6 +715,7 @@ mod tests {
             command: SigningCommand::Keygen {
                 output: dir.path().to_path_buf(),
                 prefix: "signer".to_string(),
+                format: KeyFormat::Hex,
             },
         };
         run_signing(&keygen_args, dir.path()).unwrap();
@@ -641,5 +774,119 @@ mod tests {
 
         let result = cmd_sign(&key_path, &doc_path);
         assert!(result.is_ok(), "Should handle whitespace-padded key file");
+    }
+
+    // ── JWK format tests ─────────────────────────────────────────────
+
+    #[test]
+    fn keygen_jwk_creates_valid_jwk_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let result = cmd_keygen_jwk(dir.path(), "zone-authority.ed25519");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+
+        let jwk_path = dir.path().join("zone-authority.ed25519.jwk");
+        assert!(jwk_path.exists());
+
+        let content = std::fs::read_to_string(&jwk_path).unwrap();
+        let jwk: serde_json::Value = serde_json::from_str(&content).unwrap();
+
+        assert_eq!(jwk["kty"], "OKP");
+        assert_eq!(jwk["crv"], "Ed25519");
+        assert!(jwk["x"].is_string());
+        assert!(jwk["d"].is_string());
+        assert_eq!(jwk["kid"], "zone-authority.ed25519-key-1");
+
+        // base64url of 32 bytes = 43 chars (no padding).
+        let x = jwk["x"].as_str().unwrap();
+        let d = jwk["d"].as_str().unwrap();
+        assert_eq!(x.len(), 43, "Ed25519 public key base64url should be 43 chars");
+        assert_eq!(d.len(), 43, "Ed25519 private key base64url should be 43 chars");
+    }
+
+    #[test]
+    fn keygen_jwk_key_is_loadable() {
+        let dir = tempfile::tempdir().unwrap();
+        cmd_keygen_jwk(dir.path(), "test").unwrap();
+
+        let content =
+            std::fs::read_to_string(dir.path().join("test.jwk")).unwrap();
+        let jwk: serde_json::Value = serde_json::from_str(&content).unwrap();
+
+        // Decode and load the private key.
+        let d_b64 = jwk["d"].as_str().unwrap();
+        let sk_bytes = base64url_decode(d_b64).unwrap();
+        assert_eq!(sk_bytes.len(), 32);
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&sk_bytes);
+        let sk = SigningKey::from_bytes(&arr);
+
+        // Decode and verify the public key matches.
+        let x_b64 = jwk["x"].as_str().unwrap();
+        let vk_bytes = base64url_decode(x_b64).unwrap();
+        assert_eq!(vk_bytes.len(), 32);
+        let mut vk_arr = [0u8; 32];
+        vk_arr.copy_from_slice(&vk_bytes);
+        let vk_from_jwk = VerifyingKey::from_bytes(&vk_arr).unwrap();
+
+        let vk_derived = sk.verifying_key();
+        assert_eq!(vk_from_jwk.to_hex(), vk_derived.to_hex());
+    }
+
+    #[test]
+    fn keygen_jwk_via_run_signing() {
+        let dir = tempfile::tempdir().unwrap();
+        let args = SigningArgs {
+            command: SigningCommand::Keygen {
+                output: dir.path().to_path_buf(),
+                prefix: "zone".to_string(),
+                format: KeyFormat::Jwk,
+            },
+        };
+        let result = run_signing(&args, dir.path());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+        assert!(dir.path().join("zone.jwk").exists());
+    }
+
+    #[test]
+    fn keygen_jwk_different_keys_each_time() {
+        let dir = tempfile::tempdir().unwrap();
+        cmd_keygen_jwk(dir.path(), "k1").unwrap();
+        cmd_keygen_jwk(dir.path(), "k2").unwrap();
+
+        let j1: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(dir.path().join("k1.jwk")).unwrap(),
+        )
+        .unwrap();
+        let j2: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(dir.path().join("k2.jwk")).unwrap(),
+        )
+        .unwrap();
+        assert_ne!(j1["d"], j2["d"], "Two keygen calls should produce different keys");
+    }
+
+    #[test]
+    fn base64url_encode_roundtrip() {
+        let original = [0xde, 0xad, 0xbe, 0xef, 0x01, 0x23, 0x45, 0x67];
+        let encoded = base64url_encode(&original);
+        let decoded = base64url_decode(&encoded).unwrap();
+        assert_eq!(decoded, original);
+    }
+
+    #[test]
+    fn base64url_encode_32_bytes() {
+        // Ed25519 key size.
+        let bytes = [42u8; 32];
+        let encoded = base64url_encode(&bytes);
+        assert_eq!(encoded.len(), 43); // ceil(32*4/3) = 43 no padding
+        let decoded = base64url_decode(&encoded).unwrap();
+        assert_eq!(decoded, bytes);
+    }
+
+    #[test]
+    fn base64url_decode_invalid_char() {
+        let result = base64url_decode("abc=");
+        assert!(result.is_err());
     }
 }

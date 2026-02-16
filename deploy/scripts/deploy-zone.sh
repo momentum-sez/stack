@@ -153,18 +153,41 @@ mkdir -p "$KEYS_DIR"
 # Generate zone keys if they don't exist
 if [ ! -f "$KEYS_DIR/zone-authority.ed25519.jwk" ]; then
     echo -e "${YELLOW}Generating zone authority keys...${NC}"
-    # In production, use proper key generation
-    # For now, create a placeholder
-    cat > "$KEYS_DIR/zone-authority.ed25519.jwk" << 'EOF'
-{
-  "kty": "OKP",
-  "crv": "Ed25519",
-  "x": "placeholder_public_key_base64url",
-  "d": "placeholder_private_key_base64url",
-  "kid": "zone-authority-key-1"
-}
-EOF
-    echo -e "${GREEN}Zone authority keys generated${NC}"
+
+    # Locate or build msez-cli for real Ed25519 key generation.
+    MSEZ_CLI=""
+    if command -v msez &> /dev/null; then
+        MSEZ_CLI="msez"
+    elif [ -f "$PROJECT_ROOT/target/release/msez" ]; then
+        MSEZ_CLI="$PROJECT_ROOT/target/release/msez"
+    elif [ -f "$PROJECT_ROOT/target/debug/msez" ]; then
+        MSEZ_CLI="$PROJECT_ROOT/target/debug/msez"
+    else
+        echo -e "${YELLOW}msez-cli not found — building...${NC}"
+        (cd "$PROJECT_ROOT/msez" && cargo build --release --bin msez 2>&1) || {
+            echo -e "${RED}Error: Failed to build msez-cli. Cannot generate real Ed25519 keys.${NC}"
+            exit 1
+        }
+        MSEZ_CLI="$PROJECT_ROOT/target/release/msez"
+    fi
+
+    "$MSEZ_CLI" vc keygen --format jwk --output "$KEYS_DIR" --prefix zone-authority.ed25519
+
+    # Verify the generated key file is valid.
+    if [ ! -f "$KEYS_DIR/zone-authority.ed25519.jwk" ]; then
+        echo -e "${RED}Error: Key generation failed — JWK file not created${NC}"
+        exit 1
+    fi
+
+    # Validate the JWK contains required fields.
+    for field in kty crv x d; do
+        if ! grep -q "\"$field\"" "$KEYS_DIR/zone-authority.ed25519.jwk"; then
+            echo -e "${RED}Error: Generated JWK missing required field: $field${NC}"
+            exit 1
+        fi
+    done
+
+    echo -e "${GREEN}Zone authority keys generated (Ed25519 via msez-cli)${NC}"
 fi
 
 # Pull/build images

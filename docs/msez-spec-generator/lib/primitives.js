@@ -1,10 +1,28 @@
 const {
   Paragraph, TextRun, Table, TableRow, TableCell,
   HeadingLevel, AlignmentType, BorderStyle, WidthType,
-  ShadingType, PageBreak
+  ShadingType, PageBreak, BookmarkStart, BookmarkEnd
 } = require("docx");
 
 const C = require("./constants");
+
+// --- TOC Heading Registry ---
+// Headings register themselves here at creation time.
+// After all chapters are built, build.js reads this to generate a static TOC.
+const _tocEntries = [];
+let _bookmarkCounter = 1;
+
+function _registerHeading(text, level) {
+  const id = String(_bookmarkCounter++);
+  const name = `_toc_${id}`;
+  _tocEntries.push({ text, level, bookmarkName: name, bookmarkId: id });
+  return { name, id };
+}
+
+/** Return collected heading entries for static TOC generation. */
+function getTocEntries() {
+  return _tocEntries.slice();
+}
 
 // --- Text Primitives ---
 
@@ -50,30 +68,45 @@ function code(text) {
 
 /** Part heading (e.g., "PART I: FOUNDATION") - includes page break */
 function partHeading(text) {
+  const bm = _registerHeading(text.toUpperCase(), 1);
   return [
     new Paragraph({ children: [new PageBreak()] }),
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 0, after: 300 },
-      children: [new TextRun({ text: text.toUpperCase(), bold: true, font: C.BODY_FONT, size: 36, color: C.H1_COLOR })]
+      children: [
+        new BookmarkStart(bm.name, bm.id),
+        new TextRun({ text: text.toUpperCase(), bold: true, font: C.BODY_FONT, size: 36, color: C.H1_COLOR }),
+        new BookmarkEnd(bm.id),
+      ]
     })
   ];
 }
 
 /** Chapter heading (e.g., "Chapter 1: Mission and Vision") */
 function chapterHeading(text) {
+  const bm = _registerHeading(text, 1);
   return new Paragraph({
     heading: HeadingLevel.HEADING_1,
-    children: [new TextRun({ text, bold: true, font: C.BODY_FONT, size: 36, color: C.H1_COLOR })]
+    children: [
+      new BookmarkStart(bm.name, bm.id),
+      new TextRun({ text, bold: true, font: C.BODY_FONT, size: 36, color: C.H1_COLOR }),
+      new BookmarkEnd(bm.id),
+    ]
   });
 }
 
 /** Section heading (e.g., "1.1 The Programmable Institution Thesis") */
 function h2(text) {
+  const bm = _registerHeading(text, 2);
   return new Paragraph({
     heading: HeadingLevel.HEADING_2,
     spacing: { before: 280, after: 200 },
-    children: [new TextRun({ text, bold: true, font: C.BODY_FONT, size: 28, color: C.H2_COLOR })]
+    children: [
+      new BookmarkStart(bm.name, bm.id),
+      new TextRun({ text, bold: true, font: C.BODY_FONT, size: 28, color: C.H2_COLOR }),
+      new BookmarkEnd(bm.id),
+    ]
   });
 }
 
@@ -203,5 +236,6 @@ module.exports = {
   partHeading, chapterHeading, h2, h3,
   definition, theorem,
   codeBlock, table, evenWidths,
-  spacer, pageBreak
+  spacer, pageBreak,
+  getTocEntries
 };

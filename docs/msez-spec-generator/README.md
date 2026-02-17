@@ -17,17 +17,16 @@ npm run validate
 npm run build
 ```
 
-## Known Limitations
+## Table of Contents
 
-### Table of Contents Requires Manual Update
+The TOC is generated statically at build time using bookmarks and `PAGEREF` fields. Every H1 and H2 heading registers itself in a heading registry (via `primitives.js`), and `build.js` uses a two-phase approach:
 
-The generated TOC uses a Word field code (`TOC \o "1-3" \h`) that is evaluated client-side when the document is opened. This means:
+1. **Phase 1**: All chapters are built, populating the heading registry with bookmark names.
+2. **Phase 2**: The TOC is generated as 315 static paragraph entries, each containing the heading text, a dot-leader tab, and a `PAGEREF` field referencing the heading's bookmark.
 
-1. **Microsoft Word**: Right-click the TOC area and select **"Update Field"** → **"Update entire table"** to populate it.
-2. **Google Docs / LibreOffice**: The TOC may appear empty or as placeholder text. These renderers do not evaluate Word field codes.
-3. **Automated DOCX→PDF pipelines**: Will produce a document with a blank TOC unless a post-processing step updates fields (e.g., via headless LibreOffice: `libreoffice --headless --macro "UpdateFields" file.docx`).
+This approach replaces the previous `TableOfContents` field code (`TOC \h \t ...`), which relied on Word's client-side style matching and failed across Word versions, producing a 100+ page TOC filled with body text.
 
-This is a known limitation of the `docx-js` library, not a bug in the generator.
+**Page numbers**: `PAGEREF` fields resolve to page numbers when the document is opened or printed. In Microsoft Word, select all (Ctrl+A) then press F9 to update all fields. Most Word versions update `PAGEREF` fields automatically on open.
 
 ## Project Structure
 
@@ -40,7 +39,7 @@ lib/
   constants.js           # Page dimensions, fonts, colors
 chapters/
   00-cover.js            # Title page
-  00-toc.js              # Table of contents (field code)
+  00-toc.js              # Table of contents (static, bookmark + PAGEREF)
   00-executive-summary.js
   01-mission-vision.js   # Chapter 1 (Part I: Foundation)
   ...                    # 56 chapters + 11 appendices

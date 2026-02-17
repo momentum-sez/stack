@@ -1,292 +1,651 @@
-# CLAUDE.md — Momentum SEZ Stack · Operational Anchor
+# CLAUDE.md — Momentum SEZ Stack v0.4.44 GENESIS
 
-**Version**: 8.0 — February 2026
-**Authority**: Supersedes all prior versions. Based on Architecture Audit v8.0.
+## Unified Audit Work Plan for Claude Code
+
+**Repository:** `momentum-sez/stack`
+**Pinned Commit:** `a93eb00ca10f0caff47354e2e07ca0929713126c`
+**Spec Version:** 0.4.44-GENESIS
+**License:** BUSL-1.1
+**Architecture:** Rust workspace (single `msez-api` binary), replaces prior Python stack
+**Audit Artifact Schema:** `schemas/audit/institutional-readiness-audit.schema.json` (Draft 2020-12)
 
 ---
 
-## I. WHAT THIS IS
-
-A Rust workspace (`momentum-sez/stack`, v0.4.44) that provides **jurisdictional orchestration** for Mass — Momentum's five programmable primitives. Mass is Java/Spring Boot, live, processing real capital. This repo sits above Mass and adds compliance intelligence, corridor management, and cryptographic provenance.
-
-The workspace has 16 crates, 109K lines of Rust, 3,029+ tests, zero Python.
-
-## II. THE BOUNDARY (read this twice)
-
-**Mass APIs** (Java, NOT in this repo) own CRUD for five primitives:
-
-| Primitive | Service | Base URL |
-|-----------|---------|----------|
-| Entities | organization-info | `organization-info.api.mass.inc/organization-info/` |
-| Ownership | investment-info | `investment-info-production-*.herokuapp.com/investment-info/` |
-| Fiscal | treasury-info | `treasury-info.api.mass.inc/treasury-info/` |
-| Identity | **No dedicated service yet** — split across consent-info + org-info | — |
-| Consent | consent-info | `consent.api.mass.inc/consent-info/` |
-
-API path convention: `{base_url}/{context-path}/api/v1/{resource}`
-
-**This repo** (Rust) owns jurisdictional intelligence:
-
-- Compliance tensor evaluation (20 domains, exhaustive match)
-- Pack Trilogy (lawpacks, regpacks, licensepacks)
-- Corridor state machines and receipt chains
-- Verifiable Credential issuance
-- Orchestration pipeline: compliance eval → Mass API call → VC → attestation
-- Smart Asset lifecycle, watcher economy, arbitration
-- Deployment tooling (Docker, Terraform, K8s)
-
-**The rule**: If it's "create/read/update/delete a business object" → Mass. If it's "evaluate whether that operation is compliant in this jurisdiction" → this repo. `msez-mass-client` is the sole authorized gateway to Mass APIs. No other crate may call Mass directly.
-
-## III. CRATE MAP
+## 1. REPOSITORY MAP
 
 ```
-msez-core         Foundation. CanonicalBytes, ComplianceDomain (20 variants),
-                  identifier newtypes, MsezError, Timestamp, data sovereignty.
-                  ZERO internal deps.
-
-msez-crypto       Ed25519 (Zeroize), MMR, CAS, constant-time comparison.
-msez-vc           W3C Verifiable Credentials, Ed25519Signature2020.
-msez-tensor       Compliance Tensor V2, Manifold (Dijkstra path optimization).
-msez-pack         Pack Trilogy processing, multi-jurisdiction composition engine.
-msez-state        Typestate FSMs: corridor, migration, entity, license, watcher.
-msez-corridor     Corridor lifecycle, receipt chains, netting, payment rail traits.
-msez-agentic      Autonomous policy engine, trigger taxonomy, tax event generation.
-msez-arbitration  Dispute lifecycle, escrow, institution registry.
-msez-schema       JSON Schema validation (116 schemas in schemas/).
-msez-zkp          ZK proof traits + stubs (Groth16, PLONK — mock only).
-msez-compliance   Composes tensor + pack evaluation.
-msez-mass-client  Typed HTTP client for Mass APIs. Depends on msez-core only.
-msez-api          Axum HTTP server. Sole composition point — depends on all above.
-msez-cli          CLI: zone validate/build/lock/sign, VC keygen/sign/verify.
-msez-integration-tests  60+ test files, 34K lines.
-```
-
-Dependency DAG (simplified):
-```
-msez-core (leaf)
-├── msez-crypto, msez-tensor, msez-pack, msez-state, msez-schema, msez-agentic
-├── msez-vc (core + crypto)
-├── msez-corridor (core + crypto + state)
-├── msez-arbitration (core + crypto + vc)
-├── msez-zkp (core + crypto)
-├── msez-compliance (core + tensor + pack)
-├── msez-mass-client (core only — newtypes)
-└── msez-api (ALL crates — sole composition point)
-```
-
-## IV. BUILD & VERIFY
-
-```bash
-cargo check --workspace              # zero warnings required
-cargo clippy --workspace -- -D warnings  # zero diagnostics required
-cargo test --workspace               # all 3,029+ tests must pass
-```
-
-After any code change, run all three. No exceptions.
-
-## V. INVARIANTS (violating any is a blocking failure)
-
-1. **`msez-core` has zero internal crate dependencies.** External: serde, serde_json, thiserror, chrono, uuid, sha2 only.
-
-2. **`msez-mass-client` depends only on `msez-core`** (for identifier newtypes). Never import tensors, corridors, packs, VCs, or other domain crates.
-
-3. **No dependency cycles.** `msez-api` is the sole composition root. No other crate depends on it.
-
-4. **All SHA-256 flows through `msez-core::digest`.** Three tiers:
-   - Domain objects: `CanonicalBytes::new()` → `sha256_digest()`
-   - Raw bytes: `sha256_raw()`
-   - Streaming: `Sha256Accumulator`
-   - `sha2::Sha256` direct usage appears ONLY in `msez-core/src/digest.rs` and `msez-crypto/src/mmr.rs`.
-   - Verify: `grep -rn "use sha2" crates/ --include="*.rs"` — hits outside those two files are bugs.
-
-5. **ComplianceDomain has exactly 20 variants**, defined once in `msez-core/src/domain.rs`:
-   ```
-   Aml, Kyc, Sanctions, Tax, Securities, Corporate, Custody, DataPrivacy,
-   Licensing, Banking, Payments, Clearing, Settlement, DigitalAssets,
-   Employment, Immigration, Ip, ConsumerProtection, Arbitration, Trade
-   ```
-   Every `match` is exhaustive. Compile-time assertion enforces COUNT == 20.
-
-6. **Zero `unwrap()` in production code.** All `.unwrap()` must be inside `#[cfg(test)]`. Use `?`, `.map_err()`, `.ok_or_else()`, or `expect("reason")` for static values.
-
-7. **Zero `unimplemented!()` or `todo!()` outside tests.** Phase 2 stubs return `MsezError::NotImplemented` (HTTP 501).
-
-## VI. ORCHESTRATION PATTERN
-
-Every **write** endpoint in `msez-api/src/routes/mass_proxy.rs` follows:
-
-```
-1. Pre-flight compliance → evaluate tensor across relevant domains for jurisdiction
-2. Hard-block check → Sanctions NonCompliant = reject (legal requirement)
-3. Mass API call → delegate via msez-mass-client (sole gateway)
-4. VC issuance → sign compliance attestation as Verifiable Credential
-5. Attestation storage → persist to Postgres for regulator queries
-6. Return OrchestrationEnvelope { mass_response, compliance, credential, attestation_id }
-```
-
-**Read** endpoints (GET) are pass-through proxies — no compliance eval needed on reads.
-
-This pattern is the SEZ Stack's entire value-add. Without it, Mass is generic CRUD.
-
-## VII. WHAT IS REAL vs. STUB vs. PLANNED
-
-| Capability | Status | Notes |
-|-----------|--------|-------|
-| Pack Trilogy (law/reg/licensepacks) | **IMPLEMENTED** | msez-pack, composition engine |
-| Compliance Tensor (20 domains) | **IMPLEMENTED** | msez-tensor |
-| Corridor FSM (typestate) | **IMPLEMENTED** | msez-state — compile-time invalid transition prevention |
-| Receipt chain + MMR | **IMPLEMENTED** | msez-crypto |
-| Content-addressed artifacts | **IMPLEMENTED** | msez-crypto/cas.rs |
-| Verifiable Credentials (Ed25519) | **IMPLEMENTED** | msez-vc |
-| Write-path orchestration (5 primitives) | **IMPLEMENTED** | msez-api/routes/mass_proxy.rs |
-| Tax pipeline (Pakistan) | **IMPLEMENTED** | msez-agentic + msez-api/routes/tax.rs |
-| Data sovereignty enforcement | **IMPLEMENTED** | msez-core/src/sovereignty.rs |
-| Agentic policy engine | **IMPLEMENTED** | msez-agentic |
-| Docker/K8s/Terraform deployment | **IMPLEMENTED** | deploy/ |
-| Arbitration system | **IMPLEMENTED** | msez-arbitration |
-| Compliance Manifold (Dijkstra) | **IMPLEMENTED** | msez-tensor/manifold.rs |
-| Migration saga (8 phases) | **IMPLEMENTED** | msez-state/migration.rs |
-| Watcher economy (bonds/slashing) | **IMPLEMENTED** | msez-state/watcher.rs |
-| Payment rail adapters (Raast, SWIFT, Circle) | **STUB** | Trait defined, no real impl |
-| BBS+ selective disclosure | **STUB** | Trait only |
-| ZK circuits (12 types) | **STUB** | Mock implementations |
-| Poseidon2 hash | **STUB** | Returns NotImplemented |
-| Canonical Digest Bridge | **STUB** | Poseidon2 side unimplemented |
-| Identity as dedicated Mass service | **PLANNED** | No identity-info.api.mass.inc yet |
-| Smart Asset VM (SAVM) | **PLANNED** | No code exists |
-| MASS L1 settlement layer | **PLANNED** | No code exists |
-
-**IMPORTANT**: Do not write code that assumes STUB or PLANNED capabilities exist. Do not generate mock implementations that pretend to be real. When a feature is STUB, the code must return `MsezError::NotImplemented` with a clear message. When PLANNED, no code should reference it as if it works.
-
-## VIII. SEVEN DEPLOYMENT BLOCKERS (current priority)
-
-These block sovereign zone deployment. Address in this order:
-
-1. **Mass API health gating** — `msez-api` bootstrap must verify Mass API connectivity before accepting traffic. Readiness probe must include Mass reachability.
-
-2. **Identity primitive** — No dedicated `identity-info.api.mass.inc`. Rust client (`IdentityClient`) is an aggregation facade. Ship the Java service or honestly flag it as 4/5.
-
-3. **Contract tests** — `msez-mass-client` tests use hardcoded mocks. No validation against live Swagger specs. A field rename in Java breaks the Rust client silently.
-
-4. **Inter-zone networking** — Corridors work in-process only. No P2P protocol for two zones to exchange receipts over the network. Each deployed zone is an island.
-
-5. **Pack Trilogy content** — Zero real lawpacks with real legislative text. No Pakistan Income Tax Ordinance 2001 in AKN XML. Tensor evaluates against empty rulesets.
-
-6. **National system adapters** — FBR IRIS, SBP Raast, NADRA, SECP have no implementations. `NationalSystemAdapter` trait needed with production + mock impls.
-
-7. **Placeholder crypto keys** — `deploy-zone.sh` writes placeholder Ed25519 keys. Use `msez-cli keygen` instead.
-
-## IX. ANTI-SLOP PROTOCOL
-
-Before writing any code, verify it earns its existence. Kill on sight:
-
-- Functions never called outside their module
-- Types that duplicate another type with trivially different field names
-- Match arms that all return the same value
-- Tests that assert `true == true` or test only JSON deserialization with no logic
-- Doc comments that restate the function signature
-- `#[allow(dead_code)]` — if dead, delete it
-- Mock impls that return `Ok(())` without exercising logic
-- Compliance evals that return `Compliant` for all domains without checking
-- VC issuance without actual compliance verification
-- Corridor transitions that skip FSM validation
-- Constants referenced only in tests
-- Trait impls with exactly one implementor "for future genericity"
-
-## X. CODE REVIEW GATES
-
-Before any merge:
-
-- [ ] No new `unwrap()` outside `#[cfg(test)]`
-- [ ] No `unimplemented!()`/`todo!()` in production paths
-- [ ] No `anyhow` outside `msez-cli`
-- [ ] No `std::sync::RwLock` — use `parking_lot`
-- [ ] No SHA-256 bypassing `msez-core::digest`
-- [ ] No Mass CRUD duplicated in SEZ Stack
-- [ ] No Python added
-- [ ] No direct `reqwest` to Mass outside `msez-mass-client`
-- [ ] Error types carry diagnostic context
-- [ ] Public functions have doc comments describing behavior
-- [ ] Naming: Momentum (never "Momentum Protocol"), Mass (never "Mass Protocol" casually), domains end `.inc`
-- [ ] New types use msez-core newtypes (not raw String/Uuid)
-
-## XI. NAMING
-
-| Term | Correct | Never |
-|------|---------|-------|
-| **Momentum** | "Momentum is a $1B+ venture fund and studio." | "Momentum Protocol" |
-| **Mass** | "Mass provides five programmable primitives." | — |
-| **Mass Protocol** | Only when discussing L1 settlement layer, ZKP circuits | In sales, README, casual usage |
-| **momentum.inc** | Momentum's domain | momentum.xyz, .io, .com |
-| **mass.inc** | Mass's domain | mass.xyz, .io |
-
-## XII. PRIORITY ORDER
-
-When conflicts arise:
-
-1. **Security** — keys, secrets, auth, constant-time ops
-2. **Correctness** — tensor eval, receipt chain linking, canonical digests
-3. **Mass/SEZ boundary** — no CRUD duplication, clean orchestration
-4. **Deployment blockers** — resolve §VIII items
-5. **Code quality** — dead code, slop, untested paths
-
-## XIII. AUDIT DIRECTIVES
-
-When auditing, proceed in this order:
-
-**Phase 1 — Structural**: Verify invariants §V. `grep` for `sha2::Sha256`, `reqwest::`, `unwrap()`, `todo!()` in production code.
-
-**Phase 2 — Boundary**: For each primitive, trace HTTP request → orchestration → Mass API call → response. Confirm compliance → Mass → VC → attestation on every write path. Flag any SEZ code storing Mass-owned data.
-
-**Phase 3 — Correctness**: CanonicalBytes determinism. ComplianceDomain == 20. ComplianceState lattice ops. Receipt chain hash linking. Corridor FSM vs `governance/corridor.lifecycle.state-machine.v2.json`.
-
-**Phase 4 — Security**: Ed25519 Zeroize-on-drop. Constant-time token comparison. No secrets in logs. Auth on state-mutating endpoints.
-
-**Phase 5 — Test quality**: No tautological assertions. No deser-only tests. Integration tests compose multiple crates. No `#[ignore]`.
-
-## XIV. REFERENCE FILES
-
-For deep context, read these (don't embed them here):
-
-- `spec/` — Normative MSEZ specification (architecture, corridors, lawpacks, etc.)
-- `schemas/` — 116 JSON schemas for all data structures
-- `apis/` — OpenAPI specs (corridor-state, smart-assets, mass-node, regulator-console)
-- `modules/mass-primitives/` — Five primitive module definitions with policy-to-code maps
-- `profiles/` — Deployment templates (digital-financial-center, charter-city, trade-playbook, etc.)
-- `governance/corridor.lifecycle.state-machine.v2.json` — Canonical corridor FSM definition
-- `deploy/` — Docker, Terraform (AWS), K8s manifests, deployment scripts
-- `SEZ_Stack_Mass_API_Deep_Audit_v7.md` — Prior audit findings
-- `msez/AUDIT_FINDINGS.md` — Structural integrity audit
-- `msez/HARDENING_REPORT.md` — Security defect resolution evidence
-
-For Pakistan GovOS context: see project knowledge for `mass_pakistan_architecture_v4` schematic.
-
-## XV. DATA FLOW (Pakistan GovOS example)
-
-```
-GovOS Console → msez-api
-  ├─ msez-tensor: evaluate 20 domains for PAK jurisdiction
-  ├─ msez-pack: check lawpack (Income Tax Ord. 2001, Sales Tax Act 1990, etc.)
-  ├─ msez-pack: check regpack (FBR rates, FATF AML/CFT, sanctions)
-  ├─ msez-pack: check licensepack (SECP, BOI, PTA, PEMRA, DRAP)
-  ├─ msez-mass-client → organization-info (create entity, bind NTN)
-  ├─ msez-mass-client → treasury-info (create PKR account, withholding config)
-  ├─ msez-mass-client → consent (tax assessment sign-off)
-  ├─ msez-vc: issue FormationComplianceCredential
-  ├─ msez-corridor: update PAK↔UAE/KSA/CHN corridor state
-  ├─ msez-agentic: register for auto tax event generation
-  └─ Return: OrchestrationEnvelope { mass_response, compliance, credential, attestation_id }
-```
-
-Tax collection pipeline:
-```
-Every transaction on Mass → tax event (msez-agentic) → withholding (tax routes)
-  → FBR IRIS report → AI gap analysis → 10.3% → 15%+ GDP target
+momentum-sez/stack/
+├── .github/workflows/       # CI: JSON parse checks, serde guard, trade-playbook closure
+├── apis/                    # OpenAPI specs (scaffold-grade)
+│   ├── smart-assets.openapi.yaml
+│   ├── corridor-state.openapi.yaml
+│   ├── mass-node.openapi.yaml
+│   └── regulator-console.openapi.yaml
+├── contexts/
+├── deploy/
+│   ├── docker/docker-compose.yaml   # Single Rust binary + Postgres + Prometheus
+│   └── aws/terraform/               # EKS + RDS + KMS (content not fully verified)
+├── dist/artifacts/schema/
+├── docs/
+├── governance/
+│   ├── corridor.lifecycle.state-machine.v1.json   # DEPRECATED — diverges from spec
+│   └── corridor.lifecycle.state-machine.v2.json
+├── jurisdictions/_starter/zone.yaml
+├── modules/                 # Module descriptors (claim: 298 across 16 families)
+├── msez/                    # Rust workspace root
+│   ├── Cargo.toml           # workspace license: BUSL-1.1
+│   └── crates/
+│       ├── msez-api/        # Consolidated API binary
+│       ├── msez-cli/        # CLI: corridor lifecycle, keygen, validate, lock
+│       ├── msez-core/       # CanonicalBytes, ContentDigest, SHA-256 primitives
+│       ├── msez-corridor/   # Receipt chain, checkpoint, fork resolution, anchor, bridge
+│       ├── msez-crypto/     # Ed25519, MMR, Poseidon2 (stub), BBS+ (stub)
+│       ├── msez-mass-client/# Mass API client boundary
+│       ├── msez-pack/       # Pack Trilogy (lawpacks, regpacks, licensepacks)
+│       ├── msez-schema/     # JSON Schema Draft 2020-12 validator + codegen policy
+│       ├── msez-tensor/     # Compliance Tensor (20 domains, lattice aggregation)
+│       ├── msez-vc/         # Verifiable Credentials (Smart Asset Registry VC)
+│       └── msez-zkp/        # ZK proof system (Phase 1 deterministic mock)
+├── profiles/
+├── registries/
+├── rulesets/
+├── schemas/                 # JSON Schema files (Draft 2020-12)
+│   ├── corridor.receipt.schema.json
+│   ├── corridor.checkpoint.schema.json
+│   ├── corridor.schema.json
+│   └── stack.lock.schema.json
+├── spec/                    # 25 chapters (repo spec, normative)
+│   └── 40-corridors.md      # Corridor receipt/checkpoint hash rules (RFC 8785 JCS)
+└── tests/
 ```
 
 ---
 
-**End of CLAUDE.md v8.0**
+## 2. SYNTHESIZED P0 FINDINGS — PRODUCTION BLOCKERS
 
-Momentum · `momentum.inc`
-Mass · `mass.inc`
+All P0s below are confirmed across multiple independent audit passes. They are ordered by blast radius (integrity > compliance > deployment).
+
+### P0-CORRIDOR-001: Receipt Chain Does Not Enforce Spec Hash-Chain Model
+
+**Files:** `msez/crates/msez-corridor/src/receipt.rs`
+**Confirmed by:** Pass 1 Fidelity Audit, Formal Methods Audit, Institutional Assessment
+**Issue:** Implementation enforces `receipt.prev_root == current_mmr_root`, but the spec requires `prev_root` to be the previous state root (hash-chain model seeded from `genesis_root`), and `next_root` to be derived from the receipt payload (excluding `proof` and `next_root`). These are two different commitment models.
+**Impact:** Interoperability failure. Receipts produced by this implementation are not verifiable by any tooling following `spec/40-corridors.md` and `schemas/corridor.receipt.schema.json`. Cross-party corridor reconciliation becomes non-deterministic. Regulator verification breaks.
+**Remediation:**
+1. Implement two parallel commitments per spec: `final_state_root` (hash-chain head, genesis-seeded) and MMR over receipt digests (for inclusion proofs).
+2. Change `append()` to enforce: `receipt.prev_root == final_state_root` (hash-chain continuity).
+3. Enforce `receipt.next_root == SHA256(JCS(receipt_without_proof_and_next_root))`.
+**Verification:** Golden vector conformance tests; schema validation roundtrip against `schemas/corridor.receipt.schema.json`; genesis_root fixture for first receipt.
+**Effort:** M | **Owner:** protocol + security
+
+### P0-CORRIDOR-002: next_root Is Not Computed or Verified
+
+**Files:** `msez/crates/msez-corridor/src/receipt.rs` (L7-L9, L17, L22-L24)
+**Confirmed by:** Pass 1, Formal Methods, Red Team
+**Issue:** `append()` blindly appends `receipt.next_root` to MMR without recomputing or verifying it. Spec requires `next_root = SHA256(JCS(receipt_without_proof_and_next_root))` and digest-set normalization (dedupe + sort lexicographically).
+**Impact:** Proof/commitment forgery surface. Caller can set arbitrary `next_root`. Non-determinism across implementations. Fork amplification.
+**Remediation:**
+1. Implement `compute_next_root(receipt)` that strips `proof` and `next_root`, normalizes digest sets, computes `SHA256(JCS(payload))`.
+2. Enforce in `append()`: recompute and compare; reject mismatch.
+**Verification:** Property tests (permutations + duplicates in digest sets must not change `next_root`); golden vector fixtures.
+**Effort:** M | **Owner:** protocol + security
+
+### P0-CORRIDOR-003: CorridorReceipt Is Not Schema-Conformant
+
+**Files:** `msez/crates/msez-corridor/src/receipt.rs` (L7-L9), `schemas/corridor.receipt.schema.json`
+**Confirmed by:** Pass 1, Pass 2
+**Issue:** Rust struct omits required `proof` field. Digest sets are `Vec<String>` but schema allows `DigestString | ArtifactRef` union. Optional but important fields (`transition`, `zk`, `anchor`, `transition_type_registry_digest_sha256`) not represented.
+**Impact:** Schema validation will reject any receipt this struct produces. Without `proof`, receipts are unsigned — any party with write access can inject/replay/rewrite.
+**Remediation:** Extend `CorridorReceipt` to match schema: add `proof` (one object or array), implement digest-set item type as `enum { DigestString, ArtifactRef }`, add optional fields.
+**Verification:** Serialize receipt → validate with `SchemaValidator` against `corridor.receipt.schema.json`; negative test: missing proof must fail.
+**Effort:** M | **Owner:** protocol
+
+### P0-CORRIDOR-004: Checkpoint Is Non-Conformant and Lacks Proof
+
+**Files:** `msez/crates/msez-corridor/src/receipt.rs` (L10-L11, L19), `schemas/corridor.checkpoint.schema.json`
+**Confirmed by:** Pass 1, Pass 2
+**Issue:** Checkpoint only includes `(corridor_id, height, mmr_root, timestamp, checkpoint_digest)`. Schema requires `genesis_root`, `final_state_root`, `receipt_count`, digest sets, `mmr` object (type/algorithm/size/root/peaks), and `proof`. No proof means checkpoints are unsigned claims.
+**Impact:** Verifier bootstrap impossible per spec. Forgery surface: malicious relayer can provide fake checkpoints.
+**Remediation:** Implement schema-conformant checkpoint type with all required fields. Sign checkpoint payloads.
+**Verification:** Schema validation tests + golden vectors; end-to-end: bootstrap from checkpoint and verify tail receipts.
+**Effort:** L | **Owner:** protocol + security
+
+### P0-CANON-001: Canonicalization Is Not RFC 8785 JCS
+
+**Files:** `msez/crates/msez-core/src/canonical.rs`, `spec/40-corridors.md`
+**Confirmed by:** Formal Methods Audit, Cryptographic Correctness Pass
+**Issue:** `spec/40-corridors.md` normatively requires `SHA256(JCS(json))` where JCS is RFC 8785. But `CanonicalBytes` applies extra coercions not in RFC 8785: float rejection, RFC 3339 datetime normalization/truncation.
+**Impact:** Implementation is provably not "JCS exact" as spec states. Any external verifier following the spec will compute different digests for the same payload.
+**Remediation:** Either:
+- (a) Update `CanonicalBytes` to implement exact RFC 8785 JCS, OR
+- (b) Update `spec/40-corridors.md` to normatively define "JCS + Momentum coercions" and version/tag it.
+Today it is inconsistent. Both sides must agree.
+**Verification:** Cross-language golden vectors (Rust/TS/Python) for canonicalization output.
+**Effort:** M | **Owner:** protocol + security
+
+### P0-FORK-001: Fork Resolution Is Manipulable
+
+**Files:** `msez/crates/msez-corridor/src/fork.rs`
+**Confirmed by:** Formal Methods, Red Team, Institutional Assessment
+**Issue:** Fork selection uses `(-attestation_count, timestamp, lex_candidate_root)` but `attestation_count` and `timestamp` are not cryptographically bound or verified — code explicitly states "must be independently verified" but doesn't implement it. Attacker can publish `ForkBranch` with `attest=Q+1, ts=1970-01-01` and deterministically win selection.
+**Impact:** Safety violation: honest nodes converge on attacker-selected root. Honest progress can be overwritten.
+**Remediation:**
+1. Replace raw `(timestamp, attestation_count)` fields with a set (or Merkle root) of signed watcher attestations binding: parent root, candidate root, height/sequence, timestamp constraints.
+2. Verify those signatures in the fork module.
+3. Enforce monotonic time: `ts[i] >= ts[i-1]` and `ts[i] <= now + drift_bound`.
+**Verification:** Adversarial test: craft fork with backdated timestamp; must be rejected.
+**Effort:** L | **Owner:** security + protocol
+
+### P0-MIGRATION-001: Saga Compensation Is Unprovable
+
+**Files:** `msez/crates/msez-corridor/` (migration saga module)
+**Confirmed by:** Formal Methods Audit, Institutional Assessment
+**Issue:** Migration state machine enforces deadlines and transitions, but:
+- `compensate()` only logs and flips to `Compensated` — no modeling of forward side-effects or their inverses.
+- `TimedOut` transition does not execute/record compensation.
+- Second `compensate()` call errors (`AlreadyTerminal`) rather than no-op — not idempotent.
+**Impact:** Cannot prove: compensation is inverse of forward steps, compensation is idempotent, partial failure cannot duplicate assets, timeout cannot orphan state. All four are required for financial safety.
+**Remediation:**
+1. Add explicit forward side-effect flags (`lock/unlock/mint/burn`) and compensation functions that invert them.
+2. Make compensation idempotent (second call = no-op returning same terminal, not error).
+3. On timeout, execute/record compensation deterministically.
+4. Add `(migration_id, version)` CAS or pessimistic locking at persistence layer for distributed concurrency.
+**Verification:** Property tests: `forward + compensate = pre-state`; no-dup invariant: `¬(asset_exists_source ∧ asset_exists_dest)`.
+**Effort:** L | **Owner:** protocol
+
+### P0-ANCHOR-001: Anchoring Is a Mock
+
+**Files:** `msez/crates/msez-crypto/` (anchor module)
+**Confirmed by:** Formal Methods, Institutional Assessment
+**Issue:** `MockAnchorTarget` always reports `confirmed`. No L1 finality proof, reorg handling, or inclusion verification exists.
+**Impact:** No adversarial proof obligation about L1 finality can be satisfied. Anchoring is aspirational, not functional.
+**Remediation:** Implement at minimum a real anchor target interface with finality confirmation delay, reorg detection, and inclusion proof verification. Feature-gate mock for dev only.
+**Verification:** Integration test with simulated L1 (delayed confirmation, reorg scenario).
+**Effort:** XL | **Owner:** protocol + infra
+
+### P0-TENSOR-001: Extended Compliance Domains Default to NotApplicable (Passes)
+
+**Files:** `msez/crates/msez-tensor/src/evaluation.rs`
+**Confirmed by:** Institutional Assessment, Red Team, Formal Methods
+**Issue:** Only base domains evaluated. Extended domains (including LICENSING, BANKING, DATA_PRIVACY, SANCTIONS) return `NotApplicable`, which is treated as passing. Additionally, `TensorSlice::aggregate_state()` returns `Compliant` for empty slices (folds from `Compliant`).
+**Impact:** Regulatory bypass. Transactions proceed without checks for domains that should be enforced. Attacker can induce empty slice → compliant aggregate.
+**Remediation:**
+1. Fail-closed on unimplemented domains in production: treat "not implemented" as `Pending` or `NonCompliant`, not `NotApplicable`.
+2. Require all mandatory domains present and evaluated; treat empty slices as error/Pending.
+3. Authority-bound state transitions for Exempt/NotApplicable decisions (signed policy artifact required).
+**Verification:** Property tests: no path elevates failing state to passing; empty slice returns error.
+**Effort:** M | **Owner:** protocol + security
+
+### P0-CRYPTO-001: Poseidon2 Is a Stub
+
+**Files:** `msez/crates/msez-crypto/src/poseidon.rs` (feature-gated)
+**Confirmed by:** Cryptographic Correctness Pass
+**Issue:** `poseidon2_digest()` and `poseidon2_node_hash()` return `NotImplemented`.
+**Impact:** Any spec element relying on Poseidon2 (ZK-friendly hashing, proof-internal commitments) cannot execute. Mixed deployments risk network divergence.
+**Remediation:** Implement Poseidon2 with fixed parameters; publish test vectors; hard feature matrix preventing disagreement on hashing rules.
+**Effort:** L-XL | **Owner:** security + protocol
+
+### P0-CRYPTO-002: BBS+ Selective Disclosure Is a Stub
+
+**Files:** `msez/crates/msez-crypto/src/bbs.rs` (feature-gated)
+**Confirmed by:** Cryptographic Correctness Pass
+**Issue:** Entire BBS+ module is stubbed. Cannot support selective disclosure proofs for KYC/compliance claims.
+**Remediation:** Integrate vetted BBS+ library; add proof verification tests; specify canonical message encoding and domain separation.
+**Effort:** L-XL | **Owner:** security
+
+### P0-ZK-001: ZK Proof System Is Phase 1 Mock
+
+**Files:** `msez/crates/msez-zkp/`
+**Confirmed by:** Red Team, Institutional Assessment
+**Issue:** Phase 1 uses deterministic SHA-256 mock proof system by default. Real backends are feature-gated. If verifier accepts mock proofs as authoritative, attacker can supply proofs without possessing underlying witness/claims.
+**Impact:** Catastrophic if proofs gate compliance: unauthorized transactions appear compliant.
+**Remediation:**
+1. Fail-closed production policy: require real proof backend; reject mock proof types.
+2. Make proof backend choice a signed, content-addressed policy artifact.
+3. Compile-time guardrails + CI checks for release builds.
+**Verification:** CI gate: release profile must not enable mock feature; runtime attestation of proof backend.
+**Effort:** M | **Owner:** security + protocol
+
+### P0-IDENTITY-001: Identity Primitive Has No Dedicated Mass Service
+
+**Confirmed by:** Institutional Assessment
+**Issue:** `IdentityClient` is a facade over other Mass services. There is no `identity-info.api.mass.inc`. This is a sovereign due-diligence blocker.
+**Remediation:** Ship real Identity primitive service (Mass-side) + wire `IdentityClient` to it.
+**Effort:** L-XL (2-6 weeks) | **Owner:** protocol + partner
+
+### P0-CORRIDOR-NET-001: No Inter-Zone Corridor Networking
+
+**Confirmed by:** Institutional Assessment
+**Issue:** Corridor receipt chain and cryptography exist, but no network protocol / discovery / handshake for Zone A ↔ Zone B. Blocks "AWS of Zones" cross-border value proposition.
+**Remediation:** Implement inter-zone corridor protocol + 2-zone integration test (protocol spec + handshake + receipt exchange + watcher attestations + replay protection).
+**Effort:** XL (4-8 weeks) | **Owner:** protocol + infra
+
+### P0-PACK-001: Pack Trilogy Has No Real Jurisdiction Content
+
+**Confirmed by:** Institutional Assessment
+**Issue:** Schemas + validation + signing + CAS exist, but no real Pakistan statutes / rates / license categories. Compliance evaluation not meaningful for sovereign deployment.
+**Remediation:** Deliver real pack content for target jurisdiction(s). Minimum for Pakistan pilot: core tax statutes + withholding rules + SECP license categories + sanctions + AML/CFT calendars.
+**Effort:** XL (6-16+ weeks, parallel) | **Owner:** legal + protocol
+
+### P0-DEPLOY-001: Default Credentials in Deploy Paths
+
+**Confirmed by:** Institutional Assessment, Red Team
+**Issue:** `docker-compose` and deploy script default to `POSTGRES_PASSWORD=msez`. Unacceptable outside local dev.
+**Remediation:** Wire secret manager; eliminate all default credentials; key custody model (HSM/KMS) + rotation.
+**Effort:** S-M | **Owner:** infra + security
+
+---
+
+## 3. SYNTHESIZED P1 FINDINGS — HIGH SEVERITY
+
+### P1-CLI-001: Corridor CLI Discards Evidence Inputs
+
+**Files:** `msez/crates/msez-cli/src/corridor.rs`
+**Issue:** CLI accepts evidence files/digests but pattern-matches them as `_`. Transition records store `evidence_digest: None`.
+**Remediation:** Compute content digests for evidence artifacts; validate required evidence per transition type; add `--strict` mode.
+**Effort:** M | **Owner:** protocol
+
+### P1-SCHEMA-001: CI Validates Schemas as JSON Only, Not Draft 2020-12
+
+**Files:** `.github/workflows/ci.yml`
+**Issue:** CI runs `python3 -c "import json; json.load(...)"` — checks parse, not schema validity or `$ref` closure.
+**Remediation:** Add Rust CI step using `SchemaValidator::new()` with `Draft202012` and retriever resolution.
+**Effort:** S | **Owner:** infra
+
+### P1-SCHEMA-002: Schema URI Inconsistency
+
+**Files:** `schemas/stack.lock.schema.json`, `msez/crates/msez-schema/src/validate.rs`
+**Issue:** `$id` uses `https://momentum-sez.org/schemas/...` while validator resolves `https://schemas.momentum-sez.org/msez/`.
+**Remediation:** Normalize all `$id` under single canonical domain; CI rule: no non-canonical `$id`.
+**Effort:** S | **Owner:** protocol
+
+### P1-GOV-001: Deprecated Governance State Machine v1 Still Present
+
+**Files:** `governance/corridor.lifecycle.state-machine.v1.json`
+**Issue:** Self-declares `deprecated: true`, incorrect state names. Downstream integrators can ingest v1 and implement wrong lifecycle.
+**Remediation:** Move to `governance/deprecated/` or remove from default distributions; ensure v2 is sole reference.
+**Effort:** XS | **Owner:** protocol
+
+### P1-API-001: OpenAPI Specs Are Scaffold-Grade
+
+**Files:** `apis/*.openapi.yaml`
+**Issue:** Each spec self-identifies as scaffold/skeleton. Gaps in error models, auth models, idempotency semantics, pagination.
+**Remediation:** Version and harden with schema refs, auth, error models, idempotency, pagination.
+**Effort:** L-XL (2-4 weeks) | **Owner:** protocol + infra
+
+### P1-API-002: Mass API Alignment Cannot Be Verified
+
+**Issue:** No live Swagger URLs discoverable in repo artifacts. Blocks integration audit.
+**Remediation:** Publish stable Mass OpenAPI docs; commit versioned snapshots under `apis/mass/*.yaml`.
+**Effort:** M | **Owner:** protocol + partner
+
+### P1-DEPLOY-002: Doc/Deploy Drift
+
+**Issue:** Deploy script prints endpoints for defunct multi-service layout; docker-compose describes single binary architecture.
+**Remediation:** Update deploy script output to match actual compose architecture.
+**Effort:** S | **Owner:** infra
+
+### P1-SCHEMA-003: additionalProperties:true on Security-Critical Objects
+
+**Files:** Multiple corridor/API schemas
+**Issue:** `evidence: type: object additionalProperties: true` on corridor finality status. Smart assets OpenAPI has multiple schemas with `additionalProperties: true`.
+**Remediation:** Set `additionalProperties: false` on all security-critical objects; keep extensibility only in explicitly namespaced subobjects.
+**Effort:** M | **Owner:** protocol + security
+
+### P1-PERF-001: Schema Validator Constructs Per Call
+
+**Files:** `msez/crates/msez-schema/src/validate.rs`
+**Issue:** `validate_value()` constructs validator and clones schema map per call. Performance bottleneck under load.
+**Remediation:** Cache compiled validators per schema ID using `Arc<CompiledValidator>`.
+**Effort:** S-M | **Owner:** protocol
+
+### P1-NAMING-001: Mass Primitives Naming Inconsistency
+
+**Issue:** Repo spec says "Instruments"; investor/government materials say "Fiscal instruments/rails".
+**Remediation:** Publish canonical glossary with explicit model/endpoint mapping.
+**Effort:** S | **Owner:** protocol
+
+---
+
+## 4. SYNTHESIZED P2 FINDINGS — MEDIUM SEVERITY
+
+### P2-CANON-002: Merkle Helper Uses String Concatenation
+
+**Files:** `msez/crates/msez-tensor/` (commitment.rs Merkle helper)
+**Issue:** Hashes canonicalized string concatenations of hex digests rather than byte-level Merkle. Deterministic but diverges from any external spec expecting byte-concat of 32-byte nodes.
+**Effort:** S | **Owner:** protocol
+
+### P2-SA-001: binding_status Is Unrestricted String
+
+**Files:** `msez/crates/msez-vc/` (JurisdictionBinding)
+**Issue:** `binding_status: String` allows invalid values; should be enum `{active, suspended, exited}`.
+**Effort:** XS | **Owner:** protocol
+
+### P2-SA-002: VC Constructor Doesn't Enforce asset_id Binding
+
+**Files:** `msez/crates/msez-vc/`
+**Issue:** VC `credentialSubject.asset_id` is not verified to equal `compute_asset_id(genesis)`.
+**Effort:** S | **Owner:** protocol
+
+### P2-CANON-003: Sorted Key Assumption Is Test-Only
+
+**Files:** `msez/crates/msez-core/src/canonical.rs`
+**Issue:** Test asserts `serde_json::Map` iterates sorted; not enforced in production builds. Supply-chain/feature-flag risk if `preserve_order` enabled.
+**Effort:** S | **Owner:** security
+
+### P2-CL-001: Corridor Transition Timestamps Are Wall-Clock
+
+**Issue:** `transmute_to()` uses `Utc::now()` — non-deterministic if used in consensus.
+**Effort:** S | **Owner:** protocol
+
+### P2-DEPLOY-003: No General CAS Verification in CI
+
+**Files:** `.github/workflows/ci.yml`
+**Issue:** Trade-playbook closure check exists but no general repo-wide CAS verification.
+**Effort:** M | **Owner:** infra
+
+### P2-NATIONAL-001: Pakistan National System Adapters Undefined
+
+**Issue:** Data structures exist (NADRA types) but production HTTP adapters / trait contracts not implemented (FBR IRIS, Raast, NADRA, SECP).
+**Effort:** XL (8-20 weeks) | **Owner:** protocol + partner + sovereign
+
+---
+
+## 5. WORK PRIORITY QUEUE (Claude Code Execution Order)
+
+This is the ordered sequence of work items. Dependencies are noted. Each item includes the command context for Claude Code.
+
+### Phase A: Integrity Foundation (Weeks 1-3)
+
+```
+# These must be done first — everything else depends on correct receipt semantics
+
+1. P0-CANON-001   — Resolve JCS spec mismatch (decision + implementation)
+2. P0-CORRIDOR-002 — Implement compute_next_root() with digest-set normalization
+3. P0-CORRIDOR-001 — Implement dual commitment model (hash-chain + MMR)
+4. P0-CORRIDOR-003 — Extend CorridorReceipt to match schema (add proof, ArtifactRef)
+5. P0-CORRIDOR-004 — Implement schema-conformant checkpoint type
+6. P0-FORK-001     — Make fork resolution evidence-driven (signed attestations)
+```
+
+### Phase B: Safety Properties (Weeks 2-4, partially parallel)
+
+```
+7. P0-MIGRATION-001 — Model saga side-effects + inverse compensation + idempotency
+8. P0-TENSOR-001    — Fail-closed on unimplemented compliance domains
+9. P0-ZK-001        — Fail-closed production policy for proof backend
+10. P0-DEPLOY-001   — Eliminate default credentials; wire secret manager
+```
+
+### Phase C: Governance & Schema Hardening (Weeks 3-5)
+
+```
+11. P1-CLI-001      — Implement evidence-gated corridor transitions
+12. P1-SCHEMA-001   — Upgrade CI to Draft 2020-12 compilation + $ref closure
+13. P1-SCHEMA-002   — Normalize schema URIs
+14. P1-SCHEMA-003   — Tighten additionalProperties on security-critical schemas
+15. P1-GOV-001      — Remove/quarantine deprecated governance v1
+16. P1-PERF-001     — Cache compiled schema validators
+```
+
+### Phase D: API & Integration Surface (Weeks 4-8)
+
+```
+17. P1-API-001      — Promote OpenAPI from scaffold to contract
+18. P1-API-002      — Pin Mass API specs in-repo
+19. P1-NAMING-001   — Publish canonical terminology glossary
+20. P1-DEPLOY-002   — Fix deploy script output drift
+```
+
+### Phase E: Cryptographic Completion (Weeks 4-12, parallel)
+
+```
+21. P0-CRYPTO-001   — Implement Poseidon2
+22. P0-CRYPTO-002   — Implement BBS+ selective disclosure
+23. P0-ANCHOR-001   — Implement real anchor target (at minimum interface + test)
+```
+
+### Phase F: Sovereign Deployment (Weeks 6-20, parallel)
+
+```
+24. P0-IDENTITY-001    — Ship real Identity service
+25. P0-CORRIDOR-NET-001 — Implement inter-zone corridor protocol
+26. P0-PACK-001        — Deliver real jurisdiction pack content
+27. P2-NATIONAL-001    — Implement Pakistan national system adapters
+```
+
+---
+
+## 6. FORMAL VERIFICATION OBLIGATIONS
+
+The following TLA+ / Alloy models are required to close proof obligations. Generate stubs during Phase A/B work.
+
+### TLA+ Modules Required
+
+| Module | Goal | Priority |
+|---|---|---|
+| `Canonicalization.tla` | Prove cross-language determinism; verify CB = JCS_RFC8785 (or document deviation) | Phase A |
+| `ReceiptChainMMR.tla` | Prove append-only, root linkage, inclusion proof soundness, `prev_root == final_state_root` | Phase A |
+| `ForkResolution.tla` | Prove fork resolution cannot be gamed; attestation_count sound; timestamp bound; eventual convergence with >2/3 honest watchers | Phase A |
+| `MigrationSaga.tla` | Prove inverse/idempotent compensation, no asset duplication, timeout triggers compensation | Phase B |
+| `WatcherBonding.tla` | Prove slashing/accounting invariants; `slashed ≤ bonded`; ban is terminal | Phase B |
+
+### Alloy Models Required
+
+| Model | Goal | Priority |
+|---|---|---|
+| `SchemaRigidity.als` | Enforce schema-level invariants; no extra fields in proof objects; binding_status from fixed enum | Phase C |
+
+---
+
+## 7. ADVERSARIAL TEST VECTORS REQUIRED
+
+Each must be implemented as test cases in the relevant crate:
+
+| Vector | Crate | Description |
+|---|---|---|
+| Receipt next_root forgery | msez-corridor | Craft receipt with arbitrary `next_root` that doesn't match payload; must be rejected |
+| Fork timestamp backdating | msez-corridor | Craft `ForkBranch` with `ts=epoch, attest=Q+1`; must be rejected |
+| Fork attestation inflation | msez-corridor | Craft branch claiming attestation_count exceeding actual signed attestations; must be rejected |
+| Checkpoint forgery | msez-corridor | Submit unsigned checkpoint; must be rejected |
+| Migration race condition | msez-corridor | Two concurrent `advance()` calls on same migration; CAS must prevent double-advance |
+| Compensation replay | msez-corridor | Call `compensate()` twice; second must be no-op (not error) |
+| Compliance tensor empty slice | msez-tensor | Submit empty domain set; must return error/Pending, not Compliant |
+| Compliance NotApplicable bypass | msez-tensor | Attempt to pass check with all extended domains returning NotApplicable; must fail in production mode |
+| Mock ZK proof in production | msez-zkp | Submit mock proof when production policy active; must be rejected |
+| API schema downgrade | msez-api | Send request with extra fields to `additionalProperties: false` endpoint; must be rejected |
+| Watcher equivocation | msez-corridor | Two conflicting attestations from same watcher for same height; detect and trigger slashing |
+| Content-addressed integrity gap | msez-core | Submit artifact where declared digest ≠ actual bytes hash; must be rejected |
+
+---
+
+## 8. CI GATES TO ADD
+
+```yaml
+# Add to .github/workflows/ci.yml
+
+# 1. Schema compilation (Draft 2020-12 + $ref closure)
+- name: Validate all schemas
+  run: cargo test --package msez-schema -- --test schema_compilation
+
+# 2. Release build must not enable mock features
+- name: No mocks in release
+  run: |
+    cargo build --release 2>&1 | grep -v "mock"
+    # Verify: msez-zkp mock feature is not enabled
+    cargo metadata --format-version 1 | jq '.packages[] | select(.name == "msez-zkp") | .features' | grep -v mock
+
+# 3. CAS integrity verification
+- name: Verify content-addressed artifacts
+  run: msez artifact verify --all
+
+# 4. Schema URI canonicalization
+- name: Check schema $id consistency
+  run: |
+    grep -r '"$id"' schemas/ | grep -v 'schemas.momentum-sez.org/msez/' && exit 1 || true
+
+# 5. No default credentials
+- name: Check for default credentials
+  run: |
+    grep -r 'POSTGRES_PASSWORD=msez' deploy/ && exit 1 || true
+    grep -r 'password.*=.*msez' deploy/ && exit 1 || true
+
+# 6. serde_json preserve_order guard (already exists — keep it)
+```
+
+---
+
+## 9. COVERAGE MATRIX (Spec Chapters → Implementation Status)
+
+Based on synthesized audit findings. Status: ✅ Implemented | 🟡 Partial | 🔴 Stub/Missing | ⚪ Not Applicable
+
+| # | Spec Area | Status | Blocking P0s | Notes |
+|---|---|---|---|---|
+| 1-5 | Core primitives / entities | 🟡 | P0-IDENTITY-001 | Identity is facade only |
+| 6-10 | Ownership / instruments | 🟡 | — | Mass API alignment unverified |
+| 11 | Mass primitives mapping | 🟡 | P1-NAMING-001 | Naming inconsistency |
+| 12-15 | Compliance tensor | 🟡 | P0-TENSOR-001 | Extended domains default-pass |
+| 16-20 | Pack trilogy | 🔴 | P0-PACK-001 | No real jurisdiction content |
+| 21-25 | Corridors | 🟡 | P0-CORRIDOR-001..004, P0-FORK-001 | Receipt chain diverges from spec |
+| 26-30 | Migration | 🟡 | P0-MIGRATION-001 | Compensation unprovable |
+| 31-35 | Watcher economy | 🟡 | P0-FORK-001 | Fork resolution manipulable |
+| 36-40 | Anchoring / ZK | 🔴 | P0-ANCHOR-001, P0-ZK-001, P0-CRYPTO-001/002 | Mocks only |
+| 41-45 | Deployment / infra | 🟡 | P0-DEPLOY-001 | Default creds, doc drift |
+| 46-48 | National integration | 🔴 | P2-NATIONAL-001 | Adapters undefined |
+
+---
+
+## 10. DEPLOYMENT PHASE GATES
+
+### Phase 1 — Controlled Sandbox (PROCEED NOW)
+
+**Entry criteria (met or in-progress):**
+- [x] Deterministic deploy with real keys (placeholder crypto keys removed)
+- [x] Health/readiness gates for Mass connectivity
+- [x] Contract test suite for Mass API drift detection
+- [ ] P0-DEPLOY-001: Eliminate default credentials
+
+**Exit criteria:**
+- End-to-end demo flows with VCs + audit trails
+- Threat model + runbook reviewed with sovereign security
+
+### Phase 2 — Limited Corridor Activation (BLOCKED)
+
+**Blockers:**
+- P0-CORRIDOR-001..004 (receipt chain spec conformance)
+- P0-CORRIDOR-NET-001 (inter-zone protocol)
+- P0-FORK-001 (fork resolution)
+- P0-TENSOR-001 (compliance fail-closed)
+
+### Phase 3 — Production (BLOCKED)
+
+**Blockers (all of Phase 2 plus):**
+- P0-PACK-001 (real jurisdiction content)
+- P0-IDENTITY-001 (real identity service)
+- P2-NATIONAL-001 (payment/tax/KYC adapters)
+- P0-DEPLOY-001 (secrets, key custody, HSM/KMS)
+- External security audit completed
+
+### Phase 4 — Cross-Border Expansion
+
+**Requires:**
+- Multi-zone infra parameterization
+- Corridor registry + trust anchor governance
+- P0-CRYPTO-001/002 (Poseidon2 + BBS+)
+
+---
+
+## 11. AUDIT INFRASTRUCTURE
+
+### Commit These Files
+
+```
+schemas/audit/institutional-readiness-audit.schema.json   # JSON Schema for audit artifacts
+audits/v0.4.44-genesis/institutional-readiness.audit.json  # Machine-readable audit instance
+.github/workflows/audit-sync.yml                          # Auto-create GitHub issues from findings
+```
+
+### GitHub Issue Synthesis Rules
+
+- **Primary key:** `finding.id`
+- **Title format:** `[{severity}][{area}] {id}: {issue}`
+- **Labels:** `severity:P0`, `area:Cryptography`, `owner:protocol`, `status:open`, optional: `sovereign_blocker:true`, `formal_model_required:true`
+- **File pointer:** `https://github.com/momentum-sez/stack/blob/{commit_sha}/{file}#L{line_start}-L{line_end}`
+
+---
+
+## 12. CLAUDE CODE SESSION STRATEGY
+
+### Session 1: Receipt Chain Foundation
+Open and fix: `msez/crates/msez-corridor/src/receipt.rs`, `msez/crates/msez-core/src/canonical.rs`
+Targets: P0-CANON-001, P0-CORRIDOR-001, P0-CORRIDOR-002, P0-CORRIDOR-003, P0-CORRIDOR-004
+
+### Session 2: Fork Resolution + Watcher Safety
+Open and fix: `msez/crates/msez-corridor/src/fork.rs`, watcher modules
+Targets: P0-FORK-001, watcher equivocation tests
+
+### Session 3: Migration Saga Safety
+Open and fix: migration saga module
+Targets: P0-MIGRATION-001, concurrency controls, idempotency
+
+### Session 4: Compliance Tensor + ZK Policy
+Open and fix: `msez/crates/msez-tensor/src/evaluation.rs`, `msez/crates/msez-zkp/`
+Targets: P0-TENSOR-001, P0-ZK-001
+
+### Session 5: Schema & CI Hardening
+Open and fix: `.github/workflows/ci.yml`, `msez/crates/msez-schema/`, `schemas/`
+Targets: P1-SCHEMA-001, P1-SCHEMA-002, P1-SCHEMA-003, P1-PERF-001
+
+### Session 6: CLI Evidence Gating + Governance Cleanup
+Open and fix: `msez/crates/msez-cli/src/corridor.rs`, `governance/`
+Targets: P1-CLI-001, P1-GOV-001
+
+### Session 7: Deploy Hardening
+Open and fix: `deploy/docker/docker-compose.yaml`, deploy scripts
+Targets: P0-DEPLOY-001, P1-DEPLOY-002
+
+### Session 8: OpenAPI Promotion
+Open and fix: `apis/*.openapi.yaml`
+Targets: P1-API-001, P1-API-002
+
+---
+
+## 13. KEY INVARIANTS REGISTRY
+
+These invariants must be maintained across all changes. Violation of any = P0.
+
+| ID | Invariant | Enforcement |
+|---|---|---|
+| I-CANON | All digests computed via `SHA256(CanonicalBytes)` path | Static (type system) |
+| I-RECEIPT-LINK | `receipt.prev_root == final_state_root` (hash-chain) | Runtime (append check) |
+| I-RECEIPT-COMMIT | `receipt.next_root == SHA256(JCS(payload_without_proof_and_next_root))` | Runtime (recompute + compare) |
+| I-MMR-ROOT | `mmr_root() == MMR(next_roots)` | Runtime |
+| I-CHECKPOINT-PROOF | Checkpoint must include proof (signed) | Runtime + schema |
+| I-FORK-EVIDENCE | Fork selection inputs must be cryptographically bound | Runtime |
+| I-SAGA-NODUPE | `¬(asset_exists_source ∧ asset_exists_dest)` | Persistence CAS |
+| I-SAGA-IDEMP | `compensate(compensate(s)) == compensate(s)` | Runtime |
+| I-TENSOR-COMPLETE | Production mode: all mandatory domains evaluated, no empty slices | Runtime |
+| I-ZK-REAL | Production mode: reject mock proofs | Compile-time + runtime |
+| I-SERDE-ORDER | `serde_json` must not enable `preserve_order` | CI guard (exists) |
+| I-NO-DEFAULT-CREDS | No default passwords in deploy paths | CI guard (add) |
+
+---
+
+## 14. INSTITUTIONAL POSTURE SUMMARY
+
+**Overall Assessment:** PROCEED WITH CONDITIONS into Phase 1 (Controlled Sandbox).
+
+**Do NOT proceed to Phase 3 (Production)** until:
+1. Red items resolved (identity service, inter-zone corridor, real pack content, national adapters)
+2. Receipt chain conforms to spec (P0-CORRIDOR-001..004)
+3. Fork resolution is evidence-driven (P0-FORK-001)
+4. Default credentials eliminated (P0-DEPLOY-001)
+5. Independent security review / pen test completed
+
+**Positive signals:**
+- Strong type-level invariant strategy (typestate, canonical bytes, sealed proof backends, zeroize keys)
+- Mass API connectivity gating added
+- Contract tests with OpenAPI snapshots + schema drift detection
+- Placeholder crypto keys removed; real Ed25519 JWK via `msez vc keygen`
+- CI guard against `serde_json preserve_order` (digest corruption prevention)
+- Single-binary docker-compose baseline with observability

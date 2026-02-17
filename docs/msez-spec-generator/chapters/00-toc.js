@@ -1,4 +1,4 @@
-const { Paragraph, TextRun, PageBreak, AlignmentType, TabStopType, LeaderType, PageReference } = require("docx");
+const { Paragraph, TextRun, PageBreak, AlignmentType, TabStopType, LeaderType, SimpleField } = require("docx");
 const C = require("../lib/constants");
 
 /**
@@ -14,9 +14,10 @@ const C = require("../lib/constants");
  * This replacement builds the TOC explicitly at document generation time:
  * each heading gets a bookmark (see primitives.js), and each TOC entry is a
  * regular paragraph containing the heading text, a dot-leader tab, and a
- * PAGEREF field referencing the bookmark. PAGEREF is a simple field that Word
- * universally evaluates correctly — it just resolves a bookmark to its page
- * number, with no style matching involved.
+ * PAGEREF simple field referencing the bookmark. Using w:fldSimple (via
+ * SimpleField) produces clean, universally-compatible OOXML that Word
+ * evaluates correctly — it just resolves a bookmark to its page number,
+ * with no style matching involved.
  *
  * @param {Array<{text: string, level: number, bookmarkName: string}>} tocEntries
  */
@@ -48,7 +49,10 @@ module.exports = function build_toc(tocEntries) {
           color: C.DARK,
         }),
         new TextRun({ children: ["\t"], font: C.BODY_FONT, size: isLevel2 ? 20 : 22 }),
-        new PageReference(entry.bookmarkName),
+        // SimpleField produces <w:fldSimple w:instr="PAGEREF bookmark"> which is
+        // universally handled by Word. The cached value "–" displays until Word
+        // resolves the field to the actual page number on open/print.
+        new SimpleField(` PAGEREF ${entry.bookmarkName} `, "\u2013"),
       ]
     }));
   }

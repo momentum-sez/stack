@@ -4,19 +4,17 @@ const { Document, Packer, Header, Footer, Paragraph, TextRun,
         PageNumber, AlignmentType } = require("docx");
 const styles = require("./lib/styles");
 const C = require("./lib/constants");
+const { getTocEntries } = require("./lib/primitives");
 
-// ---------- Part-to-chapter mapping ----------
-// Each section groups chapters under a Part heading.
-// partTitle: null means front matter (default header, no part label).
-const SECTIONS = [
-  {
-    partTitle: null,
-    chapters: [
-      require("./chapters/00-cover"),
-      require("./chapters/00-toc"),
-      require("./chapters/00-executive-summary"),
-    ]
-  },
+// ---------- Chapter imports ----------
+
+const build_cover = require("./chapters/00-cover");
+const build_toc = require("./chapters/00-toc");
+const build_exec_summary = require("./chapters/00-executive-summary");
+
+// Part-to-chapter mapping.
+// TOC is NOT listed here — it is generated after all chapters are built.
+const PART_SECTIONS = [
   {
     partTitle: "PART I: FOUNDATION",
     chapters: [
@@ -216,17 +214,7 @@ const defaultFooter = new Footer({
   })]
 });
 
-// ---------- Build sections ----------
-
-console.log("Assembling document sections...");
-
-let totalElements = 0;
-
-const docSections = SECTIONS.map((sec) => {
-  const children = flatten(sec.chapters.map(fn => fn()));
-  totalElements += children.length;
-  const label = sec.partTitle || "Front Matter";
-  console.log(`  ${label}: ${children.length} elements`);
+function makeSection(partTitle, children) {
   return {
     properties: {
       page: {
@@ -234,11 +222,53 @@ const docSections = SECTIONS.map((sec) => {
         margin: { top: C.MARGIN, right: C.MARGIN, bottom: C.MARGIN, left: C.MARGIN }
       }
     },
-    headers: { default: makeHeader(sec.partTitle) },
+    headers: { default: makeHeader(partTitle) },
     footers: { default: defaultFooter },
     children: children,
   };
+}
+
+// ---------- Phase 1: Build all chapter content ----------
+// This populates the heading registry in primitives.js via
+// partHeading / chapterHeading / h2 calls within each chapter.
+
+console.log("Phase 1: Building chapter content (populates heading registry)...");
+
+const coverElements = flatten(build_cover());
+const execSummaryElements = flatten(build_exec_summary());
+
+let totalElements = coverElements.length + execSummaryElements.length;
+
+const partData = PART_SECTIONS.map((sec) => {
+  const children = flatten(sec.chapters.map(fn => fn()));
+  totalElements += children.length;
+  const label = sec.partTitle;
+  console.log(`  ${label}: ${children.length} elements`);
+  return { partTitle: sec.partTitle, children };
 });
+
+// ---------- Phase 2: Generate static TOC from heading registry ----------
+// All headings are now registered. Build the TOC with bookmark PAGEREF fields.
+
+console.log("Phase 2: Generating static TOC from heading registry...");
+
+const tocEntries = getTocEntries();
+console.log(`  ${tocEntries.length} TOC entries (${tocEntries.filter(e => e.level === 1).length} H1, ${tocEntries.filter(e => e.level === 2).length} H2)`);
+
+const tocElements = flatten(build_toc(tocEntries));
+totalElements += tocElements.length;
+
+// ---------- Phase 3: Assemble document sections ----------
+
+console.log("Phase 3: Assembling document sections...");
+
+const frontMatterChildren = [...coverElements, ...tocElements, ...execSummaryElements];
+console.log(`  Front Matter: ${frontMatterChildren.length} elements (cover: ${coverElements.length}, TOC: ${tocElements.length}, exec summary: ${execSummaryElements.length})`);
+
+const docSections = [
+  makeSection(null, frontMatterChildren),
+  ...partData.map(sec => makeSection(sec.partTitle, sec.children)),
+];
 
 console.log(`Total elements: ${totalElements}`);
 

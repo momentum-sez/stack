@@ -86,6 +86,23 @@ function isDocxElement(el) {
 const chapterElements = {};
 
 for (const [name, fn] of Object.entries(chapterModules)) {
+  // 00-toc takes a tocEntries parameter (static TOC generated at build time),
+  // so it cannot be called standalone. Validate it with a stub entry instead.
+  if (name === "00-toc") {
+    try {
+      const stubEntries = [{ text: "Stub", level: 1, bookmarkName: "_toc_stub" }];
+      const result = fn(stubEntries);
+      const flat = flatten(result);
+      if (flat.length === 0) {
+        fail(`${name}.js: returned empty array`);
+      } else {
+        pass();
+      }
+    } catch (e) {
+      fail(`${name}.js: function threw with stub input: ${e.message}`);
+    }
+    continue;
+  }
   try {
     const result = fn();
     if (!Array.isArray(result)) {

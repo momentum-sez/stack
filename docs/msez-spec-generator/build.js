@@ -255,6 +255,14 @@ console.log("Phase 2: Generating static TOC from heading registry...");
 const tocEntries = getTocEntries();
 console.log(`  ${tocEntries.length} TOC entries (${tocEntries.filter(e => e.level === 1).length} H1, ${tocEntries.filter(e => e.level === 2).length} H2)`);
 
+// Sanity-check: if the heading registry has more entries than expected,
+// something is registering non-heading elements as headings.
+if (tocEntries.length > 400) {
+  console.error(`ERROR: ${tocEntries.length} TOC entries is abnormally high. Expected ~315.`);
+  console.error("  This suggests non-heading paragraphs are calling partHeading/chapterHeading/h2.");
+  process.exit(1);
+}
+
 const tocElements = flatten(build_toc(tocEntries));
 totalElements += tocElements.length;
 

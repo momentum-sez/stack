@@ -1,0 +1,22 @@
+jurisdiction_id: pk
+domain: civil
+sources:
+  - title: "Contract Act, 1872"
+    citation: "Act IX of 1872"
+    url: "https://www.na.gov.pk/uploads/documents/1322714988_625.pdf"
+    as_of_date: "2024-01-01"
+  - title: "Companies Act, 2017"
+    citation: "Act XIX of 2017"
+    url: "https://www.secp.gov.pk/document/companies-act-2017/"
+    as_of_date: "2024-01-01"
+  - title: "Partnership Act, 1932"
+    citation: "Act IX of 1932"
+    url: "https://www.na.gov.pk/uploads/documents/1322714988_625.pdf"
+    as_of_date: "2024-01-01"
+  - title: "Special Economic Zones Act, 2012"
+    citation: "Act XXIX of 2012"
+    url: "https://boi.gov.pk/sez/SEZAct2012.pdf"
+    as_of_date: "2024-01-01"
+  - title: "Arbitration Act, 1940"
+    citation: "Act X of 1940"
+    as_of_date: "2024-01-01"

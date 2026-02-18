@@ -1,0 +1,718 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act contains="originalVersion">
+    <meta>
+      <identification source="#mez">
+        <FRBRWork>
+          <FRBRthis value="/akn/pk/act/aml-corpus/0.1.0"/>
+          <FRBRuri value="/akn/pk/act/aml-corpus"/>
+          <FRBRdate date="2024-01-01" name="Generation"/>
+          <FRBRauthor href="#mez"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/pk/act/aml-corpus/0.1.0/eng@"/>
+          <FRBRuri value="/akn/pk/act/aml-corpus/eng@"/>
+          <FRBRdate date="2024-01-01" name="Generation"/>
+          <FRBRauthor href="#mez"/>
+          <FRBRlanguage language="eng"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/pk/act/aml-corpus/0.1.0/eng@.xml"/>
+          <FRBRuri value="/akn/pk/act/aml-corpus/eng@.xml"/>
+          <FRBRdate date="2024-01-01" name="Generation"/>
+          <FRBRauthor href="#mez"/>
+        </FRBRManifestation>
+      </identification>
+      <publication name="MEZ Stack" showAs="MEZ Stack" date="2024-01-01" number="0.1.0"/>
+      <references source="#mez">
+        <TLCOrganization eId="mez" href="/ontology/organization/mez" showAs="Momentum EZ"/>
+        <TLCOrganization eId="fmu" href="/ontology/organization/pk.fmu" showAs="Financial Monitoring Unit"/>
+        <TLCOrganization eId="sbp" href="/ontology/organization/pk.sbp" showAs="State Bank of Pakistan"/>
+        <TLCOrganization eId="secp" href="/ontology/organization/pk.secp" showAs="Securities and Exchange Commission of Pakistan"/>
+        <TLCOrganization eId="nacta" href="/ontology/organization/pk.nacta" showAs="National Counter Terrorism Authority"/>
+        <TLCOrganization eId="fatf" href="/ontology/organization/intl.fatf" showAs="Financial Action Task Force"/>
+      </references>
+    </meta>
+
+    <preface>
+      <p eId="preface-1">Pakistan AML/CFT legal corpus for the Momentum EZ compliance stack.
+        Consolidates key provisions from the Anti-Money Laundering Act, 2010 (Act VII of 2010),
+        the Anti-Terrorism Act, 1997 (Act XXVII of 1997, CFT provisions), the SECP AML/CFT
+        Regulations, 2018, and the SBP AML/CFT Regulations for Banks. Thresholds and requirements
+        reflect the legal position as of January 2024.</p>
+    </preface>
+
+    <body>
+      <!-- ================================================================ -->
+      <!-- PART I: ANTI-MONEY LAUNDERING ACT, 2010 (Act VII of 2010)       -->
+      <!-- ================================================================ -->
+      <part eId="part-amla">
+        <heading>Anti-Money Laundering Act, 2010 (Act VII of 2010)</heading>
+
+        <!-- Section 2: Definitions -->
+        <section eId="sec-amla-2">
+          <num>Section 2</num>
+          <heading>Definitions</heading>
+          <content>
+            <p eId="sec-amla-2.p1">In this Act, unless there is anything repugnant in the subject
+              or context:</p>
+            <blockList eId="sec-amla-2.bl1">
+              <item eId="sec-amla-2.bl1.i1">
+                <num>(a)</num>
+                <p><def refersTo="#financial-institution">"financial institution"</def> means a
+                  banking company, a non-banking finance company, a modaraba, a leasing company,
+                  an insurance company, a securities broker, a foreign exchange dealer, a money
+                  service business, a payment system operator, or any other entity as the Federal
+                  Government may by notification declare to be a financial institution for the
+                  purposes of this Act.</p>
+              </item>
+              <item eId="sec-amla-2.bl1.i2">
+                <num>(b)</num>
+                <p><def refersTo="#reporting-entity">"reporting entity"</def> means a financial
+                  institution, a designated non-financial business or profession, or any other
+                  person or entity as the Federal Government may by notification prescribe as a
+                  reporting entity.</p>
+              </item>
+              <item eId="sec-amla-2.bl1.i3">
+                <num>(c)</num>
+                <p><def refersTo="#suspicious-transaction">"suspicious transaction"</def> means a
+                  transaction, whether or not made in cash, which, to a person acting in good
+                  faith: (i) gives rise to a reasonable suspicion that it may involve the proceeds
+                  of an offence regardless of the value of the transaction; or (ii) appears to be
+                  made in circumstances of unusual or unjustified complexity; or (iii) appears to
+                  have no economic rationale or lawful purpose; or (iv) gives rise to a reasonable
+                  suspicion that it may involve financing of terrorism or a proscribed
+                  organization.</p>
+              </item>
+              <item eId="sec-amla-2.bl1.i4">
+                <num>(d)</num>
+                <p><def refersTo="#beneficial-owner">"beneficial owner"</def> means the natural
+                  person who ultimately owns or controls a customer or on whose behalf a
+                  transaction or activity is being conducted, and includes any person who
+                  exercises ultimate effective control over a legal person or arrangement.</p>
+              </item>
+              <item eId="sec-amla-2.bl1.i5">
+                <num>(e)</num>
+                <p><def refersTo="#dnfbp">"designated non-financial business or profession"</def>
+                  means: (i) a real estate agent; (ii) a dealer in precious metals or precious
+                  stones; (iii) a lawyer, notary, or other independent legal professional when
+                  preparing for or carrying out transactions for a client concerning buying and
+                  selling of real estate, managing client money or assets, managing bank or
+                  securities accounts, or creation or management of legal persons or arrangements;
+                  (iv) a trust and company service provider; (v) an accountant; or (vi) any other
+                  business or profession as the Federal Government may by notification
+                  prescribe.</p>
+              </item>
+              <item eId="sec-amla-2.bl1.i6">
+                <num>(f)</num>
+                <p><def refersTo="#predicate-offence">"predicate offence"</def> means any offence
+                  the commission of which generates proceeds that may become the subject of an
+                  offence under Section 3 of this Act, and includes offences set out in the
+                  Schedule to this Act, including but not limited to fraud, forgery, corruption,
+                  drug trafficking, kidnapping, extortion, smuggling, tax evasion, and any
+                  offence punishable under the Anti-Terrorism Act, 1997.</p>
+              </item>
+            </blockList>
+          </content>
+        </section>
+
+        <!-- Section 3: Money Laundering Offence -->
+        <section eId="sec-amla-3">
+          <num>Section 3</num>
+          <heading>Offence of Money Laundering</heading>
+          <content>
+            <p eId="sec-amla-3.p1">A person shall be guilty of the offence of money laundering
+              if the person:</p>
+            <blockList eId="sec-amla-3.bl1">
+              <item eId="sec-amla-3.bl1.i1">
+                <num>(a)</num>
+                <p>acquires, possesses, uses, converts, or transfers property knowing or having
+                  reason to believe that such property is the proceeds of a predicate offence;</p>
+              </item>
+              <item eId="sec-amla-3.bl1.i2">
+                <num>(b)</num>
+                <p>conceals or disguises the true nature, source, location, disposition, movement,
+                  or ownership of property knowing or having reason to believe that such property
+                  is the proceeds of a predicate offence; or</p>
+              </item>
+              <item eId="sec-amla-3.bl1.i3">
+                <num>(c)</num>
+                <p>holds, conceals, or facilitates any dealing in property knowing or having
+                  reason to believe that such property is the proceeds of a predicate offence.</p>
+              </item>
+            </blockList>
+            <p eId="sec-amla-3.p2">It shall not be necessary to establish a conviction for the
+              predicate offence in order to prove the offence of money laundering.</p>
+            <p eId="sec-amla-3.p3">The offence of money laundering extends to property derived
+              directly or indirectly from the predicate offence, including income, profits, or
+              other benefits derived from the proceeds.</p>
+          </content>
+        </section>
+
+        <!-- Section 4: Punishment -->
+        <section eId="sec-amla-4">
+          <num>Section 4</num>
+          <heading>Punishment for Money Laundering</heading>
+          <content>
+            <p eId="sec-amla-4.p1">Whoever commits the offence of money laundering shall be
+              punishable with rigorous imprisonment for a term which shall not be less than
+              <num value="1">one year</num> but may extend to <num value="10">ten years</num>
+              and shall also be liable to a fine which may extend to
+              <num value="1000000">PKR 1,000,000</num> (one million rupees), or twice the value
+              of the property involved in the offence, whichever is greater.</p>
+            <p eId="sec-amla-4.p2">Where the offence of money laundering has been committed by
+              a body corporate, every person who at the time the offence was committed was in
+              charge of and was responsible to the body corporate for the conduct of the business
+              of the body corporate, as well as the body corporate, shall be deemed to be guilty
+              of the offence and shall be liable to be proceeded against and punished
+              accordingly.</p>
+            <p eId="sec-amla-4.p3">Property involved in or derived from money laundering shall
+              be liable to forfeiture to the Federal Government, regardless of whether any
+              person has been convicted of the offence.</p>
+          </content>
+        </section>
+
+        <!-- Section 6: Customer Due Diligence -->
+        <section eId="sec-amla-6">
+          <num>Section 6</num>
+          <heading>Customer Due Diligence</heading>
+          <content>
+            <p eId="sec-amla-6.p1">Every reporting entity shall carry out customer due diligence
+              (CDD) measures when:</p>
+            <blockList eId="sec-amla-6.bl1">
+              <item eId="sec-amla-6.bl1.i1">
+                <num>(a)</num>
+                <p>establishing a business relationship;</p>
+              </item>
+              <item eId="sec-amla-6.bl1.i2">
+                <num>(b)</num>
+                <p>carrying out an occasional transaction above the applicable threshold
+                  (PKR 2,000,000 for cash transactions, USD 1,000 equivalent for wire
+                  transfers);</p>
+              </item>
+              <item eId="sec-amla-6.bl1.i3">
+                <num>(c)</num>
+                <p>there is a suspicion of money laundering or financing of terrorism; or</p>
+              </item>
+              <item eId="sec-amla-6.bl1.i4">
+                <num>(d)</num>
+                <p>the reporting entity has doubts about the veracity or adequacy of previously
+                  obtained customer identification data.</p>
+              </item>
+            </blockList>
+            <p eId="sec-amla-6.p2">CDD measures shall include:</p>
+            <blockList eId="sec-amla-6.bl2">
+              <item eId="sec-amla-6.bl2.i1">
+                <num>(i)</num>
+                <p><strong>Identity verification:</strong> identifying the customer and verifying
+                  the customer's identity using reliable, independent source documents, data, or
+                  information. For natural persons, this shall include the customer's full name,
+                  date of birth, residential address, and Computerised National Identity Card
+                  (CNIC) number or passport number. For legal persons, this shall include the
+                  entity's name, registration number, registered address, and details of
+                  directors or partners.</p>
+              </item>
+              <item eId="sec-amla-6.bl2.i2">
+                <num>(ii)</num>
+                <p><strong>Beneficial ownership:</strong> identifying the beneficial owner and
+                  taking reasonable measures to verify the identity of the beneficial owner,
+                  such that the reporting entity is satisfied that it knows who the beneficial
+                  owner is, including for legal persons and legal arrangements, understanding
+                  the ownership and control structure.</p>
+              </item>
+              <item eId="sec-amla-6.bl2.i3">
+                <num>(iii)</num>
+                <p><strong>Purpose and nature:</strong> understanding and, as appropriate,
+                  obtaining information on the purpose and intended nature of the business
+                  relationship.</p>
+              </item>
+              <item eId="sec-amla-6.bl2.i4">
+                <num>(iv)</num>
+                <p><strong>Ongoing monitoring:</strong> conducting ongoing due diligence on the
+                  business relationship and scrutiny of transactions undertaken throughout the
+                  course of that relationship to ensure that the transactions being conducted
+                  are consistent with the reporting entity's knowledge of the customer, their
+                  business and risk profile, including where necessary the source of funds.</p>
+              </item>
+            </blockList>
+            <p eId="sec-amla-6.p3">A reporting entity shall apply a risk-based approach to CDD.
+              Where the risk of money laundering or terrorist financing is higher, enhanced
+              measures shall be taken; where the risk is lower, simplified measures may be
+              permitted, subject to conditions prescribed by the relevant supervisory authority.</p>
+          </content>
+        </section>
+
+        <!-- Section 6A: Enhanced Due Diligence -->
+        <section eId="sec-amla-6a">
+          <num>Section 6A</num>
+          <heading>Enhanced Due Diligence for Politically Exposed Persons and High-Risk Countries</heading>
+          <content>
+            <p eId="sec-amla-6a.p1">Every reporting entity shall apply enhanced due diligence
+              (EDD) measures, in addition to the CDD measures required under Section 6, in the
+              following circumstances:</p>
+            <blockList eId="sec-amla-6a.bl1">
+              <item eId="sec-amla-6a.bl1.i1">
+                <num>(a)</num>
+                <p><strong>Politically Exposed Persons (PEPs):</strong> where the customer or
+                  the beneficial owner is a PEP, whether domestic or foreign, the reporting
+                  entity shall: (i) obtain senior management approval before establishing or
+                  continuing the business relationship; (ii) take reasonable measures to
+                  establish the source of wealth and source of funds; and (iii) conduct enhanced
+                  ongoing monitoring of the business relationship.</p>
+              </item>
+              <item eId="sec-amla-6a.bl1.i2">
+                <num>(b)</num>
+                <p><strong>High-risk countries:</strong> where the customer, beneficial owner, or
+                  transaction involves a country identified by the FATF as high-risk or under
+                  increased monitoring (grey list or black list), the reporting entity shall
+                  apply counter-measures proportionate to the risks, which may include: enhanced
+                  scrutiny of the business relationship; requiring additional documentation on
+                  the source and purpose of funds; and reporting the relationship or transaction
+                  to the FMU.</p>
+              </item>
+              <item eId="sec-amla-6a.bl1.i3">
+                <num>(c)</num>
+                <p><strong>Correspondent banking:</strong> for cross-border correspondent banking
+                  relationships, the reporting entity shall: gather sufficient information about
+                  the respondent institution to understand the nature of its business; determine
+                  from publicly available information the reputation of the institution and the
+                  quality of supervision; assess the respondent institution's AML/CFT controls;
+                  and obtain senior management approval before establishing new correspondent
+                  relationships.</p>
+              </item>
+            </blockList>
+          </content>
+        </section>
+
+        <!-- Section 7: Suspicious Transaction Reporting -->
+        <section eId="sec-amla-7">
+          <num>Section 7</num>
+          <heading>Suspicious Transaction Reports</heading>
+          <content>
+            <p eId="sec-amla-7.p1">Where a reporting entity has reasonable grounds to suspect
+              that a transaction, attempted transaction, or funds are the proceeds of an offence
+              or are related to or to be used for financing of terrorism, the reporting entity
+              shall as soon as possible but not later than <num value="7">seven</num> working
+              days submit a suspicious transaction report (STR) to the Financial Monitoring
+              Unit (FMU).</p>
+            <p eId="sec-amla-7.p2">The STR shall contain such particulars as the FMU may
+              prescribe, including but not limited to: the identity of the persons involved;
+              the nature and details of the transaction; the grounds for suspicion; and any
+              other information that may assist the FMU in its analysis.</p>
+            <p eId="sec-amla-7.p3">STRs shall be filed through the goAML portal maintained by
+              the FMU, or through such other electronic means as the FMU may prescribe.</p>
+            <p eId="sec-amla-7.p4">The obligation to submit an STR applies regardless of the
+              amount of the transaction and regardless of whether the transaction was completed
+              or attempted.</p>
+          </content>
+        </section>
+
+        <!-- Section 7A: Currency Transaction Reports -->
+        <section eId="sec-amla-7a">
+          <num>Section 7A</num>
+          <heading>Currency Transaction Reports</heading>
+          <content>
+            <p eId="sec-amla-7a.p1">Every reporting entity shall submit a currency transaction
+              report (CTR) to the FMU in respect of every cash transaction exceeding
+              <num value="2000000">PKR 2,000,000</num> (two million rupees) or its equivalent
+              in foreign currency, whether the transaction is conducted as a single transaction
+              or as several transactions that appear to be linked.</p>
+            <p eId="sec-amla-7a.p2">CTRs shall be submitted within <num value="15">fifteen</num>
+              days of the end of the calendar month in which the transaction was conducted,
+              through the goAML portal or such other means as the FMU may prescribe.</p>
+            <p eId="sec-amla-7a.p3">Where a reporting entity suspects that a transaction has been
+              structured (i.e., deliberately split into amounts below the CTR threshold to avoid
+              reporting), the reporting entity shall also file an STR under Section 7.</p>
+          </content>
+        </section>
+
+        <!-- Section 7B: Cross-Border Wire Transfer Requirements -->
+        <section eId="sec-amla-7b">
+          <num>Section 7B</num>
+          <heading>Cross-Border Wire Transfer Requirements</heading>
+          <content>
+            <p eId="sec-amla-7b.p1">Every financial institution ordering a cross-border wire
+              transfer shall ensure that the wire transfer is accompanied by the following
+              originator information:</p>
+            <blockList eId="sec-amla-7b.bl1">
+              <item eId="sec-amla-7b.bl1.i1">
+                <num>(a)</num>
+                <p>the name of the originator;</p>
+              </item>
+              <item eId="sec-amla-7b.bl1.i2">
+                <num>(b)</num>
+                <p>the originator's account number or, in the absence of an account, a unique
+                  transaction reference number;</p>
+              </item>
+              <item eId="sec-amla-7b.bl1.i3">
+                <num>(c)</num>
+                <p>the originator's address, CNIC number, customer identification number,
+                  or date and place of birth.</p>
+              </item>
+            </blockList>
+            <p eId="sec-amla-7b.p2">For wire transfers exceeding <num value="1000">USD 1,000</num>
+              or its equivalent in other currencies, the ordering financial institution shall
+              verify the identity of the originator prior to execution of the transfer and
+              include the following beneficiary information:</p>
+            <blockList eId="sec-amla-7b.bl2">
+              <item eId="sec-amla-7b.bl2.i1">
+                <num>(a)</num>
+                <p>the name of the beneficiary; and</p>
+              </item>
+              <item eId="sec-amla-7b.bl2.i2">
+                <num>(b)</num>
+                <p>the beneficiary's account number or, in the absence of an account, a unique
+                  transaction reference number.</p>
+              </item>
+            </blockList>
+            <p eId="sec-amla-7b.p3">The requirements of this section shall be applied in
+              compliance with FATF Recommendation 16 and are applicable to wire transfers
+              using SWIFT MT103 messages, ISO 20022 pacs.008 messages, or any other payment
+              messaging standard.</p>
+            <p eId="sec-amla-7b.p4">Intermediary financial institutions in a payment chain shall
+              ensure that all originator and beneficiary information accompanying a wire transfer
+              is retained with the transfer. Failure to include required originator or beneficiary
+              information shall constitute grounds for rejection or suspension of the transfer.</p>
+          </content>
+        </section>
+
+        <!-- Section 8: Record Keeping -->
+        <section eId="sec-amla-8">
+          <num>Section 8</num>
+          <heading>Record Keeping</heading>
+          <content>
+            <p eId="sec-amla-8.p1">Every reporting entity shall maintain the following records
+              for a period of not less than <num value="5">five years</num> from the date of
+              completion of the transaction or from the date of termination of the business
+              relationship, whichever is later:</p>
+            <blockList eId="sec-amla-8.bl1">
+              <item eId="sec-amla-8.bl1.i1">
+                <num>(a)</num>
+                <p>all records obtained through CDD measures, including copies of identification
+                  documents, account files, and business correspondence;</p>
+              </item>
+              <item eId="sec-amla-8.bl1.i2">
+                <num>(b)</num>
+                <p>all transaction records, including details sufficient to reconstruct individual
+                  transactions so as to provide, if necessary, evidence for prosecution of
+                  criminal activity; and</p>
+              </item>
+              <item eId="sec-amla-8.bl1.i3">
+                <num>(c)</num>
+                <p>all internal reports, risk assessments, and analysis related to STRs and CTRs.</p>
+              </item>
+            </blockList>
+            <p eId="sec-amla-8.p2">Records may be maintained in electronic form provided the
+              reporting entity can produce legible hard copies upon request by the FMU, a
+              supervisory authority, or a law enforcement agency within a reasonable time.</p>
+            <p eId="sec-amla-8.p3">The FMU or the relevant supervisory authority may, by order,
+              require a reporting entity to retain specified records for a period longer than
+              <num value="5">five years</num> in connection with an ongoing investigation or
+              proceeding.</p>
+          </content>
+        </section>
+
+        <!-- Section 13: Tipping-Off Prohibition -->
+        <section eId="sec-amla-13">
+          <num>Section 13</num>
+          <heading>Prohibition on Tipping Off</heading>
+          <content>
+            <p eId="sec-amla-13.p1">No reporting entity, and no director, officer, employee, or
+              agent of a reporting entity, shall disclose to any person the fact that:</p>
+            <blockList eId="sec-amla-13.bl1">
+              <item eId="sec-amla-13.bl1.i1">
+                <num>(a)</num>
+                <p>an STR or related information has been or is being filed with the FMU;</p>
+              </item>
+              <item eId="sec-amla-13.bl1.i2">
+                <num>(b)</num>
+                <p>an investigation into money laundering or financing of terrorism is being or
+                  may be conducted; or</p>
+              </item>
+              <item eId="sec-amla-13.bl1.i3">
+                <num>(c)</num>
+                <p>any order for freezing, seizure, or forfeiture of property has been made or
+                  is being sought under this Act.</p>
+              </item>
+            </blockList>
+            <p eId="sec-amla-13.p2">Any person who contravenes this section shall be guilty of
+              an offence and shall be punishable with imprisonment for a term which may extend
+              to <num value="3">three years</num> and shall also be liable to a fine which may
+              extend to <num value="500000">PKR 500,000</num>.</p>
+            <p eId="sec-amla-13.p3">This section does not apply to disclosure: (a) between
+              financial institutions within the same group for AML/CFT compliance purposes;
+              (b) between a reporting entity and its legal adviser in connection with seeking
+              legal advice; or (c) between competent authorities in the performance of their
+              functions under this Act.</p>
+          </content>
+        </section>
+      </part>
+
+      <!-- ================================================================ -->
+      <!-- PART II: SECP AML/CFT REGULATIONS, 2018                         -->
+      <!-- ================================================================ -->
+      <part eId="part-secp">
+        <heading>SECP AML/CFT Regulations, 2018</heading>
+
+        <!-- Regulation 3: Risk-Based Approach -->
+        <section eId="sec-secp-3">
+          <num>Regulation 3</num>
+          <heading>Risk-Based Approach</heading>
+          <content>
+            <p eId="sec-secp-3.p1">Every regulated person shall adopt a risk-based approach to
+              combating money laundering and financing of terrorism. This shall include:</p>
+            <blockList eId="sec-secp-3.bl1">
+              <item eId="sec-secp-3.bl1.i1">
+                <num>(a)</num>
+                <p>conducting a comprehensive risk assessment of its business, taking into
+                  account risk factors relating to customers, countries or geographic areas,
+                  products and services, transactions, and delivery channels;</p>
+              </item>
+              <item eId="sec-secp-3.bl1.i2">
+                <num>(b)</num>
+                <p>documenting the risk assessment and making it available to the SECP upon
+                  request;</p>
+              </item>
+              <item eId="sec-secp-3.bl1.i3">
+                <num>(c)</num>
+                <p>classifying customers into risk categories (low, medium, and high) based on
+                  the risk assessment; and</p>
+              </item>
+              <item eId="sec-secp-3.bl1.i4">
+                <num>(d)</num>
+                <p>applying CDD measures commensurate with the identified risk level, with
+                  enhanced measures for higher-risk relationships and simplified measures
+                  permitted for lower-risk relationships.</p>
+              </item>
+            </blockList>
+            <p eId="sec-secp-3.p2">The risk assessment shall be updated at least annually, or
+              more frequently in the event of a material change in the regulated person's business
+              or risk profile, or in the event of a new emerging risk identified by the SECP,
+              FATF, or FMU.</p>
+          </content>
+        </section>
+
+        <!-- Regulation 5: CDD Measures -->
+        <section eId="sec-secp-5">
+          <num>Regulation 5</num>
+          <heading>Customer Due Diligence Measures</heading>
+          <content>
+            <p eId="sec-secp-5.p1">CDD measures to be applied by regulated persons shall be
+              proportionate to the risk associated with the customer relationship:</p>
+            <blockList eId="sec-secp-5.bl1">
+              <item eId="sec-secp-5.bl1.i1">
+                <num>(a)</num>
+                <p><strong>Simplified CDD (low risk):</strong> for customers assessed as low
+                  risk, the regulated person may verify the identity of the customer and
+                  beneficial owner after the establishment of the business relationship,
+                  provided that: the risk of money laundering has been effectively managed;
+                  verification is completed within <num value="30">30</num> days of account
+                  opening; and the regulated person has adopted procedures to limit the
+                  number and types of transactions that can be performed prior to
+                  verification.</p>
+              </item>
+              <item eId="sec-secp-5.bl1.i2">
+                <num>(b)</num>
+                <p><strong>Standard CDD (medium risk):</strong> for customers assessed as medium
+                  risk, verification of identity shall be completed before or at the time of
+                  establishing the business relationship. Source of funds documentation shall
+                  be obtained where the transaction exceeds
+                  <num value="5000000">PKR 5,000,000</num>.</p>
+              </item>
+              <item eId="sec-secp-5.bl1.i3">
+                <num>(c)</num>
+                <p><strong>Enhanced CDD (high risk):</strong> for customers assessed as high
+                  risk, including PEPs, customers from FATF grey-list or black-list
+                  jurisdictions, and complex or unusual transactions, the regulated person
+                  shall: obtain senior management approval; establish the source of wealth and
+                  source of funds through documentary evidence; and apply enhanced ongoing
+                  monitoring with transaction review at least monthly.</p>
+              </item>
+            </blockList>
+          </content>
+        </section>
+
+        <!-- Regulation 7: Ongoing Monitoring -->
+        <section eId="sec-secp-7">
+          <num>Regulation 7</num>
+          <heading>Ongoing Monitoring</heading>
+          <content>
+            <p eId="sec-secp-7.p1">Every regulated person shall conduct ongoing monitoring of
+              all business relationships and transactions to ensure that they are consistent with
+              the regulated person's knowledge of the customer and the customer's business and
+              risk profile.</p>
+            <p eId="sec-secp-7.p2">The frequency of monitoring reviews shall be commensurate
+              with the customer's risk classification:</p>
+            <blockList eId="sec-secp-7.bl1">
+              <item eId="sec-secp-7.bl1.i1">
+                <num>(a)</num>
+                <p>Low-risk customers: annual review of the business relationship and
+                  transaction patterns.</p>
+              </item>
+              <item eId="sec-secp-7.bl1.i2">
+                <num>(b)</num>
+                <p>Medium-risk customers: quarterly review of transaction patterns and
+                  periodic re-verification of customer information.</p>
+              </item>
+              <item eId="sec-secp-7.bl1.i3">
+                <num>(c)</num>
+                <p>High-risk customers: monthly review of all transactions; automated
+                  transaction monitoring alerts where available; and senior management review
+                  of the relationship at least every <num value="6">six</num> months.</p>
+              </item>
+            </blockList>
+            <p eId="sec-secp-7.p3">Where ongoing monitoring reveals unusual or suspicious
+              activity, the regulated person shall conduct further analysis and, where the
+              suspicion is confirmed, file an STR with the FMU within the prescribed timeframe.</p>
+          </content>
+        </section>
+
+        <!-- Regulation 8: STR Obligations -->
+        <section eId="sec-secp-8">
+          <num>Regulation 8</num>
+          <heading>Suspicious Transaction Report Obligations</heading>
+          <content>
+            <p eId="sec-secp-8.p1">Every regulated person shall file STRs with the FMU within
+              <num value="7">seven</num> working days of forming a suspicion, through the
+              goAML portal. The compliance officer shall be responsible for the decision to file
+              and the quality of information contained in the STR.</p>
+            <p eId="sec-secp-8.p2">The STR shall include, at a minimum: the identity of the
+              persons involved; account details and transaction history relevant to the
+              suspicion; the nature and date of the suspicious activity; the reason for
+              suspicion; and any supporting documents or information.</p>
+            <p eId="sec-secp-8.p3">Where the regulated person identifies a transaction that
+              may relate to the financing of terrorism or a proscribed organization, the STR
+              shall be filed immediately and the regulated person shall not proceed with the
+              transaction until authorized by the FMU.</p>
+          </content>
+        </section>
+
+        <!-- Regulation 9: Compliance Officer -->
+        <section eId="sec-secp-9">
+          <num>Regulation 9</num>
+          <heading>Compliance Officer Appointment</heading>
+          <content>
+            <p eId="sec-secp-9.p1">Every regulated person shall appoint a compliance officer
+              at a sufficiently senior level, with the following requirements:</p>
+            <blockList eId="sec-secp-9.bl1">
+              <item eId="sec-secp-9.bl1.i1">
+                <num>(a)</num>
+                <p>the appointment shall be approved by the board of directors or equivalent
+                  senior management body;</p>
+              </item>
+              <item eId="sec-secp-9.bl1.i2">
+                <num>(b)</num>
+                <p>the compliance officer shall have direct access to the board and to the
+                  regulated person's customer records and transaction information;</p>
+              </item>
+              <item eId="sec-secp-9.bl1.i3">
+                <num>(c)</num>
+                <p>the compliance officer shall have completed FATF-aligned AML/CFT training
+                  and shall undergo refresher training at least annually; and</p>
+              </item>
+              <item eId="sec-secp-9.bl1.i4">
+                <num>(d)</num>
+                <p>the compliance officer shall be responsible for ensuring the regulated
+                  person's compliance with the Act, these Regulations, and any directions
+                  issued by the SECP or the FMU.</p>
+              </item>
+            </blockList>
+            <p eId="sec-secp-9.p2">The name and contact details of the compliance officer shall
+              be communicated to the SECP and the FMU within <num value="30">30</num> days of
+              appointment or any change in appointment.</p>
+          </content>
+        </section>
+
+        <!-- Regulation 12: Record Retention -->
+        <section eId="sec-secp-12">
+          <num>Regulation 12</num>
+          <heading>Record Retention</heading>
+          <content>
+            <p eId="sec-secp-12.p1">Every regulated person shall retain all CDD records,
+              transaction records, internal analysis, and STR-related records for a minimum of
+              <num value="5">five years</num> from the date of the transaction or from the date
+              of termination of the business relationship, whichever is later.</p>
+            <p eId="sec-secp-12.p2">Records must be sufficient to permit reconstruction of
+              individual transactions, including the amounts and types of currencies involved,
+              and must be available to the SECP, the FMU, and law enforcement authorities upon
+              request without undue delay.</p>
+          </content>
+        </section>
+      </part>
+
+      <!-- ================================================================ -->
+      <!-- PART III: SBP AML/CFT REGULATIONS (Key Thresholds)              -->
+      <!-- ================================================================ -->
+      <part eId="part-sbp">
+        <heading>SBP AML/CFT Regulations for Banks -- Key Thresholds and Requirements</heading>
+
+        <section eId="sec-sbp-ctr">
+          <num>SBP-CTR</num>
+          <heading>Currency Transaction Report Threshold</heading>
+          <content>
+            <p eId="sec-sbp-ctr.p1">Every bank and financial institution supervised by the State
+              Bank of Pakistan shall file a CTR with the FMU for every cash transaction
+              (deposit, withdrawal, currency exchange, or transfer) exceeding
+              <num value="2000000">PKR 2,000,000</num> (two million rupees) or its equivalent
+              in foreign currency, whether conducted as a single transaction or as multiple
+              transactions that appear to be linked or structured.</p>
+          </content>
+        </section>
+
+        <section eId="sec-sbp-wire">
+          <num>SBP-WIRE</num>
+          <heading>Wire Transfer Originator Information Threshold</heading>
+          <content>
+            <p eId="sec-sbp-wire.p1">For cross-border wire transfers, full originator information
+              (name, account number, address or national identity number, and date and place of
+              birth) is required for all transfers exceeding
+              <num value="1000">USD 1,000</num> or its equivalent in other currencies, in
+              accordance with FATF Recommendation 16.</p>
+            <p eId="sec-sbp-wire.p2">For wire transfers of <num value="1000">USD 1,000</num>
+              or below, the ordering institution shall include the originator's name and account
+              number (or unique transaction reference). The beneficiary institution shall have
+              effective risk-based procedures for identifying wire transfers that lack required
+              originator information.</p>
+          </content>
+        </section>
+
+        <section eId="sec-sbp-pep">
+          <num>SBP-PEP</num>
+          <heading>PEP Enhanced Monitoring Duration</heading>
+          <content>
+            <p eId="sec-sbp-pep.p1">Enhanced monitoring of a customer identified as a Politically
+              Exposed Person (PEP) shall continue for the entire duration of the business
+              relationship, regardless of changes in the customer's political status. A former
+              PEP shall continue to be subject to enhanced monitoring for a period determined by
+              the bank's risk assessment, which shall be not less than
+              <num value="12">twelve months</num> after the person ceases to hold the relevant
+              position, and indefinitely where the residual risk remains elevated.</p>
+            <p eId="sec-sbp-pep.p2">Banks shall screen all existing customers against updated
+              PEP lists (domestic and international) at least quarterly, or upon notification
+              by the FMU or SBP of additions to the lists.</p>
+          </content>
+        </section>
+
+        <section eId="sec-sbp-str">
+          <num>SBP-STR</num>
+          <heading>STR Filing Requirements for Banks</heading>
+          <content>
+            <p eId="sec-sbp-str.p1">Banks shall file STRs with the FMU within
+              <num value="7">seven</num> working days of forming a suspicion, through the
+              goAML portal maintained by the FMU. The STR shall be prepared by the branch
+              compliance officer and reviewed and approved by the head office compliance
+              function before submission.</p>
+            <p eId="sec-sbp-str.p2">Where the suspicion relates to financing of terrorism, the
+              bank shall file the STR immediately and shall freeze the relevant account or
+              transaction pending instruction from the FMU, in accordance with the provisions
+              of the Anti-Terrorism Act, 1997 and any freezing orders issued under United
+              Nations Security Council Resolutions.</p>
+            <p eId="sec-sbp-str.p3">Banks shall maintain internal records of all STRs filed,
+              including the outcome of the FMU's analysis where communicated, for a minimum
+              of <num value="5">five years</num>.</p>
+          </content>
+        </section>
+      </part>
+    </body>
+  </act>
+</akomaNtoso>

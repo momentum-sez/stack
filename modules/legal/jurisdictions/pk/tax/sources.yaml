@@ -1,0 +1,13 @@
+jurisdiction_id: pk
+domain: tax
+sources:
+  - title: "Income Tax Ordinance, 2001"
+    citation: "Ordinance XLIX of 2001"
+    url: "https://www.fbr.gov.pk/income-tax-ordinance-2001/131104"
+    as_of_date: "2025-07-01"
+  - title: "Sales Tax Act, 1990"
+    citation: "Act VII of 1990"
+    as_of_date: "2025-07-01"
+  - title: "Federal Excise Act, 2005"
+    citation: "Act IV of 2005"
+    as_of_date: "2025-07-01"

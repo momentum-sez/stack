@@ -1,0 +1,14 @@
+jurisdiction_id: pk
+domain: aml
+sources:
+  - title: "Anti-Money Laundering Act, 2010"
+    citation: "Act VII of 2010"
+    url: "https://www.fmu.gov.pk/docs/AMLAct2010.pdf"
+    as_of_date: "2024-01-01"
+  - title: "Anti-Terrorism Act, 1997 (CFT provisions)"
+    citation: "Act XXVII of 1997"
+    as_of_date: "2024-01-01"
+  - title: "SECP AML/CFT Regulations, 2018"
+    as_of_date: "2024-01-01"
+  - title: "SBP AML/CFT Regulations for Banks"
+    as_of_date: "2024-01-01"

@@ -1,0 +1,540 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act contains="originalVersion">
+    <meta>
+      <identification source="#mez">
+        <FRBRWork>
+          <FRBRthis value="/akn/pk/act/tax-corpus/0.1.0"/>
+          <FRBRuri value="/akn/pk/act/tax-corpus"/>
+          <FRBRdate date="2025-07-01" name="Generation"/>
+          <FRBRauthor href="#mez"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/pk/act/tax-corpus/0.1.0/eng@"/>
+          <FRBRuri value="/akn/pk/act/tax-corpus/eng@"/>
+          <FRBRdate date="2025-07-01" name="Generation"/>
+          <FRBRauthor href="#mez"/>
+          <FRBRlanguage language="eng"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/pk/act/tax-corpus/0.1.0/eng@.xml"/>
+          <FRBRuri value="/akn/pk/act/tax-corpus/eng@.xml"/>
+          <FRBRdate date="2025-07-01" name="Generation"/>
+          <FRBRauthor href="#mez"/>
+        </FRBRManifestation>
+      </identification>
+      <publication name="MEZ Stack" showAs="MEZ Stack" date="2025-07-01" number="0.1.0"/>
+      <references source="#mez">
+        <TLCOrganization eId="mez" href="/ontology/organization/mez" showAs="Momentum EZ"/>
+        <TLCOrganization eId="fbr" href="/ontology/organization/pk.fbr" showAs="Federal Board of Revenue"/>
+        <TLCOrganization eId="natassembly" href="/ontology/organization/pk.nationalassembly" showAs="National Assembly of Pakistan"/>
+      </references>
+    </meta>
+
+    <preface>
+      <p eId="preface-1">Pakistan federal tax legal corpus for the Momentum EZ compliance stack.
+        Consolidates key provisions from the Income Tax Ordinance, 2001 (Ordinance XLIX of 2001)
+        as amended through Finance Act 2024, the Sales Tax Act, 1990 (Act VII of 1990),
+        and the Special Economic Zones Act, 2012. Rates and thresholds reflect fiscal year 2025-26.</p>
+    </preface>
+
+    <body>
+      <!-- ================================================================ -->
+      <!-- PART I: INCOME TAX ORDINANCE, 2001                              -->
+      <!-- ================================================================ -->
+      <part eId="part-ito">
+        <heading>Income Tax Ordinance, 2001 (Ordinance XLIX of 2001)</heading>
+
+        <!-- Section 4: Charge of Tax -->
+        <section eId="sec-ito-4">
+          <num>Section 4</num>
+          <heading>Charge of Tax</heading>
+          <content>
+            <p eId="sec-ito-4.p1">Subject to the provisions of this Ordinance, income tax shall be
+              charged for each tax year, at the rates specified in the First Schedule, on every
+              person who has taxable income for the year.</p>
+            <p eId="sec-ito-4.p2">A person who has Pakistan-source income shall be liable to tax
+              under this Ordinance whether or not that person is a resident.</p>
+            <p eId="sec-ito-4.p3">Tax shall be computed on the taxable income of a person for a tax
+              year, being the total income of the person for the year reduced by any deductible
+              allowances under Part IX of Chapter III.</p>
+          </content>
+        </section>
+
+        <!-- Section 18: Corporate Tax Rate -->
+        <section eId="sec-ito-18">
+          <num>Section 18</num>
+          <heading>Tax on Income of Companies</heading>
+          <content>
+            <p eId="sec-ito-18.p1">The rate of income tax imposed on the taxable income of a
+              company for tax year 2025 shall be <num value="29">29%</num>.</p>
+            <p eId="sec-ito-18.p2">For small companies as defined under section 2(59A), the rate
+              of income tax for tax year 2025 shall be <num value="20">20%</num>, provided the
+              company is listed on the Active Taxpayers List maintained by the Federal Board of
+              Revenue and its turnover does not exceed <num value="250000000">PKR 250,000,000</num>.</p>
+            <p eId="sec-ito-18.p3">Banking companies shall be taxed at the rate of
+              <num value="39">39%</num> on their taxable income for tax year 2025.</p>
+          </content>
+        </section>
+
+        <!-- Section 18A: Super Tax -->
+        <section eId="sec-ito-18a">
+          <num>Section 18A</num>
+          <heading>Super Tax for Rehabilitation of Temporarily Displaced Persons</heading>
+          <content>
+            <p eId="sec-ito-18a.p1">In addition to the tax imposed under other provisions of this
+              Ordinance, a super tax shall be imposed at the following rates:</p>
+            <blockList eId="sec-ito-18a.bl1">
+              <item eId="sec-ito-18a.bl1.i1">
+                <num>(a)</num>
+                <p>Banking companies: <num value="10">10%</num> on income exceeding
+                  <num value="500000000">PKR 500,000,000</num>.</p>
+              </item>
+              <item eId="sec-ito-18a.bl1.i2">
+                <num>(b)</num>
+                <p>Other companies (including textile, sugar, oil and gas, fertilizer, LNG
+                  terminal, iron and steel, airlines, automobile, cement, chemicals, beverages,
+                  and tobacco): <num value="10">10%</num> on income exceeding
+                  <num value="500000000">PKR 500,000,000</num>.</p>
+              </item>
+              <item eId="sec-ito-18a.bl1.i3">
+                <num>(c)</num>
+                <p>All other persons: <num value="4">4%</num> on income exceeding
+                  <num value="150000000">PKR 150,000,000</num>.</p>
+              </item>
+            </blockList>
+          </content>
+        </section>
+
+        <!-- Section 113: Minimum Tax on Turnover -->
+        <section eId="sec-ito-113">
+          <num>Section 113</num>
+          <heading>Minimum Tax on Turnover</heading>
+          <content>
+            <p eId="sec-ito-113.p1">Where the tax payable by a taxpayer (other than an individual
+              or AOP having turnover of less than <num value="100000000">PKR 100,000,000</num>)
+              under any other provision of this Ordinance for a tax year is less than
+              <num value="1.25">1.25%</num> of the person's gross turnover for that year, the
+              person shall pay tax at the rate of <num value="1.25">1.25%</num> of the
+              gross turnover.</p>
+            <p eId="sec-ito-113.p2">For purposes of this section, "turnover" means the gross
+              receipts, exclusive of sales tax and federal excise duty, derived from the sale of
+              goods, rendering of services, or execution of contracts.</p>
+            <p eId="sec-ito-113.p3">Minimum tax paid under this section may be carried forward
+              for adjustment against tax liability for <num value="5">five</num> succeeding
+              tax years.</p>
+          </content>
+        </section>
+
+        <!-- Section 148: WHT on Imports -->
+        <section eId="sec-ito-148">
+          <num>Section 148</num>
+          <heading>Withholding Tax on Imports</heading>
+          <content>
+            <p eId="sec-ito-148.p1">Every person responsible for collecting customs duty on goods
+              imported into Pakistan shall also collect advance tax from the importer at the
+              following rates on the value of goods as determined under Section 25 of the
+              Customs Act, 1969, plus customs duty and sales tax:</p>
+            <blockList eId="sec-ito-148.bl1">
+              <item eId="sec-ito-148.bl1.i1">
+                <num>(a)</num>
+                <p>Industrial undertakings importing raw materials: <num value="1">1%</num>
+                  for persons on the Active Taxpayers List (ATL).</p>
+              </item>
+              <item eId="sec-ito-148.bl1.i2">
+                <num>(b)</num>
+                <p>Commercial importers on ATL: <num value="2">2%</num>.</p>
+              </item>
+              <item eId="sec-ito-148.bl1.i3">
+                <num>(c)</num>
+                <p>Persons not appearing on ATL: <num value="6">6%</num> (double the
+                  applicable rate, with a minimum of 6%).</p>
+              </item>
+            </blockList>
+            <p eId="sec-ito-148.p2">Tax collected under this section is an advance tax adjustable
+              against the final tax liability of the importer for the relevant tax year.</p>
+          </content>
+        </section>
+
+        <!-- Section 149: WHT on Salary -->
+        <section eId="sec-ito-149">
+          <num>Section 149</num>
+          <heading>Withholding Tax on Salary</heading>
+          <content>
+            <p eId="sec-ito-149.p1">Every employer paying salary to an employee shall deduct tax
+              at the time of payment at the employee's average rate of tax for the tax year,
+              computed as the tax on estimated taxable income for the year divided by estimated
+              taxable income, applied to each payment of salary.</p>
+            <p eId="sec-ito-149.p2">The graduated slab rates for salaried individuals (tax year
+              2025, per the First Schedule Division I) are:</p>
+            <blockList eId="sec-ito-149.bl1">
+              <item eId="sec-ito-149.bl1.i1">
+                <num>(a)</num>
+                <p>Taxable income up to <num value="600000">PKR 600,000</num>:
+                  <num value="0">0%</num>.</p>
+              </item>
+              <item eId="sec-ito-149.bl1.i2">
+                <num>(b)</num>
+                <p>Taxable income from <num value="600001">PKR 600,001</num> to
+                  <num value="1200000">PKR 1,200,000</num>:
+                  <num value="5">5%</num> of the amount exceeding PKR 600,000.</p>
+              </item>
+              <item eId="sec-ito-149.bl1.i3">
+                <num>(c)</num>
+                <p>Taxable income from <num value="1200001">PKR 1,200,001</num> to
+                  <num value="2200000">PKR 2,200,000</num>:
+                  <num value="30000">PKR 30,000</num> plus <num value="15">15%</num> of the
+                  amount exceeding PKR 1,200,000.</p>
+              </item>
+              <item eId="sec-ito-149.bl1.i4">
+                <num>(d)</num>
+                <p>Taxable income from <num value="2200001">PKR 2,200,001</num> to
+                  <num value="3200000">PKR 3,200,000</num>:
+                  <num value="180000">PKR 180,000</num> plus <num value="25">25%</num> of the
+                  amount exceeding PKR 2,200,000.</p>
+              </item>
+              <item eId="sec-ito-149.bl1.i5">
+                <num>(e)</num>
+                <p>Taxable income from <num value="3200001">PKR 3,200,001</num> to
+                  <num value="4100000">PKR 4,100,000</num>:
+                  <num value="430000">PKR 430,000</num> plus <num value="30">30%</num> of the
+                  amount exceeding PKR 3,200,000.</p>
+              </item>
+              <item eId="sec-ito-149.bl1.i6">
+                <num>(f)</num>
+                <p>Taxable income exceeding <num value="4100000">PKR 4,100,000</num>:
+                  <num value="700000">PKR 700,000</num> plus <num value="35">35%</num> of the
+                  amount exceeding PKR 4,100,000.</p>
+              </item>
+            </blockList>
+          </content>
+        </section>
+
+        <!-- Section 151: WHT on Profit on Debt -->
+        <section eId="sec-ito-151">
+          <num>Section 151</num>
+          <heading>Withholding Tax on Profit on Debt</heading>
+          <content>
+            <p eId="sec-ito-151.p1">Every person paying profit on debt (including profit on any
+              security of the Federal Government, a Provincial Government, or a local authority,
+              yield on an account or deposit with a banking company, finance company, or
+              institution) shall deduct tax at the following rates:</p>
+            <blockList eId="sec-ito-151.bl1">
+              <item eId="sec-ito-151.bl1.i1">
+                <num>(a)</num>
+                <p>Where profit on debt does not exceed <num value="5000000">PKR 5,000,000</num>:
+                  <num value="15">15%</num> for persons on the ATL;
+                  <num value="30">30%</num> for persons not on the ATL.</p>
+              </item>
+              <item eId="sec-ito-151.bl1.i2">
+                <num>(b)</num>
+                <p>Where profit on debt exceeds <num value="5000000">PKR 5,000,000</num>:
+                  <num value="17.5">17.5%</num> for persons on the ATL;
+                  <num value="35">35%</num> for persons not on the ATL.</p>
+              </item>
+            </blockList>
+            <p eId="sec-ito-151.p2">Tax deducted under this section on profit on debt paid on a
+              deposit maintained with a banking company or financial institution shall be final
+              tax on that income.</p>
+          </content>
+        </section>
+
+        <!-- Section 153: WHT on Services and Goods -->
+        <section eId="sec-ito-153">
+          <num>Section 153</num>
+          <heading>Withholding Tax on Payments for Services, Goods, and Contracts</heading>
+          <content>
+            <p eId="sec-ito-153.p1">Every prescribed person making a payment to a resident for
+              rendering of or providing of services, supply of goods, or execution of a contract
+              shall deduct tax at source at the following rates:</p>
+
+            <hcontainer eId="sec-ito-153.hc-services" name="services">
+              <heading>Services (Section 153(1)(b))</heading>
+              <blockList eId="sec-ito-153.bl-services">
+                <item eId="sec-ito-153.bl-services.i1">
+                  <num>(i)</num>
+                  <p>Transport services: <num value="2">2%</num> (ATL);
+                    <num value="4">4%</num> (non-ATL).</p>
+                </item>
+                <item eId="sec-ito-153.bl-services.i2">
+                  <num>(ii)</num>
+                  <p>Services rendered by companies: <num value="8">8%</num> (ATL);
+                    <num value="16">16%</num> (non-ATL).</p>
+                </item>
+                <item eId="sec-ito-153.bl-services.i3">
+                  <num>(iii)</num>
+                  <p>Services rendered by other persons (individuals, AOPs):
+                    <num value="10">10%</num> (ATL);
+                    <num value="20">20%</num> (non-ATL).</p>
+                </item>
+              </blockList>
+            </hcontainer>
+
+            <hcontainer eId="sec-ito-153.hc-goods" name="goods">
+              <heading>Goods (Section 153(1)(a))</heading>
+              <blockList eId="sec-ito-153.bl-goods">
+                <item eId="sec-ito-153.bl-goods.i1">
+                  <num>(i)</num>
+                  <p>Supply of goods by companies: <num value="4.5">4.5%</num> (ATL);
+                    <num value="9">9%</num> (non-ATL).</p>
+                </item>
+                <item eId="sec-ito-153.bl-goods.i2">
+                  <num>(ii)</num>
+                  <p>Supply of goods by other persons (individuals, AOPs):
+                    <num value="4.5">4.5%</num> (ATL);
+                    <num value="9">9%</num> (non-ATL).</p>
+                </item>
+              </blockList>
+            </hcontainer>
+
+            <hcontainer eId="sec-ito-153.hc-contracts" name="contracts">
+              <heading>Contracts (Section 153(1)(c))</heading>
+              <blockList eId="sec-ito-153.bl-contracts">
+                <item eId="sec-ito-153.bl-contracts.i1">
+                  <num>(i)</num>
+                  <p>Execution of contracts by companies: <num value="7">7%</num> (ATL);
+                    <num value="14">14%</num> (non-ATL).</p>
+                </item>
+                <item eId="sec-ito-153.bl-contracts.i2">
+                  <num>(ii)</num>
+                  <p>Execution of contracts by other persons: <num value="7.5">7.5%</num> (ATL);
+                    <num value="15">15%</num> (non-ATL).</p>
+                </item>
+              </blockList>
+            </hcontainer>
+
+            <p eId="sec-ito-153.p2">For the purposes of this section, "prescribed person" includes
+              the Federal Government, a Provincial Government, a local authority, a company, an
+              AOP with annual turnover exceeding <num value="100000000">PKR 100,000,000</num>, and
+              an individual with annual turnover exceeding <num value="50000000">PKR 50,000,000</num>.</p>
+          </content>
+        </section>
+
+        <!-- Section 154: WHT on Exports -->
+        <section eId="sec-ito-154">
+          <num>Section 154</num>
+          <heading>Withholding Tax on Exports</heading>
+          <content>
+            <p eId="sec-ito-154.p1">Every authorized dealer in foreign exchange shall deduct
+              advance tax at the rate of <num value="1">1%</num> from the proceeds of export
+              realized by an exporter at the time the proceeds are realized.</p>
+            <p eId="sec-ito-154.p2">Tax deducted under this section shall be a final tax on
+              the income of the exporter arising from the export of goods.</p>
+          </content>
+        </section>
+
+        <!-- Section 155: WHT on Income from Property -->
+        <section eId="sec-ito-155">
+          <num>Section 155</num>
+          <heading>Withholding Tax on Income from Property</heading>
+          <content>
+            <p eId="sec-ito-155.p1">Every prescribed person paying rent of immovable property
+              shall deduct advance tax at the following rates:</p>
+            <blockList eId="sec-ito-155.bl1">
+              <item eId="sec-ito-155.bl1.i1">
+                <num>(a)</num>
+                <p>Annual rent up to <num value="200000">PKR 200,000</num>:
+                  <num value="0">Nil</num>.</p>
+              </item>
+              <item eId="sec-ito-155.bl1.i2">
+                <num>(b)</num>
+                <p>Annual rent from <num value="200001">PKR 200,001</num> to
+                  <num value="600000">PKR 600,000</num>:
+                  <num value="5">5%</num> of the gross amount of rent for persons on ATL;
+                  double for non-ATL.</p>
+              </item>
+              <item eId="sec-ito-155.bl1.i3">
+                <num>(c)</num>
+                <p>Annual rent from <num value="600001">PKR 600,001</num> to
+                  <num value="2000000">PKR 2,000,000</num>:
+                  <num value="10">10%</num> of the gross amount of rent for ATL persons;
+                  double for non-ATL.</p>
+              </item>
+              <item eId="sec-ito-155.bl1.i4">
+                <num>(d)</num>
+                <p>Annual rent exceeding <num value="2000000">PKR 2,000,000</num>:
+                  <num value="15">15%</num> of the gross amount of rent for ATL persons;
+                  <num value="30">30%</num> for non-ATL.</p>
+              </item>
+            </blockList>
+          </content>
+        </section>
+
+        <!-- Section 231A: WHT on Cash Withdrawals -->
+        <section eId="sec-ito-231a">
+          <num>Section 231A</num>
+          <heading>Advance Tax on Cash Withdrawal from a Bank</heading>
+          <content>
+            <p eId="sec-ito-231a.p1">Every banking company shall deduct advance tax at the
+              following rates on cash withdrawals or cash transfers through any mode
+              (over-the-counter, online, cheque, clearing) exceeding
+              <num value="50000">PKR 50,000</num> in a day from an account:</p>
+            <blockList eId="sec-ito-231a.bl1">
+              <item eId="sec-ito-231a.bl1.i1">
+                <num>(a)</num>
+                <p>Persons appearing on ATL: <num value="0.6">0.6%</num> of the
+                  amount withdrawn.</p>
+              </item>
+              <item eId="sec-ito-231a.bl1.i2">
+                <num>(b)</num>
+                <p>Persons not appearing on ATL: <num value="1.2">1.2%</num> of the
+                  amount withdrawn.</p>
+              </item>
+            </blockList>
+            <p eId="sec-ito-231a.p2">This section does not apply to withdrawals by the Federal
+              Government, Provincial Governments, foreign diplomats, or persons specifically
+              exempt under the Second Schedule.</p>
+          </content>
+        </section>
+
+        <!-- Section 236G: Advance Tax on Sales to Distributors -->
+        <section eId="sec-ito-236g">
+          <num>Section 236G</num>
+          <heading>Advance Tax on Sales to Distributors, Dealers, and Wholesalers</heading>
+          <content>
+            <p eId="sec-ito-236g.p1">Every manufacturer or commercial importer shall collect
+              advance tax at the rate of <num value="0.1">0.1%</num> of the gross amount of
+              sales from any person to whom a sale of goods is made where such person is a
+              distributor, dealer, or wholesaler.</p>
+            <p eId="sec-ito-236g.p2">Where the purchaser does not appear on the Active Taxpayers
+              List, the rate shall be <num value="0.2">0.2%</num> (double the standard rate).</p>
+            <p eId="sec-ito-236g.p3">Tax collected under this section is an advance tax adjustable
+              against the final tax liability of the purchaser for the relevant tax year.</p>
+          </content>
+        </section>
+      </part>
+
+      <!-- ================================================================ -->
+      <!-- PART II: SPECIAL ECONOMIC ZONES ACT, 2012 (Tax Provisions)       -->
+      <!-- ================================================================ -->
+      <part eId="part-sez">
+        <heading>Special Economic Zones Act, 2012 (Act XXI of 2012) -- Tax Provisions</heading>
+
+        <!-- Section 37: Income Tax Exemption -->
+        <section eId="sec-sez-37">
+          <num>Section 37</num>
+          <heading>Income Tax Exemption for Zone Enterprises</heading>
+          <content>
+            <p eId="sec-sez-37.p1">A zone enterprise that has been granted admission by the zone
+              authority shall be exempt from income tax for a period of
+              <num value="10">ten years</num> commencing from the date of commencement of
+              commercial operations, as certified by the zone authority and notified to the
+              Federal Board of Revenue.</p>
+            <p eId="sec-sez-37.p2">The exemption under this section applies to all income derived
+              from the business operations of the zone enterprise within the special economic zone,
+              including income from manufacturing, processing, assembling, and related activities.</p>
+            <p eId="sec-sez-37.p3">This exemption shall not apply to income derived from sources
+              outside the special economic zone or to income from activities not approved under the
+              enterprise's admission letter.</p>
+          </content>
+        </section>
+
+        <!-- Section 38: Customs Duty Exemption -->
+        <section eId="sec-sez-38">
+          <num>Section 38</num>
+          <heading>One-Time Customs Duty Exemption on Capital Goods</heading>
+          <content>
+            <p eId="sec-sez-38.p1">A zone enterprise shall be entitled to a one-time exemption
+              from customs duties on the import of capital goods, including plant, machinery,
+              equipment, and apparatus, required for the establishment of the enterprise within
+              the special economic zone.</p>
+            <p eId="sec-sez-38.p2">This exemption shall be subject to the enterprise obtaining
+              prior approval from the zone authority and the goods being installed and used
+              exclusively within the zone for a period of not less than
+              <num value="5">five years</num> from the date of import.</p>
+          </content>
+        </section>
+
+        <!-- Section 39: Sales Tax Zero-Rating for Zone Exports -->
+        <section eId="sec-sez-39">
+          <num>Section 39</num>
+          <heading>Zero-Rated Sales Tax for Zone Exports</heading>
+          <content>
+            <p eId="sec-sez-39.p1">Goods manufactured or produced within a special economic zone
+              by a zone enterprise and exported outside Pakistan shall be subject to sales tax
+              at the rate of <num value="0">zero percent</num>.</p>
+            <p eId="sec-sez-39.p2">Input tax credit on raw materials and components consumed in
+              the manufacture of zero-rated goods shall be refundable in accordance with the
+              provisions of the Sales Tax Act, 1990.</p>
+          </content>
+        </section>
+      </part>
+
+      <!-- ================================================================ -->
+      <!-- PART III: SALES TAX ACT, 1990                                    -->
+      <!-- ================================================================ -->
+      <part eId="part-sta">
+        <heading>Sales Tax Act, 1990 (Act VII of 1990)</heading>
+
+        <!-- Section 3: Rate of Sales Tax -->
+        <section eId="sec-sta-3">
+          <num>Section 3</num>
+          <heading>Scope and Rate of Sales Tax</heading>
+          <content>
+            <p eId="sec-sta-3.p1">Subject to the provisions of this Act, there shall be charged,
+              levied, and collected a tax known as sales tax at the rate of
+              <num value="18">18%</num> of the value of taxable supplies made by a registered
+              person in the course or furtherance of any taxable activity carried on by that
+              person.</p>
+            <p eId="sec-sta-3.p2">The standard rate of <num value="18">18%</num> applies to
+              fiscal year 2025-26 unless otherwise specified in the relevant schedule. Reduced
+              rates apply to specific categories of goods as listed in the Eighth Schedule to
+              this Act.</p>
+            <p eId="sec-sta-3.p3">Sales tax on the import of goods into Pakistan shall be
+              collected at the time of importation at the same rate as applies to taxable
+              supplies of like goods in Pakistan, and shall be charged on the value of the
+              goods as determined under Section 25 of the Customs Act, 1969, plus customs duty
+              and federal excise duty.</p>
+          </content>
+        </section>
+
+        <!-- Section 4: Taxable Supplies -->
+        <section eId="sec-sta-4">
+          <num>Section 4</num>
+          <heading>Scope of Taxable Supplies</heading>
+          <content>
+            <p eId="sec-sta-4.p1">A supply of goods shall be a taxable supply if it is a supply
+              of goods in Pakistan other than a supply of goods that is exempt under Section 13
+              or the Sixth Schedule.</p>
+            <p eId="sec-sta-4.p2">A supply of goods shall be zero-rated if the goods are exported,
+              or if the supply is listed in the Fifth Schedule to this Act.</p>
+            <p eId="sec-sta-4.p3">For the purposes of this Act, the time of supply is the earlier
+              of: the date an invoice is issued; or the date on which payment is received; or the
+              date on which the goods are delivered or made available to the recipient.</p>
+          </content>
+        </section>
+
+        <!-- Section 13: Zero-Rating for Exports -->
+        <section eId="sec-sta-13">
+          <num>Section 13</num>
+          <heading>Zero-Rating of Exports</heading>
+          <content>
+            <p eId="sec-sta-13.p1">The following supplies shall be zero-rated:</p>
+            <blockList eId="sec-sta-13.bl1">
+              <item eId="sec-sta-13.bl1.i1">
+                <num>(a)</num>
+                <p>Goods exported from Pakistan or shipped as stores for consumption on
+                  board a conveyance proceeding to a destination outside Pakistan.</p>
+              </item>
+              <item eId="sec-sta-13.bl1.i2">
+                <num>(b)</num>
+                <p>Such other goods as the Federal Government may by notification in the
+                  official Gazette specify, subject to conditions and procedures as it
+                  may prescribe.</p>
+              </item>
+              <item eId="sec-sta-13.bl1.i3">
+                <num>(c)</num>
+                <p>Supplies to diplomats, diplomatic missions, and privileged persons and
+                  organizations as listed in the Fifth Schedule, subject to the conditions
+                  and procedures prescribed therein.</p>
+              </item>
+            </blockList>
+            <p eId="sec-sta-13.p2">A registered person making zero-rated supplies is entitled
+              to claim a refund of input tax paid on goods or services used in making such
+              supplies, in accordance with the procedures prescribed under Section 10.</p>
+          </content>
+        </section>
+      </part>
+    </body>
+  </act>
+</akomaNtoso>

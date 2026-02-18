@@ -1,5 +1,5 @@
-const { Paragraph, TextRun, PageBreak, AlignmentType, TabStopType, LeaderType,
-        SimpleField, InternalHyperlink } = require("docx");
+const { Paragraph, TextRun, PageBreak, AlignmentType, BorderStyle,
+        TabStopType, LeaderType, SimpleField, InternalHyperlink } = require("docx");
 const C = require("../lib/constants");
 
 /**
@@ -18,16 +18,24 @@ module.exports = function build_toc(tocEntries) {
   }
 
   const elements = [
+    // TOC title — deep navy, non-bold, matching Chapter heading style
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { after: 400 },
-      children: [new TextRun({ text: "TABLE OF CONTENTS", font: C.BODY_FONT, size: 28, bold: true, color: C.H1_COLOR })]
+      spacing: { after: 120 },
+      children: [new TextRun({ text: "TABLE OF CONTENTS", font: C.BODY_FONT, size: 28, bold: false, color: C.H1_COLOR })]
+    }),
+    // Gold rule beneath TOC title
+    new Paragraph({
+      border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: C.ACCENT, space: 4 } },
+      spacing: { after: 300 },
+      indent: { left: 2800, right: 2800 },
+      children: []
     }),
   ];
 
   for (const entry of tocEntries) {
     const isLevel2 = entry.level === 2;
-    const fontSize = isLevel2 ? 20 : 22;
+    const fontSize = isLevel2 ? 20 : C.BODY_SIZE;
 
     elements.push(new Paragraph({
       tabStops: [{ type: TabStopType.RIGHT, position: C.CONTENT_W, leader: LeaderType.DOT }],

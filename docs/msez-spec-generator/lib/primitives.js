@@ -26,10 +26,11 @@ function getTocEntries() {
 
 // --- Text Primitives ---
 
-/** Body paragraph */
+/** Body paragraph — Garamond 11.5pt, charcoal, justified, 1.3x line spacing */
 function p(text, opts = {}) {
   return new Paragraph({
-    spacing: { after: 120, line: 276 },
+    alignment: AlignmentType.JUSTIFIED,
+    spacing: { after: 180, line: 312 },
     children: [new TextRun({ text, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK, ...opts })]
   });
 }
@@ -37,7 +38,8 @@ function p(text, opts = {}) {
 /** Paragraph with mixed runs: p_runs([bold("Key:"), " value text"]) */
 function p_runs(runs) {
   return new Paragraph({
-    spacing: { after: 120, line: 276 },
+    alignment: AlignmentType.JUSTIFIED,
+    spacing: { after: 180, line: 312 },
     children: runs.map(r =>
       typeof r === "string"
         ? new TextRun({ text: r, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK })
@@ -66,82 +68,114 @@ function code(text) {
 
 // --- Headings ---
 
-/** Part heading (e.g., "PART I: FOUNDATION") - includes page break */
+/** Part heading (e.g., "PART I: FOUNDATION") - includes page break.
+ *  18pt bold deep navy — the commanding architectural divider. */
 function partHeading(text) {
   const bm = _registerHeading(text.toUpperCase(), 1);
   return [
     new Paragraph({ children: [new PageBreak()] }),
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
-      spacing: { before: 0, after: 300 },
+      spacing: { before: 0, after: 120 },
       children: [
         new BookmarkStart(bm.name, bm.id),
         new TextRun({ text: text.toUpperCase(), bold: true, font: C.BODY_FONT, size: 36, color: C.H1_COLOR }),
         new BookmarkEnd(bm.id),
       ]
+    }),
+    // Gold hairline rule beneath Part heading
+    new Paragraph({
+      border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: C.ACCENT, space: 4 } },
+      spacing: { after: 300 },
+      children: []
     })
   ];
 }
 
-/** Chapter heading (e.g., "Chapter 1: Mission and Vision") */
+/** Chapter heading (e.g., "Chapter 1: Mission and Vision")
+ *  16pt non-bold deep navy — structural, elegant. */
 function chapterHeading(text) {
   const bm = _registerHeading(text, 1);
   return new Paragraph({
     heading: HeadingLevel.HEADING_1,
+    spacing: { before: 360, after: 200 },
     children: [
       new BookmarkStart(bm.name, bm.id),
-      new TextRun({ text, bold: true, font: C.BODY_FONT, size: 36, color: C.H1_COLOR }),
+      new TextRun({ text, bold: false, font: C.BODY_FONT, size: 32, color: C.H1_COLOR }),
       new BookmarkEnd(bm.id),
     ]
   });
 }
 
-/** Section heading (e.g., "1.1 The Programmable Institution Thesis") */
+/** Section heading (e.g., "1.1 The Programmable Institution Thesis")
+ *  13pt non-bold steel blue — clean subsection hierarchy. */
 function h2(text) {
   const bm = _registerHeading(text, 2);
   return new Paragraph({
     heading: HeadingLevel.HEADING_2,
-    spacing: { before: 280, after: 200 },
+    spacing: { before: 300, after: 160 },
     children: [
       new BookmarkStart(bm.name, bm.id),
-      new TextRun({ text, bold: true, font: C.BODY_FONT, size: 28, color: C.H2_COLOR }),
+      new TextRun({ text, bold: false, font: C.BODY_FONT, size: 26, color: C.H2_COLOR }),
       new BookmarkEnd(bm.id),
     ]
   });
 }
 
-/** Subsection heading (e.g., "6.5.1 License Data Model") */
+/** Subsection heading (e.g., "6.5.1 License Data Model")
+ *  12pt bold deep navy — section-head style for labeled subsections. */
 function h3(text) {
   return new Paragraph({
     heading: HeadingLevel.HEADING_3,
-    spacing: { before: 200, after: 200 },
-    children: [new TextRun({ text, bold: true, font: C.BODY_FONT, size: 24, color: C.H3_COLOR })]
+    spacing: { before: 240, after: 120 },
+    children: [new TextRun({ text, bold: true, font: C.BODY_FONT, size: 24, color: C.H1_COLOR })]
+  });
+}
+
+// --- Rules (Decorative Dividers) ---
+
+/** Gold hairline rule — 0.5pt bottom border in champagne accent.
+ *  The signature Momentum section divider. */
+function rule() {
+  return new Paragraph({
+    border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: C.ACCENT, space: 4 } },
+    spacing: { before: 120, after: 200 },
+    children: []
+  });
+}
+
+/** Secondary rule — warm gray, lighter weight. */
+function ruleLight() {
+  return new Paragraph({
+    border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: C.ACCENT_SECONDARY, space: 4 } },
+    spacing: { before: 80, after: 160 },
+    children: []
   });
 }
 
 // --- Definitions and Theorems ---
 
-/** Definition block with left blue border */
+/** Definition block with left gold border — champagne accent signals formal definition. */
 function definition(label, text) {
   return new Paragraph({
     border: { left: { style: BorderStyle.SINGLE, size: 6, color: C.ACCENT, space: 8 } },
     spacing: { before: 160, after: 200 },
     indent: { left: 360 },
     children: [
-      new TextRun({ text: label + " ", bold: true, italics: true, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK }),
+      new TextRun({ text: label + " ", bold: true, italics: true, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.H1_COLOR }),
       new TextRun({ text, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK })
     ]
   });
 }
 
-/** Theorem block with left border */
+/** Theorem block with left dark navy border */
 function theorem(label, text) {
   return new Paragraph({
-    border: { left: { style: BorderStyle.SINGLE, size: 6, color: "6B7280", space: 8 } },
+    border: { left: { style: BorderStyle.SINGLE, size: 6, color: C.H3_COLOR, space: 8 } },
     spacing: { before: 160, after: 200 },
     indent: { left: 360 },
     children: [
-      new TextRun({ text: label + " ", bold: true, italics: true, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK }),
+      new TextRun({ text: label + " ", bold: true, italics: true, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.H1_COLOR }),
       new TextRun({ text, italics: true, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK })
     ]
   });
@@ -164,6 +198,7 @@ function codeBlock(codeString) {
 // --- Tables ---
 
 /** Standard table with header row + data rows.
+ *  Deep navy headers, warm cream alternating rows, minimal borders.
  *  @param {string[]} headers - Column header labels
  *  @param {string[][]} rows - 2D array of cell text
  *  @param {number[]} [colWidths] - Optional column widths in DXA (must sum to 9360)
@@ -171,7 +206,7 @@ function codeBlock(codeString) {
 function table(headers, rows, colWidths) {
   const numCols = headers.length;
   const widths = colWidths || evenWidths(numCols);
-  const border = { style: BorderStyle.SINGLE, size: 1, color: "D1D5DB" };
+  const border = { style: BorderStyle.SINGLE, size: 1, color: C.ACCENT_SECONDARY };
   const borders = { top: border, bottom: border, left: border, right: border };
 
   function makeCell(text, width, isHeader, altRow) {
@@ -235,6 +270,7 @@ module.exports = {
   p, p_runs, bold, italic, code,
   partHeading, chapterHeading, h2, h3,
   definition, theorem,
+  rule, ruleLight,
   codeBlock, table, evenWidths,
   spacer, pageBreak,
   getTocEntries

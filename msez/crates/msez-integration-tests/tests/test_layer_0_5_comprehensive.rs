@@ -113,12 +113,13 @@ fn tensor_slice_subset_of_domains() {
 }
 
 #[test]
-fn tensor_slice_empty_is_valid() {
+fn tensor_slice_empty_is_fail_closed() {
     let tensor = ComplianceTensor::new(test_jurisdiction());
     let empty_slice = tensor.slice(&[]);
     assert_eq!(empty_slice.len(), 0);
-    // An empty slice should be considered as "all passing" since there are no violations
-    assert!(empty_slice.all_passing());
+    // P0-TENSOR-001: empty slices must NOT be treated as passing — fail-closed.
+    // An empty domain set has no affirmative compliance evidence.
+    assert!(!empty_slice.all_passing(), "empty slice must not pass (fail-closed)");
 }
 
 // ---------------------------------------------------------------------------

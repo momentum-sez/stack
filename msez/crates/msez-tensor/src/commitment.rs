@@ -21,7 +21,7 @@ use std::collections::BTreeMap;
 
 use serde::Serialize;
 
-use msez_core::{sha256_digest, CanonicalBytes, ComplianceDomain, ContentDigest, MsezError};
+use msez_core::{sha256_bytes, sha256_digest, CanonicalBytes, ComplianceDomain, ContentDigest, MsezError};
 
 use crate::evaluation::ComplianceState;
 use crate::tensor::{ComplianceTensor, JurisdictionConfig};
@@ -145,9 +145,18 @@ impl TensorCommitment {
 
 /// Compute a Merkle root over a sequence of tensor commitments.
 ///
-/// Uses SHA-256 binary tree hashing. Leaf nodes are the hex digests
-/// of individual commitments, and internal nodes are SHA-256 hashes
-/// of concatenated children.
+/// Uses SHA-256 binary tree hashing with byte-level concatenation.
+/// Leaf nodes are the raw 32-byte digests of individual commitments,
+/// and internal nodes are `SHA-256(left_bytes || right_bytes)`.
+///
+/// ## P2-CANON-002 Fix
+///
+/// Previous implementation used string concatenation of hex digests
+/// then canonicalized the resulting 128-char string as JSON. This
+/// diverged from standard Merkle tree construction. The current
+/// implementation decodes hex digests to raw bytes, concatenates at
+/// the byte level, and hashes directly — matching the pattern used
+/// by the MMR accumulator in `msez-crypto`.
 ///
 /// Returns `None` for an empty sequence, and the single digest for
 /// a single commitment.
@@ -168,21 +177,48 @@ pub fn merkle_root(commitments: &[TensorCommitment]) -> Option<String> {
     while leaves.len() > 1 {
         let mut next_level = Vec::with_capacity(leaves.len() / 2);
         for chunk in leaves.chunks(2) {
-            let combined = format!("{}{}", chunk[0], chunk[1]);
-            let canonical = match CanonicalBytes::new(&combined) {
-                Ok(c) => c,
-                Err(e) => {
-                    tracing::error!(error = %e, "tensor Merkle tree canonicalization failed");
+            // Decode hex digests to raw bytes for byte-level concatenation.
+            let left = match hex_to_bytes(&chunk[0]) {
+                Some(b) => b,
+                None => {
+                    tracing::error!(hex = %chunk[0], "invalid hex in Merkle leaf");
                     return None;
                 }
             };
-            let digest = sha256_digest(&canonical);
-            next_level.push(digest.to_hex());
+            let right = match hex_to_bytes(&chunk[1]) {
+                Some(b) => b,
+                None => {
+                    tracing::error!(hex = %chunk[1], "invalid hex in Merkle leaf");
+                    return None;
+                }
+            };
+
+            // Byte-level concatenation: SHA-256(left_32_bytes || right_32_bytes).
+            let mut combined = Vec::with_capacity(left.len() + right.len());
+            combined.extend_from_slice(&left);
+            combined.extend_from_slice(&right);
+            let digest_bytes = sha256_bytes(&combined);
+            let hex: String = digest_bytes.iter().map(|b| format!("{b:02x}")).collect();
+            next_level.push(hex);
         }
         leaves = next_level;
     }
 
     leaves.into_iter().next()
+}
+
+/// Decode a hex string to raw bytes.
+///
+/// Used internally for byte-level Merkle tree construction. Returns
+/// `None` if the input is not valid hex or has odd length.
+fn hex_to_bytes(hex: &str) -> Option<Vec<u8>> {
+    if hex.len() % 2 != 0 {
+        return None;
+    }
+    (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).ok())
+        .collect()
 }
 
 /// Compute a commitment digest for an arbitrary map of domain→state pairs.
@@ -310,6 +346,54 @@ mod tests {
     #[test]
     fn merkle_root_empty() {
         assert_eq!(merkle_root(&[]), None);
+    }
+
+    #[test]
+    fn merkle_root_is_byte_level_not_string_level() {
+        // P2-CANON-002: Verify that the Merkle root uses byte-level
+        // concatenation (SHA256(left_bytes || right_bytes)), not string
+        // concatenation (SHA256(left_hex + right_hex)).
+        let t1 = ComplianceTensor::new(test_jurisdiction());
+        let mut t2 = ComplianceTensor::new(test_jurisdiction());
+        t2.set(
+            ComplianceDomain::Aml,
+            ComplianceState::Compliant,
+            vec![],
+            None,
+        );
+
+        let c1 = t1.commit().unwrap();
+        let c2 = t2.commit().unwrap();
+        let root = merkle_root(&[c1.clone(), c2.clone()]).unwrap();
+
+        // Manually compute expected root: SHA256(c1_bytes || c2_bytes)
+        let left_bytes = hex_to_bytes(&c1.to_hex()).unwrap();
+        let right_bytes = hex_to_bytes(&c2.to_hex()).unwrap();
+        let mut combined = Vec::with_capacity(64);
+        combined.extend_from_slice(&left_bytes);
+        combined.extend_from_slice(&right_bytes);
+        let expected_bytes = msez_core::sha256_bytes(&combined);
+        let expected: String = expected_bytes.iter().map(|b| format!("{b:02x}")).collect();
+
+        assert_eq!(root, expected, "Merkle root must use byte-level concatenation");
+    }
+
+    #[test]
+    fn hex_to_bytes_roundtrip() {
+        let input = "abcdef0123456789";
+        let bytes = hex_to_bytes(input).unwrap();
+        let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
+        assert_eq!(hex, input);
+    }
+
+    #[test]
+    fn hex_to_bytes_rejects_odd_length() {
+        assert!(hex_to_bytes("abc").is_none());
+    }
+
+    #[test]
+    fn hex_to_bytes_rejects_invalid_chars() {
+        assert!(hex_to_bytes("zzzz").is_none());
     }
 
     #[test]

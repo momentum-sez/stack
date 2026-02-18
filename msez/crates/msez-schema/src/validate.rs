@@ -22,7 +22,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use serde_json::Value;
 use thiserror::Error;
@@ -158,13 +158,25 @@ pub struct SchemaValidator {
     schema_map: Arc<HashMap<String, Value>>,
     /// Map from schema filename (e.g. `module.schema.json`) to its `$id` URI.
     filename_to_id: HashMap<String, String>,
+    /// Cache of compiled validators per schema `$id` (P1-PERF-001).
+    ///
+    /// Lazily populated on first validation of each schema. Subsequent
+    /// validations against the same schema reuse the compiled validator,
+    /// avoiding the cost of schema compilation on every call.
+    compiled_cache: RwLock<HashMap<String, jsonschema::Validator>>,
 }
 
 impl std::fmt::Debug for SchemaValidator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let cached = self
+            .compiled_cache
+            .read()
+            .map(|c| c.len())
+            .unwrap_or(0);
         f.debug_struct("SchemaValidator")
             .field("schema_dir", &self.schema_dir)
             .field("schema_count", &self.schema_map.len())
+            .field("compiled_cache_size", &cached)
             .finish()
     }
 }
@@ -190,6 +202,7 @@ impl SchemaValidator {
                 schema_dir,
                 schema_map: Arc::new(schema_map),
                 filename_to_id,
+                compiled_cache: RwLock::new(HashMap::new()),
             });
         }
 
@@ -235,6 +248,7 @@ impl SchemaValidator {
             schema_dir,
             schema_map: Arc::new(schema_map),
             filename_to_id,
+            compiled_cache: RwLock::new(HashMap::new()),
         })
     }
 
@@ -269,18 +283,35 @@ impl SchemaValidator {
     ///
     /// Returns `Ok(())` if the value is valid, or a
     /// [`SchemaValidationError::ValidationFailed`] with all violation details.
+    ///
+    /// ## Performance (P1-PERF-001)
+    ///
+    /// Compiled validators are cached per schema `$id`. The first validation
+    /// against a schema compiles and caches the validator; subsequent calls
+    /// reuse the cached validator, avoiding per-call compilation overhead.
     pub fn validate_value(
         &self,
         value: &Value,
         schema_id: &str,
     ) -> Result<(), SchemaValidationError> {
-        let schema = self
-            .schema_map
-            .get(schema_id)
-            .ok_or_else(|| SchemaValidationError::SchemaNotFound(schema_id.to_string()))?;
+        // Verify the schema exists before checking the cache.
+        if !self.schema_map.contains_key(schema_id) {
+            return Err(SchemaValidationError::SchemaNotFound(
+                schema_id.to_string(),
+            ));
+        }
 
-        // P1-PERF-001: Use Arc::clone for the retriever's schema map instead
-        // of deep-cloning the entire HashMap on every call.
+        // P1-PERF-001: Check the compiled validator cache (read lock — allows
+        // concurrent readers).
+        {
+            let cache = self.compiled_cache.read().unwrap_or_else(|e| e.into_inner());
+            if let Some(compiled) = cache.get(schema_id) {
+                return Self::run_validation(compiled, value, schema_id);
+            }
+        }
+
+        // Cache miss — compile the validator and cache it.
+        let schema = self.schema_map.get(schema_id).unwrap();
         let retriever = LocalSchemaRetriever {
             schemas: Arc::clone(&self.schema_map),
         };
@@ -294,6 +325,28 @@ impl SchemaValidator {
                 reason: e.to_string(),
             })?;
 
+        // Validate with the newly compiled validator.
+        let result = Self::run_validation(&compiled, value, schema_id);
+
+        // Insert into cache (write lock). Use entry API to avoid overwriting
+        // if another thread compiled the same schema concurrently.
+        {
+            let mut cache = self
+                .compiled_cache
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
+            cache.entry(schema_id.to_string()).or_insert(compiled);
+        }
+
+        result
+    }
+
+    /// Run validation against a compiled validator and collect errors.
+    fn run_validation(
+        compiled: &jsonschema::Validator,
+        value: &Value,
+        schema_id: &str,
+    ) -> Result<(), SchemaValidationError> {
         let errors: Vec<SchemaValidationDetail> = compiled
             .iter_errors(value)
             .map(|err| SchemaValidationDetail {

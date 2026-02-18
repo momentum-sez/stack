@@ -163,7 +163,7 @@
               ]
             }
           },
-          "additionalProperties": true
+          "additionalProperties": false
         },
         "version": {
           "type": "string"
@@ -234,11 +234,11 @@
                     "type": "string"
                   }
                 },
-                "additionalProperties": true
+                "additionalProperties": false
               }
             }
           },
-          "additionalProperties": true
+          "additionalProperties": false
         },
         "ruleset_digest_set": {
           "type": "array",
@@ -272,7 +272,7 @@
           }
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "proof": {
       "description": "One or more cryptographic proofs over the credential payload (excluding the proof field).",
@@ -348,5 +348,5 @@
       ]
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

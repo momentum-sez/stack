@@ -55,7 +55,7 @@
           "format": "date-time"
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "evidence": {
       "type": "array",
@@ -64,5 +64,5 @@
       }
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

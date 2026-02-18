@@ -97,10 +97,11 @@ jobs:
           FEATURES=$(cargo metadata --format-version 1 --no-deps 2>/dev/null | \
             python3 -c "import sys,json; pkgs=json.load(sys.stdin)['packages']; zkp=[p for p in pkgs if p['name']=='msez-zkp']; print(zkp[0]['features'] if zkp else '{}')" 2>/dev/null || echo "{}")
           if echo "$FEATURES" | grep -qi "mock"; then
-            echo "WARNING: msez-zkp has mock-related features: $FEATURES"
-            echo "Ensure mock features are NOT enabled in release profile"
+            echo "FATAL: msez-zkp has mock-related features enabled: $FEATURES"
+            echo "Mock proof backends MUST NOT be enabled in release builds (P0-ZK-001)"
+            exit 1
           fi
-          echo "OK: Mock proof backend check complete"
+          echo "OK: Mock proof backend check complete — no mock features detected"
 
       # P1-SCHEMA-003: additionalProperties policy on security-critical schemas.
       - name: Guard — additionalProperties policy on security-critical schemas

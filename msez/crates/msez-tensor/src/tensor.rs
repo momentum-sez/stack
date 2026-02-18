@@ -166,8 +166,11 @@ impl TensorSlice {
     }
 
     /// Check if all domains in the slice are in a passing state.
+    ///
+    /// Returns `false` for empty slices (fail-closed per P0-TENSOR-001).
+    /// An empty domain set has no affirmative compliance evidence.
     pub fn all_passing(&self) -> bool {
-        self.cells.values().all(|s| s.is_passing())
+        !self.cells.is_empty() && self.cells.values().all(|s| s.is_passing())
     }
 
     /// Return domains that are `NonCompliant`.
@@ -716,7 +719,8 @@ mod tests {
         assert_eq!(slice.len(), 0);
         // P0-TENSOR-001: empty slice must NOT return Compliant (fail-closed).
         assert_eq!(slice.aggregate_state(), ComplianceState::Pending);
-        assert!(slice.all_passing());
+        // P0-TENSOR-001: all_passing() returns false for empty slices (fail-closed).
+        assert!(!slice.all_passing());
         assert!(slice.non_compliant_domains().is_empty());
         assert!(slice.pending_domains().is_empty());
     }

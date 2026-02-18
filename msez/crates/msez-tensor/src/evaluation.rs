@@ -252,7 +252,7 @@ pub trait DomainEvaluator: Send + Sync + fmt::Debug {
 /// **Extended 12 domains** (from `tools/msez/composition.py`):
 /// LICENSING, BANKING, PAYMENTS, CLEARING, SETTLEMENT, DIGITAL_ASSETS,
 /// EMPLOYMENT, IMMIGRATION, IP, CONSUMER_PROTECTION, ARBITRATION, TRADE
-/// — return stored state if set; otherwise `NotApplicable` with a warning.
+/// — return stored state if set; otherwise `Pending` (fail-closed per P0-TENSOR-001).
 pub fn evaluate_domain_default(
     domain: ComplianceDomain,
     ctx: &EvaluationContext,
@@ -843,5 +843,88 @@ mod tests {
         set.insert(ComplianceState::NonCompliant);
         set.insert(ComplianceState::Compliant);
         assert_eq!(set.len(), 2);
+    }
+
+    // ── Adversarial: NotApplicable bypass (P0-TENSOR-001) ───────────
+
+    /// Adversarial vector: Attempt to bypass compliance by having extended
+    /// domains return NotApplicable when no state is stored.
+    /// Extended domains must return Pending (fail-closed), NOT NotApplicable.
+    #[test]
+    fn adversarial_extended_domain_not_applicable_bypass() {
+        // Extended domain with no stored state → must be Pending, not NotApplicable
+        let extended_domains = [
+            ComplianceDomain::Licensing,
+            ComplianceDomain::Banking,
+            ComplianceDomain::Payments,
+            ComplianceDomain::Clearing,
+            ComplianceDomain::Settlement,
+            ComplianceDomain::DigitalAssets,
+            ComplianceDomain::Employment,
+            ComplianceDomain::Immigration,
+            ComplianceDomain::Ip,
+            ComplianceDomain::ConsumerProtection,
+            ComplianceDomain::Arbitration,
+            ComplianceDomain::Trade,
+        ];
+
+        for domain in extended_domains {
+            let ctx = EvaluationContext {
+                entity_id: "adversarial-entity".to_string(),
+                current_state: None, // No stored state
+                attestations: vec![],
+                metadata: std::collections::HashMap::new(),
+            };
+
+            let (state, _note) = evaluate_domain_default(domain, &ctx);
+            assert_eq!(
+                state,
+                ComplianceState::Pending,
+                "extended domain {:?} with no stored state must return Pending (fail-closed), \
+                 not NotApplicable. An attacker must not be able to bypass compliance checks \
+                 by exploiting unimplemented domains.",
+                domain
+            );
+            // Pending is NOT passing
+            assert!(
+                !state.is_passing(),
+                "Pending must not pass compliance check"
+            );
+        }
+    }
+
+    /// Adversarial vector: aggregate_state must not return Compliant
+    /// when any domain is NonCompliant, regardless of other domain states.
+    #[test]
+    fn adversarial_non_compliant_cannot_be_elevated() {
+        // meet(Compliant, NonCompliant) must be NonCompliant
+        let result = ComplianceState::Compliant.meet(ComplianceState::NonCompliant);
+        assert_eq!(result, ComplianceState::NonCompliant);
+
+        // meet(Exempt, NonCompliant) must be NonCompliant
+        let result = ComplianceState::Exempt.meet(ComplianceState::NonCompliant);
+        assert_eq!(result, ComplianceState::NonCompliant);
+
+        // meet(NotApplicable, NonCompliant) must be NonCompliant
+        let result = ComplianceState::NotApplicable.meet(ComplianceState::NonCompliant);
+        assert_eq!(result, ComplianceState::NonCompliant);
+
+        // Folding any set containing NonCompliant must yield NonCompliant
+        let states = [
+            ComplianceState::Compliant,
+            ComplianceState::Exempt,
+            ComplianceState::NotApplicable,
+            ComplianceState::NonCompliant,
+            ComplianceState::Compliant,
+        ];
+        let aggregate = states
+            .iter()
+            .copied()
+            .fold(ComplianceState::Compliant, ComplianceState::meet);
+        assert_eq!(
+            aggregate,
+            ComplianceState::NonCompliant,
+            "no path must elevate NonCompliant to passing"
+        );
     }
 }

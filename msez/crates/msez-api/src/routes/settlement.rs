@@ -584,8 +584,11 @@ mod tests {
             updated_at: now,
         };
         state.corridors.insert(id, record);
-        // Initialize receipt chain.
-        let chain = ReceiptChain::new(CorridorId::from_uuid(id));
+        // Initialize receipt chain with genesis root derived from corridor ID.
+        let genesis_payload = serde_json::json!({"corridor_genesis": id.to_string()});
+        let canonical = msez_core::CanonicalBytes::new(&genesis_payload).unwrap();
+        let genesis_root = msez_core::sha256_digest(&canonical);
+        let chain = ReceiptChain::new(CorridorId::from_uuid(id), genesis_root);
         state.receipt_chains.write().insert(id, chain);
         id
     }

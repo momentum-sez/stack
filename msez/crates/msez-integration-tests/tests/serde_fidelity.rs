@@ -1438,10 +1438,15 @@ fn serde_rt_corridor_receipt() {
         corridor_id: CorridorId::new(),
         sequence: 1,
         timestamp: Timestamp::now(),
-        prev_root: "".to_string(),
+        prev_root: "00".repeat(32),
         next_root: "aa".repeat(32),
         lawpack_digest_set: vec!["bb".repeat(32)],
         ruleset_digest_set: vec![],
+        proof: None,
+        transition: None,
+        transition_type_registry_digest_sha256: None,
+        zk: None,
+        anchor: None,
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let _recovered: CorridorReceipt = serde_json::from_str(&json).expect("deserialize");
@@ -2999,13 +3004,26 @@ fn serde_rt_fork_branch() {
 #[test]
 fn serde_rt_checkpoint_full() {
     let original = Checkpoint {
+        checkpoint_type: "MSEZCorridorStateCheckpoint".to_string(),
         corridor_id: CorridorId::new(),
-        height: 42,
-        mmr_root: "cc".repeat(32),
         timestamp: Timestamp::now(),
+        genesis_root: "00".repeat(32),
+        final_state_root: "aa".repeat(32),
+        receipt_count: 42,
+        lawpack_digest_set: vec![],
+        ruleset_digest_set: vec![],
+        mmr: msez_corridor::MmrCommitment {
+            mmr_type: "MSEZReceiptMMR".to_string(),
+            algorithm: "sha256".to_string(),
+            size: 42,
+            root: "cc".repeat(32),
+            peaks: None,
+        },
         checkpoint_digest: test_digest(),
+        proof: None,
+        anchor: None,
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: Checkpoint = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.height, 42);
+    assert_eq!(recovered.receipt_count, 42);
 }

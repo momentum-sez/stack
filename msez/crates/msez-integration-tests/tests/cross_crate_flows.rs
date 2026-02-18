@@ -908,48 +908,60 @@ fn evidence_package_add_item_updates_digest() {
 
 use msez_corridor::receipt::{CorridorReceipt, ReceiptChain};
 
+fn test_genesis_root() -> ContentDigest {
+    ContentDigest::from_hex(&"00".repeat(32)).unwrap()
+}
+
 #[test]
 fn receipt_chain_checkpoint_stored_in_cas() {
     let tmp = tempfile::tempdir().unwrap();
     let cas = ContentAddressedStore::new(tmp.path());
 
     let corridor_id = CorridorId::new();
-    let mut chain = ReceiptChain::new(corridor_id.clone());
+    let mut chain = ReceiptChain::new(corridor_id.clone(), test_genesis_root());
 
     // Append a receipt
-    let prev_root = chain.mmr_root().unwrap();
-    let next_root = {
-        let c = CanonicalBytes::new(&json!({"event": "state_change"})).unwrap();
-        sha256_digest(&c).to_hex()
+    let prev_root = chain.final_state_root_hex();
+    let mut receipt = CorridorReceipt {
+        receipt_type: "state_transition".to_string(),
+        corridor_id: corridor_id.clone(),
+        sequence: 0,
+        timestamp: msez_core::Timestamp::now(),
+        prev_root,
+        next_root: String::new(),
+        lawpack_digest_set: vec![],
+        ruleset_digest_set: vec![],
+        proof: None,
+        transition: None,
+        transition_type_registry_digest_sha256: None,
+        zk: None,
+        anchor: None,
     };
-    chain
-        .append(CorridorReceipt {
-            receipt_type: "state_transition".to_string(),
-            corridor_id: corridor_id.clone(),
-            sequence: 0,
-            timestamp: msez_core::Timestamp::now(),
-            prev_root,
-            next_root,
-            lawpack_digest_set: vec![],
-            ruleset_digest_set: vec![],
-        })
-        .unwrap();
+    receipt.seal_next_root().unwrap();
+    chain.append(receipt).unwrap();
 
     // Create checkpoint
     let checkpoint = chain.create_checkpoint().unwrap();
-    assert_eq!(checkpoint.height, 1);
-    assert_eq!(checkpoint.mmr_root.len(), 64);
+    assert_eq!(checkpoint.height(), 1);
+    assert_eq!(checkpoint.mmr_root().len(), 64);
 
-    // Store checkpoint in CAS
+    // Checkpoint digest is a computed field (serde-skipped), verify via struct
+    assert_eq!(checkpoint.checkpoint_digest.to_hex().len(), 64);
+
+    // Store checkpoint in CAS and verify round-trip
     let artifact = cas.store("checkpoint", &checkpoint).unwrap();
     let bytes = cas.resolve_ref(&artifact).unwrap().unwrap();
     let retrieved: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
 
-    // Checkpoint digest should be present (serialized as ContentDigest object or string)
-    let digest_field = &retrieved["checkpoint_digest"];
+    // Verify schema-conformant fields are present in serialized form
     assert!(
-        !digest_field.is_null(),
-        "Checkpoint should have a checkpoint_digest field, got: {:?}",
+        !retrieved["final_state_root"].is_null(),
+        "Checkpoint should have final_state_root field, got: {:?}",
+        retrieved
+    );
+    assert!(
+        !retrieved["mmr"].is_null(),
+        "Checkpoint should have mmr field, got: {:?}",
         retrieved
     );
 }
@@ -1159,22 +1171,27 @@ fn tensor_commitment_feeds_mmr_and_receipt_chain() {
     let root = mmr.root().unwrap();
     assert_eq!(root.len(), 64, "MMR root should be valid 64-hex");
 
-    // The MMR root can be used as the next_root in a receipt chain
+    // The commitment digest can be recorded in a receipt chain
     let corridor_id = CorridorId::new();
-    let mut chain = ReceiptChain::new(corridor_id.clone());
-    let prev_root = chain.mmr_root().unwrap();
-    chain
-        .append(CorridorReceipt {
-            receipt_type: "compliance_snapshot".to_string(),
-            corridor_id,
-            sequence: 0,
-            timestamp: msez_core::Timestamp::now(),
-            prev_root,
-            next_root: root,
-            lawpack_digest_set: vec![],
-            ruleset_digest_set: vec![],
-        })
-        .unwrap();
+    let mut chain = ReceiptChain::new(corridor_id.clone(), test_genesis_root());
+    let prev_root = chain.final_state_root_hex();
+    let mut receipt = CorridorReceipt {
+        receipt_type: "compliance_snapshot".to_string(),
+        corridor_id,
+        sequence: 0,
+        timestamp: msez_core::Timestamp::now(),
+        prev_root,
+        next_root: String::new(),
+        lawpack_digest_set: vec![],
+        ruleset_digest_set: vec![],
+        proof: None,
+        transition: None,
+        transition_type_registry_digest_sha256: None,
+        zk: None,
+        anchor: None,
+    };
+    receipt.seal_next_root().unwrap();
+    chain.append(receipt).unwrap();
     assert_eq!(chain.height(), 1);
 }
 
@@ -1396,29 +1413,25 @@ fn netting_to_settlement_to_receipt_chain() {
     }
 
     // Step 3: Record settlement in receipt chain
-    let mut chain = ReceiptChain::new(corridor_id.clone());
-    let prev_root = chain.mmr_root().unwrap();
+    let mut chain = ReceiptChain::new(corridor_id.clone(), test_genesis_root());
+    let prev_root = chain.final_state_root_hex();
 
-    // BUG-006/041 RESOLVED: SettlementPlan now uses reduction_bps (u32 basis points)
-    // instead of f64, so the full plan is CanonicalBytes-compatible.
-    let plan_summary = serde_json::json!({
-        "gross_total": plan.gross_total,
-        "net_total": plan.net_total,
-        "legs_count": plan.settlement_legs.len(),
-    });
-    let plan_canonical = CanonicalBytes::new(&plan_summary).unwrap();
-    let plan_digest = sha256_digest(&plan_canonical);
-
-    let receipt = CorridorReceipt {
+    let mut receipt = CorridorReceipt {
         receipt_type: "settlement".to_string(),
         corridor_id: corridor_id.clone(),
         sequence: 0,
         timestamp: Timestamp::now(),
         prev_root,
-        next_root: plan_digest.to_hex(),
+        next_root: String::new(),
         lawpack_digest_set: vec![],
         ruleset_digest_set: vec![],
+        proof: None,
+        transition: None,
+        transition_type_registry_digest_sha256: None,
+        zk: None,
+        anchor: None,
     };
+    receipt.seal_next_root().unwrap();
     chain.append(receipt).unwrap();
     assert_eq!(chain.height(), 1, "Receipt chain should have height 1");
 }
@@ -1512,31 +1525,37 @@ fn tensor_evaluation_to_mmr_to_receipt() {
     // Step 3: Append to MMR
     let mut mmr = MerkleMountainRange::new();
     mmr.append(&eval_digest.to_hex()).unwrap();
-    let mmr_root = mmr.root().unwrap();
+    let _mmr_root = mmr.root().unwrap();
 
-    // Step 4: Create receipt with MMR root
+    // Step 4: Create receipt and record in chain
     let corridor_id = CorridorId::new();
-    let mut chain = ReceiptChain::new(corridor_id.clone());
-    let prev_root = chain.mmr_root().unwrap();
+    let mut chain = ReceiptChain::new(corridor_id.clone(), test_genesis_root());
+    let prev_root = chain.final_state_root_hex();
     let prev_root_copy = prev_root.clone();
 
-    let receipt = CorridorReceipt {
+    let mut receipt = CorridorReceipt {
         receipt_type: "tensor_snapshot".to_string(),
         corridor_id: corridor_id.clone(),
         sequence: 0,
         timestamp: Timestamp::now(),
         prev_root,
-        next_root: mmr_root,
+        next_root: String::new(),
         lawpack_digest_set: vec![],
         ruleset_digest_set: vec![],
+        proof: None,
+        transition: None,
+        transition_type_registry_digest_sha256: None,
+        zk: None,
+        anchor: None,
     };
+    receipt.seal_next_root().unwrap();
     chain.append(receipt).unwrap();
     assert_eq!(chain.height(), 1);
 
-    // Step 5: Verify the chain root changed
-    let new_root = chain.mmr_root().unwrap();
+    // Step 5: Verify the chain state root changed
+    let new_root = chain.final_state_root_hex();
     assert_ne!(
         new_root, prev_root_copy,
-        "Chain MMR root should change after append"
+        "Chain final_state_root should change after append"
     );
 }

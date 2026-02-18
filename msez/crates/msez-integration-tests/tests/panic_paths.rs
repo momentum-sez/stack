@@ -1088,13 +1088,17 @@ fn bridge_route_multi_hop() {
 
 use msez_corridor::receipt::{CorridorReceipt, ReceiptChain};
 
+fn test_genesis_root() -> ContentDigest {
+    ContentDigest::from_hex(&"00".repeat(32)).unwrap()
+}
+
 #[test]
 fn receipt_chain_empty_root_no_panic() {
-    let chain = ReceiptChain::new(CorridorId::new());
+    let chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
     let result = chain.mmr_root();
     // Empty chain — root should return error (no leaves) or empty sentinel.
     // Either way, must not panic and must be deterministic.
-    let result2 = ReceiptChain::new(CorridorId::new()).mmr_root();
+    let result2 = ReceiptChain::new(CorridorId::new(), test_genesis_root()).mmr_root();
     assert_eq!(
         result.is_ok(),
         result2.is_ok(),
@@ -1104,29 +1108,30 @@ fn receipt_chain_empty_root_no_panic() {
 
 #[test]
 fn receipt_chain_empty_height() {
-    let chain = ReceiptChain::new(CorridorId::new());
+    let chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
     assert_eq!(chain.height(), 0, "Empty chain should have height 0");
 }
 
 #[test]
 fn receipt_chain_append_and_height() {
     let corridor_id = CorridorId::new();
-    let mut chain = ReceiptChain::new(corridor_id.clone());
-    let prev_root = chain.mmr_root().unwrap();
-    let next_root = {
-        let c = CanonicalBytes::new(&serde_json::json!({"seq": 0})).unwrap();
-        sha256_digest(&c).to_hex()
-    };
-    let receipt = CorridorReceipt {
+    let mut chain = ReceiptChain::new(corridor_id.clone(), test_genesis_root());
+    let mut receipt = CorridorReceipt {
         receipt_type: "state_transition".to_string(),
         corridor_id: corridor_id.clone(),
         sequence: 0,
         timestamp: Timestamp::now(),
-        prev_root,
-        next_root,
+        prev_root: chain.final_state_root_hex(),
+        next_root: String::new(),
         lawpack_digest_set: vec![],
         ruleset_digest_set: vec![],
+        proof: None,
+        transition: None,
+        transition_type_registry_digest_sha256: None,
+        zk: None,
+        anchor: None,
     };
+    receipt.seal_next_root().unwrap();
     let result = chain.append(receipt);
     assert!(result.is_ok(), "Appending valid receipt should succeed");
     assert_eq!(chain.height(), 1);

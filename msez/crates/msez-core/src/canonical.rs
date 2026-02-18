@@ -1,14 +1,36 @@
-//! # Canonical Serialization — JCS-Compatible Canonicalization
+//! # Canonical Serialization — Momentum Canonical Form (MCF)
 //!
 //! This module defines [`CanonicalBytes`], the sole construction path for bytes
 //! used in digest computation across the entire SEZ Stack.
 //!
+//! ## Momentum Canonical Form (MCF)
+//!
+//! MCF is based on RFC 8785 JSON Canonicalization Scheme (JCS) with two
+//! additional safety coercions that prevent real-world digest mismatches:
+//!
+//! 1. Convert to `serde_json::Value`
+//! 2. **Reject** any `Number` that is f64-only (non-integer, NaN, Inf)
+//! 3. **Normalize** RFC 3339 datetime strings to UTC, truncated to seconds, suffix `Z`
+//! 4. Serialize with RFC 8785 JCS rules (sorted keys, no whitespace, ES6 number serialization)
+//!
+//! **Digest:** `SHA-256(MCF(payload))`
+//!
+//! These coercions are intentional deviations from pure RFC 8785 JCS:
+//! - Float rejection prevents non-deterministic decimal representations across languages.
+//! - Datetime normalization prevents equivalent timestamps (e.g., `+00:00` vs `Z`,
+//!   subsecond precision differences) from producing different digests.
+//!
+//! **Cross-language note:** Any TypeScript/Python/Go implementation MUST replicate
+//! these exact coercions to produce matching digests. Pure RFC 8785 JCS without
+//! these coercions will produce different digests for payloads containing datetimes
+//! or floating-point numbers.
+//!
 //! ## Security Invariant
 //!
 //! The inner `Vec<u8>` is private. The only way to construct `CanonicalBytes` is
-//! through [`CanonicalBytes::new()`], which applies the full Momentum type coercion
-//! pipeline before serialization. This makes the "wrong serialization path" class
-//! of defects (audit finding §2.1) structurally impossible.
+//! through [`CanonicalBytes::new()`], which applies the full MCF pipeline before
+//! serialization. This makes the "wrong serialization path" class of defects
+//! structurally impossible.
 //!
 //! ## Coercion Rules (matching Python `_coerce_json_types()` in `tools/lawpack.py`)
 //!
@@ -29,6 +51,8 @@
 //! ## Spec Reference
 //!
 //! Implements the canonicalization defined in `tools/lawpack.py:jcs_canonicalize()`.
+//! `spec/40-corridors.md` says "SHA256(JCS(json))" — in the Momentum stack, JCS
+//! means MCF (RFC 8785 + float rejection + datetime normalization).
 //! Cross-language digest equality is verified by integration tests in
 //! `tests/cross_language.rs`.
 
@@ -37,8 +61,9 @@ use serde_json::Value;
 
 use crate::error::CanonicalizationError;
 
-/// Bytes produced exclusively by JCS-compatible canonicalization with
-/// Momentum-specific type coercion rules.
+/// Bytes produced exclusively by Momentum Canonical Form (MCF) canonicalization.
+///
+/// MCF = RFC 8785 JCS + float rejection + datetime normalization to UTC seconds.
 ///
 /// The inner `Vec<u8>` is private — downstream code cannot construct
 /// `CanonicalBytes` except through [`CanonicalBytes::new()`]. This single
@@ -448,6 +473,101 @@ mod tests {
         assert_eq!(
             output, r#"{"apple":2,"mango":3,"zebra":1}"#,
             "Canonical output keys not sorted — preserve_order may be active"
+        );
+    }
+
+    // ── MCF Golden Vector Tests ─────────────────────────────────────
+    //
+    // These golden vectors define the exact canonical byte output and
+    // SHA-256 digest for known inputs. Any cross-language implementation
+    // of Momentum Canonical Form (MCF) MUST produce identical digests.
+    //
+    // If any of these tests fail, it means the canonicalization algorithm
+    // has changed — which would break ALL existing content-addressed
+    // digests across the entire system.
+
+    /// Helper: compute SHA-256 hex digest of MCF(value).
+    fn mcf_digest(value: &serde_json::Value) -> String {
+        let cb = CanonicalBytes::new(value).unwrap();
+        crate::sha256_digest(&cb).to_hex()
+    }
+
+    #[test]
+    fn golden_vector_empty_object() {
+        let value = json!({});
+        let cb = CanonicalBytes::new(&value).unwrap();
+        assert_eq!(std::str::from_utf8(cb.as_bytes()).unwrap(), "{}");
+        assert_eq!(
+            mcf_digest(&value),
+            "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        );
+    }
+
+    #[test]
+    fn golden_vector_nested_sorted_keys() {
+        let value = json!({"z": {"b": 2, "a": 1}, "a": 0});
+        let cb = CanonicalBytes::new(&value).unwrap();
+        assert_eq!(
+            std::str::from_utf8(cb.as_bytes()).unwrap(),
+            r#"{"a":0,"z":{"a":1,"b":2}}"#
+        );
+        assert_eq!(
+            mcf_digest(&value),
+            "59d176cd99b72175a563664f429ecec5d1cb31754d7d090b0592bda9b53fc021"
+        );
+    }
+
+    #[test]
+    fn golden_vector_datetime_normalization() {
+        // Input has +05:00 offset → MCF normalizes to UTC Z, truncated to seconds
+        let value = json!({"event": "test", "ts": "2026-01-15T17:00:00+05:00"});
+        let cb = CanonicalBytes::new(&value).unwrap();
+        assert_eq!(
+            std::str::from_utf8(cb.as_bytes()).unwrap(),
+            r#"{"event":"test","ts":"2026-01-15T12:00:00Z"}"#
+        );
+        assert_eq!(
+            mcf_digest(&value),
+            "8d5542ccf9f71365e8c0634160f1f0b620efb14453bb3393cfc3c6df6eb4d873"
+        );
+    }
+
+    #[test]
+    fn golden_vector_integer_boundaries() {
+        let value = json!({
+            "max_i64": 9_223_372_036_854_775_807_i64,
+            "min_i64": -9_223_372_036_854_775_808_i64,
+            "zero": 0
+        });
+        let cb = CanonicalBytes::new(&value).unwrap();
+        assert_eq!(
+            std::str::from_utf8(cb.as_bytes()).unwrap(),
+            r#"{"max_i64":9223372036854775807,"min_i64":-9223372036854775808,"zero":0}"#
+        );
+        assert_eq!(
+            mcf_digest(&value),
+            "3899d8b439c3e73c7f1d416eef2f676f9611cb67e608deba27cede30b39f5adb"
+        );
+    }
+
+    #[test]
+    fn golden_vector_receipt_like_payload() {
+        // Simulates a stripped receipt payload (no proof, no next_root)
+        let value = json!({
+            "corridor_id": "test-corridor-001",
+            "sequence": 0,
+            "timestamp": "2026-01-15T12:00:00Z",
+            "prev_root": "0000000000000000000000000000000000000000000000000000000000000000",
+            "lawpack_digest_set": ["aaaa000000000000000000000000000000000000000000000000000000000000"],
+            "ruleset_digest_set": ["bbbb000000000000000000000000000000000000000000000000000000000000"]
+        });
+        let cb = CanonicalBytes::new(&value).unwrap();
+        let canonical_str = std::str::from_utf8(cb.as_bytes()).unwrap();
+        // Keys must be sorted: corridor_id < lawpack_digest_set < prev_root < ruleset_digest_set < sequence < timestamp
+        assert!(canonical_str.starts_with(r#"{"corridor_id":"#));
+        assert_eq!(
+            mcf_digest(&value),
+            "73ff0cf3be1c8643a4a1803bf15c1b7b7901ca0c553976266509daebc4d8ae05"
         );
     }
 }

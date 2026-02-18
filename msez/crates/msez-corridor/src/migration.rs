@@ -298,18 +298,34 @@ impl MigrationSaga {
 
     /// Compensate the migration by reversing all forward side-effects.
     ///
+    /// ## CAS Versioning
+    ///
+    /// Like `advance()`, `compensate()` uses CAS versioning to prevent
+    /// concurrent modification. The caller must supply `expected_version`.
+    ///
     /// ## Idempotency (P0-MIGRATION-001 requirement)
     ///
     /// Calling `compensate()` on an already-compensated or timed-out
     /// migration is a **no-op** that returns `Ok(Compensated)`.
     /// This is required for financial safety: retry loops must not
-    /// produce errors on re-compensation.
-    pub fn compensate(&mut self) -> Result<MigrationState, MigrationError> {
+    /// produce errors on re-compensation. The version check is skipped
+    /// for idempotent no-op returns.
+    pub fn compensate(&mut self, expected_version: u64) -> Result<MigrationState, MigrationError> {
         // Idempotent: already compensated or timed out = no-op.
+        // No CAS check on idempotent path — retry loops must succeed.
         if self.state == MigrationState::Compensated
             || self.state == MigrationState::TimedOut
         {
             return Ok(self.state);
+        }
+
+        // CAS check (only on non-idempotent path).
+        if self.version != expected_version {
+            return Err(MigrationError::VersionConflict {
+                id: self.id,
+                expected: expected_version,
+                found: self.version,
+            });
         }
 
         // Cannot compensate a completed migration through this path.
@@ -439,8 +455,8 @@ mod tests {
         saga.advance(0).unwrap(); // → SourceLocked
         saga.advance(1).unwrap(); // → DestinationMinted
 
-        // Now compensate (before completing).
-        let state = saga.compensate().unwrap();
+        // Now compensate (before completing). Version is 2 after two advances.
+        let state = saga.compensate(2).unwrap();
         assert_eq!(state, MigrationState::Compensated);
 
         // Compensation effects should be reverse of forward effects.
@@ -462,13 +478,14 @@ mod tests {
         let mut saga = make_saga();
         saga.advance(0).unwrap(); // → SourceLocked
 
-        // First compensation.
-        let state1 = saga.compensate().unwrap();
+        // First compensation. Version is 1 after one advance.
+        let state1 = saga.compensate(1).unwrap();
         assert_eq!(state1, MigrationState::Compensated);
         let v1 = saga.version;
 
         // Second compensation — must be no-op, not error.
-        let state2 = saga.compensate().unwrap();
+        // Version argument is ignored on idempotent path.
+        let state2 = saga.compensate(999).unwrap();
         assert_eq!(state2, MigrationState::Compensated);
         // Version should NOT increment on idempotent no-op.
         assert_eq!(saga.version, v1);
@@ -485,7 +502,8 @@ mod tests {
         assert_eq!(saga.state, MigrationState::TimedOut);
 
         // Compensation on timed-out = idempotent no-op.
-        let state = saga.compensate().unwrap();
+        // Version argument is ignored on idempotent path.
+        let state = saga.compensate(999).unwrap();
         assert_eq!(state, MigrationState::TimedOut);
     }
 
@@ -527,7 +545,7 @@ mod tests {
         saga.advance(0).unwrap(); // Lock source
         saga.advance(1).unwrap(); // Mint dest
 
-        saga.compensate().unwrap(); // Should burn dest, unlock source
+        saga.compensate(2).unwrap(); // Should burn dest, unlock source (version=2 after 2 advances)
         assert!(saga.no_duplicate_invariant());
     }
 
@@ -570,17 +588,38 @@ mod tests {
         saga.advance(1).unwrap();
         saga.advance(2).unwrap(); // Completed
 
-        let err = saga.compensate().unwrap_err();
+        let err = saga.compensate(3).unwrap_err();
         assert!(matches!(err, MigrationError::AlreadyTerminal { .. }));
     }
 
     #[test]
     fn initiated_state_compensation() {
         let mut saga = make_saga();
-        // Compensate from Initiated — no forward effects to reverse.
-        let state = saga.compensate().unwrap();
+        // Compensate from Initiated — no forward effects to reverse. Version=0.
+        let state = saga.compensate(0).unwrap();
         assert_eq!(state, MigrationState::Compensated);
         assert!(saga.compensation_effects.is_empty());
+    }
+
+    #[test]
+    fn compensate_version_conflict() {
+        let mut saga = make_saga();
+        saga.advance(0).unwrap(); // version becomes 1
+
+        // Wrong version — must fail.
+        let err = saga.compensate(0).unwrap_err();
+        assert!(matches!(
+            err,
+            MigrationError::VersionConflict {
+                expected: 0,
+                found: 1,
+                ..
+            }
+        ));
+
+        // Correct version — must succeed.
+        let state = saga.compensate(1).unwrap();
+        assert_eq!(state, MigrationState::Compensated);
     }
 
     #[test]

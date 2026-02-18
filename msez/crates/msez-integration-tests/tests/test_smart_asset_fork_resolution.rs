@@ -43,9 +43,11 @@ fn make_branch(
 
 #[test]
 fn fork_resolved_by_timestamp() {
-    let sk = SigningKey::generate(&mut OsRng);
+    let sk_a = SigningKey::generate(&mut OsRng);
+    let sk_b = SigningKey::generate(&mut OsRng);
     let mut registry = WatcherRegistry::new();
-    registry.register(sk.verifying_key());
+    registry.register(sk_a.verifying_key());
+    registry.register(sk_b.verifying_key());
 
     // Use past-relative timestamps to avoid MAX_FUTURE_DRIFT rejection.
     let t2 = Utc::now();
@@ -53,8 +55,8 @@ fn fork_resolved_by_timestamp() {
     let nr_a = "aa".repeat(32);
     let nr_b = "bb".repeat(32);
 
-    let att_a = create_attestation(&sk, "parent", &nr_a, 1, t1).unwrap();
-    let att_b = create_attestation(&sk, "parent", &nr_b, 1, t2).unwrap();
+    let att_a = create_attestation(&sk_a, "parent", &nr_a, 1, t1).unwrap();
+    let att_b = create_attestation(&sk_b, "parent", &nr_b, 1, t2).unwrap();
 
     let a = make_branch("A", t1, vec![att_a], &nr_a);
     let b = make_branch("B", t2, vec![att_b], &nr_b);
@@ -73,23 +75,25 @@ fn fork_resolved_by_timestamp() {
 
 #[test]
 fn fork_resolved_by_watcher_count() {
-    let sk1 = SigningKey::generate(&mut OsRng);
-    let sk2 = SigningKey::generate(&mut OsRng);
-    let sk3 = SigningKey::generate(&mut OsRng);
+    let sk_a1 = SigningKey::generate(&mut OsRng);
+    let sk_b1 = SigningKey::generate(&mut OsRng);
+    let sk_b2 = SigningKey::generate(&mut OsRng);
+    let sk_b3 = SigningKey::generate(&mut OsRng);
     let mut registry = WatcherRegistry::new();
-    registry.register(sk1.verifying_key());
-    registry.register(sk2.verifying_key());
-    registry.register(sk3.verifying_key());
+    registry.register(sk_a1.verifying_key());
+    registry.register(sk_b1.verifying_key());
+    registry.register(sk_b2.verifying_key());
+    registry.register(sk_b3.verifying_key());
 
     let t2 = Utc::now();
     let t1 = t2 - Duration::minutes(3); // 3 min < 5 min skew
     let nr_a = "aa".repeat(32);
     let nr_b = "bb".repeat(32);
 
-    let att_a = create_attestation(&sk1, "parent", &nr_a, 1, t1).unwrap();
-    let att_b1 = create_attestation(&sk1, "parent", &nr_b, 1, t2).unwrap();
-    let att_b2 = create_attestation(&sk2, "parent", &nr_b, 1, t2).unwrap();
-    let att_b3 = create_attestation(&sk3, "parent", &nr_b, 1, t2).unwrap();
+    let att_a = create_attestation(&sk_a1, "parent", &nr_a, 1, t1).unwrap();
+    let att_b1 = create_attestation(&sk_b1, "parent", &nr_b, 1, t2).unwrap();
+    let att_b2 = create_attestation(&sk_b2, "parent", &nr_b, 1, t2).unwrap();
+    let att_b3 = create_attestation(&sk_b3, "parent", &nr_b, 1, t2).unwrap();
 
     let a = make_branch("A", t1, vec![att_a], &nr_a);
     let b = make_branch("B", t2, vec![att_b1, att_b2, att_b3], &nr_b);
@@ -108,16 +112,18 @@ fn fork_resolved_by_watcher_count() {
 
 #[test]
 fn fork_resolved_by_lexicographic_tiebreak() {
-    let sk = SigningKey::generate(&mut OsRng);
+    let sk_a = SigningKey::generate(&mut OsRng);
+    let sk_b = SigningKey::generate(&mut OsRng);
     let mut registry = WatcherRegistry::new();
-    registry.register(sk.verifying_key());
+    registry.register(sk_a.verifying_key());
+    registry.register(sk_b.verifying_key());
 
     let t = Utc::now();
     let nr_a = "aa".repeat(32);
     let nr_b = "bb".repeat(32);
 
-    let att_a = create_attestation(&sk, "parent", &nr_a, 1, t).unwrap();
-    let att_b = create_attestation(&sk, "parent", &nr_b, 1, t).unwrap();
+    let att_a = create_attestation(&sk_a, "parent", &nr_a, 1, t).unwrap();
+    let att_b = create_attestation(&sk_b, "parent", &nr_b, 1, t).unwrap();
 
     let a = make_branch("A", t, vec![att_a], &nr_a);
     let b = make_branch("B", t, vec![att_b], &nr_b);
@@ -137,13 +143,17 @@ fn fork_resolved_by_lexicographic_tiebreak() {
 
 #[test]
 fn clock_skew_boundary() {
-    let sk1 = SigningKey::generate(&mut OsRng);
-    let sk2 = SigningKey::generate(&mut OsRng);
-    let sk3 = SigningKey::generate(&mut OsRng);
+    let sk_a = SigningKey::generate(&mut OsRng);
+    let sk_b1 = SigningKey::generate(&mut OsRng);
+    let sk_b2 = SigningKey::generate(&mut OsRng);
+    let sk_b3 = SigningKey::generate(&mut OsRng);
+    let sk_c = SigningKey::generate(&mut OsRng);
     let mut registry = WatcherRegistry::new();
-    registry.register(sk1.verifying_key());
-    registry.register(sk2.verifying_key());
-    registry.register(sk3.verifying_key());
+    registry.register(sk_a.verifying_key());
+    registry.register(sk_b1.verifying_key());
+    registry.register(sk_b2.verifying_key());
+    registry.register(sk_b3.verifying_key());
+    registry.register(sk_c.verifying_key());
 
     // Use past-relative timestamps to avoid MAX_FUTURE_DRIFT rejection.
     let t2 = Utc::now();
@@ -153,10 +163,10 @@ fn clock_skew_boundary() {
     let nr_c = "cc".repeat(32);
 
     // Exactly at 5 minutes: falls through to secondary ordering
-    let att_a = create_attestation(&sk1, "parent", &nr_a, 1, t1).unwrap();
-    let att_b1 = create_attestation(&sk1, "parent", &nr_b, 1, t2).unwrap();
-    let att_b2 = create_attestation(&sk2, "parent", &nr_b, 1, t2).unwrap();
-    let att_b3 = create_attestation(&sk3, "parent", &nr_b, 1, t2).unwrap();
+    let att_a = create_attestation(&sk_a, "parent", &nr_a, 1, t1).unwrap();
+    let att_b1 = create_attestation(&sk_b1, "parent", &nr_b, 1, t2).unwrap();
+    let att_b2 = create_attestation(&sk_b2, "parent", &nr_b, 1, t2).unwrap();
+    let att_b3 = create_attestation(&sk_b3, "parent", &nr_b, 1, t2).unwrap();
 
     let a = make_branch("A", t1, vec![att_a], &nr_a);
     let b = make_branch("B", t2, vec![att_b1, att_b2, att_b3], &nr_b);
@@ -167,11 +177,11 @@ fn clock_skew_boundary() {
         ResolutionReason::MoreAttestations
     );
 
-    // One second beyond: uses timestamp
+    // One second beyond: uses timestamp (distinct watchers per branch)
     let t3 = Utc::now();
     let t0 = t3 - Duration::seconds(301);
-    let att_a2 = create_attestation(&sk1, "parent", &nr_a, 1, t0).unwrap();
-    let att_c = create_attestation(&sk1, "parent", &nr_c, 1, t3).unwrap();
+    let att_a2 = create_attestation(&sk_a, "parent", &nr_a, 1, t0).unwrap();
+    let att_c = create_attestation(&sk_c, "parent", &nr_c, 1, t3).unwrap();
     let a2 = make_branch("A2", t0, vec![att_a2], &nr_a);
     let c = make_branch("C", t3, vec![att_c], &nr_c);
     let resolution2 = resolve_fork(&a2, &c, &registry).unwrap();

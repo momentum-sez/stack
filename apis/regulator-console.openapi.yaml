@@ -1,37 +1,386 @@
 openapi: 3.1.0
 info:
-  title: Regulator Console API (Reference)
-  version: 0.1.0
+  title: Regulator Console API
+  version: 0.2.0
   description: >
-    Reference interface for regulator access: role-gated, auditable, and revocable query endpoints.
+    Role-gated, auditable, and revocable query endpoints for regulatory
+    oversight. All requests are logged in an immutable audit trail.
+    Replaces the prior spec scaffold (v0.1.0).
+  contact:
+    name: Momentum SEZ Protocol Team
+  license:
+    name: BUSL-1.1
 servers:
   - url: https://{zone_node}/regulator
     variables:
       zone_node:
         default: example.zone
+        description: Zone node hostname
+
+security:
+  - regulatorAuth: []
+
 paths:
+  /v1/health:
+    get:
+      summary: Health and connectivity check
+      operationId: regulatorHealthCheck
+      security: []
+      responses:
+        '200':
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded]
+                  version:
+                    type: string
+                additionalProperties: false
+
   /v1/query/attestations:
     post:
-      summary: Query attestations (with policy-based access control)
+      summary: Query attestations with policy-based access control
       operationId: queryAttestations
+      parameters:
+        - $ref: '#/components/parameters/PageCursor'
+        - $ref: '#/components/parameters/PageSize'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                filter:
-                  type: object
+              $ref: '#/components/schemas/AttestationQuery'
       responses:
         '200':
-          description: Results
+          description: Attestation query results
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  results:
-                    type: array
-                    items:
-                      $ref: '../schemas/attestation.schema.json'
+                $ref: '#/components/schemas/PaginatedAttestationList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/query/entities:
+    post:
+      summary: Query entities with regulatory access control
+      operationId: queryEntities
+      parameters:
+        - $ref: '#/components/parameters/PageCursor'
+        - $ref: '#/components/parameters/PageSize'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntityQuery'
+      responses:
+        '200':
+          description: Entity query results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEntityQueryResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/query/corridors:
+    post:
+      summary: Query corridor states and compliance status
+      operationId: queryCorridors
+      parameters:
+        - $ref: '#/components/parameters/PageCursor'
+        - $ref: '#/components/parameters/PageSize'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorridorQuery'
+      responses:
+        '200':
+          description: Corridor query results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCorridorQueryResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/audit-log:
+    get:
+      summary: Retrieve regulator audit log entries
+      operationId: getAuditLog
+      parameters:
+        - $ref: '#/components/parameters/PageCursor'
+        - $ref: '#/components/parameters/PageSize'
+        - name: since
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Only return entries after this timestamp
+      responses:
+        '200':
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAuditLog'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    regulatorAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Regulator-scoped bearer token. Tokens are role-gated and
+        time-bounded. All queries are logged to the audit trail.
+
+  parameters:
+    PageCursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Opaque pagination cursor from a previous response.
+    PageSize:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+      description: Number of items per page.
+
+  responses:
+    BadRequest:
+      description: Invalid request format
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Insufficient regulatory permissions for this query
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+          additionalProperties: false
+      additionalProperties: false
+
+    AttestationQuery:
+      type: object
+      properties:
+        entity_id:
+          type: string
+          description: Filter by entity
+        corridor_id:
+          type: string
+          description: Filter by corridor
+        domain:
+          type: string
+          description: Compliance domain filter (e.g., kyc, aml, sanctions)
+        status:
+          type: string
+          enum: [valid, expired, revoked]
+        since:
+          type: string
+          format: date-time
+          description: Only attestations after this timestamp
+      additionalProperties: false
+
+    PaginatedAttestationList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '../schemas/attestation.schema.json'
+        next_cursor:
+          type: string
+        total_count:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+
+    EntityQuery:
+      type: object
+      properties:
+        entity_type:
+          type: string
+        status:
+          type: string
+          enum: [active, suspended, exited]
+        jurisdiction_id:
+          type: string
+        legal_name_contains:
+          type: string
+          description: Substring match on legal name
+      additionalProperties: false
+
+    PaginatedEntityQueryResult:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [entity_id, entity_type, legal_name, status]
+            properties:
+              entity_id:
+                type: string
+              entity_type:
+                type: string
+              legal_name:
+                type: string
+              status:
+                type: string
+                enum: [active, suspended, exited]
+              jurisdiction_id:
+                type: string
+            additionalProperties: false
+        next_cursor:
+          type: string
+        total_count:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+
+    CorridorQuery:
+      type: object
+      properties:
+        corridor_id:
+          type: string
+        lifecycle_state:
+          type: string
+          description: Filter by corridor lifecycle state (e.g., ACTIVE, HALTED)
+        zone_id:
+          type: string
+      additionalProperties: false
+
+    PaginatedCorridorQueryResult:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [corridor_id, lifecycle_state]
+            properties:
+              corridor_id:
+                type: string
+              lifecycle_state:
+                type: string
+              zones:
+                type: array
+                items:
+                  type: string
+              receipt_count:
+                type: integer
+                minimum: 0
+              last_checkpoint_at:
+                type: string
+                format: date-time
+            additionalProperties: false
+        next_cursor:
+          type: string
+        total_count:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+
+    PaginatedAuditLog:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [timestamp, action, actor]
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              action:
+                type: string
+                description: Query operation performed
+              actor:
+                type: string
+                description: Regulator identity (DID or token subject)
+              resource_type:
+                type: string
+              resource_id:
+                type: string
+              result_count:
+                type: integer
+                minimum: 0
+            additionalProperties: false
+        next_cursor:
+          type: string
+      additionalProperties: false

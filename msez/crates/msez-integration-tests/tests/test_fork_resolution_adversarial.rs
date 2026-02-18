@@ -52,9 +52,11 @@ fn make_key() -> SigningKey {
 
 #[test]
 fn earlier_timestamp_wins_beyond_skew() {
-    let sk = make_key();
+    let sk_a = make_key();
+    let sk_b = make_key();
     let mut reg = WatcherRegistry::new();
-    reg.register(sk.verifying_key());
+    reg.register(sk_a.verifying_key());
+    reg.register(sk_b.verifying_key());
 
     // Use past-relative timestamps to avoid MAX_FUTURE_DRIFT rejection.
     let t2 = now();
@@ -62,8 +64,8 @@ fn earlier_timestamp_wins_beyond_skew() {
     let nr_a = "aa".repeat(32);
     let nr_b = "bb".repeat(32);
 
-    let a = make_branch("A", t1, vec![create_attestation(&sk, "p", &nr_a, 1, t1).unwrap()], &nr_a);
-    let b = make_branch("B", t2, vec![create_attestation(&sk, "p", &nr_b, 1, t2).unwrap()], &nr_b);
+    let a = make_branch("A", t1, vec![create_attestation(&sk_a, "p", &nr_a, 1, t1).unwrap()], &nr_a);
+    let b = make_branch("B", t2, vec![create_attestation(&sk_b, "p", &nr_b, 1, t2).unwrap()], &nr_b);
 
     let resolution = resolve_fork(&a, &b, &reg).unwrap();
     assert_eq!(resolution.winning_branch, a.receipt_digest);
@@ -72,17 +74,19 @@ fn earlier_timestamp_wins_beyond_skew() {
 
 #[test]
 fn earlier_timestamp_wins_reversed() {
-    let sk = make_key();
+    let sk_a = make_key();
+    let sk_b = make_key();
     let mut reg = WatcherRegistry::new();
-    reg.register(sk.verifying_key());
+    reg.register(sk_a.verifying_key());
+    reg.register(sk_b.verifying_key());
 
     let t1 = now();
     let t2 = t1 - Duration::minutes(10);
     let nr_a = "aa".repeat(32);
     let nr_b = "bb".repeat(32);
 
-    let a = make_branch("A", t1, vec![create_attestation(&sk, "p", &nr_a, 1, t1).unwrap()], &nr_a);
-    let b = make_branch("B", t2, vec![create_attestation(&sk, "p", &nr_b, 1, t2).unwrap()], &nr_b);
+    let a = make_branch("A", t1, vec![create_attestation(&sk_a, "p", &nr_a, 1, t1).unwrap()], &nr_a);
+    let b = make_branch("B", t2, vec![create_attestation(&sk_b, "p", &nr_b, 1, t2).unwrap()], &nr_b);
 
     let resolution = resolve_fork(&a, &b, &reg).unwrap();
     assert_eq!(resolution.winning_branch, b.receipt_digest);
@@ -91,17 +95,19 @@ fn earlier_timestamp_wins_reversed() {
 
 #[test]
 fn large_time_difference_uses_timestamp() {
-    let sk = make_key();
+    let sk_a = make_key();
+    let sk_b = make_key();
     let mut reg = WatcherRegistry::new();
-    reg.register(sk.verifying_key());
+    reg.register(sk_a.verifying_key());
+    reg.register(sk_b.verifying_key());
 
     let t2 = now();
     let t1 = t2 - Duration::hours(1);
     let nr_a = "ff".repeat(32);
     let nr_b = "00".repeat(32);
 
-    let a = make_branch("A", t1, vec![create_attestation(&sk, "p", &nr_a, 1, t1).unwrap()], &nr_a);
-    let b = make_branch("B", t2, vec![create_attestation(&sk, "p", &nr_b, 1, t2).unwrap()], &nr_b);
+    let a = make_branch("A", t1, vec![create_attestation(&sk_a, "p", &nr_a, 1, t1).unwrap()], &nr_a);
+    let b = make_branch("B", t2, vec![create_attestation(&sk_b, "p", &nr_b, 1, t2).unwrap()], &nr_b);
 
     let resolution = resolve_fork(&a, &b, &reg).unwrap();
     assert_eq!(resolution.winning_branch, a.receipt_digest);
@@ -114,24 +120,26 @@ fn large_time_difference_uses_timestamp() {
 
 #[test]
 fn more_attestations_wins_within_skew() {
-    let sk1 = make_key();
-    let sk2 = make_key();
-    let sk3 = make_key();
+    let sk_a1 = make_key();
+    let sk_b1 = make_key();
+    let sk_b2 = make_key();
+    let sk_b3 = make_key();
     let mut reg = WatcherRegistry::new();
-    reg.register(sk1.verifying_key());
-    reg.register(sk2.verifying_key());
-    reg.register(sk3.verifying_key());
+    reg.register(sk_a1.verifying_key());
+    reg.register(sk_b1.verifying_key());
+    reg.register(sk_b2.verifying_key());
+    reg.register(sk_b3.verifying_key());
 
     let t2 = now();
     let t1 = t2 - Duration::minutes(3);
     let nr_a = "aa".repeat(32);
     let nr_b = "bb".repeat(32);
 
-    let a = make_branch("A", t1, vec![create_attestation(&sk1, "p", &nr_a, 1, t1).unwrap()], &nr_a);
+    let a = make_branch("A", t1, vec![create_attestation(&sk_a1, "p", &nr_a, 1, t1).unwrap()], &nr_a);
     let b = make_branch("B", t2, vec![
-        create_attestation(&sk1, "p", &nr_b, 1, t2).unwrap(),
-        create_attestation(&sk2, "p", &nr_b, 1, t2).unwrap(),
-        create_attestation(&sk3, "p", &nr_b, 1, t2).unwrap(),
+        create_attestation(&sk_b1, "p", &nr_b, 1, t2).unwrap(),
+        create_attestation(&sk_b2, "p", &nr_b, 1, t2).unwrap(),
+        create_attestation(&sk_b3, "p", &nr_b, 1, t2).unwrap(),
     ], &nr_b);
 
     let resolution = resolve_fork(&a, &b, &reg).unwrap();
@@ -141,24 +149,26 @@ fn more_attestations_wins_within_skew() {
 
 #[test]
 fn more_attestations_wins_same_timestamp() {
-    let sk1 = make_key();
-    let sk2 = make_key();
-    let sk3 = make_key();
+    let sk_a1 = make_key();
+    let sk_a2 = make_key();
+    let sk_a3 = make_key();
+    let sk_b1 = make_key();
     let mut reg = WatcherRegistry::new();
-    reg.register(sk1.verifying_key());
-    reg.register(sk2.verifying_key());
-    reg.register(sk3.verifying_key());
+    reg.register(sk_a1.verifying_key());
+    reg.register(sk_a2.verifying_key());
+    reg.register(sk_a3.verifying_key());
+    reg.register(sk_b1.verifying_key());
 
     let t = now();
     let nr_a = "aa".repeat(32);
     let nr_b = "bb".repeat(32);
 
     let a = make_branch("A", t, vec![
-        create_attestation(&sk1, "p", &nr_a, 1, t).unwrap(),
-        create_attestation(&sk2, "p", &nr_a, 1, t).unwrap(),
-        create_attestation(&sk3, "p", &nr_a, 1, t).unwrap(),
+        create_attestation(&sk_a1, "p", &nr_a, 1, t).unwrap(),
+        create_attestation(&sk_a2, "p", &nr_a, 1, t).unwrap(),
+        create_attestation(&sk_a3, "p", &nr_a, 1, t).unwrap(),
     ], &nr_a);
-    let b = make_branch("B", t, vec![create_attestation(&sk1, "p", &nr_b, 1, t).unwrap()], &nr_b);
+    let b = make_branch("B", t, vec![create_attestation(&sk_b1, "p", &nr_b, 1, t).unwrap()], &nr_b);
 
     let resolution = resolve_fork(&a, &b, &reg).unwrap();
     assert_eq!(resolution.winning_branch, a.receipt_digest);
@@ -171,16 +181,18 @@ fn more_attestations_wins_same_timestamp() {
 
 #[test]
 fn lexicographic_tiebreak_when_all_equal() {
-    let sk = make_key();
+    let sk_a = make_key();
+    let sk_b = make_key();
     let mut reg = WatcherRegistry::new();
-    reg.register(sk.verifying_key());
+    reg.register(sk_a.verifying_key());
+    reg.register(sk_b.verifying_key());
 
     let t = now();
     let nr_a = "aa".repeat(32);
     let nr_b = "bb".repeat(32);
 
-    let a = make_branch("A", t, vec![create_attestation(&sk, "p", &nr_a, 1, t).unwrap()], &nr_a);
-    let b = make_branch("B", t, vec![create_attestation(&sk, "p", &nr_b, 1, t).unwrap()], &nr_b);
+    let a = make_branch("A", t, vec![create_attestation(&sk_a, "p", &nr_a, 1, t).unwrap()], &nr_a);
+    let b = make_branch("B", t, vec![create_attestation(&sk_b, "p", &nr_b, 1, t).unwrap()], &nr_b);
 
     let resolution = resolve_fork(&a, &b, &reg).unwrap();
     assert_eq!(resolution.winning_branch, a.receipt_digest);
@@ -189,16 +201,18 @@ fn lexicographic_tiebreak_when_all_equal() {
 
 #[test]
 fn lexicographic_tiebreak_reversed() {
-    let sk = make_key();
+    let sk_a = make_key();
+    let sk_b = make_key();
     let mut reg = WatcherRegistry::new();
-    reg.register(sk.verifying_key());
+    reg.register(sk_a.verifying_key());
+    reg.register(sk_b.verifying_key());
 
     let t = now();
     let nr_a = "ff".repeat(32);
     let nr_b = "11".repeat(32);
 
-    let a = make_branch("A", t, vec![create_attestation(&sk, "p", &nr_a, 1, t).unwrap()], &nr_a);
-    let b = make_branch("B", t, vec![create_attestation(&sk, "p", &nr_b, 1, t).unwrap()], &nr_b);
+    let a = make_branch("A", t, vec![create_attestation(&sk_a, "p", &nr_a, 1, t).unwrap()], &nr_a);
+    let b = make_branch("B", t, vec![create_attestation(&sk_b, "p", &nr_b, 1, t).unwrap()], &nr_b);
 
     let resolution = resolve_fork(&a, &b, &reg).unwrap();
     assert_eq!(resolution.winning_branch, b.receipt_digest);
@@ -211,21 +225,23 @@ fn lexicographic_tiebreak_reversed() {
 
 #[test]
 fn exactly_at_skew_boundary_falls_to_secondary() {
-    let sk1 = make_key();
-    let sk2 = make_key();
+    let sk_a1 = make_key();
+    let sk_b1 = make_key();
+    let sk_b2 = make_key();
     let mut reg = WatcherRegistry::new();
-    reg.register(sk1.verifying_key());
-    reg.register(sk2.verifying_key());
+    reg.register(sk_a1.verifying_key());
+    reg.register(sk_b1.verifying_key());
+    reg.register(sk_b2.verifying_key());
 
     let t2 = now();
     let t1 = t2 - Duration::seconds(300);
     let nr_a = "aa".repeat(32);
     let nr_b = "bb".repeat(32);
 
-    let a = make_branch("A", t1, vec![create_attestation(&sk1, "p", &nr_a, 1, t1).unwrap()], &nr_a);
+    let a = make_branch("A", t1, vec![create_attestation(&sk_a1, "p", &nr_a, 1, t1).unwrap()], &nr_a);
     let b = make_branch("B", t2, vec![
-        create_attestation(&sk1, "p", &nr_b, 1, t2).unwrap(),
-        create_attestation(&sk2, "p", &nr_b, 1, t2).unwrap(),
+        create_attestation(&sk_b1, "p", &nr_b, 1, t2).unwrap(),
+        create_attestation(&sk_b2, "p", &nr_b, 1, t2).unwrap(),
     ], &nr_b);
 
     let resolution = resolve_fork(&a, &b, &reg).unwrap();
@@ -234,17 +250,19 @@ fn exactly_at_skew_boundary_falls_to_secondary() {
 
 #[test]
 fn one_second_beyond_skew_uses_timestamp() {
-    let sk = make_key();
+    let sk_a = make_key();
+    let sk_b = make_key();
     let mut reg = WatcherRegistry::new();
-    reg.register(sk.verifying_key());
+    reg.register(sk_a.verifying_key());
+    reg.register(sk_b.verifying_key());
 
     let t2 = now();
     let t1 = t2 - Duration::seconds(301);
     let nr_a = "aa".repeat(32);
     let nr_b = "bb".repeat(32);
 
-    let a = make_branch("A", t1, vec![create_attestation(&sk, "p", &nr_a, 1, t1).unwrap()], &nr_a);
-    let b = make_branch("B", t2, vec![create_attestation(&sk, "p", &nr_b, 1, t2).unwrap()], &nr_b);
+    let a = make_branch("A", t1, vec![create_attestation(&sk_a, "p", &nr_a, 1, t1).unwrap()], &nr_a);
+    let b = make_branch("B", t2, vec![create_attestation(&sk_b, "p", &nr_b, 1, t2).unwrap()], &nr_b);
 
     let resolution = resolve_fork(&a, &b, &reg).unwrap();
     assert_eq!(resolution.winning_branch, a.receipt_digest);
@@ -257,13 +275,15 @@ fn one_second_beyond_skew_uses_timestamp() {
 
 #[test]
 fn attacker_backdate_within_skew_loses_to_attestations() {
-    let sk1 = make_key();
-    let sk2 = make_key();
-    let sk3 = make_key();
+    let sk_h1 = make_key();
+    let sk_h2 = make_key();
+    let sk_h3 = make_key();
+    let sk_att = make_key();
     let mut reg = WatcherRegistry::new();
-    reg.register(sk1.verifying_key());
-    reg.register(sk2.verifying_key());
-    reg.register(sk3.verifying_key());
+    reg.register(sk_h1.verifying_key());
+    reg.register(sk_h2.verifying_key());
+    reg.register(sk_h3.verifying_key());
+    reg.register(sk_att.verifying_key());
 
     let honest_time = now();
     let attacker_time = honest_time - Duration::minutes(4);
@@ -271,12 +291,12 @@ fn attacker_backdate_within_skew_loses_to_attestations() {
     let nr_a = "bb".repeat(32);
 
     let honest = make_branch("honest", honest_time, vec![
-        create_attestation(&sk1, "p", &nr_h, 1, honest_time).unwrap(),
-        create_attestation(&sk2, "p", &nr_h, 1, honest_time).unwrap(),
-        create_attestation(&sk3, "p", &nr_h, 1, honest_time).unwrap(),
+        create_attestation(&sk_h1, "p", &nr_h, 1, honest_time).unwrap(),
+        create_attestation(&sk_h2, "p", &nr_h, 1, honest_time).unwrap(),
+        create_attestation(&sk_h3, "p", &nr_h, 1, honest_time).unwrap(),
     ], &nr_h);
     let attacker = make_branch("attacker", attacker_time, vec![
-        create_attestation(&sk1, "p", &nr_a, 1, attacker_time).unwrap(),
+        create_attestation(&sk_att, "p", &nr_a, 1, attacker_time).unwrap(),
     ], &nr_a);
 
     let resolution = resolve_fork(&honest, &attacker, &reg).unwrap();
@@ -303,9 +323,11 @@ fn identical_branches_are_not_fork() {
 
 #[test]
 fn fork_detector_register_and_resolve() {
-    let sk = make_key();
+    let sk_a = make_key();
+    let sk_b = make_key();
     let mut reg = WatcherRegistry::new();
-    reg.register(sk.verifying_key());
+    reg.register(sk_a.verifying_key());
+    reg.register(sk_b.verifying_key());
     let mut detector = ForkDetector::new(reg);
     assert_eq!(detector.pending_count(), 0);
 
@@ -313,8 +335,8 @@ fn fork_detector_register_and_resolve() {
     let nr_a = "aa".repeat(32);
     let nr_b = "bb".repeat(32);
 
-    let a = make_branch("A", t, vec![create_attestation(&sk, "p", &nr_a, 1, t).unwrap()], &nr_a);
-    let b = make_branch("B", t, vec![create_attestation(&sk, "p", &nr_b, 1, t).unwrap()], &nr_b);
+    let a = make_branch("A", t, vec![create_attestation(&sk_a, "p", &nr_a, 1, t).unwrap()], &nr_a);
+    let b = make_branch("B", t, vec![create_attestation(&sk_b, "p", &nr_b, 1, t).unwrap()], &nr_b);
 
     assert!(ForkDetector::is_fork(&a, &b));
     detector.register_fork(a, b);
@@ -366,19 +388,21 @@ fn max_clock_skew_is_five_minutes() {
 
 #[test]
 fn resolution_result_is_symmetric() {
-    let sk1 = make_key();
-    let sk2 = make_key();
+    let sk_a1 = make_key();
+    let sk_a2 = make_key();
+    let sk_b1 = make_key();
     let mut reg = WatcherRegistry::new();
-    reg.register(sk1.verifying_key());
-    reg.register(sk2.verifying_key());
+    reg.register(sk_a1.verifying_key());
+    reg.register(sk_a2.verifying_key());
+    reg.register(sk_b1.verifying_key());
 
     let t = now();
     let nr_a = "aa".repeat(32);
     let nr_b = "bb".repeat(32);
 
-    let att_a1 = create_attestation(&sk1, "p", &nr_a, 1, t).unwrap();
-    let att_a2 = create_attestation(&sk2, "p", &nr_a, 1, t).unwrap();
-    let att_b = create_attestation(&sk1, "p", &nr_b, 1, t).unwrap();
+    let att_a1 = create_attestation(&sk_a1, "p", &nr_a, 1, t).unwrap();
+    let att_a2 = create_attestation(&sk_a2, "p", &nr_a, 1, t).unwrap();
+    let att_b = create_attestation(&sk_b1, "p", &nr_b, 1, t).unwrap();
 
     let a = make_branch("A", t, vec![att_a1.clone(), att_a2.clone()], &nr_a);
     let b = make_branch("B", t, vec![att_b.clone()], &nr_b);

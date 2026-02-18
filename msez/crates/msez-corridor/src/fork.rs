@@ -50,6 +50,14 @@ pub const MAX_CLOCK_SKEW: Duration = Duration::from_secs(5 * 60);
 /// invalid and rejected by the fork resolver.
 pub const MAX_FUTURE_DRIFT: Duration = Duration::from_secs(60);
 
+/// Maximum allowed timestamp age from `now` into the past.
+///
+/// Any branch with `timestamp < now - MAX_PAST_AGE` is considered
+/// stale and rejected by the fork resolver. This prevents the
+/// timestamp-backdating attack where an attacker submits a branch
+/// with `ts=epoch` to deterministically win timestamp ordering.
+pub const MAX_PAST_AGE: Duration = Duration::from_secs(24 * 60 * 60); // 24 hours
+
 /// Errors during fork resolution.
 #[derive(Error, Debug)]
 pub enum ForkError {
@@ -71,6 +79,25 @@ pub enum ForkError {
         now: DateTime<Utc>,
         /// Maximum allowed drift in seconds.
         max_drift_secs: u64,
+    },
+
+    /// Branch timestamp is too far in the past (stale/backdated).
+    #[error("branch timestamp {timestamp} is beyond past age bound (now={now}, max_age={max_age_secs}s)")]
+    PastTimestamp {
+        /// The offending timestamp.
+        timestamp: DateTime<Utc>,
+        /// Current time at evaluation.
+        now: DateTime<Utc>,
+        /// Maximum allowed age in seconds.
+        max_age_secs: u64,
+    },
+
+    /// Watcher equivocation detected during fork resolution.
+    /// The equivocating watchers' keys are reported for slashing.
+    #[error("equivocation detected during fork resolution: {equivocating_watchers:?}")]
+    EquivocationDetected {
+        /// Hex-encoded public keys of equivocating watchers.
+        equivocating_watchers: Vec<String>,
     },
 
     /// Watcher equivocation detected: same watcher signed conflicting
@@ -381,6 +408,7 @@ pub fn resolve_fork(
 ) -> Result<ForkResolution, ForkError> {
     let now = Utc::now();
     let future_bound = chrono::Duration::seconds(MAX_FUTURE_DRIFT.as_secs() as i64);
+    let past_bound = chrono::Duration::seconds(MAX_PAST_AGE.as_secs() as i64);
 
     // Reject branches with timestamps too far in the future.
     if branch_a.timestamp > now + future_bound {
@@ -395,6 +423,30 @@ pub fn resolve_fork(
             timestamp: branch_b.timestamp,
             now,
             max_drift_secs: MAX_FUTURE_DRIFT.as_secs(),
+        });
+    }
+
+    // Reject branches with timestamps too far in the past (backdating attack).
+    if branch_a.timestamp < now - past_bound {
+        return Err(ForkError::PastTimestamp {
+            timestamp: branch_a.timestamp,
+            now,
+            max_age_secs: MAX_PAST_AGE.as_secs(),
+        });
+    }
+    if branch_b.timestamp < now - past_bound {
+        return Err(ForkError::PastTimestamp {
+            timestamp: branch_b.timestamp,
+            now,
+            max_age_secs: MAX_PAST_AGE.as_secs(),
+        });
+    }
+
+    // Detect watcher equivocation: same watcher attesting for both branches.
+    let equivocators = ForkDetector::detect_equivocation(branch_a, branch_b);
+    if !equivocators.is_empty() {
+        return Err(ForkError::EquivocationDetected {
+            equivocating_watchers: equivocators,
         });
     }
 
@@ -552,7 +604,8 @@ mod tests {
     #[test]
     fn earlier_timestamp_wins_beyond_skew() {
         let (sk1, vk1) = make_watcher_key();
-        let registry = make_registry(&[&vk1]);
+        let (sk2, vk2) = make_watcher_key();
+        let registry = make_registry(&[&vk1, &vk2]);
 
         let t2 = now();
         let t1 = t2 - chrono::Duration::minutes(10);
@@ -560,7 +613,7 @@ mod tests {
         let next_root_b = "bb".repeat(32);
 
         let att_a = make_attestation(&sk1, "parent", &next_root_a, 1, t1);
-        let att_b = make_attestation(&sk1, "parent", &next_root_b, 1, t2);
+        let att_b = make_attestation(&sk2, "parent", &next_root_b, 1, t2);
 
         let branch_a = make_branch("A", t1, vec![att_a], &next_root_a);
         let branch_b = make_branch("B", t2, vec![att_b], &next_root_b);
@@ -577,19 +630,20 @@ mod tests {
         let (sk1, vk1) = make_watcher_key();
         let (sk2, vk2) = make_watcher_key();
         let (sk3, vk3) = make_watcher_key();
-        let registry = make_registry(&[&vk1, &vk2, &vk3]);
+        let (sk4, vk4) = make_watcher_key();
+        let registry = make_registry(&[&vk1, &vk2, &vk3, &vk4]);
 
         let t2 = now();
         let t1 = t2 - chrono::Duration::minutes(3);
         let next_root_a = "aa".repeat(32);
         let next_root_b = "bb".repeat(32);
 
-        // Branch A: 1 attestation
+        // Branch A: 1 attestation (sk1)
         let att_a1 = make_attestation(&sk1, "parent", &next_root_a, 1, t1);
-        // Branch B: 3 attestations
-        let att_b1 = make_attestation(&sk1, "parent", &next_root_b, 1, t2);
-        let att_b2 = make_attestation(&sk2, "parent", &next_root_b, 1, t2);
-        let att_b3 = make_attestation(&sk3, "parent", &next_root_b, 1, t2);
+        // Branch B: 3 attestations (sk2, sk3, sk4 — no overlap with A)
+        let att_b1 = make_attestation(&sk2, "parent", &next_root_b, 1, t2);
+        let att_b2 = make_attestation(&sk3, "parent", &next_root_b, 1, t2);
+        let att_b3 = make_attestation(&sk4, "parent", &next_root_b, 1, t2);
 
         let branch_a = make_branch("A", t1, vec![att_a1], &next_root_a);
         let branch_b = make_branch("B", t2, vec![att_b1, att_b2, att_b3], &next_root_b);
@@ -606,14 +660,15 @@ mod tests {
     #[test]
     fn lexicographic_tiebreak_when_all_equal() {
         let (sk1, vk1) = make_watcher_key();
-        let registry = make_registry(&[&vk1]);
+        let (sk2, vk2) = make_watcher_key();
+        let registry = make_registry(&[&vk1, &vk2]);
 
         let t = now();
         let next_root_a = "aa".repeat(32);
         let next_root_b = "bb".repeat(32);
 
         let att_a = make_attestation(&sk1, "parent", &next_root_a, 1, t);
-        let att_b = make_attestation(&sk1, "parent", &next_root_b, 1, t);
+        let att_b = make_attestation(&sk2, "parent", &next_root_b, 1, t);
 
         let branch_a = make_branch("A", t, vec![att_a], &next_root_a);
         let branch_b = make_branch("B", t, vec![att_b], &next_root_b);
@@ -657,8 +712,9 @@ mod tests {
     #[test]
     fn forged_attestation_signature_rejected() {
         let (sk1, vk1) = make_watcher_key();
-        let (sk2, _vk2) = make_watcher_key();
-        let registry = make_registry(&[&vk1]);
+        let (sk2, vk2) = make_watcher_key();
+        let (sk3, _vk3) = make_watcher_key();
+        let registry = make_registry(&[&vk1, &vk2]);
 
         let t = now();
         let next_root_a = "aa".repeat(32);
@@ -666,9 +722,9 @@ mod tests {
 
         let att_a1 = make_attestation(&sk1, "parent", &next_root_a, 1, t);
 
-        // Create attestation signed by sk2 but claiming to be from vk1
-        let mut forged = make_attestation(&sk2, "parent", &next_root_b, 1, t);
-        forged.watcher_key = vk1.to_hex(); // Claim to be registered watcher
+        // Create attestation signed by sk3 but claiming to be from vk2
+        let mut forged = make_attestation(&sk3, "parent", &next_root_b, 1, t);
+        forged.watcher_key = vk2.to_hex(); // Claim to be registered watcher vk2
 
         let branch_a = make_branch("A", t, vec![att_a1], &next_root_a);
         let branch_b = make_branch("B", t, vec![forged], &next_root_b);
@@ -684,7 +740,8 @@ mod tests {
     #[test]
     fn duplicate_attestations_deduplicated() {
         let (sk1, vk1) = make_watcher_key();
-        let registry = make_registry(&[&vk1]);
+        let (sk2, vk2) = make_watcher_key();
+        let registry = make_registry(&[&vk1, &vk2]);
 
         let t = now();
         let next_root_b = "bb".repeat(32);
@@ -692,9 +749,9 @@ mod tests {
 
         let att_a = make_attestation(&sk1, "parent", &next_root_a, 1, t);
 
-        // Same watcher attesting twice for same branch
-        let att_b1 = make_attestation(&sk1, "parent", &next_root_b, 1, t);
-        let att_b2 = make_attestation(&sk1, "parent", &next_root_b, 1, t);
+        // Same watcher (sk2) attesting twice for same branch — should dedup to 1
+        let att_b1 = make_attestation(&sk2, "parent", &next_root_b, 1, t);
+        let att_b2 = make_attestation(&sk2, "parent", &next_root_b, 1, t);
 
         let branch_a = make_branch("A", t, vec![att_a], &next_root_a);
         let branch_b = make_branch("B", t, vec![att_b1, att_b2], &next_root_b);
@@ -724,7 +781,7 @@ mod tests {
     // -- Watcher equivocation detection --
 
     #[test]
-    fn equivocation_detected() {
+    fn equivocation_detected_by_helper() {
         let (sk1, vk1) = make_watcher_key();
         let (sk2, _vk2) = make_watcher_key();
 
@@ -745,12 +802,62 @@ mod tests {
         assert_eq!(equivocators[0], vk1.to_hex());
     }
 
+    // -- Adversarial: equivocation blocks resolve_fork --
+
+    #[test]
+    fn equivocation_blocks_fork_resolution() {
+        let (sk1, vk1) = make_watcher_key();
+        let (sk2, vk2) = make_watcher_key();
+        let registry = make_registry(&[&vk1, &vk2]);
+
+        let t = now();
+        let next_root_a = "aa".repeat(32);
+        let next_root_b = "bb".repeat(32);
+
+        // sk1 attests for both branches = equivocation
+        let att_a1 = make_attestation(&sk1, "parent", &next_root_a, 1, t);
+        let att_a2 = make_attestation(&sk2, "parent", &next_root_a, 1, t);
+        let att_b1 = make_attestation(&sk1, "parent", &next_root_b, 1, t);
+
+        let branch_a = make_branch("A", t, vec![att_a1, att_a2], &next_root_a);
+        let branch_b = make_branch("B", t, vec![att_b1], &next_root_b);
+
+        let result = resolve_fork(&branch_a, &branch_b, &registry);
+        assert!(result.is_err());
+        assert!(
+            matches!(result.unwrap_err(), ForkError::EquivocationDetected { .. }),
+            "equivocating watcher must block fork resolution"
+        );
+    }
+
+    // -- Adversarial: backdated timestamp rejected --
+
+    #[test]
+    fn past_timestamp_beyond_age_rejected() {
+        let registry = WatcherRegistry::new();
+
+        // Branch with epoch timestamp — extreme backdating attack
+        let t_epoch = DateTime::<Utc>::from_timestamp(0, 0).unwrap();
+        let t_normal = now();
+
+        let branch_a = make_branch("A", t_epoch, vec![], &"aa".repeat(32));
+        let branch_b = make_branch("B", t_normal, vec![], &"bb".repeat(32));
+
+        let result = resolve_fork(&branch_a, &branch_b, &registry);
+        assert!(result.is_err());
+        assert!(
+            matches!(result.unwrap_err(), ForkError::PastTimestamp { .. }),
+            "epoch-backdated branch must be rejected"
+        );
+    }
+
     // -- ForkDetector lifecycle --
 
     #[test]
     fn fork_detector_lifecycle() {
         let (sk1, vk1) = make_watcher_key();
-        let registry = make_registry(&[&vk1]);
+        let (sk2, vk2) = make_watcher_key();
+        let registry = make_registry(&[&vk1, &vk2]);
         let mut detector = ForkDetector::new(registry);
         assert_eq!(detector.pending_count(), 0);
 
@@ -758,7 +865,7 @@ mod tests {
         let next_root_a = "aa".repeat(32);
         let next_root_b = "bb".repeat(32);
         let att_a = make_attestation(&sk1, "parent", &next_root_a, 1, t);
-        let att_b = make_attestation(&sk1, "parent", &next_root_b, 1, t);
+        let att_b = make_attestation(&sk2, "parent", &next_root_b, 1, t);
 
         let branch_a = make_branch("A", t, vec![att_a], &next_root_a);
         let branch_b = make_branch("B", t, vec![att_b], &next_root_b);
@@ -794,7 +901,8 @@ mod tests {
     fn exactly_at_skew_boundary_falls_to_secondary() {
         let (sk1, vk1) = make_watcher_key();
         let (sk2, vk2) = make_watcher_key();
-        let registry = make_registry(&[&vk1, &vk2]);
+        let (sk3, vk3) = make_watcher_key();
+        let registry = make_registry(&[&vk1, &vk2, &vk3]);
 
         let t2 = now();
         let t1 = t2 - chrono::Duration::seconds(300); // Exactly 5 minutes
@@ -802,8 +910,8 @@ mod tests {
         let next_root_b = "bb".repeat(32);
 
         let att_a = make_attestation(&sk1, "parent", &next_root_a, 1, t1);
-        let att_b1 = make_attestation(&sk1, "parent", &next_root_b, 1, t2);
-        let att_b2 = make_attestation(&sk2, "parent", &next_root_b, 1, t2);
+        let att_b1 = make_attestation(&sk2, "parent", &next_root_b, 1, t2);
+        let att_b2 = make_attestation(&sk3, "parent", &next_root_b, 1, t2);
 
         let branch_a = make_branch("A", t1, vec![att_a], &next_root_a);
         let branch_b = make_branch("B", t2, vec![att_b1, att_b2], &next_root_b);
@@ -832,7 +940,8 @@ mod tests {
     #[test]
     fn attestation_for_wrong_candidate_root_rejected() {
         let (sk1, vk1) = make_watcher_key();
-        let registry = make_registry(&[&vk1]);
+        let (sk2, vk2) = make_watcher_key();
+        let registry = make_registry(&[&vk1, &vk2]);
 
         let t = now();
         let next_root_a = "aa".repeat(32);
@@ -840,7 +949,7 @@ mod tests {
 
         let att_a = make_attestation(&sk1, "parent", &next_root_a, 1, t);
         // Attestation signed for next_root_a but attached to branch_b with next_root_b
-        let att_b_wrong = make_attestation(&sk1, "parent", &next_root_a, 1, t);
+        let att_b_wrong = make_attestation(&sk2, "parent", &next_root_a, 1, t);
 
         let branch_a = make_branch("A", t, vec![att_a], &next_root_a);
         let branch_b = make_branch("B", t, vec![att_b_wrong], &next_root_b);

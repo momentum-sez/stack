@@ -68,7 +68,7 @@
               "description": "Optional evidence references (ArtifactRefs, typically artifact_type=vc) required by the corridor lifecycle policy/state machine."
             }
           },
-          "additionalProperties": true
+          "additionalProperties": false
         }
       }
     }

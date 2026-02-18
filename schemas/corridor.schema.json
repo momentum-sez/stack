@@ -113,24 +113,25 @@
               "description": "Inclusion proof schema identifier/path (default: schemas/corridor.inclusion-proof.schema.json)."
             }
           },
-          "additionalProperties": true
+          "additionalProperties": false
         },
         "zk": {
           "type": "object",
           "description": "Optional ZK acceptance configuration (proof systems, circuit/verifier digests).",
-          "additionalProperties": true
+          "additionalProperties": false
         },
         "anchor": {
           "type": "object",
           "description": "Optional anchoring configuration for external chain commitments.",
-          "additionalProperties": true
+          "additionalProperties": false
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "verification_ruleset": {
       "type": "string",
       "description": "Ruleset identifier for corridor verification."
     }
-  }
+  },
+  "additionalProperties": false
 }

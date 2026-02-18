@@ -1,20 +1,54 @@
 openapi: 3.1.0
 info:
-  title: Mass Node Integration API (Reference)
-  version: 0.1.0
+  title: Mass Node Integration API
+  version: 0.2.0
   description: >
-    Reference interface for integrating a Zone Node stack with a Mass Node.
-    This file is a *spec scaffold* and should be refined against the Mass API.
+    Integration interface for Zone Node ↔ Mass Node communication.
+    Provides entity management, attestation submission, and health
+    endpoints with bearer-token authentication and standard error
+    responses. Replaces the prior spec scaffold (v0.1.0).
+  contact:
+    name: Momentum SEZ Protocol Team
+  license:
+    name: BUSL-1.1
 servers:
   - url: https://{zone_node}/api
     variables:
       zone_node:
         default: example.zone
+        description: Zone node hostname
+
+security:
+  - bearerAuth: []
+
 paths:
+  /v1/health:
+    get:
+      summary: Health check
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded]
+                  version:
+                    type: string
+                additionalProperties: false
+
   /v1/entities:
     post:
       summary: Create an entity (incorporation / registration)
       operationId: createEntity
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -28,10 +62,70 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Entity'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      summary: List entities with pagination
+      operationId: listEntities
+      parameters:
+        - $ref: '#/components/parameters/PageCursor'
+        - $ref: '#/components/parameters/PageSize'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, suspended, exited]
+          description: Filter by entity status
+      responses:
+        '200':
+          description: Paginated entity list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEntityList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/entities/{entity_id}:
+    get:
+      summary: Get entity by ID
+      operationId: getEntity
+      parameters:
+        - name: entity_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Entity details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entity'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /v1/attestations:
     post:
       summary: Submit an attestation (compliance proof)
       operationId: submitAttestation
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -41,28 +135,192 @@ paths:
       responses:
         '202':
           description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [attestation_id, status]
+                properties:
+                  attestation_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [accepted, pending_verification]
+                additionalProperties: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Zone node bearer token issued by the Mass identity service.
+        Tokens are short-lived and scoped to specific zone operations.
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: >
+        Idempotency key for safe retries. If a request with the same
+        key was already processed, the original response is returned.
+    PageCursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Opaque pagination cursor from a previous response.
+    PageSize:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+      description: Number of items per page.
+
+  responses:
+    BadRequest:
+      description: Invalid request format or missing required fields
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Missing or invalid authentication credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Resource already exists or idempotency conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    UnprocessableEntity:
+      description: Request semantically invalid (e.g., schema validation failure)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
   schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+            message:
+              type: string
+              description: Human-readable error description
+            details:
+              type: object
+              additionalProperties: true
+              description: Optional structured error details
+          additionalProperties: false
+      additionalProperties: false
+
     CreateEntityRequest:
       type: object
       required: [entity_type, legal_name]
       properties:
         entity_type:
           type: string
-          description: e.g., LLC, Corp, DAO-LLC, Foundation
+          description: Entity type (e.g., LLC, Corp, DAO-LLC, Foundation)
         legal_name:
           type: string
+          minLength: 1
         jurisdiction_id:
           type: string
         beneficial_owners:
           type: array
           items:
             type: object
+            required: [name]
+            properties:
+              name:
+                type: string
+              ownership_percentage:
+                type: number
+                minimum: 0
+                maximum: 100
+              identity_ref:
+                type: string
+                description: Optional DID or identity service reference
+            additionalProperties: false
+      additionalProperties: false
+
     Entity:
       type: object
       required: [entity_id, entity_type, legal_name, status]
       properties:
-        entity_id: { type: string }
-        entity_type: { type: string }
-        legal_name: { type: string }
-        status: { type: string }
+        entity_id:
+          type: string
+        entity_type:
+          type: string
+        legal_name:
+          type: string
+        status:
+          type: string
+          enum: [active, suspended, exited]
+        jurisdiction_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    PaginatedEntityList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Entity'
+        next_cursor:
+          type: string
+          description: Cursor for next page, absent if no more results
+        total_count:
+          type: integer
+          minimum: 0
+          description: Total matching entities (if available)
+      additionalProperties: false

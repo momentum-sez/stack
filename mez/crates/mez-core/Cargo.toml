@@ -1,0 +1,24 @@
+[package]
+name = "mez-core"
+description = "Foundational types for the Momentum EZ Stack: canonical serialization, content digests, compliance domains, domain-primitive newtypes, and structured error hierarchy."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[features]
+default = []
+# Phase 2: ZK-friendly Poseidon2 hashing for arithmetic circuits.
+# Currently unimplemented — gated behind this feature flag.
+poseidon2 = []
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+sha2 = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

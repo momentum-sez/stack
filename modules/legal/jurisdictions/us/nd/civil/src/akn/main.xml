@@ -2,28 +2,28 @@
 <akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
   <act contains="originalVersion">
     <meta>
-      <identification source="#msez">
+      <identification source="#mez">
         <FRBRWork>
           <FRBRthis value="/akn/us-nd/act/civil-corpus/0.1.0"/>
           <FRBRuri value="/akn/us-nd/act/civil-corpus"/>
           <FRBRdate date="2025-12-24" name="Generation"/>
-          <FRBRauthor href="#msez"/>
+          <FRBRauthor href="#mez"/>
         </FRBRWork>
         <FRBRExpression>
           <FRBRthis value="/akn/us-nd/act/civil-corpus/0.1.0/eng@"/>
           <FRBRuri value="/akn/us-nd/act/civil-corpus/eng@"/>
           <FRBRdate date="2025-12-24" name="Generation"/>
-          <FRBRauthor href="#msez"/>
+          <FRBRauthor href="#mez"/>
           <FRBRlanguage language="eng"/>
         </FRBRExpression>
         <FRBRManifestation>
           <FRBRthis value="/akn/us-nd/act/civil-corpus/0.1.0/eng@.xml"/>
           <FRBRuri value="/akn/us-nd/act/civil-corpus/eng@.xml"/>
           <FRBRdate date="2025-12-24" name="Generation"/>
-          <FRBRauthor href="#msez"/>
+          <FRBRauthor href="#mez"/>
         </FRBRManifestation>
       </identification>
-      <publication name="MSEZ Stack" showAs="MSEZ Stack" date="2025-12-24" number="0.1.0"/>
+      <publication name="MEZ Stack" showAs="MEZ Stack" date="2025-12-24" number="0.1.0"/>
     </meta>
     <preface>
       <p eId="p1">Placeholder corpus for United States - North Dakota — domain: civil. Populate via the law ingestion pipeline.</p>

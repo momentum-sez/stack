@@ -1,5 +1,5 @@
 #!/bin/bash
-# MSEZ Zone Deployment Script
+# MEZ Zone Deployment Script
 # Deploy a complete Economic Zone from a profile
 #
 # Usage:
@@ -20,7 +20,7 @@ NC='\033[0m' # No Color
 
 # Default values
 PROFILE="${1:-digital-financial-center}"
-ZONE_ID="${2:-org.momentum.msez.zone.local}"
+ZONE_ID="${2:-org.momentum.mez.zone.local}"
 JURISDICTION="${3:-ex}"
 
 # Script directory
@@ -29,7 +29,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DEPLOY_DIR="$SCRIPT_DIR/../docker"
 
 echo -e "${BLUE}======================================${NC}"
-echo -e "${BLUE}   MSEZ Zone Deployment Script${NC}"
+echo -e "${BLUE}   MEZ Zone Deployment Script${NC}"
 echo -e "${BLUE}   Economic Zone in a Box${NC}"
 echo -e "${BLUE}======================================${NC}"
 echo ""
@@ -81,7 +81,7 @@ jurisdiction_id: $JURISDICTION
 zone_name: "${ZONE_ID##*.} Zone"
 
 profile:
-  profile_id: org.momentum.msez.profile.$PROFILE
+  profile_id: org.momentum.mez.profile.$PROFILE
   version: "0.4.44"
 
 jurisdiction_stack:
@@ -104,7 +104,7 @@ licensepack_refresh_policy:
     max_staleness_hours: 4
 
 corridors:
-  - org.momentum.msez.corridor.local
+  - org.momentum.mez.corridor.local
 
 trust_anchors: []
 
@@ -126,26 +126,26 @@ GENERATED_PG_PASSWORD="$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)"
 GENERATED_GRAFANA_PASSWORD="$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)"
 
 cat > "$DEPLOY_DIR/.env" << EOF
-# MSEZ Zone Environment Configuration
+# MEZ Zone Environment Configuration
 # Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 # Zone Configuration
-MSEZ_ZONE_ID=$ZONE_ID
-MSEZ_JURISDICTION=$JURISDICTION
-MSEZ_PROFILE=$PROFILE
-MSEZ_LOG_LEVEL=info
+MEZ_ZONE_ID=$ZONE_ID
+MEZ_JURISDICTION=$JURISDICTION
+MEZ_PROFILE=$PROFILE
+MEZ_LOG_LEVEL=info
 
 # Corridor Configuration
-MSEZ_CORRIDOR_ID=org.momentum.msez.corridor.local
+MEZ_CORRIDOR_ID=org.momentum.mez.corridor.local
 
 # Watcher Configuration
-MSEZ_WATCHER_ID=watcher-local-001
-MSEZ_BOND_AMOUNT=100000
+MEZ_WATCHER_ID=watcher-local-001
+MEZ_BOND_AMOUNT=100000
 
 # Database Configuration
-POSTGRES_USER=msez
+POSTGRES_USER=mez
 POSTGRES_PASSWORD=$GENERATED_PG_PASSWORD
-POSTGRES_DB=msez
+POSTGRES_DB=mez
 
 # Observability
 GRAFANA_PASSWORD=$GENERATED_GRAFANA_PASSWORD
@@ -161,24 +161,24 @@ mkdir -p "$KEYS_DIR"
 if [ ! -f "$KEYS_DIR/zone-authority.ed25519.jwk" ]; then
     echo -e "${YELLOW}Generating zone authority keys...${NC}"
 
-    # Locate or build msez-cli for real Ed25519 key generation.
-    MSEZ_CLI=""
-    if command -v msez &> /dev/null; then
-        MSEZ_CLI="msez"
-    elif [ -f "$PROJECT_ROOT/target/release/msez" ]; then
-        MSEZ_CLI="$PROJECT_ROOT/target/release/msez"
-    elif [ -f "$PROJECT_ROOT/target/debug/msez" ]; then
-        MSEZ_CLI="$PROJECT_ROOT/target/debug/msez"
+    # Locate or build mez-cli for real Ed25519 key generation.
+    MEZ_CLI=""
+    if command -v mez &> /dev/null; then
+        MEZ_CLI="mez"
+    elif [ -f "$PROJECT_ROOT/target/release/mez" ]; then
+        MEZ_CLI="$PROJECT_ROOT/target/release/mez"
+    elif [ -f "$PROJECT_ROOT/target/debug/mez" ]; then
+        MEZ_CLI="$PROJECT_ROOT/target/debug/mez"
     else
-        echo -e "${YELLOW}msez-cli not found — building...${NC}"
-        (cd "$PROJECT_ROOT/msez" && cargo build --release --bin msez 2>&1) || {
-            echo -e "${RED}Error: Failed to build msez-cli. Cannot generate real Ed25519 keys.${NC}"
+        echo -e "${YELLOW}mez-cli not found — building...${NC}"
+        (cd "$PROJECT_ROOT/mez" && cargo build --release --bin mez 2>&1) || {
+            echo -e "${RED}Error: Failed to build mez-cli. Cannot generate real Ed25519 keys.${NC}"
             exit 1
         }
-        MSEZ_CLI="$PROJECT_ROOT/target/release/msez"
+        MEZ_CLI="$PROJECT_ROOT/target/release/mez"
     fi
 
-    "$MSEZ_CLI" vc keygen --format jwk --output "$KEYS_DIR" --prefix zone-authority.ed25519
+    "$MEZ_CLI" vc keygen --format jwk --output "$KEYS_DIR" --prefix zone-authority.ed25519
 
     # Verify the generated key file is valid.
     if [ ! -f "$KEYS_DIR/zone-authority.ed25519.jwk" ]; then
@@ -194,7 +194,7 @@ if [ ! -f "$KEYS_DIR/zone-authority.ed25519.jwk" ]; then
         fi
     done
 
-    echo -e "${GREEN}Zone authority keys generated (Ed25519 via msez-cli)${NC}"
+    echo -e "${GREEN}Zone authority keys generated (Ed25519 via mez-cli)${NC}"
 fi
 
 # Pull/build images
@@ -206,7 +206,7 @@ docker compose build --parallel
 
 # Start services
 echo ""
-echo -e "${YELLOW}Starting MSEZ Zone services...${NC}"
+echo -e "${YELLOW}Starting MEZ Zone services...${NC}"
 docker compose up -d
 
 # Wait for services to be healthy
@@ -235,13 +235,13 @@ fi
 # Display status
 echo ""
 echo -e "${GREEN}======================================${NC}"
-echo -e "${GREEN}   MSEZ Zone Deployment Complete${NC}"
+echo -e "${GREEN}   MEZ Zone Deployment Complete${NC}"
 echo -e "${GREEN}======================================${NC}"
 echo ""
 docker compose ps
 echo ""
 echo -e "${BLUE}Service Endpoints:${NC}"
-echo -e "  MSEZ API (all services): http://localhost:8080"
+echo -e "  MEZ API (all services): http://localhost:8080"
 echo -e "  Health check:            http://localhost:8080/health/liveness"
 echo ""
 echo -e "${BLUE}Observability:${NC}"

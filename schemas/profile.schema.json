@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/profile.schema.json",
-  "title": "MSEZ Profile Manifest",
+  "$id": "https://schemas.momentum-ez.org/mez/profile.schema.json",
+  "title": "MEZ Profile Manifest",
   "type": "object",
   "required": [
     "profile_id",

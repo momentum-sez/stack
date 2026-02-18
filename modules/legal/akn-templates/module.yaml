@@ -1,13 +1,13 @@
-module_id: org.momentum.msez.legal.akn-templates
+module_id: org.momentum.mez.legal.akn-templates
 version: 0.1.0
 kind: legal
 license: CC-BY-4.0
-description: "Akoma Ntoso templates for Act, Regulation, and Bylaw documents used in MSEZ modules."
+description: "Akoma Ntoso templates for Act, Regulation, and Bylaw documents used in MEZ modules."
 variants:
   - default
 depends_on: []
 provides:
-  - interface: msez.legal.akn.templates.v1
+  - interface: mez.legal.akn.templates.v1
     path: src/akn/
     media_type: application/xml
 parameters:

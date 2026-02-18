@@ -7,125 +7,125 @@ transition_types:
   description: Generic, untyped transition. Payload may be omitted.
   notes: This kind is intentionally under-specified and SHOULD only be used in early
     pilots or tests. Use the transition-type registry for interoperable semantics.
-- kind: msez.example.transfer.v1
+- kind: mez.example.transfer.v1
   description: Example transfer transition (demo).
-  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.example.transfer.v1.schema.json
+  schema_id: https://schemas.momentum-ez.org/mez/transition.payload.example.transfer.v1.schema.json
   schema_path: schemas/transition.payload.example.transfer.v1.schema.json
   schema_digest_sha256: 28249476f011e934f7615a506a37f1e4bf9ba634b4e335194460d6a6296b9efa
-  ruleset_id: msez.transition.example.transfer.v1
-  ruleset_path: rulesets/msez.transition.example.transfer.v1.json
+  ruleset_id: mez.transition.example.transfer.v1
+  ruleset_path: rulesets/mez.transition.example.transfer.v1.json
   ruleset_digest_sha256: c4510fbe06b7f778cf34a846ea5fcb777ac78143a1257b47ce119a7bd161fda4
   notes: Demonstration transition type for registry/lock plumbing.
 - kind: settle.swift.pacs008.v1
   description: SWIFT ISO20022 pacs.008 settlement (stub).
-  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.settle.swift.pacs008.v1.schema.json
+  schema_id: https://schemas.momentum-ez.org/mez/transition.payload.settle.swift.pacs008.v1.schema.json
   schema_path: schemas/transition.payload.settle.swift.pacs008.v1.schema.json
   schema_digest_sha256: 561cdd316d2a02968ab82ba442deeff747cf0ddd7b5c4289c93dae8f66abcd10
-  ruleset_id: msez.transition.settle.swift.pacs008.v1
-  ruleset_path: rulesets/msez.transition.settle.swift.pacs008.v1.json
+  ruleset_id: mez.transition.settle.swift.pacs008.v1
+  ruleset_path: rulesets/mez.transition.settle.swift.pacs008.v1.json
   ruleset_digest_sha256: 683cd1dc6191d0cd2ce347360cf4dfccdba393dfa56d2da6f098dbce46a45ff6
   notes: Integration boundary object; raw ISO20022 XML SHOULD be carried as an attachment
     blob artifact for size/privacy.
 - kind: settle.usdc.circle.transfer.v1
   description: Circle USDC transfer settlement (stub).
-  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.settle.usdc.circle.transfer.v1.schema.json
+  schema_id: https://schemas.momentum-ez.org/mez/transition.payload.settle.usdc.circle.transfer.v1.schema.json
   schema_path: schemas/transition.payload.settle.usdc.circle.transfer.v1.schema.json
   schema_digest_sha256: f9288e6e045e9ac5388ee387e53a70662c959604ae7d2731756ca4a9fd4438b6
-  ruleset_id: msez.transition.settle.usdc.circle.transfer.v1
-  ruleset_path: rulesets/msez.transition.settle.usdc.circle.transfer.v1.json
+  ruleset_id: mez.transition.settle.usdc.circle.transfer.v1
+  ruleset_path: rulesets/mez.transition.settle.usdc.circle.transfer.v1.json
   ruleset_digest_sha256: 00731932e9ba546adbafab373b4fbf5c72e0e386c4ad010ddff289ba8a976b2a
-  notes: Integration boundary object; network calls are out-of-scope for core MSEZ
+  notes: Integration boundary object; network calls are out-of-scope for core MEZ
     and belong in deployer-specific adapters.
 - kind: trade.invoice.issue.v1
   description: Trade invoice issuance.
-  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.invoice.issue.v1.schema.json
+  schema_id: https://schemas.momentum-ez.org/mez/transition.payload.trade.invoice.issue.v1.schema.json
   schema_path: schemas/transition.payload.trade.invoice.issue.v1.schema.json
   schema_digest_sha256: c5f810f71ce7c00013ab98ba7486b7a8233256464a814781f7d490a8ddecc559
-  ruleset_id: msez.transition.trade.invoice.issue.v1
-  ruleset_path: rulesets/msez.transition.trade.invoice.issue.v1.json
+  ruleset_id: mez.transition.trade.invoice.issue.v1
+  ruleset_path: rulesets/mez.transition.trade.invoice.issue.v1.json
   ruleset_digest_sha256: 2ccc6312992474a4d398cfbd962ec684bec772d1d0a1d8180df4fd8e75c5fc3f
   notes: Canonical invoice may be embedded or referenced as an artifact.
 - kind: trade.invoice.accept.v1
   description: Trade invoice acceptance or dispute.
-  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.invoice.accept.v1.schema.json
+  schema_id: https://schemas.momentum-ez.org/mez/transition.payload.trade.invoice.accept.v1.schema.json
   schema_path: schemas/transition.payload.trade.invoice.accept.v1.schema.json
   schema_digest_sha256: fab2d30a51010ee88391852a94c4062a138a792733df71b94510485c118f36d8
-  ruleset_id: msez.transition.trade.invoice.accept.v1
-  ruleset_path: rulesets/msez.transition.trade.invoice.accept.v1.json
+  ruleset_id: mez.transition.trade.invoice.accept.v1
+  ruleset_path: rulesets/mez.transition.trade.invoice.accept.v1.json
   ruleset_digest_sha256: 86eb3ae6bd1b5b93f6e4376715c547d8efa18317fbcf3790611a1457ab7a16c2
   notes: Use to record commercial acceptance (or dispute) before financing and/or
     settlement.
 - kind: trade.invoice.settle.v1
   description: Trade invoice settlement/payment.
-  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.invoice.settle.v1.schema.json
+  schema_id: https://schemas.momentum-ez.org/mez/transition.payload.trade.invoice.settle.v1.schema.json
   schema_path: schemas/transition.payload.trade.invoice.settle.v1.schema.json
   schema_digest_sha256: 8094a5515c286f9456a3e36fce6254a26ab82d6d685f2cf12cb73ef0083a7ac6
-  ruleset_id: msez.transition.trade.invoice.settle.v1
-  ruleset_path: rulesets/msez.transition.trade.invoice.settle.v1.json
+  ruleset_id: mez.transition.trade.invoice.settle.v1
+  ruleset_path: rulesets/mez.transition.trade.invoice.settle.v1.json
   ruleset_digest_sha256: 9cea0961f4a5f432bf2f586c6eb62a31546ec1f1e7fe2ec774e061b2c492f09f
   notes: Deployments SHOULD attach proof-binding and/or settlement-anchor artifacts.
 - kind: trade.bol.issue.v1
   description: Bill of Lading issuance.
-  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.bol.issue.v1.schema.json
+  schema_id: https://schemas.momentum-ez.org/mez/transition.payload.trade.bol.issue.v1.schema.json
   schema_path: schemas/transition.payload.trade.bol.issue.v1.schema.json
   schema_digest_sha256: 674d15c800a0c9b02c71e8b0a461f1498cf96cd43622ed0c78aaadcc5f4fbd4d
-  ruleset_id: msez.transition.trade.bol.issue.v1
-  ruleset_path: rulesets/msez.transition.trade.bol.issue.v1.json
+  ruleset_id: mez.transition.trade.bol.issue.v1
+  ruleset_path: rulesets/mez.transition.trade.bol.issue.v1.json
   ruleset_digest_sha256: 9a4bb73d0e1daa86352cae4c3a2127e9f64f3fdb5b11dd47d71fa7a056b85020
   notes: Canonical BOL may be embedded or referenced as an artifact.
 - kind: trade.bol.endorse.v1
   description: Bill of Lading endorsement/transfer.
-  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.bol.endorse.v1.schema.json
+  schema_id: https://schemas.momentum-ez.org/mez/transition.payload.trade.bol.endorse.v1.schema.json
   schema_path: schemas/transition.payload.trade.bol.endorse.v1.schema.json
   schema_digest_sha256: a8464d3239bf65dce6304156d830b334e7e843d6b23f00b307904c099e474077
-  ruleset_id: msez.transition.trade.bol.endorse.v1
-  ruleset_path: rulesets/msez.transition.trade.bol.endorse.v1.json
+  ruleset_id: mez.transition.trade.bol.endorse.v1
+  ruleset_path: rulesets/mez.transition.trade.bol.endorse.v1.json
   ruleset_digest_sha256: ab84993111aa11bd5577280f76d1117f321eba267467c57e92b4568e8d5b5331
   notes: Represents title transfer where applicable.
 - kind: trade.bol.release.v1
   description: Bill of Lading release/surrender.
-  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.bol.release.v1.schema.json
+  schema_id: https://schemas.momentum-ez.org/mez/transition.payload.trade.bol.release.v1.schema.json
   schema_path: schemas/transition.payload.trade.bol.release.v1.schema.json
   schema_digest_sha256: 5a62249154545b98c2b0b12b1ccb406b95727164f3329cb7a5c6a312c3b0ee72
-  ruleset_id: msez.transition.trade.bol.release.v1
-  ruleset_path: rulesets/msez.transition.trade.bol.release.v1.json
+  ruleset_id: mez.transition.trade.bol.release.v1
+  ruleset_path: rulesets/mez.transition.trade.bol.release.v1.json
   ruleset_digest_sha256: 0ec9f653624a01d7f3d6fd91dcaad2e0e7cb33cdaad9e6e290d71f7ad82092bb
   notes: Records delivery order/release.
 - kind: trade.lc.issue.v1
   description: Letter of Credit issuance.
-  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.issue.v1.schema.json
+  schema_id: https://schemas.momentum-ez.org/mez/transition.payload.trade.lc.issue.v1.schema.json
   schema_path: schemas/transition.payload.trade.lc.issue.v1.schema.json
   schema_digest_sha256: dfe7b2b73ac440e86ff20e60107f4d4789384c315c37af7906f4c7eeec228ae6
-  ruleset_id: msez.transition.trade.lc.issue.v1
-  ruleset_path: rulesets/msez.transition.trade.lc.issue.v1.json
+  ruleset_id: mez.transition.trade.lc.issue.v1
+  ruleset_path: rulesets/mez.transition.trade.lc.issue.v1.json
   ruleset_digest_sha256: 3cb328d6a31a6b03422aad880ef7c828b44b07c50145e34a8220c85c4ac0feb9
   notes: Canonical LC may be embedded or referenced as an artifact.
 - kind: trade.lc.amend.v1
   description: Letter of Credit amendment.
-  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.amend.v1.schema.json
+  schema_id: https://schemas.momentum-ez.org/mez/transition.payload.trade.lc.amend.v1.schema.json
   schema_path: schemas/transition.payload.trade.lc.amend.v1.schema.json
   schema_digest_sha256: c4d51dbeda76f947b5dcbe232ca4d2f31d8390662c8040e940bf1a680c33862f
-  ruleset_id: msez.transition.trade.lc.amend.v1
-  ruleset_path: rulesets/msez.transition.trade.lc.amend.v1.json
+  ruleset_id: mez.transition.trade.lc.amend.v1
+  ruleset_path: rulesets/mez.transition.trade.lc.amend.v1.json
   ruleset_digest_sha256: ca98dbb11455a8c5cab6dd529bdc1a453aab0f24bd05ef69b30c53a002f46f70
   notes: For canonical rail messages (e.g. MT707), carry the raw message as a blob
     artifact.
 - kind: trade.lc.present.v1
   description: Letter of Credit document presentation.
-  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.present.v1.schema.json
+  schema_id: https://schemas.momentum-ez.org/mez/transition.payload.trade.lc.present.v1.schema.json
   schema_path: schemas/transition.payload.trade.lc.present.v1.schema.json
   schema_digest_sha256: 956e9bf9893e6057b9b1ebf0b7c24a19fb2d0e58b68cd041a27d2f9fe20a4567
-  ruleset_id: msez.transition.trade.lc.present.v1
-  ruleset_path: rulesets/msez.transition.trade.lc.present.v1.json
+  ruleset_id: mez.transition.trade.lc.present.v1
+  ruleset_path: rulesets/mez.transition.trade.lc.present.v1.json
   ruleset_digest_sha256: c1fd5abe177737be439d6f621844e2bd447735b87362406bcb0cd2beacc71feb
   notes: Presented documents SHOULD be referenced as artifacts (PDF/XML) for size/privacy.
 - kind: trade.lc.honor.v1
   description: Letter of Credit honor/reject decision.
-  schema_id: https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.honor.v1.schema.json
+  schema_id: https://schemas.momentum-ez.org/mez/transition.payload.trade.lc.honor.v1.schema.json
   schema_path: schemas/transition.payload.trade.lc.honor.v1.schema.json
   schema_digest_sha256: 518f0717abc34aad8fd020d97332f729d06760228c6d13cb9a53988a5387bf36
-  ruleset_id: msez.transition.trade.lc.honor.v1
-  ruleset_path: rulesets/msez.transition.trade.lc.honor.v1.json
+  ruleset_id: mez.transition.trade.lc.honor.v1
+  ruleset_path: rulesets/mez.transition.trade.lc.honor.v1.json
   ruleset_digest_sha256: 6aef63d0819abe9c8adfeb51033262d5fe635889f72b459ec701d839fc525da5
   notes: Deployments SHOULD anchor evidence using proof-binding and/or settlement-anchor
     artifacts.

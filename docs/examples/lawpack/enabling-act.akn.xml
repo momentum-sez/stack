@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  MSEZ Stack - LawPack Example
+  MEZ Stack - LawPack Example
   
   This is a model Enabling Act for a Digital Financial Center Zone
   in Akoma Ntoso (AKN) XML format, the OASIS standard for legal documents.
@@ -9,7 +9,7 @@
   - AKN document structure
   - Zone establishment provisions
   - Regulatory framework references
-  - Cross-references to MSEZ modules
+  - Cross-references to MEZ modules
   
   NOTE: This is a MODEL TEXT for technical demonstration only.
   Production use requires professional legal drafting.
@@ -19,22 +19,22 @@
     <meta>
       <identification source="#momentum">
         <FRBRWork>
-          <FRBRthis value="/akn/xx/act/2025/msez-enabling-act"/>
-          <FRBRuri value="/akn/xx/act/2025/msez-enabling-act"/>
+          <FRBRthis value="/akn/xx/act/2025/mez-enabling-act"/>
+          <FRBRuri value="/akn/xx/act/2025/mez-enabling-act"/>
           <FRBRdate date="2025-01-01" name="enactment"/>
           <FRBRauthor href="#legislature"/>
           <FRBRcountry value="XX"/>
         </FRBRWork>
         <FRBRExpression>
-          <FRBRthis value="/akn/xx/act/2025/msez-enabling-act/eng@2025-01-01"/>
-          <FRBRuri value="/akn/xx/act/2025/msez-enabling-act/eng@2025-01-01"/>
+          <FRBRthis value="/akn/xx/act/2025/mez-enabling-act/eng@2025-01-01"/>
+          <FRBRuri value="/akn/xx/act/2025/mez-enabling-act/eng@2025-01-01"/>
           <FRBRdate date="2025-01-01" name="publication"/>
           <FRBRauthor href="#legislature"/>
           <FRBRlanguage language="eng"/>
         </FRBRExpression>
         <FRBRManifestation>
-          <FRBRthis value="/akn/xx/act/2025/msez-enabling-act/eng@2025-01-01/main.xml"/>
-          <FRBRuri value="/akn/xx/act/2025/msez-enabling-act/eng@2025-01-01/main.xml"/>
+          <FRBRthis value="/akn/xx/act/2025/mez-enabling-act/eng@2025-01-01/main.xml"/>
+          <FRBRuri value="/akn/xx/act/2025/mez-enabling-act/eng@2025-01-01/main.xml"/>
           <FRBRdate date="2025-01-01" name="generation"/>
           <FRBRauthor href="#momentum"/>
         </FRBRManifestation>
@@ -129,7 +129,7 @@
             <num>(e)</num>
             <content>
               <p>"RegPack" means a regulatory compliance package as defined in 
-              the MSEZ Stack specification, containing sanctions lists, license 
+              the MEZ Stack specification, containing sanctions lists, license 
               registries, and compliance calendars;</p>
             </content>
           </paragraph>

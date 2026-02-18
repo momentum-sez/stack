@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schemas.momentum-sez.org/msez/rule-eval-evidence.schema.json",
-  "title": "MSEZ Rule Evaluation Evidence",
+  "$id": "https://schemas.momentum-ez.org/mez/rule-eval-evidence.schema.json",
+  "title": "MEZ Rule Evaluation Evidence",
   "description": "Portable rule evaluation output for a transition, suitable for attachment into receipts and witness bundles. Semantic digest is sha256(JCS(evidence_without_proof)).",
   "type": "object",
   "required": [
@@ -14,7 +14,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MSEZRuleEvaluationEvidence"
+      "const": "MEZRuleEvaluationEvidence"
     },
     "stack_spec_version": {
       "type": "string"
@@ -82,19 +82,19 @@
     "attachments": {
       "type": "array",
       "items": {
-        "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+        "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
       }
     },
     "proof": {
       "description": "Optional DataIntegrityProof (JCS + Ed25519) for the evidence object.",
       "oneOf": [
         {
-          "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+          "$ref": "https://schemas.momentum-ez.org/mez/vc.proof.jcs-ed25519.schema.json"
         },
         {
           "type": "array",
           "items": {
-            "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+            "$ref": "https://schemas.momentum-ez.org/mez/vc.proof.jcs-ed25519.schema.json"
           }
         }
       ]

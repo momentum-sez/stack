@@ -1,6 +1,6 @@
-# MSEZ API Server — Kubernetes Deployment
+# MEZ API Server — Kubernetes Deployment
 #
-# Runs the Rust msez-api binary as a Deployment with:
+# Runs the Rust mez-api binary as a Deployment with:
 # - Rolling update strategy (zero-downtime deploys)
 # - Resource limits appropriate for a stateless API server
 # - Liveness and readiness probes against dedicated health endpoints
@@ -11,18 +11,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: msez-api
-  namespace: msez
+  name: mez-api
+  namespace: mez
   labels:
-    app: msez-api
+    app: mez-api
     component: api-server
-    part-of: msez-stack
+    part-of: mez-stack
 spec:
   replicas: 2
   revisionHistoryLimit: 5
   selector:
     matchLabels:
-      app: msez-api
+      app: mez-api
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -31,14 +31,14 @@ spec:
   template:
     metadata:
       labels:
-        app: msez-api
+        app: mez-api
         component: api-server
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8080"
         prometheus.io/path: "/metrics"
     spec:
-      serviceAccountName: msez-api
+      serviceAccountName: mez-api
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -46,49 +46,49 @@ spec:
         fsGroup: 1000
       terminationGracePeriodSeconds: 30
       containers:
-        - name: msez-api
-          image: ghcr.io/momentum-sez/msez-api:latest
+        - name: mez-api
+          image: ghcr.io/momentum-ez/mez-api:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 8080
               protocol: TCP
           env:
-            - name: MSEZ_HOST
+            - name: MEZ_HOST
               value: "0.0.0.0"
-            - name: MSEZ_PORT
+            - name: MEZ_PORT
               value: "8080"
-            - name: MSEZ_LOG_LEVEL
+            - name: MEZ_LOG_LEVEL
               value: "info"
-            - name: MSEZ_METRICS_ENABLED
+            - name: MEZ_METRICS_ENABLED
               value: "true"
             # Zone configuration from ConfigMap
-            - name: MSEZ_ZONE_ID
+            - name: MEZ_ZONE_ID
               valueFrom:
                 configMapKeyRef:
-                  name: msez-config
+                  name: mez-config
                   key: zone-id
-            - name: MSEZ_JURISDICTION
+            - name: MEZ_JURISDICTION
               valueFrom:
                 configMapKeyRef:
-                  name: msez-config
+                  name: mez-config
                   key: jurisdiction
-            - name: MSEZ_PROFILE
+            - name: MEZ_PROFILE
               valueFrom:
                 configMapKeyRef:
-                  name: msez-config
+                  name: mez-config
                   key: profile
             # Database credentials from Secret
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: msez-secrets
+                  name: mez-secrets
                   key: database-url
             # JWT signing key from Secret
-            - name: MSEZ_JWT_SECRET
+            - name: MEZ_JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: msez-secrets
+                  name: mez-secrets
                   key: jwt-secret
           # Health probes
           livenessProbe:

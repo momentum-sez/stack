@@ -1,6 +1,6 @@
 # Legal Integration
 
-MSEZ is a **legal infrastructure** project enabled by cryptography.
+MEZ is a **legal infrastructure** project enabled by cryptography.
 
 The system’s critical move is to bind corridor operations to **specific snapshots of law and policy** (“lawpacks”) via content-addressed digests. This gives you determinism:
 
@@ -18,7 +18,7 @@ That distinction matters:
 - A party can sign an agreement committing to a lawpack digest and still later argue that the underlying text was never enacted or recognized as binding law.
 - Two different legal sources can be legally equivalent but normalize to different digests.
 
-MSEZ addresses this by treating lawpacks as a **verifiable evidence layer**, and adding explicit legal attestation mechanisms on top.
+MEZ addresses this by treating lawpacks as a **verifiable evidence layer**, and adding explicit legal attestation mechanisms on top.
 
 
 ## Recommended legal-hardening primitives
@@ -37,7 +37,7 @@ This allows verifiers to reason about two separate questions:
 
 Corridor agreements should include explicit choice-of-law and dispute-resolution clauses so legal enforceability does not depend on informal interpretation of cryptographic bindings.
 
-Where possible, reference arbitration institutions or dispute processes that can ingest MSEZ artifacts.
+Where possible, reference arbitration institutions or dispute processes that can ingest MEZ artifacts.
 
 
 ### 3) Availability and provenance

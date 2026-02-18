@@ -31,7 +31,7 @@ Beyond VCs (definition + agreement), corridor operations can be modeled as a **v
 
 ### Typed transitions (v0.4.3+)
 
-Receipts SHOULD carry a typed transition envelope (`type: MSEZTransitionEnvelope`) with:
+Receipts SHOULD carry a typed transition envelope (`type: MEZTransitionEnvelope`) with:
 
 - `kind` (corridor-specific transition type)
 - `payload_sha256` (commitment to the payload)
@@ -71,14 +71,14 @@ Reference repository path:
 
 Reference tooling:
 
-- `msez registry transition-types-store <lock.json>` (write `<digest>.transition-types.lock.json` into the store)
-- `msez registry transition-types-resolve <digest>` (locate a snapshot by digest)
-- `msez artifact resolve transition-types <digest>` (generic resolver; searches `dist/artifacts`)
+- `mez registry transition-types-store <lock.json>` (write `<digest>.transition-types.lock.json` into the store)
+- `mez registry transition-types-resolve <digest>` (locate a snapshot by digest)
+- `mez artifact resolve transition-types <digest>` (generic resolver; searches `dist/artifacts`)
 
-The resolver also consults `MSEZ_ARTIFACT_STORE_DIRS` (os.pathsep-separated) so deployments can use external
+The resolver also consults `MEZ_ARTIFACT_STORE_DIRS` (os.pathsep-separated) so deployments can use external
 artifact stores (HTTP mirror, object store, IPFS gateway/pinset, etc.).
 
-For backwards compatibility, transition-type resolution also honors `MSEZ_TRANSITION_TYPES_STORE_DIRS` (legacy).
+For backwards compatibility, transition-type resolution also honors `MEZ_TRANSITION_TYPES_STORE_DIRS` (legacy).
 
 ### Commitment completeness (v0.4.8+)
 
@@ -88,7 +88,7 @@ purely declarative.
 
 Reference tooling:
 
-- `msez corridor state verify ... --require-artifacts`
+- `mez corridor state verify ... --require-artifacts`
 
 In this mode, verification fails if any referenced digest (lawpacks, rulesets, transition registry snapshots,
 schemas, circuits, proof keys, and attachments / proof bytes) cannot be located by `(type, digest)`.
@@ -107,8 +107,8 @@ append-only **Merkle Mountain Range (MMR)** over receipt digests (`next_root`) a
 
 Reference tooling:
 
-- `msez corridor state checkpoint ...` (produce a checkpoint with `mmr.root`)
-- `msez corridor state proof ...` (produce an inclusion proof for a receipt index)
-- `msez corridor state verify-inclusion ...` (verify proof + receipt + checkpoint)
+- `mez corridor state checkpoint ...` (produce a checkpoint with `mmr.root`)
+- `mez corridor state proof ...` (produce an inclusion proof for a receipt index)
+- `mez corridor state verify-inclusion ...` (verify proof + receipt + checkpoint)
 
 See `spec/40-corridors.md`.

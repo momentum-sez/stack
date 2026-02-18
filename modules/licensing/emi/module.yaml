@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.lic.emi
+module_id: org.momentum.mez.lic.emi
 version: 0.1.0
 kind: licensing
 license: Apache-2.0
@@ -6,22 +6,22 @@ description: "Licensing scaffolding pack for Electronic Money Institution."
 variants:
   - baseline
 depends_on:
-  - module_id: org.momentum.msez.legal.core
+  - module_id: org.momentum.mez.legal.core
     constraint: ">=0.1.0,<0.3.0"
 provides:
-  - interface: msez.licensing.application.v1
+  - interface: mez.licensing.application.v1
     path: forms/application.schema.json
     media_type: application/json
-  - interface: msez.policy.opa.bundle.v1
+  - interface: mez.policy.opa.bundle.v1
     path: policy/
     media_type: text/plain
-  - interface: msez.reporting.periodic-return.v1
+  - interface: mez.reporting.periodic-return.v1
     path: reporting/periodic-return.schema.json
     media_type: application/json
-  - interface: msez.reporting.incident.v1
+  - interface: mez.reporting.incident.v1
     path: reporting/incident-report.schema.json
     media_type: application/json
-  - interface: msez.policy.policy-to-code-map.v1
+  - interface: mez.policy.policy-to-code-map.v1
     path: src/policy-to-code/map.yaml
     media_type: application/yaml
 parameters:

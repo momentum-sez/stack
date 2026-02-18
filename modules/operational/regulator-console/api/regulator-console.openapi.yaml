@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Regulator Console API (MSEZ Standard)
+  title: Regulator Console API (MEZ Standard)
   version: 1.0.0
   description: >
     Read-only, role-gated, audited regulator query interface. Implementations MUST emit an audit event

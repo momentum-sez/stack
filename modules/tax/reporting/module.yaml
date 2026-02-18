@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.tax.reporting
+module_id: org.momentum.mez.tax.reporting
 version: 0.1.0
 kind: tax
 license: Apache-2.0
@@ -11,22 +11,22 @@ variants:
   - full-exchange
 
 depends_on:
-  - module_id: org.momentum.msez.legal.entity-registry
+  - module_id: org.momentum.mez.legal.entity-registry
     constraint: ">=0.1.0,<1.0.0"
-  - module_id: org.momentum.msez.identity.core
+  - module_id: org.momentum.mez.identity.core
     constraint: ">=0.1.0,<1.0.0"
 
 provides:
-  - interface: msez.tax.reporting.crs.v1
+  - interface: mez.tax.reporting.crs.v1
     path: templates/crs-reporting.yaml
     media_type: application/yaml
-  - interface: msez.tax.reporting.fatca.v1
+  - interface: mez.tax.reporting.fatca.v1
     path: templates/fatca-reporting.yaml
     media_type: application/yaml
-  - interface: msez.tax.reporting.local.v1
+  - interface: mez.tax.reporting.local.v1
     path: templates/local-filing.yaml
     media_type: application/yaml
-  - interface: msez.tax.reporting.schema.v1
+  - interface: mez.tax.reporting.schema.v1
     path: schemas/
     media_type: application/json
 

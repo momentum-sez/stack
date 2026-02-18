@@ -1,12 +1,12 @@
 openapi: 3.1.0
 info:
-  title: MSEZ Corridor State API
+  title: MEZ Corridor State API
   version: 0.4.44
   description: |
     Corridor state-channel operations: receipt proposals, fork resolution,
     anchoring, and finality status computation.
 
-    These endpoints mirror the CLI subcommands under `msez corridor state ...`.
+    These endpoints mirror the CLI subcommands under `mez corridor state ...`.
     All mutating endpoints are idempotent when called with the same
     `Idempotency-Key` header value.
   license:
@@ -25,7 +25,7 @@ paths:
     post:
       tags: [corridor.state]
       summary: Propose the next corridor receipt
-      description: Equivalent to `msez corridor state propose` (unsigned proposal artifact).
+      description: Equivalent to `mez corridor state propose` (unsigned proposal artifact).
       operationId: proposeReceipt
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -51,7 +51,7 @@ paths:
                   type: string
                   pattern: '^[a-f0-9]{64}$'
                 transition:
-                  $ref: 'https://schemas.momentum-sez.org/msez/transition-envelope.schema.json'
+                  $ref: 'https://schemas.momentum-ez.org/mez/transition-envelope.schema.json'
                 notes:
                   type: string
       responses:
@@ -60,7 +60,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: 'https://schemas.momentum-sez.org/msez/corridor.receipt-proposal.schema.json'
+                $ref: 'https://schemas.momentum-ez.org/mez/corridor.receipt-proposal.schema.json'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -80,7 +80,7 @@ paths:
     post:
       tags: [corridor.state]
       summary: Resolve a receipt fork
-      description: Equivalent to `msez corridor state fork-resolve` (unsigned VC).
+      description: Equivalent to `mez corridor state fork-resolve` (unsigned VC).
       operationId: resolveFork
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -130,7 +130,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: 'https://schemas.momentum-sez.org/msez/vc.corridor-fork-resolution.schema.json'
+                $ref: 'https://schemas.momentum-ez.org/mez/vc.corridor-fork-resolution.schema.json'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -144,7 +144,7 @@ paths:
     post:
       tags: [corridor.state]
       summary: Anchor a corridor head commitment
-      description: Equivalent to `msez corridor state anchor` (unsigned VC).
+      description: Equivalent to `mez corridor state anchor` (unsigned VC).
       operationId: anchorHead
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -182,7 +182,7 @@ paths:
                       type: string
                       format: date-time
                 checkpoint_ref:
-                  $ref: 'https://schemas.momentum-sez.org/msez/artifact-ref.schema.json'
+                  $ref: 'https://schemas.momentum-ez.org/mez/artifact-ref.schema.json'
                 issuer:
                   type: string
       responses:
@@ -191,7 +191,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: 'https://schemas.momentum-sez.org/msez/vc.corridor-anchor.schema.json'
+                $ref: 'https://schemas.momentum-ez.org/mez/vc.corridor-anchor.schema.json'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -205,7 +205,7 @@ paths:
     post:
       tags: [corridor.state]
       summary: Compute corridor finality status for a head
-      description: Equivalent to `msez corridor state finality-status`.
+      description: Equivalent to `mez corridor state finality-status`.
       operationId: computeFinalityStatus
       requestBody:
         required: true
@@ -238,7 +238,7 @@ paths:
                   additionalProperties: false
                   properties:
                     checkpoint:
-                      $ref: 'https://schemas.momentum-sez.org/msez/artifact-ref.schema.json'
+                      $ref: 'https://schemas.momentum-ez.org/mez/artifact-ref.schema.json'
                     watcher_quorum:
                       type: object
                       additionalProperties: false
@@ -254,18 +254,18 @@ paths:
                     anchors:
                       type: array
                       items:
-                        $ref: 'https://schemas.momentum-sez.org/msez/artifact-ref.schema.json'
+                        $ref: 'https://schemas.momentum-ez.org/mez/artifact-ref.schema.json'
                     disputes:
                       type: array
                       items:
-                        $ref: 'https://schemas.momentum-sez.org/msez/artifact-ref.schema.json'
+                        $ref: 'https://schemas.momentum-ez.org/mez/artifact-ref.schema.json'
       responses:
         '200':
           description: Finality status object
           content:
             application/json:
               schema:
-                $ref: 'https://schemas.momentum-sez.org/msez/corridor.finality-status.schema.json'
+                $ref: 'https://schemas.momentum-ez.org/mez/corridor.finality-status.schema.json'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -345,26 +345,26 @@ components:
           description: URI reference for this specific occurrence.
 
     TransitionEnvelope:
-      $ref: 'https://schemas.momentum-sez.org/msez/transition-envelope.schema.json'
+      $ref: 'https://schemas.momentum-ez.org/mez/transition-envelope.schema.json'
     CorridorReceiptProposal:
-      $ref: 'https://schemas.momentum-sez.org/msez/corridor.receipt-proposal.schema.json'
+      $ref: 'https://schemas.momentum-ez.org/mez/corridor.receipt-proposal.schema.json'
     CorridorForkResolution:
-      $ref: 'https://schemas.momentum-sez.org/msez/corridor.fork-resolution.schema.json'
+      $ref: 'https://schemas.momentum-ez.org/mez/corridor.fork-resolution.schema.json'
     CorridorForkResolutionCredential:
-      $ref: 'https://schemas.momentum-sez.org/msez/vc.corridor-fork-resolution.schema.json'
+      $ref: 'https://schemas.momentum-ez.org/mez/vc.corridor-fork-resolution.schema.json'
     CorridorAnchorCredential:
-      $ref: 'https://schemas.momentum-sez.org/msez/vc.corridor-anchor.schema.json'
+      $ref: 'https://schemas.momentum-ez.org/mez/vc.corridor-anchor.schema.json'
     CorridorFinalityStatus:
-      $ref: 'https://schemas.momentum-sez.org/msez/corridor.finality-status.schema.json'
+      $ref: 'https://schemas.momentum-ez.org/mez/corridor.finality-status.schema.json'
     CorridorLifecycle:
-      $ref: 'https://schemas.momentum-sez.org/msez/corridor.lifecycle.schema.json'
+      $ref: 'https://schemas.momentum-ez.org/mez/corridor.lifecycle.schema.json'
     CorridorLifecycleTransitionCredential:
-      $ref: 'https://schemas.momentum-sez.org/msez/vc.corridor-lifecycle-transition.schema.json'
+      $ref: 'https://schemas.momentum-ez.org/mez/vc.corridor-lifecycle-transition.schema.json'
     CorridorRoute:
-      $ref: 'https://schemas.momentum-sez.org/msez/corridor.routing.schema.json'
+      $ref: 'https://schemas.momentum-ez.org/mez/corridor.routing.schema.json'
     WatcherBondCredential:
-      $ref: 'https://schemas.momentum-sez.org/msez/vc.watcher-bond.schema.json'
+      $ref: 'https://schemas.momentum-ez.org/mez/vc.watcher-bond.schema.json'
     DisputeClaimCredential:
-      $ref: 'https://schemas.momentum-sez.org/msez/vc.dispute-claim.schema.json'
+      $ref: 'https://schemas.momentum-ez.org/mez/vc.dispute-claim.schema.json'
     ArbitrationAwardCredential:
-      $ref: 'https://schemas.momentum-sez.org/msez/vc.arbitration-award.schema.json'
+      $ref: 'https://schemas.momentum-ez.org/mez/vc.arbitration-award.schema.json'

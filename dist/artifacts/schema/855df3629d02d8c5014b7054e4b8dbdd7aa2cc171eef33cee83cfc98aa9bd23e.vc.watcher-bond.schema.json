@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/vc.watcher-bond.schema.json",
-  "title": "MSEZ Watcher Bond Verifiable Credential",
+  "$id": "https://schemas.momentum-ez.org/mez/vc.watcher-bond.schema.json",
+  "title": "MEZ Watcher Bond Verifiable Credential",
   "description": "A signed VC representing a watcher bond (stake/escrow) posted by an observer who participates in monitoring corridors.",
   "allOf": [
     {
-      "$ref": "https://schemas.momentum-sez.org/msez/vc.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/vc.schema.json"
     },
     {
       "type": "object",
@@ -17,7 +17,7 @@
         "type": {
           "type": "array",
           "contains": {
-            "const": "MSEZWatcherBondCredential"
+            "const": "MEZWatcherBondCredential"
           }
         },
         "credentialSubject": {
@@ -34,7 +34,7 @@
           ],
           "properties": {
             "type": {
-              "const": "MSEZWatcherBond"
+              "const": "MEZWatcherBond"
             },
             "bond_id": {
               "type": "string"
@@ -62,10 +62,10 @@
               "format": "date-time"
             },
             "bond_artifact_ref": {
-              "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
             },
             "terms_ref": {
-              "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
             },
             "meta": {
               "type": "object",

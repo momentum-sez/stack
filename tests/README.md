@@ -17,13 +17,13 @@ Enable them via environment flags:
 
 ```bash
 # Slow correctness suites
-MSEZ_RUN_SLOW=1 pytest -q
+MEZ_RUN_SLOW=1 pytest -q
 
 # Performance/benchmark suites
-MSEZ_RUN_PERF=1 pytest -q
+MEZ_RUN_PERF=1 pytest -q
 
 # Large scenario scaffolds (roadmap test matrix; mostly TODO stubs)
-MSEZ_RUN_SCAFFOLD=1 pytest -q
+MEZ_RUN_SCAFFOLD=1 pytest -q
 ```
 
 CI runs this suite on every push/PR.

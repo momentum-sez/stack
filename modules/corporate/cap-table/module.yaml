@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.corporate.cap-table
+module_id: org.momentum.mez.corporate.cap-table
 version: 0.1.0
 kind: corporate
 license: Apache-2.0
@@ -13,22 +13,22 @@ variants:
   - fund-focused
 
 depends_on:
-  - module_id: org.momentum.msez.legal.entity-registry
+  - module_id: org.momentum.mez.legal.entity-registry
     constraint: ">=0.1.0,<1.0.0"
-  - module_id: org.momentum.msez.corporate.formation
+  - module_id: org.momentum.mez.corporate.formation
     constraint: ">=0.1.0,<1.0.0"
 
 provides:
-  - interface: msez.corporate.cap-table.v1
+  - interface: mez.corporate.cap-table.v1
     path: schemas/cap-table.schema.json
     media_type: application/json
-  - interface: msez.corporate.share-issuance.v1
+  - interface: mez.corporate.share-issuance.v1
     path: forms/share-issuance.schema.json
     media_type: application/json
-  - interface: msez.corporate.share-transfer.v1
+  - interface: mez.corporate.share-transfer.v1
     path: forms/share-transfer.schema.json
     media_type: application/json
-  - interface: msez.corporate.vesting.v1
+  - interface: mez.corporate.vesting.v1
     path: templates/vesting-schedule.yaml
     media_type: application/yaml
 

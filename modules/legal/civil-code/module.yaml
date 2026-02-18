@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.legal.civil-code
+module_id: org.momentum.mez.legal.civil-code
 version: 0.2.0
 kind: legal
 license: CC-BY-4.0
@@ -6,13 +6,13 @@ description: "Civil Code (core) (stub with Akoma Ntoso)."
 variants:
   - baseline
 depends_on:
-  - module_id: org.momentum.msez.legal.akn-templates
+  - module_id: org.momentum.mez.legal.akn-templates
     constraint: ">=0.1.0,<0.2.0"
 provides:
-  - interface: msez.legal.akn.act.v1
+  - interface: mez.legal.akn.act.v1
     path: src/akn/main.xml
     media_type: application/xml
-  - interface: msez.policy.policy-to-code-map.v1
+  - interface: mez.policy.policy-to-code-map.v1
     path: src/policy-to-code/map.yaml
     media_type: application/yaml
 parameters:

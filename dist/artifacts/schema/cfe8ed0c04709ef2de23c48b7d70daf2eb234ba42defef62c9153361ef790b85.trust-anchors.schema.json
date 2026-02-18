@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://momentum-sez.org/schemas/trust-anchors.schema.json",
+  "$id": "https://momentum-ez.org/schemas/trust-anchors.schema.json",
   "title": "Corridor Trust Anchors",
   "type": "object",
   "required": [

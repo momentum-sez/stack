@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.reg.cybersecurity
+module_id: org.momentum.mez.reg.cybersecurity
 version: 0.2.0
 kind: regulatory
 license: CC-BY-4.0
@@ -7,10 +7,10 @@ variants:
   - baseline
 depends_on: []
 provides:
-  - interface: msez.policy.opa.bundle.v1
+  - interface: mez.policy.opa.bundle.v1
     path: policy/
     media_type: text/plain
-  - interface: msez.policy.policy-to-code-map.v1
+  - interface: mez.policy.policy-to-code-map.v1
     path: src/policy-to-code/map.yaml
     media_type: application/yaml
 parameters: {}

@@ -1,4 +1,4 @@
-corridor_id: org.momentum.msez.corridor.openbanking.api-based
+corridor_id: org.momentum.mez.corridor.openbanking.api-based
 title: Open Banking / Account-to-Account Corridor
 participants: []
 settlement:
@@ -7,7 +7,7 @@ settlement:
   max_single_transfer: ${max_single_transfer}
 recognition:
   passporting:
-  - msez.licensing.application.v1
+  - mez.licensing.application.v1
 attestations:
   required:
   - kyb_verified
@@ -25,4 +25,4 @@ dispute_resolution:
 trust_anchors_path: trust-anchors.yaml
 key_rotation_path: key-rotation.yaml
 definition_vc_path: corridor.vc.json
-verification_ruleset: msez.corridor.verification.v1
+verification_ruleset: mez.corridor.verification.v1

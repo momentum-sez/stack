@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/corridor.settlement-plan.schema.json",
-  "title": "MSEZ Multi-Corridor Settlement Plan",
+  "$id": "https://schemas.momentum-ez.org/mez/corridor.settlement-plan.schema.json",
+  "title": "MEZ Multi-Corridor Settlement Plan",
   "description": "A corridor-of-corridors primitive: a deterministic, auditable settlement plan that references (anchors) the heads of one or more obligation corridors, computes net positions, and specifies settlement legs (potentially across multiple settlement corridors).",
   "type": "object",
   "required": [
@@ -15,7 +15,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MSEZCorridorSettlementPlan"
+      "const": "MEZCorridorSettlementPlan"
     },
     "stack_spec_version": {
       "type": "string",
@@ -51,7 +51,7 @@
       "type": "array",
       "minItems": 1,
       "items": {
-        "$ref": "https://schemas.momentum-sez.org/msez/corridor.checkpoint.attachment.schema.json"
+        "$ref": "https://schemas.momentum-ez.org/mez/corridor.checkpoint.attachment.schema.json"
       },
       "description": "Anchors the plan to one or more corridor checkpoint heads (obligation corridors and/or settlement corridors)."
     },
@@ -93,24 +93,24 @@
     "executed_settlement_anchors": {
       "type": "array",
       "items": {
-        "$ref": "https://schemas.momentum-sez.org/msez/corridor.settlement-anchor.attachment.schema.json"
+        "$ref": "https://schemas.momentum-ez.org/mez/corridor.settlement-anchor.attachment.schema.json"
       },
       "description": "Optional: cross-corridor settlement anchors proving execution."
     },
     "evidence": {
       "type": "array",
       "items": {
-        "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+        "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
       },
       "description": "Optional evidence artifacts (e.g., computation transcript, regulatory approvals, bank advice messages)."
     },
     "meta": {
-      "$ref": "https://schemas.momentum-sez.org/msez/meta.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/meta.schema.json"
     },
     "proof": {
       "type": "array",
       "items": {
-        "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+        "$ref": "https://schemas.momentum-ez.org/mez/vc.proof.jcs-ed25519.schema.json"
       },
       "description": "Optional multi-signature / multiparty authorization over the plan. Digest semantics exclude proof."
     }
@@ -137,7 +137,7 @@
           "minLength": 1
         },
         "amount": {
-          "$ref": "https://schemas.momentum-sez.org/msez/trade.amount.v1.schema.json"
+          "$ref": "https://schemas.momentum-ez.org/mez/trade.amount.v1.schema.json"
         },
         "due_date": {
           "type": "string",
@@ -152,7 +152,7 @@
               "minLength": 1
             },
             "checkpoint": {
-              "$ref": "https://schemas.momentum-sez.org/msez/corridor.checkpoint.attachment.schema.json"
+              "$ref": "https://schemas.momentum-ez.org/mez/corridor.checkpoint.attachment.schema.json"
             },
             "receipt_ids": {
               "type": "array",
@@ -167,7 +167,7 @@
         "instrument_refs": {
           "type": "array",
           "items": {
-            "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+            "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
           },
           "description": "Optional trade instrument references (invoice/BOL/LC docs, etc.)."
         },
@@ -189,7 +189,7 @@
           "minLength": 1
         },
         "amount": {
-          "$ref": "https://schemas.momentum-sez.org/msez/trade.amount.v1.schema.json",
+          "$ref": "https://schemas.momentum-ez.org/mez/trade.amount.v1.schema.json",
           "description": "Net amount (positive = net receiver, negative = net payer)."
         }
       },
@@ -216,20 +216,20 @@
           "minLength": 1
         },
         "amount": {
-          "$ref": "https://schemas.momentum-sez.org/msez/trade.amount.v1.schema.json"
+          "$ref": "https://schemas.momentum-ez.org/mez/trade.amount.v1.schema.json"
         },
         "settlement_corridor_id": {
           "type": "string",
           "description": "Optional corridor_id for the rail used to execute this leg (e.g. swift.iso20022-cross-border, stablecoin-settlement.usdc.circle)."
         },
         "instruction_ref": {
-          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+          "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json",
           "description": "Optional settlement instruction artifact (e.g., pacs.008 message, on-chain tx envelope)."
         },
         "expected_evidence_refs": {
           "type": "array",
           "items": {
-            "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+            "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
           }
         }
       },

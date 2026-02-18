@@ -1,7 +1,7 @@
 # MASS Consent Primitive
 # Consent management and delegation
 
-module_id: org.momentum.msez.mass-primitives.consent
+module_id: org.momentum.mez.mass-primitives.consent
 version: 0.1.0
 kind: protocol
 name: MASS Consent Primitive
@@ -13,11 +13,11 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.mass.consent.transaction.v1
+  - interface: mez.mass.consent.transaction.v1
     description: Transaction consent management
-  - interface: msez.mass.consent.data.v1
+  - interface: mez.mass.consent.data.v1
     description: Data processing consent
-  - interface: msez.mass.consent.delegation.v1
+  - interface: mez.mass.consent.delegation.v1
     description: Authority delegation
 
 consent_types:

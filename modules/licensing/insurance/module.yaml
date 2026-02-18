@@ -1,7 +1,7 @@
 # Insurance Licensing Module
 # Carrier, captive, and broker licensing for zone insurance operations
 
-module_id: org.momentum.msez.licensing.insurance
+module_id: org.momentum.mez.licensing.insurance
 version: 0.1.0
 kind: licensing
 name: Insurance Licensing
@@ -13,19 +13,19 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.licensing.insurance.carrier.v1
+  - interface: mez.licensing.insurance.carrier.v1
     description: Insurance carrier licensing
-  - interface: msez.licensing.insurance.captive.v1
+  - interface: mez.licensing.insurance.captive.v1
     description: Captive insurance company licensing
-  - interface: msez.licensing.insurance.broker.v1
+  - interface: mez.licensing.insurance.broker.v1
     description: Insurance broker/agent licensing
-  - interface: msez.licensing.insurance.reinsurer.v1
+  - interface: mez.licensing.insurance.reinsurer.v1
     description: Reinsurance company licensing
 
 dependencies:
-  - module_id: org.momentum.msez.legal.core
+  - module_id: org.momentum.mez.legal.core
     version: ">=0.1.0"
-  - module_id: org.momentum.msez.regulatory.financial-supervision
+  - module_id: org.momentum.mez.regulatory.financial-supervision
     version: ">=0.2.0"
 
 license_types:

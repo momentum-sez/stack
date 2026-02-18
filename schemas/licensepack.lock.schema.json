@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/licensepack.lock.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/licensepack.lock.schema.json",
   "title": "Licensepack Lock File",
   "description": "Lock file pinning a licensepack to a module",
   "type": "object",

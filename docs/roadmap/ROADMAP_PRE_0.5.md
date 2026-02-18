@@ -5,10 +5,10 @@ This document is a **repo-native** roadmap for taking the stack from
 
 It synthesizes:
 
-- The MSEZ modular evolution framework (dependency-aware modules, overlay semantics, upgrade choreography)
-- The MSEZ fortification blueprint (watcher economy, finality ladder, fork prevention, routing/economics)
+- The MEZ modular evolution framework (dependency-aware modules, overlay semantics, upgrade choreography)
+- The MEZ fortification blueprint (watcher economy, finality ladder, fork prevention, routing/economics)
 - Smart Asset spec v0.4.0 + deep dive (Merkle-DAG state, migration sagas, custody/coordination, compliance manifold)
-- The existing MSEZ corridor state channel + lawpack pipeline already implemented in `0.4.x`
+- The existing MEZ corridor state channel + lawpack pipeline already implemented in `0.4.x`
 
 ## Prime directive
 
@@ -29,13 +29,13 @@ It synthesizes:
 P0 deliverables:
 
 - Receipt verification fork-tolerance + deterministic fork resolution policy (already shipped in `0.4.18+`; expand tests).
-- Finality ladder fully enumerated + machine-computable (`msez corridor state finality-status`).
+- Finality ladder fully enumerated + machine-computable (`mez corridor state finality-status`).
 - Watcher quorum policies and gossip-friendly head commitments.
 - **Commitment completeness (transitive)**: `--transitive-require-artifacts` ensures registry commits imply dependency availability.
 
 Repo targets:
 
-- `tools/msez.py` (verification policies, CLI flags)
+- `tools/mez.py` (verification policies, CLI flags)
 - `schemas/corridor.*.schema.json` (fork, finality, lifecycle)
 - `tests/` (P0 suites run in CI)
 
@@ -72,7 +72,7 @@ Unit tests:
 
 P0/P1 deliverables:
 
-- Dispute claim VC schema + CLI (`msez dispute file`)
+- Dispute claim VC schema + CLI (`mez dispute file`)
 - Arbitration award VC schema + CLI ingestion/verification
 - Institution registry (LCIA/SIAC/ICC/etc) as authority chain branch
 
@@ -145,7 +145,7 @@ Repo targets:
 
 Unit tests:
 
-- (done v0.4.30) Asset checkpoint binds to receipt inclusion proof (`tests/test_smart_asset_anchor_verify.py`, `msez asset anchor-verify`)
+- (done v0.4.30) Asset checkpoint binds to receipt inclusion proof (`tests/test_smart_asset_anchor_verify.py`, `mez asset anchor-verify`)
 - Migration saga happy-path + compensation-path
 
 ### W6: Mass Protocol integration

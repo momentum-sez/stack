@@ -1,7 +1,7 @@
 # DVP/PVP Module
 # Delivery versus Payment / Payment versus Payment Settlement
 
-module_id: org.momentum.msez.capital-markets.dvp-pvp
+module_id: org.momentum.mez.capital-markets.dvp-pvp
 version: 0.1.0
 kind: capital-markets
 name: DVP/PVP Settlement
@@ -12,7 +12,7 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.capital-markets.dvp-pvp.v1
+  - interface: mez.capital-markets.dvp-pvp.v1
     operations:
       - create_dvp_instruction
       - create_pvp_instruction

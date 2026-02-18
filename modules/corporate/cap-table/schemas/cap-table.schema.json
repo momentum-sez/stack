@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://momentum-sez.org/schemas/corporate.cap-table.schema.json",
+  "$id": "https://momentum-ez.org/schemas/corporate.cap-table.schema.json",
   "title": "Capitalization Table",
   "description": "Complete capitalization table for an entity",
   "type": "object",

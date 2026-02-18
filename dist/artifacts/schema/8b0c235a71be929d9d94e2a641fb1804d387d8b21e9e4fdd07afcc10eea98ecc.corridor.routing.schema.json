@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/corridor.routing.schema.json",
-  "title": "MSEZ Corridor Route",
+  "$id": "https://schemas.momentum-ez.org/mez/corridor.routing.schema.json",
+  "title": "MEZ Corridor Route",
   "description": "A suggested route plan through a set of corridors connecting a source node to a destination node. This is an output schema used by routing tools/APIs; it is not normative by default.",
   "type": "object",
   "required": [
@@ -14,7 +14,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MSEZCorridorRoute"
+      "const": "MEZCorridorRoute"
     },
     "route_id": {
       "type": "string"

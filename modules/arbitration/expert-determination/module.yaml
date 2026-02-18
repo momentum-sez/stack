@@ -1,7 +1,7 @@
 # Expert Determination Module
 # Technical dispute resolution by subject matter experts
 
-module_id: org.momentum.msez.arbitration.expert-determination
+module_id: org.momentum.mez.arbitration.expert-determination
 version: 0.1.0
 kind: arbitration
 name: Expert Determination
@@ -14,19 +14,19 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.arbitration.expert.valuation.v1
+  - interface: mez.arbitration.expert.valuation.v1
     description: Valuation dispute determination
-  - interface: msez.arbitration.expert.technical.v1
+  - interface: mez.arbitration.expert.technical.v1
     description: Technical dispute determination
-  - interface: msez.arbitration.expert.accounting.v1
+  - interface: mez.arbitration.expert.accounting.v1
     description: Accounting dispute determination
-  - interface: msez.arbitration.expert.construction.v1
+  - interface: mez.arbitration.expert.construction.v1
     description: Construction dispute determination
 
 dependencies:
-  - module_id: org.momentum.msez.legal.dispute-resolution
+  - module_id: org.momentum.mez.legal.dispute-resolution
     version: ">=0.1.0"
-  - module_id: org.momentum.msez.licensing.professional-services
+  - module_id: org.momentum.mez.licensing.professional-services
     version: ">=0.1.0"
 
 determination_types:

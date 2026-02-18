@@ -14,7 +14,7 @@ The stack provides several primitives that are designed to make incident respons
 Run watcher compare:
 
 ```bash
-python3 -m tools.msez corridor state watcher-compare modules/corridors/<corridor> \
+python3 -m tools.mez corridor state watcher-compare modules/corridors/<corridor> \
   --vcs ./watcher-attestations \
   --quorum-threshold majority \
   --require-quorum \
@@ -45,13 +45,13 @@ Store them as content-addressed artifacts.
 If you can collect receipts (even from multiple operators / watchers), generate a fork report:
 
 ```bash
-python3 -m tools.msez corridor state fork-inspect modules/corridors/<corridor>   --receipts path/to/receipts   --format json   --out fork-report.json
+python3 -m tools.mez corridor state fork-inspect modules/corridors/<corridor>   --receipts path/to/receipts   --format json   --out fork-report.json
 ```
 
-If you already have fork resolution artifacts (VCs or raw `MSEZCorridorForkResolution` JSON), include them to check coverage and compute the canonical head:
+If you already have fork resolution artifacts (VCs or raw `MEZCorridorForkResolution` JSON), include them to check coverage and compute the canonical head:
 
 ```bash
-python3 -m tools.msez corridor state fork-inspect modules/corridors/<corridor>   --receipts path/to/receipts   --fork-resolutions path/to/fork-resolutions   --format text
+python3 -m tools.mez corridor state fork-inspect modules/corridors/<corridor>   --receipts path/to/receipts   --fork-resolutions path/to/fork-resolutions   --format text
 ```
 
 Interpretation:
@@ -64,7 +64,7 @@ Interpretation:
 If you can identify two receipts with the same `(sequence, prev_root)` but different `next_root`, issue a fork alarm VC:
 
 ```bash
-python3 -m tools.msez corridor state fork-alarm \
+python3 -m tools.mez corridor state fork-alarm \
   --corridor modules/corridors/<corridor> \
   --receipt-a path/to/receiptA.json \
   --receipt-b path/to/receiptB.json \

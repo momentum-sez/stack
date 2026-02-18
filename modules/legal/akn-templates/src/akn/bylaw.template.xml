@@ -2,7 +2,7 @@
 <akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
   <doc name="bylaw" contains="originalVersion">
     <meta>
-      <identification source="#msez">
+      <identification source="#mez">
         <FRBRWork>
           <FRBRthis value="/akn/{{JURISDICTION_NAME}}/bylaw/{{AUTHORITY_NAME}}/0.1.0"/>
           <FRBRuri value="/akn/{{JURISDICTION_NAME}}/bylaw/{{AUTHORITY_NAME}}"/>

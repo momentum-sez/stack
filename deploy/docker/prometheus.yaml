@@ -1,9 +1,9 @@
-# Prometheus configuration for MSEZ Stack (Rust binary architecture)
+# Prometheus configuration for MEZ Stack (Rust binary architecture)
 #
-# Scrapes metrics from the single msez-api Axum server at /metrics.
+# Scrapes metrics from the single mez-api Axum server at /metrics.
 # The previous 9-service scrape config is no longer needed — all five
 # primitive APIs, corridor operations, compliance tensor, and regulator
-# console are served by the unified msez-api binary.
+# console are served by the unified mez-api binary.
 
 global:
   scrape_interval: 15s
@@ -16,12 +16,12 @@ alerting:
 rule_files: []
 
 scrape_configs:
-  # msez-api — unified Axum server exposing all endpoints
+  # mez-api — unified Axum server exposing all endpoints
   # Exports per-route latency histograms, request counters, and
   # domain-specific metrics (corridor state, tensor snapshots, etc.)
-  - job_name: 'msez-api'
+  - job_name: 'mez-api'
     static_configs:
-      - targets: ['msez-api:8080']
+      - targets: ['mez-api:8080']
     metrics_path: '/metrics'
     scrape_interval: 15s
 

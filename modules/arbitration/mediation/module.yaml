@@ -1,7 +1,7 @@
 # Mediation Module
 # Pre-arbitration and standalone mediation workflows
 
-module_id: org.momentum.msez.arbitration.mediation
+module_id: org.momentum.mez.arbitration.mediation
 version: 0.1.0
 kind: arbitration
 name: Mediation Services
@@ -13,19 +13,19 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.arbitration.mediation.facilitative.v1
+  - interface: mez.arbitration.mediation.facilitative.v1
     description: Facilitative mediation services
-  - interface: msez.arbitration.mediation.evaluative.v1
+  - interface: mez.arbitration.mediation.evaluative.v1
     description: Evaluative mediation services
-  - interface: msez.arbitration.mediation.online.v1
+  - interface: mez.arbitration.mediation.online.v1
     description: Online mediation platform
-  - interface: msez.arbitration.mediation.enforcement.v1
+  - interface: mez.arbitration.mediation.enforcement.v1
     description: Settlement agreement enforcement
 
 dependencies:
-  - module_id: org.momentum.msez.legal.dispute-resolution
+  - module_id: org.momentum.mez.legal.dispute-resolution
     version: ">=0.1.0"
-  - module_id: org.momentum.msez.arbitration.institutions
+  - module_id: org.momentum.mez.arbitration.institutions
     version: ">=0.1.0"
 
 mediation_types:

@@ -1,7 +1,7 @@
 # Corporate Actions Module
 # Processing of corporate events affecting securities
 
-module_id: org.momentum.msez.capital-markets.corporate-actions
+module_id: org.momentum.mez.capital-markets.corporate-actions
 version: 0.1.0
 kind: capital-markets
 name: Corporate Actions Processing
@@ -12,7 +12,7 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.capital-markets.corporate-actions.v1
+  - interface: mez.capital-markets.corporate-actions.v1
     operations:
       - announce_corporate_action
       - calculate_entitlements

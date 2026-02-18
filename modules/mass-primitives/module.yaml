@@ -1,7 +1,7 @@
 # MASS Five Primitives Module Family
 # Core primitives from MASS Protocol specification
 
-module_id: org.momentum.msez.mass-primitives
+module_id: org.momentum.mez.mass-primitives
 version: 0.1.0
 kind: protocol
 name: MASS Five Primitives
@@ -13,21 +13,21 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.mass.entities.v1
+  - interface: mez.mass.entities.v1
     description: Legal and natural entity representation
-  - interface: msez.mass.ownership.v1
+  - interface: mez.mass.ownership.v1
     description: Ownership claims and transfers
-  - interface: msez.mass.instruments.v1
+  - interface: mez.mass.instruments.v1
     description: Financial and legal instruments
-  - interface: msez.mass.identity.v1
+  - interface: mez.mass.identity.v1
     description: Decentralized identity and verification
-  - interface: msez.mass.consent.v1
+  - interface: mez.mass.consent.v1
     description: Consent management and delegation
 
 dependencies:
-  - module_id: org.momentum.msez.legal.entity-registry
+  - module_id: org.momentum.mez.legal.entity-registry
     version: ">=0.1.0"
-  - module_id: org.momentum.msez.identity.core
+  - module_id: org.momentum.mez.identity.core
     version: ">=0.1.0"
 
 submodules:

@@ -1,7 +1,7 @@
 # MASS Ownership Primitive
 # Ownership claims, transfers, and encumbrances
 
-module_id: org.momentum.msez.mass-primitives.ownership
+module_id: org.momentum.mez.mass-primitives.ownership
 version: 0.1.0
 kind: protocol
 name: MASS Ownership Primitive
@@ -12,11 +12,11 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.mass.ownership.direct.v1
+  - interface: mez.mass.ownership.direct.v1
     description: Direct ownership claims
-  - interface: msez.mass.ownership.beneficial.v1
+  - interface: mez.mass.ownership.beneficial.v1
     description: Beneficial ownership tracking
-  - interface: msez.mass.ownership.fractional.v1
+  - interface: mez.mass.ownership.fractional.v1
     description: Fractional ownership management
 
 ownership_types:

@@ -4,7 +4,7 @@ This module is a **placeholder** for the civil legal corpus for **United States 
 
 ## Why is it empty?
 
-The core `momentum-sez/stack` repository ships **schemas, templates, and tooling** — not a full redistributed copy of every jurisdiction's statutes and regulations.
+The core `momentum-ez/stack` repository ships **schemas, templates, and tooling** — not a full redistributed copy of every jurisdiction's statutes and regulations.
 
 Reasons:
 - licensing / redistribution constraints vary by jurisdiction,

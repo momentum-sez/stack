@@ -1,7 +1,7 @@
 # Clearing Module
 # Central Counterparty (CCP) clearing services
 
-module_id: org.momentum.msez.capital-markets.clearing
+module_id: org.momentum.mez.capital-markets.clearing
 version: 0.1.0
 kind: capital-markets
 name: CCP Clearing Services
@@ -12,7 +12,7 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.capital-markets.clearing.v1
+  - interface: mez.capital-markets.clearing.v1
     operations:
       - submit_for_clearing
       - novate_trade

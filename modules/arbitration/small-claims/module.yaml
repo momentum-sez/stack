@@ -1,7 +1,7 @@
 # Small Claims Tribunal Module
 # Low-value dispute fast track resolution
 
-module_id: org.momentum.msez.arbitration.small-claims
+module_id: org.momentum.mez.arbitration.small-claims
 version: 0.1.0
 kind: arbitration
 name: Small Claims Tribunal
@@ -13,17 +13,17 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.arbitration.small-claims.filing.v1
+  - interface: mez.arbitration.small-claims.filing.v1
     description: Simplified claim filing
-  - interface: msez.arbitration.small-claims.hearing.v1
+  - interface: mez.arbitration.small-claims.hearing.v1
     description: Streamlined hearing process
-  - interface: msez.arbitration.small-claims.judgment.v1
+  - interface: mez.arbitration.small-claims.judgment.v1
     description: Expedited judgment and enforcement
 
 dependencies:
-  - module_id: org.momentum.msez.legal.dispute-resolution
+  - module_id: org.momentum.mez.legal.dispute-resolution
     version: ">=0.1.0"
-  - module_id: org.momentum.msez.identity.core
+  - module_id: org.momentum.mez.identity.core
     version: ">=0.1.0"
 
 jurisdiction:

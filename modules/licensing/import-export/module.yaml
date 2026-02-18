@@ -1,7 +1,7 @@
 # Import / Export Licensing Module
 # Trade licensing and certificates for cross-border commerce
 
-module_id: org.momentum.msez.licensing.import-export
+module_id: org.momentum.mez.licensing.import-export
 version: 0.1.0
 kind: licensing
 name: Import Export License
@@ -13,21 +13,21 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.licensing.trade.importer.v1
+  - interface: mez.licensing.trade.importer.v1
     description: General import license
-  - interface: msez.licensing.trade.exporter.v1
+  - interface: mez.licensing.trade.exporter.v1
     description: General export license
-  - interface: msez.licensing.trade.customs-broker.v1
+  - interface: mez.licensing.trade.customs-broker.v1
     description: Customs brokerage license
-  - interface: msez.licensing.trade.freight-forwarder.v1
+  - interface: mez.licensing.trade.freight-forwarder.v1
     description: Freight forwarding license
-  - interface: msez.licensing.trade.bonded-warehouse.v1
+  - interface: mez.licensing.trade.bonded-warehouse.v1
     description: Bonded warehouse operator license
 
 dependencies:
-  - module_id: org.momentum.msez.trade.customs
+  - module_id: org.momentum.mez.trade.customs
     version: ">=0.1.0"
-  - module_id: org.momentum.msez.regulatory.sanctions
+  - module_id: org.momentum.mez.regulatory.sanctions
     version: ">=0.1.0"
 
 license_types:

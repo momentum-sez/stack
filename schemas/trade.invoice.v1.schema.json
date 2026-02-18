@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/trade.invoice.v1.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/trade.invoice.v1.schema.json",
   "title": "Trade Invoice (v1)",
   "description": "A minimal, deterministic trade invoice schema suitable for open-account and trade-finance workflows. This is an interoperability boundary; deployments may extend via meta and attachment artifacts.",
   "type": "object",
@@ -26,16 +26,16 @@
       "description": "Payment due date (YYYY-MM-DD)."
     },
     "seller": {
-      "$ref": "https://schemas.momentum-sez.org/msez/trade.party.v1.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/trade.party.v1.schema.json"
     },
     "buyer": {
-      "$ref": "https://schemas.momentum-sez.org/msez/trade.party.v1.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/trade.party.v1.schema.json"
     },
     "total": {
-      "$ref": "https://schemas.momentum-sez.org/msez/trade.amount.v1.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/trade.amount.v1.schema.json"
     },
     "tax": {
-      "$ref": "https://schemas.momentum-sez.org/msez/trade.amount.v1.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/trade.amount.v1.schema.json"
     },
     "line_items": {
       "type": "array",
@@ -48,8 +48,8 @@
           "hs_code": {"type": "string"},
           "quantity": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]{1,12})?$"},
           "unit_of_measure": {"type": "string"},
-          "unit_price": {"$ref": "https://schemas.momentum-sez.org/msez/trade.amount.v1.schema.json"},
-          "amount": {"$ref": "https://schemas.momentum-sez.org/msez/trade.amount.v1.schema.json"},
+          "unit_price": {"$ref": "https://schemas.momentum-ez.org/mez/trade.amount.v1.schema.json"},
+          "amount": {"$ref": "https://schemas.momentum-ez.org/mez/trade.amount.v1.schema.json"},
           "meta": {"type": "object", "additionalProperties": true}
         },
         "additionalProperties": false
@@ -82,7 +82,7 @@
     },
     "attachment_refs": {
       "type": "array",
-      "items": {"$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"},
+      "items": {"$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"},
       "description": "Optional attachment artifact references (PDF invoice, signed copies, packing list, etc.)."
     },
     "meta": {

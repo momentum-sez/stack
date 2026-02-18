@@ -14,7 +14,7 @@ Digest semantics (recommended):
 
 This matches the digest model used by:
 
-- `MSEZCorridorReceiptInclusionProof.checkpoint_digest_sha256`
+- `MEZCorridorReceiptInclusionProof.checkpoint_digest_sha256`
 
 Notes:
 
@@ -23,5 +23,5 @@ Notes:
 
 Populate:
 
-- use `python -m tools.msez corridor state checkpoint ...` to create a checkpoint
-- then store it with `python -m tools.msez artifact store checkpoint <digest> <path>`
+- use `python -m tools.mez corridor state checkpoint ...` to create a checkpoint
+- then store it with `python -m tools.mez artifact store checkpoint <digest> <path>`

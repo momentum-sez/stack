@@ -1,8 +1,8 @@
-# MSEZ Stack — Docker Compose (Rust Binary Architecture)
+# MEZ Stack — Docker Compose (Rust Binary Architecture)
 #
 # Replaces the previous 12-service Python-based compose that referenced
 # non-existent `serve` subcommands. The Rust architecture consolidates
-# all five primitive API services into a single msez-api binary (Axum),
+# all five primitive API services into a single mez-api binary (Axum),
 # with PostgreSQL for persistence and Prometheus/Grafana for observability.
 #
 # Previous setup: 9 Python services (zone-authority, entity-registry,
@@ -15,49 +15,49 @@
 #
 # Usage:
 #   docker compose up -d                           # Start all services
-#   docker compose logs -f msez-api                # Follow API logs
-#   docker compose exec msez-api msez-cli validate --all-modules  # Run validation
+#   docker compose logs -f mez-api                # Follow API logs
+#   docker compose exec mez-api mez-cli validate --all-modules  # Run validation
 #   docker compose down                            # Stop all services
 #   docker compose down -v                         # Stop and remove volumes
 
-name: msez-zone
+name: mez-zone
 
 services:
   # ============================================
   # APPLICATION
   # ============================================
 
-  # msez-api: Axum HTTP server serving all five primitive APIs
+  # mez-api: Axum HTTP server serving all five primitive APIs
   # (Entities, Ownership, Fiscal, Identity, Consent), corridor operations,
   # smart asset CRUD, compliance evaluation, and regulator console.
-  msez-api:
+  mez-api:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile
-    container_name: msez-api
+    container_name: mez-api
     restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
       # Zone configuration
-      MSEZ_ZONE_ID: ${MSEZ_ZONE_ID:-org.momentum.msez.zone.local}
-      MSEZ_JURISDICTION: ${MSEZ_JURISDICTION:-ex}
-      MSEZ_PROFILE: ${MSEZ_PROFILE:-digital-financial-center}
+      MEZ_ZONE_ID: ${MEZ_ZONE_ID:-org.momentum.mez.zone.local}
+      MEZ_JURISDICTION: ${MEZ_JURISDICTION:-ex}
+      MEZ_PROFILE: ${MEZ_PROFILE:-digital-financial-center}
       # Server
-      MSEZ_HOST: "0.0.0.0"
-      MSEZ_PORT: "8080"
-      MSEZ_LOG_LEVEL: ${MSEZ_LOG_LEVEL:-info}
+      MEZ_HOST: "0.0.0.0"
+      MEZ_PORT: "8080"
+      MEZ_LOG_LEVEL: ${MEZ_LOG_LEVEL:-info}
       # Database (PostgreSQL via SQLx)
-      DATABASE_URL: "postgresql://msez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/msez"
+      DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/mez"
       # Corridor configuration
-      MSEZ_CORRIDOR_ID: ${MSEZ_CORRIDOR_ID:-org.momentum.msez.corridor.local}
+      MEZ_CORRIDOR_ID: ${MEZ_CORRIDOR_ID:-org.momentum.mez.corridor.local}
       # Watcher configuration
-      MSEZ_WATCHER_ID: ${MSEZ_WATCHER_ID:-watcher-local-001}
-      MSEZ_BOND_AMOUNT: ${MSEZ_BOND_AMOUNT:-100000}
+      MEZ_WATCHER_ID: ${MEZ_WATCHER_ID:-watcher-local-001}
+      MEZ_BOND_AMOUNT: ${MEZ_BOND_AMOUNT:-100000}
       # JWT signing (mount key file or set via env)
-      MSEZ_JWT_SECRET_FILE: /app/config/jwt-secret
+      MEZ_JWT_SECRET_FILE: /app/config/jwt-secret
       # Metrics
-      MSEZ_METRICS_ENABLED: "true"
+      MEZ_METRICS_ENABLED: "true"
     volumes:
       - api-data:/app/data
       - api-config:/app/config
@@ -65,7 +65,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - msez-internal
+      - mez-internal
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health/liveness"]
       interval: 30s
@@ -81,21 +81,21 @@ services:
   # Schema initialized via init-db.sql; runtime migrations via SQLx.
   postgres:
     image: postgres:16-alpine
-    container_name: msez-postgres
+    container_name: mez-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: msez
+      POSTGRES_USER: mez
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
-      POSTGRES_DB: msez
+      POSTGRES_DB: mez
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     ports:
       - "5432:5432"
     networks:
-      - msez-internal
+      - mez-internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U msez -d msez"]
+      test: ["CMD-SHELL", "pg_isready -U mez -d mez"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -105,10 +105,10 @@ services:
   # OBSERVABILITY
   # ============================================
 
-  # Prometheus — metrics collection from msez-api /metrics endpoint
+  # Prometheus — metrics collection from mez-api /metrics endpoint
   prometheus:
     image: prom/prometheus:v2.51.0
-    container_name: msez-prometheus
+    container_name: mez-prometheus
     restart: unless-stopped
     volumes:
       - ./prometheus.yaml:/etc/prometheus/prometheus.yml:ro
@@ -116,9 +116,9 @@ services:
     ports:
       - "9090:9090"
     networks:
-      - msez-internal
+      - mez-internal
     depends_on:
-      - msez-api
+      - mez-api
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -128,7 +128,7 @@ services:
   # Grafana — metrics visualization
   grafana:
     image: grafana/grafana:10.4.1
-    container_name: msez-grafana
+    container_name: mez-grafana
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: admin
@@ -139,7 +139,7 @@ services:
     ports:
       - "3000:3000"
     networks:
-      - msez-internal
+      - mez-internal
     depends_on:
       - prometheus
 
@@ -148,9 +148,9 @@ services:
 # ============================================
 
 networks:
-  msez-internal:
+  mez-internal:
     driver: bridge
-    name: msez-internal
+    name: mez-internal
 
 # ============================================
 # VOLUMES

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/transition.payload.example.transfer.v1.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/transition.payload.example.transfer.v1.schema.json",
   "title": "Example Transfer Transition Payload (v1)",
   "type": "object",
   "required": ["asset_id", "from", "to", "amount", "nonce"],

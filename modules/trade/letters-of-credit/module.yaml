@@ -1,7 +1,7 @@
 # Letters of Credit Module
 # Documentary and standby letter of credit infrastructure
 
-module_id: org.momentum.msez.trade.letters-of-credit
+module_id: org.momentum.mez.trade.letters-of-credit
 version: 0.1.0
 kind: trade
 name: Letters of Credit
@@ -12,7 +12,7 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.trade.letters-of-credit.v1
+  - interface: mez.trade.letters-of-credit.v1
     operations:
       - apply_for_lc
       - issue_lc

@@ -20,5 +20,5 @@ This is the digest model used by:
 Populate (reference tool):
 
 ```bash
-python -m tools.msez artifact index-schemas
+python -m tools.mez artifact index-schemas
 ```

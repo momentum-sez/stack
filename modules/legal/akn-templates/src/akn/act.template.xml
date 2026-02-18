@@ -2,7 +2,7 @@
 <akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
   <act contains="originalVersion">
     <meta>
-      <identification source="#msez">
+      <identification source="#mez">
         <FRBRWork>
           <FRBRthis value="/akn/{{JURISDICTION_NAME}}/act/{{ZONE_NAME}}-enabling/0.1.0"/>
           <FRBRuri value="/akn/{{JURISDICTION_NAME}}/act/{{ZONE_NAME}}-enabling"/>
@@ -22,13 +22,13 @@
           <FRBRauthor href="#{{AUTHORITY_NAME}}"/>
         </FRBRManifestation>
       </identification>
-      <references source="#msez">
+      <references source="#mez">
         <TLCPerson eId="auth_1" href="#{{AUTHORITY_NAME}}" showAs="{{AUTHORITY_NAME}}"/>
       </references>
     </meta>
 
     <preface>
-      <p eId="pre_1">An Act to establish the {{ZONE_NAME}} Special Economic Zone and provide for its governance, regulatory framework, and digital administration.</p>
+      <p eId="pre_1">An Act to establish the {{ZONE_NAME}} Economic Zone and provide for its governance, regulatory framework, and digital administration.</p>
     </preface>
 
     <body>
@@ -68,7 +68,7 @@
         <num>3</num>
         <heading>Designation of the Zone</heading>
         <content>
-          <p eId="sec_3__p_1">The Minister may, by notice, designate an area as a Special Economic Zone and define its boundary, including any digital perimeter for online services.</p>
+          <p eId="sec_3__p_1">The Minister may, by notice, designate an area as a Economic Zone and define its boundary, including any digital perimeter for online services.</p>
         </content>
       </section>
 

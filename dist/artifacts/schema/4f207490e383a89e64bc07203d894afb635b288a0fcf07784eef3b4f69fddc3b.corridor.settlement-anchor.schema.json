@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/corridor.settlement-anchor.schema.json",
-  "title": "MSEZ Cross-Corridor Settlement Anchor",
+  "$id": "https://schemas.momentum-ez.org/mez/corridor.settlement-anchor.schema.json",
+  "title": "MEZ Cross-Corridor Settlement Anchor",
   "description": "Binds an obligation corridor checkpoint/receipt to a settlement corridor checkpoint/receipt, with optional externally-verifiable proof references. This is a core building block for cross-corridor settlement, netting, and corridor-to-corridor finality bridges.\n\nSemantic digest is sha256(signing_input(anchor)) (i.e., sha256(JCS(anchor_without_proof))).",
   "type": "object",
   "required": [
@@ -13,7 +13,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MSEZCrossCorridorSettlementAnchor"
+      "const": "MEZCrossCorridorSettlementAnchor"
     },
     "stack_spec_version": {
       "type": "string"
@@ -25,7 +25,7 @@
     },
     "settlement_id": {
       "type": "string",
-      "description": "Optional operator correlation id (urn:uuid:..., urn:msez:settlement:..., etc.)."
+      "description": "Optional operator correlation id (urn:uuid:..., urn:mez:settlement:..., etc.)."
     },
     "relationship": {
       "type": "string",
@@ -42,7 +42,7 @@
           "type": "string"
         },
         "checkpoint_ref": {
-          "$ref": "https://schemas.momentum-sez.org/msez/corridor.checkpoint.attachment.schema.json"
+          "$ref": "https://schemas.momentum-ez.org/mez/corridor.checkpoint.attachment.schema.json"
         },
         "receipt_next_root": {
           "type": "string",
@@ -60,7 +60,7 @@
           "description": "Optional corridor head commitment digest (non-normative; can be recomputed from receipts)."
         },
         "finality_status_ref": {
-          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+          "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json",
           "description": "Optional ArtifactRef to a finality-status object for this corridor head."
         },
         "notes": {
@@ -80,7 +80,7 @@
           "type": "string"
         },
         "checkpoint_ref": {
-          "$ref": "https://schemas.momentum-sez.org/msez/corridor.checkpoint.attachment.schema.json"
+          "$ref": "https://schemas.momentum-ez.org/mez/corridor.checkpoint.attachment.schema.json"
         },
         "receipt_next_root": {
           "type": "string",
@@ -98,7 +98,7 @@
           "description": "Optional corridor head commitment digest (non-normative; can be recomputed from receipts)."
         },
         "finality_status_ref": {
-          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+          "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json",
           "description": "Optional ArtifactRef to a finality-status object for this corridor head."
         },
         "notes": {
@@ -110,14 +110,14 @@
     "proof_bindings": {
       "type": "array",
       "items": {
-        "$ref": "https://schemas.momentum-sez.org/msez/proof-binding.attachment.schema.json"
+        "$ref": "https://schemas.momentum-ez.org/mez/proof-binding.attachment.schema.json"
       },
       "description": "Optional list of portable proof-binding artifacts that cryptographically bind external proofs to the corridor commitments in this anchor."
     },
     "proofs": {
       "type": "array",
       "items": {
-        "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+        "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
       },
       "description": "Optional raw proof artifact refs (blobs, VCs, PDFs, etc.) for convenience. Prefer proof_bindings when possible."
     },
@@ -132,12 +132,12 @@
       "description": "Optional DataIntegrityProof (JCS + Ed25519) for the anchor object.",
       "oneOf": [
         {
-          "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+          "$ref": "https://schemas.momentum-ez.org/mez/vc.proof.jcs-ed25519.schema.json"
         },
         {
           "type": "array",
           "items": {
-            "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+            "$ref": "https://schemas.momentum-ez.org/mez/vc.proof.jcs-ed25519.schema.json"
           }
         }
       ]

@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.corporate.beneficial-ownership
+module_id: org.momentum.mez.corporate.beneficial-ownership
 version: 0.1.0
 kind: corporate
 license: Apache-2.0
@@ -13,19 +13,19 @@ variants:
   - public-registry
 
 depends_on:
-  - module_id: org.momentum.msez.legal.entity-registry
+  - module_id: org.momentum.mez.legal.entity-registry
     constraint: ">=0.1.0,<1.0.0"
-  - module_id: org.momentum.msez.reg.aml-cft
+  - module_id: org.momentum.mez.reg.aml-cft
     constraint: ">=0.1.0,<1.0.0"
 
 provides:
-  - interface: msez.corporate.ubo.declaration.v1
+  - interface: mez.corporate.ubo.declaration.v1
     path: forms/ubo-declaration.schema.json
     media_type: application/json
-  - interface: msez.corporate.ubo.registry.v1
+  - interface: mez.corporate.ubo.registry.v1
     path: schemas/ubo-registry.schema.json
     media_type: application/json
-  - interface: msez.policy.opa.bundle.v1
+  - interface: mez.policy.opa.bundle.v1
     path: policy/
     media_type: text/plain
 

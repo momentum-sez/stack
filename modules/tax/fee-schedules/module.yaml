@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.tax.fee-schedules
+module_id: org.momentum.mez.tax.fee-schedules
 version: 0.1.0
 kind: tax
 license: Apache-2.0
@@ -12,14 +12,14 @@ variants:
   - enterprise
 
 depends_on:
-  - module_id: org.momentum.msez.legal.core
+  - module_id: org.momentum.mez.legal.core
     constraint: ">=0.1.0,<1.0.0"
 
 provides:
-  - interface: msez.tax.fees.schedule.v1
+  - interface: mez.tax.fees.schedule.v1
     path: schedules/fee-schedule.yaml
     media_type: application/yaml
-  - interface: msez.tax.fees.calculator.v1
+  - interface: mez.tax.fees.calculator.v1
     path: schemas/fee-calculation.schema.json
     media_type: application/json
 

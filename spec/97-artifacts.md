@@ -20,14 +20,14 @@ Stack v0.4.13 applies the same pattern to additional supply-chain surfaces:
 Stack v0.4.14 adds a reference-tool option to make ArtifactRef the *default substrate produced by tooling*:
 
 ```bash
-python -m tools.msez lock --emit-artifactrefs <zone.yaml>
+python -m tools.mez lock --emit-artifactrefs <zone.yaml>
 ```
 
 Stack v0.4.26 adds a **witness bundle** packaging format for artifact closures (manifest + resolved CAS nodes) so verifiers can transfer a minimal, offline-ready closure between environments.
 
 Stack v0.4.28 adds an optional **witness bundle attestation VC** that signs the bundle's `manifest.json` digest (provenance / chain-of-custody) without changing underlying receipt/VC digest commitments.
 
-ArtifactRef schema id: `https://schemas.momentum-sez.org/msez/artifact-ref.schema.json`
+ArtifactRef schema id: `https://schemas.momentum-ez.org/mez/artifact-ref.schema.json`
 
 ## ArtifactRef
 
@@ -88,7 +88,7 @@ Given `(type, digest)`:
 
 The reference implementation is:
 - `tools/artifacts.py`
-- CLI: `python -m tools.msez artifact resolve <type> <digest>`
+- CLI: `python -m tools.mez artifact resolve <type> <digest>`
 
 ## Populating the store
 
@@ -97,31 +97,31 @@ Reference implementation helpers:
 - Populate rulesets:
 
 ```bash
-python -m tools.msez artifact index-rulesets
+python -m tools.mez artifact index-rulesets
 ```
 
 - Populate lawpacks (copies locally built `dist/lawpacks/**/*.lawpack.zip`):
 
 ```bash
-python -m tools.msez artifact index-lawpacks
+python -m tools.mez artifact index-lawpacks
 ```
 
 - Populate JSON Schemas (copies `schemas/**/*.schema.json`):
 
 ```bash
-python -m tools.msez artifact index-schemas
+python -m tools.mez artifact index-schemas
 ```
 
 - Populate VCs (copies common `*.vc.json` files in modules/docs/tests):
 
 ```bash
-python -m tools.msez artifact index-vcs
+python -m tools.mez artifact index-vcs
 ```
 
 - Store any specific artifact:
 
 ```bash
-python -m tools.msez artifact store <type> <digest> <path>
+python -m tools.mez artifact store <type> <digest> <path>
 ```
 
 ## Commitment completeness
@@ -131,7 +131,7 @@ Verifiers MAY choose to enforce that **every digest commitment is resolvable** v
 The reference CLI exposes this as:
 
 ```bash
-python -m tools.msez corridor state verify ... --require-artifacts
+python -m tools.mez corridor state verify ... --require-artifacts
 ```
 
 When enabled, verification fails if any committed digest in receipts cannot be resolved via `dist/artifacts/<type>/<digest>.*` (or configured store roots).
@@ -159,7 +159,7 @@ This CAS convention makes verification and portability straightforward and suppo
 
 For offline / air-gapped verification and transfer between environments, the reference implementation can emit a **witness bundle** that contains:
 
-- `manifest.json`: a full `MSEZArtifactGraphVerifyReport` (closure root, stats, node list, optional edges)
+- `manifest.json`: a full `MEZArtifactGraphVerifyReport` (closure root, stats, node list, optional edges)
 - `artifacts/<type>/<digest>.*`: one file per resolved CAS node
 - `root/*`: when the closure root was a local JSON/YAML file, the root document is included for audit convenience
 - `root/<dirname>/*`: when the closure root was a local directory, structured files (JSON/YAML) under that directory are included for audit convenience
@@ -168,22 +168,22 @@ Create a witness bundle:
 
 ```bash
 # CAS root
-python -m tools.msez artifact graph verify <type> <digest> --bundle /tmp/msez-witness.zip --strict --json
+python -m tools.mez artifact graph verify <type> <digest> --bundle /tmp/mez-witness.zip --strict --json
 
 # Local file root (JSON/YAML)
-python -m tools.msez artifact graph verify --path ./some/root.yaml --bundle /tmp/msez-witness.zip --strict --json
+python -m tools.mez artifact graph verify --path ./some/root.yaml --bundle /tmp/mez-witness.zip --strict --json
 
 # Local directory root (scan structured files for embedded ArtifactRefs)
-python -m tools.msez artifact graph verify --path ./modules/smart-assets/<asset_id> --bundle /tmp/asset-module.witness.zip --strict --json
+python -m tools.mez artifact graph verify --path ./modules/smart-assets/<asset_id> --bundle /tmp/asset-module.witness.zip --strict --json
 
 # Operator UX wrapper (Smart Asset portable audit packet)
-python -m tools.msez asset module witness-bundle ./modules/smart-assets/<asset_id> --out /tmp/asset-module.witness.zip --json
+python -m tools.mez asset module witness-bundle ./modules/smart-assets/<asset_id> --out /tmp/asset-module.witness.zip --json
 ```
 
 Verify using a witness bundle as an offline CAS root:
 
 ```bash
-python -m tools.msez artifact graph verify --from-bundle /tmp/msez-witness.zip --strict --json
+python -m tools.mez artifact graph verify --from-bundle /tmp/mez-witness.zip --strict --json
 ```
 
 ### Witness bundle attestation
@@ -191,8 +191,8 @@ python -m tools.msez artifact graph verify --from-bundle /tmp/msez-witness.zip -
 Bundles are *witnesses*, not authorities. To make "who assembled this closure" explicit, v0.4.28 adds a provenance VC that commits to the bundle's `manifest.json` via `SHA256(JCS(manifest.json))`:
 
 ```bash
-python -m tools.msez artifact bundle attest /tmp/msez-witness.zip --issuer did:key:... --sign --key /path/to/ed25519.jwk
-python -m tools.msez artifact bundle verify /tmp/msez-witness.zip --vc /tmp/msez-witness.attestation.vc.json
+python -m tools.mez artifact bundle attest /tmp/mez-witness.zip --issuer did:key:... --sign --key /path/to/ed25519.jwk
+python -m tools.mez artifact bundle verify /tmp/mez-witness.zip --vc /tmp/mez-witness.attestation.vc.json
 ```
 
 This VC is optional but enables:

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/smart-asset.genesis.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/smart-asset.genesis.schema.json",
   "title": "Smart Asset Genesis Document",
   "description": "Immutable genesis document for a Smart Asset. The asset_id is the sha256 digest of the JCS-canonicalized genesis JSON, computed with any top-level asset_id field omitted (derived field).",
   "type": "object",

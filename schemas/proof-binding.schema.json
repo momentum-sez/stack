@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/proof-binding.schema.json",
-  "title": "MSEZ Proof Binding",
+  "$id": "https://schemas.momentum-ez.org/mez/proof-binding.schema.json",
+  "title": "MEZ Proof Binding",
   "description": "Binds an external proof artifact (blob/VC/etc.) to one or more commitment digests in a replay-resistant way. Semantic digest is sha256(signing_input(binding)) (i.e., sha256(JCS(binding_without_proof))).",
   "type": "object",
   "required": [
@@ -14,7 +14,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MSEZProofBinding"
+      "const": "MEZProofBinding"
     },
     "stack_spec_version": {
       "type": "string"
@@ -33,7 +33,7 @@
       "description": "Short binding purpose string (e.g., settlement.confirmation.v1, netting.proof.v1)."
     },
     "proof_ref": {
-      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
     },
     "commitments": {
       "type": "array",
@@ -86,12 +86,12 @@
       "description": "Optional DataIntegrityProof (JCS + Ed25519) for the binding object.",
       "oneOf": [
         {
-          "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+          "$ref": "https://schemas.momentum-ez.org/mez/vc.proof.jcs-ed25519.schema.json"
         },
         {
           "type": "array",
           "items": {
-            "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+            "$ref": "https://schemas.momentum-ez.org/mez/vc.proof.jcs-ed25519.schema.json"
           }
         }
       ]

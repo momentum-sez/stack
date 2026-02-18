@@ -39,7 +39,7 @@ Each `lawpacks[]` entry MUST include, at minimum:
 Tooling MAY emit ArtifactRefs by default. The reference tool supports:
 
 ```bash
-msez lock --emit-artifactrefs <zone.yaml>
+mez lock --emit-artifactrefs <zone.yaml>
 ```
 
 (v0.4.14+)

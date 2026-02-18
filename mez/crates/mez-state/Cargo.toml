@@ -1,0 +1,16 @@
+[package]
+name = "mez-state"
+description = "Typestate-encoded state machines for the EZ Stack: corridor lifecycle, migration saga, entity lifecycle (10-stage dissolution), license lifecycle, and watcher bonding."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+mez-core = { workspace = true }
+serde = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

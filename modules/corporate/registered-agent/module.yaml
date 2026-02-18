@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.corporate.registered-agent
+module_id: org.momentum.mez.corporate.registered-agent
 version: 0.1.0
 kind: corporate
 license: Apache-2.0
@@ -12,19 +12,19 @@ variants:
   - premium-service
 
 depends_on:
-  - module_id: org.momentum.msez.lic.csp
+  - module_id: org.momentum.mez.lic.csp
     constraint: ">=0.1.0,<1.0.0"
-  - module_id: org.momentum.msez.legal.entity-registry
+  - module_id: org.momentum.mez.legal.entity-registry
     constraint: ">=0.1.0,<1.0.0"
 
 provides:
-  - interface: msez.corporate.registered-agent.appointment.v1
+  - interface: mez.corporate.registered-agent.appointment.v1
     path: forms/agent-appointment.schema.json
     media_type: application/json
-  - interface: msez.corporate.registered-agent.services.v1
+  - interface: mez.corporate.registered-agent.services.v1
     path: templates/service-agreement.yaml
     media_type: application/yaml
-  - interface: msez.policy.opa.bundle.v1
+  - interface: mez.policy.opa.bundle.v1
     path: policy/
     media_type: text/plain
 

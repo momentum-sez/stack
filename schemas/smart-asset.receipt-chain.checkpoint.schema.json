@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/smart-asset.receipt-chain.checkpoint.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/smart-asset.receipt-chain.checkpoint.schema.json",
   "title": "Smart Asset Receipt Chain Checkpoint",
   "description": "Signed checkpoint for an asset-local receipt chain. The checkpoint commits to an MMR root over receipt next_root values (leaf = receipt.next_root), enabling compact inclusion proofs for audits and regulation without requiring a blockchain.",
   "type": "object",
@@ -57,7 +57,7 @@
           {
             "allOf": [
               {
-                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
               },
               {
                 "properties": {
@@ -87,7 +87,7 @@
           {
             "allOf": [
               {
-                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
               },
               {
                 "properties": {
@@ -111,11 +111,11 @@
       "description": "Optional business/state commitment for the asset as of this checkpoint (e.g., SmartAssetCheckpoint.state_root_sha256)."
     },
     "state_checkpoint_ref": {
-      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+      "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json",
       "description": "Optional ArtifactRef pointing to the SmartAssetCheckpoint artifact whose digest matches state_root_sha256."
     },
     "registry_ref": {
-      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+      "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json",
       "description": "Optional ArtifactRef pointing to the active Smart Asset Registry VC used for authorization/compliance at this checkpoint."
     },
     "mmr": {
@@ -128,7 +128,7 @@
       ],
       "properties": {
         "type": {
-          "const": "MSEZReceiptMMR"
+          "const": "MEZReceiptMMR"
         },
         "algorithm": {
           "const": "sha256"
@@ -178,12 +178,12 @@
       "description": "One or more cryptographic proofs over the checkpoint payload (excluding the proof field).",
       "oneOf": [
         {
-          "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+          "$ref": "https://schemas.momentum-ez.org/mez/vc.proof.jcs-ed25519.schema.json"
         },
         {
           "type": "array",
           "items": {
-            "$ref": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json"
+            "$ref": "https://schemas.momentum-ez.org/mez/vc.proof.jcs-ed25519.schema.json"
           }
         }
       ]

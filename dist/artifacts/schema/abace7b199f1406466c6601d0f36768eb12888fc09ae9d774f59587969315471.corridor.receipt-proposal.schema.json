@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/corridor.receipt-proposal.schema.json",
-  "title": "MSEZ Corridor Receipt Proposal",
+  "$id": "https://schemas.momentum-ez.org/mez/corridor.receipt-proposal.schema.json",
+  "title": "MEZ Corridor Receipt Proposal",
   "description": "An unsigned proposal for a corridor state receipt. Used to negotiate the next transition before co-signing a receipt. Proposals are non-normative artifacts; verifiers SHOULD treat receipts as authoritative.",
   "type": "object",
   "required": [
@@ -17,7 +17,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MSEZCorridorReceiptProposal"
+      "const": "MEZCorridorReceiptProposal"
     },
     "proposal_id": {
       "type": "string"
@@ -48,7 +48,7 @@
     "computed_next_root": {
       "type": "string",
       "pattern": "^[a-f0-9]{64}$",
-      "description": "The next_root that would result if this proposal were materialized into an MSEZCorridorStateReceipt (excluding proof)."
+      "description": "The next_root that would result if this proposal were materialized into an MEZCorridorStateReceipt (excluding proof)."
     },
     "transition_type_registry_digest_sha256": {
       "type": "string",
@@ -69,7 +69,7 @@
       }
     },
     "transition": {
-      "$ref": "https://schemas.momentum-sez.org/msez/transition-envelope.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/transition-envelope.schema.json"
     },
     "notes": {
       "type": "string"

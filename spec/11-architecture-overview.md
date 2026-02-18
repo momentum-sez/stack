@@ -1,6 +1,6 @@
 # Architecture overview
 
-The MSEZ Stack is a layered system. Deployments SHOULD implement all layers relevant to their target profile.
+The MEZ Stack is a layered system. Deployments SHOULD implement all layers relevant to their target profile.
 
 ## Layer A — Enabling Authority (public law)
 

@@ -1,6 +1,6 @@
 # Example keys (development only)
 
-These keys are **development fixtures** for demonstrating the `msez vc sign/verify` commands.
+These keys are **development fixtures** for demonstrating the `mez vc sign/verify` commands.
 
 - DO NOT use these keys in production.
 - Real deployments MUST generate their own keys, publish trust anchors, and rotate keys per corridor policy.

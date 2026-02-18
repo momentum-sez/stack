@@ -1,188 +1,188 @@
 # Module Registry (human-friendly index)
 # In a mature system this becomes machine-readable and signed.
 
-- module_id: org.momentum.msez.legal.core
+- module_id: org.momentum.mez.legal.core
   latest: 0.1.0
-- module_id: org.momentum.msez.reg.aml-cft
+- module_id: org.momentum.mez.reg.aml-cft
   latest: 0.1.0
-- module_id: org.momentum.msez.fin.payments-adapter
+- module_id: org.momentum.mez.fin.payments-adapter
   latest: 0.1.0
-- module_id: org.momentum.msez.corridor.swift
-  latest: 0.1.0
-
-- module_id: org.momentum.msez.legal.akn-templates
+- module_id: org.momentum.mez.corridor.swift
   latest: 0.1.0
 
-- module_id: org.momentum.msez.lic.csp
+- module_id: org.momentum.mez.legal.akn-templates
   latest: 0.1.0
 
-- module_id: org.momentum.msez.lic.emi
+- module_id: org.momentum.mez.lic.csp
   latest: 0.1.0
 
-- module_id: org.momentum.msez.lic.casp
+- module_id: org.momentum.mez.lic.emi
   latest: 0.1.0
 
-- module_id: org.momentum.msez.lic.custody
+- module_id: org.momentum.mez.lic.casp
   latest: 0.1.0
 
-- module_id: org.momentum.msez.lic.token-issuer
+- module_id: org.momentum.mez.lic.custody
   latest: 0.1.0
 
-- module_id: org.momentum.msez.corridor.stablecoin
+- module_id: org.momentum.mez.lic.token-issuer
   latest: 0.1.0
 
-- module_id: org.momentum.msez.corridor.openbanking
+- module_id: org.momentum.mez.corridor.stablecoin
   latest: 0.1.0
 
-- module_id: org.momentum.msez.ops.regulator-console
+- module_id: org.momentum.mez.corridor.openbanking
   latest: 0.1.0
 
-- module_id: org.momentum.msez.ops.data-classification
+- module_id: org.momentum.mez.ops.regulator-console
   latest: 0.1.0
 
-- module_id: org.momentum.msez.legal.enabling-act
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.legal.authority-charter
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.legal.admin-procedure
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.legal.civil-code
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.legal.commercial-code
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.legal.dispute-resolution
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.legal.entity-registry
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.legal.land-registry
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.legal.security-interests
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.reg.sanctions
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.reg.data-protection
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.reg.cybersecurity
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.reg.market-conduct
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.reg.consumer-protection
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.reg.anti-corruption
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.reg.fin-supervision
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.fin.banking-adapter
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.fin.settlement-adapter
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.fin.domestic-payments
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.fin.domestic-banking
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.fin.cards
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.fin.open-banking
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.fin.safeguarding
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.fin.treasury
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.fin.fx
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.lic.exchange
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.lic.fund-admin
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.lic.trust-company
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.lic.bank-sponsor
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.lic.psp-acquirer
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.lic.card-program-manager
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.corridor.correspondent
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.corridor.passporting
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.ops.audit-logging
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.ops.incident-response
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.ops.attestation-analytics
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.ops.transparency-dashboard
-  latest: 0.2.0
-
-- module_id: org.momentum.msez.governance.core
+- module_id: org.momentum.mez.ops.data-classification
   latest: 0.1.0
 
-- module_id: org.momentum.msez.governance.binary-voting
+- module_id: org.momentum.mez.legal.enabling-act
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.legal.authority-charter
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.legal.admin-procedure
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.legal.civil-code
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.legal.commercial-code
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.legal.dispute-resolution
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.legal.entity-registry
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.legal.land-registry
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.legal.security-interests
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.reg.sanctions
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.reg.data-protection
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.reg.cybersecurity
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.reg.market-conduct
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.reg.consumer-protection
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.reg.anti-corruption
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.reg.fin-supervision
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.fin.banking-adapter
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.fin.settlement-adapter
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.fin.domestic-payments
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.fin.domestic-banking
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.fin.cards
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.fin.open-banking
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.fin.safeguarding
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.fin.treasury
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.fin.fx
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.lic.exchange
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.lic.fund-admin
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.lic.trust-company
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.lic.bank-sponsor
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.lic.psp-acquirer
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.lic.card-program-manager
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.corridor.correspondent
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.corridor.passporting
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.ops.audit-logging
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.ops.incident-response
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.ops.attestation-analytics
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.ops.transparency-dashboard
+  latest: 0.2.0
+
+- module_id: org.momentum.mez.governance.core
   latest: 0.1.0
 
-- module_id: org.momentum.msez.governance.ranked-choice
+- module_id: org.momentum.mez.governance.binary-voting
   latest: 0.1.0
 
-- module_id: org.momentum.msez.governance.approval-voting
+- module_id: org.momentum.mez.governance.ranked-choice
   latest: 0.1.0
 
-- module_id: org.momentum.msez.governance.score-voting
+- module_id: org.momentum.mez.governance.approval-voting
   latest: 0.1.0
 
-- module_id: org.momentum.msez.governance.quadratic-voting
+- module_id: org.momentum.mez.governance.score-voting
   latest: 0.1.0
 
-- module_id: org.momentum.msez.governance.quadratic-funding
+- module_id: org.momentum.mez.governance.quadratic-voting
   latest: 0.1.0
 
-- module_id: org.momentum.msez.governance.liquid-democracy
+- module_id: org.momentum.mez.governance.quadratic-funding
   latest: 0.1.0
 
-- module_id: org.momentum.msez.governance.zk-participation
+- module_id: org.momentum.mez.governance.liquid-democracy
   latest: 0.1.0
 
-- module_id: org.momentum.msez.ops.deployment-telemetry
+- module_id: org.momentum.mez.governance.zk-participation
   latest: 0.1.0
 
-- module_id: org.momentum.msez.ops.success-metric-registry
+- module_id: org.momentum.mez.ops.deployment-telemetry
   latest: 0.1.0
 
-- module_id: org.momentum.msez.ops.ab-testing-framework
+- module_id: org.momentum.mez.ops.success-metric-registry
+  latest: 0.1.0
+
+- module_id: org.momentum.mez.ops.ab-testing-framework
   latest: 0.1.0

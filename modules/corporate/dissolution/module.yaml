@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.corporate.dissolution
+module_id: org.momentum.mez.corporate.dissolution
 version: 0.1.0
 kind: corporate
 license: Apache-2.0
@@ -12,24 +12,24 @@ variants:
   - court-supervised
 
 depends_on:
-  - module_id: org.momentum.msez.legal.entity-registry
+  - module_id: org.momentum.mez.legal.entity-registry
     constraint: ">=0.1.0,<1.0.0"
-  - module_id: org.momentum.msez.corporate.secretarial
+  - module_id: org.momentum.mez.corporate.secretarial
     constraint: ">=0.1.0,<1.0.0"
-  - module_id: org.momentum.msez.corporate.annual-compliance
+  - module_id: org.momentum.mez.corporate.annual-compliance
     constraint: ">=0.1.0,<1.0.0"
 
 provides:
-  - interface: msez.corporate.dissolution.voluntary.v1
+  - interface: mez.corporate.dissolution.voluntary.v1
     path: workflows/voluntary-dissolution.yaml
     media_type: application/yaml
-  - interface: msez.corporate.dissolution.involuntary.v1
+  - interface: mez.corporate.dissolution.involuntary.v1
     path: workflows/involuntary-dissolution.yaml
     media_type: application/yaml
-  - interface: msez.corporate.dissolution.forms.v1
+  - interface: mez.corporate.dissolution.forms.v1
     path: forms/
     media_type: application/json
-  - interface: msez.policy.opa.bundle.v1
+  - interface: mez.policy.opa.bundle.v1
     path: policy/
     media_type: text/plain
 

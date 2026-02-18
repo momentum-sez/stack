@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/watcher-compare-result.schema.json",
-  "title": "MSEZ Watcher Compare Result",
-  "description": "Machine-readable output shape for `msez corridor state watcher-compare`. A verifier can use this object to detect fork-like divergences and to evaluate watcher quorum policies without transporting corridor receipts.",
+  "$id": "https://schemas.momentum-ez.org/mez/watcher-compare-result.schema.json",
+  "title": "MEZ Watcher Compare Result",
+  "description": "Machine-readable output shape for `mez corridor state watcher-compare`. A verifier can use this object to detect fork-like divergences and to evaluate watcher quorum policies without transporting corridor receipts.",
   "type": "object",
   "required": [
     "type",
@@ -14,7 +14,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MSEZWatcherCompareResult"
+      "const": "MEZWatcherCompareResult"
     },
     "corridor_id": {
       "type": "string",

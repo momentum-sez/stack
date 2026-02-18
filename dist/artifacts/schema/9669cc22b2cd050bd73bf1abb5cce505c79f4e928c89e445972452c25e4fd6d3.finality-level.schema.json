@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/finality-level.schema.json",
-  "title": "MSEZ Finality Level",
+  "$id": "https://schemas.momentum-ez.org/mez/finality-level.schema.json",
+  "title": "MEZ Finality Level",
   "description": "Enumerated finality semantics for corridor state channels. Used by watchers, checkpoints, external anchors, and legal recognition layers to converge on interoperable state assurance language.",
   "type": "string",
   "enum": [

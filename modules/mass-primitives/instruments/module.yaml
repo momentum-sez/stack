@@ -1,7 +1,7 @@
 # MASS Instruments Primitive
 # Financial and legal instruments
 
-module_id: org.momentum.msez.mass-primitives.instruments
+module_id: org.momentum.mez.mass-primitives.instruments
 version: 0.1.0
 kind: protocol
 name: MASS Instruments Primitive
@@ -12,11 +12,11 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.mass.instruments.debt.v1
+  - interface: mez.mass.instruments.debt.v1
     description: Debt instruments (bonds, loans, notes)
-  - interface: msez.mass.instruments.equity.v1
+  - interface: mez.mass.instruments.equity.v1
     description: Equity instruments (shares, units)
-  - interface: msez.mass.instruments.derivative.v1
+  - interface: mez.mass.instruments.derivative.v1
     description: Derivative instruments (options, futures, swaps)
 
 instrument_types:

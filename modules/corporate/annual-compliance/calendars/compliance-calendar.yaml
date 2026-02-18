@@ -1,7 +1,7 @@
 # Corporate Compliance Calendar Template
 # Defines standard filing obligations and deadlines
 
-calendar_id: msez.corporate.annual-compliance.calendar.v1
+calendar_id: mez.corporate.annual-compliance.calendar.v1
 calendar_version: "1.0"
 
 description: |

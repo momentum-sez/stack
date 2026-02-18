@@ -25,7 +25,7 @@ The **lawpack digest** binds operations to an immutable text snapshot. However, 
 To reduce the “legal‑cryptographic gap”, v0.4.14 introduces a standardized, optional VC:
 
 - `schemas/vc.lawpack-attestation.schema.json`
-- Credential type: `MSEZLawpackAttestationCredential`
+- Credential type: `MEZLawpackAttestationCredential`
 
 An attestation SHOULD, at minimum:
 - Identify `jurisdiction_id`, `domain`, and `as_of_date`
@@ -33,8 +33,8 @@ An attestation SHOULD, at minimum:
 - Provide a clear statement of the legal status (enacted / consolidated / partial / superseded) and evidence references
 
 Reference tooling:
-- `msez law attest-init` produces a VC skeleton for signing.
-- `msez vc verify` can validate signatures for offline verification.
+- `mez law attest-init` produces a VC skeleton for signing.
+- `mez vc verify` can validate signatures for offline verification.
 
 Corridor verifiers MAY require lawpack attestations as a policy decision (e.g., for high-stakes corridors), while still allowing experimental or private deployments without them.
 
@@ -45,7 +45,7 @@ In addition to *legal validity* attestations, corridors benefit from a lightweig
 v0.4.15 introduces an optional VC for this purpose:
 
 - `schemas/vc.artifact-availability.schema.json`
-- Credential type: `MSEZArtifactAvailabilityCredential`
+- Credential type: `MEZArtifactAvailabilityCredential`
 
 Typical uses:
 
@@ -55,8 +55,8 @@ Typical uses:
 
 Reference tooling:
 
-- `msez corridor availability-attest` creates an unsigned (or optionally signed) availability VC for a corridor.
-- `msez corridor availability-verify` checks a directory/file of availability VCs against a corridor’s expected lawpack digest set.
+- `mez corridor availability-attest` creates an unsigned (or optionally signed) availability VC for a corridor.
+- `mez corridor availability-verify` checks a directory/file of availability VCs against a corridor’s expected lawpack digest set.
 
 Availability attestations do **not** replace content addressing or proofs; they are an operational commitment that can be monitored and enforced by policy.
 
@@ -86,7 +86,7 @@ lawpack.zip
 - `license` — SPDX identifier (or `NOASSERTION`)
 - `normalization` — the deterministic recipe used to convert sources → Akoma Ntoso
 
-The reference schema is `schemas/lawpack.schema.json` via interface `msez.lawpack.metadata.v1`.
+The reference schema is `schemas/lawpack.schema.json` via interface `mez.lawpack.metadata.v1`.
 
 ### akn/
 
@@ -160,7 +160,7 @@ v0.4.1 defines the digest as:
 
 ```
 SHA256(
-  "msez-lawpack-v1\0" ||
+  "mez-lawpack-v1\0" ||
   Σ(sorted(path) ( path || "\0" || canonical_bytes(path) || "\0" ))
 )
 ```
@@ -184,14 +184,14 @@ This file includes:
 - component digests (metadata, index, AKN documents),
 - provenance (sources manifest and normalization parameters).
 
-The reference schema is `schemas/lawpack.lock.schema.json` via interface `msez.lawpack.lock.v1`.
+The reference schema is `schemas/lawpack.lock.schema.json` via interface `mez.lawpack.lock.v1`.
 
 ## Ingestion pipeline
 
 The reference CLI is:
 
 ```bash
-python -m tools.msez law ingest modules/legal/jurisdictions/us/ca/civil \
+python -m tools.mez law ingest modules/legal/jurisdictions/us/ca/civil \
   --as-of-date 2025-01-01 \
   --fetch
 ```
@@ -225,7 +225,7 @@ Zones may optionally provide:
 - `jurisdiction_stack`: a list of governing layers (e.g., `["ae", "ae-dubai", "ae-dubai-difc"]`)
 - `lawpack_domains`: list of domains to pin (defaults: `["civil", "financial"]`)
 
-The lock generator (`msez lock`) emits `lawpacks` pins by discovering:
+The lock generator (`mez lock`) emits `lawpacks` pins by discovering:
 - expected modules at `modules/legal/jurisdictions/<jurisdiction_id path>/<domain>/lawpack.lock.json`
 
 ## Corridor binding
@@ -269,7 +269,7 @@ Participant-specific Corridor Agreement VCs (`schemas/vc.corridor-agreement.sche
 
 Each authority **signs** its pinned lawpack digests as part of its agreement VC payload.
 
-Verification rules (`msez.corridor.verification.v1`) enforce:
+Verification rules (`mez.corridor.verification.v1`) enforce:
 - domain coverage (when `required_domains` is present),
 - digest allowlists (when provided in definition VC).
 
@@ -280,7 +280,7 @@ Verification rules (`msez.corridor.verification.v1`) enforce:
 Reference CLI:
 
 ```bash
-msez law ingest modules/legal/jurisdictions/<jid>/<domain> \
+mez law ingest modules/legal/jurisdictions/<jid>/<domain> \
   --as-of-date YYYY-MM-DD \
   --out-dir dist/lawpacks
 ```
@@ -291,10 +291,10 @@ Optional flags:
 
 ### Strict and CI check mode
 
-`msez law ingest` supports deterministic “check mode” for CI:
+`mez law ingest` supports deterministic “check mode” for CI:
 
 ```bash
-msez law ingest <module_dir> --as-of-date YYYY-MM-DD --check
+mez law ingest <module_dir> --as-of-date YYYY-MM-DD --check
 ```
 
 Semantics:

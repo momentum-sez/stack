@@ -1,6 +1,6 @@
 # Performance
 
-This document describes the performance characteristics of the MSEZ Stack,
+This document describes the performance characteristics of the MEZ Stack,
 covering the Rust workspace, cryptographic primitives, API server, Python
 PHOENIX layer, and the performance test harness.
 
@@ -8,7 +8,7 @@ PHOENIX layer, and the performance test harness.
 
 ## Overview
 
-The MSEZ Stack is a dual-language system designed for sovereign digital
+The MEZ Stack is a dual-language system designed for sovereign digital
 infrastructure at nation-state scale. The Rust workspace provides the
 production runtime -- compiled binaries with no garbage collector, zero-cost
 abstractions, and type-level enforcement of correctness invariants. The Python
@@ -29,20 +29,20 @@ The workspace comprises 14 crates organized by domain responsibility:
 
 | Crate | Role |
 |-------|------|
-| `msez-core` | Canonical serialization, content digests, compliance domains, domain-primitive newtypes |
-| `msez-crypto` | Ed25519, MMR, CAS, SHA-256 digest computation |
-| `msez-vc` | Verifiable Credential issuance and verification |
-| `msez-state` | Entity and corridor state machines |
-| `msez-tensor` | Compliance tensor (multi-domain evaluation) |
-| `msez-zkp` | Zero-knowledge proof types (Phase 2 stubs) |
-| `msez-pack` | Lawpack and regpack compilation |
-| `msez-corridor` | Corridor lifecycle, receipt chains, fork resolution |
-| `msez-agentic` | Agentic policy engine |
-| `msez-arbitration` | Dispute lifecycle management |
-| `msez-schema` | JSON Schema validation utilities |
-| `msez-api` | Axum HTTP API server |
-| `msez-cli` | CLI binary (replaces Python `tools/msez.py` monolith) |
-| `msez-integration-tests` | Cross-crate integration tests |
+| `mez-core` | Canonical serialization, content digests, compliance domains, domain-primitive newtypes |
+| `mez-crypto` | Ed25519, MMR, CAS, SHA-256 digest computation |
+| `mez-vc` | Verifiable Credential issuance and verification |
+| `mez-state` | Entity and corridor state machines |
+| `mez-tensor` | Compliance tensor (multi-domain evaluation) |
+| `mez-zkp` | Zero-knowledge proof types (Phase 2 stubs) |
+| `mez-pack` | Lawpack and regpack compilation |
+| `mez-corridor` | Corridor lifecycle, receipt chains, fork resolution |
+| `mez-agentic` | Agentic policy engine |
+| `mez-arbitration` | Dispute lifecycle management |
+| `mez-schema` | JSON Schema validation utilities |
+| `mez-api` | Axum HTTP API server |
+| `mez-cli` | CLI binary (replaces Python `tools/mez.py` monolith) |
+| `mez-integration-tests` | Cross-crate integration tests |
 
 ### Build Characteristics
 
@@ -59,7 +59,7 @@ of 1.75 and the v2 dependency resolver. A full workspace build compiles all
 - **proptest** for property-based testing
 
 Incremental builds during development benefit from Cargo's crate-level
-compilation caching -- changing a leaf crate like `msez-tensor` does not
+compilation caching -- changing a leaf crate like `mez-tensor` does not
 trigger recompilation of unrelated crates.
 
 ### Test Execution
@@ -69,7 +69,7 @@ unit tests, integration tests, and property-based tests via proptest. The
 full test suite is designed to complete in under 10 seconds on modern
 hardware, enabling rapid iteration during development.
 
-Property-based tests in `msez-core` verify structural invariants of the
+Property-based tests in `mez-core` verify structural invariants of the
 canonicalization pipeline (determinism, idempotency, key sorting, float
 rejection, UTF-8 validity, and data round-trip preservation) across
 randomly generated inputs.
@@ -78,9 +78,9 @@ randomly generated inputs.
 
 The workspace produces two binaries:
 
-- **`msez-api`** -- the Axum HTTP server serving the five programmable
-  primitives API. Compiled from `msez/crates/msez-api/src/main.rs`.
-- **`msez`** (from `msez-cli`) -- the CLI tool for zone validation, lockfile
+- **`mez-api`** -- the Axum HTTP server serving the five programmable
+  primitives API. Compiled from `mez/crates/mez-api/src/main.rs`.
+- **`mez`** (from `mez-cli`) -- the CLI tool for zone validation, lockfile
   generation, corridor management, CAS operations, and Ed25519/VC signing.
 
 Both binaries are statically linked Rust executables with no runtime
@@ -91,7 +91,7 @@ GC pause latency entirely.
 ### Memory Safety
 
 Rust's ownership and borrowing system provides memory safety without runtime
-overhead. The MSEZ Stack makes extensive use of:
+overhead. The MEZ Stack makes extensive use of:
 
 - **Newtype wrappers** (`CanonicalBytes`, `ContentDigest`, `Ed25519Signature`)
   that enforce correctness invariants at the type level. For example,
@@ -152,7 +152,7 @@ the same signature, which simplifies testing and audit.
 
 ### Merkle Mountain Range Operations
 
-The MMR implementation (`msez-crypto/src/mmr.rs`) supports:
+The MMR implementation (`mez-crypto/src/mmr.rs`) supports:
 
 - **Append** -- O(log n) per leaf insertion, with peak merging
 - **Root computation** -- O(k) where k is the number of peaks (bounded by
@@ -193,7 +193,7 @@ in front of the CAS.
 
 ## API Server
 
-The `msez-api` crate implements an Axum HTTP server with the following
+The `mez-api` crate implements an Axum HTTP server with the following
 architecture:
 
 ### Async I/O with Tokio Runtime
@@ -294,10 +294,10 @@ comparison scaling:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MSEZ_RUN_PERF` | (unset) | Set to `1` to enable performance tests |
-| `MSEZ_PERF_RECEIPTS` | `10000` | Number of receipts to verify in the chain test |
-| `MSEZ_PERF_WATCHERS` | `100` | Number of watcher attestations to compare |
-| `MSEZ_PERF_BUDGET_MS` | (unset) | Optional hard time budget in milliseconds; test fails if exceeded |
+| `MEZ_RUN_PERF` | (unset) | Set to `1` to enable performance tests |
+| `MEZ_PERF_RECEIPTS` | `10000` | Number of receipts to verify in the chain test |
+| `MEZ_PERF_WATCHERS` | `100` | Number of watcher attestations to compare |
+| `MEZ_PERF_BUDGET_MS` | (unset) | Optional hard time budget in milliseconds; test fails if exceeded |
 
 ---
 
@@ -307,10 +307,10 @@ comparison scaling:
 
 ```bash
 # Run all workspace tests (typically completes in under 10 seconds)
-cd msez && cargo test --workspace
+cd mez && cargo test --workspace
 
 # Run tests for a specific crate
-cargo test -p msez-crypto
+cargo test -p mez-crypto
 
 # Run tests with output (for debugging)
 cargo test --workspace -- --nocapture
@@ -325,16 +325,16 @@ Enable and run the performance test harness:
 
 ```bash
 # Run all perf tests with default workload sizes
-MSEZ_RUN_PERF=1 pytest -q tests/perf/
+MEZ_RUN_PERF=1 pytest -q tests/perf/
 
 # Receipt chain verification with 100,000 receipts
-MSEZ_RUN_PERF=1 MSEZ_PERF_RECEIPTS=100000 pytest -q -k receipt_chain_verification_time -s
+MEZ_RUN_PERF=1 MEZ_PERF_RECEIPTS=100000 pytest -q -k receipt_chain_verification_time -s
 
 # Watcher comparison with 500 attestations
-MSEZ_RUN_PERF=1 MSEZ_PERF_WATCHERS=500 pytest -q -k watcher_compare_scaling -s
+MEZ_RUN_PERF=1 MEZ_PERF_WATCHERS=500 pytest -q -k watcher_compare_scaling -s
 
 # With a hard time budget (fail if verification exceeds 5 seconds)
-MSEZ_RUN_PERF=1 MSEZ_PERF_BUDGET_MS=5000 pytest -q -k receipt_chain_verification_time -s
+MEZ_RUN_PERF=1 MEZ_PERF_BUDGET_MS=5000 pytest -q -k receipt_chain_verification_time -s
 ```
 
 ### Stable Benchmarking

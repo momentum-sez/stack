@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.ops.deployment-telemetry
+module_id: org.momentum.mez.ops.deployment-telemetry
 version: 0.1.0
 kind: operational
 license: Apache-2.0
@@ -7,10 +7,10 @@ variants:
 - baseline
 depends_on: []
 provides:
-- interface: msez.ops.telemetry-event.v1
+- interface: mez.ops.telemetry-event.v1
   path: schemas/telemetry-event.schema.json
   media_type: application/json
-- interface: msez.ops.docs.telemetry.v1
+- interface: mez.ops.docs.telemetry.v1
   path: docs/overview.md
   media_type: text/markdown
 parameters: {}

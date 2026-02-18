@@ -237,7 +237,7 @@ Use composite sort key `(-priority, party_id)` for deterministic ordering.
 **Category:** Schema coverage
 
 **Description:**
-Trade playbook generator created `MSEZCorridorAgreement` objects but no
+Trade playbook generator created `MEZCorridorAgreement` objects but no
 schema existed for validation.
 
 **Root Cause:**

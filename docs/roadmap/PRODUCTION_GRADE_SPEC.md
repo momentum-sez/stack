@@ -1,6 +1,6 @@
 # Production-grade evolution spec
 
-This document is a forward-looking spec for evolving the Momentum SEZ Stack (MSEZ) from a reference implementation into a production-grade system.
+This document is a forward-looking spec for evolving the Momentum EZ Stack (MEZ) from a reference implementation into a production-grade system.
 
 It is written to be **predictive** (anticipates failure modes and scaling constraints), **roadmap-generative** (breaks work into shippable increments), and consistent with the stack’s philosophy: **least resistance + true generality**.
 
@@ -104,7 +104,7 @@ Deliverables
 - `modules/smart-assets/<asset_id>/` template
   - `asset.yaml` (asset_id, purpose(s), trust-anchors path, optional defaults)
   - `state/receipts/`, `state/checkpoints/`, `state/proofs/`
-- CLI: allow `msez asset state ... modules/smart-assets/<asset_id>` (like corridors)
+- CLI: allow `mez asset state ... modules/smart-assets/<asset_id>` (like corridors)
 - Docs/examples: end-to-end directory example
 
 ### v0.4.33 — Smart asset fork resolution credential
@@ -114,10 +114,10 @@ Deliverables
 Deliverables
 
 - `smart-asset.fork-resolution.schema.json` (+ VC wrapper schema)
-- CLI: `msez asset state fork-resolve` (alias: `fork-resolution-init`)
-  - `msez asset state verify --fork-resolutions ...`
-  - `msez asset state checkpoint --fork-resolutions ...`
-  - `msez asset state inclusion-proof --fork-resolutions ...`
+- CLI: `mez asset state fork-resolve` (alias: `fork-resolution-init`)
+  - `mez asset state verify --fork-resolutions ...`
+  - `mez asset state checkpoint --fork-resolutions ...`
+  - `mez asset state inclusion-proof --fork-resolutions ...`
 - Deterministic chain selection algorithm (match corridor semantics where possible)
 - Asset module template includes `state/fork-resolutions/`
 - Tests: forked asset receipt chain resolved via fork-resolution VC
@@ -129,8 +129,8 @@ Deliverables
 Deliverables
 
 - Typed attachment schema for `SmartAssetReceiptChainCheckpoint` attachment
-- CLI: `msez corridor state receipt-init --attach-smart-asset-receipt-checkpoint ...`
-- Verify: `msez asset anchor-verify` extended to accept chain checkpoints + inclusion proofs
+- CLI: `mez corridor state receipt-init --attach-smart-asset-receipt-checkpoint ...`
+- Verify: `mez asset anchor-verify` extended to accept chain checkpoints + inclusion proofs
 
 ### v0.4.35 — Witness bundle for asset histories
 
@@ -139,8 +139,8 @@ Deliverables
 Deliverables
 
 - Witness bundle workflows (portable audit packets):
-  - `msez asset module witness-bundle modules/smart-assets/<asset_id> --out <bundle.zip>`
-  - Generic closure bundling: `msez artifact graph verify --path <dir> --bundle <bundle.zip>`
+  - `mez asset module witness-bundle modules/smart-assets/<asset_id> --out <bundle.zip>`
+  - Generic closure bundling: `mez artifact graph verify --path <dir> --bundle <bundle.zip>`
 - “Asset history bundle attestation” profile template (who can attest bundles, quorum rules):
   - `profiles/asset-history-bundle-attestation/profile.yaml`
 
@@ -154,16 +154,16 @@ Deliverables
   - `jurisdiction_scope`: `all_active | subset | quorum`
   - `harbor_ids`: list of harbor/jurisdiction IDs relevant to this receipt’s compliance scope
   - `harbor_quorum`: optional quorum threshold when `jurisdiction_scope=quorum`
-  - Implemented in `schemas/smart-asset.receipt.schema.json` and supported by `msez asset state receipt-init`.
+  - Implemented in `schemas/smart-asset.receipt.schema.json` and supported by `mez asset state receipt-init`.
 
 - **Quorum policy in the Smart Asset Registry VC** (`vc.smart-asset-registry.schema.json`):
   - `credentialSubject.quorum_policy.default` and `credentialSubject.quorum_policy.by_transition_kind[kind]`
-  - Evaluated by `msez asset compliance-eval` (counts **active** bindings only by default; quorum policy further restricts eligible sets).
-  - `msez asset registry-init` supports `--quorum-policy <yaml|json>` to embed policy at issuance time.
+  - Evaluated by `mez asset compliance-eval` (counts **active** bindings only by default; quorum policy further restricts eligible sets).
+  - `mez asset registry-init` supports `--quorum-policy <yaml|json>` to embed policy at issuance time.
 
 - **Rule evaluation evidence as a portable, attachable artifact**:
   - New schemas: `schemas/rule-eval-evidence.schema.json` and `schemas/rule-eval-evidence.attachment.schema.json`
-  - New CLI: `msez asset rule-eval-evidence-init` to create (optionally sign) `MSEZRuleEvaluationEvidence`.
+  - New CLI: `mez asset rule-eval-evidence-init` to create (optionally sign) `MEZRuleEvaluationEvidence`.
   - CAS artifact type: `rule-eval-evidence` with **semantic digest** `sha256(JCS(evidence_without_proof))`.
   - Evidence artifacts can be referenced from any transition envelope via `attachments` (and will be carried in witness bundles).
 
@@ -235,7 +235,7 @@ Deliverables
 
 **Deliverables:**
 
-- `msez lint` / `msez doctor` for:
+- `mez lint` / `mez doctor` for:
   - schema validation
   - CAS completeness
   - fork-resolution hygiene

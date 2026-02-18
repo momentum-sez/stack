@@ -1,0 +1,22 @@
+[package]
+name = "mez-corridor"
+description = "Corridor operations for the EZ Stack: Dijkstra routing, corridor receipt chains, fork detection and resolution, L1 anchoring, settlement netting, and SWIFT pacs.008 adapter."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+mez-core = { workspace = true }
+mez-state = { workspace = true }
+mez-crypto = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+rand_core = { workspace = true }

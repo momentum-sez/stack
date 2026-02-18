@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.corporate
+module_id: org.momentum.mez.corporate
 version: 0.1.0
 kind: corporate
 license: Apache-2.0
@@ -23,36 +23,36 @@ variants:
   - civil-law
 
 depends_on:
-  - module_id: org.momentum.msez.legal.core
+  - module_id: org.momentum.mez.legal.core
     constraint: ">=0.1.0,<1.0.0"
-  - module_id: org.momentum.msez.legal.entity-registry
+  - module_id: org.momentum.mez.legal.entity-registry
     constraint: ">=0.1.0,<1.0.0"
-  - module_id: org.momentum.msez.lic.csp
+  - module_id: org.momentum.mez.lic.csp
     constraint: ">=0.1.0,<1.0.0"
 
 provides:
-  - interface: msez.corporate.formation.v1
+  - interface: mez.corporate.formation.v1
     path: formation/
     media_type: application/yaml
-  - interface: msez.corporate.registered-agent.v1
+  - interface: mez.corporate.registered-agent.v1
     path: registered-agent/
     media_type: application/yaml
-  - interface: msez.corporate.secretarial.v1
+  - interface: mez.corporate.secretarial.v1
     path: secretarial/
     media_type: application/yaml
-  - interface: msez.corporate.beneficial-ownership.v1
+  - interface: mez.corporate.beneficial-ownership.v1
     path: beneficial-ownership/
     media_type: application/yaml
-  - interface: msez.corporate.governance.v1
+  - interface: mez.corporate.governance.v1
     path: governance-templates/
     media_type: application/yaml
-  - interface: msez.corporate.annual-compliance.v1
+  - interface: mez.corporate.annual-compliance.v1
     path: annual-compliance/
     media_type: application/yaml
-  - interface: msez.corporate.dissolution.v1
+  - interface: mez.corporate.dissolution.v1
     path: dissolution/
     media_type: application/yaml
-  - interface: msez.corporate.cap-table.v1
+  - interface: mez.corporate.cap-table.v1
     path: cap-table/
     media_type: application/yaml
 

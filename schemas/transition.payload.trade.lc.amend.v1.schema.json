@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.amend.v1.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/transition.payload.trade.lc.amend.v1.schema.json",
   "title": "LC Amend transition payload (v1)",
   "description": "Amends an existing Letter of Credit. The amendment itself may be described inline or referenced as an attachment artifact.",
   "type": "object",
@@ -11,7 +11,7 @@
   "required": ["amended_at", "amendment_id"],
   "properties": {
     "lc_id": {"type": "string", "minLength": 1},
-    "lc_ref": {"$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"},
+    "lc_ref": {"$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"},
     "amendment_id": {"type": "string", "minLength": 1},
     "amended_at": {"type": "string", "format": "date-time"},
     "amended_by_party_id": {"type": "string"},
@@ -20,13 +20,13 @@
       "description": "Minimal structured amendment fields. For complex amendments, carry the canonical message (e.g., SWIFT MT707) as an attachment artifact and reference it via amendment_ref.",
       "properties": {
         "new_expiry_date": {"type": "string", "format": "date"},
-        "new_amount": {"$ref": "https://schemas.momentum-sez.org/msez/trade.amount.v1.schema.json"},
+        "new_amount": {"$ref": "https://schemas.momentum-ez.org/mez/trade.amount.v1.schema.json"},
         "notes": {"type": "string"}
       },
       "additionalProperties": false
     },
     "amendment_ref": {
-      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json",
+      "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json",
       "description": "Optional reference to a full amendment artifact (e.g., MT707)."
     },
     "notes": {"type": "string"}

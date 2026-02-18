@@ -1,7 +1,7 @@
 # Trade Insurance Module
 # Trade credit and cargo insurance
 
-module_id: org.momentum.msez.trade.trade-insurance
+module_id: org.momentum.mez.trade.trade-insurance
 version: 0.1.0
 kind: trade
 name: Trade Insurance
@@ -12,7 +12,7 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.trade.insurance.v1
+  - interface: mez.trade.insurance.v1
     operations:
       - request_quote
       - bind_coverage

@@ -1,0 +1,14 @@
+{
+  "ruleset_id": "mez.transition.trade.bol.release.v1",
+  "title": "Bill of Lading release",
+  "version": 1,
+  "description": "Records release / surrender of the BOL (delivery order).",
+  "transition_kind": "trade.bol.release.v1",
+  "payload_schema": "https://schemas.momentum-ez.org/mez/transition.payload.trade.bol.release.v1.schema.json",
+  "validation": {
+    "profile": "basic",
+    "notes": [
+      "Implementations SHOULD ensure release is authorized by the carrier/terminal and matches the final endorsed holder."
+    ]
+  }
+}

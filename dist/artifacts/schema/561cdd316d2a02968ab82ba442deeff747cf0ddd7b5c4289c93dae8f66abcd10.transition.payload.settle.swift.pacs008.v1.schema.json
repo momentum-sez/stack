@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/transition.payload.settle.swift.pacs008.v1.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/transition.payload.settle.swift.pacs008.v1.schema.json",
   "title": "SWIFT ISO20022 pacs.008 settlement payload (v1)",
   "description": "A minimal, deterministic JSON representation of a SWIFT ISO20022 pacs.008 customer credit transfer. This schema is intentionally conservative and is intended as an integration boundary stub. Full ISO20022 messages may be carried as attachment artifacts.",
   "type": "object",

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/arbitration.enforcement-receipt.schema.json",
-  "title": "MSEZ Arbitration Enforcement Receipt",
+  "$id": "https://schemas.momentum-ez.org/mez/arbitration.enforcement-receipt.schema.json",
+  "title": "MEZ Arbitration Enforcement Receipt",
   "description": "A receipt documenting the enforcement of an arbitration ruling.",
   "type": "object",
   "required": [
@@ -16,7 +16,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MSEZEnforcementReceipt"
+      "const": "MEZEnforcementReceipt"
     },
     "stack_spec_version": {
       "type": "string",

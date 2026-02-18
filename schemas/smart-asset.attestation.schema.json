@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/smart-asset.attestation.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/smart-asset.attestation.schema.json",
   "title": "SmartAssetAttestation",
   "type": "object",
   "additionalProperties": false,

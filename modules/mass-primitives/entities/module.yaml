@@ -1,7 +1,7 @@
 # MASS Entities Primitive
 # Legal and natural entity representation
 
-module_id: org.momentum.msez.mass-primitives.entities
+module_id: org.momentum.mez.mass-primitives.entities
 version: 0.1.0
 kind: protocol
 name: MASS Entities Primitive
@@ -12,11 +12,11 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.mass.entities.natural.v1
+  - interface: mez.mass.entities.natural.v1
     description: Natural person entities
-  - interface: msez.mass.entities.legal.v1
+  - interface: mez.mass.entities.legal.v1
     description: Legal entity representation
-  - interface: msez.mass.entities.trust.v1
+  - interface: mez.mass.entities.trust.v1
     description: Trust and fiduciary structures
 
 entity_types:

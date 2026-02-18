@@ -1,7 +1,7 @@
 # Trade / Business License Module
 # General commercial activity permits for zone businesses
 
-module_id: org.momentum.msez.licensing.trade-license
+module_id: org.momentum.mez.licensing.trade-license
 version: 0.1.0
 kind: licensing
 name: Trade and Business License
@@ -13,21 +13,21 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.licensing.trade.retail.v1
+  - interface: mez.licensing.trade.retail.v1
     description: Retail business licensing
-  - interface: msez.licensing.trade.wholesale.v1
+  - interface: mez.licensing.trade.wholesale.v1
     description: Wholesale and distribution licensing
-  - interface: msez.licensing.trade.services.v1
+  - interface: mez.licensing.trade.services.v1
     description: Service business licensing
-  - interface: msez.licensing.trade.manufacturing.v1
+  - interface: mez.licensing.trade.manufacturing.v1
     description: Manufacturing and production licensing
-  - interface: msez.licensing.trade.ecommerce.v1
+  - interface: mez.licensing.trade.ecommerce.v1
     description: E-commerce and digital business licensing
 
 dependencies:
-  - module_id: org.momentum.msez.legal.entity-registry
+  - module_id: org.momentum.mez.legal.entity-registry
     version: ">=0.1.0"
-  - module_id: org.momentum.msez.corporate.formation
+  - module_id: org.momentum.mez.corporate.formation
     version: ">=0.1.0"
 
 license_types:

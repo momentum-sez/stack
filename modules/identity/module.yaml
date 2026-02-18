@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.identity
+module_id: org.momentum.mez.identity
 version: 0.1.0
 kind: identity
 license: Apache-2.0
@@ -21,28 +21,28 @@ variants:
   - enhanced-verification
 
 depends_on:
-  - module_id: org.momentum.msez.legal.core
+  - module_id: org.momentum.mez.legal.core
     constraint: ">=0.1.0,<1.0.0"
-  - module_id: org.momentum.msez.reg.aml-cft
+  - module_id: org.momentum.mez.reg.aml-cft
     constraint: ">=0.1.0,<1.0.0"
 
 provides:
-  - interface: msez.identity.core.v1
+  - interface: mez.identity.core.v1
     path: core/
     media_type: application/yaml
-  - interface: msez.identity.credentials.v1
+  - interface: mez.identity.credentials.v1
     path: credentials/
     media_type: application/yaml
-  - interface: msez.identity.kyc.v1
+  - interface: mez.identity.kyc.v1
     path: kyc-tiers/
     media_type: application/yaml
-  - interface: msez.identity.professional.v1
+  - interface: mez.identity.professional.v1
     path: professional-licensing/
     media_type: application/yaml
-  - interface: msez.identity.work-auth.v1
+  - interface: mez.identity.work-auth.v1
     path: work-authorization/
     media_type: application/yaml
-  - interface: msez.identity.binding.v1
+  - interface: mez.identity.binding.v1
     path: binding/
     media_type: application/yaml
 

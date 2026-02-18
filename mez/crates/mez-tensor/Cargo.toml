@@ -1,0 +1,19 @@
+[package]
+name = "mez-tensor"
+description = "Compliance Tensor and Manifold for the EZ Stack: multi-domain compliance evaluation, path optimization across tensor space, and canonical tensor commitments."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+mez-core = { workspace = true }
+mez-crypto = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

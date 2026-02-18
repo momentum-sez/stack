@@ -13,9 +13,9 @@
     },
     {
       "artifact_type": "vc",
-      "input": {"@context": ["https://www.w3.org/2018/credentials/v1"], "type": ["VerifiableCredential"], "issuer": "did:msez:issuer-001", "credentialSubject": {"id": "did:msez:subject-001", "status": "active"}},
+      "input": {"@context": ["https://www.w3.org/2018/credentials/v1"], "type": ["VerifiableCredential"], "issuer": "did:mez:issuer-001", "credentialSubject": {"id": "did:mez:subject-001", "status": "active"}},
       "canonical_hex": "7b2240636f6e74657874223a5b2268747470733a2f2f7777772e77332e6f72672f323031382f63726564656e7469616c732f7631225d2c2263726564656e7469616c5375626a656374223a7b226964223a226469643a6d73657a3a7375626a6563742d303031222c22737461747573223a22616374697665227d2c22697373756572223a226469643a6d73657a3a6973737565722d303031222c2274797065223a5b2256657269666961626c6543726564656e7469616c225d7d",
-      "canonical_utf8": "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"credentialSubject\":{\"id\":\"did:msez:subject-001\",\"status\":\"active\"},\"issuer\":\"did:msez:issuer-001\",\"type\":[\"VerifiableCredential\"]}",
+      "canonical_utf8": "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"credentialSubject\":{\"id\":\"did:mez:subject-001\",\"status\":\"active\"},\"issuer\":\"did:mez:issuer-001\",\"type\":[\"VerifiableCredential\"]}",
       "sha256_digest": "532a794aada544619a81cd5529777ea456112f91bef440b759bd8ea5e1279e00",
       "expected_path": "dist/artifacts/vc/532a794aada544619a81cd5529777ea456112f91bef440b759bd8ea5e1279e00.json"
     },

@@ -1,0 +1,71 @@
+[package]
+name = "mez-api"
+description = "Axum API services for the EZ Stack: orchestration layer above Mass APIs, corridor operations, smart asset lifecycle, compliance tensor, and regulator console."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "mez-api"
+path = "src/main.rs"
+
+[features]
+default = ["jurisdiction-pk"]
+jurisdiction-pk = ["mez-agentic/jurisdiction-pk"]
+swagger = []
+
+[dependencies]
+# Internal crates
+mez-core = { workspace = true }
+mez-crypto = { workspace = true }
+mez-vc = { workspace = true }
+mez-tensor = { workspace = true }
+mez-corridor = { workspace = true }
+mez-state = { workspace = true }
+mez-mass-client = { workspace = true }
+mez-agentic = { workspace = true }
+mez-pack = { workspace = true }
+mez-compliance = { workspace = true }
+
+# Cryptography
+rand_core = { workspace = true }
+
+# Web framework
+axum = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Identifiers & time
+uuid = { workspace = true }
+chrono = { workspace = true }
+
+# OpenAPI
+utoipa = { workspace = true }
+
+# Observability
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Security
+subtle = { workspace = true }
+parking_lot = { workspace = true }
+zeroize = { workspace = true }
+
+# Database
+sqlx = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+tower = { workspace = true }
+http-body-util = { workspace = true }
+rand_core = { workspace = true }
+tempfile = { workspace = true }

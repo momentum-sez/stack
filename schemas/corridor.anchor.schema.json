@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/corridor.anchor.schema.json",
-  "title": "MSEZCorridorAnchor",
+  "$id": "https://schemas.momentum-ez.org/mez/corridor.anchor.schema.json",
+  "title": "MEZCorridorAnchor",
   "type": "object",
   "required": [
     "type",
@@ -12,7 +12,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MSEZCorridorAnchor"
+      "const": "MEZCorridorAnchor"
     },
     "corridor_id": {
       "type": "string"
@@ -26,7 +26,7 @@
       "pattern": "^[a-f0-9]{64}$"
     },
     "checkpoint_ref": {
-      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
     },
     "chain": {
       "type": "object",
@@ -60,7 +60,7 @@
     "evidence": {
       "type": "array",
       "items": {
-        "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+        "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
       }
     }
   },

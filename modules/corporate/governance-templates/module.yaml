@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.corporate.governance-templates
+module_id: org.momentum.mez.corporate.governance-templates
 version: 0.1.0
 kind: corporate
 license: Apache-2.0
@@ -15,22 +15,22 @@ variants:
   - startup-friendly
 
 depends_on:
-  - module_id: org.momentum.msez.legal.core
+  - module_id: org.momentum.mez.legal.core
     constraint: ">=0.1.0,<1.0.0"
-  - module_id: org.momentum.msez.corporate.formation
+  - module_id: org.momentum.mez.corporate.formation
     constraint: ">=0.1.0,<1.0.0"
 
 provides:
-  - interface: msez.corporate.governance.articles.v1
+  - interface: mez.corporate.governance.articles.v1
     path: templates/articles-of-association.yaml
     media_type: application/yaml
-  - interface: msez.corporate.governance.sha.v1
+  - interface: mez.corporate.governance.sha.v1
     path: templates/shareholder-agreement.yaml
     media_type: application/yaml
-  - interface: msez.corporate.governance.dsa.v1
+  - interface: mez.corporate.governance.dsa.v1
     path: templates/director-service-agreement.yaml
     media_type: application/yaml
-  - interface: msez.corporate.governance.poa.v1
+  - interface: mez.corporate.governance.poa.v1
     path: templates/power-of-attorney.yaml
     media_type: application/yaml
 

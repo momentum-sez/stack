@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/arbitration.claim.schema.json",
-  "title": "MSEZ Arbitration Claim",
+  "$id": "https://schemas.momentum-ez.org/mez/arbitration.claim.schema.json",
+  "title": "MEZ Arbitration Claim",
   "description": "A claim in an arbitration dispute with legal basis and relief sought.",
   "type": "object",
   "required": ["claim_id", "claim_type", "description"],
@@ -44,7 +44,7 @@
       "type": "object",
       "properties": {
         "lawpack_ref": {
-          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+          "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
         },
         "fragment_eIds": {
           "type": "array",
@@ -73,7 +73,7 @@
     "supporting_evidence": {
       "type": "array",
       "items": {
-        "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+        "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
       },
       "description": "Evidence artifacts supporting this claim."
     }

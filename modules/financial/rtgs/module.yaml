@@ -1,7 +1,7 @@
 # RTGS Module
 # Real-Time Gross Settlement for zone payments
 
-module_id: org.momentum.msez.financial.rtgs
+module_id: org.momentum.mez.financial.rtgs
 version: 0.1.0
 kind: financial
 name: Real-Time Gross Settlement
@@ -14,19 +14,19 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.financial.rtgs.settlement.v1
+  - interface: mez.financial.rtgs.settlement.v1
     description: Real-time payment settlement
-  - interface: msez.financial.rtgs.queue.v1
+  - interface: mez.financial.rtgs.queue.v1
     description: Payment queue management
-  - interface: msez.financial.rtgs.liquidity.v1
+  - interface: mez.financial.rtgs.liquidity.v1
     description: Liquidity management and optimization
-  - interface: msez.financial.rtgs.monitoring.v1
+  - interface: mez.financial.rtgs.monitoring.v1
     description: Settlement monitoring and reporting
 
 dependencies:
-  - module_id: org.momentum.msez.financial.domestic-banking
+  - module_id: org.momentum.mez.financial.domestic-banking
     version: ">=0.1.0"
-  - module_id: org.momentum.msez.corridors.correspondent-banking
+  - module_id: org.momentum.mez.corridors.correspondent-banking
     version: ">=0.1.0"
 
 settlement:

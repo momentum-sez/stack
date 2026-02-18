@@ -1,6 +1,6 @@
 # Invariants
 
-These invariants are **non-negotiable** for conformance with the MSEZ Stack standard.
+These invariants are **non-negotiable** for conformance with the MEZ Stack standard.
 
 ## Versioning
 

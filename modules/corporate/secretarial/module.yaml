@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.corporate.secretarial
+module_id: org.momentum.mez.corporate.secretarial
 version: 0.1.0
 kind: corporate
 license: Apache-2.0
@@ -12,25 +12,25 @@ variants:
   - full-service
 
 depends_on:
-  - module_id: org.momentum.msez.legal.entity-registry
+  - module_id: org.momentum.mez.legal.entity-registry
     constraint: ">=0.1.0,<1.0.0"
-  - module_id: org.momentum.msez.corporate.formation
+  - module_id: org.momentum.mez.corporate.formation
     constraint: ">=0.1.0,<1.0.0"
 
 provides:
-  - interface: msez.corporate.secretarial.board-resolution.v1
+  - interface: mez.corporate.secretarial.board-resolution.v1
     path: templates/board-resolution.yaml
     media_type: application/yaml
-  - interface: msez.corporate.secretarial.shareholder-resolution.v1
+  - interface: mez.corporate.secretarial.shareholder-resolution.v1
     path: templates/shareholder-resolution.yaml
     media_type: application/yaml
-  - interface: msez.corporate.secretarial.minutes.v1
+  - interface: mez.corporate.secretarial.minutes.v1
     path: templates/meeting-minutes.yaml
     media_type: application/yaml
-  - interface: msez.corporate.secretarial.annual-return.v1
+  - interface: mez.corporate.secretarial.annual-return.v1
     path: forms/annual-return.schema.json
     media_type: application/json
-  - interface: msez.corporate.secretarial.change-of-directors.v1
+  - interface: mez.corporate.secretarial.change-of-directors.v1
     path: forms/change-of-directors.schema.json
     media_type: application/json
 

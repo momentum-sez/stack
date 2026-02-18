@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/smart-asset.inclusion-proof.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/smart-asset.inclusion-proof.schema.json",
   "title": "Smart Asset Receipt Inclusion Proof",
   "description": "Proof that a specific SmartAssetReceipt.next_root is included in an MMR accumulator committed by a SmartAssetReceiptChainCheckpoint.",
   "type": "object",
@@ -34,7 +34,7 @@
       ],
       "properties": {
         "type": {
-          "const": "MSEZReceiptMMR"
+          "const": "MEZReceiptMMR"
         },
         "algorithm": {
           "const": "sha256"
@@ -133,7 +133,7 @@
       "description": "Optional typed ArtifactRef to the signed checkpoint payload (excluding proof). When present, artifact_type MUST be \"checkpoint\" or \"smart-asset-receipt-checkpoint\".",
       "allOf": [
         {
-          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+          "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
         },
         {
           "properties": {

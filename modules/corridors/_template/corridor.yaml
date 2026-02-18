@@ -1,7 +1,7 @@
 # Corridor Module Template
 # Copy this directory and customize for your corridor.
 
-corridor_id: org.momentum.msez.corridor._template
+corridor_id: org.momentum.mez.corridor._template
 title: Template Corridor
 description: A template corridor module for scaffolding new corridors.
 
@@ -17,7 +17,7 @@ settlement:
 # Recognition/passporting configuration
 recognition:
   passporting:
-    - msez.licensing.application.v1
+    - mez.licensing.application.v1
 
 # Required attestations for corridor operations
 attestations:
@@ -45,7 +45,7 @@ key_rotation_path: key-rotation.yaml
 definition_vc_path: corridor.vc.json
 
 # Verification ruleset
-verification_ruleset: msez.corridor.verification.v1
+verification_ruleset: mez.corridor.verification.v1
 
 # State channel configuration
 state_channel:

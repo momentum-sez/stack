@@ -1,7 +1,7 @@
 # Securities Issuance Module
 # Primary market infrastructure for capital raising
 
-module_id: org.momentum.msez.capital-markets.securities-issuance
+module_id: org.momentum.mez.capital-markets.securities-issuance
 version: 0.1.0
 kind: capital-markets
 name: Securities Issuance
@@ -13,7 +13,7 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.capital-markets.securities-issuance.v1
+  - interface: mez.capital-markets.securities-issuance.v1
     operations:
       - create_issuance_application
       - approve_issuance

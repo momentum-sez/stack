@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/arbitration.settlement.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/arbitration.settlement.schema.json",
   "title": "ArbitrationSettlement",
   "description": "Settlement agreement for dispute resolution",
   "type": "object",

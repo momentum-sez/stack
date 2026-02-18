@@ -1,0 +1,30 @@
+[package]
+name = "mez-cli"
+description = "CLI tool for the EZ Stack: zone validation, lockfile generation, corridor management, CAS operations, and Ed25519/VC signing. Replaces the Python tools/mez.py monolith."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "mez"
+path = "src/main.rs"
+
+[dependencies]
+mez-core = { workspace = true }
+mez-crypto = { workspace = true }
+mez-pack = { workspace = true }
+mez-schema = { workspace = true }
+mez-state = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+rand_core = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

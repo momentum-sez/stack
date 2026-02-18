@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/corridor.state-machine.schema.json",
-  "title": "MSEZ Corridor Lifecycle State Machine",
+  "$id": "https://schemas.momentum-ez.org/mez/corridor.state-machine.schema.json",
+  "title": "MEZ Corridor Lifecycle State Machine",
   "description": "A declarative lifecycle state machine for corridor operations. This defines allowed transitions between corridor lifecycle states (e.g., DRAFT \u2192 PENDING \u2192 ACTIVE \u2192 HALTED \u2192 DEPRECATED). See also SUSPENDED state for non-emergency pauses.",
   "type": "object",
   "required": [
@@ -12,7 +12,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MSEZCorridorStateMachine"
+      "const": "MEZCorridorStateMachine"
     },
     "version": {
       "type": "string"
@@ -57,7 +57,7 @@
             "type": "string"
           },
           "requires_finality_level": {
-            "$ref": "https://schemas.momentum-sez.org/msez/finality-level.schema.json"
+            "$ref": "https://schemas.momentum-ez.org/mez/finality-level.schema.json"
           },
           "notes": {
             "type": "string"
@@ -67,7 +67,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Optional list of VC type strings required as evidence for this transition (e.g., MSEZCorridorForkAlarmCredential)."
+            "description": "Optional list of VC type strings required as evidence for this transition (e.g., MEZCorridorForkAlarmCredential)."
           }
         },
         "additionalProperties": false

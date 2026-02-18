@@ -1,7 +1,7 @@
 # Common Reporting Standard (CRS) Reporting Template
 # OECD Automatic Exchange of Information
 
-template_id: msez.tax.reporting.crs.v1
+template_id: mez.tax.reporting.crs.v1
 template_version: "1.0"
 
 description: |

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/trade.party.v1.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/trade.party.v1.schema.json",
   "title": "Trade Party (v1)",
   "description": "A minimal, deterministic representation of a trade party used across invoice/BOL/LC instruments. party_id is intentionally flexible (DID, LEI, registry number, internal identifier).",
   "type": "object",

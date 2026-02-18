@@ -1,4 +1,4 @@
-# MSEZ API Server — Runtime Configuration
+# MEZ API Server — Runtime Configuration
 #
 # Non-sensitive configuration values. For secrets (database credentials,
 # JWT signing keys), see secret.yaml.
@@ -6,18 +6,18 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: msez-config
-  namespace: msez
+  name: mez-config
+  namespace: mez
   labels:
-    app: msez-api
+    app: mez-api
     component: config
 data:
   # Zone identity
-  zone-id: "org.momentum.msez.zone.production"
+  zone-id: "org.momentum.mez.zone.production"
   jurisdiction: "pk"
   profile: "digital-financial-center"
   # Corridor defaults
-  corridor-id: "org.momentum.msez.corridor.pk-ae"
+  corridor-id: "org.momentum.mez.corridor.pk-ae"
   # Watcher configuration
   watcher-id: "watcher-pk-001"
   bond-amount: "100000"

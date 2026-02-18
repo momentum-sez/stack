@@ -34,10 +34,10 @@ verifiable. This store lets verifiers resolve **historical registry snapshots by
 ## Tooling
 
 - Generate a lock:
-  - `msez registry transition-types-lock registries/transition-types.yaml`
+  - `mez registry transition-types-lock registries/transition-types.yaml`
 - Store a lock by digest:
-  - `msez registry transition-types-store registries/transition-types.lock.json`
+  - `mez registry transition-types-store registries/transition-types.lock.json`
 - Resolve a lock by digest:
-  - `msez registry transition-types-resolve <digest>`
+  - `mez registry transition-types-resolve <digest>`
 
-The resolver consults `MSEZ_ARTIFACT_STORE_DIRS` (preferred; os.pathsep-separated) and `MSEZ_TRANSITION_TYPES_STORE_DIRS` (legacy) to support external stores.
+The resolver consults `MEZ_ARTIFACT_STORE_DIRS` (preferred; os.pathsep-separated) and `MEZ_TRANSITION_TYPES_STORE_DIRS` (legacy) to support external stores.

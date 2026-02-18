@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the **Momentum SEZ Stack (MSEZ)** will be documented in this file.
+All notable changes to the **Momentum EZ Stack (MEZ)** will be documented in this file.
 
 The format is based on *Keep a Changelog* and the project aims to follow semantic versioning for modules/profiles, while the **stack spec version** advances independently.
 
@@ -12,14 +12,14 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 ## 0.4.44
 
 ### Added
-- **Complete SEZ Module Families**: 21 new modules across 3 families:
+- **Complete EZ Module Families**: 21 new modules across 3 families:
   - Corporate Services (8 modules): entity-formation, registered-agent, corporate-secretarial, beneficial-ownership, corporate-governance, annual-compliance, dissolution, cap-table
   - Identity & Credentialing (6 modules): digital-identity, resident-credentials, progressive-kyc, professional-credentials, work-permits, identity-binding
   - Tax & Revenue (7 modules): tax-framework, zone-incentives, transfer-pricing, withholding, vat-gst, reporting, tax-treaties
 - **Licensepack Infrastructure (spec/98-licensepacks.md)**: Live registry state management with real-time license status tracking, expiry monitoring, and compliance attestation
 - **Multi-jurisdiction Composition Engine**: Complex zone deployments combining laws from multiple jurisdictions
 - **AWS Deployment Automation**: Production-ready Terraform modules for EKS, RDS, ElastiCache, S3, KMS
-- **PHOENIX GENESIS Codename**: Completing the SEZ-in-a-Box vision
+- **PHOENIX GENESIS Codename**: Completing the EZ-in-a-Box vision
 
 ### Changed
 - Schema count increased to 116
@@ -136,7 +136,7 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
   - Party and amount schemas
   - Transition payload schemas and rulesets for invoice/BOL/LC lifecycle transitions
   - Registered transition kinds in transition-types registry
-- **Corridor-of-corridors settlement plans**: MSEZCorridorSettlementPlan schema with deterministic netting and settlement legs
+- **Corridor-of-corridors settlement plans**: MEZCorridorSettlementPlan schema with deterministic netting and settlement legs
   - CLI: `settlement-plan-init`, `settlement-plan-verify`
   - Attach settlement plans to corridor receipts
 - **Strict verification semantics**: Bughunt gates for production operator ergonomics
@@ -152,10 +152,10 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 ## 0.4.39
 
 ### Added
-- **Cross-corridor settlement anchoring**: MSEZ settlement-anchor schema + typed attachment
+- **Cross-corridor settlement anchoring**: MEZ settlement-anchor schema + typed attachment
   - CLI: `settlement-anchor-init`, `settlement-anchor-verify`
   - Attach anchors to corridor receipts for externalized settlement finality
-- **Proof binding primitives**: MSEZ proof-binding schema + typed attachment
+- **Proof binding primitives**: MEZ proof-binding schema + typed attachment
   - CLI: `proof-binding-init`, `proof-binding-verify`
   - Enable replay-resistant binding of external proofs/VCs/blobs to corridor/asset commitments
 
@@ -168,9 +168,9 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 ### Added
 - **Cross-corridor settlement anchoring** primitives:
   - New schemas: `corridor.checkpoint.attachment`, `corridor.settlement-anchor`, and `proof-binding` (+ attachment wrappers).
-  - New CLI: `msez proof-binding init|verify` (portable, replay-resistant proof linking to commitment digests).
-  - New CLI: `msez corridor settlement-anchor-init|settlement-anchor-verify` (bind obligation corridor checkpoint to settlement corridor checkpoint, with optional proof bindings).
-- Corridor receipt UX: `msez corridor state receipt-init` gains typed attachment flags for corridor checkpoints, proof bindings, and settlement anchors.
+  - New CLI: `mez proof-binding init|verify` (portable, replay-resistant proof linking to commitment digests).
+  - New CLI: `mez corridor settlement-anchor-init|settlement-anchor-verify` (bind obligation corridor checkpoint to settlement corridor checkpoint, with optional proof bindings).
+- Corridor receipt UX: `mez corridor state receipt-init` gains typed attachment flags for corridor checkpoints, proof bindings, and settlement anchors.
 
 ### Changed
 - Artifact graph strict mode gains semantic digest support for:
@@ -184,12 +184,12 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 ## 0.4.36
 
 ### Added
-- SmartAssetReceipt multi-jurisdiction scope hints: `jurisdiction_scope`, `harbor_ids`, `harbor_quorum` (schema + `msez asset state receipt-init` flags).
-- Smart Asset registry VC quorum policy (`credentialSubject.quorum_policy`) + `msez asset registry-init --quorum-policy`.
-- Portable rule evaluation evidence artifacts: `rule-eval-evidence` schemas + `msez asset rule-eval-evidence-init` (optionally sign + store).
+- SmartAssetReceipt multi-jurisdiction scope hints: `jurisdiction_scope`, `harbor_ids`, `harbor_quorum` (schema + `mez asset state receipt-init` flags).
+- Smart Asset registry VC quorum policy (`credentialSubject.quorum_policy`) + `mez asset registry-init --quorum-policy`.
+- Portable rule evaluation evidence artifacts: `rule-eval-evidence` schemas + `mez asset rule-eval-evidence-init` (optionally sign + store).
 
 ### Changed
-- `msez asset compliance-eval` now evaluates **active** bindings by default (and applies quorum policy when present).
+- `mez asset compliance-eval` now evaluates **active** bindings by default (and applies quorum policy when present).
 - Artifact graph strict mode gains semantic digest support for `rule-eval-evidence` (sha256 of JCS signing input).
 
 
@@ -197,12 +197,12 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 ## 0.4.35
 
 ### Added
-- **Directory roots for artifact graph verification**: `msez artifact graph verify --path <dir>` now scans all structured files (JSON/YAML) under the directory for embedded `ArtifactRef`s and resolves the full closure.
+- **Directory roots for artifact graph verification**: `mez artifact graph verify --path <dir>` now scans all structured files (JSON/YAML) under the directory for embedded `ArtifactRef`s and resolves the full closure.
 - **Directory roots in witness bundles**: when the closure root is a directory, witness bundles include the scanned structured root files under `root/<dirname>/...` (in addition to `manifest.json` and `artifacts/...`).
-- **Operator UX**: new `msez asset module witness-bundle` command emits a portable audit packet for an asset module directory (receipts/checkpoints/proofs + referenced artifacts).
+- **Operator UX**: new `mez asset module witness-bundle` command emits a portable audit packet for an asset module directory (receipts/checkpoints/proofs + referenced artifacts).
 
 ### Changed
-- `MSEZArtifactGraphVerifyReport.root.mode` now supports `dir` in addition to `cas` and `file`.
+- `MEZArtifactGraphVerifyReport.root.mode` now supports `dir` in addition to `cas` and `file`.
 
 ### Version
 - Stack spec version bumped to `0.4.35` and starter profiles updated.
@@ -212,11 +212,11 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 ### Added
 - **Corridor anchoring for Smart Asset receipt-chain checkpoints**:
-  - New CLI: `msez corridor state receipt-init --attach-smart-asset-receipt-checkpoint <checkpoint.json>` (repeatable) appends a typed transition attachment (`artifact_type: smart-asset-receipt-checkpoint`) committing to the checkpoint payload digest (excluding proof).
-  - Convenience: `msez corridor state receipt-init --attach-smart-asset-checkpoint <asset_checkpoint.json>` (repeatable) appends the existing `smart-asset-checkpoint` typed attachment for state-root anchoring.
+  - New CLI: `mez corridor state receipt-init --attach-smart-asset-receipt-checkpoint <checkpoint.json>` (repeatable) appends a typed transition attachment (`artifact_type: smart-asset-receipt-checkpoint`) committing to the checkpoint payload digest (excluding proof).
+  - Convenience: `mez corridor state receipt-init --attach-smart-asset-checkpoint <asset_checkpoint.json>` (repeatable) appends the existing `smart-asset-checkpoint` typed attachment for state-root anchoring.
 - **Anchor verification upgrades**:
-  - `msez asset anchor-verify` now supports `--asset-receipt-checkpoint` (SmartAssetReceiptChainCheckpoint) and verifies that its typed attachment is present on the corridor receipt.
-  - Optional “portable audit packet” path: if `--asset-receipt` + `--asset-inclusion-proof` are provided, `msez asset anchor-verify` also verifies receipt inclusion against the anchored checkpoint.
+  - `mez asset anchor-verify` now supports `--asset-receipt-checkpoint` (SmartAssetReceiptChainCheckpoint) and verifies that its typed attachment is present on the corridor receipt.
+  - Optional “portable audit packet” path: if `--asset-receipt` + `--asset-inclusion-proof` are provided, `mez asset anchor-verify` also verifies receipt inclusion against the anchored checkpoint.
 - New schema: `schemas/smart-asset.receipt-checkpoint.attachment.schema.json` documents the typed attachment shape.
 
 ### Changed
@@ -231,8 +231,8 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 ### Added
 - **Smart Asset fork resolution** (receipt-chain concurrency):
   - New schema: `schemas/smart-asset.fork-resolution.schema.json` (+ VC wrapper schema).
-  - New CLI: `msez asset state fork-resolve` (alias `fork-resolution-init`) emits an unsigned VC selecting the canonical `next_root` for a forked `(sequence, prev_root)` point.
-  - `msez asset state verify`, `checkpoint`, and `inclusion-proof` now accept `--fork-resolutions` (file/dir) and apply corridor-style canonical selection semantics.
+  - New CLI: `mez asset state fork-resolve` (alias `fork-resolution-init`) emits an unsigned VC selecting the canonical `next_root` for a forked `(sequence, prev_root)` point.
+  - `mez asset state verify`, `checkpoint`, and `inclusion-proof` now accept `--fork-resolutions` (file/dir) and apply corridor-style canonical selection semantics.
 
 ### Changed
 - Smart Asset receipt-chain verification is now **fork-aware**:
@@ -247,7 +247,7 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 ### Added
 - **Smart Asset module directory** scaffolding (`modules/smart-assets/<asset_id>/...`) with `asset.yaml`.
-- New operator UX: `msez asset module init <asset_id>` (template-based scaffolding).
+- New operator UX: `mez asset module init <asset_id>` (template-based scaffolding).
 
 ### Changed
 - Stack spec version bumped to `0.4.32`.
@@ -257,7 +257,7 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 ### Added
 - **Smart Asset receipt-chain primitives (non-blockchain)**:
   - Schemas for receipts, MMR checkpoints, and inclusion proofs.
-  - CLI: `msez asset state {genesis-root,receipt-init,verify,checkpoint,inclusion-proof,verify-inclusion}`.
+  - CLI: `mez asset state {genesis-root,receipt-init,verify,checkpoint,inclusion-proof,verify-inclusion}`.
 - Artifact graph strict mode now treats `smart-asset-receipt` digests semantically (`receipt.next_root`).
 
 ### Version
@@ -267,15 +267,15 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 ### Added
 - **Smart Asset corridor anchoring (non-blockchain)**:
-  - `msez asset anchor-verify` validates that a Smart Asset checkpoint digest is present as a typed attachment on a corridor receipt, and that the receipt is included in a corridor checkpoint via an MMR inclusion proof.
+  - `mez asset anchor-verify` validates that a Smart Asset checkpoint digest is present as a typed attachment on a corridor receipt, and that the receipt is included in a corridor checkpoint via an MMR inclusion proof.
   - This provides a clean bridge between **asset-centric state** and **corridor state channels**, enabling redundant, cross-jurisdiction custody / audit trails.
 - **Smart Asset DAG checkpoints (multi-parent) hardened**:
-  - `msez asset checkpoint-build` now validates/normalizes parent digests (de-duped + sorted) to keep checkpoint graphs deterministic and schema-conformant.
+  - `mez asset checkpoint-build` now validates/normalizes parent digests (de-duped + sorted) to keep checkpoint graphs deterministic and schema-conformant.
 - **Artifact graph strict verification hardened for Smart Asset artifact types**:
-  - `msez artifact graph verify --strict` now recomputes digests for `smart-asset-genesis`, `smart-asset-checkpoint`, and `smart-asset-attestation` according to their artifact-specific semantics.
+  - `mez artifact graph verify --strict` now recomputes digests for `smart-asset-genesis`, `smart-asset-checkpoint`, and `smart-asset-attestation` according to their artifact-specific semantics.
 
 ### Changed
-- Smart Asset compliance evaluation accepts both the legacy `TransitionEnvelope` shape (`transition_kind`) and the stack-standard `MSEZTransitionEnvelope` shape (`kind`), and can unwrap corridor receipts (`MSEZCorridorStateReceipt`) by evaluating their embedded `transition`.
+- Smart Asset compliance evaluation accepts both the legacy `TransitionEnvelope` shape (`transition_kind`) and the stack-standard `MEZTransitionEnvelope` shape (`kind`), and can unwrap corridor receipts (`MEZCorridorStateReceipt`) by evaluating their embedded `transition`.
 - Smart Asset `asset_id` derivation is now stable when the genesis document includes an informational `asset_id` field: the derived field is excluded from the digest commitment (sha256(JCS(genesis-without-asset_id))).
 - Corridor state `corridor state verify-inclusion` correctly handles receipt sequence/index 0 (no falsy-default bug for `leaf_index` and `sequence`).
 
@@ -289,7 +289,7 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
   - Asset identity: `schemas/smart-asset.genesis.schema.json` (asset_id = `sha256(JCS(genesis))`).
   - Jurisdictional registry VC: `schemas/vc.smart-asset-registry.schema.json` (binds asset -> harbors + lawpacks + compliance/enforcement profiles).
   - Operational manifest: `schemas/smart-asset.manifest.schema.json` (node-local config; optional).
-- **New CLI surface**: `msez asset ...`
+- **New CLI surface**: `mez asset ...`
   - `asset genesis-init`, `asset genesis-hash`
   - `asset registry-init` (optionally signs VC)
   - `asset checkpoint-build` (state_root = `sha256(JCS(state))`)
@@ -303,8 +303,8 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 ### Added
 - Witness-bundle provenance VC + CLI:
-  - `msez artifact bundle attest <bundle.zip> ...` emits a Verifiable Credential (`MSEZArtifactWitnessBundleCredential`) committing to `SHA256(JCS(manifest.json))`.
-  - `msez artifact bundle verify <bundle.zip> --vc <vc.json>` verifies digest match and (optionally) VC signatures.
+  - `mez artifact bundle attest <bundle.zip> ...` emits a Verifiable Credential (`MEZArtifactWitnessBundleCredential`) committing to `SHA256(JCS(manifest.json))`.
+  - `mez artifact bundle verify <bundle.zip> --vc <vc.json>` verifies digest match and (optionally) VC signatures.
 - JSON Schema for witness-bundle attestation VCs:
   - `schemas/vc.artifact-witness-bundle.schema.json`.
 
@@ -318,10 +318,10 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 ### Added
 - Witness-bundle verification mode for artifact closure graphs:
-  - `msez artifact graph verify --from-bundle <zip>` extracts a witness bundle, adds its `artifacts/` tree as an offline CAS root, and verifies closure integrity without manual extraction.
+  - `mez artifact graph verify --from-bundle <zip>` extracts a witness bundle, adds its `artifacts/` tree as an offline CAS root, and verifies closure integrity without manual extraction.
   - If no explicit root is provided, the command infers the root from the bundle’s `manifest.json` (CAS root or file root).
 - Canonical JSON Schema for `manifest.json`:
-  - `schemas/artifact.graph-verify-report.schema.json` validates `MSEZArtifactGraphVerifyReport` manifests (best-effort validated in `--from-bundle` mode).
+  - `schemas/artifact.graph-verify-report.schema.json` validates `MEZArtifactGraphVerifyReport` manifests (best-effort validated in `--from-bundle` mode).
 
 ### Version
 - Stack spec version bumped to `0.4.27`.
@@ -329,7 +329,7 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 ## 0.4.26
 
 ### Added
-- `msez artifact graph verify` enhancements:
+- `mez artifact graph verify` enhancements:
   - `--emit-edges`: include a machine-readable edge list (`edges[]`) so closure graphs can be analyzed programmatically.
   - `--bundle <zip>`: emit a self-contained witness bundle containing `manifest.json` + resolved artifacts under `artifacts/<type>/` for offline verification and transfer between environments.
   - `--bundle-max-bytes`: optional size cap to prevent accidental bundling of very large closures (0 = unlimited).
@@ -340,7 +340,7 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 ## 0.4.25
 
 ### Added
-- `msez artifact graph verify`: artifact-closure graph verifier that can take a CAS root `(artifact_type,digest)` **or** a local JSON/YAML document, and emits a closure report (missing nodes, depth, counts).
+- `mez artifact graph verify`: artifact-closure graph verifier that can take a CAS root `(artifact_type,digest)` **or** a local JSON/YAML document, and emits a closure report (missing nodes, depth, counts).
 - Optional `--strict` mode that recomputes artifact digests from on-disk content using the artifact’s canonical digest rules (e.g., JCS for JSON, VC signing-input, lawpack component canonicalization) to detect tampered CAS entries.
 
 ### Fixed
@@ -363,7 +363,7 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
   - When a `transition-types.lock` snapshot references a *ruleset* digest, the verifier now also scans the resolved ruleset artifact for embedded `ArtifactRef` objects and requires those to be resolvable via artifact CAS.
   - This is forward-compatible hardening for proof-carrying transitions where rulesets commit to circuit/proof-key artifacts.
 - Scenario scaffold scaling improvements:
-  - Scenario scaffolds now skip at **module** level unless `MSEZ_RUN_SCAFFOLD=1` (keeps default CI fast).
+  - Scenario scaffolds now skip at **module** level unless `MEZ_RUN_SCAFFOLD=1` (keeps default CI fast).
   - Smart-asset integration scaffold matrix expanded (zones/rails/privacy/asset_class/custody axes).
 
 ### Fixed
@@ -387,7 +387,7 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
   - Verifies the referenced `transition-types.lock` snapshot exists *and* that all
     schema/ruleset/circuit digests referenced inside that lock can be resolved via artifact CAS.
 - New test harness marker:
-  - `scaffold` marker gated by `MSEZ_RUN_SCAFFOLD=1` (large scenario libraries for roadmap closure).
+  - `scaffold` marker gated by `MEZ_RUN_SCAFFOLD=1` (large scenario libraries for roadmap closure).
 - Pre-0.5 roadmap integration:
   - `docs/roadmap/ROADMAP_PRE_0.5.md`
   - `docs/architecture/SMART-ASSET-INTEGRATION.md`
@@ -409,10 +409,10 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 ## 0.4.21
 
 ### Added
-- `msez corridor state fork-inspect`: receipt-level fork forensics command (text or JSON output) emitting `MSEZCorridorForkInspectReport`.
+- `mez corridor state fork-inspect`: receipt-level fork forensics command (text or JSON output) emitting `MEZCorridorForkInspectReport`.
 - `schemas/corridor.fork-inspect-report.schema.json` for machine-validated fork forensics output.
 - Performance harness support:
-  - pytest markers `perf`/`slow` with environment-gated execution (`MSEZ_RUN_PERF=1`).
+  - pytest markers `perf`/`slow` with environment-gated execution (`MEZ_RUN_PERF=1`).
   - new perf tests for receipt verification throughput and watcher-compare scaling.
 - New transition-type integrations (stub-ready but digest-stable):
   - `settle.swift.pacs008.v1` (SWIFT ISO20022 pacs.008 payload schema + ruleset)
@@ -437,14 +437,14 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 ### Added
 - `tools.vc.load_proof_keypair(...)`: uniform loader for Ed25519 private JWK files returning `(private_key, verification_method)` for VC/receipt signing flows.
 - CLI regression tests for signing subcommands:
-  - `msez corridor state watcher-attest --sign`
-  - `msez corridor state fork-alarm --sign`
-  - `msez corridor availability-attest --sign`
+  - `mez corridor state watcher-attest --sign`
+  - `mez corridor state fork-alarm --sign`
+  - `mez corridor availability-attest --sign`
 
 ### Fixed
 - Signing paths for watcher attestations, fork alarms, and availability attestations now use the correct `add_ed25519_proof(vc, private_key, verification_method)` convention.
 - `corridor availability-attest` now calls `corridor_expected_lawpack_digest_set(...)` with the correct signature.
-- `msez law attest-init` no longer risks `NameError` due to missing `now_rfc3339` availability.
+- `mez law attest-init` no longer risks `NameError` due to missing `now_rfc3339` availability.
 
 ### Version
 - Stack spec version bumped to `0.4.20`.
@@ -484,10 +484,10 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 - Receipt transition payload schema is now referenced via `transition-envelope.schema.json`.
 
 ### CLI
-- `msez corridor state propose`: generate unsigned receipt proposals.
-- `msez corridor state fork-resolve`: generate unsigned fork-resolution VCs.
-- `msez corridor state anchor`: generate unsigned corridor-anchor VCs.
-- `msez corridor state finality-status`: compute a `MSEZCorridorFinalityStatus` for a corridor head.
+- `mez corridor state propose`: generate unsigned receipt proposals.
+- `mez corridor state fork-resolve`: generate unsigned fork-resolution VCs.
+- `mez corridor state anchor`: generate unsigned corridor-anchor VCs.
+- `mez corridor state finality-status`: compute a `MEZCorridorFinalityStatus` for a corridor head.
 
 ## 0.4.17
 
@@ -496,7 +496,7 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
   - `schemas/vc.corridor-watcher-attestation.schema.json` extends `credentialSubject` with:
     - `genesis_root` (checkpoint-derived)
     - `head_commitment_digest_sha256` — deterministic digest over the corridor head fields so identical heads dedupe cleanly even if checkpoint timestamps differ.
-  - `msez corridor state watcher-compare` gains quorum evaluation:
+  - `mez corridor state watcher-compare` gains quorum evaluation:
     - `--quorum-threshold` (e.g., `3/5` or `majority`)
     - `--max-staleness` (e.g., `1h`, `24h`, `PT1H`)
     - JSON report now includes `quorum` + per-watcher status flags.
@@ -507,7 +507,7 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
   - `docs/operators/*` (zone deployment, corridor formation, incident response)
 
 ### Changed
-- `msez corridor state watcher-attest` now emits `genesis_root` + `head_commitment_digest_sha256` by default.
+- `mez corridor state watcher-attest` now emits `genesis_root` + `head_commitment_digest_sha256` by default.
 
 ### Version
 - Stack spec version bumped to `0.4.17`.
@@ -518,7 +518,7 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 ### Added
 - Watcher attestation aggregation:
-  - `msez corridor state watcher-compare` — ingest multiple watcher attestation VCs and flag divergent `(receipt_count, final_state_root)` heads.
+  - `mez corridor state watcher-compare` — ingest multiple watcher attestation VCs and flag divergent `(receipt_count, final_state_root)` heads.
   - Supports `--fail-on-lag` (treat receipt-count divergence as failure), `--enforce-authority-registry` (optional allow-list), and `--require-artifacts` (commitment completeness for referenced checkpoints).
 
 ### Fixed
@@ -533,15 +533,15 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 ### Added
 - Watcher integrity primitives:
-  - `schemas/vc.corridor-watcher-attestation.schema.json` + `msez corridor state watcher-attest`
-  - `schemas/vc.corridor-fork-alarm.schema.json` + `msez corridor state fork-alarm`
+  - `schemas/vc.corridor-watcher-attestation.schema.json` + `mez corridor state watcher-attest`
+  - `schemas/vc.corridor-fork-alarm.schema.json` + `mez corridor state fork-alarm`
 - Operational resilience primitive:
   - `schemas/vc.artifact-availability.schema.json`
-  - `msez corridor availability-attest` and `msez corridor availability-verify`
+  - `mez corridor availability-attest` and `mez corridor availability-verify`
 
 ### Changed
 - Corridor Agreement VC schema adds `credentialSubject.state_channel.checkpointing` (checkpoint policy + thresholds).
-- `msez corridor state verify` gains checkpoint-aware sync options:
+- `mez corridor state verify` gains checkpoint-aware sync options:
   - `--from-checkpoint` to bootstrap verification from a prior signed checkpoint
   - `--checkpoint` to verify a head checkpoint matches the computed final root / receipt count
   - `--enforce-checkpoint-policy` to enforce signing thresholds and (when bootstrapping) receipt-gap bounds
@@ -559,16 +559,16 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 ## 0.4.14
 
 ### Added
-- `msez lock --emit-artifactrefs` to optionally emit **ArtifactRef** objects by default for digest-bearing fields:
+- `mez lock --emit-artifactrefs` to optionally emit **ArtifactRef** objects by default for digest-bearing fields:
   - Lawpack pins (`artifact_type: lawpack`)
   - Corridor artifacts (`artifact_type: blob`), including trust anchors, key rotation config, corridor manifest, corridor definition VC, and agreement VC(s)
 - Receipt fork-resistance scaffolding:
   - Corridor Agreement VC templates now optionally include `credentialSubject.state_channel.receipt_signing.thresholds` (defaults to activation thresholds)
-  - `msez corridor state verify --enforce-receipt-threshold` to enforce per-receipt multi-signer thresholds
+  - `mez corridor state verify --enforce-receipt-threshold` to enforce per-receipt multi-signer thresholds
 - New VC schema stubs (legal + governance hardening substrates):
   - `schemas/vc.authority-registry.schema.json` (out-of-band signer authorization layer)
   - `schemas/vc.lawpack-attestation.schema.json` (legal validity attestations for lawpack digests)
-- `msez law attest-init` helper to generate a lawpack attestation VC skeleton.
+- `mez law attest-init` helper to generate a lawpack attestation VC skeleton.
 
 ### Changed
 - Stack spec version bumped to `0.4.14`.
@@ -584,7 +584,7 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 ### Changed
 - Profiles updated to stack spec `0.4.13`.
-- `tools/msez.py` `STACK_SPEC_VERSION` updated to `0.4.13`.
+- `tools/mez.py` `STACK_SPEC_VERSION` updated to `0.4.13`.
 
 
 ## 0.4.12
@@ -609,7 +609,7 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 - Corridor receipt schema (`schemas/corridor.receipt.schema.json`) now accepts both:
   - Legacy attachments (no `artifact_type`; treated as `blob`)
   - Typed attachments (explicit `artifact_type`)
-- `msez corridor state verify --require-artifacts` now resolves attachments using `artifact_type` when present (defaults to `blob` for legacy).
+- `mez corridor state verify --require-artifacts` now resolves attachments using `artifact_type` when present (defaults to `blob` for legacy).
 
 
 ## 0.4.9
@@ -620,7 +620,7 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
   - `receipt.zk.proof_sha256`
 
 ### Changed
-- `msez corridor state verify --require-artifacts` now treats attachment digests and ZK proof digests as `blob` artifacts (commitment completeness covers *all* receipt digest commitments).
+- `mez corridor state verify --require-artifacts` now treats attachment digests and ZK proof digests as `blob` artifacts (commitment completeness covers *all* receipt digest commitments).
 
 
 
@@ -628,11 +628,11 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 ### Added
 - Expanded the recommended artifact CAS type set to include: `schema`, `vc`, `checkpoint`, and `proof-key` (`spec/97-artifacts.md`, `dist/artifacts/*`).
-- New `msez artifact` helpers:
+- New `mez artifact` helpers:
   - `artifact index-schemas` (materialize JSON Schemas into CAS)
   - `artifact index-vcs` (materialize VC payloads into CAS by payload digest)
 - **Commitment completeness** mode for corridor receipt verification:
-  - `msez corridor state verify ... --require-artifacts`
+  - `mez corridor state verify ... --require-artifacts`
   - fails verification if any committed digest cannot be resolved via the artifact CAS.
 
 ### Changed
@@ -642,7 +642,7 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 ### Added
 - **Generic artifact CAS convention**: `dist/artifacts/<type>/<digest>.*` (`spec/97-artifacts.md`).
-- New `msez artifact ...` commands:
+- New `mez artifact ...` commands:
   - `artifact store` (store by (type,digest))
   - `artifact resolve` (resolve by (type,digest))
   - `artifact index-rulesets` (materialize ruleset descriptors into CAS)
@@ -683,7 +683,7 @@ The format is based on *Keep a Changelog* and the project aims to follow semanti
 
 ### Added
 - Lawpack supply chain scaffolding: deterministic ingestion to Akoma Ntoso + index + digest + lockfile.
-- `msez law ingest` command.
+- `mez law ingest` command.
 
 ## 0.4.0
 

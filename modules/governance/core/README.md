@@ -1,6 +1,6 @@
 # Governance core
 
-This module provides the minimum interoperability surface for governance/consent mechanisms in the MSEZ Stack.
+This module provides the minimum interoperability surface for governance/consent mechanisms in the MEZ Stack.
 
 It intentionally **does not** dictate political design. Instead it standardizes the common objects that any
 governance engine needs to exchange:

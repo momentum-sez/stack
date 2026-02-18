@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/proof-binding.attachment.schema.json",
-  "title": "MSEZ Proof Binding Attachment",
+  "$id": "https://schemas.momentum-ez.org/mez/proof-binding.attachment.schema.json",
+  "title": "MEZ Proof Binding Attachment",
   "description": "Typed ArtifactRef wrapper for proof bindings (artifact_type=proof-binding).",
   "allOf": [
     {
-      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
     },
     {
       "type": "object",

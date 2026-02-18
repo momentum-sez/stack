@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/vc.corridor-anchor.schema.json",
-  "title": "MSEZ Corridor Anchor Verifiable Credential",
+  "$id": "https://schemas.momentum-ez.org/mez/vc.corridor-anchor.schema.json",
+  "title": "MEZ Corridor Anchor Verifiable Credential",
   "description": "A signed VC asserting that a corridor head commitment has been anchored to an external chain (L1, notary log, etc).",
   "allOf": [
     {
-      "$ref": "https://schemas.momentum-sez.org/msez/vc.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/vc.schema.json"
     },
     {
       "type": "object",
@@ -17,11 +17,11 @@
         "type": {
           "type": "array",
           "contains": {
-            "const": "MSEZCorridorAnchorCredential"
+            "const": "MEZCorridorAnchorCredential"
           }
         },
         "credentialSubject": {
-          "$ref": "https://schemas.momentum-sez.org/msez/corridor.anchor.schema.json"
+          "$ref": "https://schemas.momentum-ez.org/mez/corridor.anchor.schema.json"
         }
       }
     }

@@ -1,7 +1,7 @@
 # Deposit Insurance Module
 # Depositor protection scheme for zone financial institutions
 
-module_id: org.momentum.msez.financial.deposit-insurance
+module_id: org.momentum.mez.financial.deposit-insurance
 version: 0.1.0
 kind: financial
 name: Deposit Insurance
@@ -13,19 +13,19 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.financial.deposit-insurance.coverage.v1
+  - interface: mez.financial.deposit-insurance.coverage.v1
     description: Deposit coverage determination
-  - interface: msez.financial.deposit-insurance.premium.v1
+  - interface: mez.financial.deposit-insurance.premium.v1
     description: Risk-based premium assessment
-  - interface: msez.financial.deposit-insurance.payout.v1
+  - interface: mez.financial.deposit-insurance.payout.v1
     description: Depositor payout processing
-  - interface: msez.financial.deposit-insurance.resolution.v1
+  - interface: mez.financial.deposit-insurance.resolution.v1
     description: Failed institution resolution
 
 dependencies:
-  - module_id: org.momentum.msez.regulatory.financial-supervision
+  - module_id: org.momentum.mez.regulatory.financial-supervision
     version: ">=0.2.0"
-  - module_id: org.momentum.msez.financial.domestic-banking
+  - module_id: org.momentum.mez.financial.domestic-banking
     version: ">=0.1.0"
 
 coverage:

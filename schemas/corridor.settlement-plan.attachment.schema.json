@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/corridor.settlement-plan.attachment.schema.json",
-  "title": "MSEZ Settlement Plan attachment",
+  "$id": "https://schemas.momentum-ez.org/mez/corridor.settlement-plan.attachment.schema.json",
+  "title": "MEZ Settlement Plan attachment",
   "description": "Typed attachment wrapper for a corridor settlement plan artifact. This is intended for inclusion in corridor receipt transitions (attachments).",
   "type": "object",
   "allOf": [
     {
-      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
     },
     {
       "properties": {

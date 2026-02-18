@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/vc.node-capability.schema.json",
-  "title": "MSEZ Node Capability Attestation VC",
+  "$id": "https://schemas.momentum-ez.org/mez/vc.node-capability.schema.json",
+  "title": "MEZ Node Capability Attestation VC",
   "type": "object",
   "required": [
     "@context",

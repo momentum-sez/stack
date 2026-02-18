@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://momentum-sez.org/schemas/zone.schema.json",
-  "title": "MSEZ Zone Manifest",
+  "$id": "https://momentum-ez.org/schemas/zone.schema.json",
+  "title": "MEZ Zone Manifest",
   "type": "object",
   "required": [
     "zone_id",

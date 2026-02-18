@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/vc.proof.jcs-ed25519.schema.json",
-  "title": "MSEZ JCS Ed25519 Proof",
+  "$id": "https://schemas.momentum-ez.org/mez/vc.proof.jcs-ed25519.schema.json",
+  "title": "MEZ JCS Ed25519 Proof",
   "type": "object",
   "required": [
     "type",
@@ -12,7 +12,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MsezEd25519Signature2025"
+      "const": "MezEd25519Signature2025"
     },
     "created": {
       "type": "string",

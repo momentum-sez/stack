@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.legal.core
+module_id: org.momentum.mez.legal.core
 version: 0.1.0
 kind: legal
 license: CC-BY-4.0
@@ -7,7 +7,7 @@ variants:
   - commonlaw-minimal
 depends_on: []
 provides:
-  - interface: msez.legal.akn.v1
+  - interface: mez.legal.akn.v1
     path: src/akn/
     media_type: application/xml
 parameters: {}

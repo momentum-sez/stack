@@ -21,7 +21,7 @@ Create `modules/corridors/<corridor-name>/` with at minimum:
 Validate it:
 
 ```bash
-python3 -m tools.msez corridor validate modules/corridors/example-corridor
+python3 -m tools.mez corridor validate modules/corridors/example-corridor
 ```
 
 ## 1) Issue a Corridor Definition VC
@@ -29,7 +29,7 @@ python3 -m tools.msez corridor validate modules/corridors/example-corridor
 Create an unsigned corridor definition, then sign it:
 
 ```bash
-python3 -m tools.msez vc sign \
+python3 -m tools.mez vc sign \
   --in docs/examples/vc/unsigned.corridor-definition.json \
   --key keys/zone-authority.jwk.json \
   --out dist/artifacts/vc/
@@ -62,7 +62,7 @@ Receipts SHOULD be produced by authorized receipt signers and MUST include:
 Checkpoints summarize the corridor head and MMR root for fast sync.
 
 ```bash
-python3 -m tools.msez corridor state checkpoint \
+python3 -m tools.mez corridor state checkpoint \
   --corridor modules/corridors/example-corridor \
   --out dist/artifacts/checkpoint/
 ```
@@ -72,7 +72,7 @@ python3 -m tools.msez corridor state checkpoint \
 Independent watchers can issue watcher attestation VCs committing to the observed head.
 
 ```bash
-python3 -m tools.msez corridor state watcher-attest \
+python3 -m tools.mez corridor state watcher-attest \
   --corridor modules/corridors/example-corridor \
   --checkpoint dist/artifacts/checkpoint/<digest>.checkpoint.json \
   --key keys/watcher.jwk.json \
@@ -82,7 +82,7 @@ python3 -m tools.msez corridor state watcher-attest \
 Aggregate attestations to detect forks cheaply:
 
 ```bash
-python3 -m tools.msez corridor state watcher-compare modules/corridors/example-corridor \
+python3 -m tools.mez corridor state watcher-compare modules/corridors/example-corridor \
   --vcs ./watcher-attestations \
   --quorum-threshold majority \
   --require-quorum \

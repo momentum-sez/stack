@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://momentum-sez.org/schemas/corporate.ubo-declaration.schema.json",
+  "$id": "https://momentum-ez.org/schemas/corporate.ubo-declaration.schema.json",
   "title": "Beneficial Ownership Declaration",
   "description": "Declaration of ultimate beneficial owners for an entity",
   "type": "object",

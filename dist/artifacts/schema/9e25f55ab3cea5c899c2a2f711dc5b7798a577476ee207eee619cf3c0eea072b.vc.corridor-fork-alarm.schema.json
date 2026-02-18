@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/vc.corridor-fork-alarm.schema.json",
-  "title": "MSEZ Corridor Fork Alarm Verifiable Credential",
+  "$id": "https://schemas.momentum-ez.org/mez/vc.corridor-fork-alarm.schema.json",
+  "title": "MEZ Corridor Fork Alarm Verifiable Credential",
   "description": "A Verifiable Credential by a watcher/observer asserting evidence of a corridor receipt fork: two conflicting receipts exist for the same (sequence, prev_root) but lead to different next_root values.",
   "type": "object",
   "required": ["@context", "type", "issuer", "issuanceDate", "credentialSubject", "proof"],
@@ -15,7 +15,7 @@
     "type": {
       "type": "array",
       "items": {"type": "string"},
-      "contains": {"const": "MSEZCorridorForkAlarmCredential"}
+      "contains": {"const": "MEZCorridorForkAlarmCredential"}
     },
     "issuer": {
       "oneOf": [

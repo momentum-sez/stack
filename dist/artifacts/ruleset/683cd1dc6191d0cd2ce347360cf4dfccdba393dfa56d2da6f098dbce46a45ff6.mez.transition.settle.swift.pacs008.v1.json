@@ -1,0 +1,15 @@
+{
+  "type": "MEZTransitionRuleset",
+  "ruleset_id": "mez.transition.settle.swift.pacs008.v1",
+  "version": "0.1.0",
+  "transition_kind": "settle.swift.pacs008.v1",
+  "payload_schema": "schemas/transition.payload.settle.swift.pacs008.v1.schema.json",
+  "validation": {
+    "must_validate_payload_against_schema": true,
+    "must_reject_float_numbers_in_payload": true,
+    "notes": [
+      "Amounts should be encoded as decimal strings to avoid precision ambiguity.",
+      "This ruleset is intentionally a stub; production deployments SHOULD supplement with institution-specific validation (BIC allowlists, UETR uniqueness, limits)."
+    ]
+  }
+}

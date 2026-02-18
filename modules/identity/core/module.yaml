@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.identity.core
+module_id: org.momentum.mez.identity.core
 version: 0.1.0
 kind: identity
 license: Apache-2.0
@@ -19,13 +19,13 @@ variants:
 depends_on: []
 
 provides:
-  - interface: msez.identity.did.v1
+  - interface: mez.identity.did.v1
     path: schemas/did-document.schema.json
     media_type: application/json
-  - interface: msez.identity.key.v1
+  - interface: mez.identity.key.v1
     path: schemas/key-binding.schema.json
     media_type: application/json
-  - interface: msez.policy.opa.bundle.v1
+  - interface: mez.policy.opa.bundle.v1
     path: policy/
     media_type: text/plain
 

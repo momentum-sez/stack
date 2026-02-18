@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "MSEZ Lawpack Validity Attestation Verifiable Credential",
+  "title": "MEZ Lawpack Validity Attestation Verifiable Credential",
   "description": "A Verifiable Credential by a legal authority (or other recognized issuer) attesting that a given lawpack digest corresponds to a legally valid body of law for a specified jurisdiction+domain as-of a date. This credential is intended to narrow the legal-cryptographic gap by binding a lawpack digest to an assertion of legal force.",
   "type": "object",
   "required": ["@context", "type", "issuer", "issuanceDate", "credentialSubject", "proof"],
@@ -14,7 +14,7 @@
     "type": {
       "type": "array",
       "items": {"type": "string"},
-      "contains": {"const": "MSEZLawpackAttestationCredential"}
+      "contains": {"const": "MEZLawpackAttestationCredential"}
     },
     "issuer": {
       "oneOf": [

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/regpack.metadata.schema.json",
-  "title": "MSEZ RegPack Metadata",
+  "$id": "https://schemas.momentum-ez.org/mez/regpack.metadata.schema.json",
+  "title": "MEZ RegPack Metadata",
   "description": "Metadata for a Regulatory Pack (RegPack) capturing dynamic regulatory state for a jurisdiction/domain.",
   "type": "object",
   "required": [
@@ -16,7 +16,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MSEZRegPackMetadata"
+      "const": "MEZRegPackMetadata"
     },
     "stack_spec_version": {
       "type": "string",

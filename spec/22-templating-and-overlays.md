@@ -1,6 +1,6 @@
 # Templating and Overlays
 
-This document specifies how MSEZ bundles are *rendered* for a particular jurisdiction/zone, and how
+This document specifies how MEZ bundles are *rendered* for a particular jurisdiction/zone, and how
 jurisdiction-specific changes are applied without forking base modules.
 
 ## Goals
@@ -23,7 +23,7 @@ The v0.2 reference tooling supports two placeholder syntaxes (both are common in
 - `{{ VAR_NAME }}` — typically used in Akoma Ntoso XML templates
 - `${var_name}` — typically used in YAML manifests (e.g., corridor manifests)
 
-During `msez build`, placeholders are rendered from the *resolved parameter context*.
+During `mez build`, placeholders are rendered from the *resolved parameter context*.
 
 ### Parameter context
 

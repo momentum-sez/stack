@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/vc.arbitration-award.schema.json",
-  "title": "MSEZ Arbitration Award Verifiable Credential",
+  "$id": "https://schemas.momentum-ez.org/mez/vc.arbitration-award.schema.json",
+  "title": "MEZ Arbitration Award Verifiable Credential",
   "description": "A signed VC representing an arbitration award or settlement outcome for a dispute claim.",
   "allOf": [
     {
-      "$ref": "https://schemas.momentum-sez.org/msez/vc.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/vc.schema.json"
     },
     {
       "type": "object",
@@ -17,7 +17,7 @@
         "type": {
           "type": "array",
           "contains": {
-            "const": "MSEZArbitrationAwardCredential"
+            "const": "MEZArbitrationAwardCredential"
           }
         },
         "credentialSubject": {
@@ -33,7 +33,7 @@
           ],
           "properties": {
             "type": {
-              "const": "MSEZArbitrationAward"
+              "const": "MEZArbitrationAward"
             },
             "award_id": {
               "type": "string"
@@ -91,7 +91,7 @@
             "attachments": {
               "type": "array",
               "items": {
-                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
               }
             },
             "meta": {

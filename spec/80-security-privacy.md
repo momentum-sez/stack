@@ -1,6 +1,6 @@
 # Security & Privacy Baseline
 
-This document defines baseline security and privacy expectations for MSEZ stacks.
+This document defines baseline security and privacy expectations for MEZ stacks.
 
 ## Data minimization
 

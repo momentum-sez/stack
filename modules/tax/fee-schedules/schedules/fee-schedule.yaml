@@ -1,7 +1,7 @@
 # Zone Fee Schedule
 # All fees charged by the zone authority
 
-schedule_id: msez.tax.fees.schedule.v1
+schedule_id: mez.tax.fees.schedule.v1
 schedule_version: "2026.1"
 effective_date: "2026-01-01"
 base_currency: "USD"

@@ -1,6 +1,6 @@
 # Chapter 17: Agentic Execution Framework
 
-**MSEZ Stack Specification v0.4.44**
+**MEZ Stack Specification v0.4.44**
 
 This chapter specifies the Agentic Execution Framework, enabling autonomous asset behavior through environment monitoring, policy-driven trigger evaluation, and deterministic action scheduling.
 
@@ -282,7 +282,7 @@ The `PAUSED` state is available for temporary suspension without full restart.
 The agentic framework supports trigger simulation for testing:
 
 ```bash
-msez agent trigger emit checkpoint_due --payload '{"receipts_since_last": 150}'
+mez agent trigger emit checkpoint_due --payload '{"receipts_since_last": 150}'
 ```
 
 This allows testing policy behavior without actual environment changes.

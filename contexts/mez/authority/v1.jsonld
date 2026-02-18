@@ -1,0 +1,18 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "mez": "https://schemas.momentum-ez.org/vocab/mez#",
+    "MEZAuthorityRegistryCredential": "mez:MEZAuthorityRegistryCredential",
+    "registry_id": "mez:registry_id",
+    "authorities": "mez:authorities",
+    "did": "mez:did",
+    "name": "mez:name",
+    "zone_id": "mez:zone_id",
+    "jurisdiction_id": "mez:jurisdiction_id",
+    "roles": "mez:roles",
+    "allowed_attestations": "mez:allowed_attestations",
+    "evidence": "mez:evidence",
+    "as_of_date": "mez:as_of_date",
+    "notes": "mez:notes"
+  }
+}

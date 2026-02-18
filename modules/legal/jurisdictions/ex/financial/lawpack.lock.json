@@ -18,12 +18,12 @@
     "sources_manifest_path": "sources.yaml",
     "raw_sources": {},
     "normalization": {
-      "recipe_id": "msez.law.normalization.v1",
-      "tool": "msez",
+      "recipe_id": "mez.law.normalization.v1",
+      "tool": "mez",
       "tool_version": "0.4.1",
       "inputs": [
         {
-          "module_id": "org.momentum.msez.legal.ex.financial.corpus",
+          "module_id": "org.momentum.mez.legal.ex.financial.corpus",
           "module_version": "0.1.0",
           "sources_manifest_sha256": "937face6c346450b3964368ffa0f7a967715a00f26d9bcfb2cbc0ee98c88b8c9"
         }

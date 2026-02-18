@@ -1,4 +1,4 @@
-# Writing Akoma Ntoso for MSEZ modules
+# Writing Akoma Ntoso for MEZ modules
 
 Akoma Ntoso (LegalDocML) is the canonical source format for legal texts in this stack.
 

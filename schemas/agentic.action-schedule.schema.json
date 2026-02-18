@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/agentic.action-schedule.schema.json",
-  "title": "MSEZAgenticScheduledAction",
+  "$id": "https://schemas.momentum-ez.org/mez/agentic.action-schedule.schema.json",
+  "title": "MEZAgenticScheduledAction",
   "description": "A scheduled action resulting from policy evaluation",
   "type": "object",
   "required": ["action_id", "asset_id", "action_type", "trigger_id", "policy_id", "scheduled_at", "execute_at", "status"],

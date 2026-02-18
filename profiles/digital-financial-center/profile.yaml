@@ -1,20 +1,20 @@
-profile_id: org.momentum.msez.profile.digital-financial-center
+profile_id: org.momentum.mez.profile.digital-financial-center
 stack_spec_version: 0.4.44
 modules:
-- module_id: org.momentum.msez.legal.core
+- module_id: org.momentum.mez.legal.core
   version: 0.1.0
   variant: commonlaw-minimal
-- module_id: org.momentum.msez.reg.aml-cft
+- module_id: org.momentum.mez.reg.aml-cft
   version: 0.1.0
   variant: risk-based
   params:
     kyc_tier_required: 2
     max_amount_without_enhanced_due_diligence: 10000
-- module_id: org.momentum.msez.fin.payments-adapter
+- module_id: org.momentum.mez.fin.payments-adapter
   version: 0.1.0
   variant: iso20022-mapping
-- module_id: org.momentum.msez.corridor.swift
+- module_id: org.momentum.mez.corridor.swift
   version: 0.1.0
   variant: iso20022-cross-border
 corridors:
-- org.momentum.msez.corridor.swift.iso20022-cross-border
+- org.momentum.mez.corridor.swift.iso20022-cross-border

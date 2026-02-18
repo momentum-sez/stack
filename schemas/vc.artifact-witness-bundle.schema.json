@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/vc.artifact-witness-bundle.schema.json",
-  "title": "MSEZ Artifact Witness Bundle Attestation Verifiable Credential",
-  "description": "A Verifiable Credential attesting to the manifest digest of an MSEZ artifact witness bundle produced by `msez artifact graph verify --bundle`. This provides cryptographic provenance for who assembled a closure bundle used for verification, without changing the underlying digest commitments.",
+  "$id": "https://schemas.momentum-ez.org/mez/vc.artifact-witness-bundle.schema.json",
+  "title": "MEZ Artifact Witness Bundle Attestation Verifiable Credential",
+  "description": "A Verifiable Credential attesting to the manifest digest of an MEZ artifact witness bundle produced by `mez artifact graph verify --bundle`. This provides cryptographic provenance for who assembled a closure bundle used for verification, without changing the underlying digest commitments.",
   "type": "object",
   "required": ["@context", "type", "issuer", "issuanceDate", "credentialSubject"],
   "properties": {
@@ -15,7 +15,7 @@
     "type": {
       "type": "array",
       "items": {"type": "string"},
-      "contains": {"const": "MSEZArtifactWitnessBundleCredential"}
+      "contains": {"const": "MEZArtifactWitnessBundleCredential"}
     },
     "issuer": {
       "oneOf": [

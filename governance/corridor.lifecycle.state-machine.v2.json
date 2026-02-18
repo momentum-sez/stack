@@ -1,5 +1,5 @@
 {
-  "type": "MSEZCorridorStateMachine",
+  "type": "MEZCorridorStateMachine",
   "version": "v2",
   "supersedes": "v1",
   "states": ["DRAFT", "PENDING", "ACTIVE", "HALTED", "SUSPENDED", "DEPRECATED"],
@@ -11,14 +11,14 @@
       "to": "PENDING",
       "kind": "submit",
       "description": "Corridor definition submitted for review. Requires corridor definition VC and agreement VCs from all participants.",
-      "requires_evidence_vc_types": ["MSEZCorridorDefinitionCredential"]
+      "requires_evidence_vc_types": ["MEZCorridorDefinitionCredential"]
     },
     {
       "from": "PENDING",
       "to": "ACTIVE",
       "kind": "activate",
       "description": "Corridor activated after all activation thresholds are met (agreement VCs satisfy quorum). State channel begins accepting receipts.",
-      "requires_evidence_vc_types": ["MSEZCorridorAgreementCredential"],
+      "requires_evidence_vc_types": ["MEZCorridorAgreementCredential"],
       "requires_finality_level": "receipt_signed"
     },
     {
@@ -26,7 +26,7 @@
       "to": "HALTED",
       "kind": "halt",
       "description": "Emergency halt triggered by fork detection, safety incident, or regulatory order. All receipt production must stop immediately.",
-      "requires_evidence_vc_types": ["MSEZCorridorForkAlarmCredential"]
+      "requires_evidence_vc_types": ["MEZCorridorForkAlarmCredential"]
     },
     {
       "from": "ACTIVE",
@@ -40,7 +40,7 @@
       "to": "ACTIVE",
       "kind": "resume_from_halt",
       "description": "Resume operations after a fork is resolved and/or incident is mitigated. Requires fork resolution evidence.",
-      "requires_evidence_vc_types": ["MSEZCorridorForkResolutionCredential"]
+      "requires_evidence_vc_types": ["MEZCorridorForkResolutionCredential"]
     },
     {
       "from": "SUSPENDED",
@@ -75,6 +75,6 @@
   "meta": {
     "spec_reference": "spec/40-corridors.md",
     "audit_reference": "docs/fortification/sez_stack_audit_v2.md#2.3",
-    "rust_implementation": "msez-state::corridor (typestate pattern)"
+    "rust_implementation": "mez-state::corridor (typestate pattern)"
   }
 }

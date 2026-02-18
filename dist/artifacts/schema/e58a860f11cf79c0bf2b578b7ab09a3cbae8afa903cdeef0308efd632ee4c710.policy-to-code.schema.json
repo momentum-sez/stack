@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/policy-to-code.schema.json",
-  "title": "MSEZ Policy-to-Code Mapping",
+  "$id": "https://schemas.momentum-ez.org/mez/policy-to-code.schema.json",
+  "title": "MEZ Policy-to-Code Mapping",
   "type": "array",
   "items": {
     "type": "object",
@@ -79,7 +79,7 @@
           },
           "format": {
             "type": "string",
-            "description": "Optional format hint (e.g., vc-jwt, vc-ld, msez-envelope)."
+            "description": "Optional format hint (e.g., vc-jwt, vc-ld, mez-envelope)."
           },
           "claims_schema": {
             "type": "string",

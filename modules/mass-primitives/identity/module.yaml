@@ -1,7 +1,7 @@
 # MASS Identity Primitive
 # Decentralized identity and verification
 
-module_id: org.momentum.msez.mass-primitives.identity
+module_id: org.momentum.mez.mass-primitives.identity
 version: 0.1.0
 kind: protocol
 name: MASS Identity Primitive
@@ -12,11 +12,11 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.mass.identity.did.v1
+  - interface: mez.mass.identity.did.v1
     description: Decentralized Identifier management
-  - interface: msez.mass.identity.vc.v1
+  - interface: mez.mass.identity.vc.v1
     description: Verifiable Credential issuance and verification
-  - interface: msez.mass.identity.zkp.v1
+  - interface: mez.mass.identity.zkp.v1
     description: Zero-knowledge proof identity verification
 
 did_methods:
@@ -32,9 +32,9 @@ did_methods:
     resolution: https_fetch
     use_case: organizational_identities
 
-  did_msez:
+  did_mez:
     description: Zone-native DID method
-    format: "did:msez:{zone_id}:{entity_hash}"
+    format: "did:mez:{zone_id}:{entity_hash}"
     resolution: zone_registry
     use_case: zone_registered_entities
     features:

@@ -108,8 +108,8 @@ Implementations MUST compute file digests deterministically.
   2. **Datetime normalization**: strings that parse as RFC 3339 timestamps MUST be normalized to UTC with `Z` suffix, truncated to whole seconds.
 
   These coercions are normative deviations from pure RFC 8785 JCS. Any cross-language implementation
-  MUST replicate these exact coercions to produce matching digests. See `msez-core::canonical` for the
-  reference implementation and `msez-core::canonical::tests` for cross-language golden vectors.
+  MUST replicate these exact coercions to produce matching digests. See `mez-core::canonical` for the
+  reference implementation and `mez-core::canonical::tests` for cross-language golden vectors.
 
 - For YAML artifacts: implementations MUST parse YAML into an equivalent JSON data model and digest MUST be
   `SHA256(MCF(json_model))`.
@@ -121,7 +121,7 @@ For Corridor Agreement binding, the **definition payload hash** MUST be computed
 
 The reference tool exposes this as:
 
-- `msez vc payload-hash <vc.json>`
+- `mez vc payload-hash <vc.json>`
 
 ## Corridor Agreement VC (normative)
 
@@ -155,7 +155,7 @@ If `state_channel.receipt_signing` is omitted, verifiers SHOULD default to `acti
 
 The reference tool can enforce this per-receipt threshold with:
 
-- `msez corridor state verify --enforce-receipt-threshold ...`
+- `mez corridor state verify --enforce-receipt-threshold ...`
 
 ### Lawpack pins (v0.4.1+)
 
@@ -218,7 +218,7 @@ blockers in the form:
 
 - `<partyDid>:<commitment>`
 
-The reference tool exposes these as `corridor_activation_blockers` in `msez corridor status` and `msez lock`.
+The reference tool exposes these as `corridor_activation_blockers` in `mez corridor status` and `mez lock`.
 
 ### Signer authorization (normative)
 
@@ -250,9 +250,9 @@ corridor’s cryptographic substrate:
 The reference genesis root definition is:
 
 ```
-# msez.corridor.state.genesis.v1
+# mez.corridor.state.genesis.v1
 genesis_root = SHA256(MCF({
-  "tag": "msez.corridor.state.genesis.v1",
+  "tag": "mez.corridor.state.genesis.v1",
   "corridor_id": "...",
   "definition_payload_sha256": "...",
   "agreement_set_sha256": "...",
@@ -283,7 +283,7 @@ Receipts MAY include `zk` proof scaffolding and/or `anchor` metadata.
 To make corridor transitions machine-parseable while keeping the receipt model generic, v0.4.3
 introduces a **typed transition envelope**.
 
-Receipts SHOULD carry `transition` as a `MSEZTransitionEnvelope`.
+Receipts SHOULD carry `transition` as a `MEZTransitionEnvelope`.
 
 v0.4.4 adds **optional digest references** so that ecosystems can converge on interoperable
 transition kinds without making the corridor receipt schema corridor-specific:
@@ -296,7 +296,7 @@ Example:
 
 ```json
 {
-  "type": "MSEZTransitionEnvelope",
+  "type": "MEZTransitionEnvelope",
   "kind": "...",
   "schema": "...",                // optional schema identifier/URI
   "schema_digest_sha256": "...",  // optional payload schema digest
@@ -356,7 +356,7 @@ Registry format (YAML):
 ```yaml
 version: 1
 transition_types:
-  - kind: msez.example.transfer.v1
+  - kind: mez.example.transfer.v1
     schema_digest_sha256: "<sha256>"
     ruleset_digest_sha256: "<sha256>"
     zk_circuit_digest_sha256: "<sha256>"   # optional
@@ -394,7 +394,7 @@ Lock format (JSON): `schemas/transition-types.lock.schema.json`
 
 Digest semantics (normative):
 
-- The lockfile MUST include `snapshot` with `tag = msez.transition-types.registry.snapshot.v1`.
+- The lockfile MUST include `snapshot` with `tag = mez.transition-types.registry.snapshot.v1`.
 - The lockfile MUST include `snapshot_digest_sha256 = SHA256(MCF(snapshot))`.
 
 Within `snapshot.transition_types[*]`, per-kind digest fields (`schema_digest_sha256`, `ruleset_digest_sha256`, `zk_circuit_digest_sha256`) MAY be expressed as either raw sha256 digest strings (legacy) OR as ArtifactRef objects with the corresponding `artifact_type` (`schema`, `ruleset`, `circuit`).
@@ -426,7 +426,7 @@ Verifiers MAY choose to enforce that **every digest commitment** in a receipt is
 (`spec/97-artifacts.md`). In this mode, verification fails if any referenced digest
 (lawpacks, rulesets, transition registry, schema/circuit/proof keys) cannot be located by `(type,digest)`.
 
-The reference CLI exposes this as `python -m tools.msez corridor state verify ... --require-artifacts`.
+The reference CLI exposes this as `python -m tools.mez corridor state verify ... --require-artifacts`.
 
 Overrides (optional):
 
@@ -464,7 +464,7 @@ Receipts are only meaningful when they bind to the **exact law + rules** in forc
 
 - `lawpack_digest_set` MUST equal the union of the `pinned_lawpacks[].lawpack_digest_sha256` values in the
   activated Corridor Agreement VC set.
-- `ruleset_digest_set` MUST include the digest of the active corridor state-transition ruleset descriptor (e.g., `msez.corridor.state-transition.v2`).
+- `ruleset_digest_set` MUST include the digest of the active corridor state-transition ruleset descriptor (e.g., `mez.corridor.state-transition.v2`).
   Corridors MAY include additional ruleset digests for settlement logic, attestations, and dispute logic.
 
 
@@ -539,7 +539,7 @@ Watcher artifacts are designed to be publishable out-of-band (public transparenc
 
 Reference tooling includes an aggregation primitive:
 
-- `msez corridor state watcher-compare <module> --vcs <dir-or-file>`
+- `mez corridor state watcher-compare <module> --vcs <dir-or-file>`
 
 The aggregator compares `(receipt_count, final_state_root)` across watcher attestations for the same `corridor_id`:
 
@@ -562,7 +562,7 @@ This policy is intended for **liveness monitoring** (and optional soft-finality)
 The reference tool supports this via:
 
 ```bash
-msez corridor state watcher-compare <corridor-module> \
+mez corridor state watcher-compare <corridor-module> \
   --vcs ./watcher-attestations/ \
   --quorum-threshold '3/5' \
   --require-quorum \
@@ -633,7 +633,7 @@ Receipts MAY include typed transition attachments referencing other corridor che
 Reference CLI:
 
 ```bash
-msez corridor state receipt-init <corridor-module> \
+mez corridor state receipt-init <corridor-module> \
   --transition <transition.json> \
   --attach-corridor-checkpoint <other-corridor-checkpoint.json>
 ```
@@ -655,7 +655,7 @@ A proof-binding commits to:
 Reference CLI:
 
 ```bash
-msez proof-binding init \
+mez proof-binding init \
   --binding-purpose settlement.confirmation \
   --proof ./evidence/mt103.pdf \
   --proof-artifact-type blob \
@@ -680,7 +680,7 @@ A settlement-anchor records:
 Reference CLI:
 
 ```bash
-msez corridor settlement-anchor-init \
+mez corridor settlement-anchor-init \
   --obligation-checkpoint ./trade/checkpoint.signed.json \
   --settlement-checkpoint ./settlement/checkpoint.signed.json \
   --proof-binding ./proof-binding.<digest>.json \
@@ -690,7 +690,7 @@ msez corridor settlement-anchor-init \
 The resulting settlement-anchor artifact digest can then be attached to receipts on either corridor:
 
 ```bash
-msez corridor state receipt-init <corridor-module> \
+mez corridor state receipt-init <corridor-module> \
   --transition <transition.json> \
   --attach-settlement-anchor ./settlement-anchor.<digest>.json
 ```
@@ -712,7 +712,7 @@ so that the ZK proof cannot be replayed against different corridor states.
 
 The reference ruleset identifier is:
 
-- `msez.corridor.verification.v1`
+- `mez.corridor.verification.v1`
 
 A conforming validator MUST, at minimum:
 
@@ -735,19 +735,19 @@ A conforming validator MUST, at minimum:
 
 The reference implementation includes:
 
-- `msez vc keygen` — generate Ed25519 keys (writes JWK, prints did:key)
-- `msez vc sign` — sign a Verifiable Credential
-- `msez vc verify` — verify VC signature(s)
-- `msez vc payload-hash` — compute SHA256 of signing input (payload excluding `proof`)
-- `msez corridor vc-init-definition` — scaffold an unsigned Corridor Definition VC from a corridor package
-- `msez corridor vc-init-agreement` — scaffold an unsigned Corridor Agreement VC from a corridor package
-- `msez corridor verify` — verify corridor definition, agreement, and activation
-- `msez corridor status` — summarize activation status and blockers across an agreement-set
-- `msez corridor availability-attest` — create a lawpack artifact availability attestation VC
-- `msez corridor availability-verify` — verify availability attestations cover the corridor lawpacks
-- `msez corridor state genesis-root` — compute corridor state-channel genesis_root
-- `msez corridor state receipt-init` — create a corridor state receipt (computes next_root; optionally signs)
-- `msez corridor state verify` — verify a receipt chain and print the final root
+- `mez vc keygen` — generate Ed25519 keys (writes JWK, prints did:key)
+- `mez vc sign` — sign a Verifiable Credential
+- `mez vc verify` — verify VC signature(s)
+- `mez vc payload-hash` — compute SHA256 of signing input (payload excluding `proof`)
+- `mez corridor vc-init-definition` — scaffold an unsigned Corridor Definition VC from a corridor package
+- `mez corridor vc-init-agreement` — scaffold an unsigned Corridor Agreement VC from a corridor package
+- `mez corridor verify` — verify corridor definition, agreement, and activation
+- `mez corridor status` — summarize activation status and blockers across an agreement-set
+- `mez corridor availability-attest` — create a lawpack artifact availability attestation VC
+- `mez corridor availability-verify` — verify availability attestations cover the corridor lawpacks
+- `mez corridor state genesis-root` — compute corridor state-channel genesis_root
+- `mez corridor state receipt-init` — create a corridor state receipt (computes next_root; optionally signs)
+- `mez corridor state verify` — verify a receipt chain and print the final root
 
 See also: `spec/95-lockfile.md` for how corridor substrate (definition/agreement digests) and lawpacks are pinned into `stack.lock`.
 

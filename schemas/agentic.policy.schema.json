@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/agentic.policy.schema.json",
-  "title": "MSEZAgenticPolicy",
+  "$id": "https://schemas.momentum-ez.org/mez/agentic.policy.schema.json",
+  "title": "MEZAgenticPolicy",
   "description": "An agentic policy mapping triggers to actions per MASS Protocol v0.2 Definition 17.2",
   "type": "object",
   "required": ["policy_id", "trigger_type", "action"],

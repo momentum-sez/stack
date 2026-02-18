@@ -1,0 +1,27 @@
+[package]
+name = "mez-mass-client"
+description = "Typed Rust HTTP client for Mass Protocol APIs — the five programmable primitives."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+# CLAUDE.md §V.2: mez-mass-client may depend on mez-core ONLY for
+# identifier newtypes. Do NOT import EZ Stack domain logic (tensors,
+# corridors, packs, VCs, etc.) from mez-core.
+mez-core = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+zeroize = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+url = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+wiremock = "0.6"

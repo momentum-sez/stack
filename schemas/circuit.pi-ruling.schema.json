@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/circuit.pi-ruling.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/circuit.pi-ruling.schema.json",
   "title": "πruling Circuit Specification",
   "description": "ZK circuit specification for arbitration ruling verification (Definition 26.9)",
   "type": "object",

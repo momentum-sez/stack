@@ -1,0 +1,37 @@
+[package]
+name = "mez-integration-tests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+# This crate has no library — it exists solely to host cross-crate integration tests.
+
+[dev-dependencies]
+mez-core = { path = "../mez-core" }
+mez-crypto = { path = "../mez-crypto" }
+mez-vc = { path = "../mez-vc" }
+mez-state = { path = "../mez-state" }
+mez-tensor = { path = "../mez-tensor" }
+mez-pack = { path = "../mez-pack" }
+mez-corridor = { path = "../mez-corridor" }
+mez-agentic = { path = "../mez-agentic" }
+mez-arbitration = { path = "../mez-arbitration" }
+mez-schema = { path = "../mez-schema" }
+mez-zkp = { path = "../mez-zkp" }
+mez-cli = { path = "../mez-cli" }
+mez-api = { path = "../mez-api" }
+mez-mass-client = { path = "../mez-mass-client" }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+rand_core = { workspace = true }
+uuid = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+tower = { workspace = true }
+http-body-util = { workspace = true }
+proptest = { workspace = true }
+tempfile = "3"

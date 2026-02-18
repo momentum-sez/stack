@@ -1,7 +1,7 @@
 # Regulatory Sandbox Module
 # Innovation sandbox with graduated requirements
 
-module_id: org.momentum.msez.licensing.regulatory-sandbox
+module_id: org.momentum.mez.licensing.regulatory-sandbox
 version: 0.1.0
 kind: licensing
 name: Regulatory Sandbox
@@ -13,19 +13,19 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.licensing.sandbox.fintech.v1
+  - interface: mez.licensing.sandbox.fintech.v1
     description: Fintech innovation sandbox
-  - interface: msez.licensing.sandbox.regtech.v1
+  - interface: mez.licensing.sandbox.regtech.v1
     description: Regtech innovation sandbox
-  - interface: msez.licensing.sandbox.insurtech.v1
+  - interface: mez.licensing.sandbox.insurtech.v1
     description: Insurtech innovation sandbox
-  - interface: msez.licensing.sandbox.digital-assets.v1
+  - interface: mez.licensing.sandbox.digital-assets.v1
     description: Digital asset innovation sandbox
 
 dependencies:
-  - module_id: org.momentum.msez.regulatory.financial-supervision
+  - module_id: org.momentum.mez.regulatory.financial-supervision
     version: ">=0.2.0"
-  - module_id: org.momentum.msez.regulatory.consumer-protection
+  - module_id: org.momentum.mez.regulatory.consumer-protection
     version: ">=0.1.0"
 
 sandbox_framework:

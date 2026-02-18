@@ -44,8 +44,8 @@ Zone Admin ──> EZ Stack API ──> Compliance Tensor (20-domain evaluation)
 ## Quickstart
 
 ```bash
-git clone https://github.com/momentum-sez/stack.git
-cd stack/msez
+git clone https://github.com/momentum-ez/stack.git
+cd stack/mez
 
 # Build all 16 crates
 cargo build --workspace
@@ -60,12 +60,12 @@ cargo clippy --workspace -- -D warnings
 cargo doc --workspace --no-deps --open
 
 # Start the API server (port 3000, OpenAPI at /openapi.json)
-cargo run -p msez-api
+cargo run -p mez-api
 
 # Use the CLI
-cargo run -p msez-cli -- validate --all-modules
-cargo run -p msez-cli -- corridor list
-cargo run -p msez-cli -- vc keygen --output keys/ --prefix dev
+cargo run -p mez-cli -- validate --all-modules
+cargo run -p mez-cli -- corridor list
+cargo run -p mez-cli -- vc keygen --output keys/ --prefix dev
 ```
 
 ---
@@ -78,19 +78,19 @@ The EZ Stack owns **orchestration, compliance, and cryptographic state**. It doe
 
 | Domain | Crate | What it does |
 |--------|-------|-------------|
-| **Compliance Tensor** | `msez-tensor` | Evaluate compliance across 20 regulatory domains per entity/jurisdiction. Dijkstra-optimized migration paths. Merkle-committed state. |
-| **Corridors** | `msez-corridor` | Cross-border trade channels with MMR-backed receipt chains, fork detection/resolution, bilateral netting, SWIFT pacs.008 generation. |
-| **Pack Trilogy** | `msez-pack` | Parse and validate lawpacks (Akoma Ntoso statutes), regpacks (sanctions lists, regulatory calendars), and licensepacks (license registries). |
-| **State Machines** | `msez-state` | Typestate-encoded lifecycles for corridors (6 states), entities (10 stages), migrations (8 phases), licenses (5 states), watchers (4 states). Invalid transitions are compile errors. |
-| **Verifiable Credentials** | `msez-vc` | W3C VC issuance and verification with Ed25519 proofs. Credentials for KYC, sanctions clearance, corridor agreements, compliance attestations. |
-| **Agentic Engine** | `msez-agentic` | 20 trigger types, autonomous policy evaluation, deterministic conflict resolution, append-only audit trail. |
-| **Arbitration** | `msez-arbitration` | Dispute lifecycle (7 phases), evidence chain-of-custody, escrow management, enforcement via VC-triggered state transitions. |
-| **Zero-Knowledge** | `msez-zkp` | Sealed `ProofSystem` trait with 12 circuit types. Phase 1: deterministic mock. Phase 2: Groth16/PLONK backends (feature-gated). |
-| **Mass API Client** | `msez-mass-client` | Typed Rust HTTP client for all five Mass API primitives. The only authorized path from EZ Stack to Mass. |
+| **Compliance Tensor** | `mez-tensor` | Evaluate compliance across 20 regulatory domains per entity/jurisdiction. Dijkstra-optimized migration paths. Merkle-committed state. |
+| **Corridors** | `mez-corridor` | Cross-border trade channels with MMR-backed receipt chains, fork detection/resolution, bilateral netting, SWIFT pacs.008 generation. |
+| **Pack Trilogy** | `mez-pack` | Parse and validate lawpacks (Akoma Ntoso statutes), regpacks (sanctions lists, regulatory calendars), and licensepacks (license registries). |
+| **State Machines** | `mez-state` | Typestate-encoded lifecycles for corridors (6 states), entities (10 stages), migrations (8 phases), licenses (5 states), watchers (4 states). Invalid transitions are compile errors. |
+| **Verifiable Credentials** | `mez-vc` | W3C VC issuance and verification with Ed25519 proofs. Credentials for KYC, sanctions clearance, corridor agreements, compliance attestations. |
+| **Agentic Engine** | `mez-agentic` | 20 trigger types, autonomous policy evaluation, deterministic conflict resolution, append-only audit trail. |
+| **Arbitration** | `mez-arbitration` | Dispute lifecycle (7 phases), evidence chain-of-custody, escrow management, enforcement via VC-triggered state transitions. |
+| **Zero-Knowledge** | `mez-zkp` | Sealed `ProofSystem` trait with 12 circuit types. Phase 1: deterministic mock. Phase 2: Groth16/PLONK backends (feature-gated). |
+| **Mass API Client** | `mez-mass-client` | Typed Rust HTTP client for all five Mass API primitives. The only authorized path from EZ Stack to Mass. |
 
 ### What Mass owns (not in this repo)
 
-Entities, cap tables, payments, identity/KYC records, and consent -- all live in Mass API services (`organization-info.api.mass.inc`, `treasury-info.api.mass.inc`, etc.). The EZ Stack calls Mass through `msez-mass-client`; it never stores primitive data directly.
+Entities, cap tables, payments, identity/KYC records, and consent -- all live in Mass API services (`organization-info.api.mass.inc`, `treasury-info.api.mass.inc`, etc.). The EZ Stack calls Mass through `mez-mass-client`; it never stores primitive data directly.
 
 ---
 
@@ -99,50 +99,50 @@ Entities, cap tables, payments, identity/KYC records, and consent -- all live in
 16 crates, resolver v2, edition 2021, MSRV 1.75.
 
 ```
-msez/crates/
-├── msez-core            Canonicalization (JCS), 20 ComplianceDomain variants,
+mez/crates/
+├── mez-core            Canonicalization (JCS), 20 ComplianceDomain variants,
 │                        identifier newtypes, error hierarchy
-├── msez-crypto          Ed25519 (zeroize-on-drop), MMR, CAS, SHA-256
+├── mez-crypto          Ed25519 (zeroize-on-drop), MMR, CAS, SHA-256
 │                        BBS+ and Poseidon2 behind feature flags
-├── msez-vc              W3C Verifiable Credentials, Ed25519 proofs, registry
-├── msez-state           Typestate machines: Corridor, Entity, Migration,
+├── mez-vc              W3C Verifiable Credentials, Ed25519 proofs, registry
+├── mez-state           Typestate machines: Corridor, Entity, Migration,
 │                        License, Watcher — invalid transitions don't compile
-├── msez-tensor          Compliance Tensor V2 (20 domains x 5-state lattice),
+├── mez-tensor          Compliance Tensor V2 (20 domains x 5-state lattice),
 │                        Dijkstra manifold, Merkle commitments
-├── msez-zkp             Sealed ProofSystem trait, 12 circuits, CDB bridge
-├── msez-pack            Lawpack / Regpack / Licensepack — sanctions checker
-├── msez-corridor        Receipt chain (MMR), fork resolution, netting, SWIFT
-├── msez-agentic         Policy engine: 20 triggers, scheduling, audit trail
-├── msez-arbitration     Dispute lifecycle, evidence, escrow, enforcement
-├── msez-compliance      Jurisdiction config bridge (regpack → tensor)
-├── msez-schema          JSON Schema validation (Draft 2020-12, 116 schemas)
-├── msez-mass-client     Typed HTTP client for all 5 Mass API primitives
-├── msez-api             Axum HTTP server — corridors, settlement, assets,
+├── mez-zkp             Sealed ProofSystem trait, 12 circuits, CDB bridge
+├── mez-pack            Lawpack / Regpack / Licensepack — sanctions checker
+├── mez-corridor        Receipt chain (MMR), fork resolution, netting, SWIFT
+├── mez-agentic         Policy engine: 20 triggers, scheduling, audit trail
+├── mez-arbitration     Dispute lifecycle, evidence, escrow, enforcement
+├── mez-compliance      Jurisdiction config bridge (regpack → tensor)
+├── mez-schema          JSON Schema validation (Draft 2020-12, 116 schemas)
+├── mez-mass-client     Typed HTTP client for all 5 Mass API primitives
+├── mez-api             Axum HTTP server — corridors, settlement, assets,
 │                        credentials, regulator, agentic, Mass proxy
-├── msez-cli             CLI: validate, lock, corridor, artifact, vc
-└── msez-integration-tests  99 cross-crate test files
+├── mez-cli             CLI: validate, lock, corridor, artifact, vc
+└── mez-integration-tests  99 cross-crate test files
 ```
 
 ### Dependency graph
 
 ```
-msez-core ─────────────────────────────────────────────────────────┐
+mez-core ─────────────────────────────────────────────────────────┐
   │                                                                │
-  ├── msez-crypto ──┬── msez-vc                                    │
-  │                 ├── msez-zkp                                   │
-  │                 └── msez-tensor ── msez-compliance             │
+  ├── mez-crypto ──┬── mez-vc                                    │
+  │                 ├── mez-zkp                                   │
+  │                 └── mez-tensor ── mez-compliance             │
   │                                                                │
-  ├── msez-state ───┬── msez-corridor                              │
-  │                 └── msez-arbitration                           │
+  ├── mez-state ───┬── mez-corridor                              │
+  │                 └── mez-arbitration                           │
   │                                                                │
-  ├── msez-pack                                                    │
-  ├── msez-agentic                                                 │
-  ├── msez-schema                                                  │
-  ├── msez-mass-client                                             │
+  ├── mez-pack                                                    │
+  ├── mez-agentic                                                 │
+  ├── mez-schema                                                  │
+  ├── mez-mass-client                                             │
   │                                                                │
-  └── msez-api (depends on most crates above)                      │
-      msez-cli (depends on core, crypto, schema)                   │
-      msez-integration-tests (depends on everything)───────────────┘
+  └── mez-api (depends on most crates above)                      │
+      mez-cli (depends on core, crypto, schema)                   │
+      mez-integration-tests (depends on everything)───────────────┘
 ```
 
 ### Type-level safety guarantees
@@ -152,55 +152,55 @@ msez-core ───────────────────────�
 | No invalid state transitions | Typestate pattern -- each state is a distinct ZST; transitions are methods that consume `self` and return the next state type. `Corridor<Draft>` has `.submit()` but no `.halt()`. |
 | No serialization divergence | `CanonicalBytes::new()` is the sole path to digest computation. All signing flows require `&CanonicalBytes`. |
 | No type confusion | Identifier newtypes: `EntityId`, `CorridorId`, `MigrationId`, `WatcherId`, `DisputeId` -- the compiler rejects mixing them. |
-| No unauthorized proof backends | `ProofSystem` trait is sealed. Only `msez-zkp` can implement it. |
+| No unauthorized proof backends | `ProofSystem` trait is sealed. Only `mez-zkp` can implement it. |
 | No key material leakage | `SigningKey` implements `Zeroize` + `ZeroizeOnDrop`. Does not implement `Serialize`. |
-| No Mass API calls outside client | All Mass HTTP calls go through `msez-mass-client`. Direct `reqwest` to Mass endpoints from other crates is forbidden by convention. |
+| No Mass API calls outside client | All Mass HTTP calls go through `mez-mass-client`. Direct `reqwest` to Mass endpoints from other crates is forbidden by convention. |
 | No `unwrap()` in library crates | All errors use `thiserror`. Exhaustive `match` on all enums. |
 
 ---
 
 ## CLI
 
-The `msez` binary (`msez-cli` crate) provides offline zone management operations.
+The `mez` binary (`mez-cli` crate) provides offline zone management operations.
 
 ```bash
 # Validate modules, profiles, zones
-msez validate --all-modules
-msez validate --all-profiles
-msez validate --all-zones
-msez validate path/to/module.yaml
+mez validate --all-modules
+mez validate --all-profiles
+mez validate --all-zones
+mez validate path/to/module.yaml
 
 # Generate and verify lockfiles
-msez lock zone.yaml                         # generate stack.lock
-msez lock zone.yaml --check                 # verify existing lockfile
-msez lock zone.yaml --strict --out prod.lock
+mez lock zone.yaml                         # generate stack.lock
+mez lock zone.yaml --check                 # verify existing lockfile
+mez lock zone.yaml --strict --out prod.lock
 
 # Corridor lifecycle
-msez corridor create --id PK-AE --jurisdiction-a PK-RSEZ --jurisdiction-b AE-DIFC
-msez corridor submit --id PK-AE --agreement corridor-agreement.json --pack-trilogy packs/
-msez corridor activate --id PK-AE --approval-a sig-a.json --approval-b sig-b.json
-msez corridor status --id PK-AE
-msez corridor list
+mez corridor create --id PK-AE --jurisdiction-a PK-RSEZ --jurisdiction-b AE-DIFC
+mez corridor submit --id PK-AE --agreement corridor-agreement.json --pack-trilogy packs/
+mez corridor activate --id PK-AE --approval-a sig-a.json --approval-b sig-b.json
+mez corridor status --id PK-AE
+mez corridor list
 
 # Artifact CAS operations
-msez artifact store --type lawpack path/to/archive.zip
-msez artifact resolve --type ruleset --digest abc123...
-msez artifact verify --type schema --digest abc123...
+mez artifact store --type lawpack path/to/archive.zip
+mez artifact resolve --type ruleset --digest abc123...
+mez artifact verify --type schema --digest abc123...
 
 # Verifiable Credential operations
-msez vc keygen --output keys/ --prefix zone-admin
-msez vc sign --key keys/zone-admin.priv.json document.json
-msez vc verify --pubkey keys/zone-admin.pub.json document.json --signature abc...
+mez vc keygen --output keys/ --prefix zone-admin
+mez vc sign --key keys/zone-admin.priv.json document.json
+mez vc verify --pubkey keys/zone-admin.pub.json document.json --signature abc...
 ```
 
 ---
 
 ## API server
 
-The `msez-api` crate runs an Axum HTTP server with OpenAPI documentation.
+The `mez-api` crate runs an Axum HTTP server with OpenAPI documentation.
 
 ```bash
-cargo run -p msez-api
+cargo run -p mez-api
 # Listening on 0.0.0.0:3000
 # OpenAPI spec: GET /openapi.json
 ```
@@ -217,11 +217,11 @@ Authentication is constant-time bearer token comparison (`subtle::ConstantTimeEq
 
 | Route | Domain | Source |
 |-------|--------|--------|
-| `POST/GET /v1/entities/*` | Mass Entities | Proxy via `msez-mass-client` |
-| `POST/GET /v1/ownership/*` | Mass Ownership | Proxy via `msez-mass-client` |
-| `POST/GET /v1/fiscal/*` | Mass Fiscal | Proxy via `msez-mass-client` |
-| `POST/GET /v1/identity/*` | Mass Identity | Proxy via `msez-mass-client` |
-| `POST/GET /v1/consent/*` | Mass Consent | Proxy via `msez-mass-client` |
+| `POST/GET /v1/entities/*` | Mass Entities | Proxy via `mez-mass-client` |
+| `POST/GET /v1/ownership/*` | Mass Ownership | Proxy via `mez-mass-client` |
+| `POST/GET /v1/fiscal/*` | Mass Fiscal | Proxy via `mez-mass-client` |
+| `POST/GET /v1/identity/*` | Mass Identity | Proxy via `mez-mass-client` |
+| `POST/GET /v1/consent/*` | Mass Consent | Proxy via `mez-mass-client` |
 | `POST/GET /v1/corridors/*` | EZ corridors | Native: lifecycle, receipts, forks |
 | `POST /v1/settlement/*` | EZ settlement | Native: netting, SWIFT instructions |
 | `POST/GET /v1/assets/*` | EZ smart assets | Native: registry, compliance eval |
@@ -316,7 +316,7 @@ cd deploy/docker
 docker-compose up -d
 ```
 
-Services: `msez-api` (Rust binary, port 8080), PostgreSQL 16, Prometheus, Grafana.
+Services: `mez-api` (Rust binary, port 8080), PostgreSQL 16, Prometheus, Grafana.
 
 ### Kubernetes
 
@@ -384,7 +384,7 @@ Provisions: EKS (auto-scaling), RDS PostgreSQL (Multi-AZ), ElastiCache Redis, S3
 
 ```
 stack/
-├── msez/                  Rust workspace (16 crates)
+├── mez/                  Rust workspace (16 crates)
 │   ├── Cargo.toml         Workspace manifest with centralized dependencies
 │   └── crates/            All crate source
 ├── modules/               146 zone modules (16 families)

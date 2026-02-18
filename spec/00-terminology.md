@@ -16,5 +16,5 @@ This specification uses the key words **MUST**, **MUST NOT**, **REQUIRED**, **SH
 - **Activation blockers**: A list of `<partyDid>:<commitment>` strings identifying non-affirmative commitments that prevent corridor activation.
 - **Governance module**: A module that implements decision/consent mechanisms (voting, delegation, quadratic mechanisms) for zone governance workflows.
 
-- **Verifiable Credential (VC)**: A digitally signed data structure (per the W3C VC model) used in MSEZ to bind critical artifacts (e.g., corridor manifests) to an issuer identity (typically a DID) in a tamper-evident way.
-- **Proof**: A cryptographic signature attached to a VC. MSEZ supports multi-proof credentials for multi-party co‑signing.
+- **Verifiable Credential (VC)**: A digitally signed data structure (per the W3C VC model) used in MEZ to bind critical artifacts (e.g., corridor manifests) to an issuer identity (typically a DID) in a tamper-evident way.
+- **Proof**: A cryptographic signature attached to a VC. MEZ supports multi-proof credentials for multi-party co‑signing.

@@ -31,7 +31,7 @@ trust_anchors_path: "trust-anchors.yaml"
 key_rotation_path: "key-rotation.yaml"
 
 # Optional: constrain which Transition Type Registry lock digest is expected for receipts.
-# If set, use `msez asset state verify --enforce-transition-types`.
+# If set, use `mez asset state verify --enforce-transition-types`.
 transition_type_registry_lock_path: "{{ TRANSITION_TYPES_LOCK_PATH }}"
 expected_transition_type_registry_digest_sha256: "{{ EXPECTED_TRANSITION_TYPE_REGISTRY_DIGEST_SHA256 }}"
 

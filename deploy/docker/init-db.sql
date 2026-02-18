@@ -1,30 +1,30 @@
--- MSEZ Database Initialization
--- Schema matching SQLx migrations for the Rust msez-api binary.
+-- MEZ Database Initialization
+-- Schema matching SQLx migrations for the Rust mez-api binary.
 --
 -- This script runs once on first PostgreSQL startup. Subsequent schema
--- changes are managed by SQLx migrations embedded in the msez-api binary
+-- changes are managed by SQLx migrations embedded in the mez-api binary
 -- (sqlx::migrate!("./migrations")).
 --
 -- Database layout:
---   msez (default)  — entities, licensing, identity, compliance, audit, consent
---   msez_corridor   — corridor state, receipts, MMR chain
---   msez_settlement — settlement plans, transactions, netting
+--   mez (default)  — entities, licensing, identity, compliance, audit, consent
+--   mez_corridor   — corridor state, receipts, MMR chain
+--   mez_settlement — settlement plans, transactions, netting
 
 -- ============================================
 -- Create additional databases
 -- ============================================
 
-CREATE DATABASE msez_corridor;
-CREATE DATABASE msez_settlement;
+CREATE DATABASE mez_corridor;
+CREATE DATABASE mez_settlement;
 
-GRANT ALL PRIVILEGES ON DATABASE msez_corridor TO msez;
-GRANT ALL PRIVILEGES ON DATABASE msez_settlement TO msez;
+GRANT ALL PRIVILEGES ON DATABASE mez_corridor TO mez;
+GRANT ALL PRIVILEGES ON DATABASE mez_settlement TO mez;
 
 -- ============================================
--- Main database: msez
+-- Main database: mez
 -- ============================================
 
-\c msez
+\c mez
 
 -- Schemas
 CREATE SCHEMA IF NOT EXISTS entity;
@@ -275,10 +275,10 @@ CREATE INDEX idx_audit_resource ON audit.events(resource_type, resource_id);
 CREATE INDEX idx_audit_time ON audit.events(created_at);
 
 -- ============================================
--- Corridor database: msez_corridor
+-- Corridor database: mez_corridor
 -- ============================================
 
-\c msez_corridor
+\c mez_corridor
 
 CREATE SCHEMA IF NOT EXISTS corridor;
 CREATE SCHEMA IF NOT EXISTS receipts;
@@ -354,10 +354,10 @@ CREATE INDEX idx_attestations_corridor ON corridor.attestations(corridor_id);
 CREATE INDEX idx_attestations_asset ON corridor.attestations(asset_id);
 
 -- ============================================
--- Settlement database: msez_settlement
+-- Settlement database: mez_settlement
 -- ============================================
 
-\c msez_settlement
+\c mez_settlement
 
 CREATE SCHEMA IF NOT EXISTS settlement;
 

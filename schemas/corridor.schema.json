@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/corridor.schema.json",
-  "title": "MSEZ Corridor Manifest",
+  "$id": "https://schemas.momentum-ez.org/mez/corridor.schema.json",
+  "title": "MEZ Corridor Manifest",
   "type": "object",
   "required": [
     "corridor_id",
@@ -86,7 +86,7 @@
         },
         "transition_ruleset": {
           "type": "string",
-          "description": "Ruleset id for state transitions (default: msez.corridor.state-transition.v2)."
+          "description": "Ruleset id for state transitions (default: mez.corridor.state-transition.v2)."
         },
         "transition_type_registry_path": {
           "type": "string",

@@ -1,12 +1,12 @@
-# CLAUDE.md — Momentum SEZ Stack v0.4.44 GENESIS
+# CLAUDE.md — Momentum EZ Stack v0.4.44 GENESIS
 
 ## Unified Audit Work Plan for Claude Code
 
-**Repository:** `momentum-sez/stack`
+**Repository:** `momentum-ez/stack`
 **Pinned Commit:** `a93eb00ca10f0caff47354e2e07ca0929713126c`
 **Spec Version:** 0.4.44-GENESIS
 **License:** BUSL-1.1
-**Architecture:** Rust workspace (single `msez-api` binary), replaces prior Python stack
+**Architecture:** Rust workspace (single `mez-api` binary), replaces prior Python stack
 **Audit Artifact Schema:** `schemas/audit/institutional-readiness-audit.schema.json` (Draft 2020-12)
 
 ---
@@ -14,7 +14,7 @@
 ## 1. REPOSITORY MAP
 
 ```
-momentum-sez/stack/
+momentum-ez/stack/
 ├── .github/workflows/       # CI: JSON parse checks, serde guard, trade-playbook closure
 ├── apis/                    # OpenAPI specs (scaffold-grade)
 │   ├── smart-assets.openapi.yaml
@@ -32,20 +32,20 @@ momentum-sez/stack/
 │   └── corridor.lifecycle.state-machine.v2.json
 ├── jurisdictions/_starter/zone.yaml
 ├── modules/                 # Module descriptors (claim: 298 across 16 families)
-├── msez/                    # Rust workspace root
+├── mez/                    # Rust workspace root
 │   ├── Cargo.toml           # workspace license: BUSL-1.1
 │   └── crates/
-│       ├── msez-api/        # Consolidated API binary
-│       ├── msez-cli/        # CLI: corridor lifecycle, keygen, validate, lock
-│       ├── msez-core/       # CanonicalBytes, ContentDigest, SHA-256 primitives
-│       ├── msez-corridor/   # Receipt chain, checkpoint, fork resolution, anchor, bridge
-│       ├── msez-crypto/     # Ed25519, MMR, Poseidon2 (stub), BBS+ (stub)
-│       ├── msez-mass-client/# Mass API client boundary
-│       ├── msez-pack/       # Pack Trilogy (lawpacks, regpacks, licensepacks)
-│       ├── msez-schema/     # JSON Schema Draft 2020-12 validator + codegen policy
-│       ├── msez-tensor/     # Compliance Tensor (20 domains, lattice aggregation)
-│       ├── msez-vc/         # Verifiable Credentials (Smart Asset Registry VC)
-│       └── msez-zkp/        # ZK proof system (Phase 1 deterministic mock)
+│       ├── mez-api/        # Consolidated API binary
+│       ├── mez-cli/        # CLI: corridor lifecycle, keygen, validate, lock
+│       ├── mez-core/       # CanonicalBytes, ContentDigest, SHA-256 primitives
+│       ├── mez-corridor/   # Receipt chain, checkpoint, fork resolution, anchor, bridge
+│       ├── mez-crypto/     # Ed25519, MMR, Poseidon2 (stub), BBS+ (stub)
+│       ├── mez-mass-client/# Mass API client boundary
+│       ├── mez-pack/       # Pack Trilogy (lawpacks, regpacks, licensepacks)
+│       ├── mez-schema/     # JSON Schema Draft 2020-12 validator + codegen policy
+│       ├── mez-tensor/     # Compliance Tensor (20 domains, lattice aggregation)
+│       ├── mez-vc/         # Verifiable Credentials (Smart Asset Registry VC)
+│       └── mez-zkp/        # ZK proof system (Phase 1 deterministic mock)
 ├── profiles/
 ├── registries/
 ├── rulesets/
@@ -67,7 +67,7 @@ All P0s below are confirmed across multiple independent audit passes. They are o
 
 ### P0-CORRIDOR-001: Receipt Chain Does Not Enforce Spec Hash-Chain Model
 
-**Files:** `msez/crates/msez-corridor/src/receipt.rs`
+**Files:** `mez/crates/mez-corridor/src/receipt.rs`
 **Confirmed by:** Pass 1 Fidelity Audit, Formal Methods Audit, Institutional Assessment
 **Issue:** Implementation enforces `receipt.prev_root == current_mmr_root`, but the spec requires `prev_root` to be the previous state root (hash-chain model seeded from `genesis_root`), and `next_root` to be derived from the receipt payload (excluding `proof` and `next_root`). These are two different commitment models.
 **Impact:** Interoperability failure. Receipts produced by this implementation are not verifiable by any tooling following `spec/40-corridors.md` and `schemas/corridor.receipt.schema.json`. Cross-party corridor reconciliation becomes non-deterministic. Regulator verification breaks.
@@ -80,7 +80,7 @@ All P0s below are confirmed across multiple independent audit passes. They are o
 
 ### P0-CORRIDOR-002: next_root Is Not Computed or Verified
 
-**Files:** `msez/crates/msez-corridor/src/receipt.rs` (L7-L9, L17, L22-L24)
+**Files:** `mez/crates/mez-corridor/src/receipt.rs` (L7-L9, L17, L22-L24)
 **Confirmed by:** Pass 1, Formal Methods, Red Team
 **Issue:** `append()` blindly appends `receipt.next_root` to MMR without recomputing or verifying it. Spec requires `next_root = SHA256(JCS(receipt_without_proof_and_next_root))` and digest-set normalization (dedupe + sort lexicographically).
 **Impact:** Proof/commitment forgery surface. Caller can set arbitrary `next_root`. Non-determinism across implementations. Fork amplification.
@@ -92,7 +92,7 @@ All P0s below are confirmed across multiple independent audit passes. They are o
 
 ### P0-CORRIDOR-003: CorridorReceipt Is Not Schema-Conformant
 
-**Files:** `msez/crates/msez-corridor/src/receipt.rs` (L7-L9), `schemas/corridor.receipt.schema.json`
+**Files:** `mez/crates/mez-corridor/src/receipt.rs` (L7-L9), `schemas/corridor.receipt.schema.json`
 **Confirmed by:** Pass 1, Pass 2
 **Issue:** Rust struct omits required `proof` field. Digest sets are `Vec<String>` but schema allows `DigestString | ArtifactRef` union. Optional but important fields (`transition`, `zk`, `anchor`, `transition_type_registry_digest_sha256`) not represented.
 **Impact:** Schema validation will reject any receipt this struct produces. Without `proof`, receipts are unsigned — any party with write access can inject/replay/rewrite.
@@ -102,7 +102,7 @@ All P0s below are confirmed across multiple independent audit passes. They are o
 
 ### P0-CORRIDOR-004: Checkpoint Is Non-Conformant and Lacks Proof
 
-**Files:** `msez/crates/msez-corridor/src/receipt.rs` (L10-L11, L19), `schemas/corridor.checkpoint.schema.json`
+**Files:** `mez/crates/mez-corridor/src/receipt.rs` (L10-L11, L19), `schemas/corridor.checkpoint.schema.json`
 **Confirmed by:** Pass 1, Pass 2
 **Issue:** Checkpoint only includes `(corridor_id, height, mmr_root, timestamp, checkpoint_digest)`. Schema requires `genesis_root`, `final_state_root`, `receipt_count`, digest sets, `mmr` object (type/algorithm/size/root/peaks), and `proof`. No proof means checkpoints are unsigned claims.
 **Impact:** Verifier bootstrap impossible per spec. Forgery surface: malicious relayer can provide fake checkpoints.
@@ -112,7 +112,7 @@ All P0s below are confirmed across multiple independent audit passes. They are o
 
 ### P0-CANON-001: Canonicalization Is Not RFC 8785 JCS
 
-**Files:** `msez/crates/msez-core/src/canonical.rs`, `spec/40-corridors.md`
+**Files:** `mez/crates/mez-core/src/canonical.rs`, `spec/40-corridors.md`
 **Confirmed by:** Formal Methods Audit, Cryptographic Correctness Pass
 **Issue:** `spec/40-corridors.md` normatively requires `SHA256(JCS(json))` where JCS is RFC 8785. But `CanonicalBytes` applies extra coercions not in RFC 8785: float rejection, RFC 3339 datetime normalization/truncation.
 **Impact:** Implementation is provably not "JCS exact" as spec states. Any external verifier following the spec will compute different digests for the same payload.
@@ -125,7 +125,7 @@ Today it is inconsistent. Both sides must agree.
 
 ### P0-FORK-001: Fork Resolution Is Manipulable
 
-**Files:** `msez/crates/msez-corridor/src/fork.rs`
+**Files:** `mez/crates/mez-corridor/src/fork.rs`
 **Confirmed by:** Formal Methods, Red Team, Institutional Assessment
 **Issue:** Fork selection uses `(-attestation_count, timestamp, lex_candidate_root)` but `attestation_count` and `timestamp` are not cryptographically bound or verified — code explicitly states "must be independently verified" but doesn't implement it. Attacker can publish `ForkBranch` with `attest=Q+1, ts=1970-01-01` and deterministically win selection.
 **Impact:** Safety violation: honest nodes converge on attacker-selected root. Honest progress can be overwritten.
@@ -138,7 +138,7 @@ Today it is inconsistent. Both sides must agree.
 
 ### P0-MIGRATION-001: Saga Compensation Is Unprovable
 
-**Files:** `msez/crates/msez-corridor/` (migration saga module)
+**Files:** `mez/crates/mez-corridor/` (migration saga module)
 **Confirmed by:** Formal Methods Audit, Institutional Assessment
 **Issue:** Migration state machine enforces deadlines and transitions, but:
 - `compensate()` only logs and flips to `Compensated` — no modeling of forward side-effects or their inverses.
@@ -155,7 +155,7 @@ Today it is inconsistent. Both sides must agree.
 
 ### P0-ANCHOR-001: Anchoring Is a Mock
 
-**Files:** `msez/crates/msez-crypto/` (anchor module)
+**Files:** `mez/crates/mez-crypto/` (anchor module)
 **Confirmed by:** Formal Methods, Institutional Assessment
 **Issue:** `MockAnchorTarget` always reports `confirmed`. No L1 finality proof, reorg handling, or inclusion verification exists.
 **Impact:** No adversarial proof obligation about L1 finality can be satisfied. Anchoring is aspirational, not functional.
@@ -165,7 +165,7 @@ Today it is inconsistent. Both sides must agree.
 
 ### P0-TENSOR-001: Extended Compliance Domains Default to NotApplicable (Passes)
 
-**Files:** `msez/crates/msez-tensor/src/evaluation.rs`
+**Files:** `mez/crates/mez-tensor/src/evaluation.rs`
 **Confirmed by:** Institutional Assessment, Red Team, Formal Methods
 **Issue:** Only base domains evaluated. Extended domains (including LICENSING, BANKING, DATA_PRIVACY, SANCTIONS) return `NotApplicable`, which is treated as passing. Additionally, `TensorSlice::aggregate_state()` returns `Compliant` for empty slices (folds from `Compliant`).
 **Impact:** Regulatory bypass. Transactions proceed without checks for domains that should be enforced. Attacker can induce empty slice → compliant aggregate.
@@ -178,7 +178,7 @@ Today it is inconsistent. Both sides must agree.
 
 ### P0-CRYPTO-001: Poseidon2 Is a Stub
 
-**Files:** `msez/crates/msez-crypto/src/poseidon.rs` (feature-gated)
+**Files:** `mez/crates/mez-crypto/src/poseidon.rs` (feature-gated)
 **Confirmed by:** Cryptographic Correctness Pass
 **Issue:** `poseidon2_digest()` and `poseidon2_node_hash()` return `NotImplemented`.
 **Impact:** Any spec element relying on Poseidon2 (ZK-friendly hashing, proof-internal commitments) cannot execute. Mixed deployments risk network divergence.
@@ -187,7 +187,7 @@ Today it is inconsistent. Both sides must agree.
 
 ### P0-CRYPTO-002: BBS+ Selective Disclosure Is a Stub
 
-**Files:** `msez/crates/msez-crypto/src/bbs.rs` (feature-gated)
+**Files:** `mez/crates/mez-crypto/src/bbs.rs` (feature-gated)
 **Confirmed by:** Cryptographic Correctness Pass
 **Issue:** Entire BBS+ module is stubbed. Cannot support selective disclosure proofs for KYC/compliance claims.
 **Remediation:** Integrate vetted BBS+ library; add proof verification tests; specify canonical message encoding and domain separation.
@@ -195,7 +195,7 @@ Today it is inconsistent. Both sides must agree.
 
 ### P0-ZK-001: ZK Proof System Is Phase 1 Mock
 
-**Files:** `msez/crates/msez-zkp/`
+**Files:** `mez/crates/mez-zkp/`
 **Confirmed by:** Red Team, Institutional Assessment
 **Issue:** Phase 1 uses deterministic SHA-256 mock proof system by default. Real backends are feature-gated. If verifier accepts mock proofs as authoritative, attacker can supply proofs without possessing underlying witness/claims.
 **Impact:** Catastrophic if proofs gate compliance: unauthorized transactions appear compliant.
@@ -230,7 +230,7 @@ Today it is inconsistent. Both sides must agree.
 ### P0-DEPLOY-001: Default Credentials in Deploy Paths
 
 **Confirmed by:** Institutional Assessment, Red Team
-**Issue:** `docker-compose` and deploy script default to `POSTGRES_PASSWORD=msez`. Unacceptable outside local dev.
+**Issue:** `docker-compose` and deploy script default to `POSTGRES_PASSWORD=mez`. Unacceptable outside local dev.
 **Remediation:** Wire secret manager; eliminate all default credentials; key custody model (HSM/KMS) + rotation.
 **Effort:** S-M | **Owner:** infra + security
 
@@ -240,7 +240,7 @@ Today it is inconsistent. Both sides must agree.
 
 ### P1-CLI-001: Corridor CLI Discards Evidence Inputs
 
-**Files:** `msez/crates/msez-cli/src/corridor.rs`
+**Files:** `mez/crates/mez-cli/src/corridor.rs`
 **Issue:** CLI accepts evidence files/digests but pattern-matches them as `_`. Transition records store `evidence_digest: None`.
 **Remediation:** Compute content digests for evidence artifacts; validate required evidence per transition type; add `--strict` mode.
 **Effort:** M | **Owner:** protocol
@@ -254,8 +254,8 @@ Today it is inconsistent. Both sides must agree.
 
 ### P1-SCHEMA-002: Schema URI Inconsistency
 
-**Files:** `schemas/stack.lock.schema.json`, `msez/crates/msez-schema/src/validate.rs`
-**Issue:** `$id` uses `https://momentum-sez.org/schemas/...` while validator resolves `https://schemas.momentum-sez.org/msez/`.
+**Files:** `schemas/stack.lock.schema.json`, `mez/crates/mez-schema/src/validate.rs`
+**Issue:** `$id` uses `https://momentum-ez.org/schemas/...` while validator resolves `https://schemas.momentum-ez.org/mez/`.
 **Remediation:** Normalize all `$id` under single canonical domain; CI rule: no non-canonical `$id`.
 **Effort:** S | **Owner:** protocol
 
@@ -294,7 +294,7 @@ Today it is inconsistent. Both sides must agree.
 
 ### P1-PERF-001: Schema Validator Constructs Per Call
 
-**Files:** `msez/crates/msez-schema/src/validate.rs`
+**Files:** `mez/crates/mez-schema/src/validate.rs`
 **Issue:** `validate_value()` constructs validator and clones schema map per call. Performance bottleneck under load.
 **Remediation:** Cache compiled validators per schema ID using `Arc<CompiledValidator>`.
 **Effort:** S-M | **Owner:** protocol
@@ -311,25 +311,25 @@ Today it is inconsistent. Both sides must agree.
 
 ### P2-CANON-002: Merkle Helper Uses String Concatenation
 
-**Files:** `msez/crates/msez-tensor/` (commitment.rs Merkle helper)
+**Files:** `mez/crates/mez-tensor/` (commitment.rs Merkle helper)
 **Issue:** Hashes canonicalized string concatenations of hex digests rather than byte-level Merkle. Deterministic but diverges from any external spec expecting byte-concat of 32-byte nodes.
 **Effort:** S | **Owner:** protocol
 
 ### P2-SA-001: binding_status Is Unrestricted String
 
-**Files:** `msez/crates/msez-vc/` (JurisdictionBinding)
+**Files:** `mez/crates/mez-vc/` (JurisdictionBinding)
 **Issue:** `binding_status: String` allows invalid values; should be enum `{active, suspended, exited}`.
 **Effort:** XS | **Owner:** protocol
 
 ### P2-SA-002: VC Constructor Doesn't Enforce asset_id Binding
 
-**Files:** `msez/crates/msez-vc/`
+**Files:** `mez/crates/mez-vc/`
 **Issue:** VC `credentialSubject.asset_id` is not verified to equal `compute_asset_id(genesis)`.
 **Effort:** S | **Owner:** protocol
 
 ### P2-CANON-003: Sorted Key Assumption Is Test-Only
 
-**Files:** `msez/crates/msez-core/src/canonical.rs`
+**Files:** `mez/crates/mez-core/src/canonical.rs`
 **Issue:** Test asserts `serde_json::Map` iterates sorted; not enforced in production builds. Supply-chain/feature-flag risk if `preserve_order` enabled.
 **Effort:** S | **Owner:** security
 
@@ -444,18 +444,18 @@ Each must be implemented as test cases in the relevant crate:
 
 | Vector | Crate | Description |
 |---|---|---|
-| Receipt next_root forgery | msez-corridor | Craft receipt with arbitrary `next_root` that doesn't match payload; must be rejected |
-| Fork timestamp backdating | msez-corridor | Craft `ForkBranch` with `ts=epoch, attest=Q+1`; must be rejected |
-| Fork attestation inflation | msez-corridor | Craft branch claiming attestation_count exceeding actual signed attestations; must be rejected |
-| Checkpoint forgery | msez-corridor | Submit unsigned checkpoint; must be rejected |
-| Migration race condition | msez-corridor | Two concurrent `advance()` calls on same migration; CAS must prevent double-advance |
-| Compensation replay | msez-corridor | Call `compensate()` twice; second must be no-op (not error) |
-| Compliance tensor empty slice | msez-tensor | Submit empty domain set; must return error/Pending, not Compliant |
-| Compliance NotApplicable bypass | msez-tensor | Attempt to pass check with all extended domains returning NotApplicable; must fail in production mode |
-| Mock ZK proof in production | msez-zkp | Submit mock proof when production policy active; must be rejected |
-| API schema downgrade | msez-api | Send request with extra fields to `additionalProperties: false` endpoint; must be rejected |
-| Watcher equivocation | msez-corridor | Two conflicting attestations from same watcher for same height; detect and trigger slashing |
-| Content-addressed integrity gap | msez-core | Submit artifact where declared digest ≠ actual bytes hash; must be rejected |
+| Receipt next_root forgery | mez-corridor | Craft receipt with arbitrary `next_root` that doesn't match payload; must be rejected |
+| Fork timestamp backdating | mez-corridor | Craft `ForkBranch` with `ts=epoch, attest=Q+1`; must be rejected |
+| Fork attestation inflation | mez-corridor | Craft branch claiming attestation_count exceeding actual signed attestations; must be rejected |
+| Checkpoint forgery | mez-corridor | Submit unsigned checkpoint; must be rejected |
+| Migration race condition | mez-corridor | Two concurrent `advance()` calls on same migration; CAS must prevent double-advance |
+| Compensation replay | mez-corridor | Call `compensate()` twice; second must be no-op (not error) |
+| Compliance tensor empty slice | mez-tensor | Submit empty domain set; must return error/Pending, not Compliant |
+| Compliance NotApplicable bypass | mez-tensor | Attempt to pass check with all extended domains returning NotApplicable; must fail in production mode |
+| Mock ZK proof in production | mez-zkp | Submit mock proof when production policy active; must be rejected |
+| API schema downgrade | mez-api | Send request with extra fields to `additionalProperties: false` endpoint; must be rejected |
+| Watcher equivocation | mez-corridor | Two conflicting attestations from same watcher for same height; detect and trigger slashing |
+| Content-addressed integrity gap | mez-core | Submit artifact where declared digest ≠ actual bytes hash; must be rejected |
 
 ---
 
@@ -466,29 +466,29 @@ Each must be implemented as test cases in the relevant crate:
 
 # 1. Schema compilation (Draft 2020-12 + $ref closure)
 - name: Validate all schemas
-  run: cargo test --package msez-schema -- --test schema_compilation
+  run: cargo test --package mez-schema -- --test schema_compilation
 
 # 2. Release build must not enable mock features
 - name: No mocks in release
   run: |
     cargo build --release 2>&1 | grep -v "mock"
-    # Verify: msez-zkp mock feature is not enabled
-    cargo metadata --format-version 1 | jq '.packages[] | select(.name == "msez-zkp") | .features' | grep -v mock
+    # Verify: mez-zkp mock feature is not enabled
+    cargo metadata --format-version 1 | jq '.packages[] | select(.name == "mez-zkp") | .features' | grep -v mock
 
 # 3. CAS integrity verification
 - name: Verify content-addressed artifacts
-  run: msez artifact verify --all
+  run: mez artifact verify --all
 
 # 4. Schema URI canonicalization
 - name: Check schema $id consistency
   run: |
-    grep -r '"$id"' schemas/ | grep -v 'schemas.momentum-sez.org/msez/' && exit 1 || true
+    grep -r '"$id"' schemas/ | grep -v 'schemas.momentum-ez.org/mez/' && exit 1 || true
 
 # 5. No default credentials
 - name: Check for default credentials
   run: |
-    grep -r 'POSTGRES_PASSWORD=msez' deploy/ && exit 1 || true
-    grep -r 'password.*=.*msez' deploy/ && exit 1 || true
+    grep -r 'POSTGRES_PASSWORD=mez' deploy/ && exit 1 || true
+    grep -r 'password.*=.*mez' deploy/ && exit 1 || true
 
 # 6. serde_json preserve_order guard (already exists — keep it)
 ```
@@ -570,18 +570,18 @@ audits/v0.4.44-genesis/institutional-readiness.audit.json  # Machine-readable au
 - **Primary key:** `finding.id`
 - **Title format:** `[{severity}][{area}] {id}: {issue}`
 - **Labels:** `severity:P0`, `area:Cryptography`, `owner:protocol`, `status:open`, optional: `sovereign_blocker:true`, `formal_model_required:true`
-- **File pointer:** `https://github.com/momentum-sez/stack/blob/{commit_sha}/{file}#L{line_start}-L{line_end}`
+- **File pointer:** `https://github.com/momentum-ez/stack/blob/{commit_sha}/{file}#L{line_start}-L{line_end}`
 
 ---
 
 ## 12. CLAUDE CODE SESSION STRATEGY
 
 ### Session 1: Receipt Chain Foundation
-Open and fix: `msez/crates/msez-corridor/src/receipt.rs`, `msez/crates/msez-core/src/canonical.rs`
+Open and fix: `mez/crates/mez-corridor/src/receipt.rs`, `mez/crates/mez-core/src/canonical.rs`
 Targets: P0-CANON-001, P0-CORRIDOR-001, P0-CORRIDOR-002, P0-CORRIDOR-003, P0-CORRIDOR-004
 
 ### Session 2: Fork Resolution + Watcher Safety
-Open and fix: `msez/crates/msez-corridor/src/fork.rs`, watcher modules
+Open and fix: `mez/crates/mez-corridor/src/fork.rs`, watcher modules
 Targets: P0-FORK-001, watcher equivocation tests
 
 ### Session 3: Migration Saga Safety
@@ -589,15 +589,15 @@ Open and fix: migration saga module
 Targets: P0-MIGRATION-001, concurrency controls, idempotency
 
 ### Session 4: Compliance Tensor + ZK Policy
-Open and fix: `msez/crates/msez-tensor/src/evaluation.rs`, `msez/crates/msez-zkp/`
+Open and fix: `mez/crates/mez-tensor/src/evaluation.rs`, `mez/crates/mez-zkp/`
 Targets: P0-TENSOR-001, P0-ZK-001
 
 ### Session 5: Schema & CI Hardening
-Open and fix: `.github/workflows/ci.yml`, `msez/crates/msez-schema/`, `schemas/`
+Open and fix: `.github/workflows/ci.yml`, `mez/crates/mez-schema/`, `schemas/`
 Targets: P1-SCHEMA-001, P1-SCHEMA-002, P1-SCHEMA-003, P1-PERF-001
 
 ### Session 6: CLI Evidence Gating + Governance Cleanup
-Open and fix: `msez/crates/msez-cli/src/corridor.rs`, `governance/`
+Open and fix: `mez/crates/mez-cli/src/corridor.rs`, `governance/`
 Targets: P1-CLI-001, P1-GOV-001
 
 ### Session 7: Deploy Hardening
@@ -646,6 +646,6 @@ These invariants must be maintained across all changes. Violation of any = P0.
 - Strong type-level invariant strategy (typestate, canonical bytes, sealed proof backends, zeroize keys)
 - Mass API connectivity gating added
 - Contract tests with OpenAPI snapshots + schema drift detection
-- Placeholder crypto keys removed; real Ed25519 JWK via `msez vc keygen`
+- Placeholder crypto keys removed; real Ed25519 JWK via `mez vc keygen`
 - CI guard against `serde_json preserve_order` (digest corruption prevention)
 - Single-binary docker-compose baseline with observability

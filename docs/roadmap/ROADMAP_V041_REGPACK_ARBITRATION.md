@@ -1,4 +1,4 @@
-# Momentum SEZ Stack v0.4.41: RegPack + Arbitration Release
+# Momentum EZ Stack v0.4.41: RegPack + Arbitration Release
 
 **Codename:** "Radical Yahoo" 🎯
 **Release Date:** Q1 2026
@@ -13,7 +13,7 @@ v0.4.41 is a **super hard mode** release that adds two critical production-grade
 1. **RegPack System** - Dynamic regulatory state management (sanctions, licenses, deadlines)
 2. **Arbitration System** - Programmatic dispute resolution with automatic enforcement
 
-These systems transform the SEZ Stack from a compliance framework into a **complete trade automation platform**.
+These systems transform the EZ Stack from a compliance framework into a **complete trade automation platform**.
 
 ---
 
@@ -113,23 +113,23 @@ These systems transform the SEZ Stack from a compliance framework into a **compl
 
 ```bash
 # Ingestion
-msez regpack ingest <jurisdiction> --as-of-date 2026-01-15
-msez regpack fetch-sanctions --sources ofac,eu,un --out sanctions.json
+mez regpack ingest <jurisdiction> --as-of-date 2026-01-15
+mez regpack fetch-sanctions --sources ofac,eu,un --out sanctions.json
 
 # Verification
-msez regpack verify <regpack.zip> --strict
-msez regpack sanctions-check --regpack <digest> --entity "Acme Corp"
-msez regpack sanctions-check --regpack <digest> --entity-file parties.json
+mez regpack verify <regpack.zip> --strict
+mez regpack sanctions-check --regpack <digest> --entity "Acme Corp"
+mez regpack sanctions-check --regpack <digest> --entity-file parties.json
 
 # Attestation
-msez regpack attest --regpack <digest> --issuer <did> --sign --key <jwk>
+mez regpack attest --regpack <digest> --issuer <did> --sign --key <jwk>
 
 # Corridor binding
-msez corridor regpack-bind <corridor> --zone <zone> --regpack <digest>
-msez corridor regpack-status <corridor>  # Show freshness status
+mez corridor regpack-bind <corridor> --zone <zone> --regpack <digest>
+mez corridor regpack-status <corridor>  # Show freshness status
 
 # Delta analysis
-msez regpack diff <old_digest> <new_digest> --format json
+mez regpack diff <old_digest> <new_digest> --format json
 ```
 
 ---
@@ -226,11 +226,11 @@ POSTCONDITIONS:
 
 ```bash
 # Institution management
-msez arbitration institution list
-msez arbitration institution show <institution_id>
+mez arbitration institution list
+mez arbitration institution show <institution_id>
 
 # Dispute filing
-msez arbitration dispute-file \
+mez arbitration dispute-file \
   --corridor <corridor> \
   --claimant <did> \
   --respondent <did> \
@@ -239,21 +239,21 @@ msez arbitration dispute-file \
   --sign --key <jwk>
 
 # Evidence submission
-msez arbitration evidence-submit \
+mez arbitration evidence-submit \
   --dispute <dispute_id> \
   --evidence evidence.json \
   --witness-bundle bundle.zip
 
 # Ruling processing
-msez arbitration ruling-verify <ruling.vc.json>
-msez arbitration ruling-enforce \
+mez arbitration ruling-verify <ruling.vc.json>
+mez arbitration ruling-enforce \
   --ruling <ruling.vc.json> \
   --asset <asset_id> \
   --corridor <corridor>
 
 # Status
-msez arbitration status --dispute <dispute_id>
-msez arbitration list --corridor <corridor> --status pending
+mez arbitration status --dispute <dispute_id>
+mez arbitration list --corridor <corridor> --status pending
 ```
 
 ---
@@ -463,8 +463,8 @@ transitions:
 - `tests/test_regpack_arbitration.py` - Test suite
 
 **CLI updates:**
-- New `msez regpack` subcommand family
-- New `msez arbitration` subcommand family
+- New `mez regpack` subcommand family
+- New `mez arbitration` subcommand family
 
 ---
 

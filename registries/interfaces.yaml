@@ -1,36 +1,36 @@
-- interface_id: msez.zone.manifest.v1
+- interface_id: mez.zone.manifest.v1
   canonical_artifact: schemas/zone.schema.json
-- interface_id: msez.stack.lock.v1
+- interface_id: mez.stack.lock.v1
   canonical_artifact: schemas/stack.lock.schema.json
-- interface_id: msez.corridor.trust-anchors.v1
+- interface_id: mez.corridor.trust-anchors.v1
   canonical_artifact: schemas/trust-anchors.schema.json
-- interface_id: msez.corridor.key-rotation.v1
+- interface_id: mez.corridor.key-rotation.v1
   canonical_artifact: schemas/key-rotation.schema.json
-- interface_id: msez.render.html.v1
+- interface_id: mez.render.html.v1
   canonical_artifact: tools/akoma/xslt/akn2html.xsl
-- interface_id: msez.render.pdf.v1
+- interface_id: mez.render.pdf.v1
   canonical_artifact: tools/akoma/render.py
-- interface_id: msez.gov.proposal.v1
+- interface_id: mez.gov.proposal.v1
   canonical_artifact: modules/governance/core/schemas/proposal.schema.json
-- interface_id: msez.gov.vote.v1
+- interface_id: mez.gov.vote.v1
   canonical_artifact: modules/governance/core/schemas/vote.schema.json
-- interface_id: msez.gov.delegation.v1
+- interface_id: mez.gov.delegation.v1
   canonical_artifact: modules/governance/core/schemas/delegation.schema.json
-- interface_id: msez.gov.tally.v1
+- interface_id: mez.gov.tally.v1
   canonical_artifact: modules/governance/core/schemas/tally.schema.json
-- interface_id: msez.ops.telemetry-event.v1
+- interface_id: mez.ops.telemetry-event.v1
   canonical_artifact: modules/operational/deployment-telemetry/schemas/telemetry-event.schema.json
-- interface_id: msez.ops.success-metric.v1
+- interface_id: mez.ops.success-metric.v1
   canonical_artifact: modules/operational/success-metric-registry/schemas/success-metric.schema.json
-- interface_id: msez.ops.experiment.v1
+- interface_id: mez.ops.experiment.v1
   canonical_artifact: modules/operational/ab-testing-framework/schemas/experiment.schema.json
-- interface_id: msez.lawpack.metadata.v1
+- interface_id: mez.lawpack.metadata.v1
   canonical_artifact: schemas/lawpack.schema.json
-- interface_id: msez.lawpack.lock.v1
+- interface_id: mez.lawpack.lock.v1
   canonical_artifact: schemas/lawpack.lock.schema.json
-- interface_id: msez.lawpack.index.v1
+- interface_id: mez.lawpack.index.v1
   canonical_artifact: spec/96-lawpacks.md#index-json
-- interface_id: msez.node.descriptor.v1
+- interface_id: mez.node.descriptor.v1
   canonical_artifact: schemas/node.schema.json
-- interface_id: msez.vc.node-capability.v1
+- interface_id: mez.vc.node-capability.v1
   canonical_artifact: schemas/vc.node-capability.schema.json

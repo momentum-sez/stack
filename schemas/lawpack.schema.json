@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/lawpack.schema.json",
-  "title": "MSEZ Lawpack Metadata (lawpack.yaml)",
+  "$id": "https://schemas.momentum-ez.org/mez/lawpack.schema.json",
+  "title": "MEZ Lawpack Metadata (lawpack.yaml)",
   "type": "object",
   "required": [
     "lawpack_format_version",
@@ -70,7 +70,7 @@
             "description": "Optional typed ArtifactRef to the captured raw source bytes (if stored in CAS). When present, artifact_type MUST be \"blob\".",
             "allOf": [
               {
-                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
               },
               {
                 "properties": {
@@ -107,7 +107,7 @@
         },
         "tool": {
           "type": "string",
-          "description": "Tool identifier (e.g., msez)."
+          "description": "Tool identifier (e.g., mez)."
         },
         "tool_version": {
           "type": "string",

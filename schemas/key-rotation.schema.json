@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/key-rotation.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/key-rotation.schema.json",
   "title": "Key rotation policy",
   "type": "object",
   "required": [

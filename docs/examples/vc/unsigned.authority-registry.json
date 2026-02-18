@@ -1,20 +1,20 @@
 {
   "@context": [
     "https://www.w3.org/2018/credentials/v1",
-    "contexts/msez/v1.jsonld",
-    "contexts/msez/authority/v1.jsonld"
+    "contexts/mez/v1.jsonld",
+    "contexts/mez/authority/v1.jsonld"
   ],
   "id": "urn:uuid:00000000-0000-0000-0000-000000000000",
   "type": [
     "VerifiableCredential",
-    "MSEZAuthorityRegistryCredential"
+    "MEZAuthorityRegistryCredential"
   ],
   "issuer": {
     "id": "did:key:REPLACE_ME"
   },
   "issuanceDate": "2025-01-01T00:00:00Z",
   "credentialSubject": {
-    "registry_id": "urn:msez:authority-registry:example",
+    "registry_id": "urn:mez:authority-registry:example",
     "as_of_date": "2025-01-01",
     "authorities": [
       {

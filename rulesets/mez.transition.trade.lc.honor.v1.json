@@ -1,0 +1,14 @@
+{
+  "ruleset_id": "mez.transition.trade.lc.honor.v1",
+  "title": "Letter of Credit honor/reject",
+  "version": 1,
+  "description": "Records honoring or rejection of an LC presentation. Evidence SHOULD be anchored using proof-binding and/or cross-corridor settlement anchoring.",
+  "transition_kind": "trade.lc.honor.v1",
+  "payload_schema": "https://schemas.momentum-ez.org/mez/transition.payload.trade.lc.honor.v1.schema.json",
+  "validation": {
+    "profile": "basic",
+    "notes": [
+      "Implementations SHOULD ensure the deciding party is authorized (issuing/confirming bank) and bind payment evidence via proof-binding + settlement-anchor artifacts." 
+    ]
+  }
+}

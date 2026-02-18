@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.ops.regulator-console
+module_id: org.momentum.mez.ops.regulator-console
 version: 0.1.0
 kind: operational
 license: Apache-2.0
@@ -6,16 +6,16 @@ description: "Operational module defining regulator console controls: access pol
 variants:
   - read-only-rbac
 depends_on:
-  - module_id: org.momentum.msez.reg.aml-cft
+  - module_id: org.momentum.mez.reg.aml-cft
     constraint: ">=0.1.0,<0.3.0"
 provides:
-  - interface: msez.api.regulator-console.v1
+  - interface: mez.api.regulator-console.v1
     path: api/regulator-console.openapi.yaml
     media_type: application/yaml
-  - interface: msez.policy.opa.bundle.v1
+  - interface: mez.policy.opa.bundle.v1
     path: policy/
     media_type: text/plain
-  - interface: msez.audit.events.v1
+  - interface: mez.audit.events.v1
     path: schemas/audit-event.schema.json
     media_type: application/json
 parameters:

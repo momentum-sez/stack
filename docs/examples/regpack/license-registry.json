@@ -1,5 +1,5 @@
 {
-  "$schema": "https://msez.momentum.inc/schemas/regpack.license-registry.schema.json",
+  "$schema": "https://mez.momentum.inc/schemas/regpack.license-registry.schema.json",
   "registry_id": "lic-reg:dfc-zone:2025-01",
   "zone_id": "zone:digital-financial-center",
   "effective_date": "2025-01-01T00:00:00Z",

@@ -14,5 +14,5 @@ Where `<digest>` is the lawpack digest (`lawpack_digest_sha256`) computed over c
 Populate from any locally built lawpacks:
 
 ```bash
-python -m tools.msez artifact index-lawpacks
+python -m tools.mez artifact index-lawpacks
 ```

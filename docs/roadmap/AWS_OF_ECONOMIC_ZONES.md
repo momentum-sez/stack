@@ -2,7 +2,7 @@
 
 **Date**: February 2026
 **Version**: 1.0
-**Context**: Synthesis of CLAUDE.md audit, Mass spec (v0.4), SEZ Stack v0.4.44 GENESIS codebase, 200+ commit history, architectural audit v8.0, and external documentation.
+**Context**: Synthesis of CLAUDE.md audit, Mass spec (v0.4), EZ Stack v0.4.44 GENESIS codebase, 200+ commit history, architectural audit v8.0, and external documentation.
 
 ---
 
@@ -128,7 +128,7 @@ The corridor receipt chain, fork resolution, and checkpoint system are implement
 
 Required:
 - gRPC or HTTPS-based peer discovery and handshake
-- `MSEZ_PEER_URLS` configuration for zone-to-zone connectivity
+- `MEZ_PEER_URLS` configuration for zone-to-zone connectivity
 - Corridor establishment protocol: propose → accept → exchange definition VCs → begin receipt flow
 - Integration test: two Docker containers, one corridor, receipt chain spanning both
 
@@ -155,7 +155,7 @@ Options:
 **5. Deploy Script That Actually Works End-to-End**
 
 The current `deploy-zone.sh` creates placeholder keys, hardcodes Postgres passwords, and prints endpoints for a defunct multi-service layout. Replace with:
-- Real key generation via `msez-cli keygen`
+- Real key generation via `mez-cli keygen`
 - Secret manager integration (or at minimum env-var injection, no hardcoded passwords)
 - Accurate endpoint reporting for the single-binary architecture
 - Health check that verifies the zone is operational
@@ -176,10 +176,10 @@ The current `deploy-zone.sh` creates placeholder keys, hardcodes Postgres passwo
 
 ## IV. THE REBRANDING: WHY "ECONOMIC ZONE" IS RIGHT
 
-"Special Economic Zone" is a specific legal construct — a geographically delimited area with different regulatory treatment than the host country's mainland. The term is precise but limiting.
+"Economic Zone" is a specific legal construct — a geographically delimited area with different regulatory treatment than the host country's mainland. The term is precise but limiting.
 
 The EZ Stack deploys:
-- Special Economic Zones (SEZs)
+- Economic Zones (EZs)
 - Free Zones (FZs) — Dubai, Jebel Ali
 - Free Trade Zones (FTZs) — Shenzhen
 - Digital Financial Centers — ADGM, AIFC
@@ -187,7 +187,7 @@ The EZ Stack deploys:
 - Technology Parks — various
 - Sovereign GovOS deployments — Pakistan
 
-"Economic Zone" encompasses all of these. The product is not limited to SEZs. The seven deployment profiles already reflect this:
+"Economic Zone" encompasses all of these. The product is not limited to EZs. The seven deployment profiles already reflect this:
 - `digital-financial-center` (ADGM model)
 - `trade-hub` (Jebel Ali/Shenzhen model)
 - `tech-park` (technology parks)
@@ -196,9 +196,9 @@ The EZ Stack deploys:
 - `digital-native-free-zone` (crypto-native zones)
 - `asset-history-bundle` (provenance tracking)
 
-"Economic Zone in a Box" is more accurate than "Special Economic Zone in a Box" because most of these deployments are not legally "special economic zones." ADGM is a financial free zone. Pakistan GovOS is a national government platform. Alatau is a charter city.
+"Economic Zone in a Box" is more accurate than "Economic Zone in a Box" because most of these deployments are not legally "special economic zones." ADGM is a financial free zone. Pakistan GovOS is a national government platform. Alatau is a charter city.
 
-The `msez-*` crate prefix and `momentum-sez` GitHub org are legacy implementation details. They don't need to change — `msez` is just a product identifier, like how AWS services have codenames that don't match the marketing name.
+The `mez-*` crate prefix and `momentum-ez` GitHub org are legacy implementation details. They don't need to change — `mez` is just a product identifier, like how AWS services have codenames that don't match the marketing name.
 
 ---
 
@@ -219,7 +219,7 @@ The Mass spec at `momentum.inc/mass-spec.html` describes a theoretical distribut
 | Narwhal-Bullshark consensus | Not implemented. |
 | ZK Circuits (12 types) | Mock implementations only. |
 | Poseidon2 / BBS+ | Stubs returning `NotImplemented`. |
-| Harbor = SEZ with legal personality | Harbors are Mass API endpoints, not consensus nodes. |
+| Harbor = EZ with legal personality | Harbors are Mass API endpoints, not consensus nodes. |
 
 **What IS real in the Mass ecosystem:**
 - Five Java/Spring Boot REST APIs processing real capital
@@ -280,7 +280,7 @@ For a demo/sandbox deployment without real regulatory content:
 
 ```bash
 cd deploy/docker && docker-compose up -d
-# → msez-api on :8080, Postgres on :5432, Prometheus on :9090, Grafana on :3000
+# → mez-api on :8080, Postgres on :5432, Prometheus on :9090, Grafana on :3000
 ```
 
 This works today. The zone starts, accepts requests, evaluates compliance (against empty packs), proxies to Mass APIs, and issues VCs. The gap is: the compliance evaluation is vacuous without real content, and the zone is an island without inter-zone networking.
@@ -299,7 +299,7 @@ This works today. The zone starts, accepts requests, evaluates compliance (again
    - `stack.lock` with verified content digests
 
 2. **Wire deploy-zone.sh to produce a real zone**
-   - Generate real Ed25519 keys via `msez-cli keygen`
+   - Generate real Ed25519 keys via `mez-cli keygen`
    - Inject secrets via environment variables (no hardcoded passwords)
    - Verify Mass API connectivity on startup
    - Print accurate endpoints for the single-binary architecture
@@ -313,13 +313,13 @@ This works today. The zone starts, accepts requests, evaluates compliance (again
    - Watcher attestation gossip between zones
 
 4. **Integration test: two zones, one corridor**
-   - `docker-compose` with two `msez-api` instances
+   - `docker-compose` with two `mez-api` instances
    - Zone A (PK-SIFC) and Zone B (AE-DIFC)
    - Establish corridor → exchange receipts → verify chain across both zones
 
 ### Phase 3: Make Mass Integration Robust (Trust)
 
-5. **Contract tests for msez-mass-client**
+5. **Contract tests for mez-mass-client**
    - Commit Swagger spec snapshots from all five Mass APIs
    - `contract_tests.rs`: deserialize Swagger schemas into Rust types, validate field compatibility
    - CI gate for spec freshness
@@ -365,7 +365,7 @@ A Pakistan SIFC zone deployed on AWS with:
 - Working entity formation → compliance evaluation → VC issuance pipeline
 - Regulator console showing real compliance state
 - Mass API integration verified by contract tests
-- Crypto keys generated by `msez-cli keygen`, not placeholders
+- Crypto keys generated by `mez-cli keygen`, not placeholders
 
 ### 12-Month Milestone: "Two Zones, One Corridor"
 
@@ -414,7 +414,7 @@ Despite the gaps, the EZ Stack has genuine architectural innovations that should
 
 4. **Content-addressed artifact model**: Every artifact identified by its digest. Transitive closure verification. Witness bundles. This is real cryptographic provenance.
 
-5. **Mass/EZ boundary enforcement**: The rule — Mass owns CRUD, EZ owns compliance intelligence — is clean and well-enforced. `msez-mass-client` is the sole gateway. No leakage.
+5. **Mass/EZ boundary enforcement**: The rule — Mass owns CRUD, EZ owns compliance intelligence — is clean and well-enforced. `mez-mass-client` is the sole gateway. No leakage.
 
 6. **Orchestration pattern**: Compliance eval → Mass API call → VC issuance → attestation storage on every write path. This is the entire value proposition. Protect it.
 
@@ -422,7 +422,7 @@ Despite the gaps, the EZ Stack has genuine architectural innovations that should
 
 ## APPENDIX: REBRANDING SCOPE
 
-The rebranding from "Special Economic Zone in a Box" to "Economic Zone in a Box" has been applied across:
+The rebranding from "Economic Zone in a Box" to "Economic Zone in a Box" has been applied across:
 
 - README.md (title, mission statement, all brand references)
 - Normative spec chapters (01-mission, 41-nodes, 98-licensepacks)
@@ -436,10 +436,10 @@ The rebranding from "Special Economic Zone in a Box" to "Economic Zone in a Box"
 - mkdocs.yml (site name)
 
 **Preserved unchanged:**
-- `msez-*` crate names (product prefix, deeply embedded)
-- `momentum-sez` GitHub org/repo (requires org rename, separate decision)
+- `mez-*` crate names (product prefix, deeply embedded)
+- `momentum-ez` GitHub org/repo (requires org rename, separate decision)
 - `PK-RSEZ` and other jurisdiction identifiers
-- `MsezError` and all Rust type names
+- `MezError` and all Rust type names
 - SQL migration filenames (migration tooling depends on these)
 
 ---

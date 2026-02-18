@@ -1,0 +1,27 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "mez": "https://schemas.momentum-ez.org/vocab/mez#",
+
+    "asset_id": "mez:asset_id",
+    "purpose": "mez:purpose",
+    "sequence": "mez:sequence",
+    "prev_root": "mez:prev_root",
+    "next_root": "mez:next_root",
+    "chosen_next_root": "mez:chosen_next_root",
+    "genesis_root": "mez:genesis_root",
+    "final_chain_root": "mez:final_chain_root",
+
+    "resolved_at": {
+      "@id": "mez:resolved_at",
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+
+    "MEZSmartAssetForkResolution": "mez:MEZSmartAssetForkResolution",
+    "MEZSmartAssetForkResolutionCredential": "mez:MEZSmartAssetForkResolutionCredential",
+
+    "SmartAssetReceipt": "mez:SmartAssetReceipt",
+    "SmartAssetReceiptChainCheckpoint": "mez:SmartAssetReceiptChainCheckpoint",
+    "SmartAssetReceiptInclusionProof": "mez:SmartAssetReceiptInclusionProof"
+  }
+}

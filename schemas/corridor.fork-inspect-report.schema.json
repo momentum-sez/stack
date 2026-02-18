@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/corridor.fork-inspect-report.schema.json",
-  "title": "MSEZ Corridor Fork Inspect Report",
+  "$id": "https://schemas.momentum-ez.org/mez/corridor.fork-inspect-report.schema.json",
+  "title": "MEZ Corridor Fork Inspect Report",
   "type": "object",
   "required": [
     "type",
@@ -12,7 +12,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MSEZCorridorForkInspectReport"
+      "const": "MEZCorridorForkInspectReport"
     },
     "corridor_id": {
       "type": "string",

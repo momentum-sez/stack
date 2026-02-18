@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: MSEZ Smart Assets API
+  title: MEZ Smart Assets API
   version: 0.4.44
   description: |
     Smart Asset lifecycle operations: genesis, registry, compliance evaluation,
@@ -573,13 +573,13 @@ components:
           type: string
         corridor_receipt:
           type: object
-          description: MSEZCorridorStateReceipt JSON object.
+          description: MEZCorridorStateReceipt JSON object.
         corridor_checkpoint:
           type: object
-          description: MSEZCorridorStateCheckpoint JSON object.
+          description: MEZCorridorStateCheckpoint JSON object.
         inclusion_proof:
           type: object
-          description: MSEZCorridorReceiptInclusionProof JSON object.
+          description: MEZCorridorReceiptInclusionProof JSON object.
         asset_checkpoint:
           type: object
           description: Optional SmartAssetCheckpoint; when present, verify state_root_sha256 matches attachment.

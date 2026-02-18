@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/transition-types.registry.schema.json",
-  "title": "MSEZ Transition Type Registry",
+  "$id": "https://schemas.momentum-ez.org/mez/transition-types.registry.schema.json",
+  "title": "MEZ Transition Type Registry",
   "description": "Registry mapping transition kinds to optional schema/ruleset/ZK circuit digests. Used to keep corridor receipts generic while allowing ecosystems to converge on interoperable transition types.",
   "type": "object",
   "required": ["version", "transition_types"],
@@ -31,7 +31,7 @@
               {
                 "allOf": [
                   {
-                    "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                    "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
                   },
                   {
                     "properties": {
@@ -67,7 +67,7 @@
               {
                 "allOf": [
                   {
-                    "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                    "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
                   },
                   {
                     "properties": {
@@ -103,7 +103,7 @@
               {
                 "allOf": [
                   {
-                    "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                    "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
                   },
                   {
                     "properties": {

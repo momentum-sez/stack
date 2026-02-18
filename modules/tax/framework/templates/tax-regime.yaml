@@ -1,11 +1,11 @@
 # Zone Tax Regime Definition
 # Configurable template for zone tax structure
 
-regime_id: msez.tax.framework.regime.v1
+regime_id: mez.tax.framework.regime.v1
 regime_version: "1.0"
 
 description: |
-  Defines the comprehensive tax regime for the Special Economic Zone.
+  Defines the comprehensive tax regime for the Economic Zone.
   This template supports tax-free zones, low-tax zones, and standard
   tax jurisdictions with full configurability.
 

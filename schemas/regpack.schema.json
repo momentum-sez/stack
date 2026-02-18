@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/regpack.schema.json",
-  "title": "MSEZ Regulatory Pack (RegPack)",
+  "$id": "https://schemas.momentum-ez.org/mez/regpack.schema.json",
+  "title": "MEZ Regulatory Pack (RegPack)",
   "description": "A RegPack captures dynamic regulatory state that changes faster than lawpacks: sanctions lists, license registries, reporting deadlines, and regulatory guidance.",
   "type": "object",
   "required": [
@@ -16,7 +16,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MSEZRegPack"
+      "const": "MEZRegPack"
     },
     "stack_spec_version": {
       "type": "string",

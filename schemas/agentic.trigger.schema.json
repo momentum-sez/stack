@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/agentic.trigger.schema.json",
-  "title": "MSEZAgenticTrigger",
+  "$id": "https://schemas.momentum-ez.org/mez/agentic.trigger.schema.json",
+  "title": "MEZAgenticTrigger",
   "description": "An agentic trigger event per MASS Protocol v0.2 Definition 17.1",
   "type": "object",
   "required": ["trigger_type", "data", "timestamp"],

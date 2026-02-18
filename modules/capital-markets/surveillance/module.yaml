@@ -1,7 +1,7 @@
 # Market Surveillance Module
 # Real-time market monitoring and abuse detection
 
-module_id: org.momentum.msez.capital-markets.surveillance
+module_id: org.momentum.mez.capital-markets.surveillance
 version: 0.1.0
 kind: capital-markets
 name: Market Surveillance
@@ -12,7 +12,7 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.capital-markets.surveillance.v1
+  - interface: mez.capital-markets.surveillance.v1
     operations:
       - monitor_trading_activity
       - detect_anomalies

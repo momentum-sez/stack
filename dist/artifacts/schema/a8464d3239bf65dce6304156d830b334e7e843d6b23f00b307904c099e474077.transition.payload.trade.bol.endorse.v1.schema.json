@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/transition.payload.trade.bol.endorse.v1.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/transition.payload.trade.bol.endorse.v1.schema.json",
   "title": "BOL Endorse transition payload (v1)",
   "description": "Endorses/transfers BOL title to a new party.",
   "type": "object",
@@ -11,7 +11,7 @@
   "required": ["from_party_id", "to_party_id", "endorsed_at"],
   "properties": {
     "bol_id": {"type": "string", "minLength": 1},
-    "bol_ref": {"$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"},
+    "bol_ref": {"$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"},
     "from_party_id": {"type": "string", "minLength": 1},
     "to_party_id": {"type": "string", "minLength": 1},
     "endorsed_at": {"type": "string", "format": "date-time"},

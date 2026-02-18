@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/licensepack.schema.json",
-  "title": "MSEZ Licensepack",
+  "$id": "https://schemas.momentum-ez.org/mez/licensepack.schema.json",
+  "title": "MEZ Licensepack",
   "description": "Content-addressed snapshot of jurisdictional licensing state",
   "type": "object",
   "required": [

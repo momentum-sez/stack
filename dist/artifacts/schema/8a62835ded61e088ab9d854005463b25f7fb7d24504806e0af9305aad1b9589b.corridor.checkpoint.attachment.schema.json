@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/corridor.checkpoint.attachment.schema.json",
-  "title": "MSEZ Corridor Checkpoint Attachment",
+  "$id": "https://schemas.momentum-ez.org/mez/corridor.checkpoint.attachment.schema.json",
+  "title": "MEZ Corridor Checkpoint Attachment",
   "description": "Typed ArtifactRef wrapper for corridor state checkpoints (artifact_type=checkpoint). Useful for cross-corridor anchoring (e.g., settlement corridors anchoring trade corridor heads).",
   "allOf": [
     {
-      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
     },
     {
       "type": "object",

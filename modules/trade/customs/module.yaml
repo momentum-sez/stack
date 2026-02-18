@@ -1,7 +1,7 @@
 # Customs Module
 # Tariffs, duties, and customs procedures
 
-module_id: org.momentum.msez.trade.customs
+module_id: org.momentum.mez.trade.customs
 version: 0.1.0
 kind: trade
 name: Customs & Tariffs
@@ -12,7 +12,7 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.trade.customs.v1
+  - interface: mez.trade.customs.v1
     operations:
       - submit_declaration
       - calculate_duties

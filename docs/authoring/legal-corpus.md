@@ -30,7 +30,7 @@ v0.4.1 introduces **Lawpacks**: content-addressed legal corpus artifacts (Akoma 
 For a jurisdiction corpus module, run:
 
 ```bash
-python -m tools.msez law ingest modules/legal/jurisdictions/us/ca/civil \
+python -m tools.mez law ingest modules/legal/jurisdictions/us/ca/civil \
   --as-of-date 2025-01-01 \
   --fetch
 ```
@@ -63,7 +63,7 @@ If licensing permits and you want a self-contained archive, add:
 Zones pin lawpacks in `stack.lock`, just like corridor/security artifacts:
 
 ```bash
-python -m tools.msez lock jurisdictions/_starter/zone.yaml --out jurisdictions/_starter/stack.lock
+python -m tools.mez lock jurisdictions/_starter/zone.yaml --out jurisdictions/_starter/stack.lock
 ```
 
 The lock generator will emit a `lawpacks[]` section based on:

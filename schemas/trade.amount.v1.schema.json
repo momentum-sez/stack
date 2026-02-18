@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/trade.amount.v1.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/trade.amount.v1.schema.json",
   "title": "Trade Amount (v1)",
   "description": "Deterministic currency amount used across trade instruments and settlement plans. value is a decimal string to avoid floating point ambiguity.",
   "type": "object",

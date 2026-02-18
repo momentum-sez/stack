@@ -1,0 +1,14 @@
+{
+  "ruleset_id": "mez.transition.trade.bol.endorse.v1",
+  "title": "Bill of Lading endorsement",
+  "version": 1,
+  "description": "Endorses/transfers BOL title to a new party.",
+  "transition_kind": "trade.bol.endorse.v1",
+  "payload_schema": "https://schemas.momentum-ez.org/mez/transition.payload.trade.bol.endorse.v1.schema.json",
+  "validation": {
+    "profile": "basic",
+    "notes": [
+      "Implementations SHOULD verify the endorser is the current holder under the corridor state, and maintain a chain-of-title consistent with BOL form (to-order/blank)."
+    ]
+  }
+}

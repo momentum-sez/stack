@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/vc.schema.json",
-  "title": "Verifiable Credential (MSEZ minimal profile)",
+  "$id": "https://schemas.momentum-ez.org/mez/vc.schema.json",
+  "title": "Verifiable Credential (MEZ minimal profile)",
   "type": "object",
   "required": [
     "@context",
@@ -80,7 +80,7 @@
           ],
           "properties": {
             "type": {
-              "const": "MsezEd25519Signature2025"
+              "const": "MezEd25519Signature2025"
             },
             "created": {
               "type": "string",
@@ -115,7 +115,7 @@
             ],
             "properties": {
               "type": {
-                "const": "MsezEd25519Signature2025"
+                "const": "MezEd25519Signature2025"
               },
               "created": {
                 "type": "string",

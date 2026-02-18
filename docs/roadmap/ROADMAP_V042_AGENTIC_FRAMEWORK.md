@@ -39,22 +39,22 @@ The policy evaluation engine processes triggers against defined policies and det
 
 ### CLI Commands
 
-New `msez agent` subcommands for managing agentic behavior:
+New `mez agent` subcommands for managing agentic behavior:
 
 ```bash
 # Monitor management
-msez agent monitor list
-msez agent monitor start <monitor-type> --config <config.yaml>
-msez agent monitor stop <monitor-id>
+mez agent monitor list
+mez agent monitor start <monitor-type> --config <config.yaml>
+mez agent monitor stop <monitor-id>
 
 # Policy management
-msez agent policy list
-msez agent policy add <policy.yaml>
-msez agent policy evaluate --trigger <trigger.json>
+mez agent policy list
+mez agent policy add <policy.yaml>
+mez agent policy evaluate --trigger <trigger.json>
 
 # Trigger simulation (for testing)
-msez agent trigger emit <trigger-type> --payload <payload.json>
-msez agent trigger history --asset-id <asset_id>
+mez agent trigger emit <trigger-type> --payload <payload.json>
+mez agent trigger history --asset-id <asset_id>
 ```
 
 ### Standard Policy Library Expansion

@@ -41,13 +41,13 @@ A corridor module MUST include a signed Corridor Definition VC referenced by `de
 You can verify it with:
 
 ```bash
-python -m tools.msez corridor verify modules/corridors/<name>
+python -m tools.mez corridor verify modules/corridors/<name>
 ```
 
 You can sign a VC with:
 
 ```bash
-python -m tools.msez vc sign path/to/unsigned.vc.json --key path/to/private.jwk --out corridor.vc.json
+python -m tools.mez vc sign path/to/unsigned.vc.json --key path/to/private.jwk --out corridor.vc.json
 ```
 
 ### Corridor Agreement VC (optional; v0.3+ direction)
@@ -87,15 +87,15 @@ Authoring helpers (v0.3+):
 
 ```bash
 # Generate a new dev Ed25519 key (writes a private JWK, prints the derived did:key)
-python -m tools.msez vc keygen --out keys/my-dev.ed25519.jwk
+python -m tools.mez vc keygen --out keys/my-dev.ed25519.jwk
 
 # Scaffold a corridor definition VC from corridor.yaml + artifact hashes
-python -m tools.msez corridor vc-init-definition <corridor-dir> \
+python -m tools.mez corridor vc-init-definition <corridor-dir> \
   --issuer did:key:z... \
   --out corridor.vc.unsigned.json
 
 # Scaffold a participant-specific corridor agreement VC (party defaults issuer)
-python -m tools.msez corridor vc-init-agreement <corridor-dir> \
+python -m tools.mez corridor vc-init-agreement <corridor-dir> \
   --party did:key:z... \
   --role zone_authority \
   --out agreement.zone-a.unsigned.json
@@ -105,12 +105,12 @@ Example flow:
 
 ```bash
 # Zone A signs its own agreement VC
-python -m tools.msez vc sign agreement.zone-a.unsigned.json \
+python -m tools.mez vc sign agreement.zone-a.unsigned.json \
   --key docs/examples/keys/zone-a.ed25519.jwk \
   --out corridor.agreement.zone-a.vc.json
 
 # Zone B signs its own agreement VC
-python -m tools.msez vc sign agreement.zone-b.unsigned.json \
+python -m tools.mez vc sign agreement.zone-b.unsigned.json \
   --key docs/examples/keys/zone-b.ed25519.jwk \
   --out corridor.agreement.zone-b.vc.json
 ```
@@ -118,7 +118,7 @@ python -m tools.msez vc sign agreement.zone-b.unsigned.json \
 Check activation status (human-readable):
 
 ```bash
-python -m tools.msez corridor status <corridor-dir>
+python -m tools.mez corridor status <corridor-dir>
 ```
 
 Use `--json` to emit machine-readable status.
@@ -127,12 +127,12 @@ To co‑sign a single agreement VC file (recommended):
 
 ```bash
 # signer 1
-python -m tools.msez vc sign docs/examples/vc/unsigned.corridor-agreement.json \
+python -m tools.mez vc sign docs/examples/vc/unsigned.corridor-agreement.json \
   --key docs/examples/keys/dev.ed25519.jwk \
   --out corridor.agreement.vc.json
 
 # signer 2 appends a second proof to the same file
-python -m tools.msez vc sign corridor.agreement.vc.json \
+python -m tools.mez vc sign corridor.agreement.vc.json \
   --key path/to/second-signer.jwk \
   --out corridor.agreement.vc.json
 ```
@@ -141,11 +141,11 @@ python -m tools.msez vc sign corridor.agreement.vc.json \
 To compute the binding hash for a Corridor Definition VC:
 
 ```bash
-python -m tools.msez vc payload-hash path/to/corridor.vc.json
+python -m tools.mez vc payload-hash path/to/corridor.vc.json
 ```
 
 Then verify that the agreement is valid **and activation thresholds are met**:
 
 ```bash
-python -m tools.msez corridor verify <corridor-dir>
+python -m tools.mez corridor verify <corridor-dir>
 ```

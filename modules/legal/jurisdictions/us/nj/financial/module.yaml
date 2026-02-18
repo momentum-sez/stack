@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.legal.us.nj.financial.corpus
+module_id: org.momentum.mez.legal.us.nj.financial.corpus
 version: 0.1.0
 kind: legal
 license: NOASSERTION
@@ -7,10 +7,10 @@ description: United States - New Jersey — financial legal corpus (placeholder)
 variants:
 - baseline
 depends_on:
-- module_id: org.momentum.msez.legal.akn-templates
+- module_id: org.momentum.mez.legal.akn-templates
   constraint: '>=0.1.0,<1.0.0'
 provides:
-- interface: msez.legal.akn.act.v1
+- interface: mez.legal.akn.act.v1
   path: src/akn/main.xml
   media_type: application/xml
 parameters: {}

@@ -1,7 +1,7 @@
 # Supply Chain Finance Module
 # Reverse factoring, dynamic discounting, and inventory finance
 
-module_id: org.momentum.msez.trade.supply-chain-finance
+module_id: org.momentum.mez.trade.supply-chain-finance
 version: 0.1.0
 kind: trade
 name: Supply Chain Finance
@@ -12,7 +12,7 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.trade.supply-chain-finance.v1
+  - interface: mez.trade.supply-chain-finance.v1
     operations:
       - create_scf_program
       - onboard_supplier

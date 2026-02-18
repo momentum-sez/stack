@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/agentic.environment-monitor.schema.json",
-  "title": "MSEZAgenticEnvironmentMonitor",
+  "$id": "https://schemas.momentum-ez.org/mez/agentic.environment-monitor.schema.json",
+  "title": "MEZAgenticEnvironmentMonitor",
   "description": "Configuration and state for an agentic environment monitor per MASS Protocol v0.2 Definition 17.4",
   "type": "object",
   "required": ["monitor_id", "monitor_type", "mode", "status"],

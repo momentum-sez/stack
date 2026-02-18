@@ -3,15 +3,15 @@
 # This is a schema-valid zone manifest (schemas/zone.schema.json) that can be
 # locked deterministically via:
 #
-#   ./msez zone lock --zone jurisdictions/_starter/zone.yaml --check
+#   ./mez zone lock --zone jurisdictions/_starter/zone.yaml --check
 #
 # The lock (stack.lock) is the immutable substrate for agreements, receipts,
 # checkpoints, and portable witness bundles.
-zone_id: org.momentum.msez.zone.example
+zone_id: org.momentum.mez.zone.example
 jurisdiction_id: ex
 zone_name: Example Zone
 profile:
-  profile_id: org.momentum.msez.profile.digital-financial-center
+  profile_id: org.momentum.mez.profile.digital-financial-center
   version: 0.4.44
 
 # Jurisdiction stack = built-in "lawpack overlays" (top → bottom priority).
@@ -28,7 +28,7 @@ overlays: []
 params_overrides: {}
 
 corridors:
-  - org.momentum.msez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
 
 trust_anchors: []
 key_rotation_policy:

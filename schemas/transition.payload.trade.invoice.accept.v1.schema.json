@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/transition.payload.trade.invoice.accept.v1.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/transition.payload.trade.invoice.accept.v1.schema.json",
   "title": "Trade Invoice Accept transition payload (v1)",
   "description": "Accepts (acknowledges) an issued trade invoice. The invoice MAY be referenced by invoice_id or by invoice_ref.",
   "type": "object",
@@ -11,7 +11,7 @@
   "required": ["accepted_by_party_id", "accepted_at"],
   "properties": {
     "invoice_id": {"type": "string", "minLength": 1},
-    "invoice_ref": {"$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"},
+    "invoice_ref": {"$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"},
     "accepted_by_party_id": {"type": "string", "minLength": 1},
     "accepted_at": {"type": "string", "format": "date-time"},
     "status": {"type": "string", "enum": ["accepted", "disputed"], "default": "accepted"},

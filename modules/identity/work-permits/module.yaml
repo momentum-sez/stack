@@ -1,7 +1,7 @@
 # Work Permits / Labor Authorization Module
 # Employment authorization for zone workers
 
-module_id: org.momentum.msez.identity.work-permits
+module_id: org.momentum.mez.identity.work-permits
 version: 0.1.0
 kind: identity
 name: Work Permits and Labor Authorization
@@ -13,21 +13,21 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.identity.work-permits.application.v1
+  - interface: mez.identity.work-permits.application.v1
     description: Work permit application processing
-  - interface: msez.identity.work-permits.sponsorship.v1
+  - interface: mez.identity.work-permits.sponsorship.v1
     description: Employer sponsorship management
-  - interface: msez.identity.work-permits.compliance.v1
+  - interface: mez.identity.work-permits.compliance.v1
     description: Labor compliance verification
-  - interface: msez.identity.work-permits.mobility.v1
+  - interface: mez.identity.work-permits.mobility.v1
     description: Inter-zone worker mobility
 
 dependencies:
-  - module_id: org.momentum.msez.identity.core
+  - module_id: org.momentum.mez.identity.core
     version: ">=0.1.0"
-  - module_id: org.momentum.msez.identity.kyc-tiers
+  - module_id: org.momentum.mez.identity.kyc-tiers
     version: ">=0.1.0"
-  - module_id: org.momentum.msez.corporate.formation
+  - module_id: org.momentum.mez.corporate.formation
     version: ">=0.1.0"
 
 permit_types:

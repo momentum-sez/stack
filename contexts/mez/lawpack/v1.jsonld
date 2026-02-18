@@ -1,0 +1,16 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "mez": "https://schemas.momentum-ez.org/vocab/mez#",
+    "MEZLawpackAttestationCredential": "mez:MEZLawpackAttestationCredential",
+    "lawpack": "mez:lawpack",
+    "domain": "mez:domain",
+    "as_of_date": "mez:as_of_date",
+    "assertion": "mez:assertion",
+    "status": "mez:status",
+    "statement": "mez:statement",
+    "sources": "mez:sources",
+    "evidence": "mez:evidence",
+    "notes": "mez:notes"
+  }
+}

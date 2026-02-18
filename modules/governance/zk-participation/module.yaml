@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.governance.zk-participation
+module_id: org.momentum.mez.governance.zk-participation
 version: 0.1.0
 kind: governance
 license: Apache-2.0
@@ -7,10 +7,10 @@ description: Privacy-preserving participation patterns (ZK eligibility, anonymit
 variants:
 - baseline
 depends_on:
-- module_id: org.momentum.msez.governance.core
+- module_id: org.momentum.mez.governance.core
   constraint: '>=0.1.0,<0.2.0'
 provides:
-- interface: msez.gov.mechanism.zk-participation.v1
+- interface: mez.gov.mechanism.zk-participation.v1
   path: docs/spec.md
   media_type: text/markdown
 parameters:

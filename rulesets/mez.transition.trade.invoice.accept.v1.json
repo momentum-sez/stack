@@ -1,0 +1,14 @@
+{
+  "ruleset_id": "mez.transition.trade.invoice.accept.v1",
+  "title": "Trade invoice acceptance",
+  "version": 1,
+  "description": "Acknowledges/accepts (or disputes) an invoice. This is often the commercial acceptance event needed for financing or subsequent settlement.",
+  "transition_kind": "trade.invoice.accept.v1",
+  "payload_schema": "https://schemas.momentum-ez.org/mez/transition.payload.trade.invoice.accept.v1.schema.json",
+  "validation": {
+    "profile": "basic",
+    "notes": [
+      "Implementations SHOULD ensure the accepting party is authorized (typically the buyer) and that acceptance is tied to a specific invoice identity (invoice_id or invoice_ref)."
+    ]
+  }
+}

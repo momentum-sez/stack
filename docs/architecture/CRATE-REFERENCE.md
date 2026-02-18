@@ -1,12 +1,12 @@
 # Crate reference
 
-Per-crate API surface for the 16 crates in the `msez/` workspace. Each section lists the crate's purpose, key types, public functions, and invariants enforced by the type system.
+Per-crate API surface for the 16 crates in the `mez/` workspace. Each section lists the crate's purpose, key types, public functions, and invariants enforced by the type system.
 
 For the full architecture context, see [Architecture Overview](./OVERVIEW.md).
 
 ---
 
-## msez-core
+## mez-core
 
 **Foundation types.** Every other crate depends on this.
 
@@ -26,7 +26,7 @@ For the full architecture context, see [Architecture Overview](./OVERVIEW.md).
 | `Cnic` | Pakistan NADRA 13-digit identifier |
 | `Ntn` | Pakistan FBR 7-digit tax number |
 | `Timestamp` | `DateTime<Utc>` wrapper with ISO 8601 serialization |
-| `MsezError` | Root error type (`thiserror`-based) |
+| `MezError` | Root error type (`thiserror`-based) |
 
 ### Key functions
 
@@ -43,7 +43,7 @@ All digest computation flows through `CanonicalBytes::new()`. Direct SHA-256 of 
 
 ---
 
-## msez-crypto
+## mez-crypto
 
 **Cryptographic primitives.** Ed25519 signing, MMR, CAS, SHA-256.
 
@@ -86,7 +86,7 @@ Signing requires `&CanonicalBytes`. Private keys zero memory on drop. Private ke
 
 ---
 
-## msez-vc
+## mez-vc
 
 **W3C Verifiable Credentials.** Issue, sign, and verify credentials with Ed25519 proofs.
 
@@ -110,11 +110,11 @@ VerifiableCredential::verify(&self, verifying_key: &VerifyingKey) -> Result<Vec<
 
 ### Invariant
 
-All VC signing flows through `CanonicalBytes` (inherited from `msez-crypto`). Proof structure is rigid -- `additionalProperties: false` in the schema.
+All VC signing flows through `CanonicalBytes` (inherited from `mez-crypto`). Proof structure is rigid -- `additionalProperties: false` in the schema.
 
 ---
 
-## msez-state
+## mez-state
 
 **Typestate-encoded state machines.** Invalid transitions don't compile.
 
@@ -153,7 +153,7 @@ Each typestate machine has a `Dyn*` enum for runtime dispatch when the state is 
 
 ---
 
-## msez-tensor
+## mez-tensor
 
 **Compliance Tensor V2.** 20-domain evaluation with Dijkstra manifold optimization.
 
@@ -195,7 +195,7 @@ ComplianceManifold::shortest_path(&self, from, to, constraints) -> Option<Migrat
 
 ---
 
-## msez-corridor
+## mez-corridor
 
 **Cross-border corridor operations.** Receipt chains, fork resolution, netting, SWIFT.
 
@@ -236,7 +236,7 @@ Clock skew tolerance: 5 minutes (per spec section 3.5).
 
 ---
 
-## msez-pack
+## mez-pack
 
 **Pack Trilogy.** Lawpacks, regpacks, licensepacks.
 
@@ -265,7 +265,7 @@ Licensepack::check_validity(&self, license: &License) -> Result<LicenseStatus, P
 
 ---
 
-## msez-agentic
+## mez-agentic
 
 **Autonomous policy engine.** 20 triggers, deterministic evaluation, audit trail.
 
@@ -305,7 +305,7 @@ Given identical trigger events and policy state, evaluation is deterministic. Co
 
 ---
 
-## msez-arbitration
+## mez-arbitration
 
 **Dispute resolution lifecycle.** Evidence, escrow, enforcement.
 
@@ -336,7 +336,7 @@ EnforcementOrder::execute(action) -> Result<EnforcementReceipt, ArbitrationError
 
 ---
 
-## msez-compliance
+## mez-compliance
 
 **Jurisdiction configuration bridge.** Connects regpack data to the compliance tensor.
 
@@ -358,12 +358,12 @@ build_tensor(jurisdiction_id, applicable_domains, sanctions_entries) -> Option<C
 ### Architecture pattern
 
 ```
-msez-pack (data) → msez-compliance (bridge) → msez-tensor (algebra)
+mez-pack (data) → mez-compliance (bridge) → mez-tensor (algebra)
 ```
 
 ---
 
-## msez-zkp
+## mez-zkp
 
 **Zero-knowledge proof system.** Sealed trait, 12 circuits, CDB bridge.
 
@@ -371,7 +371,7 @@ msez-pack (data) → msez-compliance (bridge) → msez-tensor (algebra)
 
 | Type | Purpose |
 |------|---------|
-| `ProofSystem` | **Sealed trait** -- only `msez-zkp` can implement it |
+| `ProofSystem` | **Sealed trait** -- only `mez-zkp` can implement it |
 | `MockProofSystem` | Deterministic SHA-256 mock (Phase 1, current) |
 | `Cdb` | Canonical Digest Bridge: `Poseidon2(Split256(SHA256(JCS(A))))` |
 | `CircuitType` | 12 variants: `BalanceSufficiency`, `SanctionsClearance`, `TensorInclusion`, `MigrationEvidence`, `OwnershipChain`, `CompensationValidity`, `KycAttestation`, `AttestationValidity`, `ThresholdSignature`, `RangeProof`, `MerkleMembership`, `NettingValidity` |
@@ -391,7 +391,7 @@ The `ProofSystem` trait is sealed. External crates cannot implement it. This pre
 
 ---
 
-## msez-schema
+## mez-schema
 
 **JSON Schema validation.** Draft 2020-12, 116 schemas.
 
@@ -417,7 +417,7 @@ Security-critical schemas (`corridor.receipt`, `verifiable_credential`, `proof`,
 
 ---
 
-## msez-mass-client
+## mez-mass-client
 
 **Typed HTTP client for Mass APIs.** The only authorized path from EZ Stack to Mass.
 
@@ -456,7 +456,7 @@ All Mass API communication goes through this crate. Direct `reqwest` calls to Ma
 
 ---
 
-## msez-api
+## mez-api
 
 **Axum HTTP server.** Composes all crates into an authenticated, rate-limited API.
 
@@ -469,13 +469,13 @@ All Mass API communication goes through this crate. Direct `reqwest` calls to Ma
 | `/v1/fiscal/*` | `mass_proxy` | Mass proxy |
 | `/v1/identity/*` | `mass_proxy` | Mass proxy |
 | `/v1/consent/*` | `mass_proxy` | Mass proxy |
-| `/v1/corridors/*` | `corridors` | SEZ native |
-| `/v1/settlement/*` | `settlement` | SEZ native |
-| `/v1/assets/*` | `smart_assets` | SEZ native |
-| `/v1/credentials/*` | `credentials` | SEZ native |
-| `/v1/triggers` | `agentic` | SEZ native |
-| `/v1/policies/*` | `agentic` | SEZ native |
-| `/v1/regulator/*` | `regulator` | SEZ native |
+| `/v1/corridors/*` | `corridors` | EZ native |
+| `/v1/settlement/*` | `settlement` | EZ native |
+| `/v1/assets/*` | `smart_assets` | EZ native |
+| `/v1/credentials/*` | `credentials` | EZ native |
+| `/v1/triggers` | `agentic` | EZ native |
+| `/v1/policies/*` | `agentic` | EZ native |
+| `/v1/regulator/*` | `regulator` | EZ native |
 | `/health/liveness` | *(built-in)* | Probes |
 | `/health/readiness` | *(built-in)* | Probes |
 
@@ -496,7 +496,7 @@ Auth uses `subtle::ConstantTimeEq` for bearer token comparison. Rate limiting us
 
 ---
 
-## msez-cli
+## mez-cli
 
 **Command-line interface.** Offline zone management.
 
@@ -504,11 +504,11 @@ Auth uses `subtle::ConstantTimeEq` for bearer token comparison. Rate limiting us
 
 | Command | Purpose |
 |---------|---------|
-| `msez validate` | Validate modules, profiles, zones against schemas |
-| `msez lock` | Generate/verify lockfiles |
-| `msez corridor` | Corridor lifecycle: create, submit, activate, halt, suspend, resume, list, status |
-| `msez artifact` | CAS operations: store, resolve, verify |
-| `msez vc` | Key generation, document signing, signature verification |
+| `mez validate` | Validate modules, profiles, zones against schemas |
+| `mez lock` | Generate/verify lockfiles |
+| `mez corridor` | Corridor lifecycle: create, submit, activate, halt, suspend, resume, list, status |
+| `mez artifact` | CAS operations: store, resolve, verify |
+| `mez vc` | Key generation, document signing, signature verification |
 
 ### Key types
 
@@ -521,7 +521,7 @@ Auth uses `subtle::ConstantTimeEq` for bearer token comparison. Rate limiting us
 
 ---
 
-## msez-integration-tests
+## mez-integration-tests
 
 **Cross-crate test suite.** 99 test files covering all crates and integration scenarios.
 
@@ -549,11 +549,11 @@ Auth uses `subtle::ConstantTimeEq` for bearer token comparison. Rate limiting us
 
 ```bash
 # Full suite
-cargo test -p msez-integration-tests
+cargo test -p mez-integration-tests
 
 # Specific test file
-cargo test -p msez-integration-tests --test test_corridor_typestate
+cargo test -p mez-integration-tests --test test_corridor_typestate
 
 # With output
-cargo test -p msez-integration-tests -- --nocapture
+cargo test -p mez-integration-tests -- --nocapture
 ```

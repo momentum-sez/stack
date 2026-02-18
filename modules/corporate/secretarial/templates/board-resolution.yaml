@@ -1,7 +1,7 @@
 # Board Resolution Template
 # For written resolutions passed by the board of directors
 
-template_id: msez.corporate.secretarial.board-resolution.v1
+template_id: mez.corporate.secretarial.board-resolution.v1
 template_version: "1.0"
 document_type: board_resolution
 

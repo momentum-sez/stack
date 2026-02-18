@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/arbitration.institution.schema.json",
-  "title": "MSEZ Arbitration Institution",
-  "description": "Registry entry for an arbitration institution recognized by the SEZ Stack.",
+  "$id": "https://schemas.momentum-ez.org/mez/arbitration.institution.schema.json",
+  "title": "MEZ Arbitration Institution",
+  "description": "Registry entry for an arbitration institution recognized by the EZ Stack.",
   "type": "object",
   "required": [
     "type",
@@ -13,7 +13,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MSEZArbitrationInstitution"
+      "const": "MEZArbitrationInstitution"
     },
     "stack_spec_version": {
       "type": "string",

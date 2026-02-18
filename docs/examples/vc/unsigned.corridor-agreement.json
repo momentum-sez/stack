@@ -1,19 +1,19 @@
 {
   "@context": [
     "https://www.w3.org/2018/credentials/v1",
-    "https://schemas.momentum-sez.org/contexts/msez/v1",
-    "https://schemas.momentum-sez.org/contexts/msez/corridor/v1"
+    "https://schemas.momentum-ez.org/contexts/mez/v1",
+    "https://schemas.momentum-ez.org/contexts/mez/corridor/v1"
   ],
-  "id": "urn:msez:example:unsigned-corridor-agreement",
+  "id": "urn:mez:example:unsigned-corridor-agreement",
   "type": [
     "VerifiableCredential",
-    "MSEZCorridorAgreementCredential"
+    "MEZCorridorAgreementCredential"
   ],
   "issuer": "did:key:z6MkpcPvSoHcaxHrowuHYv6NKhBVpvUsptJUUrQenEQ1aYJX",
   "issuanceDate": "2025-12-22T00:00:00Z",
   "credentialSubject": {
-    "corridor_id": "org.momentum.msez.corridor.example",
-    "definition_vc_id": "urn:msez:example:unsigned-corridor-definition",
+    "corridor_id": "org.momentum.mez.corridor.example",
+    "definition_vc_id": "urn:mez:example:unsigned-corridor-definition",
     "definition_payload_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
     "participants": [
       {
@@ -52,7 +52,7 @@
       }
     },
     "terms": {
-      "reference": "urn:msez:example:terms:corridor-agreement",
+      "reference": "urn:mez:example:terms:corridor-agreement",
       "notes": "Development example only; real deployments should reference a signed legal agreement artifact."
     },
     "version": "0.2.0",

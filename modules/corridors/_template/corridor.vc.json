@@ -1,19 +1,19 @@
 {
   "@context": [
     "https://www.w3.org/2018/credentials/v1",
-    "https://schemas.momentum-sez.org/contexts/msez/v1",
-    "https://schemas.momentum-sez.org/contexts/msez/corridor/v1"
+    "https://schemas.momentum-ez.org/contexts/mez/v1",
+    "https://schemas.momentum-ez.org/contexts/mez/corridor/v1"
   ],
-  "id": "urn:msez:vc:corridor-definition:org.momentum.msez.corridor._template:00000000",
+  "id": "urn:mez:vc:corridor-definition:org.momentum.mez.corridor._template:00000000",
   "type": [
     "VerifiableCredential",
-    "MSEZCorridorDefinitionCredential"
+    "MEZCorridorDefinitionCredential"
   ],
   "issuer": "did:key:z6MkwQ8wSHZe3DEmo6GvpjBGp2akdrwb38mELYgPJpDAo5zz",
   "issuanceDate": "2026-02-13T10:50:27Z",
   "credentialSubject": {
-    "corridor_id": "org.momentum.msez.corridor._template",
-    "ruleset": "msez.corridor.verification.v1",
+    "corridor_id": "org.momentum.mez.corridor._template",
+    "ruleset": "mez.corridor.verification.v1",
     "artifacts": {
       "corridor_manifest": {
         "path": "corridor.yaml",
@@ -29,10 +29,10 @@
       }
     },
     "version": "0.1.0-template",
-    "maintainer": "Momentum SEZ Stack (template - replace before use)"
+    "maintainer": "Momentum EZ Stack (template - replace before use)"
   },
   "proof": {
-    "type": "MsezEd25519Signature2025",
+    "type": "MezEd25519Signature2025",
     "created": "2026-02-13T10:50:27Z",
     "verificationMethod": "did:key:z6MkwQ8wSHZe3DEmo6GvpjBGp2akdrwb38mELYgPJpDAo5zz#key-1",
     "proofPurpose": "assertionMethod",

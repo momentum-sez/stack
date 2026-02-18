@@ -31,29 +31,29 @@ The workspace is organized around distinct concerns, each implemented by one or 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        HTTP BOUNDARY                                │
-│  msez-api: Axum server, auth, rate limiting, OpenAPI generation     │
-│  msez-cli: Offline zone management, validation, signing            │
+│  mez-api: Axum server, auth, rate limiting, OpenAPI generation     │
+│  mez-cli: Offline zone management, validation, signing            │
 ├─────────────────────────────────────────────────────────────────────┤
 │                     ORCHESTRATION LAYER                              │
-│  msez-agentic:     20 triggers, policy engine, audit trail          │
-│  msez-arbitration: Dispute lifecycle, evidence, escrow              │
-│  msez-compliance:  Regpack → tensor bridge                          │
+│  mez-agentic:     20 triggers, policy engine, audit trail          │
+│  mez-arbitration: Dispute lifecycle, evidence, escrow              │
+│  mez-compliance:  Regpack → tensor bridge                          │
 ├─────────────────────────────────────────────────────────────────────┤
 │                   DOMAIN INTELLIGENCE                               │
-│  msez-tensor:  Compliance Tensor V2 (20 domains, 5-state lattice)  │
-│  msez-corridor: Receipt chains, fork resolution, netting, SWIFT     │
-│  msez-state:   Typestate machines (corridor, entity, migration)     │
-│  msez-pack:    Lawpack, regpack, licensepack (Pack Trilogy)          │
+│  mez-tensor:  Compliance Tensor V2 (20 domains, 5-state lattice)  │
+│  mez-corridor: Receipt chains, fork resolution, netting, SWIFT     │
+│  mez-state:   Typestate machines (corridor, entity, migration)     │
+│  mez-pack:    Lawpack, regpack, licensepack (Pack Trilogy)          │
 ├─────────────────────────────────────────────────────────────────────┤
 │                  CRYPTOGRAPHIC FOUNDATION                           │
-│  msez-vc:     W3C Verifiable Credentials, Ed25519 proofs            │
-│  msez-crypto: Ed25519 (zeroize), MMR, CAS, SHA-256                 │
-│  msez-zkp:    Sealed ProofSystem trait, 12 circuits, CDB bridge     │
-│  msez-core:   CanonicalBytes, ComplianceDomain(20), ID newtypes     │
+│  mez-vc:     W3C Verifiable Credentials, Ed25519 proofs            │
+│  mez-crypto: Ed25519 (zeroize), MMR, CAS, SHA-256                 │
+│  mez-zkp:    Sealed ProofSystem trait, 12 circuits, CDB bridge     │
+│  mez-core:   CanonicalBytes, ComplianceDomain(20), ID newtypes     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                    EXTERNAL INTEGRATION                             │
-│  msez-mass-client: Typed HTTP client for 5 Mass API primitives      │
-│  msez-schema:      116 JSON Schema (Draft 2020-12) validation       │
+│  mez-mass-client: Typed HTTP client for 5 Mass API primitives      │
+│  mez-schema:      116 JSON Schema (Draft 2020-12) validation       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -83,7 +83,7 @@ T(entity, jurisdiction) : ComplianceDomain → ComplianceState
 NotApplicable > Exempt > Compliant > Pending > NonCompliant
 ```
 
-The `msez-tensor` crate implements this with pluggable `DomainEvaluator` instances per domain, parameterized by a `JurisdictionConfig` that determines which domains apply.
+The `mez-tensor` crate implements this with pluggable `DomainEvaluator` instances per domain, parameterized by a `JurisdictionConfig` that determines which domains apply.
 
 ### Compliance Manifold
 
@@ -184,13 +184,13 @@ The Pack Trilogy provides jurisdictional configuration:
 | **Regpack** | YAML/JSON | Regulatory requirements: sanctions lists, reporting obligations, compliance calendars |
 | **Licensepack** | YAML/JSON | License registry: license types, issuing authorities, validity periods, renewal windows |
 
-Each pack is content-addressed (SHA-256 digest via `CanonicalBytes`) and version-controlled. The `SanctionsChecker` in `msez-pack` provides fuzzy name matching against OFAC/UN/EU sanctions lists with configurable confidence thresholds.
+Each pack is content-addressed (SHA-256 digest via `CanonicalBytes`) and version-controlled. The `SanctionsChecker` in `mez-pack` provides fuzzy name matching against OFAC/UN/EU sanctions lists with configurable confidence thresholds.
 
 ---
 
 ## Zero-knowledge proofs
 
-The `msez-zkp` crate defines a **sealed** `ProofSystem` trait that external crates cannot implement. This prevents unauthorized proof backends from entering the system.
+The `mez-zkp` crate defines a **sealed** `ProofSystem` trait that external crates cannot implement. This prevents unauthorized proof backends from entering the system.
 
 ### Phase 1 (current)
 
@@ -235,7 +235,7 @@ The EZ Stack does not reimplement Mass primitives. It orchestrates them.
 | Identity | *(embedded)* | KYC attestation VCs, sanctions screening (regpack checker) |
 | Consent | `consent.api.mass.inc` | Multi-party corridor activation, governance-gated state transitions |
 
-The `msez-mass-client` crate provides typed Rust HTTP clients for each primitive. All other crates are forbidden from making direct HTTP requests to Mass endpoints.
+The `mez-mass-client` crate provides typed Rust HTTP clients for each primitive. All other crates are forbidden from making direct HTTP requests to Mass endpoints.
 
 ---
 
@@ -291,7 +291,7 @@ See [Security Model](./architecture/SECURITY-MODEL.md) for the full threat model
 ### Docker Compose (development)
 
 ```
-msez-api (Rust binary) ──> PostgreSQL 16
+mez-api (Rust binary) ──> PostgreSQL 16
                         ──> Prometheus
                         ──> Grafana
 ```
@@ -338,7 +338,7 @@ msez-api (Rust binary) ──> PostgreSQL 16
 | `chrono` | Timestamp handling |
 | `clap` | CLI argument parsing |
 | `tracing` | Structured logging and distributed tracing |
-| `reqwest` | HTTP client (used only in `msez-mass-client`) |
+| `reqwest` | HTTP client (used only in `mez-mass-client`) |
 | `sqlx` | PostgreSQL driver (async, compile-time query checking) |
 | `utoipa` | OpenAPI spec generation |
 | `proptest` | Property-based testing |

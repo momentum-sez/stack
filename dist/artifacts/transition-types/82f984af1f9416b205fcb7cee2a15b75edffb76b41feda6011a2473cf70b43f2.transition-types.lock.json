@@ -6,7 +6,7 @@
     "registry_sha256": "6f597ec050eeef191d8e17b7c25d981c601e39487e154cdf2c532ae6f45eedd2"
   },
   "snapshot": {
-    "tag": "msez.transition-types.registry.snapshot.v1",
+    "tag": "mez.transition-types.registry.snapshot.v1",
     "registry_version": 1,
     "transition_types": [
       {
@@ -34,7 +34,7 @@
         "kind": "generic"
       },
       {
-        "kind": "msez.example.transfer.v1",
+        "kind": "mez.example.transfer.v1",
         "schema_digest_sha256": "28249476f011e934f7615a506a37f1e4bf9ba634b4e335194460d6a6296b9efa",
         "ruleset_digest_sha256": "c4510fbe06b7f778cf34a846ea5fcb777ac78143a1257b47ce119a7bd161fda4"
       },

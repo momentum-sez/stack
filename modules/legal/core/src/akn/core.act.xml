@@ -2,24 +2,24 @@
 <akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
   <act contains="originalVersion">
     <meta>
-      <identification source="#msez">
+      <identification source="#mez">
         <FRBRWork>
-          <FRBRthis value="/akn/org.momentum.msez/act/core/0.1.0"/>
-          <FRBRuri value="/akn/org.momentum.msez/act/core"/>
+          <FRBRthis value="/akn/org.momentum.mez/act/core/0.1.0"/>
+          <FRBRuri value="/akn/org.momentum.mez/act/core"/>
           <FRBRdate date="2025-12-21" name="Generation"/>
-          <FRBRauthor href="#msez"/>
+          <FRBRauthor href="#mez"/>
         </FRBRWork>
         <FRBRExpression>
-          <FRBRthis value="/akn/org.momentum.msez/act/core/0.1.0/eng@/main"/>
-          <FRBRuri value="/akn/org.momentum.msez/act/core/eng@/main"/>
+          <FRBRthis value="/akn/org.momentum.mez/act/core/0.1.0/eng@/main"/>
+          <FRBRuri value="/akn/org.momentum.mez/act/core/eng@/main"/>
           <FRBRdate date="2025-12-21" name="Generation"/>
-          <FRBRauthor href="#msez"/>
+          <FRBRauthor href="#mez"/>
         </FRBRExpression>
         <FRBRManifestation>
-          <FRBRthis value="/akn/org.momentum.msez/act/core/0.1.0/eng@/main.xml"/>
-          <FRBRuri value="/akn/org.momentum.msez/act/core/eng@/main.xml"/>
+          <FRBRthis value="/akn/org.momentum.mez/act/core/0.1.0/eng@/main.xml"/>
+          <FRBRuri value="/akn/org.momentum.mez/act/core/eng@/main.xml"/>
           <FRBRdate date="2025-12-21" name="Generation"/>
-          <FRBRauthor href="#msez"/>
+          <FRBRauthor href="#mez"/>
         </FRBRManifestation>
       </identification>
     </meta>
@@ -28,7 +28,7 @@
         <num>1</num>
         <heading>Purpose</heading>
         <content>
-          <p>This Act is a model core statute for a programmable SEZ stack. Replace text via jurisdiction overlays.</p>
+          <p>This Act is a model core statute for a programmable EZ stack. Replace text via jurisdiction overlays.</p>
         </content>
       </section>
     </body>

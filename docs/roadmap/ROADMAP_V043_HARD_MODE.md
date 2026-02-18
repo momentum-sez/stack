@@ -223,7 +223,7 @@ Every completed migration produces an evidence bundle containing the migration r
 **Bundle Verification:**
 
 ```
-msez migration verify-bundle <bundle.zip> --strict
+mez migration verify-bundle <bundle.zip> --strict
 ```
 
 Verifies complete evidence chain from source lock to destination unlock.
@@ -294,9 +294,9 @@ Periodically issued credentials summarizing watcher performance, usable for corr
 
 ## PART V: SETTLEMENT LAYER L1 ANCHORING
 
-Connect the MSEZ settlement layer to Ethereum and L2s for finality and interoperability.
+Connect the MEZ settlement layer to Ethereum and L2s for finality and interoperability.
 
-### 5.1 L1 Anchor Contract (`contracts/MSEZAnchor.sol`)
+### 5.1 L1 Anchor Contract (`contracts/MEZAnchor.sol`)
 
 **Contract Functions:**
 

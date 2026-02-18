@@ -1,8 +1,8 @@
 # Mass Protocol Integration
 
-This document describes how to map MSEZ primitives onto the Mass Protocol framing (Entity → Consent → Attestation).
+This document describes how to map MEZ primitives onto the Mass Protocol framing (Entity → Consent → Attestation).
 
-The key idea is that MSEZ corridors already implement the core of a decentralized consent and attestation fabric:
+The key idea is that MEZ corridors already implement the core of a decentralized consent and attestation fabric:
 
 - Zones are entities with identities and governance.
 - Corridors are consent structures connecting entities.
@@ -13,7 +13,7 @@ The key idea is that MSEZ corridors already implement the core of a decentralize
 
 ### Zone = Mass Entity
 
-An MSEZ **zone** (node) is an entity with:
+An MEZ **zone** (node) is an entity with:
 
 - a jurisdictional identity (authority registry chain)
 - pinned legal and policy commitments (lawpacks, rulesets)
@@ -40,7 +40,7 @@ This layered attestation structure supports both privacy (selective disclosure) 
 
 ## Practical integration hooks
 
-MSEZ already provides a digest-based substrate; integrating with Mass typically requires:
+MEZ already provides a digest-based substrate; integrating with Mass typically requires:
 
 - normalizing identifiers (corridor_id / zone ids)
 - emitting Mass-friendly envelopes around VCs/receipts

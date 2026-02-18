@@ -1,11 +1,11 @@
 # Smart Asset integration (v0.4.x scaffold)
 
 This document describes a **minimal, composable** way to integrate the Smart Asset spec
-with MSEZ corridors *before* the `0.4 → 0.5` bump.
+with MEZ corridors *before* the `0.4 → 0.5` bump.
 
 ## Why this matters
 
-MSEZ corridors define a verifiable, law-bound state channel between zones.
+MEZ corridors define a verifiable, law-bound state channel between zones.
 Smart Assets define Merkle-DAG state machines whose state *moves* across jurisdictions.
 
 The integration goal is to make *asset movement* a first-class transition type in corridors,

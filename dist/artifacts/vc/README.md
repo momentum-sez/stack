@@ -25,5 +25,5 @@ Notes:
 Populate (reference tool):
 
 ```bash
-python -m tools.msez artifact index-vcs
+python -m tools.mez artifact index-vcs
 ```

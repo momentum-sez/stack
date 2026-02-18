@@ -1,4 +1,4 @@
-corridor_id: org.momentum.msez.corridor.correspondent.baseline
+corridor_id: org.momentum.mez.corridor.correspondent.baseline
 title: Correspondent Banking Corridor (generic)
 participants: []
 settlement:
@@ -22,4 +22,4 @@ dispute_resolution:
 trust_anchors_path: trust-anchors.yaml
 key_rotation_path: key-rotation.yaml
 definition_vc_path: corridor.vc.json
-verification_ruleset: msez.corridor.verification.v1
+verification_ruleset: mez.corridor.verification.v1

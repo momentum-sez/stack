@@ -1,7 +1,7 @@
 # Post-Trade Module
 # Trade confirmation, allocation, and settlement instruction processing
 
-module_id: org.momentum.msez.capital-markets.post-trade
+module_id: org.momentum.mez.capital-markets.post-trade
 version: 0.1.0
 kind: capital-markets
 name: Post-Trade Processing
@@ -12,7 +12,7 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.capital-markets.post-trade.v1
+  - interface: mez.capital-markets.post-trade.v1
     operations:
       - confirm_trade
       - allocate_trade

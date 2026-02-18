@@ -1,0 +1,101 @@
+//! # mez-api — Binary Entry Point
+//!
+//! Starts the Axum HTTP server for the EZ Stack API.
+//! Binds to configurable port (default 8080).
+
+use mez_api::state::AppConfig;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize structured tracing.
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+        )
+        .init();
+
+    // Build configuration from environment.
+    let port: u16 = std::env::var("PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(8080);
+
+    let auth_token = std::env::var("AUTH_TOKEN")
+        .ok()
+        .map(mez_api::auth::SecretString::new);
+    let config = AppConfig { port, auth_token };
+
+    // Initialize database pool (optional — absent means in-memory only).
+    let db_pool = mez_api::db::init_pool().await.map_err(|e| {
+        tracing::error!("Database initialization failed: {e}");
+        e
+    })?;
+
+    // Attempt to create Mass API client from environment.
+    let mass_client = match mez_mass_client::MassApiConfig::from_env() {
+        Ok(mass_config) => {
+            tracing::info!("Mass API client configured");
+            match mez_mass_client::MassClient::new(mass_config) {
+                Ok(client) => {
+                    // Validate connectivity to Mass APIs at startup.
+                    // Don't hard-fail — some zones may intentionally run
+                    // with a subset of primitives reachable.
+                    let health = client.health_check().await;
+                    for name in &health.reachable {
+                        tracing::info!(service = %name, "Mass API reachable");
+                    }
+                    for (name, err) in &health.unreachable {
+                        tracing::warn!(
+                            service = %name,
+                            error = %err,
+                            "Mass API unreachable at startup — proxy endpoints for this service will fail"
+                        );
+                    }
+                    if health.all_healthy() {
+                        tracing::info!("All Mass APIs reachable");
+                    } else {
+                        tracing::warn!(
+                            reachable = health.reachable.len(),
+                            unreachable = health.unreachable.len(),
+                            "Some Mass APIs unreachable — readiness probe will report unhealthy"
+                        );
+                    }
+                    Some(client)
+                }
+                Err(e) => {
+                    tracing::error!("Failed to create Mass API client: {e}");
+                    return Err(e.into());
+                }
+            }
+        }
+        Err(e) => {
+            tracing::warn!(
+                "Mass API client not configured: {e}. Primitive proxy endpoints will return 503."
+            );
+            None
+        }
+    };
+
+    // Bootstrap: load zone configuration if ZONE_CONFIG is set.
+    let state = mez_api::bootstrap::bootstrap(config, mass_client, db_pool).map_err(|e| {
+        tracing::error!("Bootstrap failed: {e}");
+        e
+    })?;
+
+    // Hydrate in-memory stores from database (if connected).
+    state.hydrate_from_db().await.map_err(|e| {
+        tracing::error!("Database hydration failed: {e}");
+        e
+    })?;
+
+    let app = mez_api::app(state);
+
+    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
+    tracing::info!("MEZ API listening on {}", addr);
+
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
+
+    Ok(())
+}

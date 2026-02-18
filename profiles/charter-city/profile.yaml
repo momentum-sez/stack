@@ -1,65 +1,65 @@
-profile_id: org.momentum.msez.profile.charter-city
+profile_id: org.momentum.mez.profile.charter-city
 stack_spec_version: 0.4.44
 modules:
-- module_id: org.momentum.msez.legal.akn-templates
+- module_id: org.momentum.mez.legal.akn-templates
   version: 0.1.0
   variant: default
-- module_id: org.momentum.msez.legal.core
+- module_id: org.momentum.mez.legal.core
   version: 0.1.0
   variant: commonlaw-minimal
-- module_id: org.momentum.msez.legal.enabling-act
+- module_id: org.momentum.mez.legal.enabling-act
   version: 0.2.0
   variant: baseline
-- module_id: org.momentum.msez.legal.authority-charter
+- module_id: org.momentum.mez.legal.authority-charter
   version: 0.2.0
   variant: baseline
-- module_id: org.momentum.msez.legal.admin-procedure
+- module_id: org.momentum.mez.legal.admin-procedure
   version: 0.2.0
   variant: baseline
-- module_id: org.momentum.msez.legal.civil-code
+- module_id: org.momentum.mez.legal.civil-code
   version: 0.2.0
   variant: baseline
-- module_id: org.momentum.msez.legal.commercial-code
+- module_id: org.momentum.mez.legal.commercial-code
   version: 0.2.0
   variant: baseline
-- module_id: org.momentum.msez.legal.dispute-resolution
+- module_id: org.momentum.mez.legal.dispute-resolution
   version: 0.2.0
   variant: baseline
-- module_id: org.momentum.msez.reg.aml-cft
+- module_id: org.momentum.mez.reg.aml-cft
   version: 0.1.0
   variant: risk-based
-- module_id: org.momentum.msez.reg.fin-supervision
+- module_id: org.momentum.mez.reg.fin-supervision
   version: 0.2.0
   variant: baseline
-- module_id: org.momentum.msez.ops.regulator-console
+- module_id: org.momentum.mez.ops.regulator-console
   version: 0.1.0
   variant: read-only-rbac
-- module_id: org.momentum.msez.fin.payments-adapter
+- module_id: org.momentum.mez.fin.payments-adapter
   version: 0.1.0
   variant: iso20022-mapping
-- module_id: org.momentum.msez.corridor.swift
+- module_id: org.momentum.mez.corridor.swift
   version: 0.1.0
   variant: iso20022-cross-border
-- module_id: org.momentum.msez.ops.deployment-telemetry
+- module_id: org.momentum.mez.ops.deployment-telemetry
   version: 0.1.0
   variant: baseline
-- module_id: org.momentum.msez.ops.success-metric-registry
+- module_id: org.momentum.mez.ops.success-metric-registry
   version: 0.1.0
   variant: baseline
-- module_id: org.momentum.msez.ops.ab-testing-framework
+- module_id: org.momentum.mez.ops.ab-testing-framework
   version: 0.1.0
   variant: baseline
-- module_id: org.momentum.msez.governance.core
+- module_id: org.momentum.mez.governance.core
   version: 0.1.0
   variant: baseline
-- module_id: org.momentum.msez.governance.binary-voting
+- module_id: org.momentum.mez.governance.binary-voting
   version: 0.1.0
   variant: baseline
-- module_id: org.momentum.msez.governance.quadratic-voting
+- module_id: org.momentum.mez.governance.quadratic-voting
   version: 0.1.0
   variant: baseline
-- module_id: org.momentum.msez.governance.liquid-democracy
+- module_id: org.momentum.mez.governance.liquid-democracy
   version: 0.1.0
   variant: baseline
 corridors:
-- org.momentum.msez.corridor.swift.iso20022-cross-border
+- org.momentum.mez.corridor.swift.iso20022-cross-border

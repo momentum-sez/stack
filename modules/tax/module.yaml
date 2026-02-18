@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.tax
+module_id: org.momentum.mez.tax
 version: 0.1.0
 kind: tax
 license: Apache-2.0
@@ -23,31 +23,31 @@ variants:
   - standard-tax
 
 depends_on:
-  - module_id: org.momentum.msez.legal.core
+  - module_id: org.momentum.mez.legal.core
     constraint: ">=0.1.0,<1.0.0"
-  - module_id: org.momentum.msez.legal.entity-registry
+  - module_id: org.momentum.mez.legal.entity-registry
     constraint: ">=0.1.0,<1.0.0"
 
 provides:
-  - interface: msez.tax.framework.v1
+  - interface: mez.tax.framework.v1
     path: framework/
     media_type: application/yaml
-  - interface: msez.tax.fees.v1
+  - interface: mez.tax.fees.v1
     path: fee-schedules/
     media_type: application/yaml
-  - interface: msez.tax.collection.v1
+  - interface: mez.tax.collection.v1
     path: revenue-collection/
     media_type: application/yaml
-  - interface: msez.tax.transfer-pricing.v1
+  - interface: mez.tax.transfer-pricing.v1
     path: transfer-pricing/
     media_type: application/yaml
-  - interface: msez.tax.treaties.v1
+  - interface: mez.tax.treaties.v1
     path: treaty-management/
     media_type: application/yaml
-  - interface: msez.tax.incentives.v1
+  - interface: mez.tax.incentives.v1
     path: incentive-programs/
     media_type: application/yaml
-  - interface: msez.tax.reporting.v1
+  - interface: mez.tax.reporting.v1
     path: reporting/
     media_type: application/yaml
 

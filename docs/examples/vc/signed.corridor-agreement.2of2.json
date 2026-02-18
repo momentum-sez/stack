@@ -1,19 +1,19 @@
 {
   "@context": [
     "https://www.w3.org/2018/credentials/v1",
-    "https://schemas.momentum-sez.org/contexts/msez/v1",
-    "https://schemas.momentum-sez.org/contexts/msez/corridor/v1"
+    "https://schemas.momentum-ez.org/contexts/mez/v1",
+    "https://schemas.momentum-ez.org/contexts/mez/corridor/v1"
   ],
-  "id": "urn:msez:example:unsigned-corridor-agreement",
+  "id": "urn:mez:example:unsigned-corridor-agreement",
   "type": [
     "VerifiableCredential",
-    "MSEZCorridorAgreementCredential"
+    "MEZCorridorAgreementCredential"
   ],
   "issuer": "did:key:z6MkpcPvSoHcaxHrowuHYv6NKhBVpvUsptJUUrQenEQ1aYJX",
   "issuanceDate": "2025-12-22T00:00:00Z",
   "credentialSubject": {
-    "corridor_id": "org.momentum.msez.corridor.example",
-    "definition_vc_id": "urn:msez:example:unsigned-corridor-definition",
+    "corridor_id": "org.momentum.mez.corridor.example",
+    "definition_vc_id": "urn:mez:example:unsigned-corridor-definition",
     "definition_payload_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
     "participants": [
       {
@@ -41,7 +41,7 @@
       "effectiveFrom": "2025-12-22T00:00:00Z"
     },
     "terms": {
-      "reference": "urn:msez:example:terms:corridor-agreement",
+      "reference": "urn:mez:example:terms:corridor-agreement",
       "notes": "Development example only; real deployments should reference a signed legal agreement artifact."
     },
     "version": "0.2.0",
@@ -49,14 +49,14 @@
   },
   "proof": [
     {
-      "type": "MsezEd25519Signature2025",
+      "type": "MezEd25519Signature2025",
       "created": "2025-12-22T00:00:00Z",
       "verificationMethod": "did:key:z6MkpcPvSoHcaxHrowuHYv6NKhBVpvUsptJUUrQenEQ1aYJX#key-1",
       "proofPurpose": "assertionMethod",
       "jws": "m7gV3G4tJvuWIdylOp61G4WjeAfoaXZKz6JFAVh8iiQOdndcga0-Wy0af4rCLxBGIVszqLvjHrtCm_7nAxUGBQ"
     },
     {
-      "type": "MsezEd25519Signature2025",
+      "type": "MezEd25519Signature2025",
       "created": "2025-12-22T00:00:00Z",
       "verificationMethod": "did:key:z6MkrcX3jnavDvJcR4Kcr6i8G1D4LzZ3X2XZdo3dc91QZbvo#key-1",
       "proofPurpose": "assertionMethod",

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/vc.authority-registry.schema.json",
-  "title": "MSEZ Authority Registry Verifiable Credential",
+  "$id": "https://schemas.momentum-ez.org/mez/vc.authority-registry.schema.json",
+  "title": "MEZ Authority Registry Verifiable Credential",
   "description": "A Verifiable Credential that lists authorized authority DIDs (zone authorities, legal authorities, auditors, watchers, etc.) and the attestation kinds they are permitted to sign. This is intended to provide an out-of-band root-of-trust layer to mitigate trust-anchor circularity. v0.4.15 adds optional hierarchical chaining (treaty → national → zone) via parent_registry_ref.",
   "type": "object",
   "required": ["@context", "type", "issuer", "issuanceDate", "credentialSubject", "proof"],
@@ -15,7 +15,7 @@
     "type": {
       "type": "array",
       "items": {"type": "string"},
-      "contains": {"const": "MSEZAuthorityRegistryCredential"}
+      "contains": {"const": "MEZAuthorityRegistryCredential"}
     },
     "issuer": {
       "oneOf": [

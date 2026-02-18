@@ -33,8 +33,8 @@ witness bundles.
 To generate locks:
 
 ```bash
-./msez zone lock --zone docs/examples/trade/src/zones/exporter/zone.yaml
-./msez zone lock --zone docs/examples/trade/src/zones/importer/zone.yaml
+./mez zone lock --zone docs/examples/trade/src/zones/exporter/zone.yaml
+./mez zone lock --zone docs/examples/trade/src/zones/importer/zone.yaml
 ```
 
 ## Deterministic generation

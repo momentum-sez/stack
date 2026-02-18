@@ -1,5 +1,5 @@
 site_name: Momentum EZ Stack
-repo_url: https://github.com/momentum-sez/stack
+repo_url: https://github.com/momentum-ez/stack
 theme:
   name: readthedocs
 nav:

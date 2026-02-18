@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://momentum-sez.org/schemas/corporate.formation-application.schema.json",
+  "$id": "https://momentum-ez.org/schemas/corporate.formation-application.schema.json",
   "title": "Entity Formation Application",
   "description": "Application for forming a new legal entity in the zone",
   "type": "object",

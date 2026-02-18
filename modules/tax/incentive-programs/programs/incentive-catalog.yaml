@@ -1,13 +1,13 @@
 # Zone Tax Incentive Programs Catalog
 # Available incentive programs for qualifying entities
 
-catalog_id: msez.tax.incentives.catalog.v1
+catalog_id: mez.tax.incentives.catalog.v1
 catalog_version: "2026.1"
 effective_date: "2026-01-01"
 
 description: |
   Catalog of tax incentive programs available to entities
-  establishing or operating in the Special Economic Zone.
+  establishing or operating in the Economic Zone.
 
 programs:
 

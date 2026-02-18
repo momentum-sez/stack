@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/vc.corridor-lifecycle-transition.schema.json",
-  "title": "MSEZ Corridor Lifecycle Transition Verifiable Credential",
+  "$id": "https://schemas.momentum-ez.org/mez/vc.corridor-lifecycle-transition.schema.json",
+  "title": "MEZ Corridor Lifecycle Transition Verifiable Credential",
   "description": "A signed lifecycle transition for a corridor instance (e.g., DRAFT \u2192 PENDING \u2192 ACTIVE \u2192 HALTED \u2192 DEPRECATED). See also SUSPENDED state for non-emergency pauses.",
   "allOf": [
     {
-      "$ref": "https://schemas.momentum-sez.org/msez/vc.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/vc.schema.json"
     },
     {
       "type": "object",
@@ -17,7 +17,7 @@
         "type": {
           "type": "array",
           "contains": {
-            "const": "MSEZCorridorLifecycleTransitionCredential"
+            "const": "MEZCorridorLifecycleTransitionCredential"
           }
         },
         "credentialSubject": {
@@ -32,7 +32,7 @@
           ],
           "properties": {
             "type": {
-              "const": "MSEZCorridorLifecycleTransition"
+              "const": "MEZCorridorLifecycleTransition"
             },
             "transition_id": {
               "type": "string"
@@ -54,7 +54,7 @@
               "type": "string"
             },
             "policy_ref": {
-              "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+              "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
             },
             "meta": {
               "type": "object",
@@ -63,7 +63,7 @@
             "evidence": {
               "type": "array",
               "items": {
-                "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+                "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
               },
               "description": "Optional evidence references (ArtifactRefs, typically artifact_type=vc) required by the corridor lifecycle policy/state machine."
             }

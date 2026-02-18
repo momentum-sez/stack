@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.reg.aml-cft
+module_id: org.momentum.mez.reg.aml-cft
 version: 0.1.0
 kind: regulatory
 license: Apache-2.0
@@ -6,10 +6,10 @@ description: "Reference AML/CFT compliance rules (OPA/Rego scaffold)."
 variants:
   - risk-based
 depends_on:
-  - module_id: org.momentum.msez.legal.core
+  - module_id: org.momentum.mez.legal.core
     constraint: ">=0.1.0,<0.3.0"
 provides:
-  - interface: msez.policy.opa.v1
+  - interface: mez.policy.opa.v1
     path: src/policy/
     media_type: text/plain
 parameters:

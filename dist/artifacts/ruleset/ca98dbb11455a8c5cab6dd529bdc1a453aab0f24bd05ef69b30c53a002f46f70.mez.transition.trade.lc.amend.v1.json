@@ -1,0 +1,14 @@
+{
+  "ruleset_id": "mez.transition.trade.lc.amend.v1",
+  "title": "Letter of Credit amendment",
+  "version": 1,
+  "description": "Records an amendment to an existing Letter of Credit. For canonical rail messages (e.g., MT707), carry them as attachment artifacts and optionally include amendment_ref.",
+  "transition_kind": "trade.lc.amend.v1",
+  "payload_schema": "https://schemas.momentum-ez.org/mez/transition.payload.trade.lc.amend.v1.schema.json",
+  "validation": {
+    "profile": "basic",
+    "notes": [
+      "Implementations SHOULD ensure amendments are authorized and, when required, accepted by counterparties (advising bank / beneficiary)."
+    ]
+  }
+}

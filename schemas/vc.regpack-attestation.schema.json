@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/vc.regpack-attestation.schema.json",
-  "title": "MSEZ RegPack Attestation VC",
+  "$id": "https://schemas.momentum-ez.org/mez/vc.regpack-attestation.schema.json",
+  "title": "MEZ RegPack Attestation VC",
   "description": "A Verifiable Credential attesting to the validity and freshness of a RegPack.",
   "type": "object",
   "required": ["@context", "type", "issuer", "issuanceDate", "credentialSubject"],
@@ -14,7 +14,7 @@
     "type": {
       "type": "array",
       "items": { "type": "string" },
-      "contains": { "const": "MSEZRegPackAttestationCredential" }
+      "contains": { "const": "MEZRegPackAttestationCredential" }
     },
     "id": {
       "type": "string",

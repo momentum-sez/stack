@@ -6,12 +6,12 @@ It is intentionally a thin specification scaffold so different implementations c
 
 ## Inputs
 
-- proposal object: `msez.gov.proposal.v1`
-- votes/ballots: `msez.gov.vote.v1`
+- proposal object: `mez.gov.proposal.v1`
+- votes/ballots: `mez.gov.vote.v1`
 
 ## Output
 
-- tally/outcome: `msez.gov.tally.v1`
+- tally/outcome: `mez.gov.tally.v1`
 
 ## Notes
 

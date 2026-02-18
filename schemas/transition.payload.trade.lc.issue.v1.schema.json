@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/transition.payload.trade.lc.issue.v1.schema.json",
+  "$id": "https://schemas.momentum-ez.org/mez/transition.payload.trade.lc.issue.v1.schema.json",
   "title": "LC Issue transition payload (v1)",
   "description": "Issues a Letter of Credit. The LC MAY be embedded (lc) or referenced as an artifact (lc_ref).",
   "type": "object",
@@ -10,10 +10,10 @@
   ],
   "properties": {
     "lc": {
-      "$ref": "https://schemas.momentum-sez.org/msez/trade.letter-of-credit.v1.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/trade.letter-of-credit.v1.schema.json"
     },
     "lc_ref": {
-      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
     },
     "issued_by_party_id": {
       "type": "string",

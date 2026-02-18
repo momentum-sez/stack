@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/regpack.sanctions-entry.schema.json",
-  "title": "MSEZ Sanctions Entry",
+  "$id": "https://schemas.momentum-ez.org/mez/regpack.sanctions-entry.schema.json",
+  "title": "MEZ Sanctions Entry",
   "description": "A single entry in a consolidated sanctions list.",
   "type": "object",
   "required": [

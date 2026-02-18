@@ -2,7 +2,7 @@
 <akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
   <act contains="originalVersion">
     <meta>
-      <identification source="#msez">
+      <identification source="#mez">
         <FRBRWork>
           <FRBRthis value="/akn/{{JURISDICTION_NAME}}/act/zone-authority-charter/0.2.0"/>
           <FRBRuri value="/akn/{{JURISDICTION_NAME}}/act/zone-authority-charter"/>

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/corridor.finality-status.schema.json",
-  "title": "MSEZ Corridor Finality Status",
+  "$id": "https://schemas.momentum-ez.org/mez/corridor.finality-status.schema.json",
+  "title": "MEZ Corridor Finality Status",
   "description": "Computed finality status for a corridor head. This is an output schema used by tooling and APIs; it is not a VC by default. Finality levels are defined in finality-level.schema.json.",
   "type": "object",
   "required": [
@@ -15,7 +15,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MSEZCorridorFinalityStatus"
+      "const": "MEZCorridorFinalityStatus"
     },
     "corridor_id": {
       "type": "string"
@@ -41,13 +41,13 @@
       "pattern": "^[a-f0-9]{64}$"
     },
     "finality_level": {
-      "$ref": "https://schemas.momentum-sez.org/msez/finality-level.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/finality-level.schema.json"
     },
     "evidence": {
       "type": "object",
       "properties": {
         "checkpoint": {
-          "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+          "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
         },
         "watcher_quorum": {
           "type": "object",
@@ -62,13 +62,13 @@
         "anchors": {
           "type": "array",
           "items": {
-            "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+            "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
           }
         },
         "disputes": {
           "type": "array",
           "items": {
-            "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+            "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
           }
         }
       },

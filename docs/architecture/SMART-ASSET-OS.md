@@ -1,6 +1,6 @@
 # Smart Asset OS (non-blockchain)
 
-This document specifies the **Smart Asset OS** reference layer for the Momentum EZ Stack (MSEZ).
+This document specifies the **Smart Asset OS** reference layer for the Momentum EZ Stack (MEZ).
 
 > Design goal: run “smart assets” (stateful, policy constrained, attestable objects) **without requiring a blockchain**, while preserving strong commitment surfaces (digests + ArtifactRefs) and optional anchoring into corridor state channels.
 
@@ -64,52 +64,52 @@ Schema: `schemas/smart-asset.manifest.schema.json`
 
 ## Reference CLI
 
-The reference implementation lives in `tools/smart_asset.py` and is wired into `tools/msez.py`:
+The reference implementation lives in `tools/smart_asset.py` and is wired into `tools/mez.py`:
 
 ```bash
 # identity
-msez asset genesis-init --asset-name "Acme Bond" --asset-class security --out dist/tmp/bond.genesis.json
-msez asset genesis-hash dist/tmp/bond.genesis.json
+mez asset genesis-init --asset-name "Acme Bond" --asset-class security --out dist/tmp/bond.genesis.json
+mez asset genesis-hash dist/tmp/bond.genesis.json
 
 # registry
-msez asset registry-init --genesis dist/tmp/bond.genesis.json --bindings bindings.yaml --issuer did:key:... \
+mez asset registry-init --genesis dist/tmp/bond.genesis.json --bindings bindings.yaml --issuer did:key:... \
   --out dist/tmp/bond.registry.vc.unsigned.json
 
 # checkpoint
-msez asset checkpoint-build --asset-id <asset_id> --state state.json --store
+mez asset checkpoint-build --asset-id <asset_id> --state state.json --store
 
 # attestations
-msez asset attestation-init --asset-id <asset_id> --issuer did:key:... --kind kyc.passed.v1 --claims claims.yaml --store
+mez asset attestation-init --asset-id <asset_id> --issuer did:key:... --kind kyc.passed.v1 --claims claims.yaml --store
 
 # compliance
-msez asset compliance-eval --registry dist/tmp/bond.registry.vc.unsigned.json --transition transition-envelope.json
+mez asset compliance-eval --registry dist/tmp/bond.registry.vc.unsigned.json --transition transition-envelope.json
 
 # asset-local receipt chain (non-blockchain)
 #
 # Optional (recommended): scaffold an operator module directory to keep receipts, checkpoints,
 # proofs, and trust anchors in a single portable folder.
-msez asset module init <asset_id>
+mez asset module init <asset_id>
 
 # You can now pass the module directory (or asset.yaml) as the first argument to state subcommands:
-msez asset state genesis-root modules/smart-assets/<asset_id>
-msez asset state receipt-init modules/smart-assets/<asset_id> --sequence 0 --prev-root genesis \
+mez asset state genesis-root modules/smart-assets/<asset_id>
+mez asset state receipt-init modules/smart-assets/<asset_id> --sequence 0 --prev-root genesis \
   --sign --key jwk.json
-msez asset state verify modules/smart-assets/<asset_id>
+mez asset state verify modules/smart-assets/<asset_id>
 
 # If redundant writers cause forks (same sequence/prev_root with multiple next_roots),
 # verification will fail until you provide a fork-resolution artifact selecting the canonical branch.
 # Fork resolutions are expected to live asset-local at state/fork-resolutions/ (by convention).
-msez asset state fork-resolve modules/smart-assets/<asset_id> \
+mez asset state fork-resolve modules/smart-assets/<asset_id> \
   --sequence 1 --prev-root <prev_root> --chosen-next-root <next_root> \
   --issuer did:key:... \
   --out modules/smart-assets/<asset_id>/state/fork-resolutions/fork-resolution.seq1.json
-msez asset state verify modules/smart-assets/<asset_id> \
+mez asset state verify modules/smart-assets/<asset_id> \
   --fork-resolutions modules/smart-assets/<asset_id>/state/fork-resolutions
 
-msez asset state checkpoint modules/smart-assets/<asset_id> --sign --key jwk.json
-msez asset state inclusion-proof modules/smart-assets/<asset_id> --sequence 0 \
+mez asset state checkpoint modules/smart-assets/<asset_id> --sign --key jwk.json
+mez asset state inclusion-proof modules/smart-assets/<asset_id> --sequence 0 \
   --checkpoint modules/smart-assets/<asset_id>/state/checkpoints/smart-asset.receipt-chain.checkpoint.json
-msez asset state verify-inclusion modules/smart-assets/<asset_id> \
+mez asset state verify-inclusion modules/smart-assets/<asset_id> \
   --receipt modules/smart-assets/<asset_id>/state/receipts/smart-asset.receipt.0.json \
   --proof modules/smart-assets/<asset_id>/state/proofs/smart-asset.receipt.0.inclusion-proof.json \
   --checkpoint modules/smart-assets/<asset_id>/state/checkpoints/smart-asset.receipt-chain.checkpoint.json
@@ -128,9 +128,9 @@ msez asset state verify-inclusion modules/smart-assets/<asset_id> \
 ### P1
 
 * Asset-local receipt chain (MMR) for transitions + checkpoints — landed in v0.4.31
-* Smart Asset module directories + `msez asset module init` + module-aware state CLI — landed in v0.4.32
+* Smart Asset module directories + `mez asset module init` + module-aware state CLI — landed in v0.4.32
 * Corridor anchoring helpers (attach checkpoint -> receipt)
-  - `msez asset anchor-verify` landed in v0.4.30: verifies that a Smart Asset checkpoint digest is present as a typed receipt attachment, and that the receipt is included in a corridor checkpoint via an MMR inclusion proof.
+  - `mez asset anchor-verify` landed in v0.4.30: verifies that a Smart Asset checkpoint digest is present as a typed receipt attachment, and that the receipt is included in a corridor checkpoint via an MMR inclusion proof.
 * Replication policy + witness bundles for asset histories
 
 ### P2

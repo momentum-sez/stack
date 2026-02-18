@@ -1,4 +1,4 @@
-# MSEZ Specification: Licensepacks
+# MEZ Specification: Licensepacks
 
 **Spec ID:** 98-licensepacks
 **Version:** 1.0.0
@@ -123,8 +123,8 @@ includes:
 license: "CC0-1.0"
 
 normalization:
-  recipe_id: "dfsa-to-msez-v1"
-  tool: "msez"
+  recipe_id: "dfsa-to-mez-v1"
+  tool: "mez"
   tool_version: "0.4.44"
   inputs:
     - source_id: "dfsa-registry"
@@ -149,7 +149,7 @@ The licensepack digest is computed deterministically:
 
 ```
 licensepack_digest = SHA256(
-  "msez-licensepack-v1\0" ||
+  "mez-licensepack-v1\0" ||
   canonical_bytes("licensepack.yaml") || "\0" ||
   canonical_bytes("index.json") || "\0" ||
   canonical_bytes("license-types/index.json") || "\0" ||
@@ -187,7 +187,7 @@ Where `canonical_bytes()` applies JCS (JSON Canonicalization Scheme) for JSON/YA
 
 ```json
 {
-  "$schema": "https://momentum-sez.org/schemas/licensepack.license.schema.json",
+  "$schema": "https://momentum-ez.org/schemas/licensepack.license.schema.json",
   "license_id": "lic:dfsa:2024-001234",
   "license_type_id": "dfsa:category-4",
   "license_number": "CL001234",
@@ -252,7 +252,7 @@ Where `canonical_bytes()` applies JCS (JSON Canonicalization Scheme) for JSON/YA
 
 ```json
 {
-  "$schema": "https://momentum-sez.org/schemas/licensepack.holder.schema.json",
+  "$schema": "https://momentum-ez.org/schemas/licensepack.holder.schema.json",
   "holder_id": "entity:difc:12345",
   "entity_type": "company",
   "legal_name": "Acme Financial Services Ltd",
@@ -310,7 +310,7 @@ Where `canonical_bytes()` applies JCS (JSON Canonicalization Scheme) for JSON/YA
 
 ```json
 {
-  "$schema": "https://momentum-sez.org/schemas/licensepack.conditions.schema.json",
+  "$schema": "https://momentum-ez.org/schemas/licensepack.conditions.schema.json",
   "license_id": "lic:dfsa:2024-001234",
   "conditions": [
     {
@@ -356,7 +356,7 @@ Where `canonical_bytes()` applies JCS (JSON Canonicalization Scheme) for JSON/YA
 
 ```json
 {
-  "$schema": "https://momentum-sez.org/schemas/licensepack.permissions.schema.json",
+  "$schema": "https://momentum-ez.org/schemas/licensepack.permissions.schema.json",
   "license_id": "lic:dfsa:2024-001234",
   "permissions": [
     {
@@ -399,7 +399,7 @@ Where `canonical_bytes()` applies JCS (JSON Canonicalization Scheme) for JSON/YA
 
 ```json
 {
-  "$schema": "https://momentum-sez.org/schemas/licensepack.restrictions.schema.json",
+  "$schema": "https://momentum-ez.org/schemas/licensepack.restrictions.schema.json",
   "license_id": "lic:dfsa:2024-001234",
   "restrictions": [
     {
@@ -442,10 +442,10 @@ Created in the module directory referencing the licensepack:
 
 ```json
 {
-  "$schema": "https://momentum-sez.org/schemas/licensepack.lock.schema.json",
+  "$schema": "https://momentum-ez.org/schemas/licensepack.lock.schema.json",
   "lock_version": "1",
   "generated_at": "2026-02-03T00:15:00Z",
-  "generator": "msez",
+  "generator": "mez",
   "generator_version": "0.4.44",
 
   "licensepack": {
@@ -484,15 +484,15 @@ Created in the module directory referencing the licensepack:
       }
     ],
     "normalization": {
-      "recipe_id": "dfsa-to-msez-v1",
-      "tool": "msez",
+      "recipe_id": "dfsa-to-mez-v1",
+      "tool": "mez",
       "tool_version": "0.4.44"
     }
   },
 
   "verification": {
     "verified_at": "2026-02-03T00:15:00Z",
-    "verifier": "msez-cli",
+    "verifier": "mez-cli",
     "digest_verified": true,
     "schema_valid": true
   }
@@ -531,12 +531,12 @@ Add to `stack.lock.schema.json` and `stack.lock`:
 Add to `zone.yaml` and `zone.schema.json`:
 
 ```yaml
-zone_id: org.momentum.msez.zone.difc-fintech
+zone_id: org.momentum.mez.zone.difc-fintech
 jurisdiction_id: ae-dubai-difc
 zone_name: DIFC Fintech Zone
 
 profile:
-  profile_id: org.momentum.msez.profile.digital-financial-center
+  profile_id: org.momentum.mez.profile.digital-financial-center
   version: 0.4.44
 
 lawpack_domains:
@@ -565,33 +565,33 @@ licensepack_refresh_policy:    # NEW FIELD
 
 ```bash
 # Fetch and create licensepack from regulator API
-msez licensepack fetch \
+mez licensepack fetch \
   --jurisdiction ae-dubai-difc \
   --domain financial \
   --source dfsa-registry
 
 # Verify licensepack integrity
-msez licensepack verify <digest>.licensepack.zip
+mez licensepack verify <digest>.licensepack.zip
 
 # Lock licensepack to module
-msez licensepack lock \
+mez licensepack lock \
   --jurisdiction ae-dubai-difc \
   --domain financial \
   --module-path modules/licensing/registry/ae-dubai-difc/
 
 # Compute delta between two licensepacks
-msez licensepack delta \
+mez licensepack delta \
   --from <old_digest>.licensepack.zip \
   --to <new_digest>.licensepack.zip
 
 # Query license status
-msez licensepack query \
+mez licensepack query \
   --jurisdiction ae-dubai-difc \
   --holder-did did:key:z6Mkp... \
   --activity accepting_deposits
 
 # Export license as VC
-msez licensepack export-vc \
+mez licensepack export-vc \
   --license-id lic:dfsa:2024-001234 \
   --issuer-key zone-authority.ed25519.jwk
 ```
@@ -600,7 +600,7 @@ msez licensepack export-vc \
 
 ```bash
 # Verify counterparty license for transaction
-msez license verify \
+mez license verify \
   --counterparty-did did:key:z6Mkp... \
   --activity settlement \
   --amount 1000000 \
@@ -608,7 +608,7 @@ msez license verify \
   --jurisdiction ae-dubai-difc
 
 # Check license against compliance tensor
-msez tensor check-license \
+mez tensor check-license \
   --asset-id asset:001 \
   --license-id lic:dfsa:2024-001234 \
   --domain LICENSING
@@ -626,7 +626,7 @@ Licenses can be exported as verifiable credentials:
 {
   "@context": [
     "https://www.w3.org/2018/credentials/v1",
-    "https://momentum-sez.org/credentials/license/v1"
+    "https://momentum-ez.org/credentials/license/v1"
   ],
   "type": ["VerifiableCredential", "LicenseCredential"],
   "id": "vc:dfsa:license:2024-001234",

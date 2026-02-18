@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/regpack.regulator-profile.schema.json",
-  "title": "MSEZ Regulator Profile",
+  "$id": "https://schemas.momentum-ez.org/mez/regpack.regulator-profile.schema.json",
+  "title": "MEZ Regulator Profile",
   "description": "Profile of a regulatory authority within a RegPack.",
   "type": "object",
   "required": ["regulator_id", "name", "jurisdiction_id"],

@@ -1,8 +1,8 @@
 # Security Model
 
-This document summarizes the security model of the MSEZ stack and the minimal threat-model assumptions you should make when operating zones and corridors.
+This document summarizes the security model of the MEZ stack and the minimal threat-model assumptions you should make when operating zones and corridors.
 
-MSEZ is designed so that **verification does not require trust in transport** (you can verify receipts/VCS/checkpoints from untrusted channels), but it does still require explicit configuration of:
+MEZ is designed so that **verification does not require trust in transport** (you can verify receipts/VCS/checkpoints from untrusted channels), but it does still require explicit configuration of:
 
 - authorized signers (an authority registry chain)
 - pinned artifacts (lawpacks, rulesets, registries) and their digests
@@ -99,7 +99,7 @@ Those require governance, redundancy, and operational controls.
 
 ## Verification modes
 
-MSEZ tooling supports a spectrum of strictness.
+MEZ tooling supports a spectrum of strictness.
 
 Recommended production modes:
 

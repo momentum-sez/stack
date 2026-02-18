@@ -25,9 +25,9 @@ If any object can be produced in two byte-inequivalent ways while remaining “s
 
 ### A1. Operator scaffolding commands exist and are documented
 
-- [ ] `msez corridor module init <corridor_id>` creates a new corridor module from a template, without manual copying.
-- [ ] `msez asset module init <asset_id>` creates `modules/smart-assets/<asset_id>/…` from template.
-- [ ] `msez trade playbook init` (or documented equivalent) scaffolds `docs/examples/trade/src/...` for operators.
+- [ ] `mez corridor module init <corridor_id>` creates a new corridor module from a template, without manual copying.
+- [ ] `mez asset module init <asset_id>` creates `modules/smart-assets/<asset_id>/…` from template.
+- [ ] `mez trade playbook init` (or documented equivalent) scaffolds `docs/examples/trade/src/...` for operators.
 - [ ] Each init command:
   - [ ] is deterministic (same inputs → same bytes),
   - [ ] has `--help` with examples,
@@ -36,21 +36,21 @@ If any object can be produced in two byte-inequivalent ways while remaining “s
 
 ### A2. Witness bundles are first-class and portable
 
-- [ ] `msez artifact graph verify … --bundle <zip>` produces a **portable audit packet** (witness bundle) for:
+- [ ] `mez artifact graph verify … --bundle <zip>` produces a **portable audit packet** (witness bundle) for:
   - [ ] corridor receipts + checkpoint,
   - [ ] asset receipt chains + checkpoint,
   - [ ] settlement anchors + proof-bindings,
   - [ ] any referenced rulesets/lawpacks/schemas/VCs.
 - [ ] Bundle manifest is canonical JSON; bundle digest is stable.
 - [ ] Bundle verification is possible offline:
-  - [ ] `msez artifact graph verify --from-bundle <zip> --strict …`.
+  - [ ] `mez artifact graph verify --from-bundle <zip> --strict …`.
 - [ ] Optional provenance attestation works:
-  - [ ] `msez artifact bundle attest` produces VC committing to `SHA256(JCS(manifest.json))`.
-  - [ ] `msez artifact bundle verify` checks digest + signature.
+  - [ ] `mez artifact bundle attest` produces VC committing to `SHA256(JCS(manifest.json))`.
+  - [ ] `mez artifact bundle verify` checks digest + signature.
 
 ### A3. Operator safety rails
 
-- [ ] `msez lint` / `msez doctor` exists (or equivalent), and fails fast on:
+- [ ] `mez lint` / `mez doctor` exists (or equivalent), and fails fast on:
   - [ ] schema invalidation,
   - [ ] missing CAS artifacts,
   - [ ] non-canonical JSON,
@@ -112,7 +112,7 @@ This section is *not optional*. `v0.4.40` must include corridor composition prim
   - [ ] SWIFT pacs.008-like settlement evidence schema.
 
 - [ ] Every schema referenced by registries/rulesets/examples MUST exist in CAS:
-  - [ ] `msez artifact graph verify --strict …` passes.
+  - [ ] `mez artifact graph verify --strict …` passes.
 
 ### C2. Transition types + rulesets exist and are pinned
 
@@ -154,7 +154,7 @@ This is the defining quality of `v0.4.40`.
 
 ### D3. Strict digest semantics are enforced
 
-- [ ] `msez law ingest … --strict/--check` enforces deterministic normalization.
+- [ ] `mez law ingest … --strict/--check` enforces deterministic normalization.
 - [ ] Zone locks are strict: deterministic bytes and strict digests.
 - [ ] Corridor receipts/checkpoints are strict:
   - [ ] receipt digest = `next_root` (or the explicitly defined strict digest),
@@ -169,7 +169,7 @@ This is the defining quality of `v0.4.40`.
   - [ ] fails on drift,
   - [ ] writes **nothing**.
 
-- [ ] `msez artifact graph verify --strict` detects tampered CAS entries.
+- [ ] `mez artifact graph verify --strict` detects tampered CAS entries.
 
 ### D5. “Bytes vs semantic digests” is explicitly documented
 
@@ -256,7 +256,7 @@ CI MUST enforce the hard invariants.
   - [ ] corridor verify strict + canonical bytes,
   - [ ] artifact graph verify strict.
 
-- [ ] CI uses `MSEZ_ARTIFACT_STORE_DIRS` to include the playbook CAS under `docs/examples/trade/dist/artifacts`.
+- [ ] CI uses `MEZ_ARTIFACT_STORE_DIRS` to include the playbook CAS under `docs/examples/trade/dist/artifacts`.
 
 ---
 

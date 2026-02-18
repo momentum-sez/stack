@@ -2,11 +2,11 @@
 #
 # This is a full zone manifest (zone.schema.json) so it can be locked
 # deterministically and used as a stable audit substrate.
-zone_id: org.momentum.msez.zone.trade-playbook.importer
+zone_id: org.momentum.mez.zone.trade-playbook.importer
 jurisdiction_id: us-ca
 zone_name: Trade Playbook Importer Zone (Example: California)
 profile:
-  profile_id: org.momentum.msez.profile.trade-playbook
+  profile_id: org.momentum.mez.profile.trade-playbook
   version: 0.4.44
 
 # Jurisdiction stack = built-in "lawpack overlays" (federal → state)
@@ -22,8 +22,8 @@ overlays: []
 params_overrides: {}
 
 corridors:
-  - org.momentum.msez.corridor.swift.iso20022-cross-border
-  - org.momentum.msez.corridor.stablecoin.regulated-stablecoin
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin
 
 trust_anchors: []
 key_rotation_policy:
@@ -35,7 +35,7 @@ lockfile_path: stack.lock
 
 smart_assets:
   shards:
-    - asset_id: org.momentum.msez.asset.trade.example.invoice-001
+    - asset_id: org.momentum.mez.asset.trade.example.invoice-001
       shard_id: us-ca
       compliance_overlay:
         jurisdiction_stack:

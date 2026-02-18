@@ -2,4 +2,4 @@
 
 Approval voting mechanism.
 
-Depends on `org.momentum.msez.governance.core`.
+Depends on `org.momentum.mez.governance.core`.

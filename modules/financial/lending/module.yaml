@@ -1,7 +1,7 @@
 # Lending / Credit Module
 # Loan origination, servicing, and collections infrastructure
 
-module_id: org.momentum.msez.financial.lending
+module_id: org.momentum.mez.financial.lending
 version: 0.1.0
 kind: financial
 name: Lending and Credit
@@ -13,23 +13,23 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.financial.lending.origination.v1
+  - interface: mez.financial.lending.origination.v1
     description: Loan application and origination
-  - interface: msez.financial.lending.underwriting.v1
+  - interface: mez.financial.lending.underwriting.v1
     description: Credit underwriting and decisioning
-  - interface: msez.financial.lending.servicing.v1
+  - interface: mez.financial.lending.servicing.v1
     description: Loan servicing and administration
-  - interface: msez.financial.lending.collections.v1
+  - interface: mez.financial.lending.collections.v1
     description: Collections and recovery
-  - interface: msez.financial.lending.securitization.v1
+  - interface: mez.financial.lending.securitization.v1
     description: Loan securitization and sale
 
 dependencies:
-  - module_id: org.momentum.msez.identity.kyc-tiers
+  - module_id: org.momentum.mez.identity.kyc-tiers
     version: ">=0.1.0"
-  - module_id: org.momentum.msez.regulatory.consumer-protection
+  - module_id: org.momentum.mez.regulatory.consumer-protection
     version: ">=0.1.0"
-  - module_id: org.momentum.msez.regulatory.aml-cft
+  - module_id: org.momentum.mez.regulatory.aml-cft
     version: ">=0.1.0"
 
 loan_products:

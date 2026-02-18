@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.identity.kyc-tiers
+module_id: org.momentum.mez.identity.kyc-tiers
 version: 0.1.0
 kind: identity
 license: Apache-2.0
@@ -20,30 +20,30 @@ variants:
   - enhanced-diligence
 
 depends_on:
-  - module_id: org.momentum.msez.identity.core
+  - module_id: org.momentum.mez.identity.core
     constraint: ">=0.1.0,<1.0.0"
-  - module_id: org.momentum.msez.reg.aml-cft
+  - module_id: org.momentum.mez.reg.aml-cft
     constraint: ">=0.1.0,<1.0.0"
-  - module_id: org.momentum.msez.reg.sanctions
+  - module_id: org.momentum.mez.reg.sanctions
     constraint: ">=0.1.0,<1.0.0"
 
 provides:
-  - interface: msez.identity.kyc.tier-0.v1
+  - interface: mez.identity.kyc.tier-0.v1
     path: tier-0-pseudonymous.yaml
     media_type: application/yaml
-  - interface: msez.identity.kyc.tier-1.v1
+  - interface: mez.identity.kyc.tier-1.v1
     path: tier-1-basic.yaml
     media_type: application/yaml
-  - interface: msez.identity.kyc.tier-2.v1
+  - interface: mez.identity.kyc.tier-2.v1
     path: tier-2-enhanced.yaml
     media_type: application/yaml
-  - interface: msez.identity.kyc.tier-3.v1
+  - interface: mez.identity.kyc.tier-3.v1
     path: tier-3-institutional.yaml
     media_type: application/yaml
-  - interface: msez.identity.kyc.application.v1
+  - interface: mez.identity.kyc.application.v1
     path: forms/kyc-application.schema.json
     media_type: application/json
-  - interface: msez.policy.opa.bundle.v1
+  - interface: mez.policy.opa.bundle.v1
     path: policy/
     media_type: text/plain
 

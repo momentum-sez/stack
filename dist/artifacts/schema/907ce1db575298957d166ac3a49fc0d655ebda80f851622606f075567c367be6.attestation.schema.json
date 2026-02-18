@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/attestation.schema.json",
-  "title": "MSEZ Attestation (generic envelope)",
+  "$id": "https://schemas.momentum-ez.org/mez/attestation.schema.json",
+  "title": "MEZ Attestation (generic envelope)",
   "type": "object",
   "required": [
     "attestation_type",

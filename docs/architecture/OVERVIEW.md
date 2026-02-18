@@ -34,17 +34,17 @@ The EZ Stack is the **orchestrator**. It provides:
 
 | Concern | Crate | What it adds beyond Mass primitives |
 |---------|-------|-------------------------------------|
-| Compliance intelligence | `msez-tensor`, `msez-compliance` | 20-domain compliance evaluation with Dijkstra path optimization across jurisdictions |
-| Corridor operations | `msez-corridor`, `msez-state` | Cross-border receipt chains (MMR), fork resolution, netting, SWIFT pacs.008 |
-| Jurisdictional configuration | `msez-pack` | Lawpacks (Akoma Ntoso statutes), regpacks (sanctions), licensepacks (license registries) |
-| Cryptographic audit trail | `msez-vc`, `msez-crypto` | W3C Verifiable Credentials, Ed25519 signing, content-addressed storage |
-| Autonomous policy execution | `msez-agentic` | 20 trigger types, deterministic evaluation, conflict resolution |
-| Dispute resolution | `msez-arbitration` | 7-phase dispute lifecycle, evidence chain-of-custody, escrow, enforcement |
-| Zero-knowledge proofs | `msez-zkp` | Sealed proof system with 12 circuit types (Phase 1: mock backend) |
-| Schema enforcement | `msez-schema` | 116 JSON Schema files validated at the API boundary |
-| HTTP API | `msez-api` | Axum server composing all of the above |
-| CLI | `msez-cli` | Offline zone management: validation, lockfiles, signing |
-| Mass API client | `msez-mass-client` | Typed Rust HTTP client -- the only path from EZ Stack to Mass |
+| Compliance intelligence | `mez-tensor`, `mez-compliance` | 20-domain compliance evaluation with Dijkstra path optimization across jurisdictions |
+| Corridor operations | `mez-corridor`, `mez-state` | Cross-border receipt chains (MMR), fork resolution, netting, SWIFT pacs.008 |
+| Jurisdictional configuration | `mez-pack` | Lawpacks (Akoma Ntoso statutes), regpacks (sanctions), licensepacks (license registries) |
+| Cryptographic audit trail | `mez-vc`, `mez-crypto` | W3C Verifiable Credentials, Ed25519 signing, content-addressed storage |
+| Autonomous policy execution | `mez-agentic` | 20 trigger types, deterministic evaluation, conflict resolution |
+| Dispute resolution | `mez-arbitration` | 7-phase dispute lifecycle, evidence chain-of-custody, escrow, enforcement |
+| Zero-knowledge proofs | `mez-zkp` | Sealed proof system with 12 circuit types (Phase 1: mock backend) |
+| Schema enforcement | `mez-schema` | 116 JSON Schema files validated at the API boundary |
+| HTTP API | `mez-api` | Axum server composing all of the above |
+| CLI | `mez-cli` | Offline zone management: validation, lockfiles, signing |
+| Mass API client | `mez-mass-client` | Typed Rust HTTP client -- the only path from EZ Stack to Mass |
 
 ### The boundary
 
@@ -66,7 +66,7 @@ The EZ Stack **never stores primitive data**. Entity records, cap tables, paymen
                                     └──────────┬───────────┘
                                                │
                                     ┌──────────▼───────────┐
-                                    │     msez-api (Axum)   │
+                                    │     mez-api (Axum)   │
                                     │  Auth → Rate Limit    │
                                     │  Trace → Metrics      │
                                     └──────────┬───────────┘
@@ -74,28 +74,28 @@ The EZ Stack **never stores primitive data**. Entity records, cap tables, paymen
                     ┌──────────────┬────────────┼────────────┬──────────────┐
                     │              │            │            │              │
              ┌──────▼──────┐ ┌────▼────┐ ┌─────▼─────┐ ┌───▼───┐ ┌───────▼───────┐
-             │ msez-tensor │ │msez-vc  │ │msez-state │ │msez-  │ │msez-mass-     │
+             │ mez-tensor │ │mez-vc  │ │mez-state │ │mez-  │ │mez-mass-     │
              │ Compliance  │ │ VC sign │ │ Typestate │ │agentic│ │client         │
              │ evaluation  │ │ /verify │ │ corridor  │ │ policy│ │               │
              └──────┬──────┘ └────┬────┘ └─────┬─────┘ └───┬───┘ └───────┬───────┘
                     │              │            │            │              │
              ┌──────▼──────┐      │     ┌──────▼──────┐     │       ┌─────▼──────┐
-             │msez-        │      │     │msez-        │     │       │ Mass APIs  │
+             │mez-        │      │     │mez-        │     │       │ Mass APIs  │
              │compliance   │      │     │corridor     │     │       │ (live)     │
              │ regpack →   │      │     │ receipt     │     │       │            │
              │ tensor      │      │     │ chain, fork │     │       │ org-info   │
              └──────┬──────┘      │     │ netting     │     │       │ treasury   │
                     │              │     └──────┬──────┘     │       │ consent    │
              ┌──────▼──────┐      │            │            │       │ identity   │
-             │ msez-pack   │      │     ┌──────▼──────┐     │       │ ownership  │
-             │ lawpack     │      │     │msez-crypto  │     │       └────────────┘
+             │ mez-pack   │      │     ┌──────▼──────┐     │       │ ownership  │
+             │ lawpack     │      │     │mez-crypto  │     │       └────────────┘
              │ regpack     │      │     │ Ed25519     │     │
              │ licensepack │      │     │ MMR, CAS    │     │
              └─────────────┘      │     │ SHA-256     │     │
                                   │     └──────┬──────┘     │
                                   │            │            │
                                   │     ┌──────▼──────┐     │
-                                  └────►│ msez-core   │◄────┘
+                                  └────►│ mez-core   │◄────┘
                                         │ Canonical   │
                                         │ Bytes, IDs  │
                                         │ Domains     │
@@ -146,7 +146,7 @@ The `ArtifactRef` structure (`artifact_type` + `digest_sha256` + optional `uri`)
 
 ### Canonicalization
 
-`CanonicalBytes::new()` (in `msez-core`) is the **sole path** to digest computation. All signing flows require `&CanonicalBytes`. This eliminates the class of bugs where different JSON serialization orders produce different digests for the same logical value.
+`CanonicalBytes::new()` (in `mez-core`) is the **sole path** to digest computation. All signing flows require `&CanonicalBytes`. This eliminates the class of bugs where different JSON serialization orders produce different digests for the same logical value.
 
 The canonicalization follows JCS (JSON Canonicalization Scheme, RFC 8785) with Momentum-specific type coercion rules. The `serde_json` `preserve_order` feature is guarded by a three-layer defense (compile-time check, CI check, runtime assertion).
 
@@ -185,7 +185,7 @@ Where:
 - **ComplianceDomain** has 20 variants: `Aml`, `Kyc`, `Sanctions`, `Tax`, `Securities`, `Corporate`, `Custody`, `DataPrivacy`, `Licensing`, `Banking`, `Payments`, `Clearing`, `Settlement`, `DigitalAssets`, `Employment`, `Immigration`, `Ip`, `ConsumerProtection`, `Arbitration`, `Trade`
 - **ComplianceState** is a 5-value lattice: `NotApplicable` > `Exempt` > `Compliant` > `Pending` > `NonCompliant`
 
-The tensor is parameterized by a `JurisdictionConfig` that determines which domains are applicable in a given jurisdiction. The `msez-compliance` crate bridges regpack data into jurisdiction configurations.
+The tensor is parameterized by a `JurisdictionConfig` that determines which domains are applicable in a given jurisdiction. The `mez-compliance` crate bridges regpack data into jurisdiction configurations.
 
 **Manifold optimization**: The `ComplianceManifold` models jurisdictions as nodes and corridors as weighted edges. Dijkstra shortest-path finds the optimal migration route subject to constraints (max fee, max time, max risk, excluded jurisdictions).
 

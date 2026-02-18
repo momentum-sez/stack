@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/corridor.fork-resolution.schema.json",
-  "title": "MSEZ Corridor Fork Resolution",
+  "$id": "https://schemas.momentum-ez.org/mez/corridor.fork-resolution.schema.json",
+  "title": "MEZ Corridor Fork Resolution",
   "description": "A fork-resolution artifact selects the canonical receipt for a forked (sequence, prev_root) point. The recommended packaging is as a signed VC (vc.corridor-fork-resolution.schema.json).",
   "type": "object",
   "required": [
@@ -14,7 +14,7 @@
   ],
   "properties": {
     "type": {
-      "const": "MSEZCorridorForkResolution"
+      "const": "MEZCorridorForkResolution"
     },
     "resolution_id": {
       "type": "string"
@@ -51,7 +51,7 @@
             "pattern": "^[a-f0-9]{64}$"
           },
           "receipt_ref": {
-            "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+            "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
           },
           "notes": {
             "type": "string"
@@ -61,10 +61,10 @@
       }
     },
     "authority_registry_ref": {
-      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
     },
     "policy_ref": {
-      "$ref": "https://schemas.momentum-sez.org/msez/artifact-ref.schema.json"
+      "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
     },
     "reason": {
       "type": "string"

@@ -1,4 +1,4 @@
-module_id: org.momentum.msez.fin.payments-adapter
+module_id: org.momentum.mez.fin.payments-adapter
 version: 0.1.0
 kind: financial
 license: Apache-2.0
@@ -7,7 +7,7 @@ variants:
   - iso20022-mapping
 depends_on: []
 provides:
-  - interface: msez.fin.payments-adapter.v1
+  - interface: mez.fin.payments-adapter.v1
     path: spec/
     media_type: text/markdown
 parameters: {}

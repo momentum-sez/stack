@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/msez/module.schema.json",
-  "title": "MSEZ Module Manifest",
+  "$id": "https://schemas.momentum-ez.org/mez/module.schema.json",
+  "title": "MEZ Module Manifest",
   "type": "object",
   "required": [
     "module_id",
@@ -126,7 +126,7 @@
         "properties": {
           "interface": {
             "type": "string",
-            "description": "Interface identifier. Convention: dot-separated + version suffix (e.g., msez.api.regulator-console.v1)."
+            "description": "Interface identifier. Convention: dot-separated + version suffix (e.g., mez.api.regulator-console.v1)."
           },
           "path": {
             "type": "string",

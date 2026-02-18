@@ -1,7 +1,7 @@
 # Professional Services Licensing Module
 # Legal, accounting, audit, and advisory licensing
 
-module_id: org.momentum.msez.licensing.professional-services
+module_id: org.momentum.mez.licensing.professional-services
 version: 0.1.0
 kind: licensing
 name: Professional Services Licensing
@@ -13,21 +13,21 @@ description: |
 spec_version: "0.4.44"
 
 provides:
-  - interface: msez.licensing.professional.legal.v1
+  - interface: mez.licensing.professional.legal.v1
     description: Law firm and legal practitioner licensing
-  - interface: msez.licensing.professional.accounting.v1
+  - interface: mez.licensing.professional.accounting.v1
     description: Accounting and bookkeeping firm licensing
-  - interface: msez.licensing.professional.audit.v1
+  - interface: mez.licensing.professional.audit.v1
     description: Audit firm licensing with independence requirements
-  - interface: msez.licensing.professional.tax.v1
+  - interface: mez.licensing.professional.tax.v1
     description: Tax advisory and preparation licensing
-  - interface: msez.licensing.professional.consulting.v1
+  - interface: mez.licensing.professional.consulting.v1
     description: Management and business consulting licensing
 
 dependencies:
-  - module_id: org.momentum.msez.legal.core
+  - module_id: org.momentum.mez.legal.core
     version: ">=0.1.0"
-  - module_id: org.momentum.msez.identity.credentials
+  - module_id: org.momentum.mez.identity.credentials
     version: ">=0.1.0"
 
 license_types:

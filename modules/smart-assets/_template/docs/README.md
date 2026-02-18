@@ -25,11 +25,11 @@ Once initialized, you can operate on the module directory directly:
 
 ```bash
 # create a signed receipt
-python3 -m tools.msez asset state receipt-init modules/smart-assets/<asset_id> \
+python3 -m tools.mez asset state receipt-init modules/smart-assets/<asset_id> \
   --sequence 0 --prev-root genesis --sign --key keys/operator.jwk.json
 
 # verify the chain
-python3 -m tools.msez asset state verify modules/smart-assets/<asset_id>
+python3 -m tools.mez asset state verify modules/smart-assets/<asset_id>
 ```
 
 
@@ -38,11 +38,11 @@ python3 -m tools.msez asset state verify modules/smart-assets/<asset_id>
 Export a self-contained witness bundle (zip) that includes the module state + referenced artifacts:
 
 ```bash
-python3 -m tools.msez asset module witness-bundle modules/smart-assets/<asset_id> \
+python3 -m tools.mez asset module witness-bundle modules/smart-assets/<asset_id> \
   --out /tmp/asset-module.witness.zip --json
 
 # offline / air-gapped verification
-python3 -m tools.msez artifact graph verify --from-bundle /tmp/asset-module.witness.zip --strict --json
+python3 -m tools.mez artifact graph verify --from-bundle /tmp/asset-module.witness.zip --strict --json
 ```
 
 
@@ -52,7 +52,7 @@ When issuing receipts in a multi-harbor / sharded compliance configuration, you 
 (these fields are committed into `next_root` and therefore are audit-stable):
 
 ```bash
-msez asset state receipt-init \
+mez asset state receipt-init \
   --asset-id EXAMPLE_ASSET \
   --sequence 2 \
   --transition transition.json \
@@ -69,7 +69,7 @@ msez asset state receipt-init \
 Harbors (or other evaluators) can emit portable evidence artifacts that are attachable to any transition envelope:
 
 ```bash
-msez asset rule-eval-evidence-init \
+mez asset rule-eval-evidence-init \
   --transition transition.json \
   --harbor-id ae-adgm \
   --result pass \

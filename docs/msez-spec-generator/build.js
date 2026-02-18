@@ -292,7 +292,10 @@ const doc = new Document({
           format: "bullet",
           text: "\u2022",
           alignment: "left",
-          style: { paragraph: { indent: { left: 720, hanging: 360 } } }
+          style: {
+            run: { font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK },
+            paragraph: { indent: { left: 720, hanging: 360 } }
+          }
         }]
       }
     ]

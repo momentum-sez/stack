@@ -26,11 +26,13 @@ function getTocEntries() {
 
 // --- Text Primitives ---
 
-/** Body paragraph — Garamond 11.5pt, charcoal, justified, 1.3x line spacing */
+/** Body paragraph — Garamond 11.5pt, charcoal, justified, 1.3× line spacing.
+ *  Widow/orphan control ensures no single-line stranding at page breaks. */
 function p(text, opts = {}) {
   return new Paragraph({
     alignment: AlignmentType.JUSTIFIED,
     spacing: { after: 180, line: 312 },
+    widowControl: true,
     children: [new TextRun({ text, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK, ...opts })]
   });
 }
@@ -40,6 +42,7 @@ function p_runs(runs) {
   return new Paragraph({
     alignment: AlignmentType.JUSTIFIED,
     spacing: { after: 180, line: 312 },
+    widowControl: true,
     children: runs.map(r =>
       typeof r === "string"
         ? new TextRun({ text: r, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK })
@@ -68,8 +71,9 @@ function code(text) {
 
 // --- Headings ---
 
-/** Part heading (e.g., "PART I: FOUNDATION") - includes page break.
- *  18pt bold deep navy — the commanding architectural divider. */
+/** Part heading (e.g., "PART I: FOUNDATION") — includes page break.
+ *  18pt bold deep navy with generous letter-spacing on uppercase.
+ *  Followed by a centered gold hairline rule — the Momentum signature. */
 function partHeading(text) {
   const bm = _registerHeading(text.toUpperCase(), 1);
   return [
@@ -77,16 +81,26 @@ function partHeading(text) {
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 0, after: 120 },
+      keepNext: true,
+      keepLines: true,
       children: [
         new BookmarkStart(bm.name, bm.id),
-        new TextRun({ text: text.toUpperCase(), bold: true, font: C.BODY_FONT, size: 36, color: C.H1_COLOR }),
+        new TextRun({
+          text: text.toUpperCase(),
+          bold: true,
+          font: C.BODY_FONT,
+          size: 36,
+          color: C.H1_COLOR,
+          characterSpacing: 80,
+        }),
         new BookmarkEnd(bm.id),
       ]
     }),
-    // Gold hairline rule beneath Part heading
+    // Centered gold hairline rule — indented for elegance, not full-width
     new Paragraph({
       border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: C.ACCENT, space: 4 } },
       spacing: { after: 300 },
+      indent: { left: 720, right: 720 },
       children: []
     })
   ];
@@ -98,7 +112,9 @@ function chapterHeading(text) {
   const bm = _registerHeading(text, 1);
   return new Paragraph({
     heading: HeadingLevel.HEADING_1,
-    spacing: { before: 360, after: 200 },
+    spacing: { before: 360, after: 240 },
+    keepNext: true,
+    keepLines: true,
     children: [
       new BookmarkStart(bm.name, bm.id),
       new TextRun({ text, bold: false, font: C.BODY_FONT, size: 32, color: C.H1_COLOR }),
@@ -113,7 +129,9 @@ function h2(text) {
   const bm = _registerHeading(text, 2);
   return new Paragraph({
     heading: HeadingLevel.HEADING_2,
-    spacing: { before: 300, after: 160 },
+    spacing: { before: 300, after: 180 },
+    keepNext: true,
+    keepLines: true,
     children: [
       new BookmarkStart(bm.name, bm.id),
       new TextRun({ text, bold: false, font: C.BODY_FONT, size: 26, color: C.H2_COLOR }),
@@ -128,6 +146,8 @@ function h3(text) {
   return new Paragraph({
     heading: HeadingLevel.HEADING_3,
     spacing: { before: 240, after: 120 },
+    keepNext: true,
+    keepLines: true,
     children: [new TextRun({ text, bold: true, font: C.BODY_FONT, size: 24, color: C.H1_COLOR })]
   });
 }
@@ -159,8 +179,9 @@ function ruleLight() {
 function definition(label, text) {
   return new Paragraph({
     border: { left: { style: BorderStyle.SINGLE, size: 6, color: C.ACCENT, space: 8 } },
-    spacing: { before: 160, after: 200 },
+    spacing: { before: 160, after: 200, line: 312 },
     indent: { left: 360 },
+    keepNext: true,
     children: [
       new TextRun({ text: label + " ", bold: true, italics: true, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.H1_COLOR }),
       new TextRun({ text, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK })
@@ -168,12 +189,13 @@ function definition(label, text) {
   });
 }
 
-/** Theorem block with left dark navy border */
+/** Theorem block with left steel blue border — distinct from gold definitions. */
 function theorem(label, text) {
   return new Paragraph({
-    border: { left: { style: BorderStyle.SINGLE, size: 6, color: C.H3_COLOR, space: 8 } },
-    spacing: { before: 160, after: 200 },
+    border: { left: { style: BorderStyle.SINGLE, size: 6, color: C.H2_COLOR, space: 8 } },
+    spacing: { before: 160, after: 200, line: 312 },
     indent: { left: 360 },
+    keepNext: true,
     children: [
       new TextRun({ text: label + " ", bold: true, italics: true, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.H1_COLOR }),
       new TextRun({ text, italics: true, font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK })
@@ -183,13 +205,16 @@ function theorem(label, text) {
 
 // --- Code Blocks ---
 
-/** Multi-line code block. Pass a string; it splits on \n. */
+/** Multi-line code block with warm gray left border.
+ *  The left border ties code blocks into the document's border design language
+ *  (gold for definitions, steel blue for theorems, warm gray for code). */
 function codeBlock(codeString) {
   const lines = codeString.split("\n");
   return lines.map((line, i) =>
     new Paragraph({
       spacing: { after: i === lines.length - 1 ? 200 : 0, line: 240 },
       shading: { type: ShadingType.CLEAR, fill: C.CODE_BG },
+      border: { left: { style: BorderStyle.SINGLE, size: 4, color: C.ACCENT_SECONDARY, space: 6 } },
       children: [new TextRun({ text: line || " ", font: C.CODE_FONT, size: C.CODE_SIZE, color: C.CODE_TEXT })]
     })
   );
@@ -198,7 +223,8 @@ function codeBlock(codeString) {
 // --- Tables ---
 
 /** Standard table with header row + data rows.
- *  Deep navy headers, warm cream alternating rows, minimal borders.
+ *  Deep navy headers with tracking, warm cream alternating rows, refined borders.
+ *  Garamond at 10.5pt for cell text (Garamond's small x-height needs the bump).
  *  @param {string[]} headers - Column header labels
  *  @param {string[][]} rows - 2D array of cell text
  *  @param {number[]} [colWidths] - Optional column widths in DXA (must sum to 9360)
@@ -224,8 +250,9 @@ function table(headers, rows, colWidths) {
           text: text || "",
           bold: isHeader,
           font: C.BODY_FONT,
-          size: 20,
-          color: isHeader ? C.TABLE_HEADER_TEXT : C.DARK
+          size: isHeader ? 20 : 21,
+          color: isHeader ? C.TABLE_HEADER_TEXT : C.DARK,
+          characterSpacing: isHeader ? 20 : undefined,
         })]
       })]
     });

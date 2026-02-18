@@ -7,12 +7,16 @@ module.exports = function build_cover() {
     // Generous top breathing room — prestige document proportions
     spacer(2400),
 
-    // Brand mark — deep navy, commanding
+    // Brand mark — deep navy, commanding, with generous letter-spacing
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 100 }, children: [
-      new TextRun({ text: "MOMENTUM", font: C.BODY_FONT, size: 56, bold: true, color: C.H1_COLOR })
+      new TextRun({
+        text: "MOMENTUM",
+        font: C.BODY_FONT, size: 56, bold: true, color: C.H1_COLOR,
+        characterSpacing: 120,
+      })
     ]}),
 
-    // Gold hairline rule — signature Momentum divider
+    // Gold hairline rule — signature Momentum divider, centered
     new Paragraph({
       alignment: AlignmentType.CENTER,
       border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: C.ACCENT, space: 6 } },
@@ -61,9 +65,13 @@ module.exports = function build_cover() {
 
     spacer(400),
 
-    // Gold accent label — small, champagne
+    // Gold accent label — small, champagne, with tracking
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [
-      new TextRun({ text: "CONFIDENTIAL", font: C.BODY_FONT, size: 20, bold: true, color: C.ACCENT })
+      new TextRun({
+        text: "CONFIDENTIAL",
+        font: C.BODY_FONT, size: 20, bold: true, color: C.ACCENT,
+        characterSpacing: 60,
+      })
     ]}),
 
     pageBreak()

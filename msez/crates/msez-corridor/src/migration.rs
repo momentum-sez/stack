@@ -391,7 +391,7 @@ impl MigrationSaga {
         // After locking source and minting dest: source_locked=true, dest_minted=true
         // which is OK because the source is LOCKED (not available).
         // The invariant fails when source is UNLOCKED AND dest is MINTED.
-        !((!source_locked) && dest_minted)
+        source_locked || !dest_minted
     }
 }
 

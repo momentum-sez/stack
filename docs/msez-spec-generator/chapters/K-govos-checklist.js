@@ -1,4 +1,6 @@
-const { chapterHeading, table, pageBreak, p, h2 } = require("../lib/primitives");
+const { Paragraph, TextRun, AlignmentType, BorderStyle } = require("docx");
+const { chapterHeading, table, pageBreak, p, h2, spacer } = require("../lib/primitives");
+const C = require("../lib/constants");
 
 module.exports = function build_appendixK() {
   return [
@@ -74,14 +76,54 @@ module.exports = function build_appendixK() {
       [600, 2600, 2800, 3360]
     ),
 
+    // --- End of Specification — closing page bookend to the cover ---
     pageBreak(),
-    p("End of Specification", { bold: true, size: 28 }),
-    p("Momentum Open Source SEZ Stack"),
-    p("Version 0.4.44 \u2014 GENESIS"),
-    p("February 2026"),
-    p("For questions or feedback, contact:"),
-    p("Momentum"),
-    p("https://github.com/momentum-sez/stack"),
-    p("research@momentum.inc"),
+
+    spacer(2400),
+
+    // Gold rule opens the closing section — mirrors cover page structure
+    new Paragraph({
+      border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: C.ACCENT, space: 6 } },
+      spacing: { after: 300 },
+      indent: { left: 2400, right: 2400 },
+      children: []
+    }),
+
+    // End marker — deep navy, tracked uppercase
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [
+      new TextRun({
+        text: "END OF SPECIFICATION",
+        font: C.BODY_FONT, size: 28, bold: false, color: C.H1_COLOR,
+        characterSpacing: 80,
+      })
+    ]}),
+
+    // Gold rule closes
+    new Paragraph({
+      border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: C.ACCENT, space: 6 } },
+      spacing: { after: 400 },
+      indent: { left: 2400, right: 2400 },
+      children: []
+    }),
+
+    // Attribution — centered, matching cover tone
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [
+      new TextRun({ text: "Momentum Open Source SEZ Stack", font: C.BODY_FONT, size: C.BODY_SIZE, bold: true, color: C.H1_COLOR })
+    ]}),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [
+      new TextRun({ text: "Version 0.4.44 \u2014 GENESIS", font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK })
+    ]}),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [
+      new TextRun({ text: "February 2026", font: C.BODY_FONT, size: C.BODY_SIZE, color: C.SECONDARY_TEXT })
+    ]}),
+
+    spacer(300),
+
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [
+      new TextRun({ text: "https://github.com/momentum-sez/stack", font: C.BODY_FONT, size: 20, color: C.H2_COLOR })
+    ]}),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [
+      new TextRun({ text: "research@momentum.inc", font: C.BODY_FONT, size: 20, color: C.H2_COLOR })
+    ]}),
   ];
 };

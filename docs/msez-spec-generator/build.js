@@ -198,7 +198,7 @@ function makeHeader(partTitle) {
       alignment: AlignmentType.RIGHT,
       children: [new TextRun({
         text: headerText,
-        font: C.BODY_FONT, size: 16, color: "999999", italics: true
+        font: C.BODY_FONT, size: 16, color: C.SECONDARY_TEXT, italics: true
       })]
     })]
   });
@@ -208,8 +208,8 @@ const defaultFooter = new Footer({
   children: [new Paragraph({
     alignment: AlignmentType.CENTER,
     children: [
-      new TextRun({ text: "Momentum \u00B7 CONFIDENTIAL \u00B7 Page ", font: C.BODY_FONT, size: 16, color: "999999" }),
-      new TextRun({ children: [PageNumber.CURRENT], font: C.BODY_FONT, size: 16, color: "999999" })
+      new TextRun({ text: "Momentum \u00B7 CONFIDENTIAL \u00B7 Page ", font: C.BODY_FONT, size: 16, color: C.SECONDARY_TEXT }),
+      new TextRun({ children: [PageNumber.CURRENT], font: C.BODY_FONT, size: 16, color: C.SECONDARY_TEXT })
     ]
   })]
 });
@@ -292,7 +292,10 @@ const doc = new Document({
           format: "bullet",
           text: "\u2022",
           alignment: "left",
-          style: { paragraph: { indent: { left: 720, hanging: 360 } } }
+          style: {
+            run: { font: C.BODY_FONT, size: C.BODY_SIZE, color: C.DARK },
+            paragraph: { indent: { left: 720, hanging: 360 } }
+          }
         }]
       }
     ]

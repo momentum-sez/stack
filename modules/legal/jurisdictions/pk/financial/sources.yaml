@@ -1,0 +1,22 @@
+jurisdiction_id: pk
+domain: financial
+sources:
+  - title: "Banking Companies Ordinance, 1962"
+    citation: "Ordinance LVII of 1962"
+    as_of_date: "2024-01-01"
+  - title: "Microfinance Institutions Ordinance, 2001"
+    citation: "Ordinance LI of 2001"
+    as_of_date: "2024-01-01"
+  - title: "State Bank of Pakistan Act, 1956"
+    citation: "Act XXXIII of 1956"
+    as_of_date: "2024-01-01"
+  - title: "Payment Systems and Electronic Fund Transfers Act, 2007"
+    citation: "Act V of 2007"
+    as_of_date: "2024-01-01"
+  - title: "SBP Regulations for Electronic Money Institutions, 2019"
+    as_of_date: "2024-01-01"
+  - title: "SBP Raast Regulations, 2021"
+    as_of_date: "2024-01-01"
+  - title: "Foreign Exchange Regulation Act, 1947"
+    citation: "Act VII of 1947"
+    as_of_date: "2024-01-01"

@@ -1,0 +1,866 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act contains="originalVersion">
+    <meta>
+      <identification source="#mez">
+        <FRBRWork>
+          <FRBRthis value="/akn/pk/act/civil-corpus/0.1.0"/>
+          <FRBRuri value="/akn/pk/act/civil-corpus"/>
+          <FRBRdate date="2024-01-01" name="compilation"/>
+          <FRBRauthor href="#secp"/>
+          <FRBRcountry value="pk"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/pk/act/civil-corpus/0.1.0/eng@"/>
+          <FRBRuri value="/akn/pk/act/civil-corpus/eng@"/>
+          <FRBRdate date="2024-01-01" name="compilation"/>
+          <FRBRauthor href="#secp"/>
+          <FRBRlanguage language="eng"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/pk/act/civil-corpus/0.1.0/eng@.xml"/>
+          <FRBRuri value="/akn/pk/act/civil-corpus/eng@.xml"/>
+          <FRBRdate date="2024-01-01" name="compilation"/>
+          <FRBRauthor href="#mez"/>
+        </FRBRManifestation>
+      </identification>
+      <publication name="MEZ Stack" showAs="MEZ Stack v0.4.44" date="2024-01-01" number="0.1.0"/>
+      <references source="#mez">
+        <TLCOrganization eId="secp" href="/ontology/organization/pk.secp" showAs="Securities and Exchange Commission of Pakistan"/>
+        <TLCOrganization eId="boi" href="/ontology/organization/pk.boi" showAs="Board of Investment, Government of Pakistan"/>
+        <TLCOrganization eId="mez" href="/ontology/organization/momentum.mez" showAs="Momentum EZ"/>
+        <TLCOrganization eId="nationalassembly" href="/ontology/organization/pk.nationalassembly" showAs="National Assembly of Pakistan"/>
+      </references>
+    </meta>
+
+    <preface>
+      <p eId="preface_1">Pakistan civil and corporate law compilation for EZ Stack sovereign deployment.
+        This document consolidates key provisions from the Companies Act 2017 (Act No. XL of 2017),
+        the Contract Act 1872 (Act No. IX of 1872), the Special Economic Zones Act 2012
+        (Act No. XII of 2012), and the Partnership Act 1932 (Act No. IX of 1932) as in force
+        on 1 January 2024.</p>
+      <p eId="preface_2">This compilation is provided for machine-readable regulatory analysis. It does not
+        replace the official gazette text. All section numbers correspond to the published Acts.</p>
+    </preface>
+
+    <body>
+
+      <!-- ================================================================ -->
+      <!-- PART I — COMPANIES ACT 2017 (Act No. XL of 2017)                 -->
+      <!-- Administered by: Securities and Exchange Commission of Pakistan   -->
+      <!-- Gazette: Gazette of Pakistan, Extraordinary, Part I, 30 May 2017  -->
+      <!-- ================================================================ -->
+
+      <part eId="part_companies">
+        <num>I</num>
+        <heading>Companies Act 2017 (Act No. XL of 2017)</heading>
+
+        <section eId="ca2017_s16">
+          <num>16</num>
+          <heading>Incorporation of company</heading>
+          <content>
+            <p eId="ca2017_s16__p1">(1) Any one or more persons associated for a lawful purpose may, by
+              subscribing their names to a memorandum of association and complying with the requirements
+              of this Act in respect of registration, form a private company.</p>
+            <p eId="ca2017_s16__p2">(2) Any three or more persons so associated may form a public company.</p>
+            <p eId="ca2017_s16__p3">(3) One person may form a single member company.</p>
+            <p eId="ca2017_s16__p4">(4) An application for incorporation shall be filed with the registrar
+              in the prescribed form and shall be accompanied by the following documents:
+              (a) the memorandum of association; (b) the articles of association; (c) a declaration
+              of compliance in the prescribed form; (d) the notice of the situation of the registered
+              office; (e) a copy of the national identity card or passport of each subscriber;
+              (f) particulars of the first directors and chief executive; and (g) such fee as may
+              be prescribed.</p>
+            <p eId="ca2017_s16__p5">(5) On registration, the registrar shall issue a certificate of
+              incorporation in the prescribed form, and the company shall from the date of
+              incorporation be a body corporate with perpetual succession and a common seal,
+              capable of exercising all functions of an incorporated company under this Act.</p>
+          </content>
+        </section>
+
+        <section eId="ca2017_s17">
+          <num>17</num>
+          <heading>Memorandum of association</heading>
+          <content>
+            <p eId="ca2017_s17__p1">(1) The memorandum of every company shall state: (a) the name of the
+              company with "Limited" or "(Private) Limited" as the last word; (b) the province in
+              which the registered office of the company is to be situated; (c) the objects for
+              which the company is proposed to be formed; (d) the liability of the members; and
+              (e) the amount of authorized share capital with which the company is to be registered
+              and the division thereof into shares of a fixed amount.</p>
+            <p eId="ca2017_s17__p2">(2) The memorandum of a company limited by guarantee shall also state
+              that each member undertakes to contribute to the assets of the company in the event
+              of its being wound up while he is a member or within one year after he ceases to be
+              a member, such amount as may be required, not exceeding a specified amount.</p>
+            <p eId="ca2017_s17__p3">(3) In the case of a private company, the minimum paid-up capital
+              shall be one hundred thousand rupees (PKR 100,000) or such other amount as may be
+              prescribed by the Commission.</p>
+            <p eId="ca2017_s17__p4">(4) In the case of a public company, the minimum paid-up capital
+              shall be two hundred thousand rupees (PKR 200,000) or such other amount as the
+              Commission may prescribe.</p>
+          </content>
+        </section>
+
+        <section eId="ca2017_s18">
+          <num>18</num>
+          <heading>Articles of association</heading>
+          <content>
+            <p eId="ca2017_s18__p1">(1) There shall be registered with the memorandum articles of
+              association signed by each subscriber to the memorandum prescribing regulations for
+              the company.</p>
+            <p eId="ca2017_s18__p2">(2) Articles shall be in the form set out in Table A of the First
+              Schedule or in a form as near thereto as circumstances admit, or in such other form
+              as the Commission may approve.</p>
+            <p eId="ca2017_s18__p3">(3) The articles shall be printed, divided into paragraphs numbered
+              consecutively, and signed by each subscriber to the memorandum in the presence of at
+              least one witness who shall attest the signature and shall likewise add his description
+              and address.</p>
+            <p eId="ca2017_s18__p4">(4) The articles may contain provisions for the management of the
+              company's affairs including: (a) the transfer and transmission of shares; (b) the
+              increase and reduction of share capital; (c) the convening and conduct of general
+              meetings; (d) the appointment, powers, duties and remuneration of directors;
+              (e) the payment of dividends; and (f) the keeping of accounts and audit.</p>
+          </content>
+        </section>
+
+        <section eId="ca2017_s85">
+          <num>85</num>
+          <heading>Annual general meeting</heading>
+          <content>
+            <p eId="ca2017_s85__p1">(1) Every company having a share capital shall in each year hold an
+              annual general meeting in addition to any other meetings and shall specify the
+              meeting as such in the notices calling it.</p>
+            <p eId="ca2017_s85__p2">(2) The first annual general meeting of a company shall be held
+              within a period of eighteen months from the date of its incorporation.</p>
+            <p eId="ca2017_s85__p3">(3) Subsequent annual general meetings shall be held at intervals of
+              not more than fifteen months, provided that the company shall hold an annual general
+              meeting in each calendar year and not more than four months shall elapse between the
+              date of one annual general meeting of the company and the last day of the following
+              financial year.</p>
+            <p eId="ca2017_s85__p4">(4) At every annual general meeting of a company, the following
+              business shall be transacted: (a) consideration of the accounts, balance sheet and
+              the reports of the directors and auditors; (b) the election or appointment of directors
+              in place of those retiring; (c) the appointment of and the fixing of the remuneration
+              of auditors; and (d) such other matters as may be prescribed or required under this Act.</p>
+            <p eId="ca2017_s85__p5">(5) If default is made in holding an annual general meeting, the
+              Commission may, on the application of any member of the company, call or direct the
+              calling of an annual general meeting and give such ancillary or consequential
+              directions as the Commission thinks expedient.</p>
+          </content>
+        </section>
+
+        <section eId="ca2017_s119">
+          <num>119</num>
+          <heading>Maintenance of accounting records</heading>
+          <content>
+            <p eId="ca2017_s119__p1">(1) Every company shall keep at its registered office proper books
+              of account with respect to: (a) all sums of money received and expended by the company
+              and the matters in respect of which the receipt and expenditure takes place;
+              (b) all sales and purchases of goods by the company; (c) the assets and liabilities
+              of the company; and (d) in the case of a company engaged in production, processing,
+              manufacturing or mining activities, such particulars relating to utilization of
+              material, labour and other items of overhead cost as may be prescribed.</p>
+            <p eId="ca2017_s119__p2">(2) The books of account shall give a true and fair view of the
+              state of affairs of the company and explain its transactions and shall be kept on
+              accrual basis and according to the double entry system of accounting.</p>
+            <p eId="ca2017_s119__p3">(3) Where a company has a branch office, whether in or outside
+              Pakistan, the company shall ensure that proper books of account relating to the
+              transactions effected at the branch office are kept at that office and proper
+              summarized returns are sent to the registered office at intervals of not more
+              than three months.</p>
+            <p eId="ca2017_s119__p4">(4) The books of account of every company shall be preserved in
+              good order for a period of not less than ten years from the date of the last entry
+              therein, and where an investigation has been ordered, until the conclusion of the
+              investigation.</p>
+            <p eId="ca2017_s119__p5">(5) If any director or officer of the company fails to take
+              reasonable steps to secure compliance with the requirements of this section or has
+              by his own wilful act been the cause of any default, he shall be liable to a penalty
+              which may extend to five hundred thousand rupees (PKR 500,000).</p>
+          </content>
+        </section>
+
+        <section eId="ca2017_s131">
+          <num>131</num>
+          <heading>Annual return</heading>
+          <content>
+            <p eId="ca2017_s131__p1">(1) Every company shall prepare an annual return and file it with
+              the registrar within thirty days from the date of each annual general meeting.</p>
+            <p eId="ca2017_s131__p2">(2) The annual return shall be in the prescribed form and shall
+              contain the following particulars as at the date of the annual general meeting:
+              (a) the registered office; (b) a summary of share capital, debentures and charges;
+              (c) the indebtedness of the company in respect of all charges which are required to
+              be registered; (d) a list of members showing the shares held by each member and
+              changes therein since the last return; (e) particulars of directors, chief executive,
+              auditors and legal adviser and changes therein; and (f) such other particulars as
+              may be prescribed.</p>
+            <p eId="ca2017_s131__p3">(3) The annual return of a company having a share capital shall
+              also include a certified copy of the audited financial statements as laid before the
+              company in its annual general meeting.</p>
+            <p eId="ca2017_s131__p4">(4) If a company fails to file its annual return within the period
+              specified, the company and every officer who is in default shall be liable to a
+              penalty of one hundred rupees (PKR 100) for each day of default, subject to a
+              maximum of five hundred thousand rupees (PKR 500,000).</p>
+          </content>
+        </section>
+
+        <section eId="ca2017_s237">
+          <num>237</num>
+          <heading>Winding up by the Tribunal</heading>
+          <content>
+            <p eId="ca2017_s237__p1">(1) A company may be wound up by the Tribunal if: (a) the company
+              has by special resolution resolved that the company be wound up by the Tribunal;
+              (b) the company has made a default in filing with the registrar its financial
+              statements or annual returns for five consecutive financial years; (c) the company
+              has acted against the interests of the sovereignty and integrity of Pakistan, the
+              security of the state, friendly relations with foreign states, public order, decency
+              or morality; (d) the Tribunal is of the opinion that it is just and equitable that
+              the company should be wound up; (e) the company is unable to pay its debts;
+              (f) the company has not commenced its business within a year from its incorporation
+              and the Tribunal is of the opinion that the company was formed without bona fide
+              intent to carry on business; or (g) the affairs of the company have been conducted
+              in a manner oppressive to any member or in disregard of his interests as member.</p>
+            <p eId="ca2017_s237__p2">(2) A company shall be deemed to be unable to pay its debts if:
+              (a) a creditor by assignment or otherwise to whom the company is indebted in a sum
+              exceeding the prescribed amount then due has served on the company a demand requiring
+              the company to pay the sum so due and the company has for three weeks thereafter
+              neglected to pay the sum; or (b) execution or other process issued on a decree or
+              order of any court in favour of a creditor of the company is returned unsatisfied;
+              or (c) it is proved to the satisfaction of the Tribunal that the company is unable
+              to pay its debts, taking into account the contingent and prospective liabilities of
+              the company.</p>
+            <p eId="ca2017_s237__p3">(3) A petition for winding up may be presented by: (a) the company;
+              (b) any creditor or creditors; (c) any contributory or contributories; (d) all or
+              any of the parties specified in clauses (a), (b) and (c) together or separately;
+              (e) the registrar; or (f) the Commission.</p>
+          </content>
+        </section>
+
+        <section eId="ca2017_s460">
+          <num>460</num>
+          <heading>Company formation in Special Economic Zones</heading>
+          <content>
+            <p eId="ca2017_s460__p1">(1) Notwithstanding anything contained in this Act, the Commission
+              may, in consultation with the federal government, prescribe simplified procedures
+              for the incorporation of companies within Special Economic Zones established under
+              the Special Economic Zones Act, 2012.</p>
+            <p eId="ca2017_s460__p2">(2) Such simplified procedures may include: (a) one-window
+              registration combining company incorporation, tax registration and social security
+              enrolment; (b) electronic filing and processing of all incorporation documents;
+              (c) reduced timelines for issuance of certificates of incorporation; and
+              (d) simplified forms and requirements for small and medium enterprises.</p>
+            <p eId="ca2017_s460__p3">(3) The Commission may establish a dedicated desk or portal for
+              companies being formed within Economic Zones and may coordinate with the zone
+              authority for the purpose of registration and regulation.</p>
+            <p eId="ca2017_s460__p4">(4) Companies incorporated under this section shall be subject
+              to all provisions of this Act except to the extent modified by rules made under
+              this section.</p>
+          </content>
+        </section>
+
+        <section eId="ca2017_s461">
+          <num>461</num>
+          <heading>Reduced paid-up capital requirements for Economic Zone companies</heading>
+          <content>
+            <p eId="ca2017_s461__p1">(1) Notwithstanding section 17, the Commission may prescribe
+              reduced minimum paid-up capital requirements for companies formed and operating
+              exclusively within a Special Economic Zone notified under the Special Economic
+              Zones Act, 2012.</p>
+            <p eId="ca2017_s461__p2">(2) Such reduced requirements shall not be less than: (a) fifty
+              thousand rupees (PKR 50,000) for a private company; and (b) one hundred thousand
+              rupees (PKR 100,000) for a public company.</p>
+            <p eId="ca2017_s461__p3">(3) A company availing the reduced paid-up capital under this
+              section shall not commence business outside the Economic Zone without first increasing
+              its paid-up capital to the minimum prescribed under section 17 and obtaining fresh
+              approval from the registrar.</p>
+          </content>
+        </section>
+
+      </part>
+
+      <!-- ================================================================ -->
+      <!-- PART II — CONTRACT ACT 1872 (Act No. IX of 1872)                  -->
+      <!-- Adopted from pre-partition Indian legislation; remains in force    -->
+      <!-- ================================================================ -->
+
+      <part eId="part_contract">
+        <num>II</num>
+        <heading>Contract Act 1872 (Act No. IX of 1872)</heading>
+
+        <section eId="ca1872_s2">
+          <num>2</num>
+          <heading>Interpretation clause</heading>
+          <content>
+            <p eId="ca1872_s2__p1">When one person signifies to another his willingness to do or to
+              abstain from doing anything, with a view to obtaining the assent of that other to such
+              act or abstinence, he is said to make a <b>proposal</b>.</p>
+            <p eId="ca1872_s2__p2">When the person to whom the proposal is made signifies his assent
+              thereto, the proposal is said to be accepted. A proposal, when accepted, becomes a
+              <b>promise</b>.</p>
+            <p eId="ca1872_s2__p3">The person making the proposal is called the <b>promisor</b>, and
+              the person accepting the proposal is called the <b>promisee</b>.</p>
+            <p eId="ca1872_s2__p4">When, at the desire of the promisor, the promisee or any other
+              person has done or abstained from doing, or does or abstains from doing, or promises
+              to do or to abstain from doing, something, such act or abstinence or promise is
+              called a <b>consideration</b> for the promise.</p>
+            <p eId="ca1872_s2__p5">Every promise and every set of promises, forming the consideration
+              for each other, is an <b>agreement</b>.</p>
+            <p eId="ca1872_s2__p6">An agreement enforceable by law is a <b>contract</b>.</p>
+            <p eId="ca1872_s2__p7">An agreement which is enforceable by law at the option of one or more
+              of the parties thereto, but not at the option of the other or others, is a
+              <b>voidable contract</b>.</p>
+            <p eId="ca1872_s2__p8">An agreement not enforceable by law is said to be <b>void</b>.</p>
+          </content>
+        </section>
+
+        <section eId="ca1872_s10">
+          <num>10</num>
+          <heading>What agreements are contracts</heading>
+          <content>
+            <p eId="ca1872_s10__p1">All agreements are contracts if they are made by the free consent
+              of parties competent to contract, for a lawful consideration and with a lawful object,
+              and are not hereby expressly declared to be void.</p>
+            <p eId="ca1872_s10__p2">Nothing herein contained shall affect any law in force in Pakistan
+              and not hereby expressly repealed by which any contract is required to be made in
+              writing or in the presence of witnesses, or any law relating to the registration of
+              documents.</p>
+          </content>
+        </section>
+
+        <section eId="ca1872_s11">
+          <num>11</num>
+          <heading>Who are competent to contract</heading>
+          <content>
+            <p eId="ca1872_s11__p1">Every person is competent to contract who is of the age of majority
+              according to the law to which he is subject, and who is of sound mind, and is not
+              disqualified from contracting by any law to which he is subject.</p>
+          </content>
+        </section>
+
+        <section eId="ca1872_s14">
+          <num>14</num>
+          <heading>Free consent defined</heading>
+          <content>
+            <p eId="ca1872_s14__p1">Consent is said to be free when it is not caused by:
+              (1) coercion, as defined in section 15; (2) undue influence, as defined in section 16;
+              (3) fraud, as defined in section 17; (4) misrepresentation, as defined in section 18;
+              or (5) mistake, subject to the provisions of sections 20, 21 and 22.</p>
+            <p eId="ca1872_s14__p2">Consent is said to be so caused when it would not have been given
+              but for the existence of such coercion, undue influence, fraud, misrepresentation
+              or mistake.</p>
+          </content>
+        </section>
+
+        <section eId="ca1872_s15">
+          <num>15</num>
+          <heading>Coercion defined</heading>
+          <content>
+            <p eId="ca1872_s15__p1">Coercion is the committing, or threatening to commit, any act
+              forbidden by the Pakistan Penal Code, or the unlawful detaining, or threatening to
+              detain, any property, to the prejudice of any person whatever, with the intention of
+              causing any person to enter into an agreement.</p>
+          </content>
+        </section>
+
+        <section eId="ca1872_s23">
+          <num>23</num>
+          <heading>What considerations and objects are lawful, and what not</heading>
+          <content>
+            <p eId="ca1872_s23__p1">The consideration or object of an agreement is lawful,
+              unless it is forbidden by law; or is of such a nature that, if permitted, it would
+              defeat the provisions of any law; or is fraudulent; or involves or implies injury to
+              the person or property of another; or the Court regards it as immoral, or opposed to
+              public policy.</p>
+            <p eId="ca1872_s23__p2">In each of these cases, the consideration or object of an agreement
+              is said to be unlawful. Every agreement of which the object or consideration is
+              unlawful is void.</p>
+          </content>
+        </section>
+
+        <section eId="ca1872_s25">
+          <num>25</num>
+          <heading>Agreement without consideration void, unless in writing and registered</heading>
+          <content>
+            <p eId="ca1872_s25__p1">An agreement made without consideration is void, unless: (1) it is
+              expressed in writing and registered under the law for the time being in force for the
+              registration of documents, and is made on account of natural love and affection
+              between parties standing in a near relation to each other; or (2) it is a promise to
+              compensate, wholly or in part, a person who has already voluntarily done something
+              for the promisor, or something which the promisor was legally compellable to do; or
+              (3) it is a promise, made in writing and signed by the person to be charged therewith,
+              or by his agent generally or specially authorized in that behalf, to pay wholly or in
+              part a debt of which the creditor might have enforced payment but for the law for the
+              limitation of suits.</p>
+          </content>
+        </section>
+
+        <section eId="ca1872_s73">
+          <num>73</num>
+          <heading>Compensation for loss or damage caused by breach of contract</heading>
+          <content>
+            <p eId="ca1872_s73__p1">When a contract has been broken, the party who suffers by such
+              breach is entitled to receive, from the party who has broken the contract, compensation
+              for any loss or damage caused to him thereby, which naturally arose in the usual course
+              of things from such breach, or which the parties knew, when they made the contract, to
+              be likely to result from the breach of it.</p>
+            <p eId="ca1872_s73__p2">Such compensation is not to be given for any remote and indirect
+              loss or damage sustained by reason of the breach.</p>
+            <p eId="ca1872_s73__p3">When an obligation resembling those created by contract has been
+              incurred and has not been discharged, any person injured by the failure to discharge
+              it is entitled to receive the same compensation from the party in default, as if such
+              person had contracted to discharge it and had broken his contract.</p>
+          </content>
+        </section>
+
+        <section eId="ca1872_s74">
+          <num>74</num>
+          <heading>Compensation for breach of contract where penalty stipulated for</heading>
+          <content>
+            <p eId="ca1872_s74__p1">When a contract has been broken, if a sum is named in the contract
+              as the amount to be paid in case of such breach, or if the contract contains any other
+              stipulation by way of penalty, the party complaining of the breach is entitled, whether
+              or not actual damage or loss is proved to have been caused thereby, to receive from the
+              party who has broken the contract reasonable compensation not exceeding the amount so
+              named or, as the case may be, the penalty stipulated for.</p>
+          </content>
+        </section>
+
+        <section eId="ca1872_s75">
+          <num>75</num>
+          <heading>Party rightfully rescinding contract entitled to compensation</heading>
+          <content>
+            <p eId="ca1872_s75__p1">A person who rightfully rescinds a contract is entitled to
+              compensation for any damage which he has sustained through the non-fulfilment of the
+              contract.</p>
+          </content>
+        </section>
+
+      </part>
+
+      <!-- ================================================================ -->
+      <!-- PART III — SPECIAL ECONOMIC ZONES ACT 2012 (Act No. XII of 2012)  -->
+      <!-- Administered by: Board of Investment, Government of Pakistan       -->
+      <!-- Gazette: Gazette of Pakistan, Extraordinary, Part I, 2012          -->
+      <!-- ================================================================ -->
+
+      <part eId="part_sez">
+        <num>III</num>
+        <heading>Special Economic Zones Act 2012 (Act No. XII of 2012)</heading>
+
+        <section eId="sez2012_s2">
+          <num>2</num>
+          <heading>Definitions</heading>
+          <content>
+            <p eId="sez2012_s2__p1">In this Act, unless there is anything repugnant in the subject
+              or context:</p>
+            <blockList eId="sez2012_s2__defs">
+              <item eId="sez2012_s2__def_approval_board">
+                <num>(a)</num>
+                <p><b>"Approval Board"</b> means the Board of Approval constituted under section 4;</p>
+              </item>
+              <item eId="sez2012_s2__def_developer">
+                <num>(b)</num>
+                <p><b>"developer"</b> means a person who has been granted permission under this Act
+                  to develop a Special Economic Zone;</p>
+              </item>
+              <item eId="sez2012_s2__def_sez">
+                <num>(c)</num>
+                <p><b>"Special Economic Zone"</b> or <b>"Zone"</b> means a geographically delineated
+                  area within the territory of Pakistan which is notified by the federal government
+                  as a Special Economic Zone under section 3 of this Act;</p>
+              </item>
+              <item eId="sez2012_s2__def_enterprise">
+                <num>(d)</num>
+                <p><b>"zone enterprise"</b> means any person who holds a valid licence granted
+                  under section 14 to undertake manufacturing, processing, assembling, trading,
+                  warehousing or the provision of services in a Special Economic Zone;</p>
+              </item>
+              <item eId="sez2012_s2__def_one_window">
+                <num>(e)</num>
+                <p><b>"One Window Operation"</b> means the single-point facilitation mechanism
+                  established under section 7 to provide all regulatory approvals, licences and
+                  permits to zone developers and zone enterprises;</p>
+              </item>
+              <item eId="sez2012_s2__def_tariff_area">
+                <num>(f)</num>
+                <p><b>"domestic tariff area"</b> means the whole of Pakistan except the Special
+                  Economic Zones;</p>
+              </item>
+            </blockList>
+          </content>
+        </section>
+
+        <section eId="sez2012_s3">
+          <num>3</num>
+          <heading>Establishment of Special Economic Zones</heading>
+          <content>
+            <p eId="sez2012_s3__p1">(1) The federal government may, by notification in the official
+              Gazette, establish one or more Special Economic Zones in any part of Pakistan.</p>
+            <p eId="sez2012_s3__p2">(2) A provincial government or a private sector entity may propose
+              the establishment of a Special Economic Zone in any area of the province, and the
+              Approval Board shall consider and approve or reject such proposals on the basis of
+              criteria prescribed by rules.</p>
+          </content>
+        </section>
+
+        <section eId="sez2012_s4">
+          <num>4</num>
+          <heading>Board of Approval</heading>
+          <content>
+            <p eId="sez2012_s4__p1">(1) There shall be constituted a Board of Approval for the purposes
+              of this Act, consisting of: (a) the Prime Minister or his nominee, who shall be
+              chairperson; (b) the Chief Ministers of the provinces or their nominees; (c) the
+              federal ministers for finance, commerce, industries and production, and planning;
+              (d) the chairman of the Board of Investment; (e) two representatives of the private
+              sector nominated by the federal government; and (f) such other members as the federal
+              government may determine.</p>
+            <p eId="sez2012_s4__p2">(2) The Board of Approval shall approve proposals for the
+              establishment of Special Economic Zones, prescribe the terms and conditions for the
+              grant of permits to developers, and review the performance of Special Economic Zones.</p>
+            <p eId="sez2012_s4__p3">(3) The Board of Approval shall meet at least twice a year at
+              such place and time as the chairperson may determine.</p>
+          </content>
+        </section>
+
+        <section eId="sez2012_s7">
+          <num>7</num>
+          <heading>One Window Operation</heading>
+          <content>
+            <p eId="sez2012_s7__p1">(1) The Board of Investment shall establish a One Window Operation
+              at the federal level for the purpose of providing facilitation to zone developers and
+              zone enterprises in obtaining all regulatory approvals, licences and permits required
+              under any law.</p>
+            <p eId="sez2012_s7__p2">(2) Each provincial government shall establish a provincial
+              One Window Operation for facilitating zone developers and zone enterprises within the
+              province.</p>
+            <p eId="sez2012_s7__p3">(3) The One Window Operation shall have representatives of all
+              relevant federal and provincial departments, and shall process applications within
+              thirty days of receipt of a complete application.</p>
+          </content>
+        </section>
+
+        <section eId="sez2012_s9">
+          <num>9</num>
+          <heading>Obligations of zone developer</heading>
+          <content>
+            <p eId="sez2012_s9__p1">(1) The zone developer shall: (a) develop the infrastructure of
+              the Special Economic Zone as specified in the development agreement, including roads,
+              drainage, water supply, electricity, gas, telecommunications and waste disposal;
+              (b) allocate space and provide developed plots or built-up space to zone enterprises;
+              (c) ensure that the Special Economic Zone is demarcated and fenced or otherwise
+              physically segregated from the domestic tariff area; (d) maintain common facilities
+              and shared infrastructure; and (e) comply with all environmental laws and regulations
+              applicable to the zone.</p>
+            <p eId="sez2012_s9__p2">(2) The zone developer shall submit an annual report to the Board
+              of Investment detailing the development progress, occupancy rates, investment levels,
+              and employment generated within the zone.</p>
+          </content>
+        </section>
+
+        <section eId="sez2012_s13">
+          <num>13</num>
+          <heading>Eligibility for zone enterprises</heading>
+          <content>
+            <p eId="sez2012_s13__p1">(1) Any person, whether a company registered under the Companies
+              Act or an association of persons, may apply to set up a zone enterprise, provided
+              that: (a) the applicant proposes to carry on a business activity as approved for the
+              zone; (b) the minimum investment is not less than the amount prescribed for the
+              category of zone enterprise; and (c) the applicant has not been convicted of an
+              offence involving fraud, tax evasion, or money laundering within the five years
+              preceding the application.</p>
+            <p eId="sez2012_s13__p2">(2) Preference shall be given to applications from enterprises
+              proposing to undertake manufacturing, processing, assembling, or value-added services
+              that generate employment and promote exports.</p>
+            <p eId="sez2012_s13__p3">(3) A zone enterprise shall not undertake any activity prohibited
+              by any law for the time being in force or any activity that the Board of Approval may
+              specify as prohibited for a particular zone.</p>
+          </content>
+        </section>
+
+        <section eId="sez2012_s14">
+          <num>14</num>
+          <heading>Licence to zone enterprises</heading>
+          <content>
+            <p eId="sez2012_s14__p1">(1) Upon approval of an application under section 13, the zone
+              authority shall issue a licence to the zone enterprise in the prescribed form.</p>
+            <p eId="sez2012_s14__p2">(2) The licence shall specify: (a) the nature and scope of the
+              business activities; (b) the area allocated within the zone; (c) the period of the
+              licence and conditions for renewal; (d) the obligations of the enterprise regarding
+              employment, investment and export targets; and (e) such other conditions as the zone
+              authority may prescribe.</p>
+          </content>
+        </section>
+
+        <section eId="sez2012_s23">
+          <num>23</num>
+          <heading>Import and export licensing simplification</heading>
+          <content>
+            <p eId="sez2012_s23__p1">(1) Zone enterprises shall be exempt from import licensing
+              requirements for goods imported into the zone for use in the manufacturing, processing,
+              assembling or packaging of goods intended for export.</p>
+            <p eId="sez2012_s23__p2">(2) Goods manufactured, processed, assembled or packaged within a
+              zone may be exported without an export licence, provided that the zone enterprise
+              maintains proper records of all imports and exports as prescribed by customs
+              regulations.</p>
+            <p eId="sez2012_s23__p3">(3) The movement of goods between a Special Economic Zone and the
+              domestic tariff area shall be treated as import into or export from Pakistan and shall
+              be subject to applicable customs duties and regulations, save as otherwise provided in
+              this Act.</p>
+          </content>
+        </section>
+
+        <section eId="sez2012_s37">
+          <num>37</num>
+          <heading>Tax exemptions for zone enterprises</heading>
+          <content>
+            <p eId="sez2012_s37__p1">(1) Subject to the conditions laid down in this Act and rules
+              made thereunder, a zone enterprise that commences commercial production within the
+              zone on or after the date of notification of the zone shall be entitled to exemption
+              from income tax for a period of ten years from the date of commencement of commercial
+              production.</p>
+            <p eId="sez2012_s37__p2">(2) The ten-year exemption from income tax under sub-section (1)
+              shall apply to income derived exclusively from operations within the Special Economic
+              Zone.</p>
+            <p eId="sez2012_s37__p3">(3) Zone developers shall be entitled to exemption from income tax
+              for a period of ten years from the date of signing of the development agreement.</p>
+            <p eId="sez2012_s37__p4">(4) The federal government may, by notification in the official
+              Gazette, prescribe further tax incentives or modify the period of exemption for
+              specific zones or categories of zone enterprises, having regard to the national
+              interest and the objectives of this Act.</p>
+            <p eId="sez2012_s37__p5">(5) A zone enterprise that relocates from the domestic tariff area
+              to a Special Economic Zone shall not be eligible for the exemption under this section
+              unless it makes new investment of the prescribed minimum amount.</p>
+          </content>
+        </section>
+
+        <section eId="sez2012_s38">
+          <num>38</num>
+          <heading>Exemption from sales tax and federal excise duty</heading>
+          <content>
+            <p eId="sez2012_s38__p1">(1) All goods imported into a Special Economic Zone for the
+              purpose of a zone enterprise shall be exempt from sales tax and federal excise duty,
+              subject to the conditions prescribed by rules.</p>
+            <p eId="sez2012_s38__p2">(2) This exemption applies only where the goods are consumed or
+              utilized within the zone or are incorporated into goods exported from the zone.</p>
+          </content>
+        </section>
+
+        <section eId="sez2012_s39">
+          <num>39</num>
+          <heading>Customs duty exemption on capital goods</heading>
+          <content>
+            <p eId="sez2012_s39__p1">(1) Capital goods, including plant, machinery and equipment,
+              imported into a Special Economic Zone by a zone developer or zone enterprise for the
+              development, operation or maintenance of the zone or for use in manufacturing,
+              processing, assembling or other authorized activities within the zone shall be exempt
+              from customs duties.</p>
+            <p eId="sez2012_s39__p2">(2) The exemption under sub-section (1) shall be subject to the
+              following conditions: (a) the capital goods shall be used exclusively within the zone;
+              (b) the zone developer or zone enterprise shall furnish an undertaking to customs
+              authorities that the goods will not be sold or transferred to the domestic tariff area
+              without payment of applicable duties; (c) the zone developer or zone enterprise shall
+              maintain a register of all duty-free imports and make it available for inspection by
+              customs officers; and (d) any transfer of duty-exempt capital goods to the domestic
+              tariff area shall be subject to payment of customs duty calculated on the depreciated
+              value of the goods at the rates applicable at the time of such transfer.</p>
+            <p eId="sez2012_s39__p3">(3) Raw materials and intermediary goods imported for use in the
+              manufacturing or processing of goods for export shall be exempt from customs duties
+              subject to such conditions as may be prescribed.</p>
+          </content>
+        </section>
+
+        <section eId="sez2012_s40">
+          <num>40</num>
+          <heading>Labour laws</heading>
+          <content>
+            <p eId="sez2012_s40__p1">(1) All labour laws in force in Pakistan shall apply to Special
+              Economic Zones.</p>
+            <p eId="sez2012_s40__p2">(2) Notwithstanding sub-section (1), the federal government may,
+              by notification in the official Gazette and in consultation with the provinces,
+              provide for simplified labour compliance procedures within zones, provided that the
+              core labour standards recognized under international conventions ratified by Pakistan
+              shall not be derogated.</p>
+          </content>
+        </section>
+
+      </part>
+
+      <!-- ================================================================ -->
+      <!-- PART IV — PARTNERSHIP ACT 1932 (Act No. IX of 1932)               -->
+      <!-- Inherited pre-partition legislation; governs general partnerships  -->
+      <!-- ================================================================ -->
+
+      <part eId="part_partnership">
+        <num>IV</num>
+        <heading>Partnership Act 1932 (Act No. IX of 1932)</heading>
+
+        <section eId="pa1932_s4">
+          <num>4</num>
+          <heading>Definition of partnership</heading>
+          <content>
+            <p eId="pa1932_s4__p1">"Partnership" is the relation between persons who have agreed to
+              share the profits of a business carried on by all or any of them acting for all.</p>
+            <p eId="pa1932_s4__p2">Persons who have entered into partnership with one another are
+              called individually "partners" and collectively "a firm," and the name under which
+              their business is carried on is called the "firm name."</p>
+          </content>
+        </section>
+
+        <section eId="pa1932_s5">
+          <num>5</num>
+          <heading>Relation of partnership arising from contract</heading>
+          <content>
+            <p eId="pa1932_s5__p1">The relation of partnership arises from contract and not from
+              status; and, in particular, the members of a Hindu undivided family carrying on a
+              family business as such, or a Burmese Buddhist husband and wife carrying on business
+              as such, are not partners in such business.</p>
+          </content>
+        </section>
+
+        <section eId="pa1932_s25">
+          <num>25</num>
+          <heading>Every partner is agent of the firm</heading>
+          <content>
+            <p eId="pa1932_s25__p1">Subject to the provisions of this Act, every partner is the agent
+              of the firm for the purposes of the business of the firm. The act of every partner
+              which is done to carry on, in the usual way, business of the kind carried on by the
+              firm, binds the firm, unless the partner so acting has in fact no authority to act for
+              the firm in the particular matter, and the person with whom he is dealing knows that
+              he has no such authority, or does not know or believe him to be a partner.</p>
+          </content>
+        </section>
+
+        <section eId="pa1932_s69">
+          <num>69</num>
+          <heading>Registration of firms</heading>
+          <content>
+            <p eId="pa1932_s69__p1">(1) The registration of a firm may be effected at any time by
+              filing with the Registrar of Firms an application stating: (a) the firm name;
+              (b) the place or principal place of business of the firm; (c) the names of any other
+              places where the firm carries on business; (d) the date when each partner joined the
+              firm; (e) the names in full and permanent addresses of the partners; and (f) the
+              duration of the firm.</p>
+            <p eId="pa1932_s69__p2">(2) The application shall be signed by all the partners, or by
+              their agents specially authorized in this behalf.</p>
+            <p eId="pa1932_s69__p3">(3) No suit to enforce a right arising from a contract shall be
+              instituted in any court by or on behalf of any person suing as a partner in a firm
+              against the firm or against any person alleged to be or to have been a partner in the
+              firm unless the firm is registered and the person suing is or has been shown in the
+              Register of Firms as a partner in the firm.</p>
+          </content>
+        </section>
+
+      </part>
+
+      <!-- ================================================================ -->
+      <!-- PART V — CROSS-CUTTING PROVISIONS AND EZ STACK ANNOTATIONS        -->
+      <!-- Machine-readable compliance notes for the pack pipeline           -->
+      <!-- ================================================================ -->
+
+      <part eId="part_annotations">
+        <num>V</num>
+        <heading>Cross-Cutting Compliance Annotations</heading>
+
+        <section eId="annot_incorporation">
+          <num>A1</num>
+          <heading>Company incorporation requirements summary</heading>
+          <content>
+            <p eId="annot_incorporation__p1">For EZ Stack zone deployments in Pakistan, the minimum
+              incorporation requirements are: (a) private company: at least one subscriber, minimum
+              paid-up capital PKR 100,000 (or PKR 50,000 within a notified SEZ per section 461
+              Companies Act 2017); (b) public company: at least three subscribers, minimum paid-up
+              capital PKR 200,000 (or PKR 100,000 within a notified SEZ); (c) single member company:
+              one subscriber, minimum paid-up capital PKR 100,000.</p>
+            <p eId="annot_incorporation__p2">Documents required: memorandum of association, articles
+              of association, declaration of compliance, registered office notice, NIC/passport copies
+              of subscribers, and particulars of first directors and chief executive (section 16
+              Companies Act 2017).</p>
+          </content>
+        </section>
+
+        <section eId="annot_compliance_calendar">
+          <num>A2</num>
+          <heading>Annual compliance calendar obligations</heading>
+          <content>
+            <p eId="annot_compliance_calendar__p1">Every registered company must: (a) hold an AGM
+              within 18 months of incorporation and annually thereafter, with not more than 15 months
+              between consecutive AGMs (section 85 Companies Act 2017); (b) file an annual return
+              with the registrar within 30 days of the AGM (section 131); (c) maintain books of
+              account on accrual basis for a minimum of 10 years (section 119).</p>
+            <p eId="annot_compliance_calendar__p2">Penalties for non-compliance: late annual return
+              filing attracts PKR 100 per day of default, maximum PKR 500,000. Failure to maintain
+              accounting records: director/officer penalty up to PKR 500,000.</p>
+          </content>
+        </section>
+
+        <section eId="annot_sez_benefits">
+          <num>A3</num>
+          <heading>SEZ fiscal incentive summary</heading>
+          <content>
+            <p eId="annot_sez_benefits__p1">Zone enterprises commencing commercial production within
+              a notified SEZ are entitled to: (a) ten-year income tax exemption from date of
+              commercial production commencement (section 37 SEZ Act 2012); (b) exemption from sales
+              tax and federal excise on goods imported for zone use (section 38); (c) customs duty
+              exemption on capital goods including plant, machinery and equipment (section 39);
+              (d) import licensing waiver for goods used in export manufacturing (section 23);
+              (e) simplified one-window registration (section 7, read with section 460 Companies
+              Act 2017).</p>
+            <p eId="annot_sez_benefits__p2">Zone developers are separately entitled to a ten-year
+              income tax exemption from the date of signing the development agreement (section 37(3)
+              SEZ Act 2012).</p>
+            <p eId="annot_sez_benefits__p3">Restriction: enterprises relocating from the domestic
+              tariff area to an SEZ must make new investment of the prescribed minimum to qualify
+              for the ten-year exemption (section 37(5)).</p>
+          </content>
+        </section>
+
+        <section eId="annot_contract_validity">
+          <num>A4</num>
+          <heading>Contract validity requirements for EZ transactions</heading>
+          <content>
+            <p eId="annot_contract_validity__p1">All agreements executed within or in connection with
+              an EZ-governed zone must satisfy the requirements of the Contract Act 1872: (a) free
+              consent of parties competent to contract (sections 10, 11, 14); (b) lawful
+              consideration and lawful object (section 23); (c) agreement not declared void under
+              the Act (section 10). Agreements that fail these conditions are void ab initio and
+              unenforceable.</p>
+            <p eId="annot_contract_validity__p2">For digital contracts executed through EZ Stack
+              platform: electronic signatures are recognized under the Electronic Transactions
+              Ordinance 2002 (Ordinance No. LI of 2002), provided that the signatory has consented
+              and the method of signature creation is reliable and linked to the signatory.</p>
+          </content>
+        </section>
+
+        <section eId="annot_winding_up">
+          <num>A5</num>
+          <heading>Company dissolution and winding-up triggers</heading>
+          <content>
+            <p eId="annot_winding_up__p1">Grounds for compulsory winding up by the Tribunal include:
+              (a) special resolution for winding up; (b) five consecutive years of failure to file
+              financial statements or annual returns; (c) acts against sovereignty, public order or
+              morality; (d) just and equitable ground; (e) inability to pay debts; (f) failure to
+              commence business within one year; (g) oppressive or prejudicial conduct of affairs
+              (section 237 Companies Act 2017).</p>
+            <p eId="annot_winding_up__p2">A company is deemed unable to pay its debts if a creditor's
+              statutory demand exceeding the prescribed amount remains unsatisfied for three weeks,
+              or execution is returned unsatisfied, or the Tribunal is otherwise satisfied of
+              insolvency including contingent and prospective liabilities.</p>
+          </content>
+        </section>
+
+        <section eId="annot_partnership">
+          <num>A6</num>
+          <heading>Partnership registration implications</heading>
+          <content>
+            <p eId="annot_partnership__p1">Under section 69 of the Partnership Act 1932, an
+              unregistered firm cannot institute a suit to enforce a contractual right. EZ Stack zone
+              deployments should ensure that partnership entities operating within the zone are
+              registered with the Registrar of Firms. Every partner acts as agent of the firm
+              (section 25) and can bind the firm in the usual course of business.</p>
+          </content>
+        </section>
+
+      </part>
+
+    </body>
+  </act>
+</akomaNtoso>

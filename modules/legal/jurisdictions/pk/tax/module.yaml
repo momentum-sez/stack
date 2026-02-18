@@ -1,0 +1,14 @@
+module_id: org.momentum.mez.legal.pk.tax.corpus
+version: 0.1.0
+kind: legal
+license: NOASSERTION
+description: "Pakistan — tax legal corpus: ITO 2001, Sales Tax Act 1990, FBR WHT schedules."
+variants: [baseline]
+depends_on:
+  - module_id: org.momentum.mez.legal.akn-templates
+    constraint: '>=0.1.0,<1.0.0'
+provides:
+  - interface: mez.legal.akn.act.v1
+    path: src/akn/main.xml
+    media_type: application/xml
+parameters: {}

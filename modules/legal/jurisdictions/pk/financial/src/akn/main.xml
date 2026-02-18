@@ -1,0 +1,977 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act contains="originalVersion">
+    <meta>
+      <identification source="#mez">
+        <FRBRWork>
+          <FRBRthis value="/akn/pk/act/financial-corpus/0.1.0"/>
+          <FRBRuri value="/akn/pk/act/financial-corpus"/>
+          <FRBRdate date="2024-01-01" name="Generation"/>
+          <FRBRauthor href="#mez"/>
+          <FRBRcountry value="pk"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/pk/act/financial-corpus/0.1.0/eng@"/>
+          <FRBRuri value="/akn/pk/act/financial-corpus/eng@"/>
+          <FRBRdate date="2024-01-01" name="Generation"/>
+          <FRBRauthor href="#mez"/>
+          <FRBRlanguage language="eng"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/pk/act/financial-corpus/0.1.0/eng@.xml"/>
+          <FRBRuri value="/akn/pk/act/financial-corpus/eng@.xml"/>
+          <FRBRdate date="2024-01-01" name="Generation"/>
+          <FRBRauthor href="#mez"/>
+        </FRBRManifestation>
+      </identification>
+      <references source="#mez">
+        <TLCOrganization eId="sbp" href="/ontology/organization/pk.sbp" showAs="State Bank of Pakistan"/>
+        <TLCOrganization eId="secp" href="/ontology/organization/pk.secp" showAs="Securities and Exchange Commission of Pakistan"/>
+        <TLCOrganization eId="mez" href="/ontology/organization/momentum-ez" showAs="Momentum EZ"/>
+        <TLCOrganization eId="natl_assembly" href="/ontology/organization/pk.national-assembly" showAs="National Assembly of Pakistan"/>
+        <TLCOrganization eId="nadra" href="/ontology/organization/pk.nadra" showAs="National Database and Registration Authority"/>
+        <TLCOrganization eId="fmu" href="/ontology/organization/pk.fmu" showAs="Financial Monitoring Unit"/>
+      </references>
+      <publication name="MEZ Stack" showAs="MEZ Stack" date="2024-01-01" number="0.1.0"/>
+    </meta>
+
+    <preface>
+      <p eId="pre_1">Pakistan financial and banking legal corpus — a machine-readable consolidation of key
+        provisions from the Banking Companies Ordinance 1962, the Microfinance Institutions Ordinance
+        2001, the State Bank of Pakistan Act 1956, the Payment Systems and Electronic Fund Transfers
+        Act 2007, SBP Raast Regulations 2021, SBP Regulations for Electronic Money Institutions 2019,
+        and the Foreign Exchange Regulation Act 1947.</p>
+      <p eId="pre_2">This corpus is provided for compliance-tensor evaluation within the Momentum EZ
+        stack. It does not replace the authoritative gazette text. All monetary thresholds reflect
+        the position as of 1 January 2024 unless otherwise noted.</p>
+    </preface>
+
+    <body>
+
+      <!-- ================================================================== -->
+      <!-- PART I — BANKING COMPANIES ORDINANCE 1962 (Ordinance LVII of 1962) -->
+      <!-- ================================================================== -->
+      <part eId="part_bco">
+        <num>I</num>
+        <heading>Banking Companies Ordinance, 1962 (Ordinance LVII of 1962)</heading>
+
+        <section eId="part_bco__sec_13">
+          <num>13</num>
+          <heading>Minimum paid-up capital</heading>
+          <content>
+            <p eId="part_bco__sec_13__p_1">No banking company shall carry on banking business in
+              Pakistan unless it has a minimum paid-up capital (net of losses) as prescribed by the
+              State Bank from time to time.</p>
+            <p eId="part_bco__sec_13__p_2">As per SBP BSD Circular of 2022, the Minimum Capital
+              Requirement (MCR) for scheduled commercial banks is:</p>
+            <blockList eId="part_bco__sec_13__list_1">
+              <item eId="part_bco__sec_13__list_1__item_a">
+                <num>(a)</num>
+                <p>For all scheduled commercial banks (conventional and Islamic): paid-up capital
+                  (free of losses) of not less than <num id="bco_13_mcr">PKR 10,000,000,000</num>
+                  (ten billion Pakistani Rupees).</p>
+              </item>
+              <item eId="part_bco__sec_13__list_1__item_b">
+                <num>(b)</num>
+                <p>Foreign bank branches: minimum assigned capital of
+                  <num id="bco_13_foreign">USD 300,000,000</num> (three hundred million United States
+                  Dollars) or equivalent, maintained as head office capital assigned to the Pakistan
+                  branch.</p>
+              </item>
+            </blockList>
+            <p eId="part_bco__sec_13__p_3">The State Bank may, by notification in the official
+              gazette, revise the minimum capital requirement. Any banking company failing to meet
+              the MCR shall be subject to restrictions on dividend distribution, branch expansion,
+              and new business lines, and may have its licence suspended or cancelled under
+              section 14.</p>
+          </content>
+        </section>
+
+        <section eId="part_bco__sec_14">
+          <num>14</num>
+          <heading>Cash reserve requirement (CRR)</heading>
+          <content>
+            <p eId="part_bco__sec_14__p_1">Every banking company shall maintain with the State Bank
+              a cash reserve computed as a percentage of its time and demand liabilities in
+              Pakistan.</p>
+            <p eId="part_bco__sec_14__p_2">The current Cash Reserve Requirement is
+              <num id="bco_14_crr_rate">5%</num> of total demand and time liabilities (DTL), to be
+              maintained on a daily average basis over a bi-weekly period.</p>
+            <p eId="part_bco__sec_14__p_3">Demand liabilities include current deposits, demand
+              portions of savings deposits, margins held against letters of credit or guarantees,
+              and any other liability payable on demand. Time liabilities include fixed deposits,
+              time portions of savings deposits, borrowings from other institutions, and any other
+              liability payable after a notice period or at a fixed date.</p>
+            <p eId="part_bco__sec_14__p_4">Failure to maintain the required CRR on any day of the
+              maintenance period shall attract a penalty at a rate equal to three percentage points
+              above the prevailing SBP policy rate, applied to the shortfall amount on a daily
+              basis.</p>
+          </content>
+        </section>
+
+        <section eId="part_bco__sec_22">
+          <num>22</num>
+          <heading>Statutory liquidity requirement (SLR)</heading>
+          <content>
+            <p eId="part_bco__sec_22__p_1">In addition to the CRR under section 14, every banking
+              company shall maintain liquid assets as a percentage of its time and demand
+              liabilities.</p>
+            <p eId="part_bco__sec_22__p_2">The Statutory Liquidity Requirement currently stands at a
+              minimum of <num id="bco_22_slr_rate">18%</num> of time and demand liabilities, to be
+              maintained in the form of:</p>
+            <blockList eId="part_bco__sec_22__list_1">
+              <item eId="part_bco__sec_22__list_1__item_a">
+                <num>(a)</num>
+                <p>cash in excess of CRR;</p>
+              </item>
+              <item eId="part_bco__sec_22__list_1__item_b">
+                <num>(b)</num>
+                <p>gold valued at a price not exceeding the current market price;</p>
+              </item>
+              <item eId="part_bco__sec_22__list_1__item_c">
+                <num>(c)</num>
+                <p>Government of Pakistan Market Treasury Bills (MTBs);</p>
+              </item>
+              <item eId="part_bco__sec_22__list_1__item_d">
+                <num>(d)</num>
+                <p>Pakistan Investment Bonds (PIBs);</p>
+              </item>
+              <item eId="part_bco__sec_22__list_1__item_e">
+                <num>(e)</num>
+                <p>Ijara Sukuk issued by the Government of Pakistan;</p>
+              </item>
+              <item eId="part_bco__sec_22__list_1__item_f">
+                <num>(f)</num>
+                <p>any other approved security as notified by SBP from time to time.</p>
+              </item>
+            </blockList>
+            <p eId="part_bco__sec_22__p_3">Penalties for SLR shortfall are computed on the same
+              basis as CRR shortfall penalties under section 14.</p>
+          </content>
+        </section>
+
+        <section eId="part_bco__sec_27">
+          <num>27</num>
+          <heading>Restrictions on loans to directors and related parties</heading>
+          <content>
+            <p eId="part_bco__sec_27__p_1">No banking company shall:</p>
+            <blockList eId="part_bco__sec_27__list_1">
+              <item eId="part_bco__sec_27__list_1__item_a">
+                <num>(a)</num>
+                <p>grant any loan or advance on the security of its own shares;</p>
+              </item>
+              <item eId="part_bco__sec_27__list_1__item_b">
+                <num>(b)</num>
+                <p>grant unsecured loans or advances to any of its directors, or to any firm or
+                  company in which any of its directors is interested as partner, director, or
+                  guarantor, or to any individual in respect of whom any of its directors is a
+                  guarantor;</p>
+              </item>
+              <item eId="part_bco__sec_27__list_1__item_c">
+                <num>(c)</num>
+                <p>grant to any single person or group of persons aggregate loans, advances, or
+                  credit facilities exceeding <num id="bco_27_single_limit">30%</num> of the
+                  bank's equity as per SBP Prudential Regulations (single borrower exposure
+                  limit);</p>
+              </item>
+              <item eId="part_bco__sec_27__list_1__item_d">
+                <num>(d)</num>
+                <p>grant to any group of connected persons aggregate exposure exceeding
+                  <num id="bco_27_group_limit">50%</num> of the bank's equity (group exposure
+                  limit).</p>
+              </item>
+            </blockList>
+            <p eId="part_bco__sec_27__p_2">Any loan or advance made in contravention of this
+              section shall be recoverable forthwith, and the directors who sanctioned such loan
+              shall be jointly and severally liable to the banking company for any loss arising
+              therefrom.</p>
+          </content>
+        </section>
+
+        <section eId="part_bco__sec_29">
+          <num>29</num>
+          <heading>Capital adequacy ratio</heading>
+          <content>
+            <p eId="part_bco__sec_29__p_1">Every banking company shall maintain a capital adequacy
+              ratio (CAR) in accordance with the Basel III framework as implemented by SBP through
+              its Prudential Regulations and circulars.</p>
+            <p eId="part_bco__sec_29__p_2">The minimum capital adequacy requirements are:</p>
+            <blockList eId="part_bco__sec_29__list_1">
+              <item eId="part_bco__sec_29__list_1__item_a">
+                <num>(a)</num>
+                <p>Minimum total Capital Adequacy Ratio (CAR):
+                  <num id="bco_29_total_car">11.5%</num> of risk-weighted assets, inclusive of the
+                  capital conservation buffer of 2.5%;</p>
+              </item>
+              <item eId="part_bco__sec_29__list_1__item_b">
+                <num>(b)</num>
+                <p>Minimum Common Equity Tier 1 (CET-1) ratio:
+                  <num id="bco_29_cet1">6.0%</num> of risk-weighted assets;</p>
+              </item>
+              <item eId="part_bco__sec_29__list_1__item_c">
+                <num>(c)</num>
+                <p>Minimum Tier 1 capital ratio: <num id="bco_29_tier1">7.5%</num> of
+                  risk-weighted assets;</p>
+              </item>
+              <item eId="part_bco__sec_29__list_1__item_d">
+                <num>(d)</num>
+                <p>Domestically Systemically Important Banks (D-SIBs) shall maintain an additional
+                  Higher Loss Absorbency (HLA) surcharge of up to
+                  <num id="bco_29_dsib">2.0%</num> of risk-weighted assets, as determined by SBP
+                  based on systemic importance assessment.</p>
+              </item>
+            </blockList>
+            <p eId="part_bco__sec_29__p_3">Risk-weighted assets shall be computed using the
+              Standardized Approach for credit risk, the Basic Indicator Approach or Standardized
+              Approach for operational risk, and the Standardized Measurement Method for market
+              risk, as prescribed by SBP.</p>
+          </content>
+        </section>
+
+        <section eId="part_bco__sec_33">
+          <num>33</num>
+          <heading>Powers of SBP to issue directives, inspect, and penalize</heading>
+          <content>
+            <p eId="part_bco__sec_33__p_1">The State Bank may, by order in writing:</p>
+            <blockList eId="part_bco__sec_33__list_1">
+              <item eId="part_bco__sec_33__list_1__item_a">
+                <num>(a)</num>
+                <p>issue directives to any banking company to take such action as the State Bank
+                  considers necessary in the interests of depositors, the banking company, or the
+                  banking system as a whole;</p>
+              </item>
+              <item eId="part_bco__sec_33__list_1__item_b">
+                <num>(b)</num>
+                <p>cause an inspection to be made by one or more of its officers of any banking
+                  company and its books and accounts, and the banking company shall produce before
+                  the inspecting officer all such books, accounts, and other documents in its
+                  custody or power as may be required;</p>
+              </item>
+              <item eId="part_bco__sec_33__list_1__item_c">
+                <num>(c)</num>
+                <p>impose monetary penalties on a banking company for failure to comply with any
+                  direction, regulation, or provision of this Ordinance, subject to a maximum
+                  penalty of <num id="bco_33_max_penalty">PKR 250,000,000</num> (two hundred and
+                  fifty million Pakistani Rupees) per contravention or such higher amount as may
+                  be prescribed;</p>
+              </item>
+              <item eId="part_bco__sec_33__list_1__item_d">
+                <num>(d)</num>
+                <p>remove from office any director, chief executive, or officer of a banking
+                  company who is found to be not fit and proper, or who has acted in a manner
+                  prejudicial to the interests of the banking company or its depositors;</p>
+              </item>
+              <item eId="part_bco__sec_33__list_1__item_e">
+                <num>(e)</num>
+                <p>require a banking company to convene a meeting of its board of directors to
+                  consider such matters as the State Bank may direct.</p>
+              </item>
+            </blockList>
+            <p eId="part_bco__sec_33__p_2">The State Bank shall, before imposing any penalty or
+              removing any person under this section, give the banking company or person concerned
+              a reasonable opportunity of being heard.</p>
+          </content>
+        </section>
+
+      </part>
+
+      <!-- ================================================================== -->
+      <!-- PART II — MICROFINANCE INSTITUTIONS ORDINANCE 2001                  -->
+      <!--          (Ordinance LI of 2001)                                     -->
+      <!-- ================================================================== -->
+      <part eId="part_mfi">
+        <num>II</num>
+        <heading>Microfinance Institutions Ordinance, 2001 (Ordinance LI of 2001)</heading>
+
+        <section eId="part_mfi__sec_3">
+          <num>3</num>
+          <heading>Licensing by SBP required for all microfinance banks</heading>
+          <content>
+            <p eId="part_mfi__sec_3__p_1">No company shall carry on the business of a microfinance
+              bank in Pakistan except under and in accordance with a licence issued by the State
+              Bank of Pakistan under this Ordinance.</p>
+            <p eId="part_mfi__sec_3__p_2">An application for a microfinance banking licence shall
+              be accompanied by:</p>
+            <blockList eId="part_mfi__sec_3__list_1">
+              <item eId="part_mfi__sec_3__list_1__item_a">
+                <num>(a)</num>
+                <p>evidence of paid-up capital meeting the minimum prescribed under section 6;</p>
+              </item>
+              <item eId="part_mfi__sec_3__list_1__item_b">
+                <num>(b)</num>
+                <p>a certified copy of the memorandum and articles of association;</p>
+              </item>
+              <item eId="part_mfi__sec_3__list_1__item_c">
+                <num>(c)</num>
+                <p>particulars of directors and chief executive, with fit and proper declarations
+                  as prescribed by SBP;</p>
+              </item>
+              <item eId="part_mfi__sec_3__list_1__item_d">
+                <num>(d)</num>
+                <p>a five-year business plan demonstrating the viability of the proposed
+                  microfinance operations and projected outreach;</p>
+              </item>
+              <item eId="part_mfi__sec_3__list_1__item_e">
+                <num>(e)</num>
+                <p>details of the proposed AML/CFT compliance framework and internal audit
+                  arrangements.</p>
+              </item>
+            </blockList>
+            <p eId="part_mfi__sec_3__p_3">The State Bank may refuse to grant a licence if it is not
+              satisfied that the applicant has adequate capital, management capability, or
+              compliance infrastructure to operate as a microfinance bank.</p>
+          </content>
+        </section>
+
+        <section eId="part_mfi__sec_6">
+          <num>6</num>
+          <heading>Minimum paid-up capital for microfinance banks</heading>
+          <content>
+            <p eId="part_mfi__sec_6__p_1">The minimum paid-up capital (free of losses) for
+              microfinance banks (MFBs), as revised by SBP circular of 2023:</p>
+            <blockList eId="part_mfi__sec_6__list_1">
+              <item eId="part_mfi__sec_6__list_1__item_a">
+                <num>(a)</num>
+                <p>Nationwide microfinance bank (operating in more than one province or federal
+                  territory): <num id="mfi_6_nationwide">PKR 1,000,000,000</num> (one billion
+                  Pakistani Rupees);</p>
+              </item>
+              <item eId="part_mfi__sec_6__list_1__item_b">
+                <num>(b)</num>
+                <p>Province-wide microfinance bank (operating within a single province):
+                  <num id="mfi_6_province">PKR 500,000,000</num> (five hundred million Pakistani
+                  Rupees);</p>
+              </item>
+              <item eId="part_mfi__sec_6__list_1__item_c">
+                <num>(c)</num>
+                <p>District-level microfinance bank (operating within a single district or
+                  designated area): <num id="mfi_6_district">PKR 300,000,000</num> (three hundred
+                  million Pakistani Rupees).</p>
+              </item>
+            </blockList>
+          </content>
+        </section>
+
+        <section eId="part_mfi__sec_9">
+          <num>9</num>
+          <heading>Maximum individual loan exposure</heading>
+          <content>
+            <p eId="part_mfi__sec_9__p_1">Microfinance banks shall observe the following lending
+              limits as prescribed by SBP Prudential Regulations for Microfinance Banks:</p>
+            <blockList eId="part_mfi__sec_9__list_1">
+              <item eId="part_mfi__sec_9__list_1__item_a">
+                <num>(a)</num>
+                <p>General micro credit: maximum loan size
+                  <num id="mfi_9_micro">PKR 500,000</num> (five hundred thousand Pakistani
+                  Rupees) per individual borrower;</p>
+              </item>
+              <item eId="part_mfi__sec_9__list_1__item_b">
+                <num>(b)</num>
+                <p>Micro enterprise loan: maximum loan size
+                  <num id="mfi_9_enterprise">PKR 3,000,000</num> (three million Pakistani
+                  Rupees) per borrower;</p>
+              </item>
+              <item eId="part_mfi__sec_9__list_1__item_c">
+                <num>(c)</num>
+                <p>Housing microfinance: maximum loan size
+                  <num id="mfi_9_housing">PKR 3,000,000</num> (three million Pakistani Rupees)
+                  per borrower;</p>
+              </item>
+              <item eId="part_mfi__sec_9__list_1__item_d">
+                <num>(d)</num>
+                <p>Group lending: maximum loan per group member
+                  <num id="mfi_9_group">PKR 500,000</num> (five hundred thousand Pakistani
+                  Rupees).</p>
+              </item>
+            </blockList>
+            <p eId="part_mfi__sec_9__p_2">The aggregate exposure of an MFB to any single borrower
+              or group of connected borrowers shall not exceed <num id="mfi_9_agg">10%</num> of
+              the bank's equity.</p>
+          </content>
+        </section>
+
+        <section eId="part_mfi__sec_14">
+          <num>14</num>
+          <heading>Deposit protection fund participation</heading>
+          <content>
+            <p eId="part_mfi__sec_14__p_1">Every microfinance bank licensed under this Ordinance
+              shall participate in the Deposit Protection Corporation (DPC) established by SBP
+              for the protection of depositors.</p>
+            <p eId="part_mfi__sec_14__p_2">MFB deposits are insured by the DPC up to a coverage
+              limit of <num id="mfi_14_dpc">PKR 500,000</num> (five hundred thousand Pakistani
+              Rupees) per depositor per bank, as notified by SBP.</p>
+            <p eId="part_mfi__sec_14__p_3">Each MFB shall pay annual premiums to the DPC at the
+              rate prescribed by SBP, computed as a percentage of the bank's assessed deposit
+              base. The premium rate shall not exceed <num id="mfi_14_premium">0.16%</num> of
+              assessed deposits per annum.</p>
+          </content>
+        </section>
+
+        <section eId="part_mfi__sec_18">
+          <num>18</num>
+          <heading>SBP supervision and examination powers</heading>
+          <content>
+            <p eId="part_mfi__sec_18__p_1">The State Bank may, at any time, cause an inspection
+              to be made by one or more of its officers of any microfinance bank and its books,
+              accounts, and records.</p>
+            <p eId="part_mfi__sec_18__p_2">The State Bank may:</p>
+            <blockList eId="part_mfi__sec_18__list_1">
+              <item eId="part_mfi__sec_18__list_1__item_a">
+                <num>(a)</num>
+                <p>require the production of books, accounts, and documents;</p>
+              </item>
+              <item eId="part_mfi__sec_18__list_1__item_b">
+                <num>(b)</num>
+                <p>examine on oath any director, officer, or employee of the microfinance bank;</p>
+              </item>
+              <item eId="part_mfi__sec_18__list_1__item_c">
+                <num>(c)</num>
+                <p>issue directives requiring the microfinance bank to take corrective action
+                  within a specified time;</p>
+              </item>
+              <item eId="part_mfi__sec_18__list_1__item_d">
+                <num>(d)</num>
+                <p>impose penalties, suspend or cancel the licence, or require the microfinance
+                  bank to submit a recapitalization plan if capital falls below the prescribed
+                  minimum.</p>
+              </item>
+            </blockList>
+          </content>
+        </section>
+
+      </part>
+
+      <!-- ================================================================== -->
+      <!-- PART III — PAYMENT SYSTEMS AND EFT ACT 2007 (Act V of 2007) +      -->
+      <!--            SBP RAAST REGULATIONS 2021                               -->
+      <!-- ================================================================== -->
+      <part eId="part_ps">
+        <num>III</num>
+        <heading>Payment Systems and Electronic Fund Transfers Act, 2007 (Act V of 2007) and
+          SBP Raast Regulations, 2021</heading>
+
+        <section eId="part_ps__sec_3">
+          <num>3</num>
+          <heading>SBP authorization required for payment system operators</heading>
+          <content>
+            <p eId="part_ps__sec_3__p_1">No person shall operate, or hold himself out as
+              operating, a designated payment system except under and in accordance with an
+              authorization granted by the State Bank under this Act.</p>
+            <p eId="part_ps__sec_3__p_2">An application for authorization shall contain:</p>
+            <blockList eId="part_ps__sec_3__list_1">
+              <item eId="part_ps__sec_3__list_1__item_a">
+                <num>(a)</num>
+                <p>the name, registered address, and legal form of the applicant;</p>
+              </item>
+              <item eId="part_ps__sec_3__list_1__item_b">
+                <num>(b)</num>
+                <p>a description of the payment system, its rules, and operating procedures;</p>
+              </item>
+              <item eId="part_ps__sec_3__list_1__item_c">
+                <num>(c)</num>
+                <p>evidence of minimum net worth as prescribed by SBP (currently
+                  <num id="ps_3_networth">PKR 200,000,000</num> for payment system operators);</p>
+              </item>
+              <item eId="part_ps__sec_3__list_1__item_d">
+                <num>(d)</num>
+                <p>the proposed risk management framework, including settlement risk and
+                  operational risk controls;</p>
+              </item>
+              <item eId="part_ps__sec_3__list_1__item_e">
+                <num>(e)</num>
+                <p>the applicant's AML/CFT compliance program.</p>
+              </item>
+            </blockList>
+          </content>
+        </section>
+
+        <section eId="part_ps__sec_7">
+          <num>7</num>
+          <heading>Settlement finality</heading>
+          <content>
+            <p eId="part_ps__sec_7__p_1">A transfer order or netting that has been effected
+              through a designated payment system shall be final and irrevocable upon settlement,
+              and shall not be reversed, revoked, or set aside by any court, tribunal, or
+              authority.</p>
+            <p eId="part_ps__sec_7__p_2">Notwithstanding anything contained in any other law for
+              the time being in force, including the insolvency or winding up of a participant:</p>
+            <blockList eId="part_ps__sec_7__list_1">
+              <item eId="part_ps__sec_7__list_1__item_a">
+                <num>(a)</num>
+                <p>a transfer order entered into a designated payment system prior to the
+                  commencement of insolvency proceedings shall not be affected by such
+                  proceedings;</p>
+              </item>
+              <item eId="part_ps__sec_7__list_1__item_b">
+                <num>(b)</num>
+                <p>the designated payment system shall be entitled to net any obligations of the
+                  insolvent participant against funds or securities held by or due to such
+                  participant;</p>
+              </item>
+              <item eId="part_ps__sec_7__list_1__item_c">
+                <num>(c)</num>
+                <p>settlement made through the Pakistan Real-time Interbank Settlement Mechanism
+                  (PRISM) or Raast shall be considered final upon confirmation by SBP.</p>
+              </item>
+            </blockList>
+          </content>
+        </section>
+
+        <section eId="part_ps__raast_3">
+          <num>Raast R.3</num>
+          <heading>Real-time settlement through SBP Raast infrastructure</heading>
+          <content>
+            <p eId="part_ps__raast_3__p_1">Raast is Pakistan's instant payment system developed
+              and operated by the State Bank of Pakistan, providing real-time settlement of
+              person-to-person (P2P), person-to-merchant (P2M), and bulk payment transactions.</p>
+            <p eId="part_ps__raast_3__p_2">All Raast transactions are settled in real-time through
+              the SBP Raast infrastructure, with immediate and irrevocable credit to the
+              beneficiary's account. Settlement finality is achieved at the moment of credit
+              posting by the beneficiary institution.</p>
+          </content>
+        </section>
+
+        <section eId="part_ps__raast_5">
+          <num>Raast R.5</num>
+          <heading>P2P transfer limits</heading>
+          <content>
+            <p eId="part_ps__raast_5__p_1">Person-to-person (P2P) transfers through Raast are
+              subject to the following limits (updated 2024):</p>
+            <blockList eId="part_ps__raast_5__list_1">
+              <item eId="part_ps__raast_5__list_1__item_a">
+                <num>(a)</num>
+                <p>Maximum per-transaction amount:
+                  <num id="raast_5_per_txn">PKR 50,000</num> (fifty thousand Pakistani
+                  Rupees);</p>
+              </item>
+              <item eId="part_ps__raast_5__list_1__item_b">
+                <num>(b)</num>
+                <p>Maximum daily aggregate amount:
+                  <num id="raast_5_daily">PKR 200,000</num> (two hundred thousand Pakistani
+                  Rupees);</p>
+              </item>
+              <item eId="part_ps__raast_5__list_1__item_c">
+                <num>(c)</num>
+                <p>All P2P transfers require the sender to be authenticated via the sending
+                  institution's mobile or internet banking application.</p>
+              </item>
+            </blockList>
+          </content>
+        </section>
+
+        <section eId="part_ps__raast_6">
+          <num>Raast R.6</num>
+          <heading>P2M transfers and merchant onboarding</heading>
+          <content>
+            <p eId="part_ps__raast_6__p_1">Person-to-merchant (P2M) transfers through Raast are
+              not subject to a regulatory per-transaction maximum. However, the acquiring
+              institution shall apply its own risk-based limits as part of its merchant risk
+              management framework.</p>
+            <p eId="part_ps__raast_6__p_2">Merchant onboarding requirements:</p>
+            <blockList eId="part_ps__raast_6__list_1">
+              <item eId="part_ps__raast_6__list_1__item_a">
+                <num>(a)</num>
+                <p>The acquiring institution shall complete full KYC on each merchant, including
+                  verification of National Tax Number (NTN) or Computerized National Identity
+                  Card (CNIC), business registration certificate, and physical or virtual
+                  business address;</p>
+              </item>
+              <item eId="part_ps__raast_6__list_1__item_b">
+                <num>(b)</num>
+                <p>The acquiring institution shall assign a merchant category code (MCC) to each
+                  merchant in accordance with ISO 18245;</p>
+              </item>
+              <item eId="part_ps__raast_6__list_1__item_c">
+                <num>(c)</num>
+                <p>Ongoing transaction monitoring shall be performed by the acquiring institution
+                  to detect suspicious patterns, with reporting to the Financial Monitoring Unit
+                  (FMU) as required under the Anti-Money Laundering Act, 2010.</p>
+              </item>
+            </blockList>
+          </content>
+        </section>
+
+        <section eId="part_ps__raast_9">
+          <num>Raast R.9</num>
+          <heading>IPS participation criteria</heading>
+          <content>
+            <p eId="part_ps__raast_9__p_1">Participation in the Raast Instant Payment System (IPS)
+              is restricted to:</p>
+            <blockList eId="part_ps__raast_9__list_1">
+              <item eId="part_ps__raast_9__list_1__item_a">
+                <num>(a)</num>
+                <p>scheduled commercial banks licensed by SBP under the Banking Companies
+                  Ordinance, 1962;</p>
+              </item>
+              <item eId="part_ps__raast_9__list_1__item_b">
+                <num>(b)</num>
+                <p>microfinance banks licensed by SBP under the Microfinance Institutions
+                  Ordinance, 2001;</p>
+              </item>
+              <item eId="part_ps__raast_9__list_1__item_c">
+                <num>(c)</num>
+                <p>Electronic Money Institutions (EMIs) licensed by SBP under the EMI
+                  Regulations, 2019;</p>
+              </item>
+              <item eId="part_ps__raast_9__list_1__item_d">
+                <num>(d)</num>
+                <p>Government entities designated by SBP for bulk disbursement purposes.</p>
+              </item>
+            </blockList>
+            <p eId="part_ps__raast_9__p_2">Each participant must execute the Raast Participation
+              Agreement, meet technical integration requirements, and pass SBP certification
+              testing before going live on the Raast network.</p>
+          </content>
+        </section>
+
+        <section eId="part_ps__raast_12">
+          <num>Raast R.12</num>
+          <heading>ISO 20022 message format requirement</heading>
+          <content>
+            <p eId="part_ps__raast_12__p_1">All Raast transactions shall use the ISO 20022
+              message format. The following message types are mandatory:</p>
+            <blockList eId="part_ps__raast_12__list_1">
+              <item eId="part_ps__raast_12__list_1__item_a">
+                <num>(a)</num>
+                <p><num id="raast_12_pacs008">pacs.008</num> — FIToFICustomerCreditTransfer:
+                  used for all payment initiation messages from the debtor institution to the
+                  creditor institution;</p>
+              </item>
+              <item eId="part_ps__raast_12__list_1__item_b">
+                <num>(b)</num>
+                <p><num id="raast_12_pacs002">pacs.002</num> —
+                  FIToFIPaymentStatusReport: used for all payment status responses from the
+                  creditor institution to the debtor institution;</p>
+              </item>
+              <item eId="part_ps__raast_12__list_1__item_c">
+                <num>(c)</num>
+                <p>pain.013 — CreditorPaymentActivationRequest: used for request-to-pay
+                  messages in P2M use cases;</p>
+              </item>
+              <item eId="part_ps__raast_12__list_1__item_d">
+                <num>(d)</num>
+                <p>camt.053 — BankToCustomerStatement: used for reconciliation and account
+                  reporting purposes.</p>
+              </item>
+            </blockList>
+            <p eId="part_ps__raast_12__p_2">All participants shall conform to the Raast ISO 20022
+              Message Implementation Guide published by SBP. Non-conforming messages shall be
+              rejected by the Raast clearing and settlement infrastructure.</p>
+          </content>
+        </section>
+
+      </part>
+
+      <!-- ================================================================== -->
+      <!-- PART IV — EMI REGULATIONS 2019 (SBP)                               -->
+      <!-- ================================================================== -->
+      <part eId="part_emi">
+        <num>IV</num>
+        <heading>SBP Regulations for Electronic Money Institutions, 2019</heading>
+
+        <section eId="part_emi__reg_3">
+          <num>R.3</num>
+          <heading>SBP licensing required for EMIs</heading>
+          <content>
+            <p eId="part_emi__reg_3__p_1">No entity shall issue electronic money, operate
+              e-money wallets, or provide e-money services in Pakistan except under and in
+              accordance with a licence granted by the State Bank of Pakistan under these
+              Regulations.</p>
+            <p eId="part_emi__reg_3__p_2">An EMI licence may be granted as:</p>
+            <blockList eId="part_emi__reg_3__list_1">
+              <item eId="part_emi__reg_3__list_1__item_a">
+                <num>(a)</num>
+                <p>Full EMI licence: authorizing the issuance of e-money, operation of e-money
+                  wallets, cash-in and cash-out services through agents, and inter-wallet and
+                  bank-to-wallet transfers;</p>
+              </item>
+              <item eId="part_emi__reg_3__list_1__item_b">
+                <num>(b)</num>
+                <p>Restricted EMI licence: limited to specific e-money services as determined
+                  by SBP on a case-by-case basis.</p>
+              </item>
+            </blockList>
+          </content>
+        </section>
+
+        <section eId="part_emi__reg_5">
+          <num>R.5</num>
+          <heading>Minimum paid-up capital</heading>
+          <content>
+            <p eId="part_emi__reg_5__p_1">An entity applying for a full EMI licence shall
+              maintain a minimum paid-up capital of
+              <num id="emi_5_capital">PKR 200,000,000</num> (two hundred million Pakistani
+              Rupees), free of losses, at all times.</p>
+            <p eId="part_emi__reg_5__p_2">The minimum paid-up capital for a restricted EMI
+              licence shall be determined by SBP based on the scope of authorized services,
+              but shall not be less than <num id="emi_5_restricted">PKR 50,000,000</num>
+              (fifty million Pakistani Rupees).</p>
+          </content>
+        </section>
+
+        <section eId="part_emi__reg_7">
+          <num>R.7</num>
+          <heading>E-money wallet limits</heading>
+          <content>
+            <p eId="part_emi__reg_7__p_1">EMI wallets are tiered based on KYC level. The
+              following limits apply:</p>
+            <blockList eId="part_emi__reg_7__list_1">
+              <item eId="part_emi__reg_7__list_1__item_a">
+                <num>(a)</num>
+                <p>Level 0 (minimum KYC — CNIC only): maximum single transaction
+                  <num id="emi_7_l0_txn">PKR 25,000</num>; monthly aggregate outflow
+                  <num id="emi_7_l0_monthly">PKR 200,000</num>; maximum wallet balance
+                  <num id="emi_7_l0_balance">PKR 200,000</num>;</p>
+              </item>
+              <item eId="part_emi__reg_7__list_1__item_b">
+                <num>(b)</num>
+                <p>Level 1 (biometric verification via NADRA): maximum single transaction
+                  <num id="emi_7_l1_txn">PKR 50,000</num>; monthly aggregate outflow
+                  <num id="emi_7_l1_monthly">PKR 400,000</num>; maximum wallet balance
+                  <num id="emi_7_l1_balance">PKR 400,000</num>;</p>
+              </item>
+              <item eId="part_emi__reg_7__list_1__item_c">
+                <num>(c)</num>
+                <p>Level 2 (full CDD — enhanced due diligence): maximum wallet balance
+                  <num id="emi_7_l2_balance">PKR 500,000</num> (five hundred thousand
+                  Pakistani Rupees); monthly throughput
+                  <num id="emi_7_l2_monthly">PKR 1,000,000</num> (one million Pakistani
+                  Rupees).</p>
+              </item>
+            </blockList>
+            <p eId="part_emi__reg_7__p_2">All EMI accounts must be linked to a valid
+              Computerized National Identity Card (CNIC) issued by the National Database and
+              Registration Authority (NADRA). For Level 1 and above, biometric verification
+              against the NADRA database is mandatory at the time of account opening.</p>
+          </content>
+        </section>
+
+        <section eId="part_emi__reg_8">
+          <num>R.8</num>
+          <heading>Branchless banking agent network requirements</heading>
+          <content>
+            <p eId="part_emi__reg_8__p_1">EMIs may appoint agents for cash-in and cash-out
+              services subject to the following requirements:</p>
+            <blockList eId="part_emi__reg_8__list_1">
+              <item eId="part_emi__reg_8__list_1__item_a">
+                <num>(a)</num>
+                <p>Each agent must be a person with a valid CNIC and a fixed business premises,
+                  or a corporate entity registered in Pakistan;</p>
+              </item>
+              <item eId="part_emi__reg_8__list_1__item_b">
+                <num>(b)</num>
+                <p>The EMI shall perform due diligence on each agent before onboarding,
+                  including verification of identity, business history, and financial standing;</p>
+              </item>
+              <item eId="part_emi__reg_8__list_1__item_c">
+                <num>(c)</num>
+                <p>Agent transactions shall be subject to the same per-transaction and aggregate
+                  limits applicable to the customer's wallet tier;</p>
+              </item>
+              <item eId="part_emi__reg_8__list_1__item_d">
+                <num>(d)</num>
+                <p>The EMI shall maintain a comprehensive agent management system with real-time
+                  monitoring of agent activity, including flagging of unusual transaction
+                  patterns;</p>
+              </item>
+              <item eId="part_emi__reg_8__list_1__item_e">
+                <num>(e)</num>
+                <p>Agent float shall be maintained separately from the EMI's operational funds
+                  and customer e-money float.</p>
+              </item>
+            </blockList>
+          </content>
+        </section>
+
+        <section eId="part_emi__reg_10">
+          <num>R.10</num>
+          <heading>Safeguarding of customer funds</heading>
+          <content>
+            <p eId="part_emi__reg_10__p_1">The EMI shall safeguard customer funds as follows:</p>
+            <blockList eId="part_emi__reg_10__list_1">
+              <item eId="part_emi__reg_10__list_1__item_a">
+                <num>(a)</num>
+                <p>All customer e-money funds (the float) shall be deposited in a trust account
+                  maintained with one or more scheduled commercial banks licensed by SBP;</p>
+              </item>
+              <item eId="part_emi__reg_10__list_1__item_b">
+                <num>(b)</num>
+                <p>The trust account balance shall at all times equal or exceed
+                  <num id="emi_10_safeguard">100%</num> of the total outstanding e-money
+                  liabilities;</p>
+              </item>
+              <item eId="part_emi__reg_10__list_1__item_c">
+                <num>(c)</num>
+                <p>Trust account funds shall be invested only in liquid assets, including
+                  Government of Pakistan Treasury Bills, balances with SBP, or balances with
+                  scheduled commercial banks;</p>
+              </item>
+              <item eId="part_emi__reg_10__list_1__item_d">
+                <num>(d)</num>
+                <p>The EMI shall not use customer float for its own operational expenses,
+                  lending, or investment purposes beyond the permitted liquid asset classes;</p>
+              </item>
+              <item eId="part_emi__reg_10__list_1__item_e">
+                <num>(e)</num>
+                <p>The trust account shall be audited quarterly by an external auditor, and the
+                  audit report shall be submitted to SBP within 30 days of the quarter end.</p>
+              </item>
+            </blockList>
+          </content>
+        </section>
+
+      </part>
+
+      <!-- ================================================================== -->
+      <!-- PART V — FOREIGN EXCHANGE REGULATION ACT, 1947 (Act VII of 1947)   -->
+      <!-- ================================================================== -->
+      <part eId="part_fera">
+        <num>V</num>
+        <heading>Foreign Exchange Regulation Act, 1947 (Act VII of 1947)</heading>
+
+        <section eId="part_fera__sec_4">
+          <num>4</num>
+          <heading>Authorized dealers</heading>
+          <content>
+            <p eId="part_fera__sec_4__p_1">All foreign exchange transactions in Pakistan shall be
+              conducted through authorized dealers, being banks or other entities licensed by the
+              State Bank of Pakistan to deal in foreign exchange.</p>
+            <p eId="part_fera__sec_4__p_2">No person other than an authorized dealer shall:</p>
+            <blockList eId="part_fera__sec_4__list_1">
+              <item eId="part_fera__sec_4__list_1__item_a">
+                <num>(a)</num>
+                <p>buy, sell, borrow, or lend foreign exchange;</p>
+              </item>
+              <item eId="part_fera__sec_4__list_1__item_b">
+                <num>(b)</num>
+                <p>make any payment to or for the credit of any person resident outside Pakistan;</p>
+              </item>
+              <item eId="part_fera__sec_4__list_1__item_c">
+                <num>(c)</num>
+                <p>receive any payment from or on behalf of any person resident outside Pakistan,
+                  otherwise than through an authorized dealer or with the prior permission of
+                  SBP.</p>
+              </item>
+            </blockList>
+            <p eId="part_fera__sec_4__p_3">Exchange companies licensed by SBP may conduct limited
+              foreign currency purchase and sale transactions for the purpose of facilitating
+              inward remittances and currency exchange for travel purposes, subject to
+              SBP-prescribed limits.</p>
+          </content>
+        </section>
+
+        <section eId="part_fera__sec_5">
+          <num>5</num>
+          <heading>Capital account restrictions</heading>
+          <content>
+            <p eId="part_fera__sec_5__p_1">The following capital account transactions require
+              prior approval of SBP:</p>
+            <blockList eId="part_fera__sec_5__list_1">
+              <item eId="part_fera__sec_5__list_1__item_a">
+                <num>(a)</num>
+                <p>Outward remittances by individuals exceeding
+                  <num id="fera_5_individual">USD 10,000</num> (ten thousand United States
+                  Dollars) per calendar year, including remittances for education, medical
+                  treatment, gifts, and donations;</p>
+              </item>
+              <item eId="part_fera__sec_5__list_1__item_b">
+                <num>(b)</num>
+                <p>Direct investment abroad by Pakistani residents;</p>
+              </item>
+              <item eId="part_fera__sec_5__list_1__item_c">
+                <num>(c)</num>
+                <p>Acquisition or transfer of immovable property outside Pakistan;</p>
+              </item>
+              <item eId="part_fera__sec_5__list_1__item_d">
+                <num>(d)</num>
+                <p>Borrowing from non-residents or lending to non-residents;</p>
+              </item>
+              <item eId="part_fera__sec_5__list_1__item_e">
+                <num>(e)</num>
+                <p>Opening or maintaining bank accounts outside Pakistan, except as permitted by
+                  SBP for specific purposes (e.g., diplomatic staff, students abroad).</p>
+              </item>
+            </blockList>
+            <p eId="part_fera__sec_5__p_2">Inward remittances, including worker remittances and
+              foreign direct investment, are generally permitted through authorized channels
+              without prior SBP approval, subject to reporting requirements.</p>
+          </content>
+        </section>
+
+        <section eId="part_fera__sec_8">
+          <num>8</num>
+          <heading>Export proceeds repatriation</heading>
+          <content>
+            <p eId="part_fera__sec_8__p_1">Every exporter shall ensure that the full export
+              proceeds are received in Pakistan through an authorized dealer within
+              <num id="fera_8_repatriation">120</num> days from the date of shipment.</p>
+            <p eId="part_fera__sec_8__p_2">Where export proceeds are not received within the
+              prescribed period, the authorized dealer shall report the overdue amount to SBP,
+              and the exporter shall be liable to:</p>
+            <blockList eId="part_fera__sec_8__list_1">
+              <item eId="part_fera__sec_8__list_1__item_a">
+                <num>(a)</num>
+                <p>a penalty not exceeding <num id="fera_8_penalty_pct">30%</num> of the
+                  overdue amount, as may be imposed by SBP;</p>
+              </item>
+              <item eId="part_fera__sec_8__list_1__item_b">
+                <num>(b)</num>
+                <p>suspension of further export facilities until the overdue amount is received
+                  or written off with SBP approval;</p>
+              </item>
+              <item eId="part_fera__sec_8__list_1__item_c">
+                <num>(c)</num>
+                <p>referral to the Federal Investigation Agency (FIA) for investigation if
+                  foreign exchange regulation violations are suspected.</p>
+              </item>
+            </blockList>
+            <p eId="part_fera__sec_8__p_3">SBP may grant extensions beyond 120 days in
+              exceptional circumstances, including force majeure, contractual disputes, and
+              country risk events, subject to documented application by the exporter through
+              the authorized dealer.</p>
+          </content>
+        </section>
+
+        <section eId="part_fera__sec_23">
+          <num>23</num>
+          <heading>Penalties for unauthorized foreign exchange dealing</heading>
+          <content>
+            <p eId="part_fera__sec_23__p_1">Any person who contravenes any provision of this Act
+              or any rule, regulation, direction, or order made thereunder shall be liable to:</p>
+            <blockList eId="part_fera__sec_23__list_1">
+              <item eId="part_fera__sec_23__list_1__item_a">
+                <num>(a)</num>
+                <p>A civil penalty not exceeding three times the amount involved in the
+                  contravention, or <num id="fera_23_min_penalty">PKR 5,000,000</num> (five
+                  million Pakistani Rupees), whichever is greater;</p>
+              </item>
+              <item eId="part_fera__sec_23__list_1__item_b">
+                <num>(b)</num>
+                <p>In the case of a continuing contravention, an additional penalty not exceeding
+                  <num id="fera_23_daily_penalty">PKR 100,000</num> (one hundred thousand
+                  Pakistani Rupees) for each day during which the contravention continues;</p>
+              </item>
+              <item eId="part_fera__sec_23__list_1__item_c">
+                <num>(c)</num>
+                <p>Criminal prosecution under section 23-A, punishable with imprisonment for a
+                  term which may extend to five years, or with fine, or with both, where the
+                  contravention involves hawala/hundi transactions or systematic evasion of
+                  exchange control regulations;</p>
+              </item>
+              <item eId="part_fera__sec_23__list_1__item_d">
+                <num>(d)</num>
+                <p>Confiscation of any foreign exchange, securities, or property involved in or
+                  derived from the contravention.</p>
+              </item>
+            </blockList>
+            <p eId="part_fera__sec_23__p_2">The State Bank may, in addition to or in lieu of the
+              penalties specified above, cancel or suspend the authorization of any authorized
+              dealer or exchange company found to have contravened this Act.</p>
+          </content>
+        </section>
+
+      </part>
+
+    </body>
+  </act>
+</akomaNtoso>

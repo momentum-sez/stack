@@ -1,30 +1,36 @@
 //! Rust counterpart of tests/perf/test_receipt_chain_verification_perf.py
 //! Performance tests for receipt chain operations at scale.
 
-use msez_core::{sha256_digest, CanonicalBytes, CorridorId, Timestamp};
+use msez_core::{ContentDigest, CorridorId, Timestamp};
 use msez_corridor::{CorridorReceipt, ReceiptChain};
-use serde_json::json;
 
-fn make_next_root(i: u64) -> String {
-    sha256_digest(&CanonicalBytes::new(&json!({"perf_payload": i})).unwrap()).to_hex()
+fn test_genesis_root() -> ContentDigest {
+    ContentDigest::from_hex(&"00".repeat(32)).unwrap()
 }
 
-fn make_receipt(chain: &ReceiptChain, i: u64) -> CorridorReceipt {
-    CorridorReceipt {
+fn make_receipt(chain: &ReceiptChain, _i: u64) -> CorridorReceipt {
+    let mut receipt = CorridorReceipt {
         receipt_type: "MSEZCorridorStateReceipt".to_string(),
         corridor_id: chain.corridor_id().clone(),
         sequence: chain.height(),
         timestamp: Timestamp::now(),
-        prev_root: chain.mmr_root().unwrap(),
-        next_root: make_next_root(i),
+        prev_root: chain.final_state_root_hex(),
+        next_root: String::new(),
         lawpack_digest_set: vec!["deadbeef".repeat(8)],
         ruleset_digest_set: vec!["cafebabe".repeat(8)],
-    }
+        proof: None,
+        transition: None,
+        transition_type_registry_digest_sha256: None,
+        zk: None,
+        anchor: None,
+    };
+    receipt.seal_next_root().unwrap();
+    receipt
 }
 
 #[test]
 fn receipt_chain_100_receipts() {
-    let mut chain = ReceiptChain::new(CorridorId::new());
+    let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
     for i in 0..100 {
         let receipt = make_receipt(&chain, i);
         chain.append(receipt).unwrap();
@@ -36,7 +42,7 @@ fn receipt_chain_100_receipts() {
 
 #[test]
 fn receipt_chain_inclusion_proofs_at_scale() {
-    let mut chain = ReceiptChain::new(CorridorId::new());
+    let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
     for i in 0..50 {
         let receipt = make_receipt(&chain, i);
         chain.append(receipt).unwrap();
@@ -49,12 +55,12 @@ fn receipt_chain_inclusion_proofs_at_scale() {
 
 #[test]
 fn checkpoint_creation_after_batch() {
-    let mut chain = ReceiptChain::new(CorridorId::new());
+    let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
     for i in 0..30 {
         let receipt = make_receipt(&chain, i);
         chain.append(receipt).unwrap();
     }
     let cp = chain.create_checkpoint().unwrap();
-    assert_eq!(cp.height, 30);
-    assert_eq!(cp.mmr_root.len(), 64);
+    assert_eq!(cp.height(), 30);
+    assert_eq!(cp.mmr_root().to_string().len(), 64);
 }

@@ -52,7 +52,10 @@ pub use payment_rail::{
     CircleUsdcAdapter, PaymentInstruction, PaymentRailAdapter, PaymentRailError, PaymentResult,
     PaymentStatus, RaastAdapter, RtgsAdapter,
 };
-pub use receipt::{Checkpoint, CorridorReceipt, ReceiptChain, ReceiptError};
+pub use receipt::{
+    Checkpoint, CorridorReceipt, DigestEntry, MmrCommitment, MmrPeakEntry, ProofObject,
+    ReceiptChain, ReceiptError, ReceiptProof, compute_next_root,
+};
 pub use swift::{SettlementInstruction, SettlementRail, SettlementRailError, SwiftPacs008};
 
 use thiserror::Error;

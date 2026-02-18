@@ -15,28 +15,33 @@ use msez_state::corridor::{
 use msez_state::{Corridor, Draft, DynCorridorData, DynCorridorState};
 use serde_json::json;
 
+fn test_genesis_root() -> ContentDigest {
+    ContentDigest::from_hex(&"00".repeat(32)).unwrap()
+}
+
 fn test_digest(label: &str) -> ContentDigest {
     let canonical = CanonicalBytes::new(&json!({"evidence": label})).unwrap();
     sha256_digest(&canonical)
 }
 
-fn make_next_root(i: u64) -> String {
-    let data = json!({"payload": i, "corridor": "test"});
-    let canonical = CanonicalBytes::new(&data).unwrap();
-    sha256_digest(&canonical).to_hex()
-}
-
-fn make_receipt(chain: &ReceiptChain, i: u64) -> CorridorReceipt {
-    CorridorReceipt {
+fn make_receipt(chain: &ReceiptChain, _i: u64) -> CorridorReceipt {
+    let mut receipt = CorridorReceipt {
         receipt_type: "MSEZCorridorStateReceipt".to_string(),
         corridor_id: chain.corridor_id().clone(),
         sequence: chain.height(),
         timestamp: msez_core::Timestamp::now(),
-        prev_root: chain.mmr_root().unwrap(),
-        next_root: make_next_root(i),
+        prev_root: chain.final_state_root_hex(),
+        next_root: String::new(),
         lawpack_digest_set: vec!["deadbeef".repeat(8)],
         ruleset_digest_set: vec!["cafebabe".repeat(8)],
-    }
+        proof: None,
+        transition: None,
+        transition_type_registry_digest_sha256: None,
+        zk: None,
+        anchor: None,
+    };
+    receipt.seal_next_root().unwrap();
+    receipt
 }
 
 // ---------------------------------------------------------------------------
@@ -136,7 +141,7 @@ fn full_corridor_lifecycle() {
 #[test]
 fn receipt_chain_with_mmr_proofs() {
     let corridor_id = CorridorId::new();
-    let mut chain = ReceiptChain::new(corridor_id);
+    let mut chain = ReceiptChain::new(corridor_id, test_genesis_root());
     assert_eq!(chain.height(), 0);
 
     // Append 10 receipts
@@ -163,7 +168,7 @@ fn receipt_chain_with_mmr_proofs() {
 
 #[test]
 fn receipt_chain_reject_sequence_mismatch() {
-    let mut chain = ReceiptChain::new(CorridorId::new());
+    let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
     let receipt = make_receipt(&chain, 0);
     chain.append(receipt).unwrap();
 
@@ -175,18 +180,18 @@ fn receipt_chain_reject_sequence_mismatch() {
 
 #[test]
 fn receipt_chain_reject_prev_root_mismatch() {
-    let mut chain = ReceiptChain::new(CorridorId::new());
+    let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
     let receipt = make_receipt(&chain, 0);
     chain.append(receipt).unwrap();
 
     let mut bad_receipt = make_receipt(&chain, 1);
-    bad_receipt.prev_root = "00".repeat(32); // Wrong
+    bad_receipt.prev_root = "ff".repeat(32); // Wrong
     assert!(chain.append(bad_receipt).is_err());
 }
 
 #[test]
 fn checkpoint_captures_mmr_state() {
-    let mut chain = ReceiptChain::new(CorridorId::new());
+    let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
 
     for i in 0..5 {
         let receipt = make_receipt(&chain, i);
@@ -194,14 +199,14 @@ fn checkpoint_captures_mmr_state() {
     }
 
     let checkpoint = chain.create_checkpoint().unwrap();
-    assert_eq!(checkpoint.height, 5);
-    assert_eq!(checkpoint.mmr_root, chain.mmr_root().unwrap());
+    assert_eq!(checkpoint.height(), 5);
+    assert_eq!(checkpoint.mmr_root(), chain.mmr_root().unwrap());
     assert_eq!(checkpoint.checkpoint_digest.to_hex().len(), 64);
 }
 
 #[test]
 fn tampered_proof_fails_verification() {
-    let mut chain = ReceiptChain::new(CorridorId::new());
+    let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
     for i in 0..5 {
         let receipt = make_receipt(&chain, i);
         chain.append(receipt).unwrap();
@@ -276,24 +281,24 @@ fn valid_transitions_are_exhaustive() {
 
 #[test]
 fn multiple_checkpoints_across_growth() {
-    let mut chain = ReceiptChain::new(CorridorId::new());
+    let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
 
     // Add 3 receipts, checkpoint
     for i in 0..3 {
         chain.append(make_receipt(&chain, i)).unwrap();
     }
     let cp1 = chain.create_checkpoint().unwrap();
-    assert_eq!(cp1.height, 3);
+    assert_eq!(cp1.height(), 3);
 
     // Add 4 more receipts, checkpoint
     for i in 3..7 {
         chain.append(make_receipt(&chain, i)).unwrap();
     }
     let cp2 = chain.create_checkpoint().unwrap();
-    assert_eq!(cp2.height, 7);
+    assert_eq!(cp2.height(), 7);
 
     // Checkpoints should differ
-    assert_ne!(cp1.mmr_root, cp2.mmr_root);
+    assert_ne!(cp1.mmr_root(), cp2.mmr_root());
     assert_ne!(cp1.checkpoint_digest, cp2.checkpoint_digest);
     assert_eq!(chain.checkpoints().len(), 2);
 }
@@ -304,7 +309,7 @@ fn multiple_checkpoints_across_growth() {
 
 #[test]
 fn receipt_content_digest_is_deterministic() {
-    let chain = ReceiptChain::new(CorridorId::new());
+    let chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
     let receipt = make_receipt(&chain, 42);
     let d1 = receipt.content_digest().unwrap();
     let d2 = receipt.content_digest().unwrap();

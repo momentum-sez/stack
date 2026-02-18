@@ -4,27 +4,31 @@
 //! and verifying MMR inclusion proofs, rejecting duplicate sequences, and
 //! verifying prev_root linkage across the chain.
 
-use msez_core::{sha256_digest, CanonicalBytes, CorridorId, Timestamp};
+use msez_core::{ContentDigest, CorridorId, Timestamp};
 use msez_corridor::{CorridorReceipt, ReceiptChain};
-use serde_json::json;
 
-fn make_next_root(i: u64) -> String {
-    let data = json!({"receipt_chain_test": i});
-    let canonical = CanonicalBytes::new(&data).unwrap();
-    sha256_digest(&canonical).to_hex()
+fn test_genesis_root() -> ContentDigest {
+    ContentDigest::from_hex(&"00".repeat(32)).unwrap()
 }
 
-fn make_receipt(chain: &ReceiptChain, i: u64) -> CorridorReceipt {
-    CorridorReceipt {
+fn make_receipt(chain: &ReceiptChain, _i: u64) -> CorridorReceipt {
+    let mut receipt = CorridorReceipt {
         receipt_type: "MSEZCorridorStateReceipt".to_string(),
         corridor_id: chain.corridor_id().clone(),
         sequence: chain.height(),
         timestamp: Timestamp::now(),
-        prev_root: chain.mmr_root().unwrap(),
-        next_root: make_next_root(i),
+        prev_root: chain.final_state_root_hex(),
+        next_root: String::new(),
         lawpack_digest_set: vec!["deadbeef".repeat(8)],
         ruleset_digest_set: vec!["cafebabe".repeat(8)],
-    }
+        proof: None,
+        transition: None,
+        transition_type_registry_digest_sha256: None,
+        zk: None,
+        anchor: None,
+    };
+    receipt.seal_next_root().unwrap();
+    receipt
 }
 
 // ---------------------------------------------------------------------------
@@ -33,7 +37,7 @@ fn make_receipt(chain: &ReceiptChain, i: u64) -> CorridorReceipt {
 
 #[test]
 fn receipt_chain_append_and_verify() {
-    let mut chain = ReceiptChain::new(CorridorId::new());
+    let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
     assert_eq!(chain.height(), 0);
 
     for i in 0..10 {
@@ -55,7 +59,7 @@ fn receipt_chain_append_and_verify() {
 
 #[test]
 fn receipt_chain_inclusion_proofs() {
-    let mut chain = ReceiptChain::new(CorridorId::new());
+    let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
     for i in 0..8 {
         chain.append(make_receipt(&chain, i)).unwrap();
     }
@@ -76,7 +80,7 @@ fn receipt_chain_inclusion_proofs() {
 
 #[test]
 fn receipt_chain_reject_duplicate_sequence() {
-    let mut chain = ReceiptChain::new(CorridorId::new());
+    let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
     let receipt = make_receipt(&chain, 0);
     chain.append(receipt).unwrap();
 
@@ -92,13 +96,13 @@ fn receipt_chain_reject_duplicate_sequence() {
 
 #[test]
 fn receipt_chain_prev_root_linkage() {
-    let mut chain = ReceiptChain::new(CorridorId::new());
+    let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
     let receipt = make_receipt(&chain, 0);
     chain.append(receipt).unwrap();
 
     // Create receipt with wrong prev_root
     let mut bad_receipt = make_receipt(&chain, 1);
-    bad_receipt.prev_root = "00".repeat(32);
+    bad_receipt.prev_root = "ff".repeat(32);
     assert!(chain.append(bad_receipt).is_err());
 }
 
@@ -108,7 +112,7 @@ fn receipt_chain_prev_root_linkage() {
 
 #[test]
 fn receipt_content_digest_deterministic() {
-    let chain = ReceiptChain::new(CorridorId::new());
+    let chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
     let receipt = make_receipt(&chain, 42);
     let d1 = receipt.content_digest().unwrap();
     let d2 = receipt.content_digest().unwrap();
@@ -123,6 +127,6 @@ fn receipt_content_digest_deterministic() {
 #[test]
 fn receipt_chain_corridor_id_preserved() {
     let corridor_id = CorridorId::new();
-    let chain = ReceiptChain::new(corridor_id.clone());
+    let chain = ReceiptChain::new(corridor_id.clone(), test_genesis_root());
     assert_eq!(*chain.corridor_id(), corridor_id);
 }

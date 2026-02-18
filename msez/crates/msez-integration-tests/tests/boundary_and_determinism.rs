@@ -753,26 +753,32 @@ fn bridge_reachable_from_empty_graph() {
 
 use msez_corridor::receipt::{CorridorReceipt, ReceiptChain};
 
+fn test_genesis_root() -> ContentDigest {
+    ContentDigest::from_hex(&"00".repeat(32)).unwrap()
+}
+
 #[test]
 fn receipt_chain_many_appends() {
     let corridor_id = CorridorId::new();
-    let mut chain = ReceiptChain::new(corridor_id.clone());
+    let mut chain = ReceiptChain::new(corridor_id.clone(), test_genesis_root());
     for i in 0..50 {
-        let prev_root = chain.mmr_root().unwrap();
-        let next_root = {
-            let c = CanonicalBytes::new(&json!({"seq": i})).unwrap();
-            sha256_digest(&c).to_hex()
-        };
-        let receipt = CorridorReceipt {
+        let prev_root = chain.final_state_root_hex();
+        let mut receipt = CorridorReceipt {
             receipt_type: "state_transition".to_string(),
             corridor_id: corridor_id.clone(),
             sequence: i,
             timestamp: Timestamp::now(),
             prev_root,
-            next_root,
+            next_root: String::new(),
             lawpack_digest_set: vec![],
             ruleset_digest_set: vec![],
+            proof: None,
+            transition: None,
+            transition_type_registry_digest_sha256: None,
+            zk: None,
+            anchor: None,
         };
+        receipt.seal_next_root().unwrap();
         chain.append(receipt).unwrap();
     }
     assert_eq!(chain.height(), 50, "Chain should have 50 receipts");
@@ -786,24 +792,25 @@ fn receipt_chain_many_appends() {
 #[test]
 fn receipt_chain_checkpoint_on_nonempty() {
     let corridor_id = CorridorId::new();
-    let mut chain = ReceiptChain::new(corridor_id.clone());
-    let prev_root = chain.mmr_root().unwrap();
-    let next_root = {
-        let c = CanonicalBytes::new(&json!({"data": "test"})).unwrap();
-        sha256_digest(&c).to_hex()
+    let mut chain = ReceiptChain::new(corridor_id.clone(), test_genesis_root());
+    let prev_root = chain.final_state_root_hex();
+    let mut receipt = CorridorReceipt {
+        receipt_type: "state_transition".to_string(),
+        corridor_id: corridor_id.clone(),
+        sequence: 0,
+        timestamp: Timestamp::now(),
+        prev_root,
+        next_root: String::new(),
+        lawpack_digest_set: vec![],
+        ruleset_digest_set: vec![],
+        proof: None,
+        transition: None,
+        transition_type_registry_digest_sha256: None,
+        zk: None,
+        anchor: None,
     };
-    chain
-        .append(CorridorReceipt {
-            receipt_type: "state_transition".to_string(),
-            corridor_id: corridor_id.clone(),
-            sequence: 0,
-            timestamp: Timestamp::now(),
-            prev_root,
-            next_root,
-            lawpack_digest_set: vec![],
-            ruleset_digest_set: vec![],
-        })
-        .unwrap();
+    receipt.seal_next_root().unwrap();
+    chain.append(receipt).unwrap();
     let checkpoint = chain.create_checkpoint();
     assert!(
         checkpoint.is_ok(),

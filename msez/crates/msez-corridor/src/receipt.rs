@@ -1,29 +1,36 @@
 //! # Corridor Receipt Chain
 //!
-//! Append-only corridor receipts backed by MMR for efficient inclusion proofs.
+//! Append-only corridor receipts backed by a dual-commitment model:
 //!
-//! ## Design
+//! 1. **Hash-chain commitment** via `final_state_root`: a sequential hash chain
+//!    seeded from `genesis_root`, where each receipt's `prev_root` must equal the
+//!    current `final_state_root` and `next_root` becomes the new head.
 //!
-//! Each corridor maintains a receipt chain — an ordered sequence of
-//! [`CorridorReceipt`] objects, each representing a state transition event.
-//! Receipts are content-addressed: each receipt contains a `prev_root` (the
-//! chain's MMR root before this receipt) and a `next_root` (the payload's
-//! canonical digest). The MMR accumulator provides O(log n) inclusion proofs
-//! without disclosing the full receipt set.
+//! 2. **MMR commitment** for inclusion proofs: `next_root` digests are appended
+//!    to a Merkle Mountain Range for O(log n) proofs without disclosing the full
+//!    receipt set.
 //!
-//! ## Integrity Model
+//! ## next_root Derivation
 //!
-//! 1. Each receipt is canonicalized via [`CanonicalBytes`] and digested via
-//!    [`sha256_digest`] to produce the `next_root`.
-//! 2. The `next_root` is appended to the MMR.
-//! 3. Checkpoints snapshot the MMR root at periodic intervals for anchoring.
-//! 4. Inclusion proofs verify that a specific receipt is part of the chain.
+//! ```text
+//! next_root = SHA256(MCF(receipt_without_proof_and_next_root))
+//! ```
+//!
+//! Where MCF = Momentum Canonical Form (RFC 8785 JCS + float rejection + datetime
+//! normalization), and digest sets are normalized (deduplicated + sorted
+//! lexicographically) before canonicalization.
+//!
+//! ## Integrity Invariants
+//!
+//! - **I-RECEIPT-LINK**: `receipt.prev_root == chain.final_state_root`
+//! - **I-RECEIPT-COMMIT**: `receipt.next_root == compute_next_root(&receipt)`
+//! - **I-MMR-ROOT**: `mmr.root() == MMR(all next_roots)`
 //!
 //! ## Spec Reference
 //!
 //! Implements receipt chain per `spec/40-corridors.md` Part IV.
-//! Matches `schemas/corridor.receipt.schema.json`.
-//! Port of `tools/phoenix/bridge.py` `BridgeReceiptChain` class.
+//! Conforms to `schemas/corridor.receipt.schema.json` and
+//! `schemas/corridor.checkpoint.schema.json`.
 
 use msez_core::{sha256_digest, CanonicalBytes, ContentDigest, CorridorId, Timestamp};
 use msez_crypto::mmr::{
@@ -31,6 +38,10 @@ use msez_crypto::mmr::{
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+// ---------------------------------------------------------------------------
+// Error types
+// ---------------------------------------------------------------------------
 
 /// Errors specific to receipt chain operations.
 #[derive(Error, Debug)]
@@ -46,12 +57,25 @@ pub enum ReceiptError {
         corridor_id: String,
     },
 
-    /// Receipt prev_root does not match the current chain root.
+    /// Receipt prev_root does not match the current chain state root.
     #[error("prev_root mismatch for receipt #{sequence}: expected {expected}, got {actual}")]
     PrevRootMismatch {
-        /// The expected prev_root (current MMR root).
+        /// The expected prev_root (current final_state_root).
         expected: String,
         /// The actual prev_root in the receipt.
+        actual: String,
+        /// The receipt sequence number.
+        sequence: u64,
+    },
+
+    /// Receipt next_root does not match the recomputed value.
+    #[error(
+        "next_root mismatch for receipt #{sequence}: expected {expected}, got {actual}"
+    )]
+    NextRootMismatch {
+        /// The recomputed next_root.
+        expected: String,
+        /// The actual next_root in the receipt.
         actual: String,
         /// The receipt sequence number.
         sequence: u64,
@@ -65,6 +89,10 @@ pub enum ReceiptError {
     #[error("canonicalization error: {0}")]
     Canonicalization(#[from] msez_core::CanonicalizationError),
 
+    /// JSON serialization/deserialization error during next_root computation.
+    #[error("serialization error: {0}")]
+    Serialization(#[from] serde_json::Error),
+
     /// Inclusion proof verification failed.
     #[error("inclusion proof verification failed for receipt #{leaf_index}")]
     InclusionProofFailed {
@@ -72,22 +100,111 @@ pub enum ReceiptError {
         leaf_index: usize,
     },
 
-    /// Attempted to build proof for empty chain.
-    #[error("cannot build inclusion proof for empty receipt chain")]
+    /// Attempted to build proof or checkpoint for empty chain.
+    #[error("cannot operate on empty receipt chain")]
     EmptyChain,
 }
 
+// ---------------------------------------------------------------------------
+// Proof types (matching schemas/corridor.receipt.schema.json "proof")
+// ---------------------------------------------------------------------------
+
+/// Cryptographic proof over a receipt or checkpoint payload.
+///
+/// Matches the `proof` field in `schemas/corridor.receipt.schema.json`:
+/// either a single proof object or an array of proof objects.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ReceiptProof {
+    /// A single proof.
+    Single(ProofObject),
+    /// Multiple proofs (e.g., multi-party signing).
+    Multiple(Vec<ProofObject>),
+}
+
+/// A single cryptographic proof object.
+///
+/// Matches the proof object schema: `MsezEd25519Signature2025`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ProofObject {
+    /// Proof type, e.g., "MsezEd25519Signature2025".
+    #[serde(rename = "type")]
+    pub proof_type: String,
+    /// When the proof was created (RFC 3339).
+    pub created: String,
+    /// Verification method identifier (DID or key URI).
+    #[serde(rename = "verificationMethod")]
+    pub verification_method: String,
+    /// Purpose of the proof, e.g., "assertionMethod".
+    #[serde(rename = "proofPurpose")]
+    pub proof_purpose: String,
+    /// JWS compact serialization of the signature.
+    pub jws: String,
+}
+
+// ---------------------------------------------------------------------------
+// Digest set entry (legacy string or ArtifactRef)
+// ---------------------------------------------------------------------------
+
+/// An entry in a digest set: either a raw SHA-256 hex string (legacy) or
+/// an ArtifactRef with metadata.
+///
+/// Matches the `oneOf` in `schemas/corridor.receipt.schema.json` for
+/// `lawpack_digest_set` and `ruleset_digest_set` items.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum DigestEntry {
+    /// Raw SHA-256 digest as a 64-char lowercase hex string.
+    Digest(String),
+    /// Artifact reference with digest and optional metadata.
+    ArtifactRef {
+        /// The SHA-256 digest of the artifact.
+        digest_sha256: String,
+        /// Artifact type, e.g., "lawpack", "ruleset".
+        artifact_type: String,
+        /// Optional URI for artifact retrieval.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        uri: Option<String>,
+    },
+}
+
+impl DigestEntry {
+    /// Extract the underlying SHA-256 digest string for normalization.
+    pub fn digest(&self) -> &str {
+        match self {
+            DigestEntry::Digest(s) => s,
+            DigestEntry::ArtifactRef { digest_sha256, .. } => digest_sha256,
+        }
+    }
+}
+
+impl From<String> for DigestEntry {
+    fn from(s: String) -> Self {
+        DigestEntry::Digest(s)
+    }
+}
+
+impl From<&str> for DigestEntry {
+    fn from(s: &str) -> Self {
+        DigestEntry::Digest(s.to_string())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// CorridorReceipt
+// ---------------------------------------------------------------------------
+
 /// A corridor receipt recording a cross-border transaction event.
 ///
-/// Matches the structure defined in `schemas/corridor.receipt.schema.json`.
-/// Each receipt forms a link in the append-only receipt chain, with
-/// `prev_root` and `next_root` providing hash chain integrity.
+/// Conforms to `schemas/corridor.receipt.schema.json`. Each receipt forms a
+/// link in the append-only receipt chain: `prev_root` points to the current
+/// `final_state_root` (hash-chain head) and `next_root` is the canonical
+/// digest of the receipt payload.
 ///
-/// ## Security Invariant
+/// ## Security Invariants
 ///
-/// The `next_root` is the canonical digest of the receipt payload,
-/// computed via `CanonicalBytes::new()` → `sha256_digest()`. This ensures
-/// all digests use JCS-compatible canonicalization.
+/// - `next_root = SHA256(MCF(receipt_without_proof_and_next_root))` (I-RECEIPT-COMMIT)
+/// - `prev_root == chain.final_state_root` at append time (I-RECEIPT-LINK)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CorridorReceipt {
     /// Receipt type discriminator.
@@ -97,62 +214,239 @@ pub struct CorridorReceipt {
     pub corridor_id: CorridorId,
     /// Sequence number within the corridor (0-indexed).
     pub sequence: u64,
-    /// When the receipt was created.
+    /// When the receipt was created (RFC 3339).
     pub timestamp: Timestamp,
-    /// MMR root before this receipt was appended.
+    /// State root before this transition. For the first receipt, this MUST
+    /// equal the corridor's `genesis_root`.
     pub prev_root: String,
-    /// Canonical digest of this receipt's payload (64 hex chars).
+    /// Canonical digest of this receipt's payload: `SHA256(MCF(receipt_payload))`.
+    /// The payload excludes the `proof` and `next_root` fields themselves.
     pub next_root: String,
-    /// Lawpack digest set governing this receipt.
+    /// Lawpack digest set governing this receipt (sorted, deduplicated).
     pub lawpack_digest_set: Vec<String>,
-    /// Ruleset digest set governing this receipt.
+    /// Ruleset digest set governing this receipt (sorted, deduplicated).
     pub ruleset_digest_set: Vec<String>,
+
+    // ── Schema-required fields added for P0-CORRIDOR-003 ────────────
+
+    /// Cryptographic proof(s) over the receipt payload.
+    /// Required by schema but optional in struct to allow construction
+    /// before signing. Schema validation will reject receipts without proof.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub proof: Option<ReceiptProof>,
+
+    // ── Optional fields per schema ──────────────────────────────────
+
+    /// Transition envelope (schema: `$ref transition-envelope.schema.json`).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub transition: Option<serde_json::Value>,
+
+    /// Digest commitment to a Transition Type Registry snapshot.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub transition_type_registry_digest_sha256: Option<String>,
+
+    /// ZK proof scaffold.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub zk: Option<serde_json::Value>,
+
+    /// Anchoring metadata for external chain commitments.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub anchor: Option<serde_json::Value>,
 }
 
 impl CorridorReceipt {
-    /// Compute the canonical content digest of this receipt.
+    /// Compute the canonical content digest of this receipt (over the full
+    /// serialized form, including proof and next_root).
     ///
-    /// Uses the `CanonicalBytes` → `sha256_digest` pipeline to ensure
-    /// JCS-compatible canonicalization.
+    /// This is the content-address of the receipt as stored, NOT the
+    /// `next_root` commitment. For `next_root`, use [`compute_next_root()`].
     pub fn content_digest(&self) -> Result<ContentDigest, ReceiptError> {
         let canonical = CanonicalBytes::new(self)?;
         Ok(sha256_digest(&canonical))
     }
+
+    /// Compute and set the correct `next_root` for this receipt.
+    ///
+    /// Convenience wrapper: computes `next_root` via [`compute_next_root()`]
+    /// and sets `self.next_root` to the hex digest.
+    pub fn seal_next_root(&mut self) -> Result<ContentDigest, ReceiptError> {
+        let digest = compute_next_root(self)?;
+        self.next_root = digest.to_hex();
+        Ok(digest)
+    }
 }
 
-/// A checkpoint capturing the MMR root at a specific height.
+// ---------------------------------------------------------------------------
+// next_root computation (P0-CORRIDOR-002)
+// ---------------------------------------------------------------------------
+
+/// Normalize a digest set array in a JSON object: sort lexicographically
+/// by the underlying digest string, deduplicate.
+fn normalize_digest_set_in_value(obj: &mut serde_json::Map<String, serde_json::Value>, key: &str) {
+    if let Some(serde_json::Value::Array(arr)) = obj.get(key) {
+        // Extract (sort_key, original_value) pairs
+        let mut entries: Vec<(String, serde_json::Value)> = arr
+            .iter()
+            .filter_map(|v| {
+                let digest_key = match v {
+                    serde_json::Value::String(s) => Some(s.clone()),
+                    serde_json::Value::Object(o) => {
+                        o.get("digest_sha256").and_then(|d| d.as_str()).map(String::from)
+                    }
+                    _ => None,
+                };
+                digest_key.map(|k| (k, v.clone()))
+            })
+            .collect();
+        entries.sort_by(|a, b| a.0.cmp(&b.0));
+        entries.dedup_by(|a, b| a.0 == b.0);
+        let normalized: Vec<serde_json::Value> = entries.into_iter().map(|(_, v)| v).collect();
+        obj.insert(key.to_string(), serde_json::Value::Array(normalized));
+    }
+}
+
+/// Compute the canonical `next_root` for a receipt.
 ///
-/// Checkpoints are periodic snapshots of the receipt chain's MMR root,
-/// used for L1 anchoring and cross-corridor verification.
+/// ```text
+/// next_root = SHA256(MCF(receipt_payload))
+/// ```
+///
+/// Where `receipt_payload` is the receipt serialized to JSON with the `proof`
+/// and `next_root` keys removed, and digest sets normalized (deduplicated +
+/// sorted lexicographically by their underlying SHA-256 digest string).
+///
+/// This function is deterministic: the value of `next_root` and `proof` in
+/// the input receipt does not affect the output (both are stripped).
+pub fn compute_next_root(receipt: &CorridorReceipt) -> Result<ContentDigest, ReceiptError> {
+    let mut value = serde_json::to_value(receipt)?;
+    let obj = value
+        .as_object_mut()
+        .expect("CorridorReceipt always serializes to a JSON object");
+
+    // Strip proof and next_root — these are not part of the commitment
+    obj.remove("proof");
+    obj.remove("next_root");
+
+    // Normalize digest sets: deduplicate + sort lexicographically
+    normalize_digest_set_in_value(obj, "lawpack_digest_set");
+    normalize_digest_set_in_value(obj, "ruleset_digest_set");
+
+    let canonical = CanonicalBytes::from_value(value)?;
+    Ok(sha256_digest(&canonical))
+}
+
+// ---------------------------------------------------------------------------
+// MMR commitment (for checkpoint schema conformance)
+// ---------------------------------------------------------------------------
+
+/// Default zero digest for serde skip deserialization.
+fn zero_digest() -> ContentDigest {
+    ContentDigest::from_hex(&"00".repeat(32)).expect("zero digest is always valid")
+}
+
+/// MMR commitment object, conformant to `schemas/corridor.checkpoint.schema.json`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MmrCommitment {
+    /// MMR type identifier: always `"MSEZReceiptMMR"`.
+    #[serde(rename = "type")]
+    pub mmr_type: String,
+    /// Hash algorithm: always `"sha256"`.
+    pub algorithm: String,
+    /// Number of leaves in the MMR.
+    pub size: u64,
+    /// Bagged root hash (64 hex chars).
+    pub root: String,
+    /// Optional peak list to aid verifiers.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub peaks: Option<Vec<MmrPeakEntry>>,
+}
+
+/// A single MMR peak entry for checkpoint serialization.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MmrPeakEntry {
+    /// Height of the peak (0 = single leaf).
+    pub height: u64,
+    /// SHA-256 hash as 64 lowercase hex chars.
+    pub hash: String,
+}
+
+// ---------------------------------------------------------------------------
+// Checkpoint
+// ---------------------------------------------------------------------------
+
+/// A corridor checkpoint, conformant to `schemas/corridor.checkpoint.schema.json`.
+///
+/// Commits to both the hash-chain head (`final_state_root`) and the MMR
+/// accumulator, providing a verifier bootstrap point.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Checkpoint {
+    /// Checkpoint type: always `"MSEZCorridorStateCheckpoint"`.
+    #[serde(rename = "type")]
+    pub checkpoint_type: String,
     /// The corridor this checkpoint belongs to.
     pub corridor_id: CorridorId,
-    /// The receipt chain height at checkpoint time.
-    pub height: u64,
-    /// The MMR root hash at checkpoint time (64 hex chars).
-    pub mmr_root: String,
     /// When the checkpoint was created.
     pub timestamp: Timestamp,
-    /// Digest of the checkpoint content for anchoring.
+    /// The corridor's immutable genesis root.
+    pub genesis_root: String,
+    /// Hash-chain head at checkpoint time (last receipt's `next_root`).
+    pub final_state_root: String,
+    /// Number of receipts in the chain at checkpoint time (>= 1).
+    pub receipt_count: u64,
+    /// Union of all lawpack digests across receipts in this window.
+    pub lawpack_digest_set: Vec<String>,
+    /// Union of all ruleset digests across receipts in this window.
+    pub ruleset_digest_set: Vec<String>,
+    /// MMR commitment object.
+    pub mmr: MmrCommitment,
+    /// Content digest of the checkpoint payload (excluding proof).
+    #[serde(skip, default = "zero_digest")]
     pub checkpoint_digest: ContentDigest,
+    /// Cryptographic proof(s) over the checkpoint payload.
+    /// Required by schema but optional in struct to allow construction
+    /// before signing.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub proof: Option<ReceiptProof>,
+    /// Optional anchoring metadata.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub anchor: Option<serde_json::Value>,
 }
 
-/// An append-only receipt chain for a single corridor, backed by MMR.
+// Backward-compat accessor
+impl Checkpoint {
+    /// Convenience: returns `receipt_count` (equivalent to the old `height` field).
+    pub fn height(&self) -> u64 {
+        self.receipt_count
+    }
+
+    /// Convenience: returns the MMR root string.
+    pub fn mmr_root(&self) -> &str {
+        &self.mmr.root
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ReceiptChain
+// ---------------------------------------------------------------------------
+
+/// An append-only receipt chain for a single corridor, backed by dual
+/// commitments: a hash-chain (`final_state_root`) and an MMR accumulator.
 ///
-/// Maintains the ordered sequence of receipts and the MMR accumulator
-/// for efficient inclusion proofs.
+/// ## Security Invariants
 ///
-/// ## Security Invariant
-///
-/// Receipts can only be appended (not modified or removed). Each receipt's
-/// `prev_root` must match the current MMR root, and its sequence number
-/// must be exactly `chain.height()`. This ensures fork detection: any
-/// deviation from these invariants indicates a fork.
+/// - Receipts can only be appended (not modified or removed).
+/// - `prev_root` must equal `final_state_root` (hash-chain integrity).
+/// - `next_root` must equal `compute_next_root(&receipt)` (commitment integrity).
+/// - Sequence must be strictly monotonic from 0.
 #[derive(Debug)]
 pub struct ReceiptChain {
     /// The corridor this chain belongs to.
     corridor_id: CorridorId,
+    /// Immutable genesis root seeding the hash chain.
+    genesis_root: ContentDigest,
+    /// Current hash-chain head. Starts as `genesis_root`, updated to each
+    /// receipt's `next_root` on append.
+    final_state_root: ContentDigest,
     /// Ordered receipts.
     receipts: Vec<CorridorReceipt>,
     /// The MMR accumulator tracking next_root digests.
@@ -164,10 +458,15 @@ pub struct ReceiptChain {
 }
 
 impl ReceiptChain {
-    /// Create a new empty receipt chain for a corridor.
-    pub fn new(corridor_id: CorridorId) -> Self {
+    /// Create a new empty receipt chain for a corridor with the given genesis root.
+    ///
+    /// The `genesis_root` seeds the hash chain. The first receipt's `prev_root`
+    /// must equal `genesis_root.to_hex()`.
+    pub fn new(corridor_id: CorridorId, genesis_root: ContentDigest) -> Self {
         Self {
             corridor_id,
+            final_state_root: genesis_root.clone(),
+            genesis_root,
             receipts: Vec::new(),
             mmr: MerkleMountainRange::new(),
             next_roots: Vec::new(),
@@ -190,6 +489,24 @@ impl ReceiptChain {
         Ok(self.mmr.root()?)
     }
 
+    /// Return the genesis root.
+    pub fn genesis_root(&self) -> &ContentDigest {
+        &self.genesis_root
+    }
+
+    /// Return the current hash-chain head as a `ContentDigest`.
+    pub fn final_state_root(&self) -> &ContentDigest {
+        &self.final_state_root
+    }
+
+    /// Return the current hash-chain head as a hex string.
+    ///
+    /// For an empty chain, this returns the genesis root hex. For a
+    /// non-empty chain, this returns the last receipt's `next_root`.
+    pub fn final_state_root_hex(&self) -> String {
+        self.final_state_root.to_hex()
+    }
+
     /// Access the receipts in the chain.
     pub fn receipts(&self) -> &[CorridorReceipt] {
         &self.receipts
@@ -204,17 +521,14 @@ impl ReceiptChain {
     ///
     /// Validates:
     /// 1. **Sequence number** — must equal `self.height()` (0-indexed).
-    ///    The first receipt has sequence 0, the second has sequence 1, etc.
-    /// 2. **`prev_root`** — must equal the current MMR root (`self.mmr_root()`),
-    ///    NOT the previous receipt's `next_root`. This is an important distinction:
-    ///    the MMR root is an accumulator over all prior `next_root` values.
+    /// 2. **`prev_root`** — must equal `self.final_state_root_hex()`
+    ///    (hash-chain continuity, **I-RECEIPT-LINK**).
+    /// 3. **`next_root`** — must equal `compute_next_root(&receipt)`
+    ///    (commitment integrity, **I-RECEIPT-COMMIT**).
     ///
-    /// After validation, the receipt's `next_root` is appended to the MMR.
-    ///
-    /// ## Security Invariant
-    ///
-    /// Enforces append-only semantics and chain integrity. Any violation
-    /// of sequence or prev_root indicates a potential fork.
+    /// After validation:
+    /// - `next_root` is appended to the MMR.
+    /// - `final_state_root` is updated to `next_root`.
     pub fn append(&mut self, receipt: CorridorReceipt) -> Result<(), ReceiptError> {
         let expected_seq = self.height();
         if receipt.sequence != expected_seq {
@@ -225,43 +539,121 @@ impl ReceiptChain {
             });
         }
 
-        let current_root = self.mmr_root()?;
-        if receipt.prev_root != current_root {
+        // I-RECEIPT-LINK: prev_root must match final_state_root (hash-chain)
+        let expected_prev = self.final_state_root_hex();
+        if receipt.prev_root != expected_prev {
             return Err(ReceiptError::PrevRootMismatch {
-                expected: current_root,
+                expected: expected_prev,
                 actual: receipt.prev_root.clone(),
                 sequence: receipt.sequence,
             });
         }
 
+        // I-RECEIPT-COMMIT: next_root must match recomputed value
+        let recomputed = compute_next_root(&receipt)?;
+        let recomputed_hex = recomputed.to_hex();
+        if receipt.next_root != recomputed_hex {
+            return Err(ReceiptError::NextRootMismatch {
+                expected: recomputed_hex,
+                actual: receipt.next_root.clone(),
+                sequence: receipt.sequence,
+            });
+        }
+
+        // Append to MMR (I-MMR-ROOT)
         self.mmr.append(&receipt.next_root)?;
         self.next_roots.push(receipt.next_root.clone());
+
+        // Advance hash-chain head
+        self.final_state_root = recomputed;
+
         self.receipts.push(receipt);
         Ok(())
     }
 
     /// Create a checkpoint at the current chain height.
     ///
-    /// The checkpoint captures the MMR root and chain height, producing
-    /// a content-addressed digest suitable for L1 anchoring.
+    /// The checkpoint captures both the hash-chain head and MMR root,
+    /// producing a content-addressed digest suitable for L1 anchoring.
+    /// Requires at least one receipt in the chain.
     pub fn create_checkpoint(&mut self) -> Result<Checkpoint, ReceiptError> {
-        let root = self.mmr_root()?;
-        let height = self.height();
+        if self.receipts.is_empty() {
+            return Err(ReceiptError::EmptyChain);
+        }
 
-        let checkpoint_data = serde_json::json!({
+        let mmr_root_hex = self.mmr_root()?;
+        let mmr_size = self.mmr.size() as u64;
+        let now = Timestamp::now();
+
+        // Collect union of all lawpack/ruleset digests across receipts
+        let mut all_lawpack: Vec<String> = self
+            .receipts
+            .iter()
+            .flat_map(|r| r.lawpack_digest_set.iter().cloned())
+            .collect();
+        all_lawpack.sort();
+        all_lawpack.dedup();
+
+        let mut all_ruleset: Vec<String> = self
+            .receipts
+            .iter()
+            .flat_map(|r| r.ruleset_digest_set.iter().cloned())
+            .collect();
+        all_ruleset.sort();
+        all_ruleset.dedup();
+
+        // Build MMR commitment object
+        let peaks_entries: Vec<MmrPeakEntry> = self
+            .mmr
+            .peaks()
+            .iter()
+            .map(|p| MmrPeakEntry {
+                height: p.height as u64,
+                hash: p.hash.clone(),
+            })
+            .collect();
+
+        let mmr_commitment = MmrCommitment {
+            mmr_type: "MSEZReceiptMMR".to_string(),
+            algorithm: "sha256".to_string(),
+            size: mmr_size,
+            root: mmr_root_hex,
+            peaks: Some(peaks_entries),
+        };
+
+        // Compute checkpoint_digest over canonical payload (excluding proof)
+        let checkpoint_payload = serde_json::json!({
+            "type": "MSEZCorridorStateCheckpoint",
             "corridor_id": self.corridor_id,
-            "height": height,
-            "mmr_root": root,
+            "timestamp": now.to_string(),
+            "genesis_root": self.genesis_root.to_hex(),
+            "final_state_root": self.final_state_root.to_hex(),
+            "receipt_count": self.receipts.len() as u64,
+            "lawpack_digest_set": all_lawpack,
+            "ruleset_digest_set": all_ruleset,
+            "mmr": {
+                "type": "MSEZReceiptMMR",
+                "algorithm": "sha256",
+                "size": mmr_size,
+                "root": mmr_commitment.root,
+            },
         });
-        let canonical = CanonicalBytes::new(&checkpoint_data)?;
+        let canonical = CanonicalBytes::new(&checkpoint_payload)?;
         let digest = sha256_digest(&canonical);
 
         let checkpoint = Checkpoint {
+            checkpoint_type: "MSEZCorridorStateCheckpoint".to_string(),
             corridor_id: self.corridor_id.clone(),
-            height,
-            mmr_root: root,
-            timestamp: Timestamp::now(),
+            timestamp: now,
+            genesis_root: self.genesis_root.to_hex(),
+            final_state_root: self.final_state_root.to_hex(),
+            receipt_count: self.receipts.len() as u64,
+            lawpack_digest_set: all_lawpack,
+            ruleset_digest_set: all_ruleset,
+            mmr: mmr_commitment,
             checkpoint_digest: digest,
+            proof: None,
+            anchor: None,
         };
 
         self.checkpoints.push(checkpoint.clone());
@@ -304,50 +696,64 @@ pub fn verify_receipt_proof(proof: &MmrInclusionProof) -> bool {
     verify_inclusion_proof(proof)
 }
 
+// ===========================================================================
+// Tests
+// ===========================================================================
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn make_next_root(i: u64) -> String {
-        let data = serde_json::json!({"payload": i});
-        let canonical = CanonicalBytes::new(&data).unwrap();
-        sha256_digest(&canonical).to_hex()
+    /// Create a deterministic genesis root for testing (all zeros).
+    fn test_genesis_root() -> ContentDigest {
+        ContentDigest::from_hex(&"00".repeat(32)).unwrap()
     }
 
-    fn make_receipt(chain: &ReceiptChain, i: u64) -> CorridorReceipt {
-        let next_root = make_next_root(i);
-        let prev_root = chain.mmr_root().unwrap();
-        CorridorReceipt {
+    /// Create a receipt for the chain with a correctly computed next_root.
+    fn make_receipt(chain: &ReceiptChain, _i: u64) -> CorridorReceipt {
+        let prev_root = chain.final_state_root_hex();
+        let mut receipt = CorridorReceipt {
             receipt_type: "MSEZCorridorStateReceipt".to_string(),
             corridor_id: chain.corridor_id().clone(),
             sequence: chain.height(),
             timestamp: Timestamp::now(),
             prev_root,
-            next_root,
+            next_root: String::new(),
             lawpack_digest_set: vec!["deadbeef".repeat(8)],
             ruleset_digest_set: vec!["cafebabe".repeat(8)],
-        }
+            proof: None,
+            transition: None,
+            transition_type_registry_digest_sha256: None,
+            zk: None,
+            anchor: None,
+        };
+        receipt.seal_next_root().unwrap();
+        receipt
     }
 
     #[test]
     fn empty_chain() {
-        let chain = ReceiptChain::new(CorridorId::new());
+        let chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
         assert_eq!(chain.height(), 0);
         assert_eq!(chain.mmr_root().unwrap(), "");
+        // final_state_root starts as genesis_root
+        assert_eq!(chain.final_state_root_hex(), "00".repeat(32));
     }
 
     #[test]
     fn append_single_receipt() {
-        let mut chain = ReceiptChain::new(CorridorId::new());
+        let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
         let receipt = make_receipt(&chain, 1);
         chain.append(receipt).unwrap();
         assert_eq!(chain.height(), 1);
         assert!(!chain.mmr_root().unwrap().is_empty());
+        // final_state_root has advanced from genesis
+        assert_ne!(chain.final_state_root_hex(), "00".repeat(32));
     }
 
     #[test]
     fn append_multiple_receipts() {
-        let mut chain = ReceiptChain::new(CorridorId::new());
+        let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
         for i in 0..10 {
             let receipt = make_receipt(&chain, i);
             chain.append(receipt).unwrap();
@@ -357,8 +763,38 @@ mod tests {
     }
 
     #[test]
+    fn first_receipt_prev_root_equals_genesis() {
+        let genesis = test_genesis_root();
+        let chain = ReceiptChain::new(CorridorId::new(), genesis.clone());
+        let receipt = make_receipt(&chain, 0);
+        assert_eq!(receipt.prev_root, genesis.to_hex());
+    }
+
+    #[test]
+    fn second_receipt_prev_root_equals_first_next_root() {
+        let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
+        let r0 = make_receipt(&chain, 0);
+        let r0_next = r0.next_root.clone();
+        chain.append(r0).unwrap();
+
+        let r1 = make_receipt(&chain, 1);
+        assert_eq!(r1.prev_root, r0_next);
+    }
+
+    #[test]
+    fn final_state_root_tracks_last_next_root() {
+        let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
+        for i in 0..5 {
+            let receipt = make_receipt(&chain, i);
+            chain.append(receipt).unwrap();
+        }
+        let last_next_root = chain.receipts().last().unwrap().next_root.clone();
+        assert_eq!(chain.final_state_root_hex(), last_next_root);
+    }
+
+    #[test]
     fn sequence_mismatch_rejected() {
-        let mut chain = ReceiptChain::new(CorridorId::new());
+        let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
         let receipt = make_receipt(&chain, 1);
         chain.append(receipt).unwrap();
 
@@ -378,12 +814,12 @@ mod tests {
 
     #[test]
     fn prev_root_mismatch_rejected() {
-        let mut chain = ReceiptChain::new(CorridorId::new());
+        let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
         let receipt = make_receipt(&chain, 1);
         chain.append(receipt).unwrap();
 
         let mut bad_receipt = make_receipt(&chain, 2);
-        bad_receipt.prev_root = "00".repeat(32);
+        bad_receipt.prev_root = "ff".repeat(32);
         let result = chain.append(bad_receipt);
         assert!(result.is_err());
         assert!(matches!(
@@ -393,22 +829,61 @@ mod tests {
     }
 
     #[test]
+    fn next_root_mismatch_rejected() {
+        let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
+        let mut receipt = make_receipt(&chain, 0);
+        // Tamper with next_root
+        receipt.next_root = "aa".repeat(32);
+        let result = chain.append(receipt);
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            ReceiptError::NextRootMismatch { .. }
+        ));
+    }
+
+    #[test]
     fn checkpoint_captures_state() {
-        let mut chain = ReceiptChain::new(CorridorId::new());
+        let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
         for i in 0..5 {
             let receipt = make_receipt(&chain, i);
             chain.append(receipt).unwrap();
         }
 
         let checkpoint = chain.create_checkpoint().unwrap();
-        assert_eq!(checkpoint.height, 5);
-        assert_eq!(checkpoint.mmr_root, chain.mmr_root().unwrap());
+        assert_eq!(checkpoint.height(), 5);
+        assert_eq!(checkpoint.receipt_count, 5);
+        assert_eq!(checkpoint.mmr_root(), chain.mmr_root().unwrap());
         assert_eq!(checkpoint.checkpoint_digest.to_hex().len(), 64);
+        assert_eq!(checkpoint.genesis_root, test_genesis_root().to_hex());
+        assert_eq!(checkpoint.final_state_root, chain.final_state_root_hex());
+    }
+
+    #[test]
+    fn checkpoint_requires_non_empty_chain() {
+        let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
+        let result = chain.create_checkpoint();
+        assert!(matches!(result.unwrap_err(), ReceiptError::EmptyChain));
+    }
+
+    #[test]
+    fn checkpoint_has_schema_fields() {
+        let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
+        let receipt = make_receipt(&chain, 0);
+        chain.append(receipt).unwrap();
+
+        let cp = chain.create_checkpoint().unwrap();
+        assert_eq!(cp.checkpoint_type, "MSEZCorridorStateCheckpoint");
+        assert_eq!(cp.mmr.mmr_type, "MSEZReceiptMMR");
+        assert_eq!(cp.mmr.algorithm, "sha256");
+        assert_eq!(cp.mmr.size, 1);
+        assert!(cp.mmr.peaks.is_some());
+        assert_eq!(cp.receipt_count, 1);
     }
 
     #[test]
     fn inclusion_proof_roundtrip() {
-        let mut chain = ReceiptChain::new(CorridorId::new());
+        let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
         for i in 0..10 {
             let receipt = make_receipt(&chain, i);
             chain.append(receipt).unwrap();
@@ -423,7 +898,7 @@ mod tests {
 
     #[test]
     fn tampered_proof_fails() {
-        let mut chain = ReceiptChain::new(CorridorId::new());
+        let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
         for i in 0..5 {
             let receipt = make_receipt(&chain, i);
             chain.append(receipt).unwrap();
@@ -438,7 +913,7 @@ mod tests {
 
     #[test]
     fn empty_chain_proof_fails() {
-        let chain = ReceiptChain::new(CorridorId::new());
+        let chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
         assert!(matches!(
             chain.build_inclusion_proof(0),
             Err(ReceiptError::EmptyChain)
@@ -447,7 +922,7 @@ mod tests {
 
     #[test]
     fn receipt_content_digest_deterministic() {
-        let chain = ReceiptChain::new(CorridorId::new());
+        let chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
         let receipt = make_receipt(&chain, 1);
         let d1 = receipt.content_digest().unwrap();
         let d2 = receipt.content_digest().unwrap();
@@ -457,7 +932,7 @@ mod tests {
 
     #[test]
     fn multiple_checkpoints() {
-        let mut chain = ReceiptChain::new(CorridorId::new());
+        let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
 
         for i in 0..3 {
             let receipt = make_receipt(&chain, i);
@@ -471,9 +946,383 @@ mod tests {
         }
         let cp2 = chain.create_checkpoint().unwrap();
 
-        assert_eq!(cp1.height, 3);
-        assert_eq!(cp2.height, 7);
-        assert_ne!(cp1.mmr_root, cp2.mmr_root);
+        assert_eq!(cp1.receipt_count, 3);
+        assert_eq!(cp2.receipt_count, 7);
+        assert_ne!(cp1.mmr_root(), cp2.mmr_root());
         assert_eq!(chain.checkpoints().len(), 2);
+    }
+
+    #[test]
+    fn compute_next_root_strips_proof_and_next_root() {
+        let chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
+
+        // Create receipt without proof, compute next_root
+        let mut r1 = CorridorReceipt {
+            receipt_type: "MSEZCorridorStateReceipt".to_string(),
+            corridor_id: chain.corridor_id().clone(),
+            sequence: 0,
+            timestamp: Timestamp::now(),
+            prev_root: chain.final_state_root_hex(),
+            next_root: "placeholder".to_string(),
+            lawpack_digest_set: vec![],
+            ruleset_digest_set: vec![],
+            proof: None,
+            transition: None,
+            transition_type_registry_digest_sha256: None,
+            zk: None,
+            anchor: None,
+        };
+        let nr1 = compute_next_root(&r1).unwrap();
+
+        // Same receipt with proof set — should produce identical next_root
+        r1.proof = Some(ReceiptProof::Single(ProofObject {
+            proof_type: "MsezEd25519Signature2025".to_string(),
+            created: "2026-01-15T12:00:00Z".to_string(),
+            verification_method: "did:example:123#key-1".to_string(),
+            proof_purpose: "assertionMethod".to_string(),
+            jws: "eyJ0eXAiOiJKV1MiLCJhbGciOiJFZERTQSJ9..test".to_string(),
+        }));
+        let nr2 = compute_next_root(&r1).unwrap();
+        assert_eq!(nr1, nr2, "proof must not affect next_root computation");
+
+        // Different next_root value — should still produce identical next_root
+        r1.next_root = "ff".repeat(32);
+        let nr3 = compute_next_root(&r1).unwrap();
+        assert_eq!(nr1, nr3, "next_root value must not affect computation");
+    }
+
+    #[test]
+    fn digest_set_normalization_dedup_and_sort() {
+        let chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
+
+        // Receipt with unsorted, duplicate digests
+        let mut r1 = CorridorReceipt {
+            receipt_type: "MSEZCorridorStateReceipt".to_string(),
+            corridor_id: chain.corridor_id().clone(),
+            sequence: 0,
+            timestamp: Timestamp::now(),
+            prev_root: chain.final_state_root_hex(),
+            next_root: String::new(),
+            lawpack_digest_set: vec![
+                "bb".repeat(32),
+                "aa".repeat(32),
+                "bb".repeat(32), // duplicate
+            ],
+            ruleset_digest_set: vec![],
+            proof: None,
+            transition: None,
+            transition_type_registry_digest_sha256: None,
+            zk: None,
+            anchor: None,
+        };
+        let nr1 = compute_next_root(&r1).unwrap();
+
+        // Same receipt with sorted, deduplicated digests
+        r1.lawpack_digest_set = vec!["aa".repeat(32), "bb".repeat(32)];
+        let nr2 = compute_next_root(&r1).unwrap();
+
+        assert_eq!(
+            nr1, nr2,
+            "digest set normalization must produce identical next_root"
+        );
+    }
+
+    #[test]
+    fn seal_next_root_sets_correct_value() {
+        let chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
+        let mut receipt = CorridorReceipt {
+            receipt_type: "MSEZCorridorStateReceipt".to_string(),
+            corridor_id: chain.corridor_id().clone(),
+            sequence: 0,
+            timestamp: Timestamp::now(),
+            prev_root: chain.final_state_root_hex(),
+            next_root: String::new(),
+            lawpack_digest_set: vec![],
+            ruleset_digest_set: vec![],
+            proof: None,
+            transition: None,
+            transition_type_registry_digest_sha256: None,
+            zk: None,
+            anchor: None,
+        };
+        let digest = receipt.seal_next_root().unwrap();
+        assert_eq!(receipt.next_root, digest.to_hex());
+        assert_eq!(receipt.next_root.len(), 64);
+    }
+
+    #[test]
+    fn receipt_proof_serde_roundtrip() {
+        let proof = ReceiptProof::Single(ProofObject {
+            proof_type: "MsezEd25519Signature2025".to_string(),
+            created: "2026-01-15T12:00:00Z".to_string(),
+            verification_method: "did:example:123#key-1".to_string(),
+            proof_purpose: "assertionMethod".to_string(),
+            jws: "eyJ0eXAiOiJKV1MiLCJhbGciOiJFZERTQSJ9..test".to_string(),
+        });
+        let json = serde_json::to_string(&proof).unwrap();
+        let deserialized: ReceiptProof = serde_json::from_str(&json).unwrap();
+        assert_eq!(proof, deserialized);
+    }
+
+    #[test]
+    fn digest_entry_from_string() {
+        let entry: DigestEntry = "aa".repeat(32).into();
+        assert_eq!(entry.digest(), "aa".repeat(32));
+    }
+
+    #[test]
+    fn digest_entry_artifact_ref() {
+        let entry = DigestEntry::ArtifactRef {
+            digest_sha256: "bb".repeat(32),
+            artifact_type: "lawpack".to_string(),
+            uri: Some("https://example.com/lawpack".to_string()),
+        };
+        assert_eq!(entry.digest(), "bb".repeat(32));
+
+        // Roundtrip
+        let json = serde_json::to_string(&entry).unwrap();
+        let deserialized: DigestEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(entry, deserialized);
+    }
+}
+
+// ===========================================================================
+// Adversarial tests
+// ===========================================================================
+
+#[cfg(test)]
+mod adversarial_receipt_tests {
+    use super::*;
+
+    fn test_genesis_root() -> ContentDigest {
+        ContentDigest::from_hex(&"00".repeat(32)).unwrap()
+    }
+
+    /// Adversarial vector 1: Receipt next_root forgery.
+    /// Craft a receipt with an arbitrary next_root that doesn't match the
+    /// payload. `append()` must reject it.
+    #[test]
+    fn adversarial_next_root_forgery() {
+        let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
+        let mut receipt = CorridorReceipt {
+            receipt_type: "MSEZCorridorStateReceipt".to_string(),
+            corridor_id: chain.corridor_id().clone(),
+            sequence: 0,
+            timestamp: Timestamp::now(),
+            prev_root: chain.final_state_root_hex(),
+            next_root: "aa".repeat(32), // FORGED — doesn't match payload
+            lawpack_digest_set: vec!["deadbeef".repeat(8)],
+            ruleset_digest_set: vec![],
+            proof: None,
+            transition: None,
+            transition_type_registry_digest_sha256: None,
+            zk: None,
+            anchor: None,
+        };
+        let result = chain.append(receipt);
+        assert!(
+            matches!(result, Err(ReceiptError::NextRootMismatch { .. })),
+            "forged next_root must be rejected"
+        );
+    }
+
+    /// Adversarial vector 2: Receipt prev_root set to MMR root instead of
+    /// final_state_root. This is the OLD (incorrect) behavior — it must
+    /// now be rejected.
+    #[test]
+    fn adversarial_prev_root_uses_mmr_root_instead_of_state_root() {
+        let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
+
+        // Append first receipt to diverge MMR root from final_state_root
+        let mut r0 = CorridorReceipt {
+            receipt_type: "MSEZCorridorStateReceipt".to_string(),
+            corridor_id: chain.corridor_id().clone(),
+            sequence: 0,
+            timestamp: Timestamp::now(),
+            prev_root: chain.final_state_root_hex(),
+            next_root: String::new(),
+            lawpack_digest_set: vec![],
+            ruleset_digest_set: vec![],
+            proof: None,
+            transition: None,
+            transition_type_registry_digest_sha256: None,
+            zk: None,
+            anchor: None,
+        };
+        r0.seal_next_root().unwrap();
+        chain.append(r0).unwrap();
+
+        // Now MMR root != final_state_root (MMR root is hash of next_root
+        // with domain separation; final_state_root IS next_root)
+        let mmr_root = chain.mmr_root().unwrap();
+        let state_root = chain.final_state_root_hex();
+        assert_ne!(mmr_root, state_root, "MMR root and state root must differ");
+
+        // Attempt to use MMR root as prev_root (the old incorrect behavior)
+        let mut bad_receipt = CorridorReceipt {
+            receipt_type: "MSEZCorridorStateReceipt".to_string(),
+            corridor_id: chain.corridor_id().clone(),
+            sequence: 1,
+            timestamp: Timestamp::now(),
+            prev_root: mmr_root, // WRONG: should be state_root
+            next_root: String::new(),
+            lawpack_digest_set: vec![],
+            ruleset_digest_set: vec![],
+            proof: None,
+            transition: None,
+            transition_type_registry_digest_sha256: None,
+            zk: None,
+            anchor: None,
+        };
+        bad_receipt.seal_next_root().unwrap();
+        let result = chain.append(bad_receipt);
+        assert!(
+            matches!(result, Err(ReceiptError::PrevRootMismatch { .. })),
+            "using MMR root as prev_root must be rejected"
+        );
+    }
+
+    /// Adversarial vector 3: Content-addressed integrity gap.
+    /// Submit receipt where content_digest() != next_root. The
+    /// compute_next_root verification catches this.
+    #[test]
+    fn adversarial_content_digest_integrity_gap() {
+        let chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
+        let mut receipt = CorridorReceipt {
+            receipt_type: "MSEZCorridorStateReceipt".to_string(),
+            corridor_id: chain.corridor_id().clone(),
+            sequence: 0,
+            timestamp: Timestamp::now(),
+            prev_root: chain.final_state_root_hex(),
+            next_root: String::new(),
+            lawpack_digest_set: vec!["deadbeef".repeat(8)],
+            ruleset_digest_set: vec![],
+            proof: None,
+            transition: None,
+            transition_type_registry_digest_sha256: None,
+            zk: None,
+            anchor: None,
+        };
+        let correct_next = compute_next_root(&receipt).unwrap();
+        receipt.next_root = correct_next.to_hex();
+
+        // The content_digest() hashes the FULL receipt (including next_root)
+        // so it differs from next_root (which excludes itself from the hash)
+        let content = receipt.content_digest().unwrap();
+        assert_ne!(
+            content.to_hex(),
+            receipt.next_root,
+            "content_digest and next_root must differ"
+        );
+    }
+
+    /// Adversarial vector 4: Checkpoint forgery — checkpoint without proof.
+    /// Schema validation would reject this (proof is required in schema).
+    #[test]
+    fn adversarial_checkpoint_without_proof() {
+        let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
+        let mut receipt = CorridorReceipt {
+            receipt_type: "MSEZCorridorStateReceipt".to_string(),
+            corridor_id: chain.corridor_id().clone(),
+            sequence: 0,
+            timestamp: Timestamp::now(),
+            prev_root: chain.final_state_root_hex(),
+            next_root: String::new(),
+            lawpack_digest_set: vec![],
+            ruleset_digest_set: vec![],
+            proof: None,
+            transition: None,
+            transition_type_registry_digest_sha256: None,
+            zk: None,
+            anchor: None,
+        };
+        receipt.seal_next_root().unwrap();
+        chain.append(receipt).unwrap();
+
+        let checkpoint = chain.create_checkpoint().unwrap();
+        // Verify checkpoint has no proof (unsigned)
+        assert!(
+            checkpoint.proof.is_none(),
+            "checkpoint created without signing should have no proof"
+        );
+
+        // Serialize and check that "proof" field is absent
+        let json = serde_json::to_value(&checkpoint).unwrap();
+        assert!(
+            json.get("proof").is_none(),
+            "proof field should not be present when None"
+        );
+        // Schema validation would reject this JSON (proof is required)
+    }
+
+    /// Adversarial vector 5: Digest set ordering attack.
+    /// Same receipt content with different digest-set ordering must produce
+    /// identical next_root (normalization must handle this).
+    #[test]
+    fn adversarial_digest_set_ordering_attack() {
+        let chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
+        let ts = Timestamp::now();
+
+        let mut r1 = CorridorReceipt {
+            receipt_type: "MSEZCorridorStateReceipt".to_string(),
+            corridor_id: chain.corridor_id().clone(),
+            sequence: 0,
+            timestamp: ts.clone(),
+            prev_root: chain.final_state_root_hex(),
+            next_root: String::new(),
+            lawpack_digest_set: vec![
+                "cc".repeat(32),
+                "aa".repeat(32),
+                "bb".repeat(32),
+            ],
+            ruleset_digest_set: vec!["zz".repeat(32), "aa".repeat(32)],
+            proof: None,
+            transition: None,
+            transition_type_registry_digest_sha256: None,
+            zk: None,
+            anchor: None,
+        };
+        let nr1 = compute_next_root(&r1).unwrap();
+
+        // Same content, reversed order
+        let mut r2 = CorridorReceipt {
+            receipt_type: "MSEZCorridorStateReceipt".to_string(),
+            corridor_id: chain.corridor_id().clone(),
+            sequence: 0,
+            timestamp: ts.clone(),
+            prev_root: chain.final_state_root_hex(),
+            next_root: String::new(),
+            lawpack_digest_set: vec![
+                "bb".repeat(32),
+                "cc".repeat(32),
+                "aa".repeat(32),
+            ],
+            ruleset_digest_set: vec!["aa".repeat(32), "zz".repeat(32)],
+            proof: None,
+            transition: None,
+            transition_type_registry_digest_sha256: None,
+            zk: None,
+            anchor: None,
+        };
+        let nr2 = compute_next_root(&r2).unwrap();
+
+        assert_eq!(
+            nr1, nr2,
+            "digest set ordering must not affect next_root"
+        );
+
+        // Also test with duplicates
+        let mut r3 = r1.clone();
+        r3.lawpack_digest_set = vec![
+            "aa".repeat(32),
+            "aa".repeat(32), // duplicate
+            "bb".repeat(32),
+            "cc".repeat(32),
+        ];
+        let nr3 = compute_next_root(&r3).unwrap();
+        assert_eq!(
+            nr1, nr3,
+            "duplicates in digest set must not affect next_root"
+        );
     }
 }

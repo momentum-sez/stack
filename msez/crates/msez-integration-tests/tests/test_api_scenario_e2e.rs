@@ -308,13 +308,14 @@ async fn scenario_pk_rsez_opens_corridor_to_ae_difc() {
         receipt2["sequence"], 1,
         "Act 4: second receipt must be sequence 1"
     );
-    // Chain integrity: receipt 2's prev_root must equal receipt 1's mmr_root.
-    // This is the fundamental invariant — the chain is append-only and each
-    // receipt commits to the state after the previous append.
+    // Chain integrity: receipt 2's prev_root must equal receipt 1's next_root.
+    // Under the dual commitment model, prev_root tracks the hash-chain head
+    // (final_state_root), which advances to next_root after each append.
+    // The MMR accumulator runs independently for inclusion proofs.
     assert_eq!(
         receipt2["prev_root"].as_str().unwrap(),
-        &mmr_root_1,
-        "Act 4: receipt chain is broken \u{2014} prev_root does not match prior mmr_root"
+        next_root_1,
+        "Act 4: receipt chain is broken \u{2014} prev_root does not match prior next_root (hash-chain head)"
     );
     // The MMR root must change after appending a second leaf.
     let mmr_root_2 = receipt2["mmr_root"].as_str().unwrap();

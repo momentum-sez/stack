@@ -6,38 +6,42 @@
 //! and that the inclusion of lawpack and ruleset digests affects the receipt
 //! content digest.
 
-use msez_core::{sha256_digest, CanonicalBytes, CorridorId, Timestamp};
+use msez_core::{ContentDigest, CorridorId, Timestamp};
 use msez_corridor::CorridorReceipt;
 use msez_corridor::ReceiptChain;
-use serde_json::json;
 
-fn make_next_root(i: u64) -> String {
-    let data = json!({"payload": i, "test": "digest-sets"});
-    let canonical = CanonicalBytes::new(&data).unwrap();
-    sha256_digest(&canonical).to_hex()
+fn test_genesis_root() -> ContentDigest {
+    ContentDigest::from_hex(&"00".repeat(32)).unwrap()
 }
 
 fn make_receipt_with_digests(
     chain: &ReceiptChain,
-    i: u64,
+    _i: u64,
     lawpack_digests: Vec<String>,
     ruleset_digests: Vec<String>,
 ) -> CorridorReceipt {
-    CorridorReceipt {
+    let mut receipt = CorridorReceipt {
         receipt_type: "MSEZCorridorStateReceipt".to_string(),
         corridor_id: chain.corridor_id().clone(),
         sequence: chain.height(),
         timestamp: Timestamp::now(),
-        prev_root: chain.mmr_root().unwrap(),
-        next_root: make_next_root(i),
+        prev_root: chain.final_state_root_hex(),
+        next_root: String::new(),
         lawpack_digest_set: lawpack_digests,
         ruleset_digest_set: ruleset_digests,
-    }
+        proof: None,
+        transition: None,
+        transition_type_registry_digest_sha256: None,
+        zk: None,
+        anchor: None,
+    };
+    receipt.seal_next_root().unwrap();
+    receipt
 }
 
 #[test]
 fn digest_set_includes_lawpack_and_ruleset() {
-    let mut chain = ReceiptChain::new(CorridorId::new());
+    let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
 
     let lawpack_digests = vec!["aa".repeat(32), "bb".repeat(32)];
     let ruleset_digests = vec!["cc".repeat(32)];
@@ -59,7 +63,7 @@ fn digest_set_includes_lawpack_and_ruleset() {
 
 #[test]
 fn digest_set_deterministic() {
-    let chain = ReceiptChain::new(CorridorId::new());
+    let chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
 
     let receipt_a = make_receipt_with_digests(
         &chain,
@@ -85,7 +89,7 @@ fn digest_set_deterministic() {
 
 #[test]
 fn empty_digest_set_handled() {
-    let mut chain = ReceiptChain::new(CorridorId::new());
+    let mut chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
 
     // A receipt with empty digest sets should still be valid
     let receipt = make_receipt_with_digests(&chain, 0, vec![], vec![]);
@@ -100,7 +104,7 @@ fn empty_digest_set_handled() {
 
 #[test]
 fn different_digest_sets_produce_different_receipts() {
-    let chain = ReceiptChain::new(CorridorId::new());
+    let chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
 
     let receipt_with_lawpack = make_receipt_with_digests(&chain, 0, vec!["aa".repeat(32)], vec![]);
     let receipt_with_ruleset = make_receipt_with_digests(&chain, 0, vec![], vec!["bb".repeat(32)]);
@@ -122,7 +126,7 @@ fn different_digest_sets_produce_different_receipts() {
 
 #[test]
 fn digest_set_order_matters() {
-    let chain = ReceiptChain::new(CorridorId::new());
+    let chain = ReceiptChain::new(CorridorId::new(), test_genesis_root());
 
     // Same digests but in different order
     let receipt_ab =

@@ -48,7 +48,7 @@ services:
       MSEZ_PORT: "8080"
       MSEZ_LOG_LEVEL: ${MSEZ_LOG_LEVEL:-info}
       # Database (PostgreSQL via SQLx)
-      DATABASE_URL: "postgresql://msez:${POSTGRES_PASSWORD:-msez}@postgres:5432/msez"
+      DATABASE_URL: "postgresql://msez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/msez"
       # Corridor configuration
       MSEZ_CORRIDOR_ID: ${MSEZ_CORRIDOR_ID:-org.momentum.msez.corridor.local}
       # Watcher configuration
@@ -85,7 +85,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: msez
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-msez}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: msez
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -132,7 +132,7 @@ services:
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?GRAFANA_PASSWORD must be set}
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana-data:/var/lib/grafana

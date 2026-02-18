@@ -153,8 +153,12 @@ pub struct TensorSlice {
 impl TensorSlice {
     /// Aggregate all states in the slice using the lattice `meet` operation.
     ///
-    /// Returns `Compliant` for an empty slice (neutral element of meet).
+    /// Returns `Pending` for an empty slice (fail-closed: an empty domain set
+    /// must not be treated as compliant). See P0-TENSOR-001.
     pub fn aggregate_state(&self) -> ComplianceState {
+        if self.cells.is_empty() {
+            return ComplianceState::Pending;
+        }
         self.cells
             .values()
             .copied()
@@ -705,12 +709,13 @@ mod tests {
     }
 
     #[test]
-    fn tensor_slice_empty() {
+    fn tensor_slice_empty_returns_pending() {
         let tensor = ComplianceTensor::new(test_jurisdiction());
         let slice = tensor.slice(&[]);
         assert!(slice.is_empty());
         assert_eq!(slice.len(), 0);
-        assert_eq!(slice.aggregate_state(), ComplianceState::Compliant);
+        // P0-TENSOR-001: empty slice must NOT return Compliant (fail-closed).
+        assert_eq!(slice.aggregate_state(), ComplianceState::Pending);
         assert!(slice.all_passing());
         assert!(slice.non_compliant_domains().is_empty());
         assert!(slice.pending_domains().is_empty());

@@ -327,9 +327,9 @@ fn evaluate_attested_domain(ctx: &EvaluationContext) -> (ComplianceState, Option
 /// Evaluation logic for the 12 extended domains from `tools/msez/composition.py`.
 ///
 /// These domains are defined in the composition specification but do not
-/// yet have full evaluation implementations in the Python codebase. The Rust
-/// version returns stored state if set; otherwise `NotApplicable` with a
-/// `tracing::warn!()` log to surface the gap.
+/// yet have full evaluation implementations. Fail-closed: returns `Pending`
+/// when no stored state exists, preventing unimplemented domains from being
+/// treated as passing. See P0-TENSOR-001.
 fn evaluate_extended_domain(
     domain: ComplianceDomain,
     ctx: &EvaluationContext,
@@ -342,10 +342,10 @@ fn evaluate_extended_domain(
     tracing::warn!(
         domain = %domain,
         entity_id = %ctx.entity_id,
-        "domain evaluation not yet implemented — returning NotApplicable"
+        "domain evaluation not yet implemented — returning Pending (fail-closed)"
     );
     (
-        ComplianceState::NotApplicable,
+        ComplianceState::Pending,
         Some("not_implemented".into()),
     )
 }
@@ -576,7 +576,7 @@ mod tests {
     }
 
     #[test]
-    fn extended_domain_returns_not_applicable_when_no_state() {
+    fn extended_domain_returns_pending_when_no_state() {
         let ctx = EvaluationContext {
             entity_id: "entity-1".into(),
             current_state: None,
@@ -584,7 +584,8 @@ mod tests {
             metadata: HashMap::new(),
         };
         let (state, reason) = evaluate_domain_default(ComplianceDomain::Banking, &ctx);
-        assert_eq!(state, ComplianceState::NotApplicable);
+        // P0-TENSOR-001: fail-closed — unimplemented domains return Pending, not NotApplicable
+        assert_eq!(state, ComplianceState::Pending);
         assert_eq!(reason.as_deref(), Some("not_implemented"));
     }
 
@@ -632,10 +633,11 @@ mod tests {
         };
         for &domain in ComplianceDomain::all() {
             let (state, _) = evaluate_domain_default(domain, &ctx);
-            // All domains should return a valid state.
-            assert!(
-                state == ComplianceState::Pending || state == ComplianceState::NotApplicable,
-                "domain {domain} with no state should return Pending or NotApplicable, got {state}"
+            // P0-TENSOR-001: all domains with no state must return Pending (fail-closed).
+            assert_eq!(
+                state,
+                ComplianceState::Pending,
+                "domain {domain} with no state should return Pending, got {state}"
             );
         }
     }

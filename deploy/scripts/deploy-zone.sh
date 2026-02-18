@@ -121,6 +121,10 @@ echo -e "${GREEN}Zone configuration generated${NC}"
 # Create .env file
 echo -e "${YELLOW}Creating environment configuration...${NC}"
 
+# Generate random credentials — never use hardcoded defaults
+GENERATED_PG_PASSWORD="$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)"
+GENERATED_GRAFANA_PASSWORD="$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)"
+
 cat > "$DEPLOY_DIR/.env" << EOF
 # MSEZ Zone Environment Configuration
 # Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -140,8 +144,11 @@ MSEZ_BOND_AMOUNT=100000
 
 # Database Configuration
 POSTGRES_USER=msez
-POSTGRES_PASSWORD=msez
+POSTGRES_PASSWORD=$GENERATED_PG_PASSWORD
 POSTGRES_DB=msez
+
+# Observability
+GRAFANA_PASSWORD=$GENERATED_GRAFANA_PASSWORD
 EOF
 
 echo -e "${GREEN}Environment configuration created${NC}"
@@ -251,23 +258,15 @@ echo ""
 docker compose ps
 echo ""
 echo -e "${BLUE}Service Endpoints:${NC}"
-echo -e "  Zone Authority:     http://localhost:8080"
-echo -e "  Corridor Node:      http://localhost:8081"
-echo -e "  Watcher:            http://localhost:8082"
-echo -e "  Entity Registry:    http://localhost:8083"
-echo -e "  License Registry:   http://localhost:8084"
-echo -e "  Identity Service:   http://localhost:8085"
-echo -e "  Settlement Service: http://localhost:8086"
-echo -e "  Compliance Service: http://localhost:8087"
-echo -e "  Regulator Console:  http://localhost:8088"
+echo -e "  MSEZ API (all services): http://localhost:8080"
+echo -e "  Health check:            http://localhost:8080/health/liveness"
 echo ""
 echo -e "${BLUE}Observability:${NC}"
-echo -e "  Prometheus:         http://localhost:9090"
-echo -e "  Grafana:            http://localhost:3000 (admin/admin)"
+echo -e "  Prometheus:              http://localhost:9090"
+echo -e "  Grafana:                 http://localhost:3000"
 echo ""
 echo -e "${BLUE}Databases:${NC}"
-echo -e "  PostgreSQL:         localhost:5432 (msez/msez)"
-echo -e "  Redis:              localhost:6379"
+echo -e "  PostgreSQL:              localhost:5432"
 echo ""
 echo -e "${YELLOW}To view logs:${NC}"
 echo -e "  docker compose logs -f"

@@ -63,6 +63,25 @@ jobs:
           done
           echo "OK: All schemas are valid JSON"
 
+      - name: Guard — no default credentials in deploy paths
+        run: |
+          if grep -rn 'POSTGRES_PASSWORD:-msez\|POSTGRES_PASSWORD=msez\|GRAFANA_PASSWORD:-admin' deploy/; then
+            echo "FAIL: Default credentials found in deploy paths (P0-DEPLOY-001)"
+            exit 1
+          fi
+          echo "OK: No default credentials in deploy paths"
+
+      - name: Guard — schema $id URI consistency
+        run: |
+          CANONICAL="schemas.momentum-sez.org/msez/"
+          BAD_IDS=$(grep -rn '"$id"' schemas/ | grep -v "$CANONICAL" | grep -v '.schema.json":' || true)
+          if [ -n "$BAD_IDS" ]; then
+            echo "WARNING: Non-canonical schema \$id URIs found (P1-SCHEMA-002):"
+            echo "$BAD_IDS"
+            echo "Expected domain: $CANONICAL"
+          fi
+          echo "INFO: Schema \$id consistency check complete"
+
       - name: Verify trade playbook artifact graph closure
         run: |
           test -f docs/examples/trade/dist/artifacts/cas-index.json || { echo "SKIP: trade playbook artifacts not present"; exit 0; }

@@ -4,7 +4,7 @@ kind: tax-infrastructure
 name: Transfer Pricing Compliance
 description: |
   Transfer pricing documentation and compliance system for related-party
-  transactions within Special Economic Zones. Implements OECD Transfer
+  transactions within Economic Zones. Implements OECD Transfer
   Pricing Guidelines and arm's length principle enforcement.
 
   Supports:

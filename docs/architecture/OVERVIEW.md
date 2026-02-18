@@ -1,10 +1,10 @@
 # Architecture overview
 
-**Momentum SEZ Stack** -- v0.4.44
+**Momentum EZ Stack** -- v0.4.44
 
-The SEZ Stack is a **compliance orchestration layer** built in Rust. It sits above the live Mass APIs and provides the intelligence that primitive CRUD operations alone cannot express: multi-domain compliance evaluation, cross-border corridor management, cryptographic audit trails, and autonomous policy execution.
+The EZ Stack is a **compliance orchestration layer** built in Rust. It sits above the live Mass APIs and provides the intelligence that primitive CRUD operations alone cannot express: multi-domain compliance evaluation, cross-border corridor management, cryptographic audit trails, and autonomous policy execution.
 
-This document covers the system design, data flow, key invariants, and the boundary between the SEZ Stack and Mass.
+This document covers the system design, data flow, key invariants, and the boundary between the EZ Stack and Mass.
 
 ---
 
@@ -28,9 +28,9 @@ Plus: `templating-engine` (Heroku) for document generation.
 
 These APIs have their own codebase, persistence, and deployment. They handle real entities, real capital, real government integrations.
 
-### SEZ Stack (this repository)
+### EZ Stack (this repository)
 
-The SEZ Stack is the **orchestrator**. It provides:
+The EZ Stack is the **orchestrator**. It provides:
 
 | Concern | Crate | What it adds beyond Mass primitives |
 |---------|-------|-------------------------------------|
@@ -44,11 +44,11 @@ The SEZ Stack is the **orchestrator**. It provides:
 | Schema enforcement | `msez-schema` | 116 JSON Schema files validated at the API boundary |
 | HTTP API | `msez-api` | Axum server composing all of the above |
 | CLI | `msez-cli` | Offline zone management: validation, lockfiles, signing |
-| Mass API client | `msez-mass-client` | Typed Rust HTTP client -- the only path from SEZ Stack to Mass |
+| Mass API client | `msez-mass-client` | Typed Rust HTTP client -- the only path from EZ Stack to Mass |
 
 ### The boundary
 
-The SEZ Stack **never stores primitive data**. Entity records, cap tables, payment records, identity records, and consent records live in Mass. The SEZ Stack stores:
+The EZ Stack **never stores primitive data**. Entity records, cap tables, payment records, identity records, and consent records live in Mass. The EZ Stack stores:
 
 - Compliance state (tensor snapshots, evaluation results)
 - Corridor state (receipt chains, checkpoints, fork resolution records)
@@ -175,7 +175,7 @@ Clock skew tolerance: 5 minutes.
 
 ## Compliance tensor
 
-The compliance tensor is the core intelligence of the SEZ Stack. It evaluates:
+The compliance tensor is the core intelligence of the EZ Stack. It evaluates:
 
 ```
 T(entity, jurisdiction) : ComplianceDomain → ComplianceState
@@ -195,7 +195,7 @@ The tensor is parameterized by a `JurisdictionConfig` that determines which doma
 
 ## State machines
 
-The SEZ Stack uses the **typestate pattern** extensively. Each lifecycle state is a distinct zero-sized type (ZST). Transitions are methods that consume `self` and return the next state type. Invalid transitions are compile errors.
+The EZ Stack uses the **typestate pattern** extensively. Each lifecycle state is a distinct zero-sized type (ZST). Transitions are methods that consume `self` and return the next state type. Invalid transitions are compile errors.
 
 ### Corridor lifecycle (6 states)
 

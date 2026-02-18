@@ -14,9 +14,9 @@ use crate::state::AppState;
 #[derive(OpenApi)]
 #[openapi(
     info(
-        title = "MSEZ API — SEZ Stack Orchestration Layer",
+        title = "MSEZ API — EZ Stack Orchestration Layer",
         version = "0.4.44",
-        description = "Axum API services for the Momentum SEZ Stack: orchestration layer above Mass APIs. Provides Mass API proxy for primitive operations (entities, ownership, fiscal, identity, consent), plus SEZ-Stack-native corridor lifecycle, smart asset management, and regulator console.",
+        description = "Axum API services for the Momentum EZ Stack: orchestration layer above Mass APIs. Provides Mass API proxy for primitive operations (entities, ownership, fiscal, identity, consent), plus EZ-Stack-native corridor lifecycle, smart asset management, and regulator console.",
         license(name = "BUSL-1.1")
     ),
     paths(
@@ -58,7 +58,7 @@ use crate::state::AppState;
         crate::routes::regulator::dashboard,
     ),
     components(schemas(
-        // State record types (SEZ-Stack-owned)
+        // State record types (EZ-Stack-owned)
         crate::state::CorridorRecord,
         crate::state::SmartAssetRecord,
         crate::state::AttestationRecord,
@@ -115,9 +115,9 @@ use crate::state::AppState;
         (name = "fiscal", description = "FISCAL primitive — proxied to Mass treasury-info API"),
         (name = "identity", description = "IDENTITY primitive — proxied to Mass identity services"),
         (name = "consent", description = "CONSENT primitive — proxied to Mass consent-info API"),
-        (name = "corridors", description = "Corridor Operations API (SEZ Stack domain)"),
-        (name = "smart_assets", description = "Smart Asset API (SEZ Stack domain)"),
-        (name = "regulator", description = "Regulator Console API (SEZ Stack domain)"),
+        (name = "corridors", description = "Corridor Operations API (EZ Stack domain)"),
+        (name = "smart_assets", description = "Smart Asset API (EZ Stack domain)"),
+        (name = "regulator", description = "Regulator Console API (EZ Stack domain)"),
     )
 )]
 pub struct ApiDoc;
@@ -141,7 +141,7 @@ mod tests {
     #[test]
     fn test_openapi_spec_generates_successfully() {
         let spec = ApiDoc::openapi();
-        assert_eq!(spec.info.title, "MSEZ API — SEZ Stack Orchestration Layer");
+        assert_eq!(spec.info.title, "MSEZ API — EZ Stack Orchestration Layer");
         assert_eq!(spec.info.version, "0.4.44");
     }
 

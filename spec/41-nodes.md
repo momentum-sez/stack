@@ -1,6 +1,6 @@
 # Nodes
 
-This document defines how **nodes** are represented in the Momentum SEZ Stack, with a focus on:
+This document defines how **nodes** are represented in the Momentum EZ Stack, with a focus on:
 
 - cryptographic identity,
 - capability discovery (including ZK and secure execution),

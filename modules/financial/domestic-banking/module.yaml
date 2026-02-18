@@ -3,7 +3,7 @@ version: 0.4.44
 kind: financial-infrastructure
 name: Domestic Banking Services
 description: |
-  Domestic banking services for Special Economic Zone residents.
+  Domestic banking services for Economic Zone residents.
   Provides retail and commercial banking capabilities tailored
   for zone-based operations.
 

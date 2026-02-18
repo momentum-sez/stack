@@ -3,7 +3,7 @@ version: 0.4.44
 kind: operational-infrastructure
 name: Incident Response Management
 description: |
-  Incident response and management infrastructure for Special Economic Zones.
+  Incident response and management infrastructure for Economic Zones.
   Provides structured workflows for detecting, responding to, and recovering
   from security incidents, operational failures, and compliance breaches.
 

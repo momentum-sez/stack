@@ -1,6 +1,6 @@
 # Legal corpus modules
 
-The Momentum SEZ Stack ships **templates + schemas + tooling** to represent law as modular, versioned,
+The Momentum EZ Stack ships **templates + schemas + tooling** to represent law as modular, versioned,
 composable artifacts.
 
 It does **not** ship a redistributed copy of “all laws everywhere” inside the core repository, because:

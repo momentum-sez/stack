@@ -8,7 +8,7 @@ info:
     endpoints with bearer-token authentication and standard error
     responses. Replaces the prior spec scaffold (v0.1.0).
   contact:
-    name: Momentum SEZ Protocol Team
+    name: Momentum EZ Protocol Team
   license:
     name: BUSL-1.1
 servers:

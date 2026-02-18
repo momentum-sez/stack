@@ -3,7 +3,7 @@ version: 0.4.44
 kind: financial-infrastructure
 name: Domestic Payment Systems
 description: |
-  Domestic payment infrastructure for Special Economic Zones.
+  Domestic payment infrastructure for Economic Zones.
   Connects to national payment systems and enables local
   payment clearing and settlement.
 

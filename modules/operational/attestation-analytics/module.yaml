@@ -4,7 +4,7 @@ kind: operational-infrastructure
 name: Attestation Analytics
 description: |
   Analytics and monitoring infrastructure for attestation networks
-  in Special Economic Zones. Provides real-time insights into
+  in Economic Zones. Provides real-time insights into
   watcher performance, attestation patterns, and network health.
 
   Capabilities:

@@ -3,7 +3,7 @@ version: 0.4.44
 kind: financial-infrastructure
 name: Settlement Adapter
 description: |
-  Universal settlement infrastructure adapter for Special Economic Zones.
+  Universal settlement infrastructure adapter for Economic Zones.
   Connects to various settlement systems and provides unified interfaces
   for multi-asset, multi-currency settlement.
 

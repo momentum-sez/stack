@@ -1,8 +1,8 @@
 # Documentation
 
-**Momentum SEZ Stack** -- v0.4.44
+**Momentum EZ Stack** -- v0.4.44
 
-This is the navigation hub for all SEZ Stack documentation. The codebase is a Rust workspace of 16 crates implementing compliance orchestration, corridor operations, and jurisdictional composition above the live Mass APIs.
+This is the navigation hub for all EZ Stack documentation. The codebase is a Rust workspace of 16 crates implementing compliance orchestration, corridor operations, and jurisdictional composition above the live Mass APIs.
 
 ---
 
@@ -11,7 +11,7 @@ This is the navigation hub for all SEZ Stack documentation. The codebase is a Ru
 | Document | What you'll learn |
 |----------|-------------------|
 | [Getting Started](./getting-started.md) | Clone, build, test, run the API server, use the CLI |
-| [Architecture Overview](./architecture/OVERVIEW.md) | System design, data flow, the Mass/SEZ boundary |
+| [Architecture Overview](./architecture/OVERVIEW.md) | System design, data flow, the Mass/EZ boundary |
 | [Crate Reference](./architecture/CRATE-REFERENCE.md) | Every crate's purpose, key types, and public API |
 | [Specification](../spec/) | 25 normative protocol chapters |
 
@@ -23,7 +23,7 @@ This is the navigation hub for all SEZ Stack documentation. The codebase is a Ru
 |----------|-------|
 | [Architecture Overview](./architecture/OVERVIEW.md) | Layered system design, artifact model, corridors, verification pipeline |
 | [Crate Reference](./architecture/CRATE-REFERENCE.md) | Per-crate API surface: structs, traits, functions, error types |
-| [Mass Integration](./architecture/MASS-INTEGRATION.md) | How the SEZ Stack maps onto the five Mass primitives |
+| [Mass Integration](./architecture/MASS-INTEGRATION.md) | How the EZ Stack maps onto the five Mass primitives |
 | [Security Model](./architecture/SECURITY-MODEL.md) | Trust boundaries, attack classes, verification modes |
 | [Smart Asset Integration](./architecture/SMART-ASSET-INTEGRATION.md) | Smart Asset lifecycle, compliance tensor binding |
 | [Traceability Matrix](./traceability-matrix.md) | Spec chapter to Rust crate mapping |

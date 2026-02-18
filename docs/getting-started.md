@@ -64,7 +64,7 @@ cargo doc --workspace --no-deps --open
 
 ### Zones
 
-A **zone** is a deployable Special Economic Zone defined by a `zone.yaml` file. It selects which jurisdictions provide which legal, regulatory, and financial capabilities.
+A **zone** is a deployable Economic Zone defined by a `zone.yaml` file. It selects which jurisdictions provide which legal, regulatory, and financial capabilities.
 
 ### Modules
 
@@ -84,7 +84,7 @@ A **Smart Asset** is an asset with embedded compliance intelligence. It carries 
 
 ### Mass APIs
 
-The five **Mass primitives** (Entities, Ownership, Fiscal, Identity, Consent) are live API services operated by Mass. The SEZ Stack orchestrates these primitives through the `msez-mass-client` crate -- it never stores primitive data directly.
+The five **Mass primitives** (Entities, Ownership, Fiscal, Identity, Consent) are live API services operated by Mass. The EZ Stack orchestrates these primitives through the `msez-mass-client` crate -- it never stores primitive data directly.
 
 ---
 

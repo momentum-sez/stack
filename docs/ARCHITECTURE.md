@@ -1,10 +1,10 @@
 # Architecture
 
-## Momentum SEZ Stack -- Rust Workspace
+## Momentum EZ Stack -- Rust Workspace
 
 **v0.4.44** -- 16 crates, ~48K lines of Rust
 
-This document describes the architectural foundations of the SEZ Stack: a compliance orchestration layer built in Rust that sits above the live Mass APIs and provides the intelligence that primitive CRUD operations alone cannot express.
+This document describes the architectural foundations of the EZ Stack: a compliance orchestration layer built in Rust that sits above the live Mass APIs and provides the intelligence that primitive CRUD operations alone cannot express.
 
 For the crate-by-crate API reference, see [Crate Reference](./architecture/CRATE-REFERENCE.md).
 For the system overview, see [Architecture Overview](./architecture/OVERVIEW.md).
@@ -13,9 +13,9 @@ For the system overview, see [Architecture Overview](./architecture/OVERVIEW.md)
 
 ## Foundational premise
 
-Traditional Special Economic Zones take 3-7 years and $50-200M to establish. They require bilateral treaties, regulatory frameworks, banking relationships, corporate registries, dispute resolution, and licensing regimes.
+Traditional Economic Zones take 3-7 years and $50-200M to establish. They require bilateral treaties, regulatory frameworks, banking relationships, corporate registries, dispute resolution, and licensing regimes.
 
-The SEZ Stack reduces this to configuration files backed by a Rust workspace that provides:
+The EZ Stack reduces this to configuration files backed by a Rust workspace that provides:
 
 - **Type-level correctness**: Invalid state transitions don't compile. Identifier types can't mix. Proof backends are sealed.
 - **Cryptographic integrity**: Every state transition produces verifiable proof via Ed25519 signatures, MMR-backed receipt chains, and W3C Verifiable Credentials.
@@ -67,7 +67,7 @@ A **Smart Asset** is an asset with embedded compliance intelligence. It carries 
 - What attestations are missing
 - The optimal migration path to a target jurisdiction (via the compliance manifold)
 
-Smart Assets are the SEZ Stack's programmable substrate. An entity IS a Smart Asset. An ownership position IS a Smart Asset. The SEZ Stack manages their compliance lifecycle; Mass manages the underlying primitive data.
+Smart Assets are the EZ Stack's programmable substrate. An entity IS a Smart Asset. An ownership position IS a Smart Asset. The EZ Stack manages their compliance lifecycle; Mass manages the underlying primitive data.
 
 ### Compliance Tensor
 
@@ -225,9 +225,9 @@ Settlement: `RangeProof`, `MerkleMembership`, `NettingValidity`
 
 ## Mass API integration
 
-The SEZ Stack does not reimplement Mass primitives. It orchestrates them.
+The EZ Stack does not reimplement Mass primitives. It orchestrates them.
 
-| Mass Primitive | Mass API Endpoint | SEZ Stack adds |
+| Mass Primitive | Mass API Endpoint | EZ Stack adds |
 |----------------|-------------------|----------------|
 | Entities | `organization-info.api.mass.inc` | Compliance tensor evaluation, VC issuance, state machine lifecycle |
 | Ownership | `investment-info` | Smart asset binding, corridor-aware transfer validation |

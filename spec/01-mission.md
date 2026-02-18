@@ -1,7 +1,7 @@
 # Mission
 
-The Momentum SEZ Stack (MSEZ Stack) is an **open, modular, interoperable stack standard** for designing and deploying
-Special Economic Zones (SEZs) and Free Zones as **programmable, networked jurisdictions**.
+The Momentum EZ Stack (MEZ Stack) is an **open, modular, interoperable stack standard** for designing and deploying
+Economic Zones (EZs) and Free Zones as **programmable, networked jurisdictions**.
 
 The repository is structured as:
 

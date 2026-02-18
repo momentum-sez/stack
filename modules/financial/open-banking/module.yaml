@@ -3,7 +3,7 @@ version: 0.4.44
 kind: financial-infrastructure
 name: Open Banking Integration
 description: |
-  Open Banking API infrastructure for Special Economic Zones.
+  Open Banking API infrastructure for Economic Zones.
   Implements PSD2, UK Open Banking, and emerging global standards
   for account information and payment initiation services.
 

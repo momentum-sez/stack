@@ -419,7 +419,7 @@ Security-critical schemas (`corridor.receipt`, `verifiable_credential`, `proof`,
 
 ## msez-mass-client
 
-**Typed HTTP client for Mass APIs.** The only authorized path from SEZ Stack to Mass.
+**Typed HTTP client for Mass APIs.** The only authorized path from EZ Stack to Mass.
 
 ### Key types
 

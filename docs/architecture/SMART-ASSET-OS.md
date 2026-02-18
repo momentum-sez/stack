@@ -1,6 +1,6 @@
 # Smart Asset OS (non-blockchain)
 
-This document specifies the **Smart Asset OS** reference layer for the Momentum SEZ Stack (MSEZ).
+This document specifies the **Smart Asset OS** reference layer for the Momentum EZ Stack (MSEZ).
 
 > Design goal: run “smart assets” (stateful, policy constrained, attestable objects) **without requiring a blockchain**, while preserving strong commitment surfaces (digests + ArtifactRefs) and optional anchoring into corridor state channels.
 

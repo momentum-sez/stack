@@ -4,7 +4,7 @@ kind: financial-infrastructure
 name: Foreign Exchange Services
 description: |
   Foreign exchange trading and settlement infrastructure for
-  Special Economic Zones. Provides spot, forward, and swap
+  Economic Zones. Provides spot, forward, and swap
   capabilities with multi-currency support.
 
   Capabilities:

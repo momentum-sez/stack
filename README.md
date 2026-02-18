@@ -1,6 +1,6 @@
 <div align="center">
 
-# Momentum SEZ Stack
+# Momentum EZ Stack
 
 ### Programmable jurisdictional infrastructure in Rust.
 
@@ -21,14 +21,14 @@
 
 ## What this is
 
-The SEZ Stack deploys Special Economic Zones the way you deploy cloud infrastructure: as configuration.
+The EZ Stack deploys Economic Zones the way you deploy cloud infrastructure: as configuration.
 
 A zone definition file selects jurisdictions, composes legal/regulatory/financial modules, and generates the complete operational substrate -- entity registry, compliance framework, banking adapters, dispute resolution, cross-border corridors -- backed by cryptographic proofs and verifiable credentials.
 
-The Rust workspace is the **orchestration layer** that sits above the live [Mass](https://mass.inc) APIs. Mass implements the five programmable primitives (Entities, Ownership, Fiscal, Identity, Consent) as deployed services. The SEZ Stack provides compliance intelligence, corridor operations, and jurisdictional composition that Mass primitives alone cannot express.
+The Rust workspace is the **orchestration layer** that sits above the live [Mass](https://mass.inc) APIs. Mass implements the five programmable primitives (Entities, Ownership, Fiscal, Identity, Consent) as deployed services. The EZ Stack provides compliance intelligence, corridor operations, and jurisdictional composition that Mass primitives alone cannot express.
 
 ```
-Zone Admin ──> SEZ Stack API ──> Compliance Tensor (20-domain evaluation)
+Zone Admin ──> EZ Stack API ──> Compliance Tensor (20-domain evaluation)
                               ──> Corridor state machine (typestate-enforced)
                               ──> Mass API client ──> organization-info.api.mass.inc
                                                    ──> treasury-info.api.mass.inc
@@ -72,9 +72,9 @@ cargo run -p msez-cli -- vc keygen --output keys/ --prefix dev
 
 ## Architecture
 
-The SEZ Stack owns **orchestration, compliance, and cryptographic state**. It does not own primitive data (entities, cap tables, payments, identity records, consent) -- that belongs to the Mass APIs.
+The EZ Stack owns **orchestration, compliance, and cryptographic state**. It does not own primitive data (entities, cap tables, payments, identity records, consent) -- that belongs to the Mass APIs.
 
-### What the SEZ Stack owns
+### What the EZ Stack owns
 
 | Domain | Crate | What it does |
 |--------|-------|-------------|
@@ -86,11 +86,11 @@ The SEZ Stack owns **orchestration, compliance, and cryptographic state**. It do
 | **Agentic Engine** | `msez-agentic` | 20 trigger types, autonomous policy evaluation, deterministic conflict resolution, append-only audit trail. |
 | **Arbitration** | `msez-arbitration` | Dispute lifecycle (7 phases), evidence chain-of-custody, escrow management, enforcement via VC-triggered state transitions. |
 | **Zero-Knowledge** | `msez-zkp` | Sealed `ProofSystem` trait with 12 circuit types. Phase 1: deterministic mock. Phase 2: Groth16/PLONK backends (feature-gated). |
-| **Mass API Client** | `msez-mass-client` | Typed Rust HTTP client for all five Mass API primitives. The only authorized path from SEZ Stack to Mass. |
+| **Mass API Client** | `msez-mass-client` | Typed Rust HTTP client for all five Mass API primitives. The only authorized path from EZ Stack to Mass. |
 
 ### What Mass owns (not in this repo)
 
-Entities, cap tables, payments, identity/KYC records, and consent -- all live in Mass API services (`organization-info.api.mass.inc`, `treasury-info.api.mass.inc`, etc.). The SEZ Stack calls Mass through `msez-mass-client`; it never stores primitive data directly.
+Entities, cap tables, payments, identity/KYC records, and consent -- all live in Mass API services (`organization-info.api.mass.inc`, `treasury-info.api.mass.inc`, etc.). The EZ Stack calls Mass through `msez-mass-client`; it never stores primitive data directly.
 
 ---
 
@@ -222,13 +222,13 @@ Authentication is constant-time bearer token comparison (`subtle::ConstantTimeEq
 | `POST/GET /v1/fiscal/*` | Mass Fiscal | Proxy via `msez-mass-client` |
 | `POST/GET /v1/identity/*` | Mass Identity | Proxy via `msez-mass-client` |
 | `POST/GET /v1/consent/*` | Mass Consent | Proxy via `msez-mass-client` |
-| `POST/GET /v1/corridors/*` | SEZ corridors | Native: lifecycle, receipts, forks |
-| `POST /v1/settlement/*` | SEZ settlement | Native: netting, SWIFT instructions |
-| `POST/GET /v1/assets/*` | SEZ smart assets | Native: registry, compliance eval |
-| `POST /v1/credentials/*` | SEZ credentials | Native: VC issuance, verification |
-| `POST /v1/triggers` | SEZ agentic | Native: policy trigger evaluation |
-| `GET /v1/policies/*` | SEZ agentic | Native: policy CRUD |
-| `GET /v1/regulator/*` | SEZ regulator | Native: compliance monitoring |
+| `POST/GET /v1/corridors/*` | EZ corridors | Native: lifecycle, receipts, forks |
+| `POST /v1/settlement/*` | EZ settlement | Native: netting, SWIFT instructions |
+| `POST/GET /v1/assets/*` | EZ smart assets | Native: registry, compliance eval |
+| `POST /v1/credentials/*` | EZ credentials | Native: VC issuance, verification |
+| `POST /v1/triggers` | EZ agentic | Native: policy trigger evaluation |
+| `GET /v1/policies/*` | EZ agentic | Native: policy CRUD |
+| `GET /v1/regulator/*` | EZ regulator | Native: compliance monitoring |
 | `GET /health/liveness` | Probes | Always 200 |
 | `GET /health/readiness` | Probes | Checks stores, signing key, locks |
 

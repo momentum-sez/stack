@@ -3,7 +3,7 @@ version: 0.4.44
 kind: financial-infrastructure
 name: Treasury Management
 description: |
-  Treasury management infrastructure for Special Economic Zones.
+  Treasury management infrastructure for Economic Zones.
   Provides comprehensive cash management, liquidity optimization,
   and treasury operations capabilities.
 

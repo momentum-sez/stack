@@ -3,7 +3,7 @@ version: 0.4.44
 kind: tax-infrastructure
 name: Tax Treaty Management
 description: |
-  Comprehensive tax treaty management system for Special Economic Zones.
+  Comprehensive tax treaty management system for Economic Zones.
   Manages bilateral and multilateral tax agreements, treaty benefits,
   withholding tax rates, and anti-abuse provisions.
 

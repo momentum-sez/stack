@@ -3,7 +3,7 @@ version: 0.4.44
 kind: financial-infrastructure
 name: Banking Adapter
 description: |
-  Universal banking integration adapter for Special Economic Zones.
+  Universal banking integration adapter for Economic Zones.
   Provides standardized interfaces to connect with banking partners,
   core banking systems, and payment networks.
 

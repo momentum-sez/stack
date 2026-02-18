@@ -1,9 +1,9 @@
 # Slide 09 – What You Can Do for a Zone
-## Complete Module Taxonomy: v0.4.44 GENESIS — Special Economic Zone in a Box
+## Complete Module Taxonomy: v0.4.44 GENESIS — Economic Zone in a Box
 
 > **Thesis:** Clone the repo. Pick a profile. Deploy to cloud. Connect to MASS.
 > You now have a fully functional, cryptographically verifiable, regulatory-compliant
-> Special Economic Zone with banking, payments, custody, arbitration, corporate
+> Economic Zone with banking, payments, custody, arbitration, corporate
 > services, capital markets, and cross-border settlement — all forkable, all auditable.
 
 ---

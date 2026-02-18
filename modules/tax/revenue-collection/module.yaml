@@ -3,7 +3,7 @@ version: 0.4.44
 kind: tax-infrastructure
 name: Revenue Collection System
 description: |
-  Comprehensive tax revenue collection infrastructure for Special Economic Zones.
+  Comprehensive tax revenue collection infrastructure for Economic Zones.
   Handles assessment, billing, collection, reconciliation, and enforcement of
   all zone taxes, fees, levies, and contributions.
 

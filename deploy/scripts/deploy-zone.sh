@@ -1,6 +1,6 @@
 #!/bin/bash
 # MSEZ Zone Deployment Script
-# Deploy a complete Special Economic Zone from a profile
+# Deploy a complete Economic Zone from a profile
 #
 # Usage:
 #   ./deploy-zone.sh [profile] [zone-id] [jurisdiction]
@@ -30,7 +30,7 @@ DEPLOY_DIR="$SCRIPT_DIR/../docker"
 
 echo -e "${BLUE}======================================${NC}"
 echo -e "${BLUE}   MSEZ Zone Deployment Script${NC}"
-echo -e "${BLUE}   Special Economic Zone in a Box${NC}"
+echo -e "${BLUE}   Economic Zone in a Box${NC}"
 echo -e "${BLUE}======================================${NC}"
 echo ""
 echo -e "Profile:      ${GREEN}$PROFILE${NC}"

@@ -3,7 +3,7 @@ version: 0.1.0
 kind: identity
 license: Apache-2.0
 description: |
-  Identity & Credentialing module family for Special Economic Zone operations.
+  Identity & Credentialing module family for Economic Zone operations.
   Implements the MASS Protocol Identity primitive with progressive verification
   tiers (Tier 0-3) and verifiable credential issuance.
 

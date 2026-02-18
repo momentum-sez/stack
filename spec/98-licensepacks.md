@@ -21,7 +21,7 @@ A **licensepack** is a content-addressed snapshot of jurisdictional licensing st
 
 ### 1.2 Why Licensepacks?
 
-In a Special Economic Zone, every significant economic activity requires a license:
+In an Economic Zone, every significant economic activity requires a license:
 - Corporate Service Providers (CSPs) must hold CSP licenses
 - Banks must hold banking licenses with specific activity permissions
 - Exchanges must hold exchange licenses with trading pair approvals

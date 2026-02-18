@@ -3,7 +3,7 @@ version: 0.4.44
 kind: financial-infrastructure
 name: Card Payment Services
 description: |
-  Card payment processing infrastructure for Special Economic Zones.
+  Card payment processing infrastructure for Economic Zones.
   Supports debit, credit, and prepaid card issuance, acquiring,
   and processing services.
 

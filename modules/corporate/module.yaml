@@ -3,7 +3,7 @@ version: 0.1.0
 kind: corporate
 license: Apache-2.0
 description: |
-  Corporate Services module family for Special Economic Zone operations.
+  Corporate Services module family for Economic Zone operations.
   Provides the full CSP (Corporate Service Provider) lifecycle from entity
   formation through annual compliance to dissolution.
 

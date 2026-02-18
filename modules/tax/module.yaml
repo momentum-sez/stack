@@ -3,7 +3,7 @@ version: 0.1.0
 kind: tax
 license: Apache-2.0
 description: |
-  Tax & Revenue module family for Special Economic Zone fiscal operations.
+  Tax & Revenue module family for Economic Zone fiscal operations.
   Defines the zone's tax framework, fee structures, incentive programs,
   and reporting requirements.
 

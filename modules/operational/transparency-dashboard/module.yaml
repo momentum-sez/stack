@@ -3,7 +3,7 @@ version: 0.4.44
 kind: operational-infrastructure
 name: Transparency Dashboard
 description: |
-  Public transparency dashboard for Special Economic Zones.
+  Public transparency dashboard for Economic Zones.
   Provides real-time visibility into zone operations, compliance status,
   and key performance indicators for stakeholders, regulators, and the public.
 

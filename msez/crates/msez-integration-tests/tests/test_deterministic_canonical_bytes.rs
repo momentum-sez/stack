@@ -126,15 +126,22 @@ fn float_rejection() {
 
 #[test]
 fn float_zero_handling() {
-    // serde_json normalizes 0.0 to the integer 0, so CanonicalBytes::new
-    // succeeds. This is acceptable — the critical invariant is that
-    // non-zero floats (like 3.14) are rejected (tested above).
+    // json!(0.0) creates a serde_json Number with f64 representation.
+    // The MCF float rejection rule rejects ANY f64-only Number, including 0.0.
+    // This is the correct, safe behavior: callers must use integer 0, not
+    // float 0.0, in payloads destined for canonicalization.
     let data = json!({"amount": 0.0});
     let result = CanonicalBytes::new(&data);
-    // serde_json encodes 0.0 as integer 0, so canonicalization succeeds.
     assert!(
-        result.is_ok(),
-        "serde_json normalizes 0.0 to integer 0 — canonicalization should succeed"
+        result.is_err(),
+        "float literal 0.0 must be rejected — use integer 0 instead"
+    );
+
+    // Verify that integer 0 is accepted (the correct way to express zero).
+    let data_int = json!({"amount": 0});
+    assert!(
+        CanonicalBytes::new(&data_int).is_ok(),
+        "integer 0 must be accepted"
     );
 }
 

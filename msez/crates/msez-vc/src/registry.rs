@@ -108,6 +108,30 @@ pub struct EnforcementProfile {
     pub notes: Option<String>,
 }
 
+/// Status of a jurisdictional binding.
+///
+/// Restricts values to the schema-defined set: `active`, `suspended`, `exited`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BindingStatus {
+    /// Binding is active — compliance evaluation applies.
+    Active,
+    /// Binding is temporarily suspended.
+    Suspended,
+    /// Entity has exited this jurisdiction.
+    Exited,
+}
+
+impl std::fmt::Display for BindingStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Active => write!(f, "active"),
+            Self::Suspended => write!(f, "suspended"),
+            Self::Exited => write!(f, "exited"),
+        }
+    }
+}
+
 /// A jurisdictional binding for a smart asset.
 ///
 /// Binds the asset to a specific zone/harbor with compliance and enforcement
@@ -117,8 +141,8 @@ pub struct JurisdictionBinding {
     /// Zone or harbor identifier.
     pub harbor_id: String,
 
-    /// Binding status: `"active"`, `"suspended"`, or `"exited"`.
-    pub binding_status: String,
+    /// Binding status.
+    pub binding_status: BindingStatus,
 
     /// Redundancy role for this jurisdictional shard.
     pub shard_role: String,
@@ -190,7 +214,7 @@ pub struct BindingComplianceResult {
     /// Harbor/zone identifier.
     pub harbor_id: String,
     /// Binding status.
-    pub binding_status: String,
+    pub binding_status: BindingStatus,
     /// Shard role.
     pub shard_role: String,
     /// Whether the transition is allowed under this binding.
@@ -360,7 +384,7 @@ mod tests {
             asset_class: Some("equity".to_string()),
             jurisdiction_bindings: vec![JurisdictionBinding {
                 harbor_id: "zone-pk-01".to_string(),
-                binding_status: "active".to_string(),
+                binding_status: BindingStatus::Active,
                 shard_role: "primary".to_string(),
                 lawpacks: vec![LawpackRef {
                     jurisdiction_id: "PK".to_string(),
@@ -545,7 +569,7 @@ mod tests {
     fn jurisdiction_binding_serde_roundtrip() {
         let binding = JurisdictionBinding {
             harbor_id: "zone-pk-01".to_string(),
-            binding_status: "active".to_string(),
+            binding_status: BindingStatus::Active,
             shard_role: "primary".to_string(),
             lawpacks: vec![LawpackRef {
                 jurisdiction_id: "PK".to_string(),
@@ -720,7 +744,7 @@ mod tests {
     fn binding_compliance_result_fields() {
         let result = BindingComplianceResult {
             harbor_id: "zone-pk-01".to_string(),
-            binding_status: "active".to_string(),
+            binding_status: BindingStatus::Active,
             shard_role: "primary".to_string(),
             allowed: false,
             reasons: vec!["missing kyc attestation".to_string()],
@@ -747,7 +771,7 @@ mod tests {
         let mut subject = make_test_subject();
         subject.jurisdiction_bindings.push(JurisdictionBinding {
             harbor_id: "zone-ae-01".to_string(),
-            binding_status: "active".to_string(),
+            binding_status: BindingStatus::Active,
             shard_role: "secondary".to_string(),
             lawpacks: vec![LawpackRef {
                 jurisdiction_id: "AE".to_string(),

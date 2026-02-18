@@ -28,7 +28,7 @@ pub use credential::{
 };
 pub use proof::{Proof, ProofPurpose, ProofType};
 pub use registry::{
-    ArtifactRef, BindingComplianceResult, ComplianceProfile, EnforcementProfile,
+    ArtifactRef, BindingComplianceResult, BindingStatus, ComplianceProfile, EnforcementProfile,
     JurisdictionBinding, LawpackRef, SmartAssetRegistrySubject, SmartAssetRegistryVc,
     REGISTRY_SCHEMA_ID,
 };

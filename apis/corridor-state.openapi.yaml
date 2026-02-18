@@ -1,14 +1,24 @@
 openapi: 3.1.0
 info:
-  title: MSEZ Corridor State API (Scaffold)
+  title: MSEZ Corridor State API
   version: 0.4.44
   description: |
-    Scaffold OpenAPI specification for corridor state-channel operations.
+    Corridor state-channel operations: receipt proposals, fork resolution,
+    anchoring, and finality status computation.
+
     These endpoints mirror the CLI subcommands under `msez corridor state ...`.
+    All mutating endpoints are idempotent when called with the same
+    `Idempotency-Key` header value.
+  license:
+    name: BUSL-1.1
+    identifier: BUSL-1.1
 
 tags:
   - name: corridor.state
     description: Corridor state-channel operations (receipts, proposals, forks, anchors, finality).
+
+security:
+  - bearerAuth: []
 
 paths:
   /corridor/state/propose:
@@ -16,12 +26,16 @@ paths:
       tags: [corridor.state]
       summary: Propose the next corridor receipt
       description: Equivalent to `msez corridor state propose` (unsigned proposal artifact).
+      operationId: proposeReceipt
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required: [corridor_id, sequence, prev_root, transition]
               properties:
                 corridor_id:
@@ -47,18 +61,36 @@ paths:
             application/json:
               schema:
                 $ref: 'https://schemas.momentum-sez.org/msez/corridor.receipt-proposal.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Conflict — prev_root does not match current corridor head
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /corridor/state/fork-resolve:
     post:
       tags: [corridor.state]
       summary: Resolve a receipt fork
       description: Equivalent to `msez corridor state fork-resolve` (unsigned VC).
+      operationId: resolveFork
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required: [corridor_id, sequence, prev_root, chosen_next_root, issuer]
               properties:
                 corridor_id:
@@ -76,11 +108,19 @@ paths:
                   type: array
                   items:
                     type: object
+                    additionalProperties: false
                     required: [next_root]
                     properties:
                       next_root:
                         type: string
                         pattern: '^[a-f0-9]{64}$'
+                      timestamp:
+                        type: string
+                        format: date-time
+                      attestations:
+                        type: array
+                        items:
+                          type: object
                 issuer:
                   type: string
                   description: DID of the fork-resolution VC issuer.
@@ -91,18 +131,30 @@ paths:
             application/json:
               schema:
                 $ref: 'https://schemas.momentum-sez.org/msez/vc.corridor-fork-resolution.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /corridor/state/anchor:
     post:
       tags: [corridor.state]
       summary: Anchor a corridor head commitment
       description: Equivalent to `msez corridor state anchor` (unsigned VC).
+      operationId: anchorHead
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required: [corridor_id, head_commitment_digest_sha256, chain, issuer]
               properties:
                 corridor_id:
@@ -112,6 +164,7 @@ paths:
                   pattern: '^[a-f0-9]{64}$'
                 chain:
                   type: object
+                  additionalProperties: false
                   required: [network]
                   properties:
                     network:
@@ -139,18 +192,28 @@ paths:
             application/json:
               schema:
                 $ref: 'https://schemas.momentum-sez.org/msez/vc.corridor-anchor.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /corridor/state/finality-status:
     post:
       tags: [corridor.state]
       summary: Compute corridor finality status for a head
       description: Equivalent to `msez corridor state finality-status`.
+      operationId: computeFinalityStatus
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required: [corridor_id, final_state_root, receipt_count, mmr_root, head_commitment_digest_sha256]
               properties:
                 corridor_id:
@@ -172,7 +235,30 @@ paths:
                   pattern: '^[a-f0-9]{64}$'
                 evidence:
                   type: object
-                  additionalProperties: true
+                  additionalProperties: false
+                  properties:
+                    checkpoint:
+                      $ref: 'https://schemas.momentum-sez.org/msez/artifact-ref.schema.json'
+                    watcher_quorum:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        required_count:
+                          type: integer
+                          minimum: 0
+                        confirmed_count:
+                          type: integer
+                          minimum: 0
+                        quorum_met:
+                          type: boolean
+                    anchors:
+                      type: array
+                      items:
+                        $ref: 'https://schemas.momentum-sez.org/msez/artifact-ref.schema.json'
+                    disputes:
+                      type: array
+                      items:
+                        $ref: 'https://schemas.momentum-sez.org/msez/artifact-ref.schema.json'
       responses:
         '200':
           description: Finality status object
@@ -180,9 +266,84 @@ paths:
             application/json:
               schema:
                 $ref: 'https://schemas.momentum-sez.org/msez/corridor.finality-status.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Zone-issued JWT with role claims (operator, watcher, auditor).
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Client-generated UUID for at-most-once delivery.
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Malformed request body or parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    UnprocessableEntity:
+      description: Schema validation failed or business rule violation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
   schemas:
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Details for HTTP APIs.
+      additionalProperties: false
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI identifying the problem type.
+        title:
+          type: string
+          description: Short human-readable summary.
+        status:
+          type: integer
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence.
+        instance:
+          type: string
+          format: uri
+          description: URI reference for this specific occurrence.
+
     TransitionEnvelope:
       $ref: 'https://schemas.momentum-sez.org/msez/transition-envelope.schema.json'
     CorridorReceiptProposal:

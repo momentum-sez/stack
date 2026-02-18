@@ -250,6 +250,14 @@ impl SmartAssetRegistryVc {
         subject: SmartAssetRegistrySubject,
         issuance_date: Option<Timestamp>,
     ) -> Result<Self, VcError> {
+        // P2-SA-002: Validate asset_id format (must be 64 lowercase hex chars).
+        if !Self::is_valid_sha256_hex(&subject.asset_id) {
+            return Err(VcError::SchemaValidation(format!(
+                "asset_id must be 64 lowercase hex chars, got: {:?}",
+                subject.asset_id
+            )));
+        }
+
         let ts = issuance_date.unwrap_or_else(Timestamp::now);
         let asset_id = subject.asset_id.clone();
         let subject_value = serde_json::to_value(&subject).map_err(VcError::Json)?;
@@ -360,6 +368,32 @@ impl SmartAssetRegistryVc {
         let canonical = CanonicalBytes::from_value(g)?;
         let digest = msez_crypto::sha256_digest(&canonical);
         Ok(digest.to_hex())
+    }
+
+    /// Verify that the VC's `asset_id` matches the genesis document.
+    ///
+    /// Recomputes `SHA256(JCS(genesis_without_asset_id))` and compares it to
+    /// the `asset_id` in the credential subject. Returns an error if they
+    /// diverge — this indicates the genesis document was tampered with or the
+    /// wrong genesis was provided (P2-SA-002).
+    pub fn verify_asset_id_binding(
+        &self,
+        genesis: &serde_json::Value,
+    ) -> Result<(), VcError> {
+        let subject = self.subject()?;
+        let expected = Self::compute_asset_id(genesis)?;
+        if subject.asset_id != expected {
+            return Err(VcError::SchemaValidation(format!(
+                "asset_id binding mismatch: subject has {:?} but genesis computes {:?}",
+                subject.asset_id, expected
+            )));
+        }
+        Ok(())
+    }
+
+    /// Check whether a string is a valid SHA-256 hex digest (64 lowercase hex chars).
+    fn is_valid_sha256_hex(s: &str) -> bool {
+        s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
     }
 }
 
@@ -801,5 +835,84 @@ mod tests {
         let cloned = vc.clone();
         assert_eq!(vc.asset_id(), cloned.asset_id());
         assert_eq!(vc.as_vc().issuer, cloned.as_vc().issuer);
+    }
+
+    // ── P2-SA-002: asset_id binding tests ─────────────────────────────
+
+    #[test]
+    fn new_rejects_invalid_asset_id_format() {
+        let mut subject = make_test_subject();
+        subject.asset_id = "not-a-valid-hex-string".to_string();
+        let result =
+            SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject, None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn new_rejects_uppercase_asset_id() {
+        let mut subject = make_test_subject();
+        subject.asset_id = "A".repeat(64);
+        let result =
+            SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject, None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn new_rejects_short_asset_id() {
+        let mut subject = make_test_subject();
+        subject.asset_id = "abcd1234".to_string();
+        let result =
+            SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject, None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn verify_asset_id_binding_succeeds_when_matching() {
+        let genesis = json!({
+            "type": "SmartAssetGenesis",
+            "stack_spec_version": "0.4.44",
+            "created_at": "2026-01-15T12:00:00Z",
+            "asset_name": "Test",
+            "asset_class": "equity"
+        });
+
+        let computed_id = SmartAssetRegistryVc::compute_asset_id(&genesis).unwrap();
+
+        let mut subject = make_test_subject();
+        subject.asset_id = computed_id;
+        subject.asset_genesis.digest_sha256 = subject.asset_id.clone();
+
+        let vc =
+            SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject, None).unwrap();
+        assert!(vc.verify_asset_id_binding(&genesis).is_ok());
+    }
+
+    #[test]
+    fn verify_asset_id_binding_fails_when_mismatched() {
+        let genesis = json!({
+            "type": "SmartAssetGenesis",
+            "asset_name": "Real Asset"
+        });
+
+        // Use a different asset_id than what the genesis computes
+        let subject = make_test_subject(); // uses "a".repeat(64) as asset_id
+        let vc =
+            SmartAssetRegistryVc::new("did:key:z6MkTestIssuer".to_string(), subject, None).unwrap();
+
+        let result = vc.verify_asset_id_binding(&genesis);
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("binding mismatch"));
+    }
+
+    #[test]
+    fn is_valid_sha256_hex_checks() {
+        assert!(SmartAssetRegistryVc::is_valid_sha256_hex(&"a".repeat(64)));
+        assert!(SmartAssetRegistryVc::is_valid_sha256_hex(
+            &"0123456789abcdef".repeat(4)
+        ));
+        assert!(!SmartAssetRegistryVc::is_valid_sha256_hex("too_short"));
+        assert!(!SmartAssetRegistryVc::is_valid_sha256_hex(&"A".repeat(64)));
+        assert!(!SmartAssetRegistryVc::is_valid_sha256_hex(&"g".repeat(64)));
     }
 }

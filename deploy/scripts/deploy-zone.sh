@@ -202,23 +202,6 @@ echo ""
 echo -e "${YELLOW}Building Docker images...${NC}"
 cd "$DEPLOY_DIR"
 
-# Create requirements.txt if it doesn't exist
-if [ ! -f "$PROJECT_ROOT/requirements.txt" ]; then
-    cat > "$PROJECT_ROOT/requirements.txt" << EOF
-# MSEZ Stack Dependencies
-pyyaml>=6.0
-jsonschema>=4.0
-cryptography>=41.0
-pynacl>=1.5
-aiohttp>=3.9
-asyncio>=3.4
-redis>=5.0
-psycopg2-binary>=2.9
-prometheus-client>=0.19
-structlog>=24.0
-EOF
-fi
-
 docker compose build --parallel
 
 # Start services

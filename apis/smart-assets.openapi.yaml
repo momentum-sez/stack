@@ -1,23 +1,36 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
-  title: MSEZ Smart Assets API (Scaffold)
+  title: MSEZ Smart Assets API
   version: 0.4.44
   description: |
-    Scaffold OpenAPI for Smart Asset operations.
+    Smart Asset lifecycle operations: genesis, registry, compliance evaluation,
+    attestation, checkpoint, migration, and corridor anchor verification.
 
-    This is intentionally a **skeleton** to enable early pilot interoperability.
+    All mutating endpoints are idempotent when called with the same
+    `Idempotency-Key` header value.
+  license:
+    name: BUSL-1.1
+    identifier: BUSL-1.1
 
 servers:
-  - url: https://example.zone.api
+  - url: https://{zone_host}/api
+    variables:
+      zone_host:
+        default: localhost:8080
+
+security:
+  - bearerAuth: []
 
 paths:
   /v1/assets/genesis:
     post:
-      summary: Create a Smart Asset genesis document (helper)
+      summary: Create a Smart Asset genesis document
       description: |
-        Convenience endpoint: returns a canonical genesis document and its derived `asset_id`.
-
-        Implementations MAY also expose genesis generation purely as an offline CLI step.
+        Returns a canonical genesis document and its derived `asset_id`.
+        Implementations MAY also expose genesis generation as an offline CLI step.
+      operationId: createAssetGenesis
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -31,12 +44,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SmartAssetGenesis'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /v1/assets/registry:
     post:
       summary: Submit a Smart Asset registry VC
-      description: |
-        Register or update an asset's jurisdictional bindings.
+      description: Register or update an asset's jurisdictional bindings.
+      operationId: submitRegistryVC
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -45,17 +68,28 @@ paths:
               $ref: '#/components/schemas/SmartAssetRegistryVC'
       responses:
         '202':
-          description: Accepted
+          description: Accepted — VC queued for processing
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Conflict — asset already registered with different genesis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /v1/assets/{asset_id}:
     get:
       summary: Get smart asset current view
+      operationId: getAsset
       parameters:
-        - name: asset_id
-          in: path
-          required: true
-          schema:
-            type: string
+        - $ref: '#/components/parameters/AssetId'
       responses:
         '200':
           description: Current asset view
@@ -63,15 +97,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SmartAssetView'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /v1/assets/{asset_id}/attestations:
     post:
       summary: Submit an asset attestation
+      operationId: submitAttestation
       parameters:
-        - name: asset_id
-          in: path
-          required: true
-          schema:
-            type: string
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -81,15 +120,24 @@ paths:
       responses:
         '202':
           description: Accepted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /v1/assets/{asset_id}/checkpoint:
     post:
       summary: Submit an asset state checkpoint
+      operationId: submitCheckpoint
       parameters:
-        - name: asset_id
-          in: path
-          required: true
-          schema:
-            type: string
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -99,16 +147,24 @@ paths:
       responses:
         '202':
           description: Accepted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /v1/assets/{asset_id}/migration/propose:
     post:
       summary: Propose a migration saga for an asset
+      operationId: proposeMigration
       parameters:
-        - name: asset_id
-          in: path
-          required: true
-          schema:
-            type: string
+        - $ref: '#/components/parameters/AssetId'
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -117,17 +173,30 @@ paths:
               $ref: '#/components/schemas/AssetMigrationProposal'
       responses:
         '202':
-          description: Accepted
+          description: Accepted — migration saga initiated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflict — migration already in progress for this asset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /v1/assets/{asset_id}/compliance/evaluate:
     post:
       summary: Evaluate a transition envelope against jurisdiction bindings
+      operationId: evaluateCompliance
       parameters:
-        - name: asset_id
-          in: path
-          required: true
-          schema:
-            type: string
+        - $ref: '#/components/parameters/AssetId'
       requestBody:
         required: true
         content:
@@ -141,22 +210,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ComplianceEvalResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /v1/assets/{asset_id}/anchors/corridor/verify:
     post:
       summary: Verify corridor anchoring evidence for an asset checkpoint
       description: |
         Validates that:
-        1) the provided corridor receipt is included in the provided corridor checkpoint (via the inclusion proof)
-        2) the receipt transition includes a typed attachment referencing the Smart Asset checkpoint digest
-
-        This endpoint mirrors the reference CLI command: `msez asset anchor-verify`.
+        1. The provided corridor receipt is included in the corridor checkpoint (via inclusion proof)
+        2. The receipt transition includes a typed attachment referencing the Smart Asset checkpoint digest
+      operationId: verifyCorridorAnchor
       parameters:
-        - name: asset_id
-          in: path
-          required: true
-          schema:
-            type: string
+        - $ref: '#/components/parameters/AssetId'
       requestBody:
         required: true
         content:
@@ -170,12 +244,104 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CorridorAnchorVerifyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Zone-issued JWT with role claims (operator, regulator, auditor).
+
+  parameters:
+    AssetId:
+      name: asset_id
+      in: path
+      required: true
+      description: SHA-256 hex digest of the asset genesis document (64 chars).
+      schema:
+        type: string
+        pattern: '^[a-f0-9]{64}$'
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Client-generated UUID for at-most-once delivery.
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Malformed request body or parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    UnprocessableEntity:
+      description: Schema validation failed or business rule violation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
   schemas:
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Details for HTTP APIs.
+      additionalProperties: false
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI identifying the problem type.
+        title:
+          type: string
+          description: Short human-readable summary.
+        status:
+          type: integer
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence.
+        instance:
+          type: string
+          format: uri
+          description: URI reference for this specific occurrence.
+
     SmartAssetGenesisRequest:
       type: object
       additionalProperties: false
+      required: [asset_name, asset_class]
       properties:
         asset_name:
           type: string
@@ -189,14 +355,16 @@ components:
           type: string
         metadata:
           type: object
-      required: [asset_name, asset_class]
+          description: Free-form metadata (non-security-critical).
 
     SmartAssetGenesis:
       type: object
-      additionalProperties: true
+      additionalProperties: false
+      required: [asset_id, stack_spec_version, asset_name, asset_class, created_at]
       properties:
         asset_id:
           type: string
+          pattern: '^[a-f0-9]{64}$'
         stack_spec_version:
           type: string
         asset_name:
@@ -205,75 +373,228 @@ components:
           type: string
         created_at:
           type: string
-      required: [asset_id, stack_spec_version, asset_name, asset_class, created_at]
+          format: date-time
+        description:
+          type: string
+        creator:
+          type: string
+        home_harbor_id:
+          type: string
+        metadata:
+          type: object
 
     SmartAssetRegistryVC:
       type: object
-      additionalProperties: true
       description: |
         Verifiable Credential matching `schemas/vc.smart-asset-registry.schema.json`.
+        The VC envelope is validated server-side against the canonical schema.
+      required: ['@context', type, issuer, issuanceDate, credentialSubject]
+      properties:
+        '@context':
+          type: array
+          items:
+            type: string
+        type:
+          type: array
+          items:
+            type: string
+        id:
+          type: string
+        issuer:
+          type: string
+        issuanceDate:
+          type: string
+          format: date-time
+        credentialSubject:
+          type: object
+          required: [asset_id, stack_spec_version, asset_genesis, jurisdiction_bindings]
+          properties:
+            asset_id:
+              type: string
+              pattern: '^[a-f0-9]{64}$'
+            stack_spec_version:
+              type: string
+            asset_genesis:
+              $ref: '#/components/schemas/ArtifactRef'
+            jurisdiction_bindings:
+              type: array
+              minItems: 1
+              items:
+                type: object
+        proof:
+          type: object
+
+    ArtifactRef:
+      type: object
+      additionalProperties: false
+      required: [artifact_type, digest_sha256]
+      properties:
+        artifact_type:
+          type: string
+        digest_sha256:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        uri:
+          type: string
+          format: uri
+        media_type:
+          type: string
 
     ComplianceEvalRequest:
       type: object
       additionalProperties: false
+      required: [registry_vc, transition_envelope]
       properties:
         registry_vc:
           $ref: '#/components/schemas/SmartAssetRegistryVC'
         transition_envelope:
           type: object
-          additionalProperties: true
-      required: [registry_vc, transition_envelope]
+          required: [transition_kind]
+          properties:
+            transition_kind:
+              type: string
+            attestations:
+              type: array
+              items:
+                type: object
 
     ComplianceEvalResponse:
       type: object
       additionalProperties: false
+      required: [overall_allowed, results]
       properties:
+        overall_allowed:
+          type: boolean
+          description: Whether the transition is allowed across all jurisdiction bindings.
         results:
           type: array
           items:
-            type: object
-            additionalProperties: true
-      required: [results]
+            $ref: '#/components/schemas/BindingComplianceResult'
+
+    BindingComplianceResult:
+      type: object
+      additionalProperties: false
+      required: [harbor_id, binding_status, allowed]
+      properties:
+        harbor_id:
+          type: string
+        binding_status:
+          type: string
+          enum: [active, suspended, exited]
+        shard_role:
+          type: string
+        allowed:
+          type: boolean
+        reasons:
+          type: array
+          items:
+            type: string
+        missing_attestations:
+          type: array
+          items:
+            type: string
+
+    SmartAssetView:
+      type: object
+      additionalProperties: false
+      required: [asset_id, state_root_sha256]
+      properties:
+        asset_id:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        state_root_sha256:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        asset_name:
+          type: string
+        asset_class:
+          type: string
+        last_checkpoint:
+          $ref: '#/components/schemas/AssetCheckpoint'
+
+    AssetAttestation:
+      type: object
+      additionalProperties: false
+      required: [type, payload]
+      properties:
+        type:
+          type: string
+          description: Attestation type identifier.
+        payload:
+          type: object
+          description: Attestation-specific payload.
+        proof:
+          type: object
+          description: Optional cryptographic proof.
+
+    AssetCheckpoint:
+      type: object
+      additionalProperties: false
+      required: [state_root_sha256]
+      properties:
+        checkpoint_ref:
+          type: string
+          description: Reference to a committed checkpoint (e.g., corridor receipt digest).
+        state_root_sha256:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        timestamp:
+          type: string
+          format: date-time
+
+    AssetMigrationProposal:
+      type: object
+      additionalProperties: false
+      required: [from_zone_id, to_zone_id, corridor_id]
+      properties:
+        from_zone_id:
+          type: string
+        to_zone_id:
+          type: string
+        corridor_id:
+          type: string
+        deadline:
+          type: string
+          format: date-time
+          description: Migration must complete by this time or auto-compensate.
+        plan:
+          type: object
+          description: Optional migration plan details.
 
     CorridorAnchorVerifyRequest:
       type: object
       additionalProperties: false
+      required: [corridor_id, corridor_receipt, corridor_checkpoint, inclusion_proof]
       description: |
         Evidence bundle for verifying that a Smart Asset checkpoint digest is anchored
         into a corridor state checkpoint via an inclusion proof.
-
-        Payload objects are intentionally left open-ended to allow early pilots to pass
-        stack-native JSON (`MSEZCorridorStateReceipt`, `MSEZCorridorStateCheckpoint`,
-        `MSEZCorridorReceiptInclusionProof`).
       properties:
         corridor_id:
           type: string
         corridor_receipt:
           type: object
-          additionalProperties: true
+          description: MSEZCorridorStateReceipt JSON object.
         corridor_checkpoint:
           type: object
-          additionalProperties: true
+          description: MSEZCorridorStateCheckpoint JSON object.
         inclusion_proof:
           type: object
-          additionalProperties: true
+          description: MSEZCorridorReceiptInclusionProof JSON object.
         asset_checkpoint:
           type: object
-          additionalProperties: true
-          description: Optional SmartAssetCheckpoint object; when present, implementations
-            MAY verify that its `state_root_sha256` matches the attachment digest.
+          description: Optional SmartAssetCheckpoint; when present, verify state_root_sha256 matches attachment.
         state_root_sha256:
           type: string
-          description: Optional explicit checkpoint digest; if provided, used instead of
-            deriving from asset_checkpoint.
+          pattern: '^[a-f0-9]{64}$'
+          description: Explicit checkpoint digest; if provided, used instead of deriving from asset_checkpoint.
         enforce_trust_anchors:
           type: boolean
           default: false
-      required: [corridor_id, corridor_receipt, corridor_checkpoint, inclusion_proof]
 
     CorridorAnchorVerifyResponse:
       type: object
       additionalProperties: false
+      required: [ok]
       properties:
         ok:
           type: boolean
@@ -285,48 +606,3 @@ components:
           type: array
           items:
             type: string
-      required: [ok]
-    SmartAssetView:
-      type: object
-      additionalProperties: false
-      properties:
-        asset_id:
-          type: string
-        state_root_sha256:
-          type: string
-        last_checkpoint:
-          $ref: '#/components/schemas/AssetCheckpoint'
-      required: [asset_id, state_root_sha256]
-    AssetAttestation:
-      type: object
-      additionalProperties: true
-      properties:
-        type:
-          type: string
-          description: Attestation type identifier
-        payload:
-          type: object
-      required: [type, payload]
-    AssetCheckpoint:
-      type: object
-      additionalProperties: true
-      properties:
-        checkpoint_ref:
-          type: string
-          description: Reference to a committed checkpoint (e.g., corridor receipt digest)
-        state_root_sha256:
-          type: string
-      required: [state_root_sha256]
-    AssetMigrationProposal:
-      type: object
-      additionalProperties: true
-      properties:
-        from_zone_id:
-          type: string
-        to_zone_id:
-          type: string
-        corridor_id:
-          type: string
-        plan:
-          type: object
-      required: [from_zone_id, to_zone_id, corridor_id]

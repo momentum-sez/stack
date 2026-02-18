@@ -102,14 +102,22 @@ See `spec/96-lawpacks.md` for digest semantics and indexing.
 
 Implementations MUST compute file digests deterministically.
 
-- For JSON artifacts: digest MUST be `SHA256(JCS(json))` where JCS is RFC 8785 JSON Canonicalization Scheme.
+- For JSON artifacts: digest MUST be `SHA256(MCF(json))` where MCF is **Momentum Canonical Form** —
+  RFC 8785 JSON Canonicalization Scheme (JCS) with two additional safety coercions:
+  1. **Float rejection**: numeric values that are f64-only (not representable as i64/u64) MUST be rejected.
+  2. **Datetime normalization**: strings that parse as RFC 3339 timestamps MUST be normalized to UTC with `Z` suffix, truncated to whole seconds.
+
+  These coercions are normative deviations from pure RFC 8785 JCS. Any cross-language implementation
+  MUST replicate these exact coercions to produce matching digests. See `msez-core::canonical` for the
+  reference implementation and `msez-core::canonical::tests` for cross-language golden vectors.
+
 - For YAML artifacts: implementations MUST parse YAML into an equivalent JSON data model and digest MUST be
-  `SHA256(JCS(json_model))`.
+  `SHA256(MCF(json_model))`.
 
 For Corridor Agreement binding, the **definition payload hash** MUST be computed over the Corridor Definition VC
 **payload excluding** `proof`:
 
-- `definition_payload_sha256 = SHA256(JCS(definition_vc_without_proof))`
+- `definition_payload_sha256 = SHA256(MCF(definition_vc_without_proof))`
 
 The reference tool exposes this as:
 
@@ -124,7 +132,7 @@ A Corridor Agreement VC:
 
 - MUST conform to `schemas/vc.corridor-agreement.schema.json`
 - MUST bind to a specific Corridor Definition VC payload via:
-  - `credentialSubject.definition_payload_sha256 = SHA256(JCS(definition_vc_without_proof))`
+  - `credentialSubject.definition_payload_sha256 = SHA256(MCF(definition_vc_without_proof))`
     - `definition_payload_sha256` MAY be provided either as a raw sha256 digest string (legacy) OR as an **ArtifactRef** with `artifact_type: vc` and `digest_sha256` equal to the payload digest.
 - SHOULD include `credentialSubject.definition_vc_id` (the Corridor Definition VC `id`) for human correlation
 - MUST enumerate `credentialSubject.participants` with stable identifiers and roles
@@ -243,7 +251,7 @@ The reference genesis root definition is:
 
 ```
 # msez.corridor.state.genesis.v1
-genesis_root = SHA256(JCS({
+genesis_root = SHA256(MCF({
   "tag": "msez.corridor.state.genesis.v1",
   "corridor_id": "...",
   "definition_payload_sha256": "...",
@@ -305,7 +313,7 @@ Example:
 
 Rules:
 
-- If `payload` is present, `payload_sha256` MUST equal `SHA256(JCS(payload))`.
+- If `payload` is present, `payload_sha256` MUST equal `SHA256(MCF(payload))`.
 - If `payload` is omitted, `payload_sha256` MUST commit to the out-of-band payload bytes per corridor policy.
 - `kind` names the corridor-specific transition type (e.g., `mint`, `burn`, `settle`, `attest`).
 
@@ -387,7 +395,7 @@ Lock format (JSON): `schemas/transition-types.lock.schema.json`
 Digest semantics (normative):
 
 - The lockfile MUST include `snapshot` with `tag = msez.transition-types.registry.snapshot.v1`.
-- The lockfile MUST include `snapshot_digest_sha256 = SHA256(JCS(snapshot))`.
+- The lockfile MUST include `snapshot_digest_sha256 = SHA256(MCF(snapshot))`.
 
 Within `snapshot.transition_types[*]`, per-kind digest fields (`schema_digest_sha256`, `ruleset_digest_sha256`, `zk_circuit_digest_sha256`) MAY be expressed as either raw sha256 digest strings (legacy) OR as ArtifactRef objects with the corresponding `artifact_type` (`schema`, `ruleset`, `circuit`).
 
@@ -409,7 +417,7 @@ Verifier requirements:
 
 - A verifier resolving `receipt.transition_type_registry_digest_sha256` MUST fetch/locate the corresponding lock
   snapshot by digest (local cache, artifact registry, IPFS gateway/pinset, etc.).
-- A verifier MUST recompute `SHA256(JCS(snapshot))` and ensure it equals the requested digest before trusting
+- A verifier MUST recompute `SHA256(MCF(snapshot))` and ensure it equals the requested digest before trusting
   any `kind -> digest` mapping.
 
 Commitment completeness (optional; v0.4.8+):
@@ -440,7 +448,7 @@ Corridor Definition VC pinning (recommended):
 `next_root` MUST be computed deterministically as:
 
 ```
-next_root = SHA256(JCS(receipt_without_proof_and_next_root))
+next_root = SHA256(MCF(receipt_without_proof_and_next_root))
 ```
 
 Where `receipt_without_proof_and_next_root` is the receipt object with `proof` and `next_root` removed.

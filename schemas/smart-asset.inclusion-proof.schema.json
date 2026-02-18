@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://momentum.zone/schemas/smart-asset.inclusion-proof.schema.json",
+  "$id": "https://schemas.momentum-sez.org/msez/smart-asset.inclusion-proof.schema.json",
   "title": "Smart Asset Receipt Inclusion Proof",
   "description": "Proof that a specific SmartAssetReceipt.next_root is included in an MMR accumulator committed by a SmartAssetReceiptChainCheckpoint.",
   "type": "object",

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.momentum-sez.org/schemas/artifact.graph-verify-report.schema.json",
+  "$id": "https://schemas.momentum-sez.org/msez/artifact.graph-verify-report.schema.json",
   "title": "MSEZ Artifact Graph Verify Report",
   "type": "object",
   "required": [

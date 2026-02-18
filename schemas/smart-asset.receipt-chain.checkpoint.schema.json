@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://momentum.zone/schemas/smart-asset.receipt-chain.checkpoint.schema.json",
+  "$id": "https://schemas.momentum-sez.org/msez/smart-asset.receipt-chain.checkpoint.schema.json",
   "title": "Smart Asset Receipt Chain Checkpoint",
   "description": "Signed checkpoint for an asset-local receipt chain. The checkpoint commits to an MMR root over receipt next_root values (leaf = receipt.next_root), enabling compact inclusion proofs for audits and regulation without requiring a blockchain.",
   "type": "object",

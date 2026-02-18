@@ -7,8 +7,9 @@
 //! ## Design
 //!
 //! The [`SchemaValidator`] loads all schema files at construction time, builds a
-//! URI → schema map for `$ref` resolution, and caches compiled validators per
-//! schema. Validation errors carry structured diagnostic context: the schema
+//! URI → schema map for `$ref` resolution, and shares the map via `Arc` to
+//! avoid deep-cloning on each validation call (P1-PERF-001). Validation errors
+//! carry structured diagnostic context: the schema
 //! `$id`, the JSON Pointer to the violating field, and a human-readable message.
 //!
 //! ## Security invariant
@@ -21,6 +22,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use serde_json::Value;
 use thiserror::Error;
@@ -117,9 +119,12 @@ const SCHEMA_URI_PREFIX: &str = "https://schemas.momentum-sez.org/msez/";
 /// `https://schemas.momentum-sez.org/msez/{filename}`. This retriever maps
 /// those URIs to the corresponding schema JSON loaded from the local
 /// `schemas/` directory.
+///
+/// Uses `Arc<HashMap>` for cheap cloning — the schema map is shared across
+/// all validation calls without deep-copying (P1-PERF-001).
 struct LocalSchemaRetriever {
-    /// Map from full URI to parsed schema JSON.
-    schemas: HashMap<String, Value>,
+    /// Map from full URI to parsed schema JSON (shared via Arc).
+    schemas: Arc<HashMap<String, Value>>,
 }
 
 impl jsonschema::Retrieve for LocalSchemaRetriever {
@@ -148,8 +153,9 @@ impl jsonschema::Retrieve for LocalSchemaRetriever {
 pub struct SchemaValidator {
     /// The root directory containing JSON schema files.
     schema_dir: PathBuf,
-    /// Pre-loaded schemas indexed by their `$id` URI.
-    schema_map: HashMap<String, Value>,
+    /// Pre-loaded schemas indexed by their `$id` URI, shared via `Arc`
+    /// to avoid deep-cloning when creating per-call retrievers (P1-PERF-001).
+    schema_map: Arc<HashMap<String, Value>>,
     /// Map from schema filename (e.g. `module.schema.json`) to its `$id` URI.
     filename_to_id: HashMap<String, String>,
 }
@@ -182,7 +188,7 @@ impl SchemaValidator {
         if !schema_dir.is_dir() {
             return Ok(Self {
                 schema_dir,
-                schema_map,
+                schema_map: Arc::new(schema_map),
                 filename_to_id,
             });
         }
@@ -227,7 +233,7 @@ impl SchemaValidator {
 
         Ok(Self {
             schema_dir,
-            schema_map,
+            schema_map: Arc::new(schema_map),
             filename_to_id,
         })
     }
@@ -273,11 +279,13 @@ impl SchemaValidator {
             .get(schema_id)
             .ok_or_else(|| SchemaValidationError::SchemaNotFound(schema_id.to_string()))?;
 
+        // P1-PERF-001: Use Arc::clone for the retriever's schema map instead
+        // of deep-cloning the entire HashMap on every call.
         let retriever = LocalSchemaRetriever {
-            schemas: self.schema_map.clone(),
+            schemas: Arc::clone(&self.schema_map),
         };
 
-        let validator = jsonschema::options()
+        let compiled = jsonschema::options()
             .with_draft(jsonschema::Draft::Draft202012)
             .with_retriever(retriever)
             .build(schema)
@@ -286,7 +294,7 @@ impl SchemaValidator {
                 reason: e.to_string(),
             })?;
 
-        let errors: Vec<SchemaValidationDetail> = validator
+        let errors: Vec<SchemaValidationDetail> = compiled
             .iter_errors(value)
             .map(|err| SchemaValidationDetail {
                 schema_path: schema_id.to_string(),

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://momentum.inc/schemas/phoenix/migration-saga.schema.json",
+  "$id": "https://schemas.momentum-sez.org/msez/phoenix.migration-saga.schema.json",
   "title": "PHOENIX Migration Saga",
   "description": "Cross-jurisdictional Smart Asset migration with saga-based state machine",
   "type": "object",

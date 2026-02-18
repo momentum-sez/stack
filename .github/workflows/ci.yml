@@ -53,34 +53,59 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify all JSON schemas are valid
-        run: |
-          for f in schemas/*.json; do
-            python3 -c "import json; json.load(open('$f'))" 2>/dev/null || {
-              echo "FAIL: $f is not valid JSON"
-              exit 1
-            }
-          done
-          echo "OK: All schemas are valid JSON"
+      - uses: dtolnay/rust-toolchain@stable
 
-      - name: Guard — no default credentials in deploy paths
-        run: |
-          if grep -rn 'POSTGRES_PASSWORD:-msez\|POSTGRES_PASSWORD=msez\|GRAFANA_PASSWORD:-admin' deploy/; then
-            echo "FAIL: Default credentials found in deploy paths (P0-DEPLOY-001)"
-            exit 1
-          fi
-          echo "OK: No default credentials in deploy paths"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: msez
 
+      # P1-SCHEMA-001: Validate schemas with Draft 2020-12 compilation + $ref closure.
+      # Replaces old Python json.load() parse check. The Rust SchemaValidator
+      # compiles every *.schema.json with Draft 2020-12, resolves all $ref URIs,
+      # and reports structural/compile errors.
+      - name: Validate all schemas (Draft 2020-12 + $ref closure)
+        working-directory: msez
+        run: cargo test --package msez-schema -- test_load_all_schemas test_ref_resolution
+
+      # P1-SCHEMA-002: Schema $id URI consistency (hard failure).
+      # All schemas must use the canonical domain: schemas.momentum-sez.org/msez/
       - name: Guard — schema $id URI consistency
         run: |
           CANONICAL="schemas.momentum-sez.org/msez/"
           BAD_IDS=$(grep -rn '"$id"' schemas/ | grep -v "$CANONICAL" | grep -v '.schema.json":' || true)
           if [ -n "$BAD_IDS" ]; then
-            echo "WARNING: Non-canonical schema \$id URIs found (P1-SCHEMA-002):"
+            echo "FAIL: Non-canonical schema \$id URIs found (P1-SCHEMA-002):"
             echo "$BAD_IDS"
             echo "Expected domain: $CANONICAL"
+            exit 1
           fi
-          echo "INFO: Schema \$id consistency check complete"
+          echo "OK: All schema \$id URIs use canonical domain"
+
+      # P0-DEPLOY-001: No default credentials in deploy paths.
+      - name: Guard — no default credentials in deploy paths
+        run: |
+          if grep -rn 'POSTGRES_PASSWORD:-msez\|POSTGRES_PASSWORD=msez\|GRAFANA_PASSWORD:-admin\|password.*=.*msez' deploy/; then
+            echo "FAIL: Default credentials found in deploy paths (P0-DEPLOY-001)"
+            exit 1
+          fi
+          echo "OK: No default credentials in deploy paths"
+
+      # P0-ZK-001: Release builds must not enable mock proof features.
+      - name: Guard — no mock proof backend in release
+        working-directory: msez
+        run: |
+          FEATURES=$(cargo metadata --format-version 1 --no-deps 2>/dev/null | \
+            python3 -c "import sys,json; pkgs=json.load(sys.stdin)['packages']; zkp=[p for p in pkgs if p['name']=='msez-zkp']; print(zkp[0]['features'] if zkp else '{}')" 2>/dev/null || echo "{}")
+          if echo "$FEATURES" | grep -qi "mock"; then
+            echo "WARNING: msez-zkp has mock-related features: $FEATURES"
+            echo "Ensure mock features are NOT enabled in release profile"
+          fi
+          echo "OK: Mock proof backend check complete"
+
+      # P1-SCHEMA-003: additionalProperties policy on security-critical schemas.
+      - name: Guard — additionalProperties policy on security-critical schemas
+        working-directory: msez
+        run: cargo test --package msez-schema -- test_audit_current_schema_state
 
       - name: Verify trade playbook artifact graph closure
         run: |

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://sez-stack.org/schemas/arbitration.evidence-package.schema.json",
+  "$id": "https://schemas.momentum-sez.org/msez/arbitration.evidence-package.schema.json",
   "title": "ArbitrationEvidencePackage",
   "description": "Evidence package for arbitration proceedings (Definition 26.5)",
   "type": "object",

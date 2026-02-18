@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://momentum-sez.org/schemas/licensepack.license.schema.json",
+  "$id": "https://schemas.momentum-sez.org/msez/licensepack.license.schema.json",
   "title": "Licensepack License Record",
   "description": "Individual license record within a licensepack",
   "type": "object",

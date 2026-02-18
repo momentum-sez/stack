@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://sez-stack.org/schemas/arbitration.escrow.schema.json",
+  "$id": "https://schemas.momentum-sez.org/msez/arbitration.escrow.schema.json",
   "title": "ArbitrationEscrow",
   "description": "Escrow configuration and status for arbitration proceedings",
   "type": "object",

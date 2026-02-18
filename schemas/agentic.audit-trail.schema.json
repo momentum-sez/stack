@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://msez.momentum.inc/schemas/agentic.audit-trail.schema.json",
+  "$id": "https://schemas.momentum-sez.org/msez/agentic.audit-trail.schema.json",
   "title": "MSEZAgenticAuditTrailEntry",
   "description": "Entry in the agentic execution audit trail for compliance and debugging",
   "type": "object",

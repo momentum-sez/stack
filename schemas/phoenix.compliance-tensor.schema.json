@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://momentum.inc/schemas/phoenix/compliance-tensor.schema.json",
+  "$id": "https://schemas.momentum-sez.org/msez/phoenix.compliance-tensor.schema.json",
   "title": "PHOENIX Compliance Tensor",
   "description": "Multi-dimensional compliance state representation for Smart Assets across jurisdictions and domains",
   "type": "object",

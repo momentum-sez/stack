@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://momentum-sez.org/schemas/stack.lock.schema.json",
+  "$id": "https://schemas.momentum-sez.org/msez/stack.lock.schema.json",
   "title": "MSEZ Stack Lockfile",
   "type": "object",
   "required": [

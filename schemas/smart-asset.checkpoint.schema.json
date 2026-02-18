@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://momentum.zone/schemas/smart-asset.checkpoint.schema.json",
+  "$id": "https://schemas.momentum-sez.org/msez/smart-asset.checkpoint.schema.json",
   "title": "SmartAssetCheckpoint",
   "type": "object",
   "additionalProperties": false,

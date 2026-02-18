@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://momentum.zone/schemas/smart-asset.receipt.schema.json",
+  "$id": "https://schemas.momentum-sez.org/msez/smart-asset.receipt.schema.json",
   "title": "Smart Asset Receipt",
   "description": "Append-only signed receipt for an asset-local state channel (non-blockchain). The receipt commits to the applicable lawpack/ruleset digest sets, an optional transition envelope, and a deterministic next_root = SHA256(JCS(receipt_without_proof_and_next_root)).",
   "type": "object",

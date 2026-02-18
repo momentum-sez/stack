@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://momentum.inc/schemas/phoenix/anchor.schema.json",
+  "$id": "https://schemas.momentum-sez.org/msez/phoenix.anchor.schema.json",
   "title": "PHOENIX L1 Anchor",
   "description": "Settlement finality through Ethereum and L2 checkpointing",
   "type": "object",

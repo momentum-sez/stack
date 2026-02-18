@@ -132,28 +132,39 @@ pub fn run_corridor(args: &CorridorArgs, repo_root: &Path) -> Result<u8> {
 
         CorridorCommand::Submit {
             id,
-            agreement: _,
-            pack_trilogy: _,
-        } => cmd_transition(&state_dir, id, DynCorridorState::Pending),
+            agreement,
+            pack_trilogy,
+        } => {
+            let evidence = compute_evidence_digest_from_files(&[agreement, pack_trilogy])?;
+            cmd_transition(&state_dir, id, DynCorridorState::Pending, Some(evidence))
+        }
 
         CorridorCommand::Activate {
             id,
-            approval_a: _,
-            approval_b: _,
-        } => cmd_transition(&state_dir, id, DynCorridorState::Active),
+            approval_a,
+            approval_b,
+        } => {
+            let evidence = compute_evidence_digest_from_strings(&[approval_a, approval_b]);
+            cmd_transition(&state_dir, id, DynCorridorState::Active, Some(evidence))
+        }
 
         CorridorCommand::Halt {
             id,
-            reason: _,
-            authority: _,
-        } => cmd_transition(&state_dir, id, DynCorridorState::Halted),
-
-        CorridorCommand::Suspend { id, reason: _ } => {
-            cmd_transition(&state_dir, id, DynCorridorState::Suspended)
+            reason,
+            authority,
+        } => {
+            let evidence = compute_evidence_digest_from_strings(&[reason, authority]);
+            cmd_transition(&state_dir, id, DynCorridorState::Halted, Some(evidence))
         }
 
-        CorridorCommand::Resume { id, resolution: _ } => {
-            cmd_transition(&state_dir, id, DynCorridorState::Active)
+        CorridorCommand::Suspend { id, reason } => {
+            let evidence = compute_evidence_digest_from_strings(&[reason]);
+            cmd_transition(&state_dir, id, DynCorridorState::Suspended, Some(evidence))
+        }
+
+        CorridorCommand::Resume { id, resolution } => {
+            let evidence = compute_evidence_digest_from_strings(&[resolution]);
+            cmd_transition(&state_dir, id, DynCorridorState::Active, Some(evidence))
         }
 
         CorridorCommand::Status { id } => cmd_status(&state_dir, id),
@@ -230,8 +241,53 @@ fn cmd_create(
     Ok(0)
 }
 
+/// Compute a content digest from file paths by hashing their contents.
+///
+/// Reads each file, feeds `SHA256(contents)` for each into an accumulator, then
+/// finalizes to produce a single evidence digest. Uses `msez_core::digest::Sha256Accumulator`
+/// to comply with the SHA-256 usage policy (all hashing through msez-core).
+fn compute_evidence_digest_from_files(
+    paths: &[&PathBuf],
+) -> Result<msez_core::ContentDigest> {
+    use msez_core::digest::Sha256Accumulator;
+    let mut outer = Sha256Accumulator::new();
+    for path in paths {
+        if path.exists() {
+            let content = std::fs::read(path)
+                .with_context(|| format!("failed to read evidence file: {}", path.display()))?;
+            let mut file_hasher = Sha256Accumulator::new();
+            file_hasher.update(&content);
+            let file_digest = file_hasher.finalize();
+            outer.update(file_digest.as_bytes());
+        } else {
+            // Hash the path string as a reference digest when file doesn't exist.
+            // This allows referencing artifacts by path without requiring local copies.
+            let path_str = path.display().to_string();
+            outer.update(path_str.as_bytes());
+        }
+    }
+    Ok(outer.finalize())
+}
+
+/// Compute a content digest from string values (e.g., approval digests, reasons).
+fn compute_evidence_digest_from_strings(
+    values: &[&String],
+) -> msez_core::ContentDigest {
+    use msez_core::digest::Sha256Accumulator;
+    let mut acc = Sha256Accumulator::new();
+    for value in values {
+        acc.update(value.as_bytes());
+    }
+    acc.finalize()
+}
+
 /// Transition a corridor to a new state.
-fn cmd_transition(state_dir: &Path, id: &str, target: DynCorridorState) -> Result<u8> {
+fn cmd_transition(
+    state_dir: &Path,
+    id: &str,
+    target: DynCorridorState,
+    evidence_digest: Option<msez_core::ContentDigest>,
+) -> Result<u8> {
     let state_file = corridor_state_file(state_dir, id)?;
     if !state_file.exists() {
         bail!("corridor not found: {id}");
@@ -258,7 +314,7 @@ fn cmd_transition(state_dir: &Path, id: &str, target: DynCorridorState) -> Resul
         from_state: from,
         to_state: target,
         timestamp: now,
-        evidence_digest: None,
+        evidence_digest,
     });
     data.state = target;
     data.updated_at = now;
@@ -391,7 +447,7 @@ mod tests {
         let state_dir = dir.path().join("corridors");
 
         cmd_create(&state_dir, "test-cor", "PK", "AE").unwrap();
-        let result = cmd_transition(&state_dir, "test-cor", DynCorridorState::Pending);
+        let result = cmd_transition(&state_dir, "test-cor", DynCorridorState::Pending, None);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 0);
     }
@@ -403,7 +459,7 @@ mod tests {
 
         cmd_create(&state_dir, "test-cor", "PK", "AE").unwrap();
         // Draft → Active is not valid (must go through Pending).
-        let result = cmd_transition(&state_dir, "test-cor", DynCorridorState::Active);
+        let result = cmd_transition(&state_dir, "test-cor", DynCorridorState::Active, None);
         assert!(result.is_err());
     }
 
@@ -456,7 +512,7 @@ mod tests {
         let state_dir = dir.path().join("corridors");
         std::fs::create_dir_all(&state_dir).unwrap();
 
-        let result = cmd_transition(&state_dir, "nonexistent", DynCorridorState::Pending);
+        let result = cmd_transition(&state_dir, "nonexistent", DynCorridorState::Pending, None);
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("corridor not found"));
@@ -468,9 +524,9 @@ mod tests {
         let state_dir = dir.path().join("corridors");
 
         cmd_create(&state_dir, "lifecycle-cor", "PK", "AE").unwrap();
-        cmd_transition(&state_dir, "lifecycle-cor", DynCorridorState::Pending).unwrap();
-        cmd_transition(&state_dir, "lifecycle-cor", DynCorridorState::Active).unwrap();
-        let result = cmd_transition(&state_dir, "lifecycle-cor", DynCorridorState::Halted);
+        cmd_transition(&state_dir, "lifecycle-cor", DynCorridorState::Pending, None).unwrap();
+        cmd_transition(&state_dir, "lifecycle-cor", DynCorridorState::Active, None).unwrap();
+        let result = cmd_transition(&state_dir, "lifecycle-cor", DynCorridorState::Halted, None);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 0);
     }
@@ -481,11 +537,11 @@ mod tests {
         let state_dir = dir.path().join("corridors");
 
         cmd_create(&state_dir, "suspend-cor", "PK", "AE").unwrap();
-        cmd_transition(&state_dir, "suspend-cor", DynCorridorState::Pending).unwrap();
-        cmd_transition(&state_dir, "suspend-cor", DynCorridorState::Active).unwrap();
-        cmd_transition(&state_dir, "suspend-cor", DynCorridorState::Suspended).unwrap();
+        cmd_transition(&state_dir, "suspend-cor", DynCorridorState::Pending, None).unwrap();
+        cmd_transition(&state_dir, "suspend-cor", DynCorridorState::Active, None).unwrap();
+        cmd_transition(&state_dir, "suspend-cor", DynCorridorState::Suspended, None).unwrap();
         // Resume goes back to Active.
-        let result = cmd_transition(&state_dir, "suspend-cor", DynCorridorState::Active);
+        let result = cmd_transition(&state_dir, "suspend-cor", DynCorridorState::Active, None);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 0);
     }
@@ -496,10 +552,10 @@ mod tests {
         let state_dir = dir.path().join("corridors");
 
         cmd_create(&state_dir, "dep-cor", "PK", "AE").unwrap();
-        cmd_transition(&state_dir, "dep-cor", DynCorridorState::Pending).unwrap();
-        cmd_transition(&state_dir, "dep-cor", DynCorridorState::Active).unwrap();
-        cmd_transition(&state_dir, "dep-cor", DynCorridorState::Halted).unwrap();
-        let result = cmd_transition(&state_dir, "dep-cor", DynCorridorState::Deprecated);
+        cmd_transition(&state_dir, "dep-cor", DynCorridorState::Pending, None).unwrap();
+        cmd_transition(&state_dir, "dep-cor", DynCorridorState::Active, None).unwrap();
+        cmd_transition(&state_dir, "dep-cor", DynCorridorState::Halted, None).unwrap();
+        let result = cmd_transition(&state_dir, "dep-cor", DynCorridorState::Deprecated, None);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 0);
     }
@@ -510,13 +566,13 @@ mod tests {
         let state_dir = dir.path().join("corridors");
 
         cmd_create(&state_dir, "term-cor", "PK", "AE").unwrap();
-        cmd_transition(&state_dir, "term-cor", DynCorridorState::Pending).unwrap();
-        cmd_transition(&state_dir, "term-cor", DynCorridorState::Active).unwrap();
-        cmd_transition(&state_dir, "term-cor", DynCorridorState::Halted).unwrap();
-        cmd_transition(&state_dir, "term-cor", DynCorridorState::Deprecated).unwrap();
+        cmd_transition(&state_dir, "term-cor", DynCorridorState::Pending, None).unwrap();
+        cmd_transition(&state_dir, "term-cor", DynCorridorState::Active, None).unwrap();
+        cmd_transition(&state_dir, "term-cor", DynCorridorState::Halted, None).unwrap();
+        cmd_transition(&state_dir, "term-cor", DynCorridorState::Deprecated, None).unwrap();
 
         // No valid transitions from Deprecated.
-        let result = cmd_transition(&state_dir, "term-cor", DynCorridorState::Active);
+        let result = cmd_transition(&state_dir, "term-cor", DynCorridorState::Active, None);
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("invalid transition"));
@@ -528,9 +584,9 @@ mod tests {
         let state_dir = dir.path().join("corridors");
 
         cmd_create(&state_dir, "bad-cor", "PK", "AE").unwrap();
-        cmd_transition(&state_dir, "bad-cor", DynCorridorState::Pending).unwrap();
+        cmd_transition(&state_dir, "bad-cor", DynCorridorState::Pending, None).unwrap();
         // Pending → Halted not valid.
-        let result = cmd_transition(&state_dir, "bad-cor", DynCorridorState::Halted);
+        let result = cmd_transition(&state_dir, "bad-cor", DynCorridorState::Halted, None);
         assert!(result.is_err());
     }
 
@@ -552,8 +608,8 @@ mod tests {
         let state_dir = dir.path().join("corridors");
 
         cmd_create(&state_dir, "log-cor", "PK", "AE").unwrap();
-        cmd_transition(&state_dir, "log-cor", DynCorridorState::Pending).unwrap();
-        cmd_transition(&state_dir, "log-cor", DynCorridorState::Active).unwrap();
+        cmd_transition(&state_dir, "log-cor", DynCorridorState::Pending, None).unwrap();
+        cmd_transition(&state_dir, "log-cor", DynCorridorState::Active, None).unwrap();
 
         let result = cmd_status(&state_dir, "log-cor");
         assert!(result.is_ok());
@@ -881,7 +937,7 @@ mod tests {
         // Small sleep to ensure timestamp differs.
         std::thread::sleep(std::time::Duration::from_millis(10));
 
-        cmd_transition(&state_dir, "ts-cor", DynCorridorState::Pending).unwrap();
+        cmd_transition(&state_dir, "ts-cor", DynCorridorState::Pending, None).unwrap();
 
         let content2 = std::fs::read_to_string(&state_file).unwrap();
         let data2: DynCorridorData = serde_json::from_str(&content2).unwrap();
@@ -898,7 +954,7 @@ mod tests {
         let state_dir = dir.path().join("corridors");
 
         cmd_create(&state_dir, "err-cor", "PK", "AE").unwrap();
-        let result = cmd_transition(&state_dir, "err-cor", DynCorridorState::Halted);
+        let result = cmd_transition(&state_dir, "err-cor", DynCorridorState::Halted, None);
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("DRAFT"));

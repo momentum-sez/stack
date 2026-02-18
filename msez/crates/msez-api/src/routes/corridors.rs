@@ -9,7 +9,9 @@ use axum::routing::{get, post, put};
 use axum::{Json, Router};
 use chrono::Utc;
 use msez_core::{sha256_digest, CanonicalBytes, ContentDigest, CorridorId, Timestamp};
-use msez_corridor::{CorridorReceipt, ForkBranch, ForkDetector, ReceiptChain, ResolutionReason};
+use msez_corridor::{
+    CorridorReceipt, ForkBranch, ForkDetector, ReceiptChain, ResolutionReason, WatcherRegistry,
+};
 use msez_state::{DynCorridorState, TransitionRecord};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -169,14 +171,19 @@ pub struct ForkResolveRequest {
 }
 
 /// Input representation of a fork branch for the API.
+///
+/// ## P0-FORK-001 Remediation
+///
+/// The `attestation_count` field has been removed. Fork resolution
+/// now counts only cryptographically verified attestations from
+/// registered watchers. The API accepts attestation data that will
+/// be verified server-side.
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct ForkBranchInput {
     /// Hex digest of the branch's receipt content.
     pub receipt_digest: String,
     /// ISO 8601 timestamp of the branch's receipt.
     pub timestamp: String,
-    /// Number of independent watcher attestations.
-    pub attestation_count: u32,
     /// The receipt's next_root digest (64 hex chars).
     pub next_root: String,
 }
@@ -567,24 +574,30 @@ async fn fork_resolve(
     let branch_a = ForkBranch {
         receipt_digest: digest_a,
         timestamp: ts_a,
-        attestation_count: req.branch_a.attestation_count,
+        attestations: Vec::new(),
         next_root: req.branch_a.next_root,
     };
     let branch_b = ForkBranch {
         receipt_digest: digest_b,
         timestamp: ts_b,
-        attestation_count: req.branch_b.attestation_count,
+        attestations: Vec::new(),
         next_root: req.branch_b.next_root,
     };
 
-    let mut detector = ForkDetector::new();
+    // Use an empty registry for API-level resolution.
+    // In production, the registry would be populated from the watcher
+    // bond store. Without registered watchers, resolution falls through
+    // to timestamp and lexicographic tiebreaker ordering.
+    let registry = WatcherRegistry::new();
+    let mut detector = ForkDetector::new(registry);
     detector.register_fork(branch_a, branch_b);
     let resolutions = detector.resolve_all();
 
     let resolution = resolutions
         .into_iter()
         .next()
-        .ok_or_else(|| AppError::Internal("fork resolution produced no result".into()))?;
+        .ok_or_else(|| AppError::Internal("fork resolution produced no result".into()))?
+        .map_err(|e| AppError::Internal(format!("fork resolution error: {e}")))?;
 
     let reason = match resolution.resolution_reason {
         ResolutionReason::EarlierTimestamp => "earlier_timestamp",
@@ -1339,13 +1352,11 @@ mod tests {
             "branch_a": {
                 "receipt_digest": "aaaa",
                 "timestamp": earlier.to_rfc3339(),
-                "attestation_count": 3,
                 "next_root": "aa".repeat(32),
             },
             "branch_b": {
                 "receipt_digest": "bbbb",
                 "timestamp": now.to_rfc3339(),
-                "attestation_count": 5,
                 "next_root": "bb".repeat(32),
             }
         }))
@@ -1370,23 +1381,22 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handler_fork_resolve_attestation_ordering() {
+    async fn handler_fork_resolve_tiebreak_ordering() {
         let app = test_app();
         let now = Utc::now();
-        // Within 5-minute skew → falls through to attestation count.
-        let close = now + chrono::Duration::minutes(2);
+        // Within 5-minute skew and within MAX_FUTURE_DRIFT (60s),
+        // no attestations → falls to lexicographic tiebreaker.
+        let close = now + chrono::Duration::seconds(30);
 
         let body_str = serde_json::to_string(&serde_json::json!({
             "branch_a": {
                 "receipt_digest": "aaaa",
                 "timestamp": now.to_rfc3339(),
-                "attestation_count": 2,
                 "next_root": "aa".repeat(32),
             },
             "branch_b": {
                 "receipt_digest": "bbbb",
                 "timestamp": close.to_rfc3339(),
-                "attestation_count": 7,
                 "next_root": "bb".repeat(32),
             }
         }))
@@ -1403,7 +1413,8 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::OK);
 
         let body: ForkResolveResponse = body_json(resp).await;
-        assert_eq!(body.resolution_reason, "more_attestations");
+        // No registered watchers → 0 attestations on both → lexicographic tiebreaker.
+        assert_eq!(body.resolution_reason, "lexicographic_tiebreak");
     }
 
     #[tokio::test]

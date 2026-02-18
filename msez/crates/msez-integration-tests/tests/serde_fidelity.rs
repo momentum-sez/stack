@@ -2993,12 +2993,12 @@ fn serde_rt_fork_branch() {
     let original = ForkBranch {
         receipt_digest: test_digest(),
         timestamp: Utc::now(),
-        attestation_count: 3,
+        attestations: vec![],
         next_root: "bb".repeat(32),
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: ForkBranch = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(recovered.attestation_count, 3);
+    assert!(recovered.attestations.is_empty());
 }
 
 #[test]

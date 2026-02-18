@@ -51,6 +51,7 @@
 pub mod cdb;
 pub mod circuits;
 pub mod mock;
+pub mod policy;
 pub mod traits;
 
 #[cfg(feature = "groth16")]
@@ -62,4 +63,5 @@ pub mod plonk;
 // Re-export primary types for ergonomic imports.
 pub use cdb::Cdb;
 pub use mock::MockProofSystem;
+pub use policy::{PolicyError, PolicyMode, ProofBackend, ProofPolicy};
 pub use traits::{ProofError, ProofSystem, VerifyError};

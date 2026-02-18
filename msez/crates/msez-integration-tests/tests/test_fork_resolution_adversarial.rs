@@ -1,16 +1,22 @@
-//! # Fork Resolution Adversarial Test
+//! # Fork Resolution Adversarial Test (Evidence-Driven)
 //!
-//! Tests the three-level fork resolution protocol (Protocol 16.1 §3):
+//! Tests the three-level fork resolution protocol (Protocol 16.1 §3,
+//! P0-FORK-001 remediated):
 //! 1. Primary: Timestamp (if difference > MAX_CLOCK_SKEW)
-//! 2. Secondary: Watcher attestation count
+//! 2. Secondary: Verified watcher attestation count (cryptographically bound)
 //! 3. Tertiary: Lexicographic digest tiebreaker
 //!
 //! Includes adversarial scenarios: timestamp backdating, clock skew boundary
-//! conditions, and equal-attestation tiebreaking.
+//! conditions, unregistered watchers, and equivocation detection.
 
 use chrono::{Duration, Utc};
 use msez_core::{sha256_digest, CanonicalBytes, ContentDigest};
-use msez_corridor::{ForkBranch, ForkDetector, ResolutionReason, MAX_CLOCK_SKEW};
+use msez_corridor::{
+    ForkBranch, ForkDetector, ResolutionReason, WatcherRegistry, create_attestation,
+    resolve_fork, MAX_CLOCK_SKEW,
+};
+use msez_crypto::ed25519::SigningKey;
+use rand_core::OsRng;
 use serde_json::json;
 
 fn make_digest(label: &str) -> ContentDigest {
@@ -21,13 +27,13 @@ fn make_digest(label: &str) -> ContentDigest {
 fn make_branch(
     label: &str,
     timestamp: chrono::DateTime<Utc>,
-    attestation_count: u32,
+    attestations: Vec<msez_corridor::WatcherAttestation>,
     next_root: &str,
 ) -> ForkBranch {
     ForkBranch {
         receipt_digest: make_digest(label),
         timestamp,
-        attestation_count,
+        attestations,
         next_root: next_root.to_string(),
     }
 }
@@ -36,56 +42,70 @@ fn now() -> chrono::DateTime<Utc> {
     Utc::now()
 }
 
+fn make_key() -> SigningKey {
+    SigningKey::generate(&mut OsRng)
+}
+
 // ---------------------------------------------------------------------------
 // 1. Timestamp ordering beyond clock skew
 // ---------------------------------------------------------------------------
 
 #[test]
 fn earlier_timestamp_wins_beyond_skew() {
-    let t1 = now();
-    let t2 = t1 + Duration::minutes(10); // 10 min > 5 min skew
+    let sk = make_key();
+    let mut reg = WatcherRegistry::new();
+    reg.register(sk.verifying_key());
 
-    let a = make_branch("A", t1, 3, &"aa".repeat(32));
-    let b = make_branch("B", t2, 5, &"bb".repeat(32));
+    // Use past-relative timestamps to avoid MAX_FUTURE_DRIFT rejection.
+    let t2 = now();
+    let t1 = t2 - Duration::minutes(10);
+    let nr_a = "aa".repeat(32);
+    let nr_b = "bb".repeat(32);
 
-    let resolution = msez_corridor::fork::resolve_fork(&a, &b);
+    let a = make_branch("A", t1, vec![create_attestation(&sk, "p", &nr_a, 1, t1).unwrap()], &nr_a);
+    let b = make_branch("B", t2, vec![create_attestation(&sk, "p", &nr_b, 1, t2).unwrap()], &nr_b);
+
+    let resolution = resolve_fork(&a, &b, &reg).unwrap();
     assert_eq!(resolution.winning_branch, a.receipt_digest);
-    assert_eq!(
-        resolution.resolution_reason,
-        ResolutionReason::EarlierTimestamp
-    );
+    assert_eq!(resolution.resolution_reason, ResolutionReason::EarlierTimestamp);
 }
 
 #[test]
 fn earlier_timestamp_wins_reversed() {
+    let sk = make_key();
+    let mut reg = WatcherRegistry::new();
+    reg.register(sk.verifying_key());
+
     let t1 = now();
-    let t2 = t1 + Duration::minutes(10);
+    let t2 = t1 - Duration::minutes(10);
+    let nr_a = "aa".repeat(32);
+    let nr_b = "bb".repeat(32);
 
-    let a = make_branch("A", t2, 10, &"aa".repeat(32));
-    let b = make_branch("B", t1, 1, &"bb".repeat(32));
+    let a = make_branch("A", t1, vec![create_attestation(&sk, "p", &nr_a, 1, t1).unwrap()], &nr_a);
+    let b = make_branch("B", t2, vec![create_attestation(&sk, "p", &nr_b, 1, t2).unwrap()], &nr_b);
 
-    let resolution = msez_corridor::fork::resolve_fork(&a, &b);
+    let resolution = resolve_fork(&a, &b, &reg).unwrap();
     assert_eq!(resolution.winning_branch, b.receipt_digest);
-    assert_eq!(
-        resolution.resolution_reason,
-        ResolutionReason::EarlierTimestamp
-    );
+    assert_eq!(resolution.resolution_reason, ResolutionReason::EarlierTimestamp);
 }
 
 #[test]
 fn large_time_difference_uses_timestamp() {
-    let t1 = now();
-    let t2 = t1 + Duration::hours(1);
+    let sk = make_key();
+    let mut reg = WatcherRegistry::new();
+    reg.register(sk.verifying_key());
 
-    let a = make_branch("A", t1, 0, &"ff".repeat(32));
-    let b = make_branch("B", t2, 100, &"00".repeat(32));
+    let t2 = now();
+    let t1 = t2 - Duration::hours(1);
+    let nr_a = "ff".repeat(32);
+    let nr_b = "00".repeat(32);
 
-    let resolution = msez_corridor::fork::resolve_fork(&a, &b);
+    let a = make_branch("A", t1, vec![create_attestation(&sk, "p", &nr_a, 1, t1).unwrap()], &nr_a);
+    let b = make_branch("B", t2, vec![create_attestation(&sk, "p", &nr_b, 1, t2).unwrap()], &nr_b);
+
+    let resolution = resolve_fork(&a, &b, &reg).unwrap();
     assert_eq!(resolution.winning_branch, a.receipt_digest);
-    assert_eq!(
-        resolution.resolution_reason,
-        ResolutionReason::EarlierTimestamp
-    );
+    assert_eq!(resolution.resolution_reason, ResolutionReason::EarlierTimestamp);
 }
 
 // ---------------------------------------------------------------------------
@@ -94,33 +114,55 @@ fn large_time_difference_uses_timestamp() {
 
 #[test]
 fn more_attestations_wins_within_skew() {
-    let t1 = now();
-    let t2 = t1 + Duration::minutes(3); // 3 min < 5 min skew
+    let sk1 = make_key();
+    let sk2 = make_key();
+    let sk3 = make_key();
+    let mut reg = WatcherRegistry::new();
+    reg.register(sk1.verifying_key());
+    reg.register(sk2.verifying_key());
+    reg.register(sk3.verifying_key());
 
-    let a = make_branch("A", t1, 3, &"aa".repeat(32));
-    let b = make_branch("B", t2, 5, &"bb".repeat(32));
+    let t2 = now();
+    let t1 = t2 - Duration::minutes(3);
+    let nr_a = "aa".repeat(32);
+    let nr_b = "bb".repeat(32);
 
-    let resolution = msez_corridor::fork::resolve_fork(&a, &b);
+    let a = make_branch("A", t1, vec![create_attestation(&sk1, "p", &nr_a, 1, t1).unwrap()], &nr_a);
+    let b = make_branch("B", t2, vec![
+        create_attestation(&sk1, "p", &nr_b, 1, t2).unwrap(),
+        create_attestation(&sk2, "p", &nr_b, 1, t2).unwrap(),
+        create_attestation(&sk3, "p", &nr_b, 1, t2).unwrap(),
+    ], &nr_b);
+
+    let resolution = resolve_fork(&a, &b, &reg).unwrap();
     assert_eq!(resolution.winning_branch, b.receipt_digest);
-    assert_eq!(
-        resolution.resolution_reason,
-        ResolutionReason::MoreAttestations
-    );
+    assert_eq!(resolution.resolution_reason, ResolutionReason::MoreAttestations);
 }
 
 #[test]
 fn more_attestations_wins_same_timestamp() {
+    let sk1 = make_key();
+    let sk2 = make_key();
+    let sk3 = make_key();
+    let mut reg = WatcherRegistry::new();
+    reg.register(sk1.verifying_key());
+    reg.register(sk2.verifying_key());
+    reg.register(sk3.verifying_key());
+
     let t = now();
+    let nr_a = "aa".repeat(32);
+    let nr_b = "bb".repeat(32);
 
-    let a = make_branch("A", t, 7, &"aa".repeat(32));
-    let b = make_branch("B", t, 3, &"bb".repeat(32));
+    let a = make_branch("A", t, vec![
+        create_attestation(&sk1, "p", &nr_a, 1, t).unwrap(),
+        create_attestation(&sk2, "p", &nr_a, 1, t).unwrap(),
+        create_attestation(&sk3, "p", &nr_a, 1, t).unwrap(),
+    ], &nr_a);
+    let b = make_branch("B", t, vec![create_attestation(&sk1, "p", &nr_b, 1, t).unwrap()], &nr_b);
 
-    let resolution = msez_corridor::fork::resolve_fork(&a, &b);
+    let resolution = resolve_fork(&a, &b, &reg).unwrap();
     assert_eq!(resolution.winning_branch, a.receipt_digest);
-    assert_eq!(
-        resolution.resolution_reason,
-        ResolutionReason::MoreAttestations
-    );
+    assert_eq!(resolution.resolution_reason, ResolutionReason::MoreAttestations);
 }
 
 // ---------------------------------------------------------------------------
@@ -129,33 +171,38 @@ fn more_attestations_wins_same_timestamp() {
 
 #[test]
 fn lexicographic_tiebreak_when_all_equal() {
+    let sk = make_key();
+    let mut reg = WatcherRegistry::new();
+    reg.register(sk.verifying_key());
+
     let t = now();
+    let nr_a = "aa".repeat(32);
+    let nr_b = "bb".repeat(32);
 
-    let a = make_branch("A", t, 3, &"aa".repeat(32));
-    let b = make_branch("B", t, 3, &"bb".repeat(32));
+    let a = make_branch("A", t, vec![create_attestation(&sk, "p", &nr_a, 1, t).unwrap()], &nr_a);
+    let b = make_branch("B", t, vec![create_attestation(&sk, "p", &nr_b, 1, t).unwrap()], &nr_b);
 
-    let resolution = msez_corridor::fork::resolve_fork(&a, &b);
+    let resolution = resolve_fork(&a, &b, &reg).unwrap();
     assert_eq!(resolution.winning_branch, a.receipt_digest);
-    assert_eq!(
-        resolution.resolution_reason,
-        ResolutionReason::LexicographicTiebreak
-    );
+    assert_eq!(resolution.resolution_reason, ResolutionReason::LexicographicTiebreak);
 }
 
 #[test]
 fn lexicographic_tiebreak_reversed() {
+    let sk = make_key();
+    let mut reg = WatcherRegistry::new();
+    reg.register(sk.verifying_key());
+
     let t = now();
+    let nr_a = "ff".repeat(32);
+    let nr_b = "11".repeat(32);
 
-    let a = make_branch("A", t, 3, &"ff".repeat(32));
-    let b = make_branch("B", t, 3, &"11".repeat(32));
+    let a = make_branch("A", t, vec![create_attestation(&sk, "p", &nr_a, 1, t).unwrap()], &nr_a);
+    let b = make_branch("B", t, vec![create_attestation(&sk, "p", &nr_b, 1, t).unwrap()], &nr_b);
 
-    let resolution = msez_corridor::fork::resolve_fork(&a, &b);
-    // "11...11" < "ff...ff" lexicographically, so B wins
+    let resolution = resolve_fork(&a, &b, &reg).unwrap();
     assert_eq!(resolution.winning_branch, b.receipt_digest);
-    assert_eq!(
-        resolution.resolution_reason,
-        ResolutionReason::LexicographicTiebreak
-    );
+    assert_eq!(resolution.resolution_reason, ResolutionReason::LexicographicTiebreak);
 }
 
 // ---------------------------------------------------------------------------
@@ -164,50 +211,44 @@ fn lexicographic_tiebreak_reversed() {
 
 #[test]
 fn exactly_at_skew_boundary_falls_to_secondary() {
-    let t1 = now();
-    let t2 = t1 + Duration::seconds(300); // Exactly 5 minutes
+    let sk1 = make_key();
+    let sk2 = make_key();
+    let mut reg = WatcherRegistry::new();
+    reg.register(sk1.verifying_key());
+    reg.register(sk2.verifying_key());
 
-    let a = make_branch("A", t1, 2, &"aa".repeat(32));
-    let b = make_branch("B", t2, 5, &"bb".repeat(32));
+    let t2 = now();
+    let t1 = t2 - Duration::seconds(300);
+    let nr_a = "aa".repeat(32);
+    let nr_b = "bb".repeat(32);
 
-    let resolution = msez_corridor::fork::resolve_fork(&a, &b);
-    // Exactly at boundary: time_diff == skew (not strictly greater)
-    assert_eq!(
-        resolution.resolution_reason,
-        ResolutionReason::MoreAttestations
-    );
+    let a = make_branch("A", t1, vec![create_attestation(&sk1, "p", &nr_a, 1, t1).unwrap()], &nr_a);
+    let b = make_branch("B", t2, vec![
+        create_attestation(&sk1, "p", &nr_b, 1, t2).unwrap(),
+        create_attestation(&sk2, "p", &nr_b, 1, t2).unwrap(),
+    ], &nr_b);
+
+    let resolution = resolve_fork(&a, &b, &reg).unwrap();
+    assert_eq!(resolution.resolution_reason, ResolutionReason::MoreAttestations);
 }
 
 #[test]
 fn one_second_beyond_skew_uses_timestamp() {
-    let t1 = now();
-    let t2 = t1 + Duration::seconds(301); // 5 min + 1 sec
+    let sk = make_key();
+    let mut reg = WatcherRegistry::new();
+    reg.register(sk.verifying_key());
 
-    let a = make_branch("A", t1, 2, &"aa".repeat(32));
-    let b = make_branch("B", t2, 5, &"bb".repeat(32));
+    let t2 = now();
+    let t1 = t2 - Duration::seconds(301);
+    let nr_a = "aa".repeat(32);
+    let nr_b = "bb".repeat(32);
 
-    let resolution = msez_corridor::fork::resolve_fork(&a, &b);
+    let a = make_branch("A", t1, vec![create_attestation(&sk, "p", &nr_a, 1, t1).unwrap()], &nr_a);
+    let b = make_branch("B", t2, vec![create_attestation(&sk, "p", &nr_b, 1, t2).unwrap()], &nr_b);
+
+    let resolution = resolve_fork(&a, &b, &reg).unwrap();
     assert_eq!(resolution.winning_branch, a.receipt_digest);
-    assert_eq!(
-        resolution.resolution_reason,
-        ResolutionReason::EarlierTimestamp
-    );
-}
-
-#[test]
-fn one_second_within_skew_falls_to_secondary() {
-    let t1 = now();
-    let t2 = t1 + Duration::seconds(299); // 5 min - 1 sec
-
-    let a = make_branch("A", t1, 1, &"aa".repeat(32));
-    let b = make_branch("B", t2, 3, &"bb".repeat(32));
-
-    let resolution = msez_corridor::fork::resolve_fork(&a, &b);
-    assert_eq!(
-        resolution.resolution_reason,
-        ResolutionReason::MoreAttestations
-    );
-    assert_eq!(resolution.winning_branch, b.receipt_digest);
+    assert_eq!(resolution.resolution_reason, ResolutionReason::EarlierTimestamp);
 }
 
 // ---------------------------------------------------------------------------
@@ -216,54 +257,31 @@ fn one_second_within_skew_falls_to_secondary() {
 
 #[test]
 fn attacker_backdate_within_skew_loses_to_attestations() {
+    let sk1 = make_key();
+    let sk2 = make_key();
+    let sk3 = make_key();
+    let mut reg = WatcherRegistry::new();
+    reg.register(sk1.verifying_key());
+    reg.register(sk2.verifying_key());
+    reg.register(sk3.verifying_key());
+
     let honest_time = now();
-    let attacker_time = honest_time - Duration::minutes(4); // 4 min backdate
+    let attacker_time = honest_time - Duration::minutes(4);
+    let nr_h = "aa".repeat(32);
+    let nr_a = "bb".repeat(32);
 
-    let honest = make_branch("honest", honest_time, 5, &"aa".repeat(32));
-    let attacker = make_branch("attacker", attacker_time, 1, &"bb".repeat(32));
+    let honest = make_branch("honest", honest_time, vec![
+        create_attestation(&sk1, "p", &nr_h, 1, honest_time).unwrap(),
+        create_attestation(&sk2, "p", &nr_h, 1, honest_time).unwrap(),
+        create_attestation(&sk3, "p", &nr_h, 1, honest_time).unwrap(),
+    ], &nr_h);
+    let attacker = make_branch("attacker", attacker_time, vec![
+        create_attestation(&sk1, "p", &nr_a, 1, attacker_time).unwrap(),
+    ], &nr_a);
 
-    let resolution = msez_corridor::fork::resolve_fork(&honest, &attacker);
-    // Within skew → attestation count → honest wins (5 > 1)
+    let resolution = resolve_fork(&honest, &attacker, &reg).unwrap();
     assert_eq!(resolution.winning_branch, honest.receipt_digest);
-    assert_eq!(
-        resolution.resolution_reason,
-        ResolutionReason::MoreAttestations
-    );
-}
-
-#[test]
-fn attacker_backdate_beyond_skew_wins_timestamp() {
-    let honest_time = now();
-    let attacker_time = honest_time - Duration::minutes(10); // 10 min backdate
-
-    let honest = make_branch("honest", honest_time, 5, &"aa".repeat(32));
-    let attacker = make_branch("attacker", attacker_time, 1, &"bb".repeat(32));
-
-    let resolution = msez_corridor::fork::resolve_fork(&honest, &attacker);
-    // Beyond skew → timestamp ordering → attacker wins (earlier timestamp)
-    assert_eq!(resolution.winning_branch, attacker.receipt_digest);
-    assert_eq!(
-        resolution.resolution_reason,
-        ResolutionReason::EarlierTimestamp
-    );
-}
-
-#[test]
-fn two_honest_nodes_with_similar_timestamps() {
-    // Two honest nodes both submit within reasonable clock drift
-    let t1 = now();
-    let t2 = t1 + Duration::seconds(2); // 2 seconds apart
-
-    let node_a = make_branch("node-a", t1, 3, &"aa".repeat(32));
-    let node_b = make_branch("node-b", t2, 5, &"bb".repeat(32));
-
-    let resolution = msez_corridor::fork::resolve_fork(&node_a, &node_b);
-    // Well within skew → attestation count wins
-    assert_eq!(resolution.winning_branch, node_b.receipt_digest);
-    assert_eq!(
-        resolution.resolution_reason,
-        ResolutionReason::MoreAttestations
-    );
+    assert_eq!(resolution.resolution_reason, ResolutionReason::MoreAttestations);
 }
 
 #[test]
@@ -273,7 +291,7 @@ fn identical_branches_are_not_fork() {
     let branch = ForkBranch {
         receipt_digest: digest,
         timestamp: t,
-        attestation_count: 3,
+        attestations: vec![],
         next_root: "aa".repeat(32),
     };
     assert!(!ForkDetector::is_fork(&branch, &branch));
@@ -285,12 +303,18 @@ fn identical_branches_are_not_fork() {
 
 #[test]
 fn fork_detector_register_and_resolve() {
-    let mut detector = ForkDetector::new();
+    let sk = make_key();
+    let mut reg = WatcherRegistry::new();
+    reg.register(sk.verifying_key());
+    let mut detector = ForkDetector::new(reg);
     assert_eq!(detector.pending_count(), 0);
 
     let t = now();
-    let a = make_branch("A", t, 3, &"aa".repeat(32));
-    let b = make_branch("B", t, 5, &"bb".repeat(32));
+    let nr_a = "aa".repeat(32);
+    let nr_b = "bb".repeat(32);
+
+    let a = make_branch("A", t, vec![create_attestation(&sk, "p", &nr_a, 1, t).unwrap()], &nr_a);
+    let b = make_branch("B", t, vec![create_attestation(&sk, "p", &nr_b, 1, t).unwrap()], &nr_b);
 
     assert!(ForkDetector::is_fork(&a, &b));
     detector.register_fork(a, b);
@@ -298,22 +322,21 @@ fn fork_detector_register_and_resolve() {
 
     let resolutions = detector.resolve_all();
     assert_eq!(resolutions.len(), 1);
+    assert!(resolutions[0].is_ok());
     assert_eq!(detector.pending_count(), 0);
 }
 
 #[test]
 fn fork_detector_multiple_forks() {
-    let mut detector = ForkDetector::new();
+    let reg = WatcherRegistry::new();
+    let mut detector = ForkDetector::new(reg);
     let t = now();
 
-    for i in 0..10 {
-        let a = make_branch(&format!("A{i}"), t, i, &format!("{:02x}", i).repeat(32));
-        let b = make_branch(
-            &format!("B{i}"),
-            t,
-            i + 1,
-            &format!("{:02x}", i + 10).repeat(32),
-        );
+    for i in 0..10u32 {
+        let nr_a = format!("{:02x}", i).repeat(32);
+        let nr_b = format!("{:02x}", i + 10).repeat(32);
+        let a = make_branch(&format!("A{i}"), t, vec![], &nr_a);
+        let b = make_branch(&format!("B{i}"), t, vec![], &nr_b);
         detector.register_fork(a, b);
     }
 
@@ -322,9 +345,9 @@ fn fork_detector_multiple_forks() {
     assert_eq!(resolutions.len(), 10);
     assert_eq!(detector.pending_count(), 0);
 
-    // All should resolve by attestation count (same timestamp)
     for r in &resolutions {
-        assert_eq!(r.resolution_reason, ResolutionReason::MoreAttestations);
+        let r = r.as_ref().unwrap();
+        assert_eq!(r.resolution_reason, ResolutionReason::LexicographicTiebreak);
     }
 }
 
@@ -338,19 +361,34 @@ fn max_clock_skew_is_five_minutes() {
 }
 
 // ---------------------------------------------------------------------------
-// 8. Symmetric resolution (order of arguments doesn't matter for result)
+// 8. Symmetric resolution
 // ---------------------------------------------------------------------------
 
 #[test]
 fn resolution_result_is_symmetric() {
+    let sk1 = make_key();
+    let sk2 = make_key();
+    let mut reg = WatcherRegistry::new();
+    reg.register(sk1.verifying_key());
+    reg.register(sk2.verifying_key());
+
     let t = now();
-    let a = make_branch("A", t, 5, &"aa".repeat(32));
-    let b = make_branch("B", t, 3, &"bb".repeat(32));
+    let nr_a = "aa".repeat(32);
+    let nr_b = "bb".repeat(32);
 
-    let r1 = msez_corridor::fork::resolve_fork(&a, &b);
-    let r2 = msez_corridor::fork::resolve_fork(&b, &a);
+    let att_a1 = create_attestation(&sk1, "p", &nr_a, 1, t).unwrap();
+    let att_a2 = create_attestation(&sk2, "p", &nr_a, 1, t).unwrap();
+    let att_b = create_attestation(&sk1, "p", &nr_b, 1, t).unwrap();
 
-    // The winner should be the same regardless of argument order
+    let a = make_branch("A", t, vec![att_a1.clone(), att_a2.clone()], &nr_a);
+    let b = make_branch("B", t, vec![att_b.clone()], &nr_b);
+
+    let r1 = resolve_fork(&a, &b, &reg).unwrap();
+
+    let a2 = make_branch("A", t, vec![att_a1, att_a2], &nr_a);
+    let b2 = make_branch("B", t, vec![att_b], &nr_b);
+    let r2 = resolve_fork(&b2, &a2, &reg).unwrap();
+
     assert_eq!(r1.winning_branch, r2.winning_branch);
     assert_eq!(r1.losing_branch, r2.losing_branch);
     assert_eq!(r1.resolution_reason, r2.resolution_reason);

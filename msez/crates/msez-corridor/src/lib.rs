@@ -35,6 +35,7 @@
 pub mod anchor;
 pub mod bridge;
 pub mod fork;
+pub mod migration;
 pub mod netting;
 pub mod payment_rail;
 pub mod receipt;
@@ -43,7 +44,11 @@ pub mod swift;
 // Re-export primary types.
 pub use anchor::{AnchorCommitment, AnchorError, AnchorReceipt, AnchorTarget, MockAnchorTarget};
 pub use bridge::{BridgeEdge, BridgeRoute, CorridorBridge};
-pub use fork::{ForkBranch, ForkDetector, ForkResolution, ResolutionReason, MAX_CLOCK_SKEW};
+pub use fork::{
+    ForkBranch, ForkDetector, ForkError, ForkResolution, ResolutionReason, WatcherAttestation,
+    WatcherRegistry, create_attestation, resolve_fork, MAX_CLOCK_SKEW, MAX_FUTURE_DRIFT,
+};
+pub use migration::{MigrationError, MigrationSaga, MigrationState, SideEffect};
 pub use netting::{
     Currency, NetPosition, NettingEngine, NettingError, Obligation, Party, SettlementLeg,
     SettlementPlan,

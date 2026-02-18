@@ -937,18 +937,22 @@ fn vc_signing_input_no_panic() {
 // =========================================================================
 
 use msez_corridor::fork::{resolve_fork, ForkBranch, ForkDetector};
+use msez_corridor::WatcherRegistry;
 
 #[test]
 fn fork_resolve_identical_branches_no_panic() {
     let digest = test_digest_for("fork-test");
+    let registry = WatcherRegistry::new();
     let branch = ForkBranch {
         receipt_digest: digest.clone(),
         timestamp: chrono::Utc::now(),
-        attestation_count: 3,
+        attestations: vec![],
         next_root: "aa".repeat(32),
     };
     // Identical branches — resolution should not panic
-    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| resolve_fork(&branch, &branch)));
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        resolve_fork(&branch, &branch, &registry)
+    }));
     assert!(
         result.is_ok(),
         "Fork resolution with identical branches should not panic"
@@ -959,20 +963,21 @@ fn fork_resolve_identical_branches_no_panic() {
 fn fork_resolve_zero_attestations_no_panic() {
     let digest_a = test_digest_for("fork-a");
     let digest_b = test_digest_for("fork-b");
+    let registry = WatcherRegistry::new();
     let branch_a = ForkBranch {
         receipt_digest: digest_a,
         timestamp: chrono::Utc::now(),
-        attestation_count: 0,
+        attestations: vec![],
         next_root: "aa".repeat(32),
     };
     let branch_b = ForkBranch {
         receipt_digest: digest_b,
         timestamp: chrono::Utc::now(),
-        attestation_count: 0,
+        attestations: vec![],
         next_root: "bb".repeat(32),
     };
     let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        resolve_fork(&branch_a, &branch_b)
+        resolve_fork(&branch_a, &branch_b, &registry)
     }));
     assert!(
         result.is_ok(),
@@ -982,19 +987,20 @@ fn fork_resolve_zero_attestations_no_panic() {
 
 #[test]
 fn fork_detector_register_and_resolve_no_panic() {
-    let mut detector = ForkDetector::new();
+    let registry = WatcherRegistry::new();
+    let mut detector = ForkDetector::new(registry);
     let digest_a = test_digest_for("fork-det-a");
     let digest_b = test_digest_for("fork-det-b");
     let branch_a = ForkBranch {
         receipt_digest: digest_a,
         timestamp: chrono::Utc::now(),
-        attestation_count: 5,
+        attestations: vec![],
         next_root: "aa".repeat(32),
     };
     let branch_b = ForkBranch {
         receipt_digest: digest_b,
         timestamp: chrono::Utc::now() - chrono::Duration::seconds(10),
-        attestation_count: 3,
+        attestations: vec![],
         next_root: "bb".repeat(32),
     };
     detector.register_fork(branch_a, branch_b);

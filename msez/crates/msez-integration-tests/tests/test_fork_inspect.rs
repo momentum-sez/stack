@@ -1,4 +1,4 @@
-//! # Fork Inspection and Analysis Test
+//! # Fork Inspection and Analysis Test (Evidence-Driven)
 //!
 //! Tests fork inspection — identifying divergence points, verifying that
 //! identical branches are not considered forks, and inspecting resolution
@@ -6,7 +6,12 @@
 
 use chrono::{Duration, Utc};
 use msez_core::{sha256_digest, CanonicalBytes, ContentDigest};
-use msez_corridor::{ForkBranch, ForkDetector, ResolutionReason};
+use msez_corridor::{
+    ForkBranch, ForkDetector, ResolutionReason, WatcherRegistry, create_attestation,
+    resolve_fork,
+};
+use msez_crypto::ed25519::SigningKey;
+use rand_core::OsRng;
 use serde_json::json;
 
 fn make_digest(label: &str) -> ContentDigest {
@@ -17,13 +22,13 @@ fn make_digest(label: &str) -> ContentDigest {
 fn make_branch(
     label: &str,
     timestamp: chrono::DateTime<Utc>,
-    attestation_count: u32,
+    attestations: Vec<msez_corridor::WatcherAttestation>,
     next_root: &str,
 ) -> ForkBranch {
     ForkBranch {
         receipt_digest: make_digest(label),
         timestamp,
-        attestation_count,
+        attestations,
         next_root: next_root.to_string(),
     }
 }
@@ -34,20 +39,31 @@ fn make_branch(
 
 #[test]
 fn inspect_fork_identifies_divergence_point() {
+    let sk = SigningKey::generate(&mut OsRng);
+    let mut registry = WatcherRegistry::new();
+    registry.register(sk.verifying_key());
+
     let t = Utc::now();
-    let a = make_branch("fork-a", t, 5, &"aa".repeat(32));
-    let b = make_branch("fork-b", t, 3, &"bb".repeat(32));
+    let nr_a = "aa".repeat(32);
+    let nr_b = "bb".repeat(32);
+
+    let att_a = create_attestation(&sk, "parent", &nr_a, 1, t).unwrap();
+    let att_b = create_attestation(&sk, "parent", &nr_b, 1, t).unwrap();
+
+    let a = make_branch("fork-a", t, vec![att_a], &nr_a);
+    let b = make_branch("fork-b", t, vec![att_b], &nr_b);
 
     // These have different digests, so they constitute a fork
     assert!(ForkDetector::is_fork(&a, &b));
 
     // Register and resolve
-    let mut detector = ForkDetector::new();
+    let mut detector = ForkDetector::new(registry);
     detector.register_fork(a, b);
     assert_eq!(detector.pending_count(), 1);
 
     let resolutions = detector.resolve_all();
     assert_eq!(resolutions.len(), 1);
+    assert!(resolutions[0].is_ok());
     assert_eq!(detector.pending_count(), 0);
 }
 
@@ -62,7 +78,7 @@ fn inspect_no_fork_for_identical_branches() {
     let branch = ForkBranch {
         receipt_digest: digest,
         timestamp: t,
-        attestation_count: 3,
+        attestations: vec![],
         next_root: "aa".repeat(32),
     };
 
@@ -75,24 +91,43 @@ fn inspect_no_fork_for_identical_branches() {
 
 #[test]
 fn inspect_fork_resolution_reason() {
+    let sk1 = SigningKey::generate(&mut OsRng);
+    let sk2 = SigningKey::generate(&mut OsRng);
+    let sk3 = SigningKey::generate(&mut OsRng);
+    let mut registry = WatcherRegistry::new();
+    registry.register(sk1.verifying_key());
+    registry.register(sk2.verifying_key());
+    registry.register(sk3.verifying_key());
+
     let t = Utc::now();
+    let nr_a = "aa".repeat(32);
+    let nr_b = "bb".repeat(32);
 
     // Attestation count resolution (within clock skew)
-    let a = make_branch("attest-a", t, 2, &"aa".repeat(32));
-    let b = make_branch("attest-b", t, 7, &"bb".repeat(32));
-    let resolution = msez_corridor::fork::resolve_fork(&a, &b);
+    let att_a = create_attestation(&sk1, "parent", &nr_a, 1, t).unwrap();
+    let att_b1 = create_attestation(&sk1, "parent", &nr_b, 1, t).unwrap();
+    let att_b2 = create_attestation(&sk2, "parent", &nr_b, 1, t).unwrap();
+    let att_b3 = create_attestation(&sk3, "parent", &nr_b, 1, t).unwrap();
+
+    let a = make_branch("attest-a", t, vec![att_a], &nr_a);
+    let b = make_branch("attest-b", t, vec![att_b1, att_b2, att_b3], &nr_b);
+    let resolution = resolve_fork(&a, &b, &registry).unwrap();
     assert_eq!(
         resolution.resolution_reason,
         ResolutionReason::MoreAttestations
     );
     assert_eq!(resolution.winning_branch, b.receipt_digest);
 
-    // Timestamp resolution (beyond clock skew)
-    let t_early = Utc::now();
-    let t_late = t_early + Duration::minutes(10);
-    let c = make_branch("time-c", t_early, 1, &"cc".repeat(32));
-    let d = make_branch("time-d", t_late, 100, &"dd".repeat(32));
-    let resolution2 = msez_corridor::fork::resolve_fork(&c, &d);
+    // Timestamp resolution (beyond clock skew, using past-relative timestamps)
+    let t_late = Utc::now();
+    let t_early = t_late - Duration::minutes(10);
+    let nr_c = "cc".repeat(32);
+    let nr_d = "dd".repeat(32);
+    let att_c = create_attestation(&sk1, "parent", &nr_c, 1, t_early).unwrap();
+    let att_d = create_attestation(&sk1, "parent", &nr_d, 1, t_late).unwrap();
+    let c = make_branch("time-c", t_early, vec![att_c], &nr_c);
+    let d = make_branch("time-d", t_late, vec![att_d], &nr_d);
+    let resolution2 = resolve_fork(&c, &d, &registry).unwrap();
     assert_eq!(
         resolution2.resolution_reason,
         ResolutionReason::EarlierTimestamp
@@ -106,22 +141,15 @@ fn inspect_fork_resolution_reason() {
 
 #[test]
 fn inspect_multiple_forks() {
-    let mut detector = ForkDetector::new();
+    let registry = WatcherRegistry::new();
+    let mut detector = ForkDetector::new(registry);
     let t = Utc::now();
 
-    for i in 0..5 {
-        let a = make_branch(
-            &format!("multi-a-{i}"),
-            t,
-            i,
-            &format!("{:02x}", i).repeat(32),
-        );
-        let b = make_branch(
-            &format!("multi-b-{i}"),
-            t,
-            i + 1,
-            &format!("{:02x}", i + 10).repeat(32),
-        );
+    for i in 0..5u32 {
+        let nr_a = format!("{:02x}", i).repeat(32);
+        let nr_b = format!("{:02x}", i + 10).repeat(32);
+        let a = make_branch(&format!("multi-a-{i}"), t, vec![], &nr_a);
+        let b = make_branch(&format!("multi-b-{i}"), t, vec![], &nr_b);
         detector.register_fork(a, b);
     }
 
@@ -130,9 +158,10 @@ fn inspect_multiple_forks() {
     assert_eq!(resolutions.len(), 5);
     assert_eq!(detector.pending_count(), 0);
 
-    // All should resolve by attestation count (same timestamp)
+    // No attestations → all should resolve by lexicographic tiebreaker
     for r in &resolutions {
-        assert_eq!(r.resolution_reason, ResolutionReason::MoreAttestations);
+        let r = r.as_ref().unwrap();
+        assert_eq!(r.resolution_reason, ResolutionReason::LexicographicTiebreak);
     }
 }
 
@@ -142,12 +171,28 @@ fn inspect_multiple_forks() {
 
 #[test]
 fn inspect_resolution_symmetric() {
-    let t = Utc::now();
-    let a = make_branch("sym-a", t, 5, &"aa".repeat(32));
-    let b = make_branch("sym-b", t, 3, &"bb".repeat(32));
+    let sk1 = SigningKey::generate(&mut OsRng);
+    let sk2 = SigningKey::generate(&mut OsRng);
+    let mut registry = WatcherRegistry::new();
+    registry.register(sk1.verifying_key());
+    registry.register(sk2.verifying_key());
 
-    let r1 = msez_corridor::fork::resolve_fork(&a, &b);
-    let r2 = msez_corridor::fork::resolve_fork(&b, &a);
+    let t = Utc::now();
+    let nr_a = "aa".repeat(32);
+    let nr_b = "bb".repeat(32);
+
+    let att_a1 = create_attestation(&sk1, "parent", &nr_a, 1, t).unwrap();
+    let att_a2 = create_attestation(&sk2, "parent", &nr_a, 1, t).unwrap();
+    let att_b = create_attestation(&sk1, "parent", &nr_b, 1, t).unwrap();
+
+    let a = make_branch("sym-a", t, vec![att_a1.clone(), att_a2.clone()], &nr_a);
+    let b = make_branch("sym-b", t, vec![att_b.clone()], &nr_b);
+
+    let r1 = resolve_fork(&a, &b, &registry).unwrap();
+
+    let a2 = make_branch("sym-a", t, vec![att_a1, att_a2], &nr_a);
+    let b2 = make_branch("sym-b", t, vec![att_b], &nr_b);
+    let r2 = resolve_fork(&b2, &a2, &registry).unwrap();
 
     assert_eq!(r1.winning_branch, r2.winning_branch);
     assert_eq!(r1.losing_branch, r2.losing_branch);

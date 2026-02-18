@@ -1,16 +1,22 @@
-//! # Fork Resolution Protocol Test (3-Level Ordering)
+//! # Fork Resolution Protocol Test (3-Level Ordering, Evidence-Driven)
 //!
 //! Exhaustive test of the three-level fork resolution protocol defined
-//! in Protocol 16.1 section 3:
+//! in Protocol 16.1 section 3 (P0-FORK-001 remediated):
 //! 1. Primary: Timestamp ordering (only if delta > MAX_CLOCK_SKEW)
-//! 2. Secondary: Watcher attestation count
+//! 2. Secondary: Verified watcher attestation count (cryptographically bound)
 //! 3. Tertiary: Lexicographic ordering of next_root digest
 //!
-//! Also tests clock skew rejection and determinism guarantees.
+//! Also tests clock skew rejection, equivocation detection, and
+//! determinism guarantees.
 
 use chrono::{Duration, Utc};
 use msez_core::{sha256_digest, CanonicalBytes, ContentDigest};
-use msez_corridor::{ForkBranch, ResolutionReason, MAX_CLOCK_SKEW};
+use msez_corridor::{
+    ForkBranch, ResolutionReason, WatcherRegistry, create_attestation, resolve_fork,
+    MAX_CLOCK_SKEW,
+};
+use msez_crypto::ed25519::SigningKey;
+use rand_core::OsRng;
 use serde_json::json;
 
 fn make_digest(label: &str) -> ContentDigest {
@@ -21,13 +27,13 @@ fn make_digest(label: &str) -> ContentDigest {
 fn make_branch(
     label: &str,
     timestamp: chrono::DateTime<Utc>,
-    attestation_count: u32,
+    attestations: Vec<msez_corridor::WatcherAttestation>,
     next_root: &str,
 ) -> ForkBranch {
     ForkBranch {
         receipt_digest: make_digest(label),
         timestamp,
-        attestation_count,
+        attestations,
         next_root: next_root.to_string(),
     }
 }
@@ -38,13 +44,24 @@ fn make_branch(
 
 #[test]
 fn primary_ordering_by_timestamp() {
-    let t1 = Utc::now();
-    let t2 = t1 + Duration::minutes(10); // Beyond skew
+    let sk = SigningKey::generate(&mut OsRng);
+    let vk = sk.verifying_key();
+    let mut registry = WatcherRegistry::new();
+    registry.register(vk);
 
-    let a = make_branch("early", t1, 1, &"aa".repeat(32));
-    let b = make_branch("late", t2, 100, &"bb".repeat(32));
+    // Use past timestamps to avoid MAX_FUTURE_DRIFT rejection.
+    let t2 = Utc::now();
+    let t1 = t2 - Duration::minutes(10); // Beyond skew
+    let nr_a = "aa".repeat(32);
+    let nr_b = "bb".repeat(32);
 
-    let resolution = msez_corridor::fork::resolve_fork(&a, &b);
+    let att_a = create_attestation(&sk, "parent", &nr_a, 1, t1).unwrap();
+    let att_b = create_attestation(&sk, "parent", &nr_b, 1, t2).unwrap();
+
+    let a = make_branch("early", t1, vec![att_a], &nr_a);
+    let b = make_branch("late", t2, vec![att_b], &nr_b);
+
+    let resolution = resolve_fork(&a, &b, &registry).unwrap();
     assert_eq!(
         resolution.resolution_reason,
         ResolutionReason::EarlierTimestamp
@@ -53,18 +70,35 @@ fn primary_ordering_by_timestamp() {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Secondary ordering by attestation count
+// 2. Secondary ordering by verified attestation count
 // ---------------------------------------------------------------------------
 
 #[test]
 fn secondary_ordering_by_attestation_count() {
-    let t1 = Utc::now();
-    let t2 = t1 + Duration::minutes(2); // Within skew
+    let sk1 = SigningKey::generate(&mut OsRng);
+    let sk2 = SigningKey::generate(&mut OsRng);
+    let sk3 = SigningKey::generate(&mut OsRng);
+    let mut registry = WatcherRegistry::new();
+    registry.register(sk1.verifying_key());
+    registry.register(sk2.verifying_key());
+    registry.register(sk3.verifying_key());
 
-    let a = make_branch("low-attest", t1, 2, &"aa".repeat(32));
-    let b = make_branch("high-attest", t2, 8, &"bb".repeat(32));
+    let t2 = Utc::now();
+    let t1 = t2 - Duration::minutes(2); // Within skew
+    let nr_a = "aa".repeat(32);
+    let nr_b = "bb".repeat(32);
 
-    let resolution = msez_corridor::fork::resolve_fork(&a, &b);
+    // Branch A: 1 attestation
+    let att_a = create_attestation(&sk1, "parent", &nr_a, 1, t1).unwrap();
+    // Branch B: 3 attestations
+    let att_b1 = create_attestation(&sk1, "parent", &nr_b, 1, t2).unwrap();
+    let att_b2 = create_attestation(&sk2, "parent", &nr_b, 1, t2).unwrap();
+    let att_b3 = create_attestation(&sk3, "parent", &nr_b, 1, t2).unwrap();
+
+    let a = make_branch("low-attest", t1, vec![att_a], &nr_a);
+    let b = make_branch("high-attest", t2, vec![att_b1, att_b2, att_b3], &nr_b);
+
+    let resolution = resolve_fork(&a, &b, &registry).unwrap();
     assert_eq!(
         resolution.resolution_reason,
         ResolutionReason::MoreAttestations
@@ -78,13 +112,21 @@ fn secondary_ordering_by_attestation_count() {
 
 #[test]
 fn tertiary_ordering_by_lexicographic_digest() {
+    let sk = SigningKey::generate(&mut OsRng);
+    let mut registry = WatcherRegistry::new();
+    registry.register(sk.verifying_key());
+
     let t = Utc::now();
+    let nr_a = "11".repeat(32); // lexicographically smaller
+    let nr_b = "ff".repeat(32); // lexicographically larger
 
-    // Same timestamp and attestation count: tiebreak by next_root
-    let a = make_branch("lex-a", t, 5, &"11".repeat(32)); // lexicographically smaller
-    let b = make_branch("lex-b", t, 5, &"ff".repeat(32)); // lexicographically larger
+    let att_a = create_attestation(&sk, "parent", &nr_a, 1, t).unwrap();
+    let att_b = create_attestation(&sk, "parent", &nr_b, 1, t).unwrap();
 
-    let resolution = msez_corridor::fork::resolve_fork(&a, &b);
+    let a = make_branch("lex-a", t, vec![att_a], &nr_a);
+    let b = make_branch("lex-b", t, vec![att_b], &nr_b);
+
+    let resolution = resolve_fork(&a, &b, &registry).unwrap();
     assert_eq!(
         resolution.resolution_reason,
         ResolutionReason::LexicographicTiebreak
@@ -99,22 +141,44 @@ fn tertiary_ordering_by_lexicographic_digest() {
 
 #[test]
 fn clock_skew_rejection() {
-    // Within skew: falls through to secondary
-    let t1 = Utc::now();
-    let t_within = t1 + Duration::seconds(299);
-    let a = make_branch("skew-a", t1, 1, &"aa".repeat(32));
-    let b = make_branch("skew-b", t_within, 10, &"bb".repeat(32));
+    let sk = SigningKey::generate(&mut OsRng);
+    let sk2 = SigningKey::generate(&mut OsRng);
+    let sk3 = SigningKey::generate(&mut OsRng);
+    let mut registry = WatcherRegistry::new();
+    registry.register(sk.verifying_key());
+    registry.register(sk2.verifying_key());
+    registry.register(sk3.verifying_key());
 
-    let resolution = msez_corridor::fork::resolve_fork(&a, &b);
+    // Use past-relative timestamps to avoid future drift rejection.
+    let t_within = Utc::now();
+    let t1 = t_within - Duration::seconds(299);
+    let nr_a = "aa".repeat(32);
+    let nr_b = "bb".repeat(32);
+    let nr_c = "cc".repeat(32);
+
+    // Within skew: falls through to secondary
+    let att_a = create_attestation(&sk, "parent", &nr_a, 1, t1).unwrap();
+    let att_b1 = create_attestation(&sk, "parent", &nr_b, 1, t_within).unwrap();
+    let att_b2 = create_attestation(&sk2, "parent", &nr_b, 1, t_within).unwrap();
+    let att_b3 = create_attestation(&sk3, "parent", &nr_b, 1, t_within).unwrap();
+
+    let a = make_branch("skew-a", t1, vec![att_a], &nr_a);
+    let b = make_branch("skew-b", t_within, vec![att_b1, att_b2, att_b3], &nr_b);
+
+    let resolution = resolve_fork(&a, &b, &registry).unwrap();
     assert_eq!(
         resolution.resolution_reason,
         ResolutionReason::MoreAttestations
     );
 
     // Beyond skew: uses timestamp
-    let t_beyond = t1 + Duration::seconds(301);
-    let c = make_branch("skew-c", t_beyond, 10, &"cc".repeat(32));
-    let resolution2 = msez_corridor::fork::resolve_fork(&a, &c);
+    let t_beyond = Utc::now();
+    let t_early = t_beyond - Duration::seconds(301);
+    let att_a2 = create_attestation(&sk, "parent", &nr_a, 1, t_early).unwrap();
+    let att_c = create_attestation(&sk, "parent", &nr_c, 1, t_beyond).unwrap();
+    let a2 = make_branch("skew-a2", t_early, vec![att_a2], &nr_a);
+    let c = make_branch("skew-c", t_beyond, vec![att_c], &nr_c);
+    let resolution2 = resolve_fork(&a2, &c, &registry).unwrap();
     assert_eq!(
         resolution2.resolution_reason,
         ResolutionReason::EarlierTimestamp
@@ -130,18 +194,35 @@ fn clock_skew_rejection() {
 
 #[test]
 fn resolution_is_deterministic() {
-    let t = Utc::now();
-    let a = make_branch("det-a", t, 5, &"aa".repeat(32));
-    let b = make_branch("det-b", t, 3, &"bb".repeat(32));
+    let sk1 = SigningKey::generate(&mut OsRng);
+    let sk2 = SigningKey::generate(&mut OsRng);
+    let sk3 = SigningKey::generate(&mut OsRng);
+    let mut registry = WatcherRegistry::new();
+    registry.register(sk1.verifying_key());
+    registry.register(sk2.verifying_key());
+    registry.register(sk3.verifying_key());
 
-    let r1 = msez_corridor::fork::resolve_fork(&a, &b);
-    let r2 = msez_corridor::fork::resolve_fork(&a, &b);
+    let t = Utc::now();
+    let nr_a = "aa".repeat(32);
+    let nr_b = "bb".repeat(32);
+
+    // Branch A: 3 attestations, Branch B: 1 attestation
+    let att_a1 = create_attestation(&sk1, "parent", &nr_a, 1, t).unwrap();
+    let att_a2 = create_attestation(&sk2, "parent", &nr_a, 1, t).unwrap();
+    let att_a3 = create_attestation(&sk3, "parent", &nr_a, 1, t).unwrap();
+    let att_b = create_attestation(&sk1, "parent", &nr_b, 1, t).unwrap();
+
+    let a = make_branch("det-a", t, vec![att_a1.clone(), att_a2.clone(), att_a3.clone()], &nr_a);
+    let b = make_branch("det-b", t, vec![att_b.clone()], &nr_b);
+
+    let r1 = resolve_fork(&a, &b, &registry).unwrap();
+
+    // Rebuild identical branches for second call.
+    let a2 = make_branch("det-a", t, vec![att_a1, att_a2, att_a3], &nr_a);
+    let b2 = make_branch("det-b", t, vec![att_b], &nr_b);
+    let r2 = resolve_fork(&a2, &b2, &registry).unwrap();
 
     assert_eq!(r1.winning_branch, r2.winning_branch);
     assert_eq!(r1.losing_branch, r2.losing_branch);
     assert_eq!(r1.resolution_reason, r2.resolution_reason);
-
-    // Order of arguments should not change winner
-    let r3 = msez_corridor::fork::resolve_fork(&b, &a);
-    assert_eq!(r1.winning_branch, r3.winning_branch);
 }

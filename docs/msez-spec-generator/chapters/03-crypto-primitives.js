@@ -10,298 +10,175 @@ module.exports = function build_chapter03() {
 
     chapterHeading("Chapter 3: Cryptographic Primitives"),
 
-    p("The SEZ Stack builds on a carefully selected set of cryptographic primitives chosen for their security properties, performance characteristics, and suitability for zero-knowledge proof systems. This chapter specifies each primitive, its implementation, and its role within the Stack."),
+    p("The SEZ Stack builds on a carefully selected set of cryptographic primitives chosen for their security properties, performance characteristics, and audit transparency. This chapter specifies each primitive, its implementation status, and its role within the Stack. Primitives are divided into two tiers: production primitives (fully implemented and tested) and Phase 4 primitives (type-level stubs behind feature flags, planned for the ZK activation phase)."),
 
     // --- 3.1 Hash Functions ---
     h2("3.1 Hash Functions"),
 
-    p("The Stack uses two hash function families: SHA-256 for general-purpose hashing and Poseidon2 for ZK-friendly hashing. The choice of hash function is determined by context: SHA-256 for data integrity, content addressing, and Merkle trees in non-ZK contexts; Poseidon2 for all operations that may need to be proven in zero knowledge."),
+    p("The Stack uses SHA-256 as its sole production hash function. A second hash family, Poseidon2, is specified for future ZK-circuit-internal hashing and is present as a feature-gated stub."),
 
     p_runs([
-      bold("SHA-256. "),
-      "Used for canonical digests, content-addressed storage keys, and Merkle Mountain Range nodes. The implementation uses the sha2 crate (RustCrypto), which provides constant-time operations and has been audited by multiple parties. All SHA-256 computation flows through CanonicalBytes::new() to ensure consistent serialization before hashing."
+      bold("SHA-256 (Production). "),
+      "Used for canonical digests, content-addressed storage keys, Merkle Mountain Range nodes, receipt chain commitments, and all integrity verification. The implementation uses the sha2 crate (RustCrypto), which provides constant-time operations. All SHA-256 computation flows through the CanonicalBytes type to ensure consistent serialization before hashing. Direct use of sha2::Sha256 outside msez-core is prohibited by CI lint."
     ]),
 
     p_runs([
-      bold("Poseidon2. "),
-      "Used for all ZK-circuit-internal hashing: nullifier derivation, commitment computation, Merkle proof verification inside circuits. Poseidon2 is an algebraic hash function designed for efficient arithmetic circuit representation. The Stack uses the Plonky3 Poseidon2 implementation with the BN254 scalar field."
+      bold("Poseidon2 (Phase 4 Stub). "),
+      "Specified for ZK-circuit-internal hashing: nullifier derivation, commitment computation, and Merkle proof verification inside arithmetic circuits. The msez-crypto crate contains a poseidon module behind the poseidon2 feature flag. All public functions have correct type signatures but return Err(CryptoError::NotImplemented) at runtime. This allows downstream code to compile-check against Poseidon2 types without a concrete implementation. Phase 4 will provide a real implementation via an external crate."
     ]),
 
-    ...codeBlock(
-`/// Poseidon2 hasher for ZK circuits (msez-zkp)
-pub struct Poseidon2Hasher {
-    params: Poseidon2Params<Fr>,
-}
+    // --- 3.2 The Canonical Digest: Momentum Canonical Form ---
+    h2("3.2 The Canonical Digest: Momentum Canonical Form (MCF)"),
 
-impl Poseidon2Hasher {
-    pub fn hash_two(&self, left: Fr, right: Fr) -> Fr {
-        poseidon2_hash(&self.params, &[left, right])
-    }
-
-    pub fn hash_nullifier(&self, secret: Fr, leaf_index: u64) -> Fr {
-        let index_field = Fr::from(leaf_index);
-        poseidon2_hash(&self.params, &[secret, index_field])
-    }
-}`
-    ),
-
-    // --- 3.2 The Canonical Digest Bridge ---
-    h2("3.2 The Canonical Digest Bridge"),
-
-    p("The canonical digest is the fundamental identity mechanism for all data in the SEZ Stack. Every entity, credential, compliance evaluation, corridor state, and pack version is identified by its canonical SHA-256 digest. This section specifies the digest computation pipeline."),
+    p("The canonical digest is the fundamental identity mechanism for all data in the SEZ Stack. Every entity, credential, compliance evaluation, corridor receipt, and pack version is identified by its canonical SHA-256 digest. The serialization pipeline that produces canonical bytes is called Momentum Canonical Form (MCF)."),
 
     definition(
-      "Definition 3.1 (Canonical Digest).",
-      "For any data structure D implementing CanonicalBytes, the canonical digest is digest(D) = SHA-256(canonical_bytes(D)), where canonical_bytes produces a deterministic byte sequence independent of serialization format, field ordering, or platform."
+      "Definition 3.1 (Momentum Canonical Form).",
+      "MCF is based on RFC 8785 JSON Canonicalization Scheme (JCS) with two additional safety coercions: (1) Reject any JSON Number that is f64-only (non-integer, NaN, Inf); (2) Normalize RFC 3339 datetime strings to UTC, truncated to seconds, with Z suffix. The canonical digest is then SHA-256(MCF(payload))."
     ),
 
+    p("These coercions are intentional deviations from pure RFC 8785 JCS. Float rejection prevents non-deterministic decimal representations across languages. Datetime normalization prevents equivalent timestamps (e.g., +00:00 vs Z, subsecond precision differences) from producing different digests. Any cross-language implementation (TypeScript, Python, Go) must replicate these exact coercions to produce matching digests."),
+
     ...codeBlock(
-`/// Digest type enumeration (msez-core)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum DigestType {
-    Sha256,
-    Poseidon2,
-    Keccak256, // Ethereum compatibility
+`/// CanonicalBytes — the sole construction path for digest input (msez-core)
+///
+/// The inner Vec<u8> is private. The only way to construct CanonicalBytes
+/// is through ::new(), which applies the full MCF pipeline. This makes
+/// the "wrong serialization path" class of defects structurally impossible.
+pub struct CanonicalBytes(Vec<u8>);
+
+impl CanonicalBytes {
+    /// Apply MCF: serialize to serde_json::Value, reject floats,
+    /// normalize datetimes, then serialize with RFC 8785 JCS rules
+    /// (sorted keys, no whitespace, ES6 number serialization).
+    pub fn new(value: &impl Serialize) -> Result<Self, CanonicalizationError>;
 }
 
-/// A typed digest with algorithm tag (msez-core)
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Digest {
-    pub digest_type: DigestType,
-    pub bytes: Vec<u8>,
+/// ContentDigest — SHA-256 of CanonicalBytes (msez-core)
+pub struct ContentDigest(pub [u8; 32]);
+
+/// Compute SHA-256(MCF(value)) in one step.
+pub fn sha256_digest(value: &impl Serialize) -> Result<ContentDigest, CanonicalizationError>;`
+    ),
+
+    p("The serde_json::Map type uses BTreeMap internally, which iterates keys in lexicographic order. serde_json::to_vec preserves this order and produces compact JSON with no whitespace. A CI guard prevents the serde_json preserve_order feature from being enabled anywhere in the workspace, as it would switch the internal map to IndexMap and break digest determinism."),
+
+    // --- 3.3 Digital Signatures ---
+    h2("3.3 Digital Signatures: Ed25519"),
+
+    p("Ed25519 is the sole production signature algorithm. It is used for Verifiable Credential proofs, corridor watcher attestations, artifact signing, and key-pair generation via the CLI. The implementation uses the ed25519-dalek crate with serde and zeroize features enabled."),
+
+    ...codeBlock(
+`/// Ed25519 key pair with automatic zeroization (msez-crypto)
+pub struct SigningKey {
+    inner: ed25519_dalek::SigningKey,  // Zeroize on drop
 }
 
-/// The canonical digest: SHA-256 of canonical bytes (msez-core)
-pub struct CanonicalDigest(pub [u8; 32]);
+/// Ed25519 public key for verification (msez-crypto)
+pub struct VerifyingKey {
+    inner: ed25519_dalek::VerifyingKey,
+}
 
-impl CanonicalDigest {
-    pub fn new(data: &impl CanonicalBytes) -> Self {
-        use sha2::{Sha256, Digest as _};
-        let bytes = data.canonical_bytes();
-        let hash = Sha256::digest(&bytes);
-        Self(hash.into())
-    }
+/// Ed25519 signature (msez-crypto)
+pub struct Ed25519Signature {
+    inner: ed25519_dalek::Signature,
 }`
     ),
 
-    // --- 3.3 Commitment Schemes ---
-    h2("3.3 Commitment Schemes"),
+    p("Key zeroization is enforced through the zeroize crate. SigningKey wraps ed25519-dalek's SigningKey, which implements ZeroizeOnDrop. When a SigningKey goes out of scope, the secret key material is overwritten with zeros before deallocation. This prevents key material from lingering in freed memory."),
 
-    p("The Stack uses two commitment schemes: Pedersen commitments for value hiding in ZK circuits, and KZG polynomial commitments for batch proof aggregation."),
+    // --- 3.4 Merkle Mountain Range ---
+    h2("3.4 Merkle Mountain Range (MMR)"),
 
-    p_runs([
-      bold("Pedersen Commitments. "),
-      "Used to commit to values (account balances, compliance scores, entity attributes) within ZK circuits. A Pedersen commitment C = vG + rH hides value v with randomness r, where G and H are independent generators on the BN254 curve."
-    ]),
-
-    p_runs([
-      bold("KZG Polynomial Commitments. "),
-      "Used for batch verification of compliance evaluations. A single KZG commitment can attest to the correctness of an entire compliance tensor evaluation (20 domains across multiple jurisdictions), with individual domain scores verifiable through polynomial evaluation proofs."
-    ]),
-
-    ...codeBlock(
-`/// Pedersen commitment (msez-zkp)
-pub struct PedersenCommitment {
-    pub commitment: G1Affine,
-    pub blinding: Fr,  // Zeroize on drop
-}
-
-/// KZG polynomial commitment (msez-zkp)
-pub struct KzgCommitment {
-    pub commitment: G1Affine,
-    pub degree: usize,
-}`
-    ),
-
-    // --- 3.4 Nullifier System ---
-    h2("3.4 Nullifier System"),
-
-    p("Nullifiers prevent double-spending of credentials and double-evaluation of compliance attestations. Each credential or attestation has a unique nullifier derived from a secret known only to the holder."),
+    p("The Merkle Mountain Range is an append-only authenticated data structure used for corridor receipt chains. It enables O(log n) inclusion proofs without requiring the verifier to hold the complete receipt set. The MMR is the secondary commitment in the dual-commitment receipt chain model (the primary commitment is the hash-chain via prev_root/next_root linkage)."),
 
     definition(
-      "Definition 3.2 (Nullifier).",
-      "For a credential with secret s and leaf index i in the credential Merkle tree, the nullifier is N = Poseidon2(s, i). The nullifier is deterministic (the same credential always produces the same nullifier) but unlinkable (knowing N does not reveal s or i without breaking Poseidon2 preimage resistance)."
+      "Definition 3.2 (MMR Inclusion Proof).",
+      "For an element at position i in an MMR with root R, the inclusion proof is a sequence of sibling hashes along the path from the leaf to the peak, plus the peak bagging proof. Verification recomputes the root from the leaf and sibling hashes and checks equality with R."
     ),
-
-    p("When a credential is presented for compliance verification, its nullifier is published. A nullifier set maintained by each jurisdiction tracks spent nullifiers. Presenting a credential whose nullifier is already in the set is rejected, preventing reuse of revoked or expired credentials."),
-
-    // --- 3.5 BBS+ Signatures for Credentials ---
-    h2("3.5 BBS+ Signatures for Credentials"),
-
-    p("BBS+ signatures enable selective disclosure of credential attributes. A credential signed with BBS+ can be presented with only a subset of its attributes revealed, while the verifier can still confirm that the hidden attributes were signed by the issuer. This is critical for privacy-preserving compliance verification."),
-
-    p("For example, a KYC credential may contain name, date of birth, nationality, address, and compliance tier. When presenting to a corridor counterparty, the holder can reveal only the compliance tier and nationality, proving they meet the corridor\u2019s requirements without exposing personal information."),
 
     ...codeBlock(
-`/// BBS+ key pair for credential issuance (msez-vc)
-pub struct BbsKeyPair {
-    pub public_key: BbsPublicKey,
-    pub secret_key: BbsSecretKey,  // Zeroize on drop
-    pub message_count: usize,       // Number of attributes this key can sign
+`/// Merkle Mountain Range (msez-crypto)
+pub struct MerkleMountainRange {
+    nodes: Vec<String>,     // hex-encoded SHA-256 digests
+    leaf_count: usize,
 }
 
-/// BBS+ signed credential (msez-vc)
-pub struct BbsCredential {
-    pub attributes: Vec<Fr>,         // Credential attributes as field elements
-    pub signature: BbsSignature,     // BBS+ signature over all attributes
-    pub issuer_pk: BbsPublicKey,     // Issuer's public key
-    pub schema_digest: CanonicalDigest, // Schema identifying attribute semantics
-}`
+impl MerkleMountainRange {
+    pub fn new() -> Self;
+    pub fn append(&mut self, leaf: &str);           // Append leaf digest
+    pub fn root(&self) -> Option<String>;            // Current MMR root
+    pub fn leaf_count(&self) -> usize;
+}
+
+/// Build an inclusion proof for a leaf at the given index.
+pub fn build_inclusion_proof(mmr: &MerkleMountainRange, index: usize)
+    -> Option<MmrInclusionProof>;
+
+/// Verify an inclusion proof against a known root.
+pub fn verify_inclusion_proof(proof: &MmrInclusionProof, root: &str) -> bool;`
     ),
 
-    // --- 3.6 Zero-Knowledge Proof Systems ---
-    h2("3.6 Zero-Knowledge Proof Systems"),
+    // --- 3.5 Content-Addressed Storage ---
+    h2("3.5 Content-Addressed Storage (CAS)"),
 
-    p("The Stack supports multiple zero-knowledge proof systems, each chosen for specific use cases based on proof size, verification time, prover time, and trust assumptions."),
+    p("The CAS system stores artifacts (schemas, packs, bundles, lockfiles) keyed by their content digest. This provides built-in integrity verification: retrieving an artifact by its digest and re-hashing the content must produce the same digest. The CAS implementation in msez-crypto provides store, resolve, and verify operations."),
+
+    // --- 3.6 Phase 4 Cryptographic Primitives ---
+    h2("3.6 Phase 4 Cryptographic Primitives (Planned)"),
+
+    p("The following primitives are specified in the architecture but not yet implemented. They exist as feature-gated stub modules that provide type signatures for compile-time checking. All stub functions return CryptoError::NotImplemented at runtime. Production builds must not enable these feature flags until real implementations are integrated."),
 
     table(
-      ["System", "Use Case", "Proof Size", "Verification", "Trust Setup"],
+      ["Primitive", "Feature Flag", "Module", "Status", "Purpose"],
       [
-        ["Plonky3", "Settlement proofs, corridor state", "~45 KB", "~3 ms", "Transparent (FRI)"],
-        ["Groth16", "On-chain verification (Ethereum bridge)", "128 bytes", "~1 ms", "Trusted (per-circuit)"],
-        ["BBS+ Proofs", "Credential selective disclosure", "~400 bytes", "~2 ms", "None"],
-        ["Bulletproofs", "Range proofs (compliance scores)", "~700 bytes", "~5 ms", "Transparent"],
-        ["STARK", "Batch compliance evaluation", "~100 KB", "~10 ms", "Transparent"],
+        ["Poseidon2", "poseidon2", "msez-crypto::poseidon", "Stub", "ZK-friendly hashing for circuit-internal operations"],
+        ["BBS+", "bbs-plus", "msez-crypto::bbs", "Stub", "Selective disclosure of credential attributes"],
       ],
-      [1800, 2800, 1400, 1560, 1800]
+      [1800, 1400, 2400, 800, 2960]
     ),
 
-    p("The Stack defines twelve circuit types that compose these proof systems for specific governance operations."),
+    p("When Phase 4 activates, additional primitives will be required: Pedersen commitments for value hiding in ZK circuits, KZG polynomial commitments for batch proof aggregation, and a nullifier system for double-spend prevention. These are not yet present in the codebase even as stubs."),
+
+    h3("3.6.1 BBS+ Selective Disclosure (Planned)"),
+
+    p("BBS+ signatures will enable selective disclosure of credential attributes. A credential signed with BBS+ can be presented with only a subset of its attributes revealed, while the verifier confirms the hidden attributes were signed by the issuer. For example, a KYC credential containing name, date of birth, nationality, address, and compliance tier could be presented to a corridor counterparty revealing only the compliance tier and nationality."),
+
+    h3("3.6.2 Nullifier System (Planned)"),
+
+    p("Nullifiers will prevent double-spending of credentials and double-evaluation of compliance attestations. Each credential will have a unique nullifier derived from a secret known only to the holder, computed as N = Poseidon2(sk, leaf_index). The nullifier is deterministic but unlinkable: knowing N does not reveal the secret or leaf index without breaking Poseidon2 preimage resistance."),
+
+    // --- 3.7 Zero-Knowledge Proof Architecture ---
+    h2("3.7 Zero-Knowledge Proof Architecture"),
+
+    p("The msez-zkp crate defines a sealed ProofSystem trait with pluggable backends. The architecture supports multiple proof systems, selected per use case. Currently, two backends are implemented (Groth16, Plonk) alongside a deterministic mock backend for testing. The mock backend is guarded by a production policy module that rejects mock proofs when the deployment is configured for production."),
 
     table(
-      ["Circuit", "Proof System", "Purpose"],
+      ["Backend", "Status", "Use Case", "Trust Setup"],
       [
-        ["ComplianceEvaluation", "Plonky3", "Prove compliance score for entity across 20 domains without revealing entity data"],
-        ["CorridorStateTransition", "Plonky3", "Prove valid corridor state transition with receipt chain integrity"],
-        ["CredentialPresentation", "BBS+", "Selectively disclose credential attributes to verifier"],
-        ["NullifierDerivation", "Plonky3", "Prove nullifier corresponds to valid credential without revealing credential"],
-        ["MerkleInclusion", "Plonky3", "Prove entity/credential membership in jurisdiction Merkle tree"],
-        ["BalanceRange", "Bulletproofs", "Prove account balance in range without revealing exact amount"],
-        ["TaxWithholding", "Plonky3", "Prove correct withholding tax computation without revealing transaction amount"],
-        ["SanctionsScreening", "Plonky3", "Prove entity not on sanctions list without revealing entity identity"],
-        ["OwnershipThreshold", "Plonky3", "Prove ownership percentage above/below threshold for UBO determination"],
-        ["CorridorNetting", "Plonky3", "Prove correct bilateral netting computation across corridor transactions"],
-        ["MigrationProof", "Plonky3", "Prove valid asset migration from source to destination jurisdiction"],
-        ["WatcherAttestation", "Plonky3", "Prove watcher attestation validity and bond sufficiency"],
+        ["Mock (SHA-256 deterministic)", "Testing only", "Development, CI, property testing", "None (not cryptographic)"],
+        ["Groth16", "Implemented", "On-chain verification, compact proofs", "Trusted (per-circuit)"],
+        ["Plonk", "Implemented", "General-purpose ZK proofs", "Universal (updateable)"],
       ],
-      [2600, 1600, 5160]
+      [2800, 1800, 3000, 1760]
     ),
 
-    // --- 3.7 Nullifier System ---
-    h2("3.7 Nullifier System"),
+    p("The crate defines five circuit modules covering the core governance operations that will require zero-knowledge proofs when the ZK layer activates."),
 
-    p("The nullifier system is the privacy-preserving double-spend prevention mechanism at the core of the SEZ Stack\u2019s credential and compliance attestation lifecycle. While Section 3.4 introduced the basic nullifier concept for credential Merkle trees, this section specifies the complete nullifier derivation, the nullifier set protocol, and the rationale for choosing Poseidon2 as the nullifier hash function."),
-
-    h3("3.7.1 Nullifier Derivation"),
-
-    definition(
-      "Definition 3.2 (Nullifier Derivation).",
-      "For a record R with spending key sk, the nullifier n is computed as: n = Poseidon2(sk || R.commitment || R.nonce). Nullifiers are published on-chain to prevent double-spending while preserving transaction privacy."
+    table(
+      ["Circuit Module", "File", "Purpose"],
+      [
+        ["Compliance", "circuits/compliance.rs", "Prove compliance evaluation correctness without revealing entity data"],
+        ["Identity", "circuits/identity.rs", "Prove identity claims without revealing personal information"],
+        ["Migration", "circuits/migration.rs", "Prove valid asset migration between jurisdictions"],
+        ["Settlement", "circuits/settlement.rs", "Prove correct settlement computation for corridor transactions"],
+      ],
+      [2400, 2800, 4160]
     ),
 
-    p("The three-input construction is deliberate. The spending key sk binds the nullifier to the holder\u2019s identity without revealing it. The commitment R.commitment binds the nullifier to a specific record (credential, compliance attestation, or corridor receipt). The nonce R.nonce ensures that two records with identical commitments but different issuance contexts produce distinct nullifiers, preventing correlation attacks across jurisdictions."),
-
-    p("The nullifier is deterministic: the same holder presenting the same record always produces the same nullifier. This determinism is what enables double-spend detection. However, the nullifier is unlinkable: given a nullifier n, an adversary cannot recover sk, R.commitment, or R.nonce without breaking Poseidon2 preimage resistance. This means that observing two nullifiers from the same holder reveals nothing about the holder\u2019s identity or the records being spent."),
-
-    h3("3.7.2 The Nullifier Set"),
-
-    p("Each jurisdiction maintains a nullifier set \u2014 an append-only set of all nullifiers that have been published. When a record is presented for compliance verification, corridor settlement, or credential proof, the protocol executes the following steps:"),
-
     p_runs([
-      bold("Step 1: Derivation. "),
-      "The holder computes n = Poseidon2(sk || R.commitment || R.nonce) using their spending key and the record\u2019s commitment and nonce."
+      bold("Production Policy Enforcement. "),
+      "The msez-zkp::policy module enforces that production deployments cannot accept mock proofs. The policy is configured via a signed, content-addressed policy artifact. CI gates verify that release builds do not enable mock features. This prevents the catastrophic scenario where mock proofs are accepted as authoritative in a live deployment."
     ]),
-
-    p_runs([
-      bold("Step 2: Membership check. "),
-      "The verifier checks whether n is already in the jurisdiction\u2019s nullifier set. If n \u2208 NullifierSet, the presentation is rejected as a double-spend."
-    ]),
-
-    p_runs([
-      bold("Step 3: Insertion. "),
-      "If n \u2209 NullifierSet, the nullifier is inserted into the set and the presentation proceeds. This insertion is atomic with the state transition to prevent race conditions."
-    ]),
-
-    p_runs([
-      bold("Step 4: Proof of valid derivation. "),
-      "The holder provides a zero-knowledge proof (using the NullifierDerivation circuit from Section 3.6) that n was correctly derived from a valid record in the credential Merkle tree, without revealing which record or which spending key was used."
-    ]),
-
-    p("The nullifier set is implemented as a sparse Merkle tree, enabling efficient non-membership proofs. This allows the holder to prove that their nullifier has NOT been spent (for fresh presentations) or allows the verifier to prove that a nullifier HAS been spent (for revocation enforcement), both in zero knowledge."),
-
-    h3("3.7.3 Why Poseidon2 for Nullifier Derivation"),
-
-    p("Nullifier derivation uses Poseidon2 rather than SHA-256 for a specific architectural reason: every nullifier derivation must be provable inside a zero-knowledge circuit. The NullifierDerivation circuit (Section 3.6) must verify that the published nullifier was correctly computed from a valid spending key and record. This requires hashing inside the arithmetic circuit."),
-
-    p("SHA-256 requires approximately 25,000 constraints per hash invocation in an R1CS circuit, making it prohibitively expensive for recursive or batched proofs. Poseidon2, designed as an algebraic hash function over prime fields, requires approximately 250 constraints per invocation \u2014 a 100x improvement. Since corridor settlement proofs may involve hundreds of nullifier checks (one per transaction in a netting batch), this efficiency difference is the difference between practical and impractical proof generation times."),
-
-    p("Additionally, Poseidon2\u2019s native operation over the BN254 scalar field means no field conversion is required. SHA-256 operates on bytes and produces a 256-bit output that must be split across multiple field elements, introducing additional constraints and complexity. Poseidon2 inputs and outputs are native field elements, eliminating this overhead entirely."),
-
-    h3("3.7.4 Nullifier Computation"),
-
-    ...codeBlock(
-`/// Nullifier derivation for records (msez-zkp)
-pub struct NullifierDeriver {
-    hasher: Poseidon2Hasher,
-}
-
-impl NullifierDeriver {
-    /// Derive a nullifier for a record.
-    ///
-    /// n = Poseidon2(sk || commitment || nonce)
-    ///
-    /// The spending key sk must be known only to the record holder.
-    /// The commitment is the Pedersen commitment to the record's contents.
-    /// The nonce is the unique issuance nonce assigned at record creation.
-    pub fn derive(
-        &self,
-        spending_key: &Fr,
-        commitment: &Fr,
-        nonce: &Fr,
-    ) -> Nullifier {
-        let hash = poseidon2_hash(
-            &self.hasher.params,
-            &[*spending_key, *commitment, *nonce],
-        );
-        Nullifier(hash)
-    }
-}
-
-/// A derived nullifier (msez-zkp)
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Nullifier(pub Fr);
-
-/// Nullifier set backed by a sparse Merkle tree (msez-zkp)
-pub struct NullifierSet {
-    tree: SparseMerkleTree,
-}
-
-impl NullifierSet {
-    /// Check whether a nullifier has already been spent.
-    pub fn contains(&self, nullifier: &Nullifier) -> bool {
-        self.tree.contains(&nullifier.0.to_bytes())
-    }
-
-    /// Insert a nullifier into the set. Returns Err if already present
-    /// (double-spend attempt).
-    pub fn insert(&mut self, nullifier: &Nullifier) -> Result<(), DoubleSpendError> {
-        if self.contains(nullifier) {
-            return Err(DoubleSpendError {
-                nullifier: nullifier.clone(),
-            });
-        }
-        self.tree.insert(&nullifier.0.to_bytes());
-        Ok(())
-    }
-
-    /// Generate a non-membership proof for a nullifier.
-    pub fn prove_non_membership(
-        &self,
-        nullifier: &Nullifier,
-    ) -> NonMembershipProof {
-        self.tree.prove_non_membership(&nullifier.0.to_bytes())
-    }
-}`
-    ),
   ];
 };

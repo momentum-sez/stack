@@ -5,7 +5,7 @@ module.exports = function build_appendixF() {
     chapterHeading("Appendix F: API Endpoint Reference"),
 
     h2("F.1 Mass API Endpoints (External, Live)"),
-    p("The five Mass primitives are deployed Java/Spring Boot services. The SEZ Stack communicates with these exclusively through msez-mass-client. Direct HTTP calls from any other crate are forbidden."),
+    p("The five Mass primitives are deployed Java/Spring Boot services. The SEZ Stack communicates with these exclusively through the msez-mass-client crate. Direct HTTP calls from any other crate are forbidden by architectural invariant (INV-2, Appendix E)."),
     table(
       ["API", "Base URL", "Swagger"],
       [

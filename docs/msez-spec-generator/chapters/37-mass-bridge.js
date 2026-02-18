@@ -8,9 +8,9 @@ module.exports = function build_chapter37() {
   return [
     ...partHeading("PART XIII: MASS API INTEGRATION LAYER"),
 
-    chapterHeading("Chapter 37: The msez-mass-bridge Crate"),
+    chapterHeading("Chapter 37: The msez-mass-client Crate"),
 
-    p("The msez-mass-bridge crate formalizes the interface between Mass APIs (System A) and the MSEZ Stack (System B). This is the architectural boundary that enforces the two-system separation. Mass APIs call into the bridge for jurisdictional context. The MSEZ Stack provides context through trait implementations."),
+    p("The msez-mass-client crate formalizes the interface between Mass APIs (System A) and the MSEZ Stack (System B). This is the architectural boundary that enforces the two-system separation: the crate provides typed HTTP clients for all five Mass primitives, a NADRA identity verification adapter, contract tests for API drift detection, and retry logic with exponential backoff. No other crate in the workspace is permitted to make direct HTTP calls to Mass APIs."),
 
     // --- 37.1 JurisdictionalContext Trait ---
     h2("37.1 JurisdictionalContext Trait"),

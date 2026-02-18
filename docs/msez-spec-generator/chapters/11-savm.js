@@ -41,7 +41,7 @@ module.exports = function build_chapter11() {
     ]),
     p_runs([
       bold("ZK Verification. "),
-      "The VERIFY_ZK instruction delegates proof verification to the coprocessor, which selects the appropriate verifier (Plonky3, Groth16, or BBS+) based on the proof type tag. Verification results are pushed onto the stack as boolean values. Invalid proofs consume gas but do not halt execution, allowing contracts to handle verification failure gracefully."
+      "The VERIFY_ZK instruction delegates proof verification to the coprocessor, which selects the appropriate verifier (Groth16 or Plonk) based on the proof type tag. Verification results are pushed onto the stack as boolean values. Invalid proofs consume gas but do not halt execution, allowing contracts to handle verification failure gracefully."
     ]),
     p_runs([
       bold("Migration Support. "),

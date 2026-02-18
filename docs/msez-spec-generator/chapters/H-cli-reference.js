@@ -1,157 +1,88 @@
-const { chapterHeading, p, table, h2, codeBlock } = require("../lib/primitives");
+const { chapterHeading, p, table, h2, h3, codeBlock } = require("../lib/primitives");
 
 module.exports = function build_appendixH() {
   return [
     chapterHeading("Appendix H: CLI Reference"),
-    p("The msez binary provides a clap-derived CLI:"),
+    p("The msez binary provides a clap-derived CLI with five subcommand groups. Global flags include --verbose (-v, -vv, -vvv for increasing verbosity), --config (path to configuration file), and --output-dir (path for generated artifacts)."),
     table(
-      ["Command", "Subcommand", "Description"],
+      ["Command", "Subcommands / Flags", "Description"],
       [
-        ["msez init", "--profile <name> --jurisdiction <id>", "Initialize a new jurisdiction deployment"],
-        ["msez pack", "import / verify / list / diff", "Pack Trilogy management"],
-        ["msez deploy", "--target docker|aws|k8s", "Deploy infrastructure"],
-        ["msez verify", "--all | --service <name>", "Verify deployment health"],
-        ["msez corridor", "activate / status / sync", "Corridor management"],
-        ["msez migrate", "up / down / status", "Database migrations"],
-        ["msez artifact", "graph verify / bundle attest", "Artifact graph operations"],
-        ["msez tensor", "evaluate / slice / commit", "Compliance tensor operations"],
-        ["msez watcher", "register / bond / attest", "Watcher economy operations"],
-        ["msez govos", "deploy / status / handover", "GovOS lifecycle management"],
+        ["msez validate", "--all-modules | --zone <path> | --profile <name>", "Validate modules, profiles, and zones against their JSON schemas (Draft 2020-12)"],
+        ["msez lock", "--zone <path> --output <path> | --verify <lockfile>", "Generate or verify a deterministic lockfile for a zone configuration"],
+        ["msez corridor", "create | submit | activate | halt | terminate | resume | status", "Corridor lifecycle management (full FSM: Draft \u2192 Pending \u2192 Active \u2192 Halted/Suspended \u2192 Terminated)"],
+        ["msez artifact", "store | resolve | verify | graph", "Content-addressed storage operations for artifact management"],
+        ["msez vc", "keygen | sign | verify", "Ed25519 key generation, Verifiable Credential signing, and signature verification"],
       ],
       [1800, 3200, 4360]
     ),
 
-    h2("H.1 Example Usage"),
-
-    p("Initialize a Pakistan GovOS deployment with sovereign profile:"),
+    h2("H.1 Corridor Lifecycle Commands"),
+    p("The corridor subcommand manages the full corridor lifecycle state machine. Each transition accepts evidence files and digests, computes content digests for the evidence, and records them in the transition audit trail."),
     ...codeBlock(
-      "msez init --profile sovereign-govos --jurisdiction PAK \\\n" +
-      "  --output ./deployments/pakistan \\\n" +
-      "  --lawpack ./packs/pakistan/lawpack.json \\\n" +
-      "  --regpack ./packs/pakistan/regpack.json \\\n" +
-      "  --licensepack ./packs/pakistan/licensepack.json"
-    ),
-
-    p("Import a lawpack from Akoma Ntoso XML source and verify its integrity:"),
-    ...codeBlock(
-      "# Import Income Tax Ordinance 2001 from Akoma Ntoso XML\n" +
-      "msez pack import --type lawpack \\\n" +
-      "  --source ./akn/pak/act/ito-2001.xml \\\n" +
-      "  --jurisdiction PAK\n" +
+      "# Create a new corridor between two jurisdictions\n" +
+      "msez corridor create \\\n" +
+      "  --source PAK --target UAE \\\n" +
+      "  --agreement ./agreements/pak-uae-2026.json\n" +
       "\n" +
-      "# Verify all packs for a jurisdiction\n" +
-      "msez pack verify --all --jurisdiction PAK\n" +
+      "# Submit corridor for review\n" +
+      "msez corridor submit --corridor-id PAK-UAE-001\n" +
       "\n" +
-      "# List loaded packs with digest and version\n" +
-      "msez pack list --jurisdiction PAK\n" +
-      "\n" +
-      "# Diff two versions of a regpack\n" +
-      "msez pack diff --type regpack \\\n" +
-      "  --from v2025.12 --to v2026.02 --jurisdiction PAK"
-    ),
-
-    p("Deploy infrastructure to Kubernetes and verify health:"),
-    ...codeBlock(
-      "# Deploy to Kubernetes cluster\n" +
-      "msez deploy --target k8s \\\n" +
-      "  --config ./deployments/pakistan/k8s.yaml \\\n" +
-      "  --namespace msez-pakistan\n" +
-      "\n" +
-      "# Verify all services are healthy\n" +
-      "msez verify --all\n" +
-      "\n" +
-      "# Verify a specific service\n" +
-      "msez verify --service treasury-proxy"
-    ),
-
-    p("Manage trade corridors:"),
-    ...codeBlock(
-      "# Activate the PAK-UAE trade corridor\n" +
-      "msez corridor activate --id PAK-UAE \\\n" +
-      "  --agreement ./agreements/pak-uae-2026.vc.json\n" +
+      "# Activate an approved corridor\n" +
+      "msez corridor activate --corridor-id PAK-UAE-001 \\\n" +
+      "  --evidence ./evidence/activation-approval.pdf\n" +
       "\n" +
       "# Check corridor status and receipt chain head\n" +
-      "msez corridor status --id PAK-UAE\n" +
+      "msez corridor status --corridor-id PAK-UAE-001\n" +
       "\n" +
-      "# Synchronize corridor state and trigger netting\n" +
-      "msez corridor sync --id PAK-UAE --force-reconcile"
+      "# Halt a corridor (reversible)\n" +
+      "msez corridor halt --corridor-id PAK-UAE-001 \\\n" +
+      "  --reason \"regulatory-review\" \\\n" +
+      "  --evidence ./evidence/halt-order.pdf\n" +
+      "\n" +
+      "# Resume a halted corridor\n" +
+      "msez corridor resume --corridor-id PAK-UAE-001\n" +
+      "\n" +
+      "# Permanently terminate a corridor\n" +
+      "msez corridor terminate --corridor-id PAK-UAE-001"
     ),
 
-    p("Run database migrations:"),
+    h2("H.2 Validation and Lockfile Commands"),
     ...codeBlock(
-      "# Apply all pending migrations\n" +
-      "msez migrate up --database-url postgres://localhost/msez\n" +
+      "# Validate all modules against their schemas\n" +
+      "msez validate --all-modules\n" +
       "\n" +
-      "# Rollback the last migration\n" +
-      "msez migrate down --database-url postgres://localhost/msez\n" +
+      "# Validate a specific zone configuration\n" +
+      "msez validate --zone ./jurisdictions/_starter/zone.yaml\n" +
       "\n" +
-      "# Check migration status\n" +
-      "msez migrate status --database-url postgres://localhost/msez"
+      "# Generate a deterministic lockfile for a zone\n" +
+      "msez lock --zone ./jurisdictions/_starter/zone.yaml \\\n" +
+      "  --output ./jurisdictions/_starter/zone.lock.json\n" +
+      "\n" +
+      "# Verify an existing lockfile against current module state\n" +
+      "msez lock --verify ./jurisdictions/_starter/zone.lock.json"
     ),
 
-    p("Artifact graph verification and attestation:"),
+    h2("H.3 Artifact and Signing Commands"),
     ...codeBlock(
-      "# Verify the full artifact dependency graph\n" +
-      "msez artifact graph verify --root ./deployments/pakistan\n" +
+      "# Store an artifact in CAS and print its content digest\n" +
+      "msez artifact store --file ./packs/pakistan/lawpack.json\n" +
       "\n" +
-      "# Bundle and attest a release artifact\n" +
-      "msez artifact bundle attest \\\n" +
-      "  --signing-key ./keys/release.ed25519 \\\n" +
-      "  --output ./releases/v0.4.44.bundle"
-    ),
-
-    p("Evaluate compliance tensor for an entity:"),
-    ...codeBlock(
-      "# Evaluate all 20 compliance domains for an entity\n" +
-      "msez tensor evaluate \\\n" +
-      "  --entity-id ent_01HX3K9M7V \\\n" +
-      "  --jurisdiction PAK\n" +
+      "# Resolve an artifact by its content digest\n" +
+      "msez artifact resolve --digest sha256:abc123...\n" +
       "\n" +
-      "# Slice tensor to view a specific domain\n" +
-      "msez tensor slice \\\n" +
-      "  --entity-id ent_01HX3K9M7V \\\n" +
-      "  --domain TaxCompliance\n" +
+      "# Verify artifact integrity (declared digest vs actual)\n" +
+      "msez artifact verify --all\n" +
       "\n" +
-      "# Commit tensor snapshot to persistence\n" +
-      "msez tensor commit \\\n" +
-      "  --entity-id ent_01HX3K9M7V \\\n" +
-      "  --jurisdiction PAK --reason \"quarterly-review\""
-    ),
-
-    p("Watcher economy operations:"),
-    ...codeBlock(
-      "# Register a new watcher node\n" +
-      "msez watcher register \\\n" +
-      "  --public-key ./keys/watcher.ed25519.pub \\\n" +
-      "  --jurisdiction PAK\n" +
+      "# Generate an Ed25519 key pair for VC signing\n" +
+      "msez vc keygen --output ./keys/issuer.ed25519\n" +
       "\n" +
-      "# Post a bond for watcher participation\n" +
-      "msez watcher bond \\\n" +
-      "  --amount 10000 --currency PKR \\\n" +
-      "  --watcher-id wtc_01HX4A2B3C\n" +
+      "# Sign a Verifiable Credential\n" +
+      "msez vc sign \\\n" +
+      "  --key ./keys/issuer.ed25519 \\\n" +
+      "  --credential ./credentials/compliance-attestation.json\n" +
       "\n" +
-      "# Submit a watcher attestation\n" +
-      "msez watcher attest \\\n" +
-      "  --watcher-id wtc_01HX4A2B3C \\\n" +
-      "  --corridor PAK-UAE \\\n" +
-      "  --receipt-hash sha256:abc123..."
-    ),
-
-    p("GovOS lifecycle management:"),
-    ...codeBlock(
-      "# Deploy a full GovOS instance for Pakistan\n" +
-      "msez govos deploy \\\n" +
-      "  --jurisdiction PAK \\\n" +
-      "  --config ./deployments/pakistan/govos.yaml\n" +
-      "\n" +
-      "# Check GovOS deployment status\n" +
-      "msez govos status --jurisdiction PAK\n" +
-      "\n" +
-      "# Execute operational handover to national team\n" +
-      "msez govos handover \\\n" +
-      "  --jurisdiction PAK \\\n" +
-      "  --recipient-key ./keys/pak-ops-team.ed25519.pub \\\n" +
-      "  --sla-document ./agreements/handover-sla.vc.json"
+      "# Verify a signed VC\n" +
+      "msez vc verify --credential ./credentials/compliance-attestation.vc.json"
     ),
   ];
 };

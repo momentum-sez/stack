@@ -119,7 +119,7 @@ module.exports = function build_chapter01() {
     ]),
     p_runs([
       bold("Compile-Time Safety. "),
-      "The codebase is pure Rust (2024 edition) with zero unsafe blocks. The type system enforces domain invariants: a JurisdictionCode cannot be used where a CurrencyCode is expected, a ComplianceScore cannot be constructed without evaluation, a Corridor cannot transition to an invalid state. Bugs that survive the compiler are bugs in the specification, not in the implementation."
+      "The codebase is pure Rust (2021 edition) with zero unsafe blocks. The type system enforces domain invariants: a JurisdictionCode cannot be used where a CurrencyCode is expected, a ComplianceScore cannot be constructed without evaluation, a Corridor cannot transition to an invalid state. Bugs that survive the compiler are bugs in the specification, not in the implementation."
     ]),
   ];
 };

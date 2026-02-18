@@ -3,64 +3,69 @@ const { chapterHeading, codeBlock, h2, p, table } = require("../lib/primitives")
 module.exports = function build_appendixI() {
   return [
     chapterHeading("Appendix I: Module Directory Structure"),
+
+    p("The SEZ Stack organizes 298 module descriptors across 16 families in the modules/ directory. These YAML/JSON descriptors define the configuration vocabulary for zone deployments. The Rust crates in msez/crates/ provide the implementation logic that interprets these descriptors at runtime."),
+
     ...codeBlock(
-      "crates/msez-modules/src/\n" +
-      "\u251C\u2500\u2500 compliance/          # Tensor, manifold, ZK circuits\n" +
-      "\u251C\u2500\u2500 corridors/           # State sync, bridge, multilateral\n" +
-      "\u251C\u2500\u2500 governance/          # Constitutional, voting, delegation\n" +
-      "\u251C\u2500\u2500 financial/           # Accounts, payments, custody, FX\n" +
-      "\u251C\u2500\u2500 regulatory/          # KYC, AML, sanctions, reporting\n" +
-      "\u251C\u2500\u2500 licensing/           # Applications, monitoring, portability\n" +
-      "\u251C\u2500\u2500 legal/               # Contracts, disputes, arbitration\n" +
-      "\u251C\u2500\u2500 operational/         # HR, procurement, facilities\n" +
-      "\u251C\u2500\u2500 corporate/           # Formation, cap table, dissolution (v0.4.44)\n" +
-      "\u251C\u2500\u2500 identity/            # DID, KYC tiers, credentials (v0.4.44)\n" +
-      "\u251C\u2500\u2500 tax/                 # Regimes, fees, incentives (v0.4.44)\n" +
-      "\u251C\u2500\u2500 capital_markets/     # Securities, trading, CSD (v0.4.44)\n" +
-      "\u2514\u2500\u2500 trade/               # LCs, documents, SCF (v0.4.44)"
+      "modules/\n" +
+      "\u251c\u2500\u2500 compliance/          # Compliance evaluation modules\n" +
+      "\u251c\u2500\u2500 corridors/           # Corridor configuration modules\n" +
+      "\u251c\u2500\u2500 governance/          # Constitutional and governance modules\n" +
+      "\u251c\u2500\u2500 financial/           # Banking and payment modules\n" +
+      "\u251c\u2500\u2500 regulatory/          # KYC, AML, sanctions modules\n" +
+      "\u251c\u2500\u2500 licensing/           # Business authorization modules\n" +
+      "\u251c\u2500\u2500 legal/               # Contracts and dispute modules\n" +
+      "\u251c\u2500\u2500 operational/         # Administrative modules\n" +
+      "\u251c\u2500\u2500 corporate/           # Corporate service modules (v0.4.44)\n" +
+      "\u251c\u2500\u2500 identity/            # Identity and credentialing modules (v0.4.44)\n" +
+      "\u251c\u2500\u2500 tax/                 # Tax and revenue modules (v0.4.44)\n" +
+      "\u251c\u2500\u2500 capital_markets/     # Securities infrastructure modules (v0.4.44)\n" +
+      "\u251c\u2500\u2500 trade/               # Trade and commerce modules (v0.4.44)\n" +
+      "\u251c\u2500\u2500 settlement/          # Settlement layer modules\n" +
+      "\u251c\u2500\u2500 migration/           # Cross-jurisdictional migration modules\n" +
+      "\u2514\u2500\u2500 watcher/             # Attestation economy modules"
     ),
 
-    h2("I.1 Line Count Estimates by Module Family"),
-    p("The following table provides approximate line counts for each module family and its constituent crates across the workspace. Estimates are based on the v0.4.44 codebase as of February 2026."),
+    h2("I.1 Module Family to Crate Mapping"),
+    p("Each module family maps to one or more Rust crates that provide the runtime implementation. The following table shows the mapping and approximate production line counts (non-test source files only)."),
 
     table(
-      ["Module Family", "Primary Crate(s)", "Est. Lines", "Key Files"],
+      ["Module Family", "Primary Crate(s)", "Est. Lines", "Key Source Files"],
       [
-        ["compliance/", "msez-tensor, msez-compliance, msez-zkp", "~6,200", "tensor_v2.rs, manifold.rs, compliance_domain.rs, proof_system.rs"],
-        ["corridors/", "msez-corridor, msez-state", "~5,800", "corridor.rs, receipt_chain.rs, fork_resolution.rs, netting.rs, fsm.rs"],
-        ["governance/", "msez-governance (in msez-modules)", "~2,400", "constitutional.rs, voting.rs, delegation.rs, quorum.rs"],
-        ["financial/", "msez-mass-client (gateway to treasury-info)", "~3,100", "treasury_client.rs, accounts.rs, payments.rs, fx.rs"],
-        ["regulatory/", "msez-pack (regpack), msez-agentic", "~4,500", "regpack.rs, sanctions.rs, aml_rules.rs, filing_calendar.rs, triggers.rs"],
-        ["licensing/", "msez-pack (licensepack)", "~2,300", "licensepack.rs, registry_client.rs, portability.rs"],
-        ["legal/", "msez-arbitration", "~2,600", "dispute.rs, evidence.rs, ruling.rs, escrow.rs"],
-        ["operational/", "msez-modules/operational", "~1,200", "hr.rs, procurement.rs, facilities.rs"],
-        ["corporate/", "msez-mass-client (gateway to org-info)", "~2,800", "organization_client.rs, formation.rs, beneficial_ownership.rs"],
-        ["identity/", "msez-mass-client (aggregation facade), msez-vc", "~3,400", "identity_client.rs, kyc_tiers.rs, did.rs, verifiable_credentials.rs"],
-        ["tax/", "msez-pack (lawpack), msez-agentic", "~3,200", "lawpack.rs, composition.rs, tax_events.rs, withholding.rs"],
-        ["capital_markets/", "msez-modules/capital_markets", "~1,800", "securities.rs, trading.rs, csd.rs"],
-        ["trade/", "msez-corridor, msez-modules/trade", "~2,100", "letter_of_credit.rs, trade_docs.rs, scf.rs"],
+        ["compliance/", "msez-tensor, msez-compliance, msez-zkp", "~7,000", "evaluation.rs, manifold.rs, tensor.rs, commitment.rs, policy.rs"],
+        ["corridors/", "msez-corridor, msez-state", "~10,200", "receipt.rs, fork.rs, netting.rs, bridge.rs, payment_rail.rs, corridor.rs"],
+        ["governance/", "msez-state (corridor FSM states)", "~1,000", "corridor.rs, entity.rs, watcher.rs"],
+        ["financial/", "msez-mass-client (treasury-info)", "~1,200", "fiscal.rs, types.rs"],
+        ["regulatory/", "msez-pack (regpack), msez-agentic", "~6,500", "regpack.rs, evaluation.rs, audit.rs, scheduler.rs"],
+        ["licensing/", "msez-pack (licensepack)", "~3,500", "licensepack/ (6 submodules), composition.rs"],
+        ["legal/", "msez-arbitration", "~5,200", "dispute.rs, evidence.rs, enforcement.rs, escrow.rs"],
+        ["corporate/", "msez-mass-client (entities)", "~1,000", "entities.rs, types.rs"],
+        ["identity/", "msez-mass-client (identity, NADRA), msez-vc", "~3,500", "identity.rs, nadra.rs, credential.rs, registry.rs"],
+        ["tax/", "msez-agentic (tax pipeline), msez-pack (lawpack)", "~4,500", "tax.rs, lawpack.rs, parser.rs"],
+        ["capital_markets/", "msez-api (settlement routes)", "~1,000", "settlement.rs"],
+        ["trade/", "msez-corridor (SWIFT, payment rails)", "~1,200", "swift.rs, payment_rail.rs"],
+        ["settlement/", "msez-zkp (circuits), msez-corridor (anchor)", "~2,000", "circuits/, anchor.rs"],
+        ["migration/", "msez-corridor (migration), msez-state", "~2,500", "migration.rs (corridor + state)"],
+        ["watcher/", "msez-state (watcher economy)", "~1,500", "watcher.rs"],
       ],
-      [1400, 2800, 900, 4260]
+      [1600, 2800, 900, 4060]
     ),
 
-    h2("I.2 Core Infrastructure Crates"),
-    p("In addition to the domain module families above, the following infrastructure crates provide the foundational services:"),
+    h2("I.2 Infrastructure Crates"),
+    p("The following crates provide cross-cutting infrastructure used by all module families:"),
 
     table(
-      ["Crate", "Est. Lines", "Scope"],
+      ["Crate", "Lines", "Scope"],
       [
-        ["msez-core", "~2,800", "Canonical digest, ComplianceDomain (20 variants), identifier newtypes, error hierarchy, timestamps, CanonicalBytes"],
-        ["msez-crypto", "~1,900", "Ed25519 signing/verification with Zeroize, MMR append/verify, CAS put/get, key management"],
-        ["msez-vc", "~2,200", "W3C Verifiable Credentials data model, Ed25519 proofs, BBS+ selective disclosure, revocation lists"],
-        ["msez-pack", "~4,800", "Pack Trilogy: lawpacks (Akoma Ntoso), regpacks (sanctions, calendars), licensepacks (live registries), composition engine"],
-        ["msez-schema", "~1,400", "116 JSON Schemas, schema loader, validation engine, schema versioning"],
-        ["msez-mass-client", "~2,600", "Typed HTTP client for all five Mass primitives, auth token management, retry/backoff logic"],
-        ["msez-api", "~5,200", "Axum HTTP server, route composition, middleware (auth, rate-limit, logging), database pool, mass proxy routes"],
-        ["msez-cli", "~1,800", "Clap-derived CLI, command dispatch, output formatting, config file loading"],
+        ["msez-core", "~3,300", "MCF canonical digest, ComplianceDomain (20 variants), sovereignty enforcement, identifier newtypes, timestamps"],
+        ["msez-crypto", "~3,300", "Ed25519 signing/verification with Zeroize, SHA-256, MMR, CAS, Poseidon2 (stub), BBS+ (stub)"],
+        ["msez-schema", "~1,800", "JSON Schema Draft 2020-12 validation, 116 schemas, $ref resolution, codegen policy"],
+        ["msez-api", "~17,100", "Axum HTTP server, 10 route groups, orchestration, Postgres persistence, auth + rate-limit middleware"],
+        ["msez-cli", "~4,800", "Clap-derived CLI: validate, lock, corridor, artifact, vc (signing)"],
       ],
       [1800, 1000, 6560]
     ),
 
-    p("Total workspace estimate: ~62,000 lines of Rust (excluding tests and generated code). Test modules add approximately 18,000 additional lines."),
+    p("Total workspace: approximately 74,000 lines of production Rust code across 136 source files in 16 crates, with an additional ~40,000 lines of test code (including the msez-integration-tests crate with 107 test files)."),
   ];
 };

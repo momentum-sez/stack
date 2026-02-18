@@ -65,14 +65,14 @@ module.exports = function build_chapter56() {
         ["Combined Corridor Volume", "$38.6B", "Total annual bilateral trade volume across all three corridors (PAK-UAE $10.1B + PAK-KSA $5.4B + PAK-CHN $23.1B)"],
         ["Module Families", "16", "Distinct module families in the SEZ Stack covering compliance, crypto, corridors, credentials, and orchestration"],
         ["Total Modules", "298", "Individual modules across all 16 module families in the workspace"],
-        ["Test Coverage", "650 tests, 100%", "Total test count across the Rust workspace with full pass rate on all test suites"],
+        ["Test Coverage", "3,800+ tests, 100%", "Total test count (#[test] + #[tokio::test]) across the 16-crate Rust workspace with full pass rate"],
       ],
       [2200, 1800, 5360]
     ),
 
     p_runs([
       bold("Infrastructure scale. "),
-      "The 16 module families decompose into the following crate structure: msez-core (foundation types, digest, compliance domains), msez-crypto (Ed25519, MMR, CAS), msez-vc (W3C Verifiable Credentials), msez-tensor (compliance tensor V2, manifold), msez-pack (lawpacks, regpacks, licensepacks, composition engine), msez-corridor (corridor lifecycle, receipt chains, netting), msez-state (FSM, migration saga, watcher economy), msez-agentic (trigger taxonomy, policy evaluation), msez-arbitration (disputes, evidence, rulings), msez-schema (116 JSON schemas), msez-zkp (proof system trait, circuit definitions), msez-compliance (orchestration), msez-mass-client (typed HTTP client for all five Mass primitives), msez-api (Axum HTTP server with Postgres persistence), and msez-cli (command-line interface). Each crate maintains its own test suite contributing to the aggregate 650 test count."
+      "The 16 module families decompose into the following crate structure: msez-core (MCF canonical digest, compliance domains, sovereignty enforcement), msez-crypto (Ed25519, MMR, CAS, SHA-256), msez-vc (W3C Verifiable Credentials), msez-tensor (compliance tensor, manifold), msez-pack (lawpacks, regpacks, licensepacks, composition engine), msez-corridor (dual-commitment receipt chains, fork resolution, netting, payment rails), msez-state (FSM, migration saga, watcher economy), msez-agentic (trigger taxonomy, policy evaluation, tax pipeline), msez-arbitration (disputes, evidence, escrow), msez-schema (116 JSON schemas, Draft 2020-12), msez-zkp (proof system trait, production policy, 5 circuit modules), msez-compliance (jurisdiction-aware evaluators), msez-mass-client (typed HTTP client for all five Mass primitives, NADRA adapter), msez-api (Axum HTTP server with Postgres persistence, 10 route groups), and msez-cli (validation, lockfiles, corridor lifecycle, signing). Each crate maintains its own test suite contributing to the aggregate 3,800+ test count."
     ]),
 
     // --- 56.3 Growth Trajectory ---

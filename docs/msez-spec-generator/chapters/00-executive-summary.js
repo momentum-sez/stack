@@ -4,7 +4,7 @@ module.exports = function build_executive_summary() {
   return [
     chapterHeading("Executive Summary"),
 
-    p("The Momentum Open Source SEZ Stack (version 0.4.44, GENESIS) is a software system for instantiating cryptographically auditable, compliance-enforcing Special Economic Zones. It is implemented in Rust (2024 edition), organized as 16 crates totaling approximately 101,000 lines of production code with 3,029 tests. This specification documents its complete technical architecture in 56 chapters across 18 Parts, plus 11 appendices."),
+    p("The Momentum Open Source SEZ Stack (version 0.4.44, GENESIS) is a software system for instantiating cryptographically auditable, compliance-enforcing Special Economic Zones. It is implemented in Rust (2021 edition), organized as 16 crates totaling approximately 74,000 lines of production code with over 3,800 tests. This specification documents its complete technical architecture in 56 chapters across 18 Parts, plus 11 appendices."),
 
     p("The architecture enforces a strict separation between two systems. Mass provides five jurisdiction-agnostic programmable primitives (Entities, Ownership, Fiscal, Identity, Consent) deployed as live Java/Spring Boot production APIs. The MSEZ Stack is the jurisdictional orchestration layer that makes those primitives compliance-aware through a compliance tensor (\u00a710), pack trilogy (\u00a76), corridor system (\u00a722), and verifiable credentials (\u00a743). This separation is the central architectural invariant: Mass owns business object CRUD; the MSEZ Stack owns jurisdictional context, compliance evaluation, and cryptographic attestation."),
 
@@ -29,7 +29,7 @@ module.exports = function build_executive_summary() {
         ["Tax", "Tax and revenue management", "Regimes, fees, incentives"],
         ["Capital Markets", "Securities infrastructure", "Issuance, trading, clearing, settlement"],
         ["Trade", "Trade and commerce", "LCs, documents, supply chain finance"],
-        ["Settlement", "ZK-native L1 settlement", "MASS Protocol, Plonky3 proofs"],
+        ["Settlement", "ZK-native L1 settlement", "MASS Protocol, Groth16 + Plonk proofs"],
         ["Migration", "Cross-jurisdictional asset movement", "Saga orchestration, compensation"],
         ["Watcher", "Attestation economy", "Bonds, slashing, reputation"],
       ],
@@ -47,15 +47,15 @@ module.exports = function build_executive_summary() {
         ["Tax Module", "5 modules", "Tax regimes, fee schedules, incentive programs, CRS/FATCA"],
         ["Capital Markets", "9 modules", "Securities, trading, clearing, CSD, DVP/PVP settlement"],
         ["Trade Module", "6 modules", "Letters of credit, trade documents, supply chain finance"],
-        ["Docker Infrastructure", "373+ lines", "12-service orchestration, database initialization"],
+        ["Docker Infrastructure", "165 lines", "4-service compose (API, Postgres, Prometheus, Grafana), database initialization"],
         ["AWS Terraform", "1,250+ lines", "VPC, EKS, RDS, Kubernetes resources"],
-        ["Rust Migration", "Full codebase", "2024 edition, tokio async, serde serialization, zero unsafe"],
-        ["Mass/MSEZ Bridge", "New crate", "JurisdictionalContext trait, five-primitive mapping"],
+        ["Rust Migration", "Full codebase", "2021 edition, tokio async, serde serialization, zero unsafe"],
+        ["Mass/MSEZ Client", "New crate", "Typed HTTP client for all five Mass primitives, NADRA adapter, contract tests"],
         ["GovOS Architecture", "New Part", "Four-layer model, Sovereign AI, Pakistan reference"],
       ],
       [2400, 1800, 5160]
     ),
-    p("The complete v0.4.44 implementation comprises sixteen module families totaling 298 modules across approximately 101,000 lines of production Rust code (243 source files, 16 crates), with 3,029 tests covering all critical paths."),
+    p("The complete v0.4.44 implementation comprises sixteen module families totaling 298 modules across approximately 74,000 lines of production Rust code (136 source files, 16 crates), with over 3,800 tests covering all critical paths."),
 
     h3("Document Organization"),
 
@@ -69,18 +69,18 @@ module.exports = function build_executive_summary() {
         ["III", "Content-Addressed Artifact Model", "4", "Artifact lifecycle, immutable content addressing, digest-based identity, CAS storage semantics"],
         ["IV", "Core Components", "5\u20137", "Module specifications, the Pack Trilogy (lawpacks, regpacks, licensepacks), Akoma Ntoso legal markup, profile system for zone configuration"],
         ["V", "Smart Asset Execution Layer", "8\u201312", "Smart asset model, receipt chain architecture, Compliance Tensor V2 (20 domains \u00D7 N jurisdictions), SAVM, multi-jurisdiction composition engine"],
-        ["VI", "Mass L1 Settlement", "13\u201316", "ZK-native blockchain architecture, Plonky3 proving system, privacy architecture with BBS+ selective disclosure, L1 anchoring protocol"],
+        ["VI", "Mass L1 Settlement", "13\u201316", "ZK-native blockchain architecture, proving system (Groth16 + Plonk backends), privacy architecture, L1 anchoring protocol"],
         ["VII", "Governance and Civic Systems", "17\u201318", "Constitutional frameworks for zone governance, voting mechanisms, civic services integration with national registries"],
         ["VIII", "Compliance and Regulatory", "19\u201321", "Compliance architecture, compliance manifold for multi-domain evaluation, zkKYC and privacy-preserving compliance"],
         ["IX", "Cryptographic Corridor Systems", "22\u201325", "Corridor architecture, bridge protocol, multilateral corridor composition, live corridor specifications (PAK\u2194UAE, PAK\u2194KSA, PAK\u2194CHN)"],
         ["X", "Watcher Economy", "26\u201328", "Watcher architecture, bond and slashing mechanics, quorum formation, attestation finality"],
         ["XI", "Migration Protocol", "29\u201331", "Cross-jurisdictional entity migration, eight-phase migration state machine, compensation and recovery mechanisms"],
         ["XII", "Institutional Infrastructure", "32\u201336", "Corporate services (formation through dissolution), identity and credentialing, tax and revenue, capital markets (issuance through settlement), trade and commerce"],
-        ["XIII", "Mass API Integration", "37", "The msez-mass-bridge crate, JurisdictionalContext trait, typed client mapping to all five Mass primitives"],
+        ["XIII", "Mass API Integration", "37", "The msez-mass-client crate, JurisdictionalContext trait, typed client mapping to all five Mass primitives"],
         ["XIV", "GovOS Architecture", "38\u201341", "Four-layer sovereign deployment model, Sovereign AI spine, tax collection pipeline, sovereignty handover protocol"],
         ["XV", "Protocol Reference", "42\u201345", "Protocol overview, verifiable credentials (W3C VC, Ed25519 proofs), arbitration system, agentic execution framework"],
         ["XVI", "Security and Hardening", "46\u201348", "Security architecture, production hardening checklist, zero-knowledge proof circuit specifications"],
-        ["XVII", "Deployment and Operations", "49\u201353", "Deployment architecture, Docker infrastructure (12-service orchestration), AWS Terraform (VPC, EKS, RDS), one-click deployment, operations management"],
+        ["XVII", "Deployment and Operations", "49\u201353", "Deployment architecture, Docker infrastructure (single-binary compose with Postgres and observability), AWS Terraform (VPC, EKS, RDS), one-click deployment, operations management"],
         ["XVIII", "Network Diffusion", "54\u201356", "Adoption strategy, partner network, current network topology and status"],
       ],
       [540, 1800, 1080, 5940]

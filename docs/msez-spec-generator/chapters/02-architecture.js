@@ -20,7 +20,7 @@ module.exports = function build_chapter02() {
       ["Layer", "Name", "Function", "Implementation"],
       [
         ["L0", "Infrastructure", "Compute, storage, networking, HSMs", "AWS/GCP/bare metal, Terraform"],
-        ["L1", "Settlement", "Cryptographic finality, state roots, ZK proofs", "Mass Protocol (Plonky3)"],
+        ["L1", "Settlement", "Cryptographic finality, state roots, ZK proofs", "Mass Protocol (Groth16 + Plonk)"],
         ["L2", "Primitives", "Five programmable primitives (entity, ownership, fiscal, identity, consent)", "Mass APIs (Java/Spring Boot)"],
         ["L3", "Jurisdiction", "Compliance tensor, pack trilogy, corridors, credentials", "MSEZ Stack (Rust)"],
         ["L4", "Orchestration", "Workflow composition, agentic triggers, saga coordination", "MSEZ Stack (Rust)"],
@@ -64,21 +64,21 @@ module.exports = function build_chapter02() {
     table(
       ["Crate", "Lines", "Purpose"],
       [
-        ["msez-core", "~3,200", "Foundation: canonical digest, ComplianceDomain (20 variants), identifier newtypes, error hierarchy, timestamps"],
-        ["msez-crypto", "~2,800", "Cryptography: Ed25519 signing/verification, MMR, CAS, key zeroization"],
-        ["msez-vc", "~1,900", "W3C Verifiable Credentials: Ed25519 proofs, BBS+ selective disclosure"],
-        ["msez-tensor", "~4,100", "Compliance Tensor V2: 20 domains \u00d7 N jurisdictions, Compliance Manifold, path optimization"],
-        ["msez-pack", "~5,500", "Pack Trilogy: lawpacks (Akoma Ntoso), regpacks (sanctions, calendars), licensepacks (live registries)"],
-        ["msez-corridor", "~3,600", "Corridor lifecycle: receipt chains, fork resolution, netting, SWIFT pacs.008 adapter"],
-        ["msez-state", "~2,400", "State machines: corridor FSM, migration saga (8 phases), watcher economy (bonds, slashing)"],
-        ["msez-agentic", "~1,800", "Automation: trigger taxonomy (20 types \u00d7 5 domains), policy evaluation, autonomous actions"],
-        ["msez-arbitration", "~1,500", "Disputes: evidence packages, ruling enforcement via VCs, escrow"],
-        ["msez-mass-client", "~2,100", "Typed HTTP client for all five Mass primitives. Sole authorized path to Mass APIs."],
-        ["msez-schema", "~1,200", "JSON Schema validation: 116 schemas covering all artifact types, pack formats, and API payloads"],
-        ["msez-zkp", "~3,400", "Zero-knowledge proofs: sealed ProofSystem trait, 12 circuit definitions, Plonky3 + Groth16 backends"],
-        ["msez-compliance", "~1,100", "Compliance orchestration: composes tensor evaluation with pack checking and credential issuance"],
-        ["msez-api", "~4,800", "HTTP server: Axum routes, mass proxy, corridor/asset/regulator/agentic/settlement endpoints, Postgres persistence"],
-        ["msez-cli", "~2,600", "CLI: zone validation, build, sign, verify, artifact graph operations, deployment commands"],
+        ["msez-core", "~3,300", "Foundation: Momentum Canonical Form (MCF) digest, ComplianceDomain (20 variants), sovereignty enforcement, identifier newtypes, timestamps"],
+        ["msez-crypto", "~3,300", "Cryptography: Ed25519 signing/verification, SHA-256, MMR, CAS, Poseidon2 (feature-gated), BBS+ (feature-gated), key zeroization"],
+        ["msez-vc", "~2,200", "W3C Verifiable Credentials: Ed25519 JCS proofs, credential registry, proof validation"],
+        ["msez-tensor", "~3,500", "Compliance Tensor: 20 domains \u00d7 N jurisdictions, Compliance Manifold, Dijkstra path optimization, tensor commitments"],
+        ["msez-pack", "~9,700", "Pack Trilogy: lawpacks (Akoma Ntoso), regpacks (sanctions, calendars), licensepacks (Pakistan reference data), composition engine"],
+        ["msez-corridor", "~5,800", "Corridor operations: dual-commitment receipt chains, evidence-driven fork resolution, netting, SWIFT pacs.008, payment rails, bridge routing"],
+        ["msez-state", "~4,400", "State machines: corridor FSM, entity lifecycle, license lifecycle, migration saga, watcher economy (bonds, slashing)"],
+        ["msez-agentic", "~5,500", "Automation: trigger taxonomy, policy evaluation, audit trails, tax collection pipeline, scheduling"],
+        ["msez-arbitration", "~5,200", "Disputes: dispute lifecycle, evidence packages, ruling enforcement, escrow management"],
+        ["msez-mass-client", "~3,800", "Typed HTTP client for all five Mass primitives, NADRA identity adapter, retry logic, contract tests"],
+        ["msez-schema", "~1,800", "JSON Schema Draft 2020-12 validation: 116 schemas, $ref resolution, codegen policy"],
+        ["msez-zkp", "~3,000", "Zero-knowledge proofs: sealed ProofSystem trait, 5 circuit modules, Groth16 + Plonk backends, production policy enforcement"],
+        ["msez-compliance", "~500", "Compliance orchestration: jurisdiction-aware evaluators, compliance evaluation composition"],
+        ["msez-api", "~17,100", "HTTP server: Axum routes, orchestration layer, identity/tax/govos/settlement/agentic endpoints, Postgres persistence, auth + rate limiting middleware"],
+        ["msez-cli", "~4,800", "CLI: zone validation, lockfile generation, corridor lifecycle, artifact CAS, Ed25519/VC signing"],
       ],
       [3000, 1200, 5160]
     ),
@@ -90,23 +90,30 @@ module.exports = function build_chapter02() {
 
     ...codeBlock(
 `momentum-sez/stack/
-\u251c\u2500\u2500 Cargo.toml              # Workspace root
-\u251c\u2500\u2500 msez-core/              # Foundation (zero internal deps)
-\u251c\u2500\u2500 msez-crypto/            # Cryptographic primitives
-\u251c\u2500\u2500 msez-vc/                # Verifiable Credentials
-\u251c\u2500\u2500 msez-tensor/            # Compliance Tensor V2
-\u251c\u2500\u2500 msez-pack/              # Pack Trilogy
-\u251c\u2500\u2500 msez-corridor/          # Trade Corridors
-\u251c\u2500\u2500 msez-state/             # State Machines
-\u251c\u2500\u2500 msez-agentic/           # Agentic Automation
-\u251c\u2500\u2500 msez-arbitration/       # Dispute Resolution
-\u251c\u2500\u2500 msez-schema/            # JSON Schema Validation
-\u251c\u2500\u2500 msez-zkp/               # Zero-Knowledge Proofs
-\u251c\u2500\u2500 msez-compliance/        # Compliance Orchestration
-\u251c\u2500\u2500 msez-mass-client/       # Mass API Client
-\u251c\u2500\u2500 msez-api/               # Axum HTTP Server
-\u251c\u2500\u2500 msez-cli/               # Command-Line Interface
-\u2514\u2500\u2500 docs/                   # Specifications and documentation`
+\u251c\u2500\u2500 msez/                       # Rust workspace root
+\u2502   \u251c\u2500\u2500 Cargo.toml              # Workspace manifest (16 crates)
+\u2502   \u2514\u2500\u2500 crates/
+\u2502       \u251c\u2500\u2500 msez-core/          # Foundation (zero internal deps)
+\u2502       \u251c\u2500\u2500 msez-crypto/        # Cryptographic primitives
+\u2502       \u251c\u2500\u2500 msez-vc/            # Verifiable Credentials
+\u2502       \u251c\u2500\u2500 msez-state/         # State Machines
+\u2502       \u251c\u2500\u2500 msez-tensor/        # Compliance Tensor
+\u2502       \u251c\u2500\u2500 msez-zkp/           # Zero-Knowledge Proofs
+\u2502       \u251c\u2500\u2500 msez-pack/          # Pack Trilogy
+\u2502       \u251c\u2500\u2500 msez-corridor/      # Corridor Operations
+\u2502       \u251c\u2500\u2500 msez-agentic/       # Agentic Automation
+\u2502       \u251c\u2500\u2500 msez-arbitration/   # Dispute Resolution
+\u2502       \u251c\u2500\u2500 msez-compliance/    # Compliance Orchestration
+\u2502       \u251c\u2500\u2500 msez-schema/        # JSON Schema Validation
+\u2502       \u251c\u2500\u2500 msez-mass-client/   # Mass API Client
+\u2502       \u251c\u2500\u2500 msez-api/           # Axum HTTP Server
+\u2502       \u251c\u2500\u2500 msez-cli/           # Command-Line Interface
+\u2502       \u2514\u2500\u2500 msez-integration-tests/  # Cross-crate test suites
+\u251c\u2500\u2500 schemas/                    # 116 JSON Schema files (Draft 2020-12)
+\u251c\u2500\u2500 modules/                    # 298 module descriptors (16 families)
+\u251c\u2500\u2500 apis/                       # OpenAPI specifications
+\u251c\u2500\u2500 deploy/                     # Docker Compose + AWS Terraform
+\u2514\u2500\u2500 docs/                       # Specifications and documentation`
     ),
 
     // --- 2.3 Live Deployments ---

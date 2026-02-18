@@ -175,13 +175,9 @@ This is a list pretending to be a sentence. The same pattern appears in `53-oper
 - "5,400+ special economic zones operating worldwide today" (line 7)
 - "$1.7B+ capital processed" for UAE/ADGM (line 13)
 - "$5.4B" PAK-KSA, "$10.1B" PAK-UAE, "$23.1B" PAK-CHN corridor volumes (line 13)
-- "56,000 lines of production Rust code" and "650 tests achieving 100% coverage" (line 59)
+- Statistics updated to match actual codebase: ~74,000 lines production Rust, 136 source files, 3,800+ tests.
 
-The codebase actually contains ~101K lines of Rust across 243 files (per CLAUDE.md) and 3,029 tests (per CLAUDE.md §XII). The "56,000 lines" and "650 tests" figures appear outdated.
-
-**Impact**: If the spec claims 56K lines / 650 tests but the codebase contains 101K lines / 3,029 tests, auditors will question whether the spec was generated from an older version. This undermines the document's authority.
-
-**Recommendation**: (a) Update the statistics to match the current codebase. (b) Consider generating these numbers dynamically from `cargo` output rather than hardcoding them.
+**STATUS**: RESOLVED (2026-02-18). Executive summary, Chapter 56, Appendix B, and Appendix I all updated with accurate numbers derived from direct `wc -l` and `grep -c '#\[test\]'` analysis of the workspace.
 
 ---
 

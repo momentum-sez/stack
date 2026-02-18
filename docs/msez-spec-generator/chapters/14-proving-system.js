@@ -8,84 +8,81 @@ module.exports = function build_chapter14() {
   return [
     chapterHeading("Chapter 14: Proving System"),
 
-    // --- 14.1 Plonky3 Architecture ---
-    h2("14.1 Plonky3 Architecture"),
-    p("The MASS L1 proving system is built on Plonky3, configured for optimal performance across server, desktop, and mobile proving environments. The core configuration uses the BabyBear field (p = 2^31 - 1) with Extension Degree 4, providing 128-bit security with efficient arithmetic on 32-bit hardware. The hash function is Poseidon2 (width 16, alpha 7), chosen for its STARK-friendly algebraic structure and competitive performance in recursive proof composition. FRI parameters use a folding factor of 8 with 21 queries, balancing proof size against verification cost."),
+    p("The SEZ Stack\u2019s proving system is implemented in the msez-zkp crate, which defines a sealed ProofSystem trait with pluggable backends. The architecture separates proof system selection from business logic: any component that requires a ZK proof depends on the trait, not a concrete backend. This chapter specifies the implemented backends, the production policy enforcement mechanism, and the planned Mass L1 proving pipeline."),
+
+    // --- 14.1 ProofSystem Trait ---
+    h2("14.1 ProofSystem Trait"),
+    p("The sealed ProofSystem trait defines the interface that all proof backends must implement. It is sealed (not implementable outside msez-zkp) to prevent untrusted third-party backends from being injected into the verification pipeline."),
+
     ...codeBlock(
-      "/// Plonky3 configuration for the MASS L1 proving system.\n" +
-      "#[derive(Debug, Clone)]\n" +
-      "pub struct Plonky3Config {\n" +
-      "    pub field: Field,          // BabyBear (p = 2^31 - 1)\n" +
-      "    pub extension_degree: u8,  // 4\n" +
-      "    pub hash: HashConfig,      // Poseidon2 (width=16, alpha=7)\n" +
-      "    pub fri_folding: u8,       // 8\n" +
-      "    pub fri_queries: u8,       // 21\n" +
-      "    pub security_bits: u16,    // 128\n" +
-      "}\n" +
+      "/// Sealed trait for zero-knowledge proof backends (msez-zkp)\n" +
+      "pub trait ProofSystem: Send + Sync {\n" +
+      "    /// Generate a proof for the given circuit and witness.\n" +
+      "    fn prove(&self, circuit: &Circuit, witness: &Witness) -> Result<Proof>;\n" +
       "\n" +
-      "impl Plonky3Config {\n" +
-      "    pub fn production() -> Self {\n" +
-      "        Self {\n" +
-      "            field: Field::BabyBear,\n" +
-      "            extension_degree: 4,\n" +
-      "            hash: HashConfig::poseidon2(16, 7),\n" +
-      "            fri_folding: 8,\n" +
-      "            fri_queries: 21,\n" +
-      "            security_bits: 128,\n" +
-      "        }\n" +
-      "    }\n" +
+      "    /// Verify a proof against a circuit and public inputs.\n" +
+      "    fn verify(&self, circuit: &Circuit, proof: &Proof, public_inputs: &[u8]) -> Result<bool>;\n" +
+      "\n" +
+      "    /// Return the backend identifier for policy enforcement.\n" +
+      "    fn backend_id(&self) -> &str;\n" +
       "}"
     ),
 
-    // --- 14.2 Proof Aggregation ---
-    h2("14.2 Proof Aggregation"),
-    p("Transaction proofs are aggregated through a four-layer pipeline that progressively reduces the verification burden from millions of individual transaction proofs to a single succinct proof per epoch. Each layer applies recursive STARK composition, with a final wrapping step that produces a Groth16 proof for constant-size on-chain verification."),
+    // --- 14.2 Implemented Backends ---
+    h2("14.2 Implemented Backends"),
+    table(
+      ["Backend", "Module", "Status", "Trust Model", "Primary Use Case"],
+      [
+        ["Mock (SHA-256 deterministic)", "msez-zkp::mock", "Testing only", "None (not cryptographic)", "Development, CI, property testing. Proofs are SHA-256 hashes of inputs \u2014 deterministic but not zero-knowledge"],
+        ["Groth16", "msez-zkp::groth16", "Implemented", "Trusted setup (per-circuit SRS)", "Compact proofs for on-chain verification. Constant proof size (288 bytes). Pairing-based verification"],
+        ["Plonk", "msez-zkp::plonk", "Implemented", "Universal setup (updateable SRS)", "General-purpose ZK proofs. Larger proofs than Groth16 but no per-circuit trusted setup"],
+      ],
+      [2400, 1800, 1200, 2000, 1960]
+    ),
+
+    // --- 14.3 Production Policy Enforcement ---
+    h2("14.3 Production Policy Enforcement"),
+    p("The msez-zkp::policy module prevents the catastrophic scenario where mock proofs are accepted in a production deployment. The policy is configured via a content-addressed policy artifact that specifies which backends are permitted for each deployment environment."),
+
+    p_runs([
+      bold("Compile-time enforcement. "),
+      "CI gates verify that release builds do not enable the mock feature flag. cargo metadata checks confirm that msez-zkp is compiled without mock features in release profiles."
+    ]),
+    p_runs([
+      bold("Runtime enforcement. "),
+      "The policy module checks the backend_id() of every proof against the deployment\u2019s policy artifact. Mock proofs submitted to a production-configured deployment are rejected at the verification boundary, regardless of their mathematical validity."
+    ]),
+
+    // --- 14.4 Circuit Modules ---
+    h2("14.4 Circuit Modules"),
+    p("The msez-zkp crate defines five circuit modules covering the governance operations that require zero-knowledge proofs. These modules define the circuit interfaces and witness structures; the concrete constraint systems will be implemented when the ZK layer activates in Phase 4."),
+
+    table(
+      ["Circuit", "Module", "Purpose"],
+      [
+        ["Compliance", "circuits/compliance.rs", "Prove compliance evaluation correctness without revealing entity data or tensor state"],
+        ["Identity", "circuits/identity.rs", "Prove identity claims (KYC tier, nationality, accreditation) without revealing personal information"],
+        ["Migration", "circuits/migration.rs", "Prove valid asset migration between jurisdictions without revealing migration terms"],
+        ["Settlement", "circuits/settlement.rs", "Prove correct settlement computation for corridor transactions without revealing transaction details"],
+      ],
+      [1800, 2400, 5160]
+    ),
+
+    // --- 14.5 Planned: Mass L1 Proving Pipeline ---
+    h2("14.5 Planned: Mass L1 Proving Pipeline"),
+    p("The Mass Protocol\u2019s L1 settlement layer specifies a multi-layer proof aggregation pipeline that progressively reduces verification cost. This pipeline is not yet implemented in the SEZ Stack; it describes the target architecture that will be integrated when the Mass L1 is deployed."),
+
     table(
       ["Layer", "Input", "Output", "Aggregation Factor"],
       [
         ["Transaction", "Single transaction", "Transaction proof (STARK)", "1:1"],
-        ["Block (Layer 1)", "1K-10K transaction proofs", "Block proof (STARK)", "1000-10000:1"],
-        ["Epoch (Layer 2)", "10-100 block proofs", "Epoch proof (STARK)", "10-100:1"],
+        ["Block (Layer 1)", "1K\u201310K transaction proofs", "Block proof (STARK)", "1,000\u201310,000:1"],
+        ["Epoch (Layer 2)", "10\u2013100 block proofs", "Epoch proof (STARK)", "10\u2013100:1"],
         ["Final Wrapping", "Single epoch proof", "Groth16 proof (288 bytes)", "1:1"],
       ],
       [1800, 2800, 2800, 1960]
     ),
 
-    // --- 14.2.1 Recursive Composition ---
-    h3("14.2.1 Recursive Composition"),
-    p("Recursive composition uses Halo2-style accumulation to avoid the need for a trusted setup at intermediate layers. Each STARK proof attests not only to the correctness of its own computation but also to the validity of all proofs it aggregates. The final Groth16 wrapping step is the only component requiring a structured reference string (SRS), and its circuit is fixed and auditable."),
-    p_runs([bold("Accumulation Scheme."), " Rather than fully verifying each inner proof within the recursive circuit (which would impose prohibitive constraint costs), the system uses an accumulation scheme inspired by Halo2's polynomial commitment accumulation. Each recursive step takes an inner proof and an accumulator as input, performs a cheap partial verification that checks structural validity, and outputs an updated accumulator that defers the expensive pairing or FRI check to the final step. This reduces the per-recursion overhead from millions of constraints to approximately 50,000 constraints, enabling deep recursion trees (up to 20 levels) without exponential blowup in prover time."]),
-    p_runs([bold("Split Accumulation."), " The accumulation is split into two independent streams: the polynomial commitment accumulator (which defers FRI evaluation) and the permutation accumulator (which defers PLONK-style copy constraint checks). These two streams are carried independently through the recursion tree and merged only at the final wrapping step. This split enables parallelization of the recursive proving process, as subtrees can be proven independently and their accumulators merged in a binary-tree reduction pattern."]),
-    p_runs([bold("Final Decider."), " At the root of the recursion tree, the final decider circuit consumes the accumulated state and performs the deferred checks: FRI query verification for the polynomial commitments and copy constraint verification for the permutation argument. The decider output is then wrapped in a Groth16 proof (288 bytes) suitable for on-chain verification on any EVM-compatible chain or the MASS L1 root chain. The Groth16 SRS is generated via a multi-party computation ceremony with at least 64 participants, and the resulting parameters are published and auditable."]),
-
-    // --- 14.2.2 Client-Side Proving ---
-    h3("14.2.2 Client-Side Proving"),
-    table(
-      ["Device Category", "Prove Time", "Notes"],
-      [
-        ["Modern Smartphone (2023+)", "<10s", "GPU acceleration available"],
-        ["Older Smartphone", "<60s", "CPU-only"],
-        ["Desktop (GPU)", "<2s", "CUDA/Metal acceleration"],
-        ["Server (Multi-GPU)", "<100ms", "Production prover"],
-      ],
-      [3200, 2000, 4160]
-    ),
-
-    // --- 14.3 Proof Portability ---
-    h2("14.3 Proof Portability"),
-    p("Proofs generated by the MASS L1 proving system are designed for cross-platform verification. A proof produced by a server-class prover must be verifiable on a mobile device, an embedded system, a browser, or a third-party blockchain's smart contract -- without requiring the verifier to trust the prover's hardware or software environment. Proof portability is essential for the multi-chain anchoring strategy (Chapter 16) and for enabling jurisdictional regulators to independently verify compliance attestations without running MASS L1 infrastructure."),
-    p_runs([bold("Verification Targets."), " The final Groth16 wrapper proof is the portable artifact. Its verification requires only elliptic curve pairing operations (BN254), which are available as precompiled contracts on Ethereum (EIP-196/197), as native instructions on Solana (alt_bn128), and as library functions on virtually every platform. Verification cost is constant regardless of the complexity of the underlying computation: approximately 200K gas on Ethereum, under 1ms on mobile, and under 100 microseconds on server hardware."]),
-    p_runs([bold("Platform-Specific Verifiers."), " The MASS L1 ships reference verifier implementations for five target platforms: (1) Solidity smart contract for EVM chains, (2) Rust library for native applications and the MASS L1 itself, (3) WebAssembly module for browser-based verification, (4) Swift/Kotlin wrappers for mobile applications, and (5) a standalone CLI verifier for offline audit scenarios. All five implementations are generated from a single canonical circuit description and produce identical accept/reject decisions for any given proof."]),
-    table(
-      ["Verification Target", "Format", "Cost / Latency", "Use Case"],
-      [
-        ["Ethereum (EVM)", "Solidity contract", "~200K gas", "On-chain anchor verification"],
-        ["Solana", "BPF program", "~50K compute units", "High-throughput anchor verification"],
-        ["Browser (WASM)", "wasm module", "<50ms", "Client-side compliance checks"],
-        ["Mobile (iOS/Android)", "Native library", "<1ms", "Wallet proof verification"],
-        ["CLI (offline)", "Rust binary", "<100\u00B5s", "Regulatory audit verification"],
-      ],
-      [2000, 2000, 2200, 3160]
-    ),
+    p("The final Groth16 wrapping step produces a constant-size proof suitable for on-chain verification on EVM-compatible chains. Verification cost is approximately 200K gas on Ethereum, independent of the complexity of the underlying computation. This proof portability enables jurisdictional regulators to independently verify compliance attestations without running Mass L1 infrastructure."),
   ];
 };

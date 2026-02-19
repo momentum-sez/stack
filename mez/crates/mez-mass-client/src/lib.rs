@@ -30,6 +30,7 @@ pub mod fiscal;
 pub mod identity;
 pub mod nadra;
 pub mod ownership;
+pub mod raast;
 pub(crate) mod retry;
 pub mod secp;
 pub mod templating;

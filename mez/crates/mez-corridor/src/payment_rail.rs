@@ -240,14 +240,15 @@ pub trait PaymentRailAdapter: Send + Sync {
 /// real-time retail payments in PKR. It operates 24/7 and settles in central
 /// bank money.
 ///
-/// **Status: STUB** -- awaiting SBP Raast API integration specification
-/// and production credentials from SBP.
+/// This is a thin bridge to the [`PaymentRailAdapter`] trait. The full Raast
+/// adapter with IBAN validation, alias lookup, account verification, and
+/// settlement tracking lives in `mez-mass-client::raast::RaastAdapter` /
+/// `mez-mass-client::raast::MockRaastAdapter`.
 ///
-/// When implemented, this adapter will:
-/// - Submit payment instructions via the SBP Raast API
-/// - Poll transaction status via the SBP Raast status endpoint
-/// - Map SBP Raast status codes to [`PaymentStatus`] variants
-/// - Report SBP-assessed fees in [`PaymentResult::fee`]
+/// This corridor-layer adapter delegates to the `PaymentRailAdapter` trait
+/// for rail-agnostic orchestration. For Raast-specific operations (alias
+/// lookup, account verification), use the `mez-mass-client::raast` module
+/// directly.
 pub struct RaastAdapter;
 
 impl PaymentRailAdapter for RaastAdapter {
@@ -260,15 +261,16 @@ impl PaymentRailAdapter for RaastAdapter {
         _instruction: &PaymentInstruction,
     ) -> Result<PaymentResult, PaymentRailError> {
         Err(PaymentRailError::NotConfigured(
-            "SBP Raast adapter requires SBP API credentials and network access; \
-             contact SBP for integration onboarding"
+            "SBP Raast corridor-layer adapter requires bridging to mez-mass-client::raast; \
+             use MockRaastAdapter from mez-mass-client for testing"
                 .into(),
         ))
     }
 
     fn check_status(&self, _rail_reference: &str) -> Result<PaymentStatus, PaymentRailError> {
         Err(PaymentRailError::NotConfigured(
-            "SBP Raast status query requires SBP API credentials and network access".into(),
+            "SBP Raast corridor-layer status query requires bridging to mez-mass-client::raast"
+                .into(),
         ))
     }
 }

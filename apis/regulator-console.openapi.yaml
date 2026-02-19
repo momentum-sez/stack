@@ -137,7 +137,9 @@ paths:
         Returns the compliance posture for a specific entity, aggregated from
         attestation records and smart asset compliance evaluations. Reports the
         most recent attestation status per domain, associated asset compliance,
-        and an overall entity compliance state.
+        and an overall entity compliance state. When the `corridors` query
+        parameter is set to `true`, includes per-corridor compliance summaries
+        with receipt chain height, MMR roots, and checkpoint timestamps.
       parameters:
         - name: entity_id
           in: path
@@ -146,6 +148,15 @@ paths:
             type: string
             format: uuid
           description: Entity identifier (UUID)
+        - name: corridors
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: >
+            When true, include per-corridor compliance summaries in the
+            response (corridor_compliance array).
       responses:
         '200':
           description: Entity compliance posture
@@ -415,6 +426,40 @@ components:
         overall_status:
           type: string
           enum: [compliant, non_compliant, pending]
+        corridor_compliance:
+          type: array
+          description: >
+            Per-corridor compliance summaries. Present only when
+            ?corridors=true is passed.
+          items:
+            $ref: '#/components/schemas/CorridorComplianceStatus'
+      additionalProperties: false
+
+    CorridorComplianceStatus:
+      type: object
+      required: [corridor_id, peer_zone, corridor_state, last_receipt_height]
+      properties:
+        corridor_id:
+          type: string
+          format: uuid
+          description: Corridor UUID
+        peer_zone:
+          type: string
+          description: Peer zone jurisdiction (the other end of the corridor)
+        corridor_state:
+          type: string
+          description: Corridor lifecycle state (ACTIVE, HALTED, etc.)
+        last_receipt_height:
+          type: integer
+          minimum: 0
+          description: Height of the receipt chain (number of receipts)
+        last_checkpoint_time:
+          type: string
+          format: date-time
+          description: Timestamp of the last checkpoint, if any
+        mmr_root:
+          type: string
+          description: Current MMR root of the receipt chain (64-char hex)
       additionalProperties: false
 
     DomainComplianceStatus:

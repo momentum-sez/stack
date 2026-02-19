@@ -47,7 +47,7 @@ module.exports = function build_chapter13() {
 
     // --- 13.3 Sharding Architecture ---
     h2("13.3 Sharding Architecture"),
-    p_runs([bold("Tier 1: Execution Shards."), " The execution layer is partitioned into Harbor Shards (one per jurisdiction or special economic zone) and Corridor Shards (one per active trade corridor). Harbor shards process all local transactions for their jurisdiction, including entity formation, asset transfers, and compliance checks. Corridor shards handle cross-jurisdictional operations such as receipt chain synchronization, netting, and settlement."]),
+    p_runs([bold("Tier 1: Execution Shards."), " The execution layer is partitioned into Harbor Shards (one per jurisdiction or economic zone) and Corridor Shards (one per active trade corridor). Harbor shards process all local transactions for their jurisdiction, including entity formation, asset transfers, and compliance checks. Corridor shards handle cross-jurisdictional operations such as receipt chain synchronization, netting, and settlement."]),
     p_runs([bold("Tier 2: Root Chain."), " The root chain aggregates state commitments from all execution shards into a single global state root. It does not execute transactions directly; instead, it verifies STARK proofs submitted by shard validators and maintains the canonical ordering of cross-shard events. The root chain is the anchor point for external L1 bridges and provides the final settlement guarantee."]),
     ...codeBlock(
       "/// A Harbor shard represents a single jurisdictional execution environment.\n" +

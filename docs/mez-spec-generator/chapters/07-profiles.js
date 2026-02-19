@@ -12,7 +12,7 @@ module.exports = function build_chapter07() {
 
     // --- Overview Table ---
     h2("7.1 Profile Overview"),
-    p("The MEZ Stack ships seven canonical profiles. Each targets a distinct institutional archetype drawn from real-world special economic zone models. Operators may extend or compose these profiles, but the canonical seven represent the tested, audited configurations that Momentum supports for production deployment."),
+    p("The MEZ Stack ships seven canonical profiles. Each targets a distinct institutional archetype drawn from real-world economic zone models. Operators may extend or compose these profiles, but the canonical seven represent the tested, audited configurations that Momentum supports for production deployment."),
     table(
       ["Profile", "Use Case", "Key Modules"],
       [

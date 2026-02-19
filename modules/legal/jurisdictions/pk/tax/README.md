@@ -6,10 +6,10 @@ This module contains the **tax legal corpus** for the **Islamic Republic of Paki
 
 The corpus encodes provisions from:
 
-- **Income Tax Ordinance, 2001** (Ordinance XLIX of 2001) -- charge of tax, corporate tax rates, super tax, minimum tax on turnover, withholding tax schedules (Sections 148-155, 231A, 236G), and Special Economic Zone incentives.
+- **Income Tax Ordinance, 2001** (Ordinance XLIX of 2001) -- charge of tax, corporate tax rates, super tax, minimum tax on turnover, withholding tax schedules (Sections 148-155, 231A, 236G), and Economic Zone incentives.
 - **Sales Tax Act, 1990** (Act VII of 1990) -- standard rate, scope, zero-rating for exports.
 - **Federal Excise Act, 2005** (Act IV of 2005) -- referenced for completeness; substantive provisions to be added in a future version.
-- **Special Economic Zones Act, 2012** -- tax exemptions and incentives for zone enterprises.
+- **Economic Zones Act, 2012** -- tax exemptions and incentives for zone enterprises.
 
 ## Rates and Thresholds
 

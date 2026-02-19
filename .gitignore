@@ -17,4 +17,4 @@ __pycache__/
 
 # OS cruft
 .DS_Store
-msez/target/
+mez/target/

@@ -1,8 +1,8 @@
 zone_id: org.momentum.mez.zone.cn.shenzhen
 jurisdiction_id: cn-shenzhen
-zone_name: Shenzhen Special Economic Zone
+zone_name: Shenzhen Economic Zone
 profile:
-  profile_id: org.momentum.mez.profile.special-economic-zone
+  profile_id: org.momentum.mez.profile.economic-zone
   version: 0.4.44
 
 jurisdiction_stack:

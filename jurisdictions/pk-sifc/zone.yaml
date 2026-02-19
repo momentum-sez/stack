@@ -54,9 +54,9 @@ licensepack_refresh_policy:
 regpacks:
   - jurisdiction_id: pk
     domain: financial
-    # Digest is computed by regpack::pakistan::build_pakistan_regpack()
-    # and must be updated when regpack content changes.
-    regpack_digest_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+    # Digest computed by: mez regpack build --jurisdiction pk
+    # Internal regpack digest from regpack::pakistan::build_pakistan_regpack()
+    regpack_digest_sha256: "444ddded8419d9dedf8344a54063d7cd80c0148338c78bbe77a47baa44dd392f"
     as_of_date: "2026-01-15"
   - jurisdiction_id: pk
     domain: sanctions

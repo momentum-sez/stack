@@ -27,8 +27,10 @@
 pub mod artifact;
 pub mod corridor;
 pub mod lock;
+pub mod regpack;
 pub mod signing;
 pub mod validate;
+pub mod zone;
 
 use std::path::{Path, PathBuf};
 
@@ -119,7 +121,9 @@ mod tests {
         let _ = std::any::type_name::<artifact::ArtifactArgs>();
         let _ = std::any::type_name::<corridor::CorridorArgs>();
         let _ = std::any::type_name::<lock::LockArgs>();
+        let _ = std::any::type_name::<regpack::RegpackArgs>();
         let _ = std::any::type_name::<signing::SigningArgs>();
         let _ = std::any::type_name::<validate::ValidateArgs>();
+        let _ = std::any::type_name::<zone::ZoneArgs>();
     }
 }

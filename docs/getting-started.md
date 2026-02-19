@@ -41,7 +41,7 @@ cargo doc --workspace --no-deps --open      # generate rustdoc
 | `apis/` | OpenAPI 3.x specifications |
 | `deploy/` | Docker, Kubernetes, Terraform manifests |
 | `contexts/` | Zone composition contexts |
-| `jurisdictions/` | Zone configuration files |
+| `jurisdictions/` | 100 zone definitions (US states, UAE free zones, PK, CN, etc.) |
 | `dist/artifacts/` | Content-addressed built artifacts |
 | `governance/` | Lifecycle state machines, changelog |
 | `docs/` | This documentation |

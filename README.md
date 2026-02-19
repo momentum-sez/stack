@@ -234,7 +234,7 @@ stack/
 ├── apis/                   OpenAPI 3.x specifications
 ├── deploy/                 Docker, Kubernetes, Terraform
 ├── contexts/               Zone composition contexts
-├── jurisdictions/           Zone configuration files
+├── jurisdictions/           100 zone definitions (US states, UAE free zones, PK, CN, etc.)
 ├── rulesets/                Regulatory rulesets
 ├── registries/              Registry data
 ├── dist/artifacts/          Content-addressed built artifacts

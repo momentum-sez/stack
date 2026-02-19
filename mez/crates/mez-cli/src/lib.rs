@@ -27,6 +27,7 @@
 pub mod artifact;
 pub mod corridor;
 pub mod lock;
+pub mod regpack;
 pub mod signing;
 pub mod validate;
 

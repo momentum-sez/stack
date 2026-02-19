@@ -2638,6 +2638,77 @@ pub mod pakistan {
         Ok((regpack, metadata, sanctions_snapshot, deadlines, reporting, wht_rates))
     }
 
+    /// Build a sanctions-domain-specific Pakistan regpack.
+    ///
+    /// Produces a regpack focused on the `sanctions` compliance domain,
+    /// containing the NACTA proscribed organizations gazette and UNSC 1267
+    /// consolidated list entries. Separate from the `financial` domain
+    /// regpack which includes broader regulatory data (WHT rates, regulators,
+    /// compliance deadlines, reporting requirements).
+    ///
+    /// The sanctions regpack is content-addressed independently so that
+    /// sanctions-list-only updates can be pushed without rebuilding the
+    /// full financial regpack.
+    pub fn build_pakistan_sanctions_regpack() -> PackResult<(Regpack, RegPackMetadata, SanctionsSnapshot)> {
+        let sanctions_snapshot = pakistan_sanctions_snapshot();
+
+        let mut includes = BTreeMap::new();
+        includes.insert(
+            "sanctions_entries".to_string(),
+            serde_json::json!(pakistan_sanctions_entries().len()),
+        );
+        includes.insert(
+            "source_lists".to_string(),
+            serde_json::json!(["nacta_gazette", "unsc_1267"]),
+        );
+
+        let metadata = RegPackMetadata {
+            regpack_id: "regpack:pk:sanctions:2026Q1".to_string(),
+            jurisdiction_id: "pk".to_string(),
+            domain: "sanctions".to_string(),
+            as_of_date: "2026-01-15".to_string(),
+            snapshot_type: "quarterly".to_string(),
+            sources: vec![
+                serde_json::json!({
+                    "source_id": "nacta_gazette",
+                    "name": "NACTA Proscribed Organizations Gazette",
+                    "authority": "Government of Pakistan"
+                }),
+                serde_json::json!({
+                    "source_id": "unsc_1267",
+                    "name": "UNSC 1267/1989/2253 Consolidated List",
+                    "authority": "United Nations Security Council"
+                }),
+            ],
+            includes,
+            previous_regpack_digest: None,
+            created_at: Some("2026-01-15T00:00:00Z".to_string()),
+            expires_at: Some("2026-04-15T00:00:00Z".to_string()),
+            digest_sha256: None,
+        };
+
+        let digest = compute_regpack_digest(
+            &metadata,
+            Some(&sanctions_snapshot),
+            None,  // No regulators — sanctions-only domain
+            None,  // No deadlines — sanctions-only domain
+        )?;
+
+        let regpack = Regpack {
+            jurisdiction: JurisdictionId::new("pk".to_string())
+                .map_err(|e| PackError::Validation(format!("invalid jurisdiction: {e}")))?,
+            name: "Pakistan Sanctions Regulatory Pack — 2026 Q1".to_string(),
+            version: REGPACK_VERSION.to_string(),
+            digest: Some(
+                ContentDigest::from_hex(&digest)
+                    .map_err(|e| PackError::Validation(format!("digest error: {e}")))?,
+            ),
+            metadata: Some(metadata.clone()),
+        };
+
+        Ok((regpack, metadata, sanctions_snapshot))
+    }
+
     // ── Tests ────────────────────────────────────────────────────────────────
 
     #[cfg(test)]
@@ -2810,6 +2881,39 @@ pub mod pakistan {
                 rp1.digest.as_ref().unwrap().to_hex(),
                 rp2.digest.as_ref().unwrap().to_hex(),
                 "regpack digest must be deterministic"
+            );
+        }
+
+        #[test]
+        fn build_pakistan_sanctions_regpack_succeeds() {
+            let (regpack, metadata, snap) =
+                build_pakistan_sanctions_regpack().expect("sanctions build should succeed");
+            assert_eq!(regpack.jurisdiction.as_str(), "pk");
+            assert!(regpack.digest.is_some(), "sanctions regpack should have digest");
+            assert_eq!(metadata.domain, "sanctions");
+            assert_eq!(metadata.jurisdiction_id, "pk");
+            assert!(!snap.consolidated_counts.is_empty());
+        }
+
+        #[test]
+        fn build_pakistan_sanctions_regpack_is_deterministic() {
+            let (rp1, ..) = build_pakistan_sanctions_regpack().unwrap();
+            let (rp2, ..) = build_pakistan_sanctions_regpack().unwrap();
+            assert_eq!(
+                rp1.digest.as_ref().unwrap().to_hex(),
+                rp2.digest.as_ref().unwrap().to_hex(),
+                "sanctions regpack digest must be deterministic"
+            );
+        }
+
+        #[test]
+        fn sanctions_regpack_digest_differs_from_financial() {
+            let (financial, ..) = build_pakistan_regpack().unwrap();
+            let (sanctions, ..) = build_pakistan_sanctions_regpack().unwrap();
+            assert_ne!(
+                financial.digest.as_ref().unwrap().to_hex(),
+                sanctions.digest.as_ref().unwrap().to_hex(),
+                "financial and sanctions regpack digests must differ"
             );
         }
 

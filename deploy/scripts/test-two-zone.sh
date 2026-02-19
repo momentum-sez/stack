@@ -19,8 +19,13 @@ set -euo pipefail
 
 ZONE_A="http://localhost:8080"
 ZONE_B="http://localhost:8081"
-ZONE_A_TOKEN="${ZONE_A_AUTH_TOKEN:-zone-a-test-token}"
-ZONE_B_TOKEN="${ZONE_B_AUTH_TOKEN:-zone-b-test-token}"
+
+# Require auth tokens to be set — no hardcoded defaults.
+# For local testing, export these before running:
+#   export ZONE_A_AUTH_TOKEN=<token> ZONE_B_AUTH_TOKEN=<token>
+# Or use the demo script which sets them automatically.
+ZONE_A_TOKEN="${ZONE_A_AUTH_TOKEN:?ZONE_A_AUTH_TOKEN must be set}"
+ZONE_B_TOKEN="${ZONE_B_AUTH_TOKEN:?ZONE_B_AUTH_TOKEN must be set}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'

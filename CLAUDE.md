@@ -411,7 +411,7 @@ This is the ordered sequence of work items. Dependencies are noted. Each item in
 24. P0-IDENTITY-001    — OPEN: Ship real Identity service (Mass-side dependency)
 25. P0-CORRIDOR-NET-001 — CLOSED: Inter-zone protocol with handshake (commit 6ea3f8e)
 26. P0-PACK-001        — CLOSED: Pakistan Pack Trilogy (commit b996ecc)
-27. P2-NATIONAL-001    — OPEN: Pakistan national system adapters (FBR, NADRA, SBP, SECP)
+27. P2-NATIONAL-001    — PARTIAL: FBR IRIS + SECP adapters implemented; SBP Raast pending
 ```
 
 ### NEW: Phase G — Pragmatic Deployment (NOW — Weeks 1-4)
@@ -426,7 +426,7 @@ This is the ordered sequence of work items. Dependencies are noted. Each item in
 31. Corridor establishment walkthrough — CLOSED: documented in docs/ZONE-BOOTSTRAP-GUIDE.md
 32. OpenAPI spec promotion — PARTIAL: regulator-console v0.3.0 with compliance endpoint; smart-assets already contract-grade
 33. Compliance query endpoint — CLOSED: GET /v1/compliance/{entity_id} in regulator router + OpenAPI spec
-34. Pakistan national system adapter interfaces (trait contracts + mocks) — OPEN
+34. Pakistan national system adapter interfaces (trait contracts + mocks) — CLOSED (FBR IRIS + SECP)
 ```
 
 ---
@@ -528,7 +528,7 @@ Based on synthesized audit findings. Status: ✅ Implemented | 🟡 Partial | �
 | 31-35 | Watcher economy | ✅ | ~~P0-FORK-001~~ CLOSED | Evidence-driven fork resolution with signed attestations |
 | 36-40 | Anchoring / ZK | 🔴 | P0-ANCHOR-001, P0-CRYPTO-001/002 | ZK policy fail-closed (P0-ZK-001 CLOSED); crypto stubs remain |
 | 41-45 | Deployment / infra | ✅ | ~~P0-DEPLOY-001~~ CLOSED | No default creds, zone manifests, two-zone compose, deploy scripts |
-| 46-48 | National integration | 🔴 | P2-NATIONAL-001 | Types defined, HTTP adapters not implemented |
+| 46-48 | National integration | 🟡 | P2-NATIONAL-001 | FBR IRIS + SECP adapters (trait + mock); NADRA adapter exists; SBP Raast pending |
 
 ---
 

@@ -25,11 +25,13 @@ pub mod config;
 pub mod consent;
 pub mod entities;
 pub mod error;
+pub mod fbr;
 pub mod fiscal;
 pub mod identity;
 pub mod nadra;
 pub mod ownership;
 pub(crate) mod retry;
+pub mod secp;
 pub mod templating;
 pub mod types;
 

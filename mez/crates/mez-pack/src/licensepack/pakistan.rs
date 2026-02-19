@@ -47,7 +47,16 @@ pub fn secp_license_types() -> Vec<LicenseTypeDefinition> {
                 "business_operations".to_string(),
                 "capital_raising".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("minimum_directors".to_string(), serde_json::json!("2 for private, 3 for public")),
+                ("registered_office".to_string(), serde_json::json!("Required within Pakistan")),
+                ("memorandum_of_association".to_string(), serde_json::json!("Required")),
+                ("articles_of_association".to_string(), serde_json::json!("Required")),
+                ("cnic_of_directors".to_string(), serde_json::json!("NADRA CNIC for all directors")),
+                ("ntn_required".to_string(), serde_json::json!("NTN from FBR required at incorporation")),
+            ]
+                .into_iter()
+                .collect(),
             application_fee: [("PKR".to_string(), "5000".to_string())]
                 .into_iter()
                 .collect(),
@@ -67,7 +76,17 @@ pub fn secp_license_types() -> Vec<LicenseTypeDefinition> {
                 "trading".to_string(),
                 "custody_services".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("minimum_net_worth_pkr".to_string(), serde_json::json!("25000000")),
+                ("minimum_capital_pkr".to_string(), serde_json::json!("15000000")),
+                ("fit_and_proper".to_string(), serde_json::json!("Directors must pass SECP fit & proper test")),
+                ("psx_membership".to_string(), serde_json::json!("Trading Right Entitlement (TRE) certificate required")),
+                ("compliance_officer".to_string(), serde_json::json!("Designated compliance officer required")),
+                ("net_capital_balance".to_string(), serde_json::json!("Monthly NCB certificate to SECP")),
+                ("professional_qualification".to_string(), serde_json::json!("ICAP/ICMAP or equivalent for principal")),
+            ]
+                .into_iter()
+                .collect(),
             application_fee: [("PKR".to_string(), "100000".to_string())]
                 .into_iter()
                 .collect(),
@@ -89,7 +108,16 @@ pub fn secp_license_types() -> Vec<LicenseTypeDefinition> {
                 "investment_advisory".to_string(),
                 "asset_management".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("minimum_equity_pkr".to_string(), serde_json::json!("200000000")),
+                ("minimum_capital_adequacy".to_string(), serde_json::json!("0.15")),
+                ("fit_and_proper".to_string(), serde_json::json!("SECP fit & proper criteria for directors and CEO")),
+                ("aml_compliance_program".to_string(), serde_json::json!("AML/CFT compliance program per SECP AML Regulations 2018")),
+                ("risk_management_framework".to_string(), serde_json::json!("Board-approved risk management policy required")),
+                ("internal_audit".to_string(), serde_json::json!("Internal audit function required")),
+            ]
+                .into_iter()
+                .collect(),
             application_fee: [("PKR".to_string(), "500000".to_string())]
                 .into_iter()
                 .collect(),
@@ -110,9 +138,22 @@ pub fn secp_license_types() -> Vec<LicenseTypeDefinition> {
                 "general_insurance".to_string(),
                 "reinsurance".to_string(),
             ],
-            requirements: BTreeMap::new(),
-            application_fee: BTreeMap::new(),
-            annual_fee: BTreeMap::new(),
+            requirements: [
+                ("minimum_paid_up_capital_life_pkr".to_string(), serde_json::json!("700000000")),
+                ("minimum_paid_up_capital_general_pkr".to_string(), serde_json::json!("500000000")),
+                ("statutory_deposit_pkr".to_string(), serde_json::json!("20000000")),
+                ("actuarial_valuation".to_string(), serde_json::json!("Annual actuarial valuation required")),
+                ("solvency_margin".to_string(), serde_json::json!("Per Insurance Ordinance 2000 Schedule I")),
+                ("fit_and_proper".to_string(), serde_json::json!("Directors must meet SECP fit & proper criteria")),
+            ]
+                .into_iter()
+                .collect(),
+            application_fee: [("PKR".to_string(), "250000".to_string())]
+                .into_iter()
+                .collect(),
+            annual_fee: [("PKR".to_string(), "500000".to_string())]
+                .into_iter()
+                .collect(),
             validity_period_years: Some(1),
         },
     ]
@@ -150,9 +191,24 @@ pub fn sbp_license_types() -> Vec<LicenseTypeDefinition> {
                 "foreign_exchange".to_string(),
                 "payment_services".to_string(),
             ],
-            requirements: BTreeMap::new(),
-            application_fee: BTreeMap::new(),
-            annual_fee: BTreeMap::new(),
+            requirements: [
+                ("minimum_paid_up_capital_pkr".to_string(), serde_json::json!("10000000000")),
+                ("capital_adequacy_ratio".to_string(), serde_json::json!("0.115")),
+                ("tier_1_capital_ratio".to_string(), serde_json::json!("0.06")),
+                ("liquidity_coverage_ratio".to_string(), serde_json::json!("1.00")),
+                ("fit_and_proper".to_string(), serde_json::json!("SBP Fit & Proper Criteria (BPRD Circular 2019)")),
+                ("aml_compliance_program".to_string(), serde_json::json!("Per SBP AML/CFT Regulations 2020")),
+                ("deposit_protection".to_string(), serde_json::json!("Member of Deposit Protection Corporation")),
+                ("external_audit".to_string(), serde_json::json!("SBP-approved auditors (Panel A/B)")),
+            ]
+                .into_iter()
+                .collect(),
+            application_fee: [("PKR".to_string(), "5000000".to_string())]
+                .into_iter()
+                .collect(),
+            annual_fee: [("PKR".to_string(), "2000000".to_string())]
+                .into_iter()
+                .collect(),
             validity_period_years: None,
         },
         LicenseTypeDefinition {
@@ -167,15 +223,29 @@ pub fn sbp_license_types() -> Vec<LicenseTypeDefinition> {
                 "micro_deposit_taking".to_string(),
                 "branchless_banking".to_string(),
             ],
-            requirements: BTreeMap::new(),
-            application_fee: BTreeMap::new(),
-            annual_fee: BTreeMap::new(),
+            requirements: [
+                ("minimum_paid_up_capital_national_pkr".to_string(), serde_json::json!("1000000000")),
+                ("minimum_paid_up_capital_provincial_pkr".to_string(), serde_json::json!("600000000")),
+                ("minimum_paid_up_capital_district_pkr".to_string(), serde_json::json!("300000000")),
+                ("capital_adequacy_ratio".to_string(), serde_json::json!("0.15")),
+                ("maximum_loan_size_pkr".to_string(), serde_json::json!("1000000")),
+                ("fit_and_proper".to_string(), serde_json::json!("SBP Fit & Proper Criteria")),
+                ("branchless_banking_regulations".to_string(), serde_json::json!("SBP Branchless Banking Regulations 2011")),
+            ]
+                .into_iter()
+                .collect(),
+            application_fee: [("PKR".to_string(), "2000000".to_string())]
+                .into_iter()
+                .collect(),
+            annual_fee: [("PKR".to_string(), "500000".to_string())]
+                .into_iter()
+                .collect(),
             validity_period_years: None,
         },
         LicenseTypeDefinition {
             license_type_id: "pk-sbp:emi".to_string(),
             name: "Electronic Money Institution License".to_string(),
-            description: "License to issue electronic money under SBP Payment Systems regulations"
+            description: "License to issue electronic money under SBP EMI Regulations 2019"
                 .to_string(),
             regulator_id: "pk-sbp".to_string(),
             category: Some("financial".to_string()),
@@ -184,21 +254,49 @@ pub fn sbp_license_types() -> Vec<LicenseTypeDefinition> {
                 "payment_services".to_string(),
                 "digital_wallet".to_string(),
             ],
-            requirements: BTreeMap::new(),
-            application_fee: BTreeMap::new(),
-            annual_fee: BTreeMap::new(),
+            requirements: [
+                ("minimum_paid_up_capital_pkr".to_string(), serde_json::json!("200000000")),
+                ("float_safeguarding".to_string(), serde_json::json!("100% of outstanding e-money held in trust account at scheduled bank")),
+                ("technology_infrastructure".to_string(), serde_json::json!("PCI-DSS certified, SBP IT framework compliance")),
+                ("kyc_cdd".to_string(), serde_json::json!("Tiered KYC per SBP AML Regulations — biometric verification via NADRA")),
+                ("agent_network".to_string(), serde_json::json!("Agent banking regulations compliance per SBP Branchless Banking Regulations")),
+                ("interoperability".to_string(), serde_json::json!("Raast P2P/P2M integration required per SBP circular")),
+                ("reporting".to_string(), serde_json::json!("Quarterly compliance report to SBP Payment Systems Department")),
+            ]
+                .into_iter()
+                .collect(),
+            application_fee: [("PKR".to_string(), "1000000".to_string())]
+                .into_iter()
+                .collect(),
+            annual_fee: [("PKR".to_string(), "500000".to_string())]
+                .into_iter()
+                .collect(),
             validity_period_years: Some(3),
         },
         LicenseTypeDefinition {
             license_type_id: "pk-sbp:exchange-company".to_string(),
             name: "Exchange Company License".to_string(),
-            description: "License to operate foreign exchange business".to_string(),
+            description: "License to operate foreign exchange business under FERA 1947 / Exchange Companies (Conduct of Business) Regulations"
+                .to_string(),
             regulator_id: "pk-sbp".to_string(),
             category: Some("financial".to_string()),
             permitted_activities: vec!["foreign_exchange".to_string(), "remittance".to_string()],
-            requirements: BTreeMap::new(),
-            application_fee: BTreeMap::new(),
-            annual_fee: BTreeMap::new(),
+            requirements: [
+                ("minimum_paid_up_capital_category_a_pkr".to_string(), serde_json::json!("200000000")),
+                ("minimum_paid_up_capital_category_b_pkr".to_string(), serde_json::json!("100000000")),
+                ("security_deposit_pkr".to_string(), serde_json::json!("10000000")),
+                ("aml_compliance".to_string(), serde_json::json!("Full AML/CFT program per SBP Exchange Company regulations")),
+                ("transaction_limits".to_string(), serde_json::json!("Per SBP foreign exchange manual limits")),
+                ("reporting".to_string(), serde_json::json!("Monthly forex position report to SBP")),
+            ]
+                .into_iter()
+                .collect(),
+            application_fee: [("PKR".to_string(), "2000000".to_string())]
+                .into_iter()
+                .collect(),
+            annual_fee: [("PKR".to_string(), "1000000".to_string())]
+                .into_iter()
+                .collect(),
             validity_period_years: Some(3),
         },
     ]
@@ -232,15 +330,28 @@ pub fn pta_license_types() -> Vec<LicenseTypeDefinition> {
                 "mobile_broadband".to_string(),
                 "mobile_financial_services".to_string(),
             ],
-            requirements: BTreeMap::new(),
-            application_fee: BTreeMap::new(),
-            annual_fee: BTreeMap::new(),
+            requirements: [
+                ("spectrum_auction".to_string(), serde_json::json!("Spectrum acquired through PTA auction")),
+                ("network_rollout".to_string(), serde_json::json!("Coverage obligations per license conditions")),
+                ("quality_of_service".to_string(), serde_json::json!("QoS parameters per PTA regulations")),
+                ("sim_registration".to_string(), serde_json::json!("Biometric verification for SIM issuance (PTA directive)")),
+                ("lawful_intercept".to_string(), serde_json::json!("Lawful intercept capability per PTA/MoIT")),
+            ]
+                .into_iter()
+                .collect(),
+            application_fee: [("PKR".to_string(), "varies_by_spectrum".to_string())]
+                .into_iter()
+                .collect(),
+            annual_fee: [("PKR".to_string(), "varies_by_revenue".to_string())]
+                .into_iter()
+                .collect(),
             validity_period_years: Some(15),
         },
         LicenseTypeDefinition {
             license_type_id: "pk-pta:isp".to_string(),
             name: "Internet Service Provider License".to_string(),
-            description: "License to provide internet services".to_string(),
+            description: "License to provide internet services under Pakistan Telecom Authority regulations"
+                .to_string(),
             regulator_id: "pk-pta".to_string(),
             category: Some("trade".to_string()),
             permitted_activities: vec![
@@ -248,7 +359,13 @@ pub fn pta_license_types() -> Vec<LicenseTypeDefinition> {
                 "web_hosting".to_string(),
                 "data_center_operations".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("company_registration".to_string(), serde_json::json!("SECP-registered company")),
+                ("bandwidth_agreement".to_string(), serde_json::json!("Agreement with licensed backbone provider")),
+                ("content_filtering".to_string(), serde_json::json!("PTA-mandated URL filtering system")),
+            ]
+                .into_iter()
+                .collect(),
             application_fee: [("PKR".to_string(), "250000".to_string())]
                 .into_iter()
                 .collect(),
@@ -373,7 +490,14 @@ pub fn drap_license_types() -> Vec<LicenseTypeDefinition> {
                 "drug_manufacturing".to_string(),
                 "quality_testing".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("gmp_compliance".to_string(), serde_json::json!("WHO-GMP or PIC/S GMP certification")),
+                ("qualified_person".to_string(), serde_json::json!("Pharmacist with Pharmacy Council registration")),
+                ("quality_control_lab".to_string(), serde_json::json!("In-house QC laboratory with DRAP-approved equipment")),
+                ("premises_inspection".to_string(), serde_json::json!("DRAP site inspection and approval")),
+            ]
+                .into_iter()
+                .collect(),
             application_fee: [("PKR".to_string(), "100000".to_string())]
                 .into_iter()
                 .collect(),
@@ -418,6 +542,75 @@ pub fn drap_license_types() -> Vec<LicenseTypeDefinition> {
     ]
 }
 
+// ── FBR — Federal Board of Revenue ───────────────────────────────────────────
+
+/// FBR regulator profile (tax registration authority).
+pub fn fbr_regulator() -> LicensepackRegulator {
+    LicensepackRegulator {
+        regulator_id: "pk-fbr".to_string(),
+        name: "Federal Board of Revenue".to_string(),
+        jurisdiction_id: "pk".to_string(),
+        registry_url: Some("https://www.fbr.gov.pk".to_string()),
+        did: None,
+        api_capabilities: vec![
+            "ntn_verification".to_string(),
+            "active_taxpayer_list".to_string(),
+            "iris_efiling".to_string(),
+        ],
+    }
+}
+
+/// FBR registration type definitions.
+pub fn fbr_license_types() -> Vec<LicenseTypeDefinition> {
+    vec![
+        LicenseTypeDefinition {
+            license_type_id: "pk-fbr:ntn".to_string(),
+            name: "National Tax Number (NTN) Registration".to_string(),
+            description: "Registration with FBR for income tax purposes under ITO 2001".to_string(),
+            regulator_id: "pk-fbr".to_string(),
+            category: Some("corporate".to_string()),
+            permitted_activities: vec![
+                "income_tax_filing".to_string(),
+                "withholding_agent".to_string(),
+                "government_contracts".to_string(),
+            ],
+            requirements: [
+                ("cnic".to_string(), serde_json::json!("NADRA CNIC of all directors/partners")),
+                ("company_registration".to_string(), serde_json::json!("SECP certificate of incorporation (for companies)")),
+                ("registered_address".to_string(), serde_json::json!("Utility bill or rent agreement for business premises")),
+                ("bank_account".to_string(), serde_json::json!("Business bank account statement")),
+            ]
+                .into_iter()
+                .collect(),
+            application_fee: BTreeMap::new(),
+            annual_fee: BTreeMap::new(),
+            validity_period_years: None,
+        },
+        LicenseTypeDefinition {
+            license_type_id: "pk-fbr:strn".to_string(),
+            name: "Sales Tax Registration Number (STRN)".to_string(),
+            description: "Registration for sales tax under Sales Tax Act 1990".to_string(),
+            regulator_id: "pk-fbr".to_string(),
+            category: Some("corporate".to_string()),
+            permitted_activities: vec![
+                "sales_tax_collection".to_string(),
+                "input_tax_credit".to_string(),
+                "sales_tax_filing".to_string(),
+            ],
+            requirements: [
+                ("ntn".to_string(), serde_json::json!("Active NTN required")),
+                ("business_premises".to_string(), serde_json::json!("Premises inspection by FBR / provincial revenue authority")),
+                ("monthly_return_filing".to_string(), serde_json::json!("Monthly sales tax return by 18th of following month")),
+            ]
+                .into_iter()
+                .collect(),
+            application_fee: BTreeMap::new(),
+            annual_fee: BTreeMap::new(),
+            validity_period_years: None,
+        },
+    ]
+}
+
 // ── Pakistan Registry Aggregation ───────────────────────────────────────────
 
 /// All Pakistan regulatory authorities.
@@ -428,6 +621,7 @@ pub fn pakistan_regulators() -> Vec<LicensepackRegulator> {
         pta_regulator(),
         pemra_regulator(),
         drap_regulator(),
+        fbr_regulator(),
     ]
 }
 
@@ -439,6 +633,7 @@ pub fn pakistan_license_types() -> Vec<LicenseTypeDefinition> {
     all.extend(pta_license_types());
     all.extend(pemra_license_types());
     all.extend(drap_license_types());
+    all.extend(fbr_license_types());
     all
 }
 
@@ -447,9 +642,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn pakistan_has_five_regulators() {
+    fn pakistan_has_six_regulators() {
         let regs = pakistan_regulators();
-        assert_eq!(regs.len(), 5);
+        assert_eq!(regs.len(), 6);
 
         let ids: Vec<&str> = regs.iter().map(|r| r.regulator_id.as_str()).collect();
         assert!(ids.contains(&"pk-secp"), "missing SECP");
@@ -457,6 +652,7 @@ mod tests {
         assert!(ids.contains(&"pk-pta"), "missing PTA");
         assert!(ids.contains(&"pk-pemra"), "missing PEMRA");
         assert!(ids.contains(&"pk-drap"), "missing DRAP");
+        assert!(ids.contains(&"pk-fbr"), "missing FBR");
     }
 
     #[test]
@@ -470,8 +666,8 @@ mod tests {
     fn pakistan_license_types_cover_all_authorities() {
         let types = pakistan_license_types();
         assert!(
-            types.len() >= 17,
-            "expected >= 17 license types, got {}",
+            types.len() >= 19,
+            "expected >= 19 license types, got {}",
             types.len()
         );
 
@@ -485,6 +681,7 @@ mod tests {
         assert!(authority_ids.contains("pk-pta"), "no PTA license types");
         assert!(authority_ids.contains("pk-pemra"), "no PEMRA license types");
         assert!(authority_ids.contains("pk-drap"), "no DRAP license types");
+        assert!(authority_ids.contains("pk-fbr"), "no FBR license types");
     }
 
     #[test]
@@ -572,6 +769,67 @@ mod tests {
                 lt.license_type_id
             );
         }
+    }
+
+    #[test]
+    fn financial_license_types_have_requirements() {
+        // All financial/banking license types must have non-empty requirements
+        let financial_types = pakistan_license_types()
+            .into_iter()
+            .filter(|lt| {
+                lt.regulator_id == "pk-sbp"
+                    || lt.regulator_id == "pk-secp"
+            })
+            .collect::<Vec<_>>();
+        for lt in &financial_types {
+            assert!(
+                !lt.requirements.is_empty(),
+                "{} has empty requirements — must specify capital/regulatory requirements",
+                lt.license_type_id
+            );
+        }
+    }
+
+    #[test]
+    fn commercial_bank_has_capital_requirements() {
+        let types = sbp_license_types();
+        let bank = types
+            .iter()
+            .find(|t| t.license_type_id == "pk-sbp:commercial-bank")
+            .expect("commercial-bank type missing");
+        assert!(
+            bank.requirements.contains_key("minimum_paid_up_capital_pkr"),
+            "commercial bank must have minimum_paid_up_capital_pkr"
+        );
+        assert!(
+            bank.requirements.contains_key("capital_adequacy_ratio"),
+            "commercial bank must have CAR"
+        );
+    }
+
+    #[test]
+    fn emi_has_float_safeguarding() {
+        let types = sbp_license_types();
+        let emi = types
+            .iter()
+            .find(|t| t.license_type_id == "pk-sbp:emi")
+            .expect("emi type missing");
+        assert!(
+            emi.requirements.contains_key("float_safeguarding"),
+            "EMI must have float_safeguarding requirement"
+        );
+        assert!(
+            emi.requirements.contains_key("interoperability"),
+            "EMI must have Raast interoperability requirement"
+        );
+    }
+
+    #[test]
+    fn fbr_has_ntn_and_strn() {
+        let types = fbr_license_types();
+        let ids: Vec<&str> = types.iter().map(|t| t.license_type_id.as_str()).collect();
+        assert!(ids.contains(&"pk-fbr:ntn"), "missing NTN");
+        assert!(ids.contains(&"pk-fbr:strn"), "missing STRN");
     }
 
     #[test]

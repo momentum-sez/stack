@@ -9,17 +9,23 @@
 //! - `POST /v1/corridors/peers/receipts`  — Receive an inbound receipt from a peer zone
 //! - `POST /v1/corridors/peers/attestations` — Receive a watcher attestation from a peer
 
+use std::collections::hash_map::Entry;
+
 use axum::extract::{Path, State};
 use axum::extract::rejection::JsonRejection;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use uuid::Uuid;
 
+use mez_core::{CanonicalBytes, ContentDigest, CorridorId};
 use mez_corridor::{
-    CorridorAcceptance, CorridorPeer, CorridorProposal, InboundAttestation,
-    InboundReceipt, InboundReceiptResult, PeerStatus, validate_inbound_receipt, validate_proposal,
+    CorridorAcceptance, CorridorPeer, CorridorProposal, CorridorReceipt, InboundAttestation,
+    InboundReceipt, InboundReceiptResult, PeerStatus, ReceiptChain, compute_next_root,
+    validate_inbound_receipt, validate_proposal,
 };
+use mez_crypto::{Ed25519Signature, VerifyingKey};
 
 use crate::error::AppError;
 use crate::extractors::extract_json;
@@ -92,6 +98,42 @@ impl From<&CorridorPeer> for PeerSummary {
 }
 
 // ---------------------------------------------------------------------------
+// Cryptographic verification helpers
+// ---------------------------------------------------------------------------
+
+/// Verify an Ed25519 signature over canonical bytes.
+///
+/// Parses the verifying key and signature from hex, then verifies.
+/// Returns `AppError::Validation` on any failure.
+fn verify_ed25519(
+    canonical: &CanonicalBytes,
+    signature_hex: &str,
+    verifying_key_hex: &str,
+) -> Result<(), AppError> {
+    let vk = VerifyingKey::from_hex(verifying_key_hex)
+        .map_err(|e| AppError::Validation(format!("invalid verifying key: {e}")))?;
+    let sig = Ed25519Signature::from_hex(signature_hex)
+        .map_err(|e| AppError::Validation(format!("invalid signature: {e}")))?;
+    vk.verify(canonical, &sig)
+        .map_err(|e| AppError::Validation(format!("signature verification failed: {e}")))?;
+    Ok(())
+}
+
+/// Serialize a value to JSON, remove the `"signature"` key, and canonicalize.
+///
+/// Used for proposals and acceptances where the signed payload is the
+/// canonical JSON of the message with the signature field stripped.
+fn canonical_without_signature(obj: &impl Serialize) -> Result<CanonicalBytes, AppError> {
+    let mut value = serde_json::to_value(obj)
+        .map_err(|e| AppError::Internal(format!("serialization failed: {e}")))?;
+    if let Some(map) = value.as_object_mut() {
+        map.remove("signature");
+    }
+    CanonicalBytes::from_value(value)
+        .map_err(|e| AppError::Validation(format!("canonicalization failed: {e}")))
+}
+
+// ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
 
@@ -158,8 +200,9 @@ async fn propose_corridor(
     // Structural validation.
     validate_proposal(&proposal).map_err(|e| AppError::Validation(e.to_string()))?;
 
-    // TODO: Verify Ed25519 signature over canonical proposal payload.
-    // For Phase 1, we accept structurally valid proposals and mark as Proposing.
+    // Verify Ed25519 signature over canonical proposal payload (minus signature field).
+    let canonical = canonical_without_signature(&proposal)?;
+    verify_ed25519(&canonical, &proposal.signature, &proposal.proposer_verifying_key_hex)?;
 
     // Register the peer.
     let peer = CorridorPeer {
@@ -222,7 +265,9 @@ async fn accept_corridor(
         ));
     }
 
-    // TODO: Verify Ed25519 signature over canonical acceptance payload.
+    // Verify Ed25519 signature over canonical acceptance payload (minus signature field).
+    let canonical = canonical_without_signature(&acceptance)?;
+    verify_ed25519(&canonical, &acceptance.signature, &acceptance.responder_verifying_key_hex)?;
 
     let mut registry = state.peer_registry.write();
 
@@ -250,6 +295,15 @@ async fn accept_corridor(
         registry.register_peer(peer);
     }
 
+    // Store the genesis root for receipt chain bootstrapping.
+    {
+        let mut genesis_roots = state.corridor_genesis_roots.write();
+        genesis_roots.insert(
+            acceptance.corridor_id.clone(),
+            acceptance.genesis_root_hex.clone(),
+        );
+    }
+
     tracing::info!(
         corridor_id = %acceptance.corridor_id,
         responder = %acceptance.responder_zone_id,
@@ -265,8 +319,10 @@ async fn accept_corridor(
 
 /// Receive an inbound receipt from a peer zone.
 ///
-/// Validates the receipt structure, checks for replay, and records it.
-/// Full Ed25519 signature verification is a Phase 2 feature.
+/// Validates the receipt structure, checks for replay, verifies the Ed25519
+/// signature against the peer's verifying key, recomputes and verifies
+/// `next_root` (I-RECEIPT-COMMIT), and appends to the local receipt chain
+/// mirror (I-RECEIPT-LINK).
 #[utoipa::path(
     post,
     path = "/v1/corridors/peers/receipts",
@@ -303,6 +359,9 @@ async fn receive_receipt(
         )));
     }
 
+    // Clone the peer's verifying key before releasing the borrow on registry.
+    let peer_vk_hex = peer.verifying_key_hex.clone();
+
     // Replay protection.
     if registry.is_receipt_seen(&receipt.receipt_digest) {
         return Err(AppError::Conflict(format!(
@@ -311,24 +370,80 @@ async fn receive_receipt(
         )));
     }
 
-    // TODO: Verify Ed25519 signature against peer's verifying key.
-    // TODO: Verify receipt.next_root == SHA256(JCS(payload)).
-    // TODO: Append to local receipt chain mirror.
+    // Verify Ed25519 signature over the receipt digest.
+    let digest_canonical = CanonicalBytes::new(&receipt.receipt_digest)
+        .map_err(|e| AppError::Validation(format!("canonicalization failed: {e}")))?;
+    verify_ed25519(&digest_canonical, &receipt.signature, &peer_vk_hex)?;
 
-    // Mark receipt as seen.
+    // Deserialize the receipt JSON into a CorridorReceipt.
+    let corridor_receipt: CorridorReceipt =
+        serde_json::from_value(receipt.receipt_json.clone())
+            .map_err(|e| AppError::Validation(format!("invalid receipt_json: {e}")))?;
+
+    // Verify next_root: recompute and compare (I-RECEIPT-COMMIT).
+    let computed_next_root = compute_next_root(&corridor_receipt)
+        .map_err(|e| AppError::Validation(format!("next_root computation failed: {e}")))?;
+    if computed_next_root.to_hex() != corridor_receipt.next_root {
+        return Err(AppError::Validation(format!(
+            "next_root mismatch: computed {} but receipt declares {}",
+            computed_next_root.to_hex(),
+            corridor_receipt.next_root
+        )));
+    }
+
+    // Append to local receipt chain mirror.
+    let corridor_uuid = Uuid::parse_str(&receipt.corridor_id)
+        .map_err(|e| AppError::Validation(format!("invalid corridor_id UUID: {e}")))?;
+
+    let (chain_height, mmr_root) = {
+        let mut chains = state.receipt_chains.write();
+        let chain = match chains.entry(corridor_uuid) {
+            Entry::Occupied(e) => e.into_mut(),
+            Entry::Vacant(e) => {
+                // Bootstrap a new chain. Genesis root from the acceptance record,
+                // or from the first receipt's prev_root (which IS the genesis root
+                // for sequence 0).
+                let genesis_hex = {
+                    let genesis_roots = state.corridor_genesis_roots.read();
+                    genesis_roots.get(&receipt.corridor_id).cloned()
+                }
+                .unwrap_or_else(|| corridor_receipt.prev_root.clone());
+
+                let genesis_root = ContentDigest::from_hex(&genesis_hex).map_err(|e| {
+                    AppError::Validation(format!("invalid genesis root hex: {e}"))
+                })?;
+
+                e.insert(ReceiptChain::new(
+                    CorridorId::from_uuid(corridor_uuid),
+                    genesis_root,
+                ))
+            }
+        };
+
+        chain
+            .append(corridor_receipt)
+            .map_err(|e| AppError::Validation(format!("receipt chain append failed: {e}")))?;
+
+        let height = chain.height();
+        let mmr_root = chain.mmr_root().ok();
+        (height, mmr_root)
+    };
+
+    // Mark receipt as seen (still under the registry write lock).
     registry.mark_receipt_seen(receipt.receipt_digest.clone());
 
     tracing::info!(
         corridor_id = %receipt.corridor_id,
         origin = %receipt.origin_zone_id,
         sequence = receipt.sequence,
+        chain_height,
         "Inbound receipt accepted from peer"
     );
 
     Ok(Json(InboundReceiptResult {
         accepted: true,
-        chain_height: receipt.sequence + 1,
-        mmr_root: None, // TODO: Return actual MMR root after chain append
+        chain_height,
+        mmr_root,
         rejection_reason: None,
     }))
 }
@@ -369,16 +484,31 @@ async fn receive_attestation(
         ));
     }
 
-    // Verify the peer is known.
-    {
+    // Look up the watcher's verifying key from the peer registry.
+    let watcher_vk_hex = {
         let registry = state.peer_registry.read();
-        // Attestation can come from any known peer or watcher.
-        // For now, just log it. Full watcher registry verification is Phase 2.
-        let _ = registry.peer_count(); // Ensure registry is accessible
-    }
+        let watcher_peer = registry.get_peer(&attestation.watcher_id).ok_or_else(|| {
+            AppError::Validation(format!("unknown watcher: {}", attestation.watcher_id))
+        })?;
+        watcher_peer.verifying_key_hex.clone()
+    };
 
-    // TODO: Verify watcher signature against registered watcher key.
-    // TODO: Store attestation for fork resolution input.
+    // Verify watcher signature over canonical attestation message.
+    let canonical_msg = format!(
+        "{}:{}:{}",
+        attestation.corridor_id, attestation.attested_height, attestation.attested_root_hex,
+    );
+    let canonical = CanonicalBytes::new(&canonical_msg)
+        .map_err(|e| AppError::Validation(format!("canonicalization failed: {e}")))?;
+    verify_ed25519(&canonical, &attestation.signature, &watcher_vk_hex)?;
+
+    // Store attestation for fork resolution input.
+    {
+        let mut log = state.attestation_log.write();
+        log.entry(attestation.corridor_id.clone())
+            .or_default()
+            .push(attestation.clone());
+    }
 
     tracing::info!(
         corridor_id = %attestation.corridor_id,
@@ -404,11 +534,87 @@ mod tests {
     use super::*;
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
+    use mez_core::{sha256_digest, Timestamp};
+    use mez_corridor::DigestEntry;
+    use mez_crypto::SigningKey;
     use tower::ServiceExt;
 
     fn test_app() -> Router {
         router().with_state(AppState::new())
     }
+
+    /// Generate an Ed25519 keypair and return (signing_key, verifying_key_hex).
+    fn generate_keypair() -> (SigningKey, String) {
+        let sk = SigningKey::generate(&mut rand_core::OsRng);
+        let vk_hex = sk.verifying_key().to_hex();
+        (sk, vk_hex)
+    }
+
+    /// Sign a JSON payload: strip `"signature"` key, canonicalize, sign, set signature.
+    fn sign_json_payload(sk: &SigningKey, payload: &mut serde_json::Value) {
+        let mut for_signing = payload.clone();
+        if let Some(map) = for_signing.as_object_mut() {
+            map.remove("signature");
+        }
+        let canonical = CanonicalBytes::from_value(for_signing).unwrap();
+        let sig = sk.sign(&canonical);
+        payload["signature"] = serde_json::Value::String(sig.to_hex());
+    }
+
+    /// Build a valid CorridorReceipt with correct next_root for testing.
+    fn build_test_receipt(
+        corridor_uuid: Uuid,
+        genesis_root_hex: &str,
+    ) -> CorridorReceipt {
+        let mut receipt = CorridorReceipt {
+            receipt_type: "MEZCorridorStateReceipt".to_string(),
+            corridor_id: CorridorId::from_uuid(corridor_uuid),
+            sequence: 0,
+            timestamp: Timestamp::now(),
+            prev_root: genesis_root_hex.to_string(),
+            next_root: String::new(),
+            lawpack_digest_set: vec![DigestEntry::from(
+                "aa".repeat(32), // 64 hex chars
+            )],
+            ruleset_digest_set: vec![DigestEntry::from(
+                "bb".repeat(32),
+            )],
+            proof: None,
+            transition: None,
+            transition_type_registry_digest_sha256: None,
+            zk: None,
+            anchor: None,
+        };
+        // Seal the next_root to the correct computed value.
+        receipt.seal_next_root().unwrap();
+        receipt
+    }
+
+    /// Build a complete signed InboundReceipt from a CorridorReceipt.
+    fn build_signed_inbound_receipt(
+        corridor_receipt: &CorridorReceipt,
+        corridor_id_str: &str,
+        origin_zone_id: &str,
+        sk: &SigningKey,
+    ) -> serde_json::Value {
+        let receipt_json = serde_json::to_value(corridor_receipt).unwrap();
+        let receipt_digest =
+            sha256_digest(&CanonicalBytes::new(corridor_receipt).unwrap()).to_hex();
+        let sig_canonical = CanonicalBytes::new(&receipt_digest).unwrap();
+        let signature = sk.sign(&sig_canonical).to_hex();
+
+        serde_json::json!({
+            "corridor_id": corridor_id_str,
+            "origin_zone_id": origin_zone_id,
+            "sequence": corridor_receipt.sequence,
+            "receipt_json": receipt_json,
+            "receipt_digest": receipt_digest,
+            "signature": signature,
+            "produced_at": "2026-01-01T00:00:00Z"
+        })
+    }
+
+    // -- GET endpoints (unchanged behavior) -----------------------------------
 
     #[tokio::test]
     async fn list_peers_empty() {
@@ -438,20 +644,25 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }
 
+    // -- Proposal tests -------------------------------------------------------
+
     #[tokio::test]
-    async fn propose_corridor_valid() {
+    async fn propose_corridor_valid_signature() {
         let app = test_app();
-        let proposal = serde_json::json!({
+        let (sk, vk_hex) = generate_keypair();
+
+        let mut proposal = serde_json::json!({
             "corridor_id": "corridor-pk-ae-001",
             "proposer_jurisdiction_id": "pk",
             "proposer_zone_id": "org.momentum.mez.zone.pk-sifc",
-            "proposer_verifying_key_hex": "a".repeat(64),
+            "proposer_verifying_key_hex": vk_hex,
             "proposer_did": "did:mass:zone:test",
             "responder_jurisdiction_id": "ae",
             "proposed_at": "2026-01-01T00:00:00Z",
             "parameters": {},
-            "signature": "sig123"
+            "signature": ""
         });
+        sign_json_payload(&sk, &mut proposal);
 
         let req = Request::builder()
             .method("POST")
@@ -468,6 +679,37 @@ mod tests {
         let result: ProposalResponse = serde_json::from_slice(&body).unwrap();
         assert!(result.received);
         assert_eq!(result.status, "proposing");
+    }
+
+    #[tokio::test]
+    async fn propose_corridor_invalid_signature() {
+        let app = test_app();
+        let (sk, vk_hex) = generate_keypair();
+
+        let mut proposal = serde_json::json!({
+            "corridor_id": "corridor-pk-ae-001",
+            "proposer_jurisdiction_id": "pk",
+            "proposer_zone_id": "org.momentum.mez.zone.pk-sifc",
+            "proposer_verifying_key_hex": vk_hex,
+            "proposer_did": "did:mass:zone:test",
+            "responder_jurisdiction_id": "ae",
+            "proposed_at": "2026-01-01T00:00:00Z",
+            "parameters": {},
+            "signature": ""
+        });
+        sign_json_payload(&sk, &mut proposal);
+
+        // Tamper with the proposal after signing — signature becomes invalid.
+        proposal["proposer_zone_id"] = serde_json::Value::String("tampered-zone".to_string());
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors/peers/propose")
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_vec(&proposal).unwrap()))
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
     #[tokio::test]
@@ -495,20 +737,24 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
+    // -- Acceptance tests -----------------------------------------------------
+
     #[tokio::test]
     async fn accept_corridor_creates_active_peer() {
         let state = AppState::new();
         let app = router().with_state(state.clone());
+        let (sk, vk_hex) = generate_keypair();
 
-        let acceptance = serde_json::json!({
+        let mut acceptance = serde_json::json!({
             "corridor_id": "corridor-pk-ae-001",
             "responder_zone_id": "org.momentum.mez.zone.ae-difc",
-            "responder_verifying_key_hex": "b".repeat(64),
+            "responder_verifying_key_hex": vk_hex,
             "responder_did": "did:mass:zone:responder",
-            "genesis_root_hex": "c".repeat(64),
+            "genesis_root_hex": "cc".repeat(32),
             "accepted_at": "2026-01-01T00:00:00Z",
-            "signature": "sig456"
+            "signature": ""
         });
+        sign_json_payload(&sk, &mut acceptance);
 
         let req = Request::builder()
             .method("POST")
@@ -525,7 +771,16 @@ mod tests {
             .get_peer("org.momentum.mez.zone.ae-difc")
             .unwrap();
         assert_eq!(peer.status, PeerStatus::Active);
+
+        // Verify genesis root was stored.
+        let genesis_roots = state.corridor_genesis_roots.read();
+        assert_eq!(
+            genesis_roots.get("corridor-pk-ae-001"),
+            Some(&"cc".repeat(32))
+        );
     }
+
+    // -- Receipt tests --------------------------------------------------------
 
     #[tokio::test]
     async fn receive_receipt_from_unknown_peer_rejected() {
@@ -536,7 +791,7 @@ mod tests {
             "origin_zone_id": "unknown-zone",
             "sequence": 0,
             "receipt_json": {"test": true},
-            "receipt_digest": "a".repeat(64),
+            "receipt_digest": "aa".repeat(32),
             "signature": "sig",
             "produced_at": "2026-01-01T00:00:00Z"
         });
@@ -552,33 +807,174 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn receive_receipt_replay_rejected() {
+    async fn receive_receipt_forged_next_root_rejected() {
         let state = AppState::new();
+        let (sk, vk_hex) = generate_keypair();
+        let corridor_uuid = Uuid::new_v4();
+        let corridor_id = corridor_uuid.to_string();
+        let genesis_root_hex = "aa".repeat(32);
 
-        // Register an active peer first.
+        // Register active peer.
         {
             let mut registry = state.peer_registry.write();
             registry.register_peer(CorridorPeer {
                 zone_id: "zone-a".to_string(),
                 jurisdiction_id: "pk".to_string(),
                 endpoint_url: "https://zone-a.example.com".to_string(),
-                verifying_key_hex: "a".repeat(64),
+                verifying_key_hex: vk_hex.clone(),
                 did: "did:mass:zone:a".to_string(),
                 last_seen: None,
-                corridor_ids: vec!["corridor-1".to_string()],
+                corridor_ids: vec![corridor_id.clone()],
                 status: PeerStatus::Active,
             });
         }
 
-        let receipt = serde_json::json!({
-            "corridor_id": "corridor-1",
+        // Build receipt with a forged next_root.
+        let mut corridor_receipt = build_test_receipt(corridor_uuid, &genesis_root_hex);
+        corridor_receipt.next_root = "ff".repeat(32); // Forged!
+
+        let receipt_json = serde_json::to_value(&corridor_receipt).unwrap();
+        let receipt_digest =
+            sha256_digest(&CanonicalBytes::new(&corridor_receipt).unwrap()).to_hex();
+        let sig_canonical = CanonicalBytes::new(&receipt_digest).unwrap();
+        let signature = sk.sign(&sig_canonical).to_hex();
+
+        let inbound = serde_json::json!({
+            "corridor_id": corridor_id,
             "origin_zone_id": "zone-a",
             "sequence": 0,
-            "receipt_json": {"test": true},
-            "receipt_digest": "a".repeat(64),
-            "signature": "sig",
+            "receipt_json": receipt_json,
+            "receipt_digest": receipt_digest,
+            "signature": signature,
             "produced_at": "2026-01-01T00:00:00Z"
         });
+
+        let app = router().with_state(state);
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors/peers/receipts")
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_vec(&inbound).unwrap()))
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        let body = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body_str = String::from_utf8_lossy(&body);
+        assert!(
+            body_str.contains("next_root mismatch"),
+            "expected next_root mismatch error, got: {body_str}"
+        );
+    }
+
+    #[tokio::test]
+    async fn receive_receipt_appended_to_chain_returns_real_mmr_root() {
+        let state = AppState::new();
+        let (sk, vk_hex) = generate_keypair();
+        let corridor_uuid = Uuid::new_v4();
+        let corridor_id = corridor_uuid.to_string();
+        let genesis_root_hex = "aa".repeat(32);
+
+        // Store genesis root.
+        {
+            let mut genesis_roots = state.corridor_genesis_roots.write();
+            genesis_roots.insert(corridor_id.clone(), genesis_root_hex.clone());
+        }
+
+        // Register active peer.
+        {
+            let mut registry = state.peer_registry.write();
+            registry.register_peer(CorridorPeer {
+                zone_id: "zone-a".to_string(),
+                jurisdiction_id: "pk".to_string(),
+                endpoint_url: "https://zone-a.example.com".to_string(),
+                verifying_key_hex: vk_hex.clone(),
+                did: "did:mass:zone:a".to_string(),
+                last_seen: None,
+                corridor_ids: vec![corridor_id.clone()],
+                status: PeerStatus::Active,
+            });
+        }
+
+        // Build a valid receipt.
+        let corridor_receipt = build_test_receipt(corridor_uuid, &genesis_root_hex);
+        let inbound = build_signed_inbound_receipt(
+            &corridor_receipt,
+            &corridor_id,
+            "zone-a",
+            &sk,
+        );
+
+        let app = router().with_state(state.clone());
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors/peers/receipts")
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_vec(&inbound).unwrap()))
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let result: InboundReceiptResult = serde_json::from_slice(&body).unwrap();
+        assert!(result.accepted);
+        assert_eq!(result.chain_height, 1);
+        assert!(
+            result.mmr_root.is_some(),
+            "expected a real MMR root, got None"
+        );
+        assert!(
+            result.mmr_root.as_ref().unwrap().len() == 64,
+            "MMR root should be 64-char hex"
+        );
+
+        // Verify the receipt chain was actually created in state.
+        let chains = state.receipt_chains.read();
+        let chain = chains.get(&corridor_uuid).expect("chain should exist");
+        assert_eq!(chain.height(), 1);
+    }
+
+    #[tokio::test]
+    async fn receive_receipt_replay_rejected() {
+        let state = AppState::new();
+        let (sk, vk_hex) = generate_keypair();
+        let corridor_uuid = Uuid::new_v4();
+        let corridor_id = corridor_uuid.to_string();
+        let genesis_root_hex = "aa".repeat(32);
+
+        // Store genesis root.
+        {
+            let mut genesis_roots = state.corridor_genesis_roots.write();
+            genesis_roots.insert(corridor_id.clone(), genesis_root_hex.clone());
+        }
+
+        // Register active peer.
+        {
+            let mut registry = state.peer_registry.write();
+            registry.register_peer(CorridorPeer {
+                zone_id: "zone-a".to_string(),
+                jurisdiction_id: "pk".to_string(),
+                endpoint_url: "https://zone-a.example.com".to_string(),
+                verifying_key_hex: vk_hex.clone(),
+                did: "did:mass:zone:a".to_string(),
+                last_seen: None,
+                corridor_ids: vec![corridor_id.clone()],
+                status: PeerStatus::Active,
+            });
+        }
+
+        // Build a valid signed receipt.
+        let corridor_receipt = build_test_receipt(corridor_uuid, &genesis_root_hex);
+        let inbound = build_signed_inbound_receipt(
+            &corridor_receipt,
+            &corridor_id,
+            "zone-a",
+            &sk,
+        );
 
         // First request — accepted.
         let app = router().with_state(state.clone());
@@ -586,7 +982,7 @@ mod tests {
             .method("POST")
             .uri("/v1/corridors/peers/receipts")
             .header("content-type", "application/json")
-            .body(Body::from(serde_json::to_vec(&receipt).unwrap()))
+            .body(Body::from(serde_json::to_vec(&inbound).unwrap()))
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
@@ -597,22 +993,81 @@ mod tests {
             .method("POST")
             .uri("/v1/corridors/peers/receipts")
             .header("content-type", "application/json")
-            .body(Body::from(serde_json::to_vec(&receipt).unwrap()))
+            .body(Body::from(serde_json::to_vec(&inbound).unwrap()))
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::CONFLICT);
     }
 
+    // -- Attestation tests ----------------------------------------------------
+
     #[tokio::test]
-    async fn receive_attestation_valid() {
+    async fn receive_attestation_valid_signature_and_stored() {
+        let state = AppState::new();
+        let (sk, vk_hex) = generate_keypair();
+
+        // Register the watcher as a known peer.
+        {
+            let mut registry = state.peer_registry.write();
+            registry.register_peer(CorridorPeer {
+                zone_id: "watcher-001".to_string(),
+                jurisdiction_id: "pk".to_string(),
+                endpoint_url: "https://watcher.example.com".to_string(),
+                verifying_key_hex: vk_hex.clone(),
+                did: "did:mass:watcher:001".to_string(),
+                last_seen: None,
+                corridor_ids: vec!["corridor-1".to_string()],
+                status: PeerStatus::Active,
+            });
+        }
+
+        let corridor_id = "corridor-1";
+        let attested_height: u64 = 42;
+        let attested_root_hex = "dd".repeat(32);
+
+        // Sign the canonical attestation message.
+        let canonical_msg =
+            format!("{corridor_id}:{attested_height}:{attested_root_hex}");
+        let canonical = CanonicalBytes::new(&canonical_msg).unwrap();
+        let signature = sk.sign(&canonical).to_hex();
+
+        let attestation = serde_json::json!({
+            "corridor_id": corridor_id,
+            "watcher_id": "watcher-001",
+            "attested_height": attested_height,
+            "attested_root_hex": attested_root_hex,
+            "signature": signature,
+            "attested_at": "2026-01-01T00:00:00Z"
+        });
+
+        let app = router().with_state(state.clone());
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors/peers/attestations")
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_vec(&attestation).unwrap()))
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        // Verify attestation was stored.
+        let log = state.attestation_log.read();
+        let entries = log.get("corridor-1").expect("attestations should be stored");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].watcher_id, "watcher-001");
+        assert_eq!(entries[0].attested_height, 42);
+    }
+
+    #[tokio::test]
+    async fn receive_attestation_unknown_watcher_rejected() {
         let app = test_app();
 
         let attestation = serde_json::json!({
             "corridor_id": "corridor-1",
-            "watcher_id": "watcher-001",
+            "watcher_id": "unknown-watcher",
             "attested_height": 42,
-            "attested_root_hex": "d".repeat(64),
-            "signature": "sig789",
+            "attested_root_hex": "dd".repeat(32),
+            "signature": "aa".repeat(64),
             "attested_at": "2026-01-01T00:00:00Z"
         });
 
@@ -623,6 +1078,52 @@ mod tests {
             .body(Body::from(serde_json::to_vec(&attestation).unwrap()))
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
+    async fn receive_attestation_invalid_signature_rejected() {
+        let state = AppState::new();
+        let (_sk, vk_hex) = generate_keypair();
+
+        // Register the watcher.
+        {
+            let mut registry = state.peer_registry.write();
+            registry.register_peer(CorridorPeer {
+                zone_id: "watcher-001".to_string(),
+                jurisdiction_id: "pk".to_string(),
+                endpoint_url: "https://watcher.example.com".to_string(),
+                verifying_key_hex: vk_hex,
+                did: "did:mass:watcher:001".to_string(),
+                last_seen: None,
+                corridor_ids: vec!["corridor-1".to_string()],
+                status: PeerStatus::Active,
+            });
+        }
+
+        // Use a different key to sign — signature won't match the registered key.
+        let (wrong_sk, _) = generate_keypair();
+        let canonical_msg = "corridor-1:42:".to_string() + &"dd".repeat(32);
+        let canonical = CanonicalBytes::new(&canonical_msg).unwrap();
+        let bad_signature = wrong_sk.sign(&canonical).to_hex();
+
+        let attestation = serde_json::json!({
+            "corridor_id": "corridor-1",
+            "watcher_id": "watcher-001",
+            "attested_height": 42,
+            "attested_root_hex": "dd".repeat(32),
+            "signature": bad_signature,
+            "attested_at": "2026-01-01T00:00:00Z"
+        });
+
+        let app = router().with_state(state);
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/corridors/peers/attestations")
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_vec(&attestation).unwrap()))
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 }

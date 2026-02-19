@@ -129,6 +129,49 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /v1/compliance/{entity_id}:
+    get:
+      summary: Evaluate compliance for an entity across all 20 domains
+      operationId: getCompliance
+      description: >
+        Builds a 20-domain compliance tensor for the specified entity and
+        jurisdiction, returning per-domain state, aggregate status, and
+        tensor commitment. Requires Regulator or ZoneAdmin role.
+      parameters:
+        - name: entity_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Entity identifier to evaluate
+        - name: jurisdiction
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            Jurisdiction to evaluate against. Defaults to the zone's
+            configured jurisdiction, or "GLOBAL" if no zone is configured.
+      responses:
+        '200':
+          description: Compliance evaluation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Invalid entity_id or jurisdiction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /v1/audit-log:
     get:
       summary: Retrieve regulator audit log entries
@@ -352,6 +395,57 @@ components:
         total_count:
           type: integer
           minimum: 0
+      additionalProperties: false
+
+    ComplianceResponse:
+      type: object
+      required:
+        - entity_id
+        - jurisdiction_id
+        - overall_status
+        - domain_results
+        - domain_count
+        - passing_domains
+        - blocking_domains
+        - evaluated_at
+      properties:
+        entity_id:
+          type: string
+          description: Entity identifier that was evaluated
+        jurisdiction_id:
+          type: string
+          description: Jurisdiction evaluated against
+        overall_status:
+          type: string
+          description: Aggregate compliance status across all 20 domains
+        domain_results:
+          type: object
+          description: Per-domain compliance state
+          additionalProperties:
+            type: string
+        domain_count:
+          type: integer
+          minimum: 20
+          maximum: 20
+          description: Total number of domains evaluated
+        passing_domains:
+          type: array
+          items:
+            type: string
+          description: Domains in a passing state (compliant, exempt, not_applicable)
+        blocking_domains:
+          type: array
+          items:
+            type: string
+          description: Domains that are blocking (non_compliant or pending)
+        tensor_commitment:
+          type: string
+          description: SHA-256 tensor commitment digest (hex, 64 characters)
+          pattern: "^[0-9a-f]{64}$"
+        evaluated_at:
+          type: string
+          format: date-time
+          description: When the evaluation was performed
       additionalProperties: false
 
     PaginatedAuditLog:

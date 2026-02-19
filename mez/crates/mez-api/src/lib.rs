@@ -100,6 +100,7 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::smart_assets::router())
         .merge(routes::credentials::router())
         .merge(routes::regulator::router())
+        .merge(routes::compliance::router())
         .merge(routes::agentic::router())
         .merge(routes::peers::router())
         .merge(openapi::router());

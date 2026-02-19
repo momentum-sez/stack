@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use mez_agentic::{PolicyEngine, TaxPipeline};
-use mez_corridor::ReceiptChain;
+use mez_corridor::{PeerRegistry, ReceiptChain};
 use mez_crypto::SigningKey;
 use mez_state::{DynCorridorState, TransitionRecord};
 use parking_lot::{Mutex, RwLock};
@@ -512,6 +512,12 @@ pub struct AppState {
     /// is used instead. Keyed by corridor UUID — each corridor has exactly one chain.
     pub receipt_chains: Arc<RwLock<HashMap<Uuid, ReceiptChain>>>,
 
+    /// Inter-zone corridor peer registry.
+    ///
+    /// Tracks known peer zones, their status, and receipt deduplication
+    /// for replay protection. Used by the peer exchange API routes.
+    pub peer_registry: Arc<RwLock<PeerRegistry>>,
+
     // -- Database persistence (optional) --
     /// PostgreSQL connection pool for durable state persistence.
     /// When `Some`, corridor, smart asset, attestation, and audit data is
@@ -603,6 +609,7 @@ impl AppState {
             #[cfg(not(feature = "jurisdiction-pk"))]
             tax_pipeline: Arc::new(Mutex::new(TaxPipeline::default())),
             receipt_chains: Arc::new(RwLock::new(HashMap::new())),
+            peer_registry: Arc::new(RwLock::new(PeerRegistry::new())),
             db_pool,
             mass_client,
             zone_signing_key: Arc::new(zone_signing_key),

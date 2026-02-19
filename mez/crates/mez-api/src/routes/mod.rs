@@ -29,6 +29,7 @@ pub mod credentials;
 pub mod govos;
 pub mod identity;
 pub mod mass_proxy;
+pub mod peers;
 pub mod regulator;
 pub mod settlement;
 pub mod smart_assets;

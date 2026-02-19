@@ -1,0 +1,114 @@
+# Pakistan SIFC Zone Manifest
+#
+# Zone configuration for a Pakistan Special Investment Facilitation Council
+# deployment. References real lawpack, regpack, and licensepack content
+# under modules/legal/jurisdictions/pk/ and mez-pack crate.
+#
+# Lock via:
+#   mez zone lock --zone jurisdictions/pk-sifc/zone.yaml --check
+#
+# Deploy via:
+#   ./deploy/scripts/deploy-zone.sh sovereign-govos org.momentum.mez.zone.pk-sifc pk
+
+zone_id: org.momentum.mez.zone.pk-sifc
+jurisdiction_id: pk
+zone_name: Pakistan SIFC Economic Zone
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+# Jurisdiction stack — Pakistan federal layer.
+# For sub-national zones (e.g., pk-kp-rsez), add the sub-jurisdiction:
+#   jurisdiction_stack: [pk-kp-rsez, pk]
+jurisdiction_stack:
+  - pk
+
+# Lawpack domains — maps to modules/legal/jurisdictions/pk/<domain>/
+# Each domain must have a module.yaml + sources.yaml + src/akn/main.xml
+lawpack_domains:
+  - civil
+  - financial
+  - tax
+  - aml
+
+# Licensepack domains — evaluated by the compliance tensor's LICENSING domain
+licensepack_domains:
+  - financial
+  - corporate
+
+licensepack_refresh_policy:
+  default:
+    refresh_frequency: daily
+    max_staleness_hours: 24
+  financial:
+    refresh_frequency: hourly
+    max_staleness_hours: 4
+
+# Regpack references — content-addressed regulatory state snapshots.
+# These are resolved from CAS at bootstrap. The digest must match
+# a regpack artifact under dist/artifacts/regpack/.
+#
+# In production, run: mez regpack build --jurisdiction pk --domain financial
+# to produce the CAS artifact and its digest.
+regpacks:
+  - jurisdiction_id: pk
+    domain: financial
+    # Digest is computed by regpack::pakistan::build_pakistan_regpack()
+    # and must be updated when regpack content changes.
+    regpack_digest_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+    as_of_date: "2026-01-15"
+  - jurisdiction_id: pk
+    domain: sanctions
+    regpack_digest_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+    as_of_date: "2026-01-15"
+
+# Compliance domains enforced by this zone.
+# These map to ComplianceDomain enum variants in mez-core.
+# All 20 base domains are enforced; extended domains require real pack content.
+domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+  - consumer_protection
+  - environmental
+
+# Corridors — inter-zone connections.
+# SWIFT ISO 20022 corridor for cross-border payments.
+# Additional corridors added when inter-zone protocol is established.
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+# Corridor peers — zones this zone can exchange receipts with.
+# Populated when inter-zone corridor protocol is established.
+corridor_peers: []
+
+trust_anchors: []
+
+key_rotation_policy:
+  default:
+    rotation_days: 90
+    grace_days: 14
+
+# National system adapter configuration (Pakistan-specific).
+# These are wired at runtime via environment variables.
+national_adapters:
+  fbr_iris:
+    enabled: false
+    base_url: "${FBR_IRIS_URL:-}"
+  sbp_raast:
+    enabled: false
+    base_url: "${SBP_RAAST_URL:-}"
+  nadra:
+    enabled: false
+    base_url: "${NADRA_API_URL:-}"
+  secp:
+    enabled: false
+    base_url: "${SECP_API_URL:-}"
+
+lockfile_path: stack.lock

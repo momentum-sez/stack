@@ -43,24 +43,36 @@ services:
       MEZ_ZONE_ID: ${MEZ_ZONE_ID:-org.momentum.mez.zone.local}
       MEZ_JURISDICTION: ${MEZ_JURISDICTION:-ex}
       MEZ_PROFILE: ${MEZ_PROFILE:-digital-financial-center}
+      # Zone manifest — set to load jurisdiction-specific configuration
+      ZONE_CONFIG: ${ZONE_CONFIG:-}
+      # Zone signing key — 32-byte hex from Ed25519 JWK private key
+      ZONE_SIGNING_KEY_HEX: ${ZONE_SIGNING_KEY_HEX:-}
       # Server
       MEZ_HOST: "0.0.0.0"
       MEZ_PORT: "8080"
       MEZ_LOG_LEVEL: ${MEZ_LOG_LEVEL:-info}
+      # Authentication
+      AUTH_TOKEN: ${AUTH_TOKEN:-}
       # Database (PostgreSQL via SQLx)
       DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/mez"
       # Corridor configuration
-      MEZ_CORRIDOR_ID: ${MEZ_CORRIDOR_ID:-org.momentum.mez.corridor.local}
+      MEZ_CORRIDOR_ID: ${MEZ_CORRIDOR_ID:-org.momentum.mez.corridor.swift.iso20022-cross-border}
       # Watcher configuration
       MEZ_WATCHER_ID: ${MEZ_WATCHER_ID:-watcher-local-001}
       MEZ_BOND_AMOUNT: ${MEZ_BOND_AMOUNT:-100000}
-      # JWT signing (mount key file or set via env)
-      MEZ_JWT_SECRET_FILE: /app/config/jwt-secret
+      # Mass API configuration
+      MASS_API_TOKEN: ${MASS_API_TOKEN:-}
+      MASS_ORG_INFO_URL: ${MASS_ORG_INFO_URL:-https://organization-info.api.mass.inc}
+      MASS_TREASURY_INFO_URL: ${MASS_TREASURY_INFO_URL:-https://treasury-info.api.mass.inc}
+      MASS_CONSENT_INFO_URL: ${MASS_CONSENT_INFO_URL:-https://consent.api.mass.inc}
+      MASS_IDENTITY_INFO_URL: ${MASS_IDENTITY_INFO_URL:-}
+      MASS_TIMEOUT_SECS: ${MASS_TIMEOUT_SECS:-30}
       # Metrics
       MEZ_METRICS_ENABLED: "true"
     volumes:
       - api-data:/app/data
       - api-config:/app/config
+      - ./config:/app/config:ro
     depends_on:
       postgres:
         condition: service_healthy

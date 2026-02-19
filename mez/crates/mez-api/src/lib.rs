@@ -101,6 +101,7 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::credentials::router())
         .merge(routes::regulator::router())
         .merge(routes::agentic::router())
+        .merge(routes::peers::router())
         .merge(openapi::router());
 
     // GovOS Console — M-009: Pakistan sovereign deployment dashboards

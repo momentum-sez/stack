@@ -151,14 +151,14 @@ pub fn verify_inclusion_proof(proof: &MmrInclusionProof, root: &str) -> bool;`
     // --- 3.7 Zero-Knowledge Proof Architecture ---
     h2("3.7 Zero-Knowledge Proof Architecture"),
 
-    p("The mez-zkp crate defines a sealed ProofSystem trait with pluggable backends. The architecture supports multiple proof systems, selected per use case. Currently, two backends are implemented (Groth16, Plonk) alongside a deterministic mock backend for testing. The mock backend is guarded by a production policy module that rejects mock proofs when the deployment is configured for production."),
+    p("The mez-zkp crate defines a sealed ProofSystem trait with pluggable backends. The architecture supports multiple proof systems, selected per use case. Currently, the mock backend is the default. Groth16 and Plonk backends are available behind feature flags but have no activated circuits in Phase 1. The mock backend is guarded by a production policy module that rejects mock proofs when the deployment is configured for production."),
 
     table(
       ["Backend", "Status", "Use Case", "Trust Setup"],
       [
         ["Mock (SHA-256 deterministic)", "Testing only", "Development, CI, property testing", "None (not cryptographic)"],
-        ["Groth16", "Implemented", "On-chain verification, compact proofs", "Trusted (per-circuit)"],
-        ["Plonk", "Implemented", "General-purpose ZK proofs", "Universal (updateable)"],
+        ["Groth16", "Feature-gated", "On-chain verification, compact proofs", "Trusted (per-circuit)"],
+        ["Plonk", "Feature-gated", "General-purpose ZK proofs", "Universal (updateable)"],
       ],
       [2800, 1800, 3000, 1760]
     ),

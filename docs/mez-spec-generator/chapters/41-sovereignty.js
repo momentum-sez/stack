@@ -8,7 +8,7 @@ module.exports = function build_chapter41() {
   return [
     chapterHeading("Chapter 41: Sovereignty Handover"),
 
-    p("The GovOS deployment follows a 24-month sovereignty handover framework. At the end of month 24, full operational control transfers to Pakistani engineers and administrators."),
+    p("This chapter describes a reference handover framework. The GovOS deployment follows a 24-month sovereignty handover framework. At the end of month 24, full operational control transfers to Pakistani engineers and administrators."),
 
     table(
       ["Phase", "Timeline", "Milestones"],

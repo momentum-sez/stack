@@ -10,7 +10,7 @@ module.exports = function build_chapter50() {
 
     // --- 50.1 Service Architecture ---
     h2("50.1 Service Architecture"),
-    p("Docker Compose orchestrates four services with dependency ordering and health checks. The architecture consolidates all five primitive API services into a single mez-api binary (Axum), with PostgreSQL for persistence and Prometheus/Grafana for observability. This replaces the prior nine-service Python layout where individual services could not start because their CLI subcommands did not exist."),
+    p("Docker Compose orchestrates four services with dependency ordering and health checks. The architecture consolidates all five primitive API services into a single mez-api binary (Axum), with PostgreSQL for persistence and Prometheus/Grafana for observability. The Stack deploys as a single Rust binary (mez-api) alongside supporting infrastructure services."),
     table(
       ["Service", "Image", "Port", "Function"],
       [

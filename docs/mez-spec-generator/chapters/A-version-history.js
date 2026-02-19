@@ -56,6 +56,6 @@ module.exports = function build_appendixA() {
     p_runs([bold("ARBITRATION (0.4.41): "), "Dispute resolution framework with institution registries, evidence packaging, and VC-based ruling enforcement."]),
     p_runs([bold("AGENTIC (0.4.42): "), "Autonomous operation layer with trigger taxonomy (20 types x 5 domains), policy evaluation, and ZK L1 anchoring for provable compliance."]),
     p_runs([bold("PHOENIX (0.4.43): "), "Second-generation compliance infrastructure: Tensor V2 with 20 compliance domains, Manifold for cross-corridor path optimization, SAVM for deterministic asset execution, Watcher Economy with bonding/slashing, and Migration/Bridge protocols."]),
-    p_runs([bold("GENESIS (0.4.44): "), "Production-ready milestone. Complete Mass/EZ separation, pure Rust codebase, licensepack system for live registry integration, composition engine for multi-pack evaluation, and GovOS architecture for sovereign deployment."]),
+    p_runs([bold("GENESIS (0.4.44): "), "Functionally deployable milestone. Complete Mass/EZ separation, pure Rust codebase, licensepack system for live registry integration, composition engine for multi-pack evaluation, and GovOS architecture for sovereign deployment."]),
   ];
 };

@@ -10,11 +10,11 @@ module.exports = function build_chapter34() {
 
     // --- 34.1 Module Overview ---
     h2("34.1 Module Overview"),
-    p("The Tax and Revenue module family implements jurisdiction-specific tax computation, withholding, collection, and reporting. This module family addresses defect P1-009 (tax collection pipeline) by providing a complete framework for tax event generation, computation, and settlement through the Mass treasury API."),
+    p("The Tax and Revenue module family implements jurisdiction-specific tax computation, withholding, collection, and reporting. This module family provides a complete framework for tax event generation, computation, and settlement through the Mass treasury API."),
 
     // --- 34.2 Tax Framework Module ---
     h2("34.2 Tax Framework Module"),
-    p("The Tax Framework Module defines jurisdiction-specific tax rules, rates, thresholds, and exemptions. It consumes lawpack data (e.g., Income Tax Ordinance 2001, Sales Tax Act 1990) and regpack data (FBR SROs, SBP circulars) to maintain current tax parameters. Tax computation is triggered automatically via mez-agentic on every qualifying transaction."),
+    p("The Tax Framework Module defines jurisdiction-specific tax rules, rates, thresholds, and exemptions. It consumes lawpack data (e.g., Income Tax Ordinance 2001, Sales Tax Act 1990) and regpack data (FBR SROs, SBP circulars) to maintain current tax parameters. Tax computation is triggered automatically via the agentic framework (§45) on every qualifying transaction."),
     p_runs([bold("Pakistan Tax Collection Pipeline."), " Every transaction through a Pakistan EZ generates tax events: withholding tax (WHT) on payments per Section 153, sales tax on services per provincial laws, capital gains tax on securities transfers per Section 37A, and customs duty exemptions per EZ Act 2012. The pipeline computes applicable taxes, creates withholding entries via treasury-info.api.mass.inc, and generates tax certificates as Verifiable Credentials."]),
     ...codeBlock(
       "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +

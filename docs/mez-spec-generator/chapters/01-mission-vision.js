@@ -43,7 +43,7 @@ module.exports = function build_chapter01() {
       ["Primitive", "Live API Surface", "Function"],
       [
         ["Entities", "organization-info.api.mass.inc", "Formation, lifecycle, dissolution. Each entity is a legal actor, a Smart Asset."],
-        ["Ownership", "investment-info (Heroku seed)", "Cap tables, token tables, beneficial ownership, equity instruments, fundraising rounds."],
+        ["Ownership", "investment-info.api.mass.inc", "Cap tables, token tables, beneficial ownership, equity instruments, fundraising rounds."],
         ["Fiscal", "treasury-info.api.mass.inc", "Accounts, wallets, on/off-ramps, payments, treasury, withholding tax at source."],
         ["Identity", "Distributed across org + consent", "Passportable KYC/KYB. Onboard once, reuse everywhere."],
         ["Consent", "consent.api.mass.inc", "Multi-party auth, audit trails, board/shareholder/controller sign-off workflows."],
@@ -51,7 +51,7 @@ module.exports = function build_chapter01() {
       [1800, 3200, 4360]
     ),
 
-    p("Supporting infrastructure includes the Templating Engine (document generation via Heroku) and Organs (composable service modules that extend Mass primitives with domain-specific logic)."),
+    p("Supporting infrastructure includes the Templating Engine (document generation) and Organs (composable service modules that extend Mass primitives with domain-specific logic)."),
 
     p_runs([
       bold("System B: MEZ Stack \u2014 The Jurisdictional Context. "),
@@ -95,7 +95,7 @@ module.exports = function build_chapter01() {
     ]),
     p_runs([
       bold("Privacy by Default. "),
-      "Entity data, financial records, and identity information are never exposed beyond the minimum required for regulatory compliance. BBS+ selective disclosure enables credential verification without revealing underlying data. Zero-knowledge proofs enable compliance demonstration without exposing business logic or transaction details."
+      "Entity data, financial records, and identity information are never exposed beyond the minimum required for regulatory compliance. BBS+ selective disclosure (Phase 4, §3.6) will enable credential verification without revealing underlying data. Zero-knowledge proofs (Phase 4, §3.7) will enable compliance demonstration without exposing business logic or transaction details."
     ]),
     p_runs([
       bold("Interoperability First. "),
@@ -119,7 +119,7 @@ module.exports = function build_chapter01() {
     ]),
     p_runs([
       bold("Compile-Time Safety. "),
-      "The codebase is pure Rust (2021 edition) with zero unsafe blocks. The type system enforces domain invariants: a JurisdictionCode cannot be used where a CurrencyCode is expected, a ComplianceScore cannot be constructed without evaluation, a Corridor cannot transition to an invalid state. Bugs that survive the compiler are bugs in the specification, not in the implementation."
+      "The codebase is pure Rust (2021 edition) with zero unsafe blocks. The type system enforces domain invariants: a JurisdictionCode cannot be used where a CurrencyCode is expected, a ComplianceScore cannot be constructed without evaluation, a Corridor cannot transition to an invalid state. The type system catches entire classes of defects at compile time rather than at runtime."
     ]),
   ];
 };

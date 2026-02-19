@@ -68,7 +68,7 @@ module.exports = function build_cover() {
     // Gold accent label — small, champagne, with tracking
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [
       new TextRun({
-        text: "CONFIDENTIAL",
+        text: "BUSL-1.1",
         font: C.BODY_FONT, size: 20, bold: true, color: C.ACCENT,
         characterSpacing: 60,
       })

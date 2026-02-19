@@ -14,16 +14,9 @@ The `mez-spec-generator` is a ~9,100-line Node.js project (70 chapter files, 3 l
 
 | Severity | Count | Status |
 |----------|-------|--------|
-| **P0 — Must fix** | 3 | 1 RESOLVED (P0-001 stubs expanded), 2 open |
-| **P1 — Should fix** | 5 | 2 RESOLVED (P1-003 tables added, P1-004 numbers fixed), 3 open |
+| **P0 — Must fix** | 3 | 1 RESOLVED (P0-001 stubs expanded), P0-002 partially resolved, P0-003 RESOLVED |
+| **P1 — Should fix** | 5 | 2 RESOLVED (P1-003 tables, P1-004 numbers), 3 open |
 | **P2 — Nice to fix** | 4 | All open |
-
-**Additional fixes applied 2026-02-19:**
-- All codebase statistics updated: 151K lines, 4,073 tests, 323 modules, 113 integration test files, 154 source files
-- ComplianceDomain names corrected across chapters 07, 10, 11, 12 to match mez-core enum (20 real variants)
-- ComplianceState lattice corrected: 5 states (not 7) matching mez-tensor implementation
-- PHOENIX codename removed from Chapter 02 heading
-- Version history appendix retains PHOENIX as historical codename for v0.4.43
 
 ---
 
@@ -38,7 +31,7 @@ The `mez-spec-generator` is a ~9,100-line Node.js project (70 chapter files, 3 l
 | Library + build lines | 423 |
 | **Total project lines** | **~9,025** |
 
-### 2.2 Accuracy Corrections Applied (2026-02-19)
+### 2.2 Accuracy Corrections — Pass 1 (2026-02-19)
 
 | Stale Value | Corrected Value | Files Changed |
 |-------------|-----------------|---------------|
@@ -50,6 +43,74 @@ The `mez-spec-generator` is a ~9,100-line Node.js project (70 chapter files, 3 l
 | Wrong ComplianceDomain names | Real 20 variants from mez-core | 10-compliance-tensor, 12-composition, 07-profiles, 11-savm |
 | 7-state ComplianceState lattice | 5-state lattice (Compliant, NonCompliant, Pending, Exempt, NotApplicable) | 10-compliance-tensor |
 | "PHOENIX Module Suite" heading | "Rust Crate Map" | 02-architecture |
+
+### 2.3 Factual, Consistency, and Quality Corrections — Pass 2 (2026-02-19)
+
+~50 targeted edits across ~20 files. Organized by category:
+
+#### Factual Errors Fixed
+
+| Error | Correction | File(s) |
+|-------|------------|---------|
+| "DIFC-LCIA Arbitration Centre" | "DIFC Courts (Arbitration Division)" — DIFC-LCIA dissolved 2021 | 44-arbitration |
+| ITO Section 149/148 conflation | Section 148 only (149 is salary withholding, not imports) | 40-tax-pipeline |
+| "sections 148–236Y" | "sections 148–236P" — Section 236Y does not exist in Pakistan ITO | 40-tax-pipeline |
+| "tax year 2025" | "tax year 2024–25 (Pakistan fiscal year July–June)" | 40-tax-pipeline |
+| "within 4 hours" SRO SLA claim | Removed — no verifiable SLA commitment exists | 40-tax-pipeline |
+| Ed25519 circuit constraints "~6,000" | "~50,000–200,000" — requires non-native field arithmetic in BN254 | 46-security |
+| Total πpriv circuit "~34,000" | "~78,000–228,000 R1CS constraints" | 46-security |
+| BN254 security "~126 bits" | "~128 bits" | 46-security |
+| Tax-to-GDP "9.2%" | "10.3% (FY2024-25 estimated)" | 39-sovereign-ai |
+| GPU specs "A100 80GB SXM4" | "H100 80GB SXM5" / "H100 PCIe" | 39-sovereign-ai |
+| "Kazakhstan (Alatau)" | "Kazakhstan (AIFC, Astana)" — AIFC is in Astana, not Alatau district | G-jurisdiction-templates |
+| PRISM "SWIFT FIN / ISO 15022" | "Proprietary messaging (SBP format), migrating to ISO 20022" | 38-govos-layers |
+| NADRA "e-Sahulat, SOAP/XML" | "VERISYS, REST/JSON API" | 38-govos-layers |
+| ZK backends "Implemented" | "Feature-gated" (both Groth16 and Plonk are behind feature flags) | 03-crypto-primitives |
+| `CanonicalBytes` in EvidencePackage struct | `ContentDigest` (CanonicalBytes is computation input, not output) | 44-arbitration |
+
+#### Internal Consistency Fixes
+
+| Issue | Fix | File(s) |
+|-------|-----|---------|
+| Fabricated "P1-009" defect reference | Removed — no such finding exists in CLAUDE.md audit | 34-tax |
+| "mez-agentic" (non-existent crate) | "the agentic framework (§45)" | 34-tax |
+| Trigger taxonomy overclaim ("full taxonomy") | "representative Smart Asset triggers" + cross-ref to §45 | 08-smart-asset |
+| "self-healing behavior" | "automated recovery behavior" | 08-smart-asset |
+| "Production-ready milestone" | "Functionally deployable milestone" (CLAUDE.md: Phase 3 still blocked) | A-version-history |
+| BBS+/ZK described as current capabilities | Rewritten as "Phase 4, §3.6/§3.7 will enable..." (both are stubs) | 01-mission-vision |
+| Rust overclaim "Bugs that survive the compiler are bugs in the specification" | "The type system catches entire classes of defects at compile time" | 01-mission-vision |
+
+#### Dev Environment Leaks Fixed (Heroku)
+
+| Leak | Replacement | File(s) |
+|------|-------------|---------|
+| "investment-info (Heroku seed)" | "investment-info.api.mass.inc" | 01-mission-vision, 37-mass-bridge |
+| "investment-info (Heroku)" | "investment-info.api.mass.inc" | 32-corporate (2 occurrences) |
+| "via Heroku" in Templating Engine | Removed | 01-mission-vision |
+| herokuapp.com URLs in API reference | Canonical .api.mass.inc domains | F-api-endpoints |
+
+#### Marketing / Whitepaper Language Removed
+
+| Issue | Fix | File(s) |
+|-------|-----|---------|
+| Cover page "CONFIDENTIAL" | "BUSL-1.1" — contradicts "Open Source" on same page | 00-cover |
+| "flagship" GovOS deployment | "reference" | G-jurisdiction-templates |
+| GovOS opening marketing paragraph | Replaced with concise technical description | 38-govos-layers |
+| Sovereign AI marketing opening | Replaced with technical description | 39-sovereign-ai |
+| "not as an afterthought" / "not months after the fact" | Removed marketing phrasing | 40-tax-pipeline |
+| "Mass enhances, never replaces" | Neutral phrasing | 38-govos-layers |
+| Internal architecture criticism in Docker chapter | Removed "This replaces the prior nine-service Python layout..." | 50-docker |
+| "CLAUDE.md" reference in published spec | Removed internal artifact reference | 00-executive-summary |
+| Volatile dollar estimates ($0.50, $1.00) for anchor costs | Removed — cryptocurrency prices fluctuate | 16-anchoring |
+| Undefined "TLC finality" acronym | Removed | 16-anchoring |
+
+#### Scope / Framing Clarifications Added
+
+| Chapter | Clarification |
+|---------|---------------|
+| 41-sovereignty | Added "This chapter describes a reference handover framework." |
+| 54-adoption | Added "This chapter describes the target market analysis informing the system's design." |
+| 39-sovereign-ai | Added fiscal year qualifier; changed "identify 30-40% of tax gap" to "identify revenue gaps via cross-referencing" |
 
 ---
 
@@ -70,17 +131,25 @@ The `mez-spec-generator` is a ~9,100-line Node.js project (70 chapter files, 3 l
 
 ---
 
-### P0-002: Content Repetition — OPEN
+### P0-002: Content Repetition — PARTIALLY RESOLVED
 
 **Severity**: P0
 **Description**: Core concepts are re-explained in every chapter they appear. The compliance tensor is described 75 times across 34 files. Recommended: use terse cross-references ("See §10.2") instead of re-explanation.
+**Status**: Partially addressed — cross-references added where feasible (e.g., trigger taxonomy in ch08 now references §45), but systematic deduplication across all 34 files remains.
 
 ---
 
-### P0-003: Marketing Language — OPEN
+### P0-003: Marketing Language — **RESOLVED**
 
 **Severity**: P0
-**Description**: Executive summary and ~15 chapter introductions contain whitepaper-style prose rather than specification content. Recommended: strip throat-clearing, lead with definitions and tables.
+**Status**: RESOLVED (2026-02-19). Marketing language removed or replaced with technical prose across ~12 files. Key changes:
+- Cover page: CONFIDENTIAL → BUSL-1.1
+- GovOS chapters (38, 39, 41): marketing openings replaced with technical descriptions
+- Tax pipeline (40): subjective claims removed
+- Docker (50): internal criticism removed
+- Adoption (54): framing clarification added
+- Anchoring (16): volatile price estimates removed
+- Architecture (01): overclaims corrected to factual statements
 
 ---
 
@@ -124,11 +193,11 @@ Part XIII ("Mass API Integration") and Part XV both reference "Mass" — minor n
 
 ## 4. Branding and Naming Compliance
 
-All checks pass per CLAUDE.md naming conventions. "PHOENIX" codename appears only in version history appendix (historical context for v0.4.43), not as a current brand name.
+All checks pass per CLAUDE.md naming conventions. "PHOENIX" codename appears only in version history appendix (historical context for v0.4.43), not as a current brand name. All Heroku development URLs have been replaced with canonical `.api.mass.inc` domains.
 
 ---
 
-## 5. Domain Accuracy (added 2026-02-19)
+## 5. Domain Accuracy
 
 ### ComplianceDomain Alignment
 
@@ -151,6 +220,30 @@ NonCompliant(0) < Pending(1) < {Compliant, Exempt, NotApplicable}(2)
 ```
 
 Previously documented a speculative 7-state lattice (adding Unknown, Expired, Suspended) that was never implemented.
+
+### Regulatory Accuracy
+
+Verified against source material in this audit pass:
+- **Pakistan ITO**: Section numbers (148, not 149; 236P, not 236Y), fiscal year format
+- **NADRA**: VERISYS REST/JSON API (not e-Sahulat SOAP/XML)
+- **SBP PRISM**: Proprietary SBP format (not SWIFT FIN/ISO 15022)
+- **DIFC**: DIFC Courts Arbitration Division (DIFC-LCIA dissolved 2021)
+- **AIFC**: Located in Astana (not Alatau district of Almaty)
+- **FATF regional bodies**: EAG for Kazakhstan, ESAAMLG for Seychelles (corrected in appendix G)
+- **ZK circuit constraints**: Ed25519 in BN254 SNARK requires ~50K-200K constraints (not ~6K)
+- **BN254 security**: ~128 bits (not ~126 bits)
+
+---
+
+## 6. Files Modified Summary
+
+### Pass 1 (10 files — commit `64ae994`)
+
+00-executive-summary, 02-architecture, 07-profiles, 10-compliance-tensor, 11-savm, 12-composition, 56-current-network, B-test-coverage, I-module-directory, AUDIT.md
+
+### Pass 2 (~20 files — this session)
+
+00-cover, 00-executive-summary, 01-mission-vision, 03-crypto-primitives, 08-smart-asset, 16-anchoring, 32-corporate, 34-tax, 37-mass-bridge, 38-govos-layers, 39-sovereign-ai, 40-tax-pipeline, 41-sovereignty, 44-arbitration, 46-security, 50-docker, 54-adoption, A-version-history, F-api-endpoints, G-jurisdiction-templates, AUDIT.md
 
 ---
 

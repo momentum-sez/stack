@@ -8,12 +8,12 @@ module.exports = function build_chapter39() {
   return [
     chapterHeading("Chapter 39: Sovereign AI Spine"),
 
-    p("The Sovereign AI Spine is embedded at every GovOS layer. The foundation model runs on Pakistani data centers with zero data egress. The Spine is not an optional add-on; it is the intelligence layer that transforms the GovOS from a transactional system into an analytical governance platform."),
+    p("The Sovereign AI Spine provides intelligence capabilities embedded across GovOS layers. The foundation model runs on-premise within Pakistani data centers with zero data egress."),
 
     table(
       ["Capability", "Function", "Key Metrics"],
       [
-        ["Tax Intelligence", "Gap analysis, evasion detection, under-reporting identification, compliance scoring, revenue projection", "Target: identify 30-40% of current tax gap"],
+        ["Tax Intelligence", "Gap analysis, evasion detection, under-reporting identification, compliance scoring, revenue projection", "Design target: identify revenue gaps via cross-referencing"],
         ["Operational Intelligence", "Spend anomaly detection across 40+ ministries, predictive budgeting, vendor risk scoring", "Anomaly detection within 24h"],
         ["Regulatory Awareness", "Pre-action compliance verification, predictive legal risk, SRO impact modeling", "SRO propagation within 4h"],
         ["Forensic and Audit", "Cross-department pattern detection, procurement irregularity flagging, IMF PIMA alignment, transfer pricing analysis", "Cross-department correlation"],
@@ -23,7 +23,7 @@ module.exports = function build_chapter39() {
 
     h2("Revenue Recovery Estimates"),
 
-    p("Pakistan's tax-to-GDP ratio stands at approximately 9.2%, significantly below the regional average of 15-18% and the OECD average of 34%. The Federal Board of Revenue's annual collection target consistently falls short due to structural gaps in identification, assessment, and enforcement. The AI Spine targets the three primary revenue leakage categories:"),
+    p("Pakistan's tax-to-GDP ratio stands at approximately 10.3% (FY2024-25 estimated), below the regional average of 15-18% and the OECD average of 34%. The Federal Board of Revenue's annual collection target consistently falls short due to structural gaps in identification, assessment, and enforcement. The AI Spine targets the three primary revenue leakage categories:"),
 
     table(
       ["Leakage Category", "Estimated Annual Gap (PKR)", "AI Detection Method", "Recovery Target (Year 1)"],
@@ -39,7 +39,7 @@ module.exports = function build_chapter39() {
 
     p("The aggregate tax gap is estimated at PKR 1.5-3.0 trillion annually. Conservative recovery projections for Year 1 of AI Spine deployment target PKR 200-400 billion in additional identified revenue, scaling to PKR 500-800 billion by Year 3 as models improve with more training data and broader system integration coverage."),
 
-    p_runs([bold("Data Sovereignty."), " All AI inference runs on-premise within Pakistani data centers. The training cluster comprises 8x NVIDIA A100 80GB GPUs for model training and fine-tuning. The inference cluster comprises 4x NVIDIA A100 GPUs for production serving. No training data, inference requests, or model weights leave Pakistani jurisdiction. The foundation model is fine-tuned on Pakistani tax data, regulatory filings, corporate registrations, and trade data to produce a sovereign model that understands Pakistani law, Urdu language, and local business patterns."]),
+    p_runs([bold("Data Sovereignty."), " All AI inference runs on-premise within Pakistani data centers. The training cluster comprises 8x NVIDIA H100 80GB GPUs for model training and fine-tuning. The inference cluster comprises 4x NVIDIA H100 GPUs for production serving. No training data, inference requests, or model weights leave Pakistani jurisdiction. The foundation model is fine-tuned on Pakistani tax data, regulatory filings, corporate registrations, and trade data to produce a sovereign model that understands Pakistani law, Urdu language, and local business patterns."]),
 
     h2("On-Premise GPU Infrastructure"),
 
@@ -48,15 +48,15 @@ module.exports = function build_chapter39() {
     table(
       ["Cluster", "Hardware", "Configuration", "Purpose", "Throughput"],
       [
-        ["Training Cluster", "8x NVIDIA A100 80GB SXM4", "NVLink fully connected, 2x AMD EPYC 7763 (128 cores), 2TB DDR4 ECC, 8x 3.84TB NVMe SSD (RAID-10), 4x ConnectX-6 200Gbps InfiniBand", "Model fine-tuning on Pakistani tax data, regulatory corpus training, entity relationship graph construction, Urdu NLP model training", "~5 PFLOPS FP16; full fine-tuning cycle in 48-72h"],
-        ["Inference Cluster", "4x NVIDIA A100 40GB PCIe", "2x AMD EPYC 7543 (64 cores), 512GB DDR4 ECC, 4x 1.92TB NVMe SSD, 2x ConnectX-6 100Gbps Ethernet", "Production serving: tax gap analysis, anomaly detection, compliance verification, real-time forensic queries", "~12,000 inference requests/min at p95 latency <200ms"],
+        ["Training Cluster", "8x NVIDIA H100 80GB SXM5", "NVLink fully connected, 2x AMD EPYC 7763 (128 cores), 2TB DDR4 ECC, 8x 3.84TB NVMe SSD (RAID-10), 4x ConnectX-6 200Gbps InfiniBand", "Model fine-tuning on Pakistani tax data, regulatory corpus training, entity relationship graph construction, Urdu NLP model training", "~5 PFLOPS FP16; full fine-tuning cycle in 48-72h"],
+        ["Inference Cluster", "4x NVIDIA H100 PCIe", "2x AMD EPYC 7543 (64 cores), 512GB DDR4 ECC, 4x 1.92TB NVMe SSD, 2x ConnectX-6 100Gbps Ethernet", "Production serving: tax gap analysis, anomaly detection, compliance verification, real-time forensic queries", "~12,000 inference requests/min at p95 latency <200ms"],
         ["Storage Tier", "NetApp AFF A400 (or equivalent)", "200TB usable NVMe flash, WORM compliance mode for audit data, AES-256 encryption at rest, replication to DR site", "Training data lake (tax returns, entity records, trade data), model checkpoint storage, inference result archival", "Sequential read 15GB/s; random IOPS 500K"],
         ["Network Fabric", "Arista 7280R3 spine-leaf", "100Gbps leaf, 400Gbps spine, dedicated AI VLAN isolated from general traffic, hardware firewall at perimeter", "Cluster interconnect, zero-egress enforcement via hardware ACLs, monitoring and logging of all data movement", "Non-blocking fabric; east-west bandwidth 12.8Tbps"],
       ],
       [1400, 1800, 2400, 2000, 1760]
     ),
 
-    p_runs([bold("Tax Intelligence Pipeline."), " The AI Spine's primary revenue impact comes from tax intelligence. Pakistan's tax-to-GDP ratio is approximately 9.2%, compared to a regional average of 15-18%. The tax gap — the difference between taxes owed and taxes collected — is estimated at PKR 1.5-3.0 trillion annually. The AI Spine analyzes transaction patterns across Mass Fiscal, cross-references entity data from Mass Entities, and identifies under-reporting, unreported transactions, and evasion patterns. This analysis feeds into the GovOS Console as actionable intelligence for FBR officers."]),
+    p_runs([bold("Tax Intelligence Pipeline."), " The AI Spine's primary revenue impact comes from tax intelligence. Pakistan's tax-to-GDP ratio is approximately 10.3%, compared to a regional average of 15-18%. The tax gap — the difference between taxes owed and taxes collected — is estimated at PKR 1.5-3.0 trillion annually. The AI Spine analyzes transaction patterns across Mass Fiscal, cross-references entity data from Mass Entities, and identifies under-reporting, unreported transactions, and evasion patterns. This analysis feeds into the GovOS Console as actionable intelligence for FBR officers."]),
 
     h2("Tax Intelligence Pipeline Detail"),
 

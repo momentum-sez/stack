@@ -109,7 +109,7 @@ module.exports = function build_executive_summary() {
 
     p_runs([
       bold("Security auditors "),
-      "should prioritize Part II (Cryptographic Primitives) for the signing and digest infrastructure, Part XVI (Security Architecture, Production Hardening, ZK Circuits) for threat models and mitigations, Part X (Watcher Economy, Bond and Slashing, Quorum) for the attestation trust model, and Appendix D (Security Proofs). The unwrap elimination protocol documented in the project\u2019s operational anchor (CLAUDE.md) governs production code safety invariants."
+      "should prioritize Part II (Cryptographic Primitives) for the signing and digest infrastructure, Part XVI (Security Architecture, Production Hardening, ZK Circuits) for threat models and mitigations, Part X (Watcher Economy, Bond and Slashing, Quorum) for the attestation trust model, and Appendix D (Security Proofs). The unwrap elimination protocol documented in the project\u2019s operational anchor governs production code safety invariants."
     ]),
 
     p_runs([

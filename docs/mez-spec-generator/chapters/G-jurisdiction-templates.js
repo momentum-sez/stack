@@ -9,13 +9,13 @@ module.exports = function build_appendixG() {
         ["Pakistan", "ITO 2001, STA 1990, FEA, Customs Act, Companies Act", "FBR calendars, SROs, FATF AML", "SECP, BOI, PTA, PEMRA, DRAP, Provincial", "sovereign-govos"],
         ["ADGM", "ADGM Companies Regulations, Financial Services Regulations", "FSRA rulebook, FATF", "Financial services, corporate", "digital-financial-center"],
         ["Seychelles", "International Business Companies Act, Financial Services Act", "SFSA guidelines", "IBC, CSL, banking", "sovereign-govos"],
-        ["Kazakhstan (Alatau)", "Kazakh civil code + AIFC overlay", "AFSA rules, NB KZ", "AIFC categories + Kazakh", "digital-financial-center"],
+        ["Kazakhstan (AIFC, Astana)", "Kazakh civil code + AIFC overlay", "AFSA rules, NB KZ", "AIFC categories + Kazakh", "digital-financial-center"],
       ],
       [1600, 2400, 2000, 1800, 1560]
     ),
 
     h2("G.1 Pakistan \u2014 Detailed Regulatory Encoding"),
-    p("Pakistan is the flagship GovOS deployment. The Pack Trilogy encodes the following legislation and regulatory frameworks:"),
+    p("Pakistan is the reference GovOS deployment. The Pack Trilogy encodes the following legislation and regulatory frameworks:"),
     table(
       ["Pack", "Act / Regulation", "Key Provisions Encoded"],
       [
@@ -72,7 +72,7 @@ module.exports = function build_appendixG() {
       [1200, 3200, 4960]
     ),
 
-    h2("G.4 Kazakhstan (Alatau / AIFC) \u2014 Detailed Regulatory Encoding"),
+    h2("G.4 Kazakhstan (AIFC, Astana) \u2014 Detailed Regulatory Encoding"),
     p("The Astana International Financial Centre operates under English common law within Kazakhstan's civil law system. The Pack Trilogy encodes:"),
     table(
       ["Pack", "Act / Regulation", "Key Provisions Encoded"],

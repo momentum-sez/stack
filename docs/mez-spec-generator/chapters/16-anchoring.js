@@ -43,10 +43,10 @@ module.exports = function build_chapter16() {
     table(
       ["Chain", "Verification Method", "Cost per Anchor", "Finality", "Notes"],
       [
-        ["Ethereum", "ZK-verified (Groth16 pairing check)", "~200K gas (~$0.50)", "~12 min (32 blocks)", "EIP-196/197 precompiles; most battle-tested"],
+        ["Ethereum", "ZK-verified (Groth16 pairing check)", "~200K gas", "~12 min (32 blocks)", "EIP-196/197 precompiles; most battle-tested"],
         ["Solana", "ZK-verified (alt_bn128 syscall)", "~50K compute units (~$0.01)", "~400ms (1 slot)", "Highest throughput; lowest cost per anchor"],
-        ["Bitcoin", "Optimistic (Taproot commitment)", "~10K sats (~$1.00)", "~60 min (6 blocks)", "Highest security; OP_RETURN or Taproot witness"],
-        ["Sovereign L1", "Direct state proof (native STARK)", "0 (protocol-level)", "<2s (TLC finality)", "No external dependency; full self-sovereignty"],
+        ["Bitcoin", "Optimistic (Taproot commitment)", "~10K sats", "~60 min (6 blocks)", "Highest security; OP_RETURN or Taproot witness"],
+        ["Sovereign L1", "Direct state proof (native STARK)", "0 (protocol-level)", "<2s", "No external dependency; full self-sovereignty"],
       ],
       [1200, 2400, 2000, 1600, 2160]
     ),
@@ -54,7 +54,7 @@ module.exports = function build_chapter16() {
     // --- 16.3 L1-Optional Design ---
     h2("16.3 L1-Optional Design"),
     p("The MASS architecture is L1-optional by design. In the Pre-L1 phase (current), all settlement guarantees are provided by the receipt chain architecture, watcher attestations, and corridor-level netting. Assets operate with full functionality \u2014 formation, transfer, compliance evaluation, and dispute resolution \u2014 without any blockchain dependency. The EZ Stack, Mass API primitives, and credential system provide the complete operational substrate."),
-    p("In the With-L1 phase, the settlement layer adds cryptographic finality anchoring, cross-chain bridge support, and ZK-proven global state roots. The transition is additive: existing assets and corridors gain stronger settlement guarantees without any change to their operational behavior or data model. This design ensures that sovereign deployments (e.g., Pakistan GovOS) can operate immediately with full capability while the L1 settlement infrastructure matures in parallel."),
+    p("In the With-L1 phase, the settlement layer adds cryptographic finality anchoring, cross-chain bridge support, and ZK-proven global state roots. The transition is additive: existing assets and corridors gain stronger settlement guarantees without any change to their operational behavior or data model. This design ensures that sovereign deployments can operate immediately with full capability while the L1 settlement infrastructure matures in parallel."),
 
     // --- 16.4 Anchor Batching and Amortization ---
     h2("16.4 Anchor Batching and Amortization"),

@@ -68,7 +68,7 @@ pub trait JurisdictionalContext: Send + Sync {
       ["Mass Primitive", "API Endpoint", "Bridge Methods Called"],
       [
         ["Entities", "organization-info.api.mass.inc", "permitted_entity_types(), validate_formation(), fee_schedule(), pack_state()"],
-        ["Ownership", "investment-info (Heroku seed)", "securities_rules(), evaluate_compliance()"],
+        ["Ownership", "investment-info.api.mass.inc", "securities_rules(), evaluate_compliance()"],
         ["Fiscal", "treasury-info.api.mass.inc", "tax_rules(), fee_schedule(), evaluate_compliance()"],
         ["Identity", "Distributed across org + consent", "kyc_requirements(), evaluate_compliance()"],
         ["Consent", "consent.api.mass.inc", "governance_rules(), evaluate_compliance()"],

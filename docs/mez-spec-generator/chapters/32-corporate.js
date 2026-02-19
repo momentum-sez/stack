@@ -17,7 +17,7 @@ module.exports = function build_chapter32() {
       [
         ["Formation", "Entity incorporation and registration", "organization-info.api.mass.inc"],
         ["Beneficial Ownership", "UBO tracking and disclosure", "organization-info.api.mass.inc"],
-        ["Capitalization Table", "Securities, SAFEs, vesting", "investment-info (Heroku)"],
+        ["Capitalization Table", "Securities, SAFEs, vesting", "investment-info.api.mass.inc"],
         ["Secretarial", "Board minutes, resolutions, filings", "consent.api.mass.inc"],
         ["Annual Compliance", "Periodic filings, renewals, audits", "organization-info.api.mass.inc"],
         ["Dissolution", "Winding up, asset distribution", "treasury-info.api.mass.inc"],
@@ -79,7 +79,7 @@ module.exports = function build_chapter32() {
 
     // --- 32.2.3 Cap Table Module ---
     h3("32.2.3 Cap Table Module"),
-    p("The Capitalization Table Module manages securities issuance, SAFEs, convertible instruments, and vesting schedules. It interfaces exclusively with investment-info (Heroku) through mez-mass-client for all cap table CRUD operations. The EZ Stack adds compliance verification (securities law by jurisdiction), credential issuance for ownership certificates, and corridor-aware transfer restrictions."),
+    p("The Capitalization Table Module manages securities issuance, SAFEs, convertible instruments, and vesting schedules. It interfaces exclusively with investment-info.api.mass.inc through mez-mass-client for all cap table CRUD operations. The EZ Stack adds compliance verification (securities law by jurisdiction), credential issuance for ownership certificates, and corridor-aware transfer restrictions."),
     p("Share transfers require compliance tensor evaluation for both source and destination jurisdictions, sanctions screening via regpack, and may require regulatory approval depending on the entity type and jurisdiction. The module maintains a complete audit trail of all cap table events as Verifiable Credentials."),
     ...codeBlock(
       "#[derive(Debug, Clone, Serialize, Deserialize)]\n" +

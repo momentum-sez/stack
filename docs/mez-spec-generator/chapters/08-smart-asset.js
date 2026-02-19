@@ -81,9 +81,9 @@ module.exports = function build_chapter08() {
 
     // --- 8.4 Smart Assets as Autonomous Agents ---
     h2("8.4 Smart Assets as Autonomous Agents"),
-    p("Smart Assets can exhibit agentic behavior by responding autonomously to environmental events. When configured with trigger policies, a Smart Asset monitors its environment and initiates state transitions without human intervention. This enables automated compliance responses, scheduled regulatory filings, and self-healing behavior in response to external changes."),
+    p("Smart Assets can exhibit agentic behavior by responding autonomously to environmental events. When configured with trigger policies, a Smart Asset monitors its environment and initiates state transitions without human intervention. This enables automated compliance responses, scheduled regulatory filings, and automated recovery behavior in response to external changes."),
     definition("Definition 8.2 (Agentic Transition).", "An agentic transition is a state transition triggered by environmental events. Trigger types: regulatory triggers (SanctionsListUpdate, LicenseExpiration, GuidanceChange), arbitration triggers (RulingReceived, AppealDeadlinePassed, EnforcementDue), settlement triggers (CheckpointRequired, FinalizationAnchor), and asset lifecycle triggers (KeyRotationDue, AttestationExpiring)."),
-    p("The following table enumerates the full trigger taxonomy across five compliance domains. Each trigger type maps to a specific environmental event class that an agentic Smart Asset monitors and responds to autonomously:"),
+    p("The following table enumerates representative Smart Asset triggers across five domains. The complete 20-trigger taxonomy is specified in \u00a745 (Agentic Execution Framework):"),
     table(
       ["Domain", "Trigger Type", "Description", "Example"],
       [

@@ -10,7 +10,7 @@ module.exports = function build_chapter44() {
 
     // --- 44.1 Institution Registry ---
     h2("44.1 Institution Registry"),
-    p("The arbitration system maintains a registry of recognized institutions. Recognized institutions: DIFC-LCIA Arbitration Centre, Singapore International Arbitration Centre (SIAC), AIFC International Arbitration Centre (IAC), International Chamber of Commerce (ICC) International Court of Arbitration, ADGM Arbitration Centre. Each institution has associated rules encoded as machine-readable specifications: filing procedures, tribunal formation rules, procedural timelines, fee schedules, and enforcement mechanisms."),
+    p("The arbitration system maintains a registry of recognized institutions. Recognized institutions: DIFC Courts (Arbitration Division), Singapore International Arbitration Centre (SIAC), AIFC International Arbitration Centre (IAC, Astana), International Chamber of Commerce (ICC) International Court of Arbitration, ADGM Arbitration Centre. Each institution has associated rules encoded as machine-readable specifications: filing procedures, tribunal formation rules, procedural timelines, fee schedules, and enforcement mechanisms."),
 
     // --- 44.2 Ruling Enforcement ---
     h2("44.2 Ruling Enforcement"),
@@ -68,7 +68,7 @@ pub struct EvidencePackage {
     pub submitted_by: EntityId,
     pub submitted_at: chrono::DateTime<chrono::Utc>,
     pub items: Vec<EvidenceItem>,
-    pub package_digest: CanonicalBytes,
+    pub package_digest: ContentDigest,
     pub submitter_signature: Ed25519Signature,
 }
 
@@ -77,7 +77,7 @@ pub struct EvidenceItem {
     pub item_id: EvidenceItemId,
     pub category: EvidenceCategory,
     pub description: String,
-    pub content_digest: CanonicalBytes,
+    pub content_digest: ContentDigest,
     pub content_ref: ContentAddressedRef,
 }
 
@@ -92,7 +92,7 @@ pub enum EvidenceCategory {
     WatcherAttestation,
 }`
     ),
-    p_runs([bold("Verification."), " When an evidence package is submitted, the system verifies: (1) the submitter is a recognized party to the dispute, (2) the package digest matches the SHA-256 hash computed over all evidence items via CanonicalBytes, (3) the Ed25519 signature is valid for the submitter's public key, and (4) all content-addressed references resolve to valid objects in the CAS. Evidence packages are immutable once submitted; amendments require a new package referencing the original."]),
+    p_runs([bold("Verification."), " When an evidence package is submitted, the system verifies: (1) the submitter is a recognized party to the dispute, (2) the package digest matches the SHA-256 hash computed over all evidence items via ContentDigest, (3) the Ed25519 signature is valid for the submitter's public key, and (4) all content-addressed references resolve to valid objects in the CAS. Evidence packages are immutable once submitted; amendments require a new package referencing the original."]),
 
     // --- 44.2.3 Escrow Management ---
     h3("44.2.3 Escrow Management"),

@@ -8,7 +8,7 @@ module.exports = function build_chapter38() {
   return [
     ...partHeading("PART XIV: GovOS ARCHITECTURE"),
 
-    p("GovOS is the emergent product when the full MEZ Stack + Mass APIs are deployed for a sovereign government. It is not a separate product. It is what the Stack becomes at national scale. Pakistan serves as the reference architecture."),
+    p("GovOS is the deployment configuration that results when the full MEZ Stack + Mass APIs are deployed for a sovereign government. It is not a separate product; it is the Stack deployed at national scale. Pakistan serves as the reference architecture."),
 
     chapterHeading("Chapter 38: Four-Layer Model"),
 
@@ -20,7 +20,7 @@ module.exports = function build_chapter38() {
         ["01", "Experience", "Dashboards, portals, citizen-facing services, AI-powered interfaces"],
         ["02", "Platform Engine", "Five Mass primitives + supporting infrastructure + regulated organs"],
         ["03", "Jurisdictional Configuration", "MEZ Pack Trilogy encoding national law in machine-readable format"],
-        ["04", "National System Integration", "Connections to existing government systems (Mass enhances, never replaces)"],
+        ["04", "National System Integration", "Connections to existing government systems (Mass enhances existing systems; it does not replace them)"],
       ],
       [800, 2400, 6160]
     ),
@@ -100,10 +100,10 @@ module.exports = function build_chapter38() {
       [
         ["FBR IRIS", "Federal Board of Revenue", "REST API (HTTPS, OAuth 2.0 client credentials)", "JSON (FBR schema v3), NTN as primary key", "Bidirectional: tax events pushed, return status pulled"],
         ["SBP Raast", "State Bank of Pakistan", "ISO 20022 messaging (pacs.008, pacs.002, pain.001)", "ISO 20022 XML, IBAN as account identifier", "Bidirectional: payment initiation and confirmation"],
-        ["NADRA e-Sahulat", "NADRA", "SOAP/XML web services (WS-Security, mutual TLS)", "CNIC biometric verification request/response schema", "Pull only: identity verification queries"],
+        ["NADRA VERISYS", "NADRA", "REST/JSON API (mutual TLS)", "CNIC biometric verification request/response schema", "Pull only: identity verification queries"],
         ["SECP eServices", "Securities and Exchange Commission", "REST API (HTTPS, API key authentication)", "JSON (SECP company registry schema), CUIN as key", "Bidirectional: registration events, compliance status"],
         ["Pakistan Single Window", "Pakistan Customs / Ministry of Commerce", "UN/CEFACT (WCO data model, ebXML messaging)", "UN/EDIFACT and WCO DM v3.x, HS codes for classification", "Bidirectional: trade declarations and clearance status"],
-        ["SBP RTGS (PRISM)", "State Bank of Pakistan", "SWIFT FIN / ISO 15022 messaging", "MT103/MT202 (migrating to MX pacs.009)", "Bidirectional: large-value settlement instructions"],
+        ["SBP RTGS (PRISM)", "State Bank of Pakistan", "Proprietary messaging (SBP format), migrating to ISO 20022", "PRISM native format (migrating to MX pacs.009)", "Bidirectional: large-value settlement instructions"],
       ],
       [1600, 1400, 2200, 2400, 1760]
     ),

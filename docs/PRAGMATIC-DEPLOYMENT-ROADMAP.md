@@ -178,65 +178,65 @@ demonstrating the network effect thesis.
 
 ---
 
-## IV. MASS SPEC ALIGNMENT ANALYSIS
+## IV. MASS SPEC ALIGNMENT: SOVEREIGN DEPLOYMENT AS THE PATH TO DECENTRALIZATION
 
-### The Two-System Architecture
+### The Core Thesis
+
+The MEZ Stack is not an "orchestration layer on top of Mass." It is the **deployment
+substrate that progressively decentralizes Mass** through sovereign zone deployments.
 
 ```
-┌─────────────────────────────────────────────────┐
-│              MEZ Stack (System B)                │
-│  Jurisdictional context: compliance tensor,      │
-│  corridors, lawpacks, regpacks, licensepacks    │
-│                                                  │
-│  Mass owns CRUD; MEZ Stack owns compliance       │
-├─────────────────────────────────────────────────┤
-│              Mass Platform (System A)            │
-│  Five jurisdiction-agnostic primitives:          │
-│  Entities | Ownership | Fiscal | Identity | Consent │
-└─────────────────────────────────────────────────┘
+Phase 1 (Today)          Phase 2 (Near-term)         Phase 3-4 (End-state)
+┌──────────────┐         ┌──────────────┐            ┌──────────────┐
+│   MEZ Zone   │         │   MEZ Zone   │            │   MEZ Zone   │
+│ (compliance, │         │ (compliance, │            │ (compliance, │
+│  corridors)  │         │  corridors)  │◄──corridor──►  corridors)  │
+├──────────────┤         ├──────────────┤            ├──────────────┤
+│ Centralized  │         │  Sovereign   │            │  Sovereign   │
+│  Mass APIs   │         │  Mass APIs   │            │ Mass + Consensus│
+│ (mass.inc)   │         │ (in-zone)    │            │ (JDC node)   │
+└──────────────┘         └──────────────┘            └──────────────┘
+     Single                 Per-zone                   Federated
+    deployment             sovereign                  decentralized
 ```
 
-### Mass Spec Concepts → MEZ Stack Implementation
+Each sovereign zone deployment is a future Mass consensus node. Each corridor
+receipt chain is a future DAG edge. The Mass spec's end-state emerges bottom-up
+from the federation of sovereign deployments — not from building a monolithic L1.
 
-| Mass Concept | MEZ Implementation | Alignment |
+### Mass Spec Concepts → MEZ Stack Precursors → Evolution Path
+
+| Mass Spec Concept | MEZ Stack Precursor (Today) | Evolution Path |
 |---|---|---|
-| Asset Harbor (vertex in JDG) | Zone (zone.yaml + deploy-zone.sh) | ALIGNED |
-| Corridor (edge in JDG) | `mez-corridor` receipt chain + network protocol | ALIGNED |
-| Smart Asset | Entities via `mez-mass-client` + VC layer | PARTIAL — no autonomous agent model yet |
-| JDC (Jurisdictional DAG Consensus) | N/A — single-zone consensus only | GAP — multi-zone consensus not implemented |
-| TLC (Treaty Lattice Consensus) | N/A — no lattice join operator | GAP — advanced consensus deferred |
-| JVM (Jurisdictional Virtual Machine) | Pack Trilogy evaluation (static, not programmable) | GAP — no execution VM |
-| LVC (Local Validity Certificate) | Checkpoint with proof | PARTIAL — proof signing exists, no cert format |
-| EFC (Economic Finality Certificate) | N/A | GAP |
-| AFC (Anchored Finality Certificate) | Mock anchor target | GAP |
-| Asset Orbit Protocol | N/A | GAP — multi-harbor sharding not implemented |
-| Lawpack (Akoma Ntoso) | `modules/legal/jurisdictions/*/src/akn/main.xml` | ALIGNED |
-| Regpack (dynamic regulatory state) | `mez-pack/src/regpack.rs` with Pakistan content | ALIGNED |
-| Corridor Aggregate Signatures | Standard Ed25519 (no aggregate scheme) | GAP — using individual sigs |
-| Jurisdictional Vector Clocks | Wall-clock timestamps (`Utc::now()`) | GAP — no causal consistency protocol |
-| Watcher Economy | Attestation model + bond types defined | PARTIAL — no real staking/slashing |
+| Asset Harbor | Zone deployment (zone.yaml + deploy-zone.sh) | Zone running sovereign Mass APIs = Harbor |
+| JDC (Jurisdictional DAG Consensus) | Corridor receipt chain (bilateral) | N-zone corridor mesh → DAG topology |
+| TLC (Treaty Lattice Consensus) | CorridorDefinitionVC + compliance tensor | Treaty = corridor agreement; lattice = N-factorial graph |
+| JVM (Jurisdictional Virtual Machine) | Pack Trilogy evaluation (static) | Static packs → programmable evaluation → JVM |
+| LVC (Local Validity Certificate) | Checkpoint with proof | Checkpoint + proof = LVC |
+| EFC (Economic Finality Certificate) | Cross-corridor settlement anchoring | Settlement corridor binding → EFC |
+| AFC (Anchored Finality Certificate) | Anchor target interface (mock) | Real L1 anchor → AFC |
+| Asset Orbit Protocol | Single-zone asset management | Multi-zone corridor tracking → orbits |
+| Corridor Aggregate Signatures | Individual Ed25519 | Aggregate signature scheme → CAS |
+| Jurisdictional Vector Clocks | Wall-clock + corridor sequence numbers | Causal ordering → vector clocks |
+| Watcher Economy | Attestation model + bond types | Real staking/slashing + bond economics |
+| Lawpack (Akoma Ntoso) | `modules/legal/jurisdictions/*/src/akn/` | ALIGNED — content pipeline operational |
+| Regpack (dynamic regulatory state) | `mez-pack/src/regpack.rs` | ALIGNED — Pakistan content exists |
 
-### Pragmatic Take on Mass Alignment
+### Strategic Implication
 
-The Mass spec describes a complete distributed operating system for jurisdictional
-execution. The MEZ Stack implements the **deployment and compliance infrastructure
-layer** — which is the part that sovereign operators actually need first.
+The advanced protocol features (JDC, TLC, JVM, Asset Orbits) are not items to
+"implement someday." They **emerge** from sovereign deployments:
 
-The advanced consensus protocols (JDC, TLC, JVM), finality certificate hierarchy,
-and asset orbit model are architecturally sound in the spec but represent a
-**multi-year engineering effort** that is not required for Phase 1-2 deployments.
+- Deploy 1 sovereign zone → you have a Harbor
+- Connect 2 sovereign zones via corridor → you have the first DAG edge
+- Add watcher attestations → you have validator votes
+- Add N zones → you have Jurisdictional DAG Consensus
+- Add corridor treaty agreements → you have Treaty Lattice Consensus
 
-What IS required, and what the codebase delivers:
-- Zone deployment (Asset Harbor equivalent)
-- Corridor receipt exchange (verifiable cross-zone transactions)
-- Compliance tensor evaluation (jurisdictional context enforcement)
-- Pack content (legal, regulatory, licensing data)
-- Cryptographic integrity (receipts, checkpoints, signatures)
-
-**Recommendation**: Do not chase full Mass spec parity. Instead, demonstrate the
-value proposition through real sovereign deployments, then let the advanced
-protocol features (JDC, TLC, JVM, Asset Orbits) be pulled by actual multi-zone
-operational requirements rather than pushed by spec completeness.
+**The MEZ Stack IS the Mass Protocol delivery vehicle.** Every sovereign deployment
+moves the system closer to the spec's end-state. This is why the work we do today
+on zone deployment, corridor protocol, and pack content directly serves the
+decentralized execution vision — it's not a detour, it's the path.
 
 ---
 
@@ -245,8 +245,8 @@ operational requirements rather than pushed by spec completeness.
 ### Phase 1: Controlled Sandbox (NOW — Ready)
 
 **Who**: Internal team + friendly sovereign partner (Pakistan SIFC)
-**What**: Single-zone deployment with simulated Mass API, demonstrating compliance
-tensor evaluation, receipt chain integrity, and zone manifest lifecycle.
+**What**: Single-zone deployment with MEZ Stack pointing to centralized Mass APIs,
+demonstrating compliance tensor, receipt chain, and zone manifest lifecycle.
 
 Entry criteria already met:
 - [x] Clean build, 4,073 tests passing
@@ -259,39 +259,45 @@ Remaining:
 - [ ] End-to-end demo script
 - [ ] CAS digest computation for regpacks (currently zero-filled)
 
-### Phase 2: Two-Zone Corridor Demo (Weeks 2-4)
+### Phase 2: Two Sovereign Zones, One Corridor (Weeks 2-6)
 
-**Who**: Pakistan SIFC ↔ UAE DIFC demo
-**What**: Two zones deployed, corridor established, receipts exchanged,
-compliance verified bilaterally.
+**Who**: Pakistan SIFC ↔ UAE DIFC
+**What**: Two zones deployed, each with **sovereign Mass API instances** running
+inside the zone's infrastructure. Corridor established between them. Receipts
+exchanged and verified bilaterally. This is the first step toward decentralized Mass.
 
 Infrastructure exists (`docker-compose.two-zone.yaml`), needs:
+- [ ] Containerized Mass API services deployable per-zone
 - [ ] Real corridor establishment flow tested end-to-end
 - [ ] Cross-zone compliance query
-- [ ] Demo video / walkthrough for stakeholders
+- [ ] Demo proving sovereign data residency (Zone A's data never leaves Zone A)
 
 ### Phase 3: Sovereign GovOS Pilot (Weeks 4-12)
 
 **Who**: Pakistan government (FBR, NADRA, SBP, SECP)
 **What**: Real transactions flowing through real institutional adapters,
-with compliance tensor evaluated against real regulatory data.
+with sovereign Mass APIs running inside Pakistan's infrastructure,
+compliance tensor evaluated against real Pakistani regulatory data.
 
 Requires:
 - [ ] National system HTTP adapters (FBR, NADRA, SBP, SECP)
+- [ ] Sovereign Mass API deployment within Pakistan infrastructure
 - [ ] Zone operator dashboard (minimal web UI)
 - [ ] Security review / pen test
-- [ ] Key custody model (HSM/KMS rotation)
+- [ ] Key custody model (HSM/KMS rotation — zone operator controls keys)
 
-### Phase 4: Network Effect (Weeks 12-24)
+### Phase 4: Corridor Mesh → Embryonic JDC (Weeks 12-24)
 
 **Who**: Multiple zone operators across jurisdictions
-**What**: Corridor network demonstrating mutual recognition at scale.
+**What**: 5+ sovereign zones with N-factorial corridor mesh. Each zone runs
+its own Mass APIs. The corridor mesh IS the Jurisdictional DAG in practice.
 
 Requires:
-- [ ] Multi-zone Kubernetes orchestration
-- [ ] Watcher bond economics
-- [ ] BBS+ for privacy-preserving KYC
+- [ ] Multi-zone Kubernetes orchestration (N sovereign Mass deployments)
+- [ ] Watcher bond economics (real staking/slashing)
+- [ ] BBS+ for privacy-preserving KYC across corridors
 - [ ] Real ZK backend for settlement proofs
+- [ ] The federation of sovereign zones → this is Mass Protocol emerging from the ground up
 
 ---
 
@@ -331,6 +337,18 @@ sovereign-govos, charter-city, digital-native-free-zone) as templates.
 **Rationale**: "AWS of EZ" means customers pick a template and deploy, not
 write configuration from scratch.
 **Consequence**: Each profile must have a tested deploy path.
+
+### ADR-006: Sovereign Mass Deployment as Path to Decentralization
+**Decision**: The MEZ Stack deploys sovereign Mass API instances per-zone rather
+than permanently proxying to centralized Mass.
+**Rationale**: The Mass spec describes a decentralized execution layer. Building
+a monolithic L1 is a multi-year effort with high risk. Instead, each sovereign
+zone deployment IS a future consensus node. The corridor protocol between zones
+IS the embryonic Jurisdictional DAG. Decentralization emerges bottom-up from
+sovereign deployments, not top-down from protocol design.
+**Consequence**: Zone deploy tooling must support containerized Mass API services.
+`mez-mass-client` must abstract over both centralized and sovereign Mass endpoints.
+Key custody, data residency, and operational authority belong to the zone operator.
 
 ---
 

@@ -673,18 +673,32 @@ These invariants must be maintained across all changes. Violation of any = P0.
 
 ## 14. INSTITUTIONAL POSTURE SUMMARY
 
-**Overall Assessment (Updated 2026-02-19):** PROCEED to Phase 2 (Limited Corridor Activation).
+**Overall Assessment (Updated 2026-02-19):** PROCEED to Phase 2 (Sovereign Corridor Activation).
 
 Phase 1 entry criteria are fully met. Phase 2 blockers (receipt chain, inter-zone protocol,
 fork resolution, compliance tensor) have all been resolved. The stack is in a
 "functionally deployable" state for controlled two-zone corridor demonstrations.
 
+### Strategic Direction: Sovereign Mass Deployment
+
+The MEZ Stack is the deployment substrate that progressively decentralizes Mass:
+
+1. **Today**: MEZ zones orchestrate compliance on top of centralized Mass APIs
+2. **Near-term**: Each sovereign zone deploys its own Mass API instances (containerized)
+3. **Mid-term**: Sovereign Mass deployments federate via corridor receipt chains
+4. **End-state**: Federated sovereign zones = the decentralized execution layer (Mass Protocol)
+
+Every zone deployment is a future Mass consensus node. Every corridor is a future DAG edge.
+The Mass spec's end-state emerges bottom-up from sovereign deployments, not top-down from
+building a monolithic L1. See `docs/roadmap/AWS_OF_ECONOMIC_ZONES.md` for full sequencing.
+
 **Do NOT proceed to Phase 3 (Production)** until:
-1. Remaining red items resolved (identity service, national adapters)
-2. Receipt chain conforms to spec (P0-CORRIDOR-001..004)
-3. Fork resolution is evidence-driven (P0-FORK-001)
-4. Default credentials eliminated (P0-DEPLOY-001)
-5. Independent security review / pen test completed
+1. Sovereign Mass API deployment demonstrated (containerized per-zone)
+2. Remaining red items resolved (identity service, national adapters)
+3. ~~Receipt chain conforms to spec (P0-CORRIDOR-001..004)~~ CLOSED
+4. ~~Fork resolution is evidence-driven (P0-FORK-001)~~ CLOSED
+5. ~~Default credentials eliminated (P0-DEPLOY-001)~~ CLOSED
+6. Independent security review / pen test completed
 
 **Positive signals:**
 - Strong type-level invariant strategy (typestate, canonical bytes, sealed proof backends, zeroize keys)
@@ -693,3 +707,5 @@ fork resolution, compliance tensor) have all been resolved. The stack is in a
 - Placeholder crypto keys removed; real Ed25519 JWK via `mez vc keygen`
 - CI guard against `serde_json preserve_order` (digest corruption prevention)
 - Single-binary docker-compose baseline with observability
+- `mez-mass-client` abstracts Mass endpoint topology (supports both centralized and sovereign)
+- Zone manifest system supports sovereign deployment with operator-controlled key custody

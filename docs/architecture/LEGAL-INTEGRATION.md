@@ -60,4 +60,4 @@ The closer the system gets to moving real value, the more you should invest in:
 - redundant artifact storage
 - incident response procedures
 
-See `spec/70-legal-attestations.md` for the schema-level view.
+See `spec/96-lawpacks.md` for the lawpack specification and `docs/attestations/catalog.md` for attestation types.

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Regulator Console API
-  version: 0.2.0
+  version: 0.3.0
   description: >
     Role-gated, auditable, and revocable query endpoints for regulatory
     oversight. All requests are logged in an immutable audit trail.
@@ -126,6 +126,43 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/compliance/{entity_id}:
+    get:
+      summary: Query per-entity compliance posture across all domains
+      operationId: getEntityCompliance
+      description: >
+        Returns the compliance posture for a specific entity, aggregated from
+        attestation records and smart asset compliance evaluations. Reports the
+        most recent attestation status per domain, associated asset compliance,
+        and an overall entity compliance state.
+      parameters:
+        - name: entity_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Entity identifier (UUID)
+      responses:
+        '200':
+          description: Entity compliance posture
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityComplianceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Entity not found (no attestations or assets)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -352,6 +389,67 @@ components:
         total_count:
           type: integer
           minimum: 0
+      additionalProperties: false
+
+    EntityComplianceResponse:
+      type: object
+      required: [entity_id, attestation_count, domains, assets, overall_status]
+      properties:
+        entity_id:
+          type: string
+          format: uuid
+        jurisdiction_id:
+          type: string
+          description: Jurisdiction of the entity (from first attestation)
+        attestation_count:
+          type: integer
+          minimum: 0
+        domains:
+          type: array
+          items:
+            $ref: '#/components/schemas/DomainComplianceStatus'
+        assets:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntityAssetCompliance'
+        overall_status:
+          type: string
+          enum: [compliant, non_compliant, pending]
+      additionalProperties: false
+
+    DomainComplianceStatus:
+      type: object
+      required: [domain, status]
+      properties:
+        domain:
+          type: string
+          description: Compliance domain (kyc, aml, sanctions, tax, etc.)
+        status:
+          type: string
+          description: Most recent attestation status for this domain
+        issuer:
+          type: string
+          description: Issuer of the most recent attestation
+        issued_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    EntityAssetCompliance:
+      type: object
+      required: [asset_id, asset_type, compliance_status]
+      properties:
+        asset_id:
+          type: string
+          format: uuid
+        asset_type:
+          type: string
+        compliance_status:
+          type: string
+          enum: [Compliant, NonCompliant, Pending, Unevaluated]
       additionalProperties: false
 
     PaginatedAuditLog:

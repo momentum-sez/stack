@@ -38,8 +38,8 @@ services:
       MEZ_HOST: "0.0.0.0"
       MEZ_PORT: "8080"
       MEZ_LOG_LEVEL: debug
-      AUTH_TOKEN: ${ZONE_A_AUTH_TOKEN:-zone-a-test-token}
-      DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:-testpw123}@postgres-a:5432/mez"
+      AUTH_TOKEN: ${ZONE_A_AUTH_TOKEN:?ZONE_A_AUTH_TOKEN must be set}
+      DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-a:5432/mez"
       MEZ_CORRIDOR_ID: org.momentum.mez.corridor.pk-ae.cross-border
       MEZ_WATCHER_ID: watcher-pk-001
       MEZ_BOND_AMOUNT: "100000"
@@ -63,7 +63,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: mez
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-testpw123}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: mez
     volumes:
       - postgres-a-data:/var/lib/postgresql/data
@@ -96,8 +96,8 @@ services:
       MEZ_HOST: "0.0.0.0"
       MEZ_PORT: "8080"
       MEZ_LOG_LEVEL: debug
-      AUTH_TOKEN: ${ZONE_B_AUTH_TOKEN:-zone-b-test-token}
-      DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:-testpw123}@postgres-b:5432/mez"
+      AUTH_TOKEN: ${ZONE_B_AUTH_TOKEN:?ZONE_B_AUTH_TOKEN must be set}
+      DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-b:5432/mez"
       MEZ_CORRIDOR_ID: org.momentum.mez.corridor.pk-ae.cross-border
       MEZ_WATCHER_ID: watcher-ae-001
       MEZ_BOND_AMOUNT: "100000"
@@ -121,7 +121,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: mez
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-testpw123}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: mez
     volumes:
       - postgres-b-data:/var/lib/postgresql/data

@@ -1,0 +1,654 @@
+{
+  "as_of_date": "2026-01-15",
+  "compliance_deadlines": [
+    {
+      "applicable_license_types": [
+        "pk-secp:company-registration",
+        "pk-sbp:commercial-bank",
+        "pk-sbp:microfinance-bank",
+        "pk-sbp:emi"
+      ],
+      "deadline_id": "pk-fbr-it-annual-company",
+      "deadline_type": "filing",
+      "description": "Annual income tax return — companies (FY 2025-26)",
+      "due_date": "2026-12-31",
+      "grace_period_days": 0,
+      "regulator_id": "pk-fbr"
+    },
+    {
+      "applicable_license_types": [],
+      "deadline_id": "pk-fbr-it-annual-individual",
+      "deadline_type": "filing",
+      "description": "Annual income tax return — individuals/AOPs (FY 2025-26)",
+      "due_date": "2026-09-30",
+      "grace_period_days": 0,
+      "regulator_id": "pk-fbr"
+    },
+    {
+      "applicable_license_types": [
+        "pk-sbp:commercial-bank",
+        "pk-secp:company-registration"
+      ],
+      "deadline_id": "pk-fbr-wht-monthly",
+      "deadline_type": "payment",
+      "description": "Monthly withholding tax statement (15th of following month)",
+      "due_date": "2026-02-15",
+      "grace_period_days": 0,
+      "regulator_id": "pk-fbr"
+    },
+    {
+      "applicable_license_types": [],
+      "deadline_id": "pk-fbr-sales-tax-monthly",
+      "deadline_type": "filing",
+      "description": "Monthly sales tax return (18th of following month)",
+      "due_date": "2026-02-18",
+      "grace_period_days": 0,
+      "regulator_id": "pk-fbr"
+    },
+    {
+      "applicable_license_types": [
+        "pk-sbp:commercial-bank",
+        "pk-sbp:microfinance-bank"
+      ],
+      "deadline_id": "pk-sbp-quarterly-prudential",
+      "deadline_type": "report",
+      "description": "Quarterly prudential return — banks (within 30 days of quarter-end)",
+      "due_date": "2026-04-30",
+      "grace_period_days": 0,
+      "regulator_id": "pk-sbp"
+    },
+    {
+      "applicable_license_types": [
+        "pk-sbp:commercial-bank",
+        "pk-sbp:microfinance-bank"
+      ],
+      "deadline_id": "pk-sbp-annual-audited",
+      "deadline_type": "report",
+      "description": "Annual audited financial statements — banks (within 4 months of FY-end)",
+      "due_date": "2026-04-30",
+      "grace_period_days": 30,
+      "regulator_id": "pk-sbp"
+    },
+    {
+      "applicable_license_types": [
+        "pk-sbp:emi"
+      ],
+      "deadline_id": "pk-sbp-emi-quarterly",
+      "deadline_type": "report",
+      "description": "Quarterly EMI compliance report — float safeguarding, transaction volume",
+      "due_date": "2026-04-30",
+      "grace_period_days": 15,
+      "regulator_id": "pk-sbp"
+    },
+    {
+      "applicable_license_types": [
+        "pk-sbp:exchange-company"
+      ],
+      "deadline_id": "pk-sbp-forex-monthly",
+      "deadline_type": "report",
+      "description": "Monthly foreign exchange position report — exchange companies",
+      "due_date": "2026-02-10",
+      "grace_period_days": 0,
+      "regulator_id": "pk-sbp"
+    },
+    {
+      "applicable_license_types": [
+        "pk-secp:company-registration"
+      ],
+      "deadline_id": "pk-secp-annual-return",
+      "deadline_type": "filing",
+      "description": "Annual return (Form A) — within 30 days of AGM (Companies Act 2017 s.130)",
+      "due_date": "2026-10-30",
+      "grace_period_days": 30,
+      "regulator_id": "pk-secp"
+    },
+    {
+      "applicable_license_types": [
+        "pk-secp:company-registration",
+        "pk-secp:nbfc"
+      ],
+      "deadline_id": "pk-secp-financial-statements",
+      "deadline_type": "filing",
+      "description": "Audited financial statements — within 4 months of FY-end (s.233 Companies Act 2017)",
+      "due_date": "2026-10-30",
+      "grace_period_days": 0,
+      "regulator_id": "pk-secp"
+    },
+    {
+      "applicable_license_types": [
+        "pk-secp:securities-broker"
+      ],
+      "deadline_id": "pk-secp-broker-net-capital",
+      "deadline_type": "report",
+      "description": "Monthly net capital balance certificate — securities brokers",
+      "due_date": "2026-02-15",
+      "grace_period_days": 0,
+      "regulator_id": "pk-secp"
+    },
+    {
+      "applicable_license_types": [
+        "pk-sbp:commercial-bank",
+        "pk-sbp:microfinance-bank",
+        "pk-sbp:emi",
+        "pk-sbp:exchange-company",
+        "pk-secp:securities-broker"
+      ],
+      "deadline_id": "pk-fmu-str-ongoing",
+      "deadline_type": "report",
+      "description": "Suspicious Transaction Report — within 7 days of suspicion (AML Act 2010 s.7)",
+      "due_date": "ongoing",
+      "grace_period_days": 0,
+      "regulator_id": "pk-fmu"
+    },
+    {
+      "applicable_license_types": [
+        "pk-sbp:commercial-bank",
+        "pk-sbp:exchange-company"
+      ],
+      "deadline_id": "pk-fmu-ctr-15days",
+      "deadline_type": "report",
+      "description": "Currency Transaction Report — within 15 days for transactions >= PKR 2M (AML Act 2010 s.7)",
+      "due_date": "ongoing",
+      "grace_period_days": 0,
+      "regulator_id": "pk-fmu"
+    }
+  ],
+  "created_at": "2026-01-15T00:00:00Z",
+  "digest_sha256": "444ddded8419d9dedf8344a54063d7cd80c0148338c78bbe77a47baa44dd392f",
+  "domain": "financial",
+  "expires_at": "2026-04-15T00:00:00Z",
+  "includes": {
+    "compliance_deadlines": 13,
+    "regulators": [
+      "pk-sbp",
+      "pk-secp",
+      "pk-fmu",
+      "pk-fbr",
+      "pk-nacta"
+    ],
+    "reporting_requirements": 5,
+    "sanctions_entries": 8,
+    "wht_rates": 16
+  },
+  "jurisdiction_id": "pk",
+  "regpack_id": "regpack:pk:financial:2026Q1",
+  "regulators": [
+    {
+      "api_capabilities": {
+        "bank_registry": true,
+        "credit_bureau_query": true,
+        "forex_rate_feed": true,
+        "raast_integration": true
+      },
+      "business_days": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday"
+      ],
+      "contact": {
+        "address": "I.I. Chundrigar Road, Karachi 74000, Pakistan",
+        "website": "https://www.sbp.org.pk"
+      },
+      "jurisdiction_id": "pk",
+      "name": "State Bank of Pakistan",
+      "regulator_id": "pk-sbp",
+      "scope": {
+        "banking": [
+          "commercial_banks",
+          "microfinance_banks",
+          "development_finance_institutions"
+        ],
+        "foreign_exchange": [
+          "exchange_companies",
+          "authorized_dealers"
+        ],
+        "payments": [
+          "emi",
+          "psp",
+          "raast",
+          "rtgs"
+        ]
+      },
+      "timezone": "Asia/Karachi"
+    },
+    {
+      "api_capabilities": {
+        "company_search": true,
+        "eservices_portal": true,
+        "filing_status": true
+      },
+      "business_days": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday"
+      ],
+      "contact": {
+        "address": "NIC Building, Jinnah Avenue, Islamabad, Pakistan",
+        "website": "https://www.secp.gov.pk"
+      },
+      "jurisdiction_id": "pk",
+      "name": "Securities and Exchange Commission of Pakistan",
+      "regulator_id": "pk-secp",
+      "scope": {
+        "capital_markets": [
+          "securities_brokers",
+          "mutual_funds",
+          "nbfcs"
+        ],
+        "corporate": [
+          "company_registration",
+          "corporate_governance"
+        ],
+        "insurance": [
+          "life_insurance",
+          "general_insurance"
+        ]
+      },
+      "timezone": "Asia/Karachi"
+    },
+    {
+      "api_capabilities": {
+        "goaml_reporting": true,
+        "sanctions_query": true
+      },
+      "business_days": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday"
+      ],
+      "contact": {
+        "address": "State Bank of Pakistan Building, Islamabad, Pakistan",
+        "website": "https://www.fmu.gov.pk"
+      },
+      "jurisdiction_id": "pk",
+      "name": "Financial Monitoring Unit",
+      "parent_authority": "pk-sbp",
+      "regulator_id": "pk-fmu",
+      "scope": {
+        "aml_cft": [
+          "suspicious_transaction_reports",
+          "currency_transaction_reports",
+          "targeted_financial_sanctions",
+          "mutual_legal_assistance"
+        ]
+      },
+      "timezone": "Asia/Karachi"
+    },
+    {
+      "api_capabilities": {
+        "active_taxpayer_list": true,
+        "e_filing": true,
+        "iris_portal": true,
+        "ntn_verification": true
+      },
+      "business_days": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday"
+      ],
+      "contact": {
+        "address": "Constitution Avenue, Islamabad, Pakistan",
+        "website": "https://www.fbr.gov.pk"
+      },
+      "jurisdiction_id": "pk",
+      "name": "Federal Board of Revenue",
+      "regulator_id": "pk-fbr",
+      "scope": {
+        "tax": [
+          "income_tax",
+          "sales_tax",
+          "federal_excise",
+          "customs_duty",
+          "withholding_tax"
+        ]
+      },
+      "timezone": "Asia/Karachi"
+    },
+    {
+      "api_capabilities": {},
+      "business_days": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday"
+      ],
+      "contact": {
+        "address": "Sector G-5, Islamabad, Pakistan",
+        "website": "https://nacta.gov.pk"
+      },
+      "jurisdiction_id": "pk",
+      "name": "National Counter Terrorism Authority",
+      "regulator_id": "pk-nacta",
+      "scope": {
+        "sanctions": [
+          "proscribed_organizations",
+          "designated_persons",
+          "unsc_1267_implementation"
+        ]
+      },
+      "timezone": "Asia/Karachi"
+    }
+  ],
+  "reporting_requirements": [
+    {
+      "applicable_to": [
+        "commercial_bank",
+        "microfinance_bank",
+        "emi",
+        "exchange_company",
+        "securities_broker",
+        "nbfc",
+        "insurance_company"
+      ],
+      "deadlines": {
+        "trigger": {
+          "days_from_detection": "7",
+          "submission_system": "goAML"
+        }
+      },
+      "frequency": "event_driven",
+      "late_penalty": {
+        "penalty": "AML Act 2010 s.16: imprisonment up to 5 years or fine up to PKR 10M"
+      },
+      "name": "Suspicious Transaction Report (STR)",
+      "regulator_id": "pk-fmu",
+      "report_type_id": "pk-fmu-str",
+      "submission": {
+        "format": "goAML XML",
+        "portal": "https://goaml.fmu.gov.pk"
+      }
+    },
+    {
+      "applicable_to": [
+        "commercial_bank",
+        "exchange_company"
+      ],
+      "deadlines": {
+        "trigger": {
+          "days_from_transaction": "15",
+          "threshold_pkr": "2000000"
+        }
+      },
+      "frequency": "event_driven",
+      "late_penalty": {
+        "penalty": "AML Act 2010 s.16: fine up to PKR 5M"
+      },
+      "name": "Currency Transaction Report (CTR)",
+      "regulator_id": "pk-fmu",
+      "report_type_id": "pk-fmu-ctr",
+      "submission": {
+        "format": "goAML XML"
+      }
+    },
+    {
+      "applicable_to": [
+        "commercial_bank",
+        "microfinance_bank"
+      ],
+      "deadlines": {
+        "standard": {
+          "days_after_quarter_end": "30"
+        }
+      },
+      "frequency": "quarterly",
+      "late_penalty": {
+        "penalty": "BCO 1962 s.46: penalty per day of default"
+      },
+      "name": "Quarterly Prudential Return",
+      "regulator_id": "pk-sbp",
+      "report_type_id": "pk-sbp-prudential-quarterly",
+      "submission": {
+        "format": "SBP XBRL / Excel",
+        "portal": "SBP Banking Surveillance Department"
+      }
+    },
+    {
+      "applicable_to": [
+        "commercial_bank",
+        "company",
+        "aop"
+      ],
+      "deadlines": {
+        "standard": {
+          "day_of_following_month": "15"
+        }
+      },
+      "frequency": "monthly",
+      "late_penalty": {
+        "penalty": "ITO 2001 s.182: PKR 2,500 per day of default"
+      },
+      "name": "Monthly Withholding Tax Statement",
+      "regulator_id": "pk-fbr",
+      "report_type_id": "pk-fbr-wht-statement",
+      "submission": {
+        "format": "FBR IRIS e-filing",
+        "portal": "https://iris.fbr.gov.pk"
+      }
+    },
+    {
+      "applicable_to": [
+        "company",
+        "nbfc"
+      ],
+      "deadlines": {
+        "standard": {
+          "days_after_agm": "30"
+        }
+      },
+      "frequency": "annual",
+      "late_penalty": {
+        "penalty": "Companies Act 2017 s.130: PKR 100 per day up to 2 years"
+      },
+      "name": "Annual Return (Form A/B)",
+      "regulator_id": "pk-secp",
+      "report_type_id": "pk-secp-annual-return",
+      "submission": {
+        "format": "SECP eServices",
+        "portal": "https://eservices.secp.gov.pk"
+      }
+    }
+  ],
+  "sanctions_snapshot": {
+    "consolidated_counts": {
+      "organization": 8
+    },
+    "snapshot_id": "pk-sanctions-2026Q1",
+    "snapshot_timestamp": "2026-01-15T00:00:00Z",
+    "sources": {
+      "nacta_first_schedule": {
+        "authority": "Government of Pakistan",
+        "legal_basis": "Anti-Terrorism Act 1997, First Schedule",
+        "name": "NACTA First Schedule — Anti-Terrorism Act 1997",
+        "url": "https://nacta.gov.pk/proscribed-organizations/"
+      },
+      "unsc_1267": {
+        "authority": "United Nations Security Council",
+        "name": "UNSC 1267/1989/2253 Consolidated List",
+        "url": "https://www.un.org/securitycouncil/sanctions/1267"
+      }
+    }
+  },
+  "snapshot_type": "quarterly",
+  "sources": [
+    {
+      "authority": "Government of Pakistan",
+      "name": "NACTA Proscribed Organizations Gazette",
+      "source_id": "nacta_gazette"
+    },
+    {
+      "authority": "United Nations Security Council",
+      "name": "UNSC 1267/1989/2253 Consolidated List",
+      "source_id": "unsc_1267"
+    },
+    {
+      "authority": "Federal Board of Revenue",
+      "name": "Income Tax Ordinance 2001 (as amended)",
+      "source_id": "fbr_ito_2001"
+    },
+    {
+      "authority": "Government of Pakistan",
+      "name": "Anti-Money Laundering Act 2010",
+      "source_id": "aml_act_2010"
+    },
+    {
+      "authority": "Government of Pakistan / SECP",
+      "name": "Companies Act 2017",
+      "source_id": "companies_act_2017"
+    },
+    {
+      "authority": "State Bank of Pakistan",
+      "name": "Banking Companies Ordinance 1962",
+      "source_id": "bco_1962"
+    }
+  ],
+  "withholding_tax_rates": [
+    {
+      "description": "Salary income",
+      "effective_date": "2025-07-01",
+      "legal_basis": "Income Tax Ordinance 2001, s.149",
+      "rate": "varies",
+      "section": "149",
+      "taxpayer_status": "filer",
+      "threshold_pkr": "600000"
+    },
+    {
+      "description": "Profit on debt — bank deposits (filer)",
+      "effective_date": "2025-07-01",
+      "legal_basis": "Income Tax Ordinance 2001, s.151(1)(a)",
+      "rate": "0.15",
+      "section": "151(1)(a)",
+      "taxpayer_status": "filer"
+    },
+    {
+      "description": "Profit on debt — bank deposits (non-filer)",
+      "effective_date": "2025-07-01",
+      "legal_basis": "Income Tax Ordinance 2001, s.151(1)(a)",
+      "rate": "0.30",
+      "section": "151(1)(a)",
+      "taxpayer_status": "non-filer"
+    },
+    {
+      "description": "Payments to non-residents — royalties/fees",
+      "effective_date": "2025-07-01",
+      "legal_basis": "Income Tax Ordinance 2001, s.152(1)",
+      "rate": "0.15",
+      "section": "152(1)",
+      "taxpayer_status": "filer"
+    },
+    {
+      "description": "Sale of goods (filer, company)",
+      "effective_date": "2025-07-01",
+      "legal_basis": "Income Tax Ordinance 2001, s.153(1)(a)",
+      "rate": "0.04",
+      "section": "153(1)(a)",
+      "taxpayer_status": "filer",
+      "threshold_pkr": "75000"
+    },
+    {
+      "description": "Sale of goods (non-filer, company)",
+      "effective_date": "2025-07-01",
+      "legal_basis": "Income Tax Ordinance 2001, s.153(1)(a)",
+      "rate": "0.08",
+      "section": "153(1)(a)",
+      "taxpayer_status": "non-filer",
+      "threshold_pkr": "75000"
+    },
+    {
+      "description": "Rendering of services (filer, company)",
+      "effective_date": "2025-07-01",
+      "legal_basis": "Income Tax Ordinance 2001, s.153(1)(b)",
+      "rate": "0.08",
+      "section": "153(1)(b)",
+      "taxpayer_status": "filer",
+      "threshold_pkr": "30000"
+    },
+    {
+      "description": "Rendering of services (non-filer, company)",
+      "effective_date": "2025-07-01",
+      "legal_basis": "Income Tax Ordinance 2001, s.153(1)(b)",
+      "rate": "0.16",
+      "section": "153(1)(b)",
+      "taxpayer_status": "non-filer",
+      "threshold_pkr": "30000"
+    },
+    {
+      "description": "Contracts — execution of contracts (filer)",
+      "effective_date": "2025-07-01",
+      "legal_basis": "Income Tax Ordinance 2001, s.153(1)(c)",
+      "rate": "0.07",
+      "section": "153(1)(c)",
+      "taxpayer_status": "filer",
+      "threshold_pkr": "75000"
+    },
+    {
+      "description": "Contracts — execution of contracts (non-filer)",
+      "effective_date": "2025-07-01",
+      "legal_basis": "Income Tax Ordinance 2001, s.153(1)(c)",
+      "rate": "0.14",
+      "section": "153(1)(c)",
+      "taxpayer_status": "non-filer",
+      "threshold_pkr": "75000"
+    },
+    {
+      "description": "Income from property — rent (filer)",
+      "effective_date": "2025-07-01",
+      "legal_basis": "Income Tax Ordinance 2001, s.155",
+      "rate": "0.15",
+      "section": "155",
+      "taxpayer_status": "filer",
+      "threshold_pkr": "300000"
+    },
+    {
+      "description": "Prizes and winnings (filer)",
+      "effective_date": "2025-07-01",
+      "legal_basis": "Income Tax Ordinance 2001, s.156A",
+      "rate": "0.15",
+      "section": "156A",
+      "taxpayer_status": "filer"
+    },
+    {
+      "description": "Prizes and winnings (non-filer)",
+      "effective_date": "2025-07-01",
+      "legal_basis": "Income Tax Ordinance 2001, s.156A",
+      "rate": "0.30",
+      "section": "156A",
+      "taxpayer_status": "non-filer"
+    },
+    {
+      "description": "Cash withdrawal from bank (filer)",
+      "effective_date": "2025-07-01",
+      "legal_basis": "Income Tax Ordinance 2001, s.231A",
+      "rate": "0.003",
+      "section": "231A",
+      "taxpayer_status": "filer",
+      "threshold_pkr": "50000"
+    },
+    {
+      "description": "Cash withdrawal from bank (non-filer)",
+      "effective_date": "2025-07-01",
+      "legal_basis": "Income Tax Ordinance 2001, s.231A",
+      "rate": "0.006",
+      "section": "231A",
+      "taxpayer_status": "non-filer",
+      "threshold_pkr": "50000"
+    },
+    {
+      "description": "Banking transactions exceeding Rs 50k (non-filer)",
+      "effective_date": "2025-07-01",
+      "legal_basis": "Income Tax Ordinance 2001, s.236P",
+      "rate": "0.006",
+      "section": "236P",
+      "taxpayer_status": "non-filer",
+      "threshold_pkr": "50000"
+    }
+  ]
+}

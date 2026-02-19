@@ -1,0 +1,49 @@
+{
+  "as_of_date": "2026-01-15",
+  "created_at": "2026-01-15T00:00:00Z",
+  "digest_sha256": "e59056a2b9bdbf3e452857b1cbdc06b5cdff3e29f56de1e235475e8a4a57506f",
+  "domain": "sanctions",
+  "expires_at": "2026-04-15T00:00:00Z",
+  "includes": {
+    "sanctions_entries": 8,
+    "source_lists": [
+      "nacta_gazette",
+      "unsc_1267"
+    ]
+  },
+  "jurisdiction_id": "pk",
+  "regpack_id": "regpack:pk:sanctions:2026Q1",
+  "sanctions_snapshot": {
+    "consolidated_counts": {
+      "organization": 8
+    },
+    "snapshot_id": "pk-sanctions-2026Q1",
+    "snapshot_timestamp": "2026-01-15T00:00:00Z",
+    "sources": {
+      "nacta_first_schedule": {
+        "authority": "Government of Pakistan",
+        "legal_basis": "Anti-Terrorism Act 1997, First Schedule",
+        "name": "NACTA First Schedule — Anti-Terrorism Act 1997",
+        "url": "https://nacta.gov.pk/proscribed-organizations/"
+      },
+      "unsc_1267": {
+        "authority": "United Nations Security Council",
+        "name": "UNSC 1267/1989/2253 Consolidated List",
+        "url": "https://www.un.org/securitycouncil/sanctions/1267"
+      }
+    }
+  },
+  "snapshot_type": "quarterly",
+  "sources": [
+    {
+      "authority": "Government of Pakistan",
+      "name": "NACTA Proscribed Organizations Gazette",
+      "source_id": "nacta_gazette"
+    },
+    {
+      "authority": "United Nations Security Council",
+      "name": "UNSC 1267/1989/2253 Consolidated List",
+      "source_id": "unsc_1267"
+    }
+  ]
+}

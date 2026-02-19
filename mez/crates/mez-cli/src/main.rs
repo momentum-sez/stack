@@ -13,6 +13,7 @@ use tracing_subscriber::EnvFilter;
 use mez_cli::artifact::{run_artifact, ArtifactArgs};
 use mez_cli::corridor::{run_corridor, CorridorArgs};
 use mez_cli::lock::{run_lock, LockArgs};
+use mez_cli::regpack::{run_regpack, RegpackArgs};
 use mez_cli::signing::{run_signing, SigningArgs};
 use mez_cli::validate::{run_validate, ValidateArgs};
 
@@ -54,6 +55,9 @@ enum Commands {
     /// Content-addressed storage operations (store, resolve, verify).
     Artifact(ArtifactArgs),
 
+    /// Build, store, and verify regulatory packs (regpacks).
+    Regpack(RegpackArgs),
+
     /// Ed25519 key generation, VC signing, and signature verification.
     #[command(name = "vc")]
     Signing(SigningArgs),
@@ -90,6 +94,7 @@ fn main() -> ExitCode {
         Commands::Lock(args) => run_lock(&args, &repo_root),
         Commands::Corridor(args) => run_corridor(&args, &repo_root),
         Commands::Artifact(args) => run_artifact(&args, &repo_root),
+        Commands::Regpack(args) => run_regpack(&args, &repo_root),
         Commands::Signing(args) => run_signing(&args, &repo_root),
     };
 

@@ -176,6 +176,63 @@ pub fn run_lock(args: &LockArgs, repo_root: &Path) -> Result<u8> {
         }
     }
 
+    // Resolve regpack references from zone YAML.
+    let regpack_entries: Vec<serde_json::Value> = zone
+        .get("regpacks")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|rp| {
+                    let jid = rp.get("jurisdiction_id")?.as_str()?;
+                    let domain = rp.get("domain")?.as_str()?;
+                    let digest = rp.get("regpack_digest_sha256")?.as_str()?;
+                    let as_of = rp.get("as_of_date")?.as_str()?;
+
+                    // Skip zero-filled digests (not yet computed).
+                    if digest.chars().all(|c| c == '0') {
+                        tracing::warn!(
+                            jurisdiction = jid,
+                            domain = domain,
+                            "regpack digest is zero-filled — skipping (run `mez regpack build`)"
+                        );
+                        return None;
+                    }
+
+                    Some(serde_json::json!({
+                        "jurisdiction_id": jid,
+                        "domain": domain,
+                        "regpack_digest_sha256": digest,
+                        "as_of_date": as_of,
+                    }))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    // Resolve corridor references from zone YAML.
+    let corridor_entries: Vec<serde_json::Value> = zone
+        .get("corridors")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|c| {
+                    let cid = c.as_str()?;
+                    // Look for corridor definition in corridors/ directory.
+                    let corridor_def_path = repo_root.join("registries").join("corridors.yaml");
+                    let manifest_sha256 = if corridor_def_path.exists() {
+                        sha256_file(&corridor_def_path).unwrap_or_default()
+                    } else {
+                        String::new()
+                    };
+                    Some(serde_json::json!({
+                        "corridor_id": cid,
+                        "corridor_manifest_sha256": manifest_sha256,
+                    }))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
     // Build lockfile object.
     let lock = serde_json::json!({
         "stack_spec_version": crate::STACK_SPEC_VERSION,
@@ -187,8 +244,9 @@ pub fn run_lock(args: &LockArgs, repo_root: &Path) -> Result<u8> {
         },
         "modules": module_entries,
         "lawpacks": [],
+        "regpacks": regpack_entries,
         "overlays": [],
-        "corridors": [],
+        "corridors": corridor_entries,
     });
 
     // Serialize with canonical JSON.

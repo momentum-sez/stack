@@ -241,12 +241,61 @@ pub struct SystemHealth {
     pub total_errors: u64,
 }
 
+/// Per-entity compliance posture across all domains.
+///
+/// Returns the compliance status for a specific entity, aggregated
+/// from attestation records and smart asset compliance evaluations.
+/// This is the key endpoint for sovereign regulators to query entity
+/// compliance status (Phase G #33: `GET /compliance/{entity_id}`).
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct EntityComplianceResponse {
+    /// Entity ID queried.
+    pub entity_id: Uuid,
+    /// Jurisdiction of the entity (from first attestation, if available).
+    pub jurisdiction_id: Option<String>,
+    /// Number of attestations for this entity.
+    pub attestation_count: usize,
+    /// Per-domain attestation summary.
+    pub domains: Vec<DomainComplianceStatus>,
+    /// Assets owned by or associated with this entity.
+    pub assets: Vec<EntityAssetCompliance>,
+    /// Overall entity compliance state.
+    pub overall_status: String,
+}
+
+/// Compliance status for a single domain.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct DomainComplianceStatus {
+    /// Domain name (kyc, aml, sanctions, tax, etc.).
+    pub domain: String,
+    /// Most recent attestation status for this domain.
+    pub status: String,
+    /// Issuer of the most recent attestation.
+    pub issuer: Option<String>,
+    /// When the attestation was issued.
+    pub issued_at: Option<DateTime<Utc>>,
+    /// When the attestation expires (if applicable).
+    pub expires_at: Option<DateTime<Utc>>,
+}
+
+/// Compliance status for an asset owned by the entity.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct EntityAssetCompliance {
+    /// Asset ID.
+    pub asset_id: Uuid,
+    /// Asset type.
+    pub asset_type: String,
+    /// Current compliance status.
+    pub compliance_status: AssetComplianceStatus,
+}
+
 /// Build the regulator router.
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/v1/regulator/query/attestations", post(query_attestations))
         .route("/v1/regulator/summary", get(compliance_summary))
         .route("/v1/regulator/dashboard", get(dashboard))
+        .route("/v1/compliance/{entity_id}", get(entity_compliance))
 }
 
 /// POST /v1/regulator/query/attestations — Query attestations.
@@ -538,6 +587,121 @@ async fn dashboard(
         corridors: corridors_overview,
         policy_activity,
         health,
+    }))
+}
+
+/// GET /v1/compliance/{entity_id} — Per-entity compliance query.
+///
+/// Returns the compliance posture for a specific entity across all domains.
+/// Aggregates attestation records by domain, reports the most recent status
+/// for each, and includes compliance status for any associated assets.
+#[utoipa::path(
+    get,
+    path = "/v1/compliance/{entity_id}",
+    params(
+        ("entity_id" = Uuid, Path, description = "Entity identifier")
+    ),
+    responses(
+        (status = 200, description = "Entity compliance posture", body = EntityComplianceResponse),
+        (status = 404, description = "Entity not found"),
+    ),
+    tag = "regulator"
+)]
+async fn entity_compliance(
+    State(state): State<AppState>,
+    caller: CallerIdentity,
+    axum::extract::Path(entity_id): axum::extract::Path<Uuid>,
+) -> Result<Json<EntityComplianceResponse>, AppError> {
+    require_role(&caller, Role::Regulator)?;
+
+    let all_attestations = state.attestations.list();
+    let entity_attestations: Vec<_> = all_attestations
+        .into_iter()
+        .filter(|a| a.entity_id == entity_id)
+        .collect();
+
+    if entity_attestations.is_empty() {
+        // Check if the entity has any assets even without attestations.
+        let entity_assets: Vec<_> = state
+            .smart_assets
+            .list()
+            .into_iter()
+            .filter(|a| a.owner_entity_id.as_ref() == Some(&entity_id))
+            .collect();
+
+        if entity_assets.is_empty() {
+            return Err(AppError::NotFound(format!(
+                "No records found for entity {entity_id}"
+            )));
+        }
+    }
+
+    let jurisdiction_id = entity_attestations
+        .first()
+        .map(|a| a.jurisdiction_id.clone());
+
+    // Group attestations by domain (attestation_type).
+    let mut domain_map: std::collections::HashMap<String, Vec<&AttestationRecord>> =
+        std::collections::HashMap::new();
+    for att in &entity_attestations {
+        domain_map
+            .entry(att.attestation_type.clone())
+            .or_default()
+            .push(att);
+    }
+
+    // For each domain, pick the most recent attestation.
+    let mut domains: Vec<DomainComplianceStatus> = domain_map
+        .into_iter()
+        .map(|(domain, mut atts)| {
+            atts.sort_by(|a, b| b.issued_at.cmp(&a.issued_at));
+            let latest = atts[0];
+            DomainComplianceStatus {
+                domain,
+                status: format!("{:?}", latest.status),
+                issuer: Some(latest.issuer.clone()),
+                issued_at: Some(latest.issued_at),
+                expires_at: latest.expires_at,
+            }
+        })
+        .collect();
+    domains.sort_by(|a, b| a.domain.cmp(&b.domain));
+
+    // Entity assets.
+    let entity_assets: Vec<EntityAssetCompliance> = state
+        .smart_assets
+        .list()
+        .into_iter()
+        .filter(|a| a.owner_entity_id.as_ref() == Some(&entity_id))
+        .map(|a| EntityAssetCompliance {
+            asset_id: a.id,
+            asset_type: a.asset_type.to_string(),
+            compliance_status: a.compliance_status,
+        })
+        .collect();
+
+    // Determine overall status.
+    let has_blocking = entity_assets
+        .iter()
+        .any(|a| a.compliance_status == AssetComplianceStatus::NonCompliant);
+    let all_active = entity_attestations
+        .iter()
+        .all(|a| a.status == AttestationStatus::Active);
+    let overall_status = if has_blocking {
+        "non_compliant"
+    } else if all_active && !entity_attestations.is_empty() {
+        "compliant"
+    } else {
+        "pending"
+    };
+
+    Ok(Json(EntityComplianceResponse {
+        entity_id,
+        jurisdiction_id,
+        attestation_count: entity_attestations.len(),
+        domains,
+        assets: entity_assets,
+        overall_status: overall_status.to_string(),
     }))
 }
 

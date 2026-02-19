@@ -261,6 +261,9 @@ pub struct EntityComplianceResponse {
     pub assets: Vec<EntityAssetCompliance>,
     /// Overall entity compliance state.
     pub overall_status: String,
+    /// Per-corridor compliance summaries. Present when `?corridors=true`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub corridor_compliance: Option<Vec<CorridorComplianceStatus>>,
 }
 
 /// Compliance status for a single domain.
@@ -287,6 +290,37 @@ pub struct EntityAssetCompliance {
     pub asset_type: String,
     /// Current compliance status.
     pub compliance_status: AssetComplianceStatus,
+}
+
+/// Per-corridor compliance status for cross-zone queries.
+///
+/// Returned when `?corridors=true` is passed to `GET /v1/compliance/{entity_id}`.
+/// Summarizes the compliance posture visible through each corridor the entity's
+/// zone participates in.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CorridorComplianceStatus {
+    /// Corridor UUID.
+    pub corridor_id: Uuid,
+    /// Peer zone jurisdiction (the other end of the corridor).
+    pub peer_zone: String,
+    /// Corridor lifecycle state (ACTIVE, HALTED, etc.).
+    pub corridor_state: String,
+    /// Height of the receipt chain for this corridor (number of receipts).
+    pub last_receipt_height: u64,
+    /// Timestamp of the last checkpoint, if any.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_checkpoint_time: Option<DateTime<Utc>>,
+    /// Current MMR root of the receipt chain (64-char hex), if non-empty.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mmr_root: Option<String>,
+}
+
+/// Query parameters for the entity compliance endpoint.
+#[derive(Debug, Deserialize)]
+pub struct EntityComplianceQuery {
+    /// When `true`, include per-corridor compliance summaries in the response.
+    #[serde(default)]
+    pub corridors: Option<bool>,
 }
 
 /// Build the regulator router.
@@ -595,11 +629,16 @@ async fn dashboard(
 /// Returns the compliance posture for a specific entity across all domains.
 /// Aggregates attestation records by domain, reports the most recent status
 /// for each, and includes compliance status for any associated assets.
+///
+/// When `?corridors=true` is passed, includes per-corridor compliance
+/// summaries showing receipt chain height, checkpoint times, and MMR roots
+/// for all corridors the entity's zone participates in.
 #[utoipa::path(
     get,
     path = "/v1/compliance/{entity_id}",
     params(
-        ("entity_id" = Uuid, Path, description = "Entity identifier")
+        ("entity_id" = Uuid, Path, description = "Entity identifier"),
+        ("corridors" = Option<bool>, Query, description = "Include per-corridor compliance summaries")
     ),
     responses(
         (status = 200, description = "Entity compliance posture", body = EntityComplianceResponse),
@@ -611,6 +650,7 @@ async fn entity_compliance(
     State(state): State<AppState>,
     caller: CallerIdentity,
     axum::extract::Path(entity_id): axum::extract::Path<Uuid>,
+    axum::extract::Query(query): axum::extract::Query<EntityComplianceQuery>,
 ) -> Result<Json<EntityComplianceResponse>, AppError> {
     require_role(&caller, Role::Regulator)?;
 
@@ -695,6 +735,62 @@ async fn entity_compliance(
         "pending"
     };
 
+    // Corridor compliance (when ?corridors=true).
+    let corridor_compliance = if query.corridors.unwrap_or(false) {
+        let corridors_list = state.corridors.list();
+        let chains_guard = state.receipt_chains.read();
+        let entity_jurisdiction = jurisdiction_id.as_deref();
+
+        let mut statuses = Vec::new();
+        for c in &corridors_list {
+            // Include corridors where the entity's jurisdiction matches either side.
+            let matches = entity_jurisdiction.map_or(true, |jid| {
+                c.jurisdiction_a == jid || c.jurisdiction_b == jid
+            });
+            if !matches {
+                continue;
+            }
+
+            let peer_zone = entity_jurisdiction
+                .map(|jid| {
+                    if c.jurisdiction_a == jid {
+                        c.jurisdiction_b.clone()
+                    } else {
+                        c.jurisdiction_a.clone()
+                    }
+                })
+                .unwrap_or_else(|| {
+                    format!("{} / {}", c.jurisdiction_a, c.jurisdiction_b)
+                });
+
+            let (height, mmr_root) = match chains_guard.get(&c.id) {
+                Some(chain) => {
+                    let h = chain.height();
+                    let root = chain.mmr_root().ok().filter(|s| !s.is_empty());
+                    (h, root)
+                }
+                None => (0, None),
+            };
+
+            let last_checkpoint_time = chains_guard
+                .get(&c.id)
+                .and_then(|chain| chain.checkpoints().last())
+                .map(|cp| cp.timestamp.as_datetime().to_owned());
+
+            statuses.push(CorridorComplianceStatus {
+                corridor_id: c.id,
+                peer_zone,
+                corridor_state: c.state.as_str().to_string(),
+                last_receipt_height: height,
+                last_checkpoint_time,
+                mmr_root,
+            });
+        }
+        Some(statuses)
+    } else {
+        None
+    };
+
     Ok(Json(EntityComplianceResponse {
         entity_id,
         jurisdiction_id,
@@ -702,6 +798,7 @@ async fn entity_compliance(
         domains,
         assets: entity_assets,
         overall_status: overall_status.to_string(),
+        corridor_compliance,
     }))
 }
 

@@ -6,8 +6,15 @@
 #   ./deploy-zone.sh [profile] [zone-id] [jurisdiction]
 #
 # Examples:
+#   ./deploy-zone.sh sovereign-govos org.momentum.mez.zone.pk-sifc pk
 #   ./deploy-zone.sh digital-financial-center my-zone ae-dubai-difc
 #   ./deploy-zone.sh minimal-mvp test-zone ex
+#
+# Environment variables (optional, prompted if not set):
+#   MASS_API_TOKEN         — Bearer token for Mass API authentication
+#   MASS_ORG_INFO_URL      — Mass organization-info API URL
+#   MASS_TREASURY_INFO_URL — Mass treasury-info API URL
+#   MASS_CONSENT_INFO_URL  — Mass consent-info API URL
 
 set -euo pipefail
 
@@ -65,14 +72,35 @@ fi
 
 echo -e "${GREEN}Profile found: $PROFILE_PATH${NC}"
 
+# Check for jurisdiction-specific zone.yaml
+JURISDICTION_ZONE="$PROJECT_ROOT/jurisdictions/$JURISDICTION/zone.yaml"
+if [ -f "$JURISDICTION_ZONE" ]; then
+    echo -e "${GREEN}Jurisdiction zone manifest found: $JURISDICTION_ZONE${NC}"
+    USE_JURISDICTION_ZONE=true
+else
+    # Also check for hyphenated jurisdiction dirs (e.g., pk-sifc)
+    JURISDICTION_ZONE="$PROJECT_ROOT/jurisdictions/${ZONE_ID##*.}/zone.yaml"
+    if [ -f "$JURISDICTION_ZONE" ]; then
+        echo -e "${GREEN}Jurisdiction zone manifest found: $JURISDICTION_ZONE${NC}"
+        USE_JURISDICTION_ZONE=true
+    else
+        USE_JURISDICTION_ZONE=false
+    fi
+fi
+
 # Create config directory
 CONFIG_DIR="$DEPLOY_DIR/config"
 mkdir -p "$CONFIG_DIR"
 
-# Generate zone.yaml
-echo -e "${YELLOW}Generating zone configuration...${NC}"
+# Generate or copy zone.yaml
+echo -e "${YELLOW}Preparing zone configuration...${NC}"
 
-cat > "$CONFIG_DIR/zone.yaml" << EOF
+if [ "$USE_JURISDICTION_ZONE" = true ]; then
+    cp "$JURISDICTION_ZONE" "$CONFIG_DIR/zone.yaml"
+    echo -e "${GREEN}Copied jurisdiction zone manifest${NC}"
+else
+    # Generate a basic zone.yaml for jurisdictions without a dedicated manifest
+    cat > "$CONFIG_DIR/zone.yaml" << EOF
 # Auto-generated zone configuration
 # Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -104,7 +132,7 @@ licensepack_refresh_policy:
     max_staleness_hours: 4
 
 corridors:
-  - org.momentum.mez.corridor.local
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
 
 trust_anchors: []
 
@@ -116,7 +144,8 @@ key_rotation_policy:
 lockfile_path: stack.lock
 EOF
 
-echo -e "${GREEN}Zone configuration generated${NC}"
+    echo -e "${GREEN}Zone configuration generated${NC}"
+fi
 
 # Create .env file
 echo -e "${YELLOW}Creating environment configuration...${NC}"
@@ -124,6 +153,7 @@ echo -e "${YELLOW}Creating environment configuration...${NC}"
 # Generate random credentials — never use hardcoded defaults
 GENERATED_PG_PASSWORD="$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)"
 GENERATED_GRAFANA_PASSWORD="$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)"
+GENERATED_AUTH_TOKEN="$(openssl rand -base64 32 | tr -d '/+=' | head -c 48)"
 
 cat > "$DEPLOY_DIR/.env" << EOF
 # MEZ Zone Environment Configuration
@@ -135,11 +165,17 @@ MEZ_JURISDICTION=$JURISDICTION
 MEZ_PROFILE=$PROFILE
 MEZ_LOG_LEVEL=info
 
+# Zone manifest path (inside container)
+ZONE_CONFIG=/app/config/zone.yaml
+
+# Authentication
+AUTH_TOKEN=$GENERATED_AUTH_TOKEN
+
 # Corridor Configuration
-MEZ_CORRIDOR_ID=org.momentum.mez.corridor.local
+MEZ_CORRIDOR_ID=org.momentum.mez.corridor.swift.iso20022-cross-border
 
 # Watcher Configuration
-MEZ_WATCHER_ID=watcher-local-001
+MEZ_WATCHER_ID=watcher-${JURISDICTION}-001
 MEZ_BOND_AMOUNT=100000
 
 # Database Configuration
@@ -147,11 +183,22 @@ POSTGRES_USER=mez
 POSTGRES_PASSWORD=$GENERATED_PG_PASSWORD
 POSTGRES_DB=mez
 
+# Mass API Configuration
+# Set MASS_API_TOKEN to connect to live Mass APIs.
+# Without it, the zone operates in standalone mode (no Mass proxy).
+MASS_API_TOKEN=\${MASS_API_TOKEN:-}
+MASS_ORG_INFO_URL=\${MASS_ORG_INFO_URL:-https://organization-info.api.mass.inc}
+MASS_TREASURY_INFO_URL=\${MASS_TREASURY_INFO_URL:-https://treasury-info.api.mass.inc}
+MASS_CONSENT_INFO_URL=\${MASS_CONSENT_INFO_URL:-https://consent.api.mass.inc}
+MASS_IDENTITY_INFO_URL=\${MASS_IDENTITY_INFO_URL:-}
+MASS_TIMEOUT_SECS=30
+
 # Observability
 GRAFANA_PASSWORD=$GENERATED_GRAFANA_PASSWORD
 EOF
 
 echo -e "${GREEN}Environment configuration created${NC}"
+echo -e "${YELLOW}Auth token saved to .env (use this for API access)${NC}"
 
 # Create keys directory
 KEYS_DIR="$DEPLOY_DIR/keys"
@@ -197,6 +244,29 @@ if [ ! -f "$KEYS_DIR/zone-authority.ed25519.jwk" ]; then
     echo -e "${GREEN}Zone authority keys generated (Ed25519 via mez-cli)${NC}"
 fi
 
+# Extract the signing key hex for the container environment.
+# The zone signing key is the 'd' (private key) field from the JWK, base64url-decoded to hex.
+if command -v python3 &> /dev/null; then
+    ZONE_KEY_HEX=$(python3 -c "
+import json, base64
+with open('$KEYS_DIR/zone-authority.ed25519.jwk') as f:
+    jwk = json.load(f)
+d = jwk['d']
+# base64url decode
+d += '=' * (4 - len(d) % 4) if len(d) % 4 else ''
+raw = base64.urlsafe_b64decode(d)
+print(raw.hex())
+" 2>/dev/null || echo "")
+    if [ -n "$ZONE_KEY_HEX" ]; then
+        echo "ZONE_SIGNING_KEY_HEX=$ZONE_KEY_HEX" >> "$DEPLOY_DIR/.env"
+        echo -e "${GREEN}Zone signing key extracted to .env${NC}"
+    else
+        echo -e "${YELLOW}Warning: Could not extract signing key hex. Zone will use ephemeral key.${NC}"
+    fi
+else
+    echo -e "${YELLOW}Warning: python3 not available — zone will use ephemeral signing key${NC}"
+fi
+
 # Pull/build images
 echo ""
 echo -e "${YELLOW}Building Docker images...${NC}"
@@ -240,21 +310,31 @@ echo -e "${GREEN}======================================${NC}"
 echo ""
 docker compose ps
 echo ""
+echo -e "${BLUE}Zone:${NC}"
+echo -e "  Zone ID:      $ZONE_ID"
+echo -e "  Jurisdiction: $JURISDICTION"
+echo -e "  Profile:      $PROFILE"
+echo ""
 echo -e "${BLUE}Service Endpoints:${NC}"
-echo -e "  MEZ API (all services): http://localhost:8080"
-echo -e "  Health check:            http://localhost:8080/health/liveness"
+echo -e "  MEZ API:       http://localhost:8080"
+echo -e "  Health check:  http://localhost:8080/health/liveness"
+echo -e "  Readiness:     http://localhost:8080/health/readiness"
+echo ""
+echo -e "${BLUE}API Access:${NC}"
+echo -e "  Auth token:    (see deploy/docker/.env AUTH_TOKEN)"
+echo -e "  Example:       curl -H 'Authorization: Bearer <token>' http://localhost:8080/v1/corridors"
 echo ""
 echo -e "${BLUE}Observability:${NC}"
-echo -e "  Prometheus:              http://localhost:9090"
-echo -e "  Grafana:                 http://localhost:3000"
+echo -e "  Prometheus:    http://localhost:9090"
+echo -e "  Grafana:       http://localhost:3000 (admin / <see .env>)"
 echo ""
-echo -e "${BLUE}Databases:${NC}"
-echo -e "  PostgreSQL:              localhost:5432"
+echo -e "${BLUE}Database:${NC}"
+echo -e "  PostgreSQL:    localhost:5432 (mez / <see .env>)"
 echo ""
 echo -e "${YELLOW}To view logs:${NC}"
-echo -e "  docker compose logs -f"
+echo -e "  docker compose logs -f mez-api"
 echo ""
 echo -e "${YELLOW}To stop the zone:${NC}"
-echo -e "  docker compose down"
+echo -e "  cd deploy/docker && docker compose down"
 echo ""
 echo -e "${GREEN}Zone '$ZONE_ID' is now operational!${NC}"

@@ -37,6 +37,7 @@ pub mod bridge;
 pub mod fork;
 pub mod migration;
 pub mod netting;
+pub mod network;
 pub mod payment_rail;
 pub mod receipt;
 pub mod swift;
@@ -60,6 +61,11 @@ pub use payment_rail::{
 pub use receipt::{
     Checkpoint, CorridorReceipt, DigestEntry, MmrCommitment, MmrPeakEntry, ProofObject,
     ReceiptChain, ReceiptError, ReceiptProof, compute_next_root,
+};
+pub use network::{
+    CorridorAcceptance, CorridorNetworkConfig, CorridorPeer, CorridorProposal, CorridorRejection,
+    InboundAttestation, InboundReceipt, InboundReceiptResult, NetworkError, PeerEndpoint,
+    PeerRegistry, PeerStatus, validate_inbound_receipt, validate_proposal,
 };
 pub use swift::{SettlementInstruction, SettlementRail, SettlementRailError, SwiftPacs008};
 
@@ -87,6 +93,10 @@ pub enum CorridorError {
     /// Netting computation failure.
     #[error("netting error: {0}")]
     Netting(#[from] NettingError),
+
+    /// Inter-zone networking failure.
+    #[error("network error: {0}")]
+    Network(#[from] NetworkError),
 
     /// Canonicalization failure.
     #[error("canonicalization error: {0}")]

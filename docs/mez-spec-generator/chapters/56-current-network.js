@@ -117,7 +117,7 @@ module.exports = function build_chapter56() {
     h3("56.4.3 Saudi Arabia (Full Sovereign)"),
     p_runs([
       bold("Profile: "),
-      "Full sovereign GovOS deployment extending beyond the current PAK-KSA corridor partnership. The Saudi Vision 2030 economic diversification program has created 15 new special economic zones, including NEOM, King Abdullah Economic City, and Jazan City for Primary and Downstream Industries. A full sovereign deployment would integrate the EZ Stack with Saudi Arabia's National Single Sign-On (Nafath), Absher government services platform, and ZATCA tax authority systems. Key lawpack requirements include the Saudi Companies Law 2022, ZATCA VAT regulations, CMA Capital Markets regulations, and SAGIA foreign investment licensing rules. This deployment would transform Saudi Arabia from a corridor endpoint to a full network hub, enabling GCC-wide corridor connectivity."
+      "Full sovereign GovOS deployment extending beyond the current PAK-KSA corridor partnership. The Saudi Vision 2030 economic diversification program has created 15 new economic zones, including NEOM, King Abdullah Economic City, and Jazan City for Primary and Downstream Industries. A full sovereign deployment would integrate the EZ Stack with Saudi Arabia's National Single Sign-On (Nafath), Absher government services platform, and ZATCA tax authority systems. Key lawpack requirements include the Saudi Companies Law 2022, ZATCA VAT regulations, CMA Capital Markets regulations, and SAGIA foreign investment licensing rules. This deployment would transform Saudi Arabia from a corridor endpoint to a full network hub, enabling GCC-wide corridor connectivity."
     ]),
 
     h3("56.4.4 Nigeria"),

@@ -535,7 +535,7 @@ corridor_families:
     description: >
       Corridors between Chinese sub-national economic zones. These share
       PRC federal compliance requirements but have zone-specific regulatory
-      frameworks (free trade zones, special economic zones, innovation zones).
+      frameworks (free trade zones, economic zones, innovation zones).
       Cross-zone data transfer and capital flow rules may differ.
     corridors:
 
@@ -545,7 +545,7 @@ corridor_families:
           zone_name: "Shanghai Free Trade Zone"
         zone_b:
           jurisdiction_id: cn-shenzhen
-          zone_name: "Shenzhen Special Economic Zone"
+          zone_name: "Shenzhen Economic Zone"
         compliance_domains:
           - corporate
           - securities
@@ -577,7 +577,7 @@ corridor_families:
           zone_name: "Hainan Free Trade Port"
         zone_b:
           jurisdiction_id: cn-shenzhen
-          zone_name: "Shenzhen Special Economic Zone"
+          zone_name: "Shenzhen Economic Zone"
         compliance_domains:
           - corporate
           - trade

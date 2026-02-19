@@ -205,7 +205,7 @@ The EZ Stack deploys:
 - `digital-native-free-zone` (crypto-native zones)
 - `asset-history-bundle` (provenance tracking)
 
-"Economic Zone in a Box" is more accurate than "Economic Zone in a Box" because most of these deployments are not legally "special economic zones." ADGM is a financial free zone. Pakistan GovOS is a national government platform. Alatau is a charter city.
+"Economic Zone in a Box" is more accurate than "Economic Zone in a Box" because most of these deployments are not legally "economic zones." ADGM is a financial free zone. Pakistan GovOS is a national government platform. Alatau is a charter city.
 
 The `mez-*` crate prefix and `momentum-ez` GitHub org are legacy implementation details. They don't need to change — `mez` is just a product identifier, like how AWS services have codenames that don't match the marketing name.
 

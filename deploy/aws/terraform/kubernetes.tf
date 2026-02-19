@@ -1,4 +1,4 @@
-# Kubernetes Resources for MSEZ Zone
+# Kubernetes Resources for MEZ Zone
 # Deploys all zone services to EKS
 
 provider "kubernetes" {
@@ -29,14 +29,14 @@ provider "helm" {
 # Namespace
 # -----------------------------------------------------------------------------
 
-resource "kubernetes_namespace" "msez" {
+resource "kubernetes_namespace" "mez" {
   metadata {
-    name = "msez"
+    name = "mez"
 
     labels = {
-      "app.kubernetes.io/name"       = "msez"
+      "app.kubernetes.io/name"       = "mez"
       "app.kubernetes.io/managed-by" = "terraform"
-      "msez.zone/id"                 = var.zone_id
+      "mez.zone/id"                 = var.zone_id
     }
   }
 }
@@ -48,15 +48,15 @@ resource "kubernetes_namespace" "msez" {
 resource "kubernetes_config_map" "zone_config" {
   metadata {
     name      = "zone-config"
-    namespace = kubernetes_namespace.msez.metadata[0].name
+    namespace = kubernetes_namespace.mez.metadata[0].name
   }
 
   data = {
-    MSEZ_ZONE_ID      = var.zone_id
-    MSEZ_JURISDICTION = var.jurisdiction_id
-    MSEZ_PROFILE      = var.profile
-    MSEZ_ENVIRONMENT  = var.environment
-    MSEZ_LOG_LEVEL    = var.environment == "prod" ? "info" : "debug"
+    MEZ_ZONE_ID      = var.zone_id
+    MEZ_JURISDICTION = var.jurisdiction_id
+    MEZ_PROFILE      = var.profile
+    MEZ_ENVIRONMENT  = var.environment
+    MEZ_LOG_LEVEL    = var.environment == "prod" ? "info" : "debug"
   }
 }
 
@@ -67,12 +67,12 @@ resource "kubernetes_config_map" "zone_config" {
 resource "kubernetes_secret" "db_credentials" {
   metadata {
     name      = "db-credentials"
-    namespace = kubernetes_namespace.msez.metadata[0].name
+    namespace = kubernetes_namespace.mez.metadata[0].name
   }
 
   data = {
-    DATABASE_URL = "postgresql://msez:${random_password.rds.result}@${aws_db_instance.msez.endpoint}/msez"
-    REDIS_URL    = "rediss://${aws_elasticache_replication_group.msez.primary_endpoint_address}:6379"
+    DATABASE_URL = "postgresql://mez:${random_password.rds.result}@${aws_db_instance.mez.endpoint}/mez"
+    REDIS_URL    = "rediss://${aws_elasticache_replication_group.mez.primary_endpoint_address}:6379"
   }
 
   type = "Opaque"
@@ -85,7 +85,7 @@ resource "kubernetes_secret" "db_credentials" {
 resource "kubernetes_deployment" "zone_authority" {
   metadata {
     name      = "zone-authority"
-    namespace = kubernetes_namespace.msez.metadata[0].name
+    namespace = kubernetes_namespace.mez.metadata[0].name
 
     labels = {
       app       = "zone-authority"
@@ -115,7 +115,7 @@ resource "kubernetes_deployment" "zone_authority" {
 
         container {
           name  = "zone-authority"
-          image = "${var.ecr_registry}/msez-zone-authority:${var.image_tag}"
+          image = "${var.ecr_registry}/mez-zone-authority:${var.image_tag}"
 
           port {
             container_port = 8080
@@ -178,7 +178,7 @@ resource "kubernetes_deployment" "zone_authority" {
 resource "kubernetes_service" "zone_authority" {
   metadata {
     name      = "zone-authority"
-    namespace = kubernetes_namespace.msez.metadata[0].name
+    namespace = kubernetes_namespace.mez.metadata[0].name
   }
 
   spec {
@@ -203,7 +203,7 @@ resource "kubernetes_service" "zone_authority" {
 resource "kubernetes_deployment" "entity_registry" {
   metadata {
     name      = "entity-registry"
-    namespace = kubernetes_namespace.msez.metadata[0].name
+    namespace = kubernetes_namespace.mez.metadata[0].name
 
     labels = {
       app       = "entity-registry"
@@ -231,8 +231,8 @@ resource "kubernetes_deployment" "entity_registry" {
       spec {
         container {
           name  = "entity-registry"
-          image = "${var.ecr_registry}/msez-zone-authority:${var.image_tag}"
-          args  = ["python", "-m", "tools.msez", "entity-registry", "serve", "--port", "8083"]
+          image = "${var.ecr_registry}/mez-zone-authority:${var.image_tag}"
+          args  = ["python", "-m", "tools.mez", "entity-registry", "serve", "--port", "8083"]
 
           port {
             container_port = 8083
@@ -279,7 +279,7 @@ resource "kubernetes_deployment" "entity_registry" {
 resource "kubernetes_service" "entity_registry" {
   metadata {
     name      = "entity-registry"
-    namespace = kubernetes_namespace.msez.metadata[0].name
+    namespace = kubernetes_namespace.mez.metadata[0].name
   }
 
   spec {
@@ -303,7 +303,7 @@ resource "kubernetes_service" "entity_registry" {
 resource "kubernetes_deployment" "license_registry" {
   metadata {
     name      = "license-registry"
-    namespace = kubernetes_namespace.msez.metadata[0].name
+    namespace = kubernetes_namespace.mez.metadata[0].name
 
     labels = {
       app       = "license-registry"
@@ -331,7 +331,7 @@ resource "kubernetes_deployment" "license_registry" {
       spec {
         container {
           name  = "license-registry"
-          image = "${var.ecr_registry}/msez-zone-authority:${var.image_tag}"
+          image = "${var.ecr_registry}/mez-zone-authority:${var.image_tag}"
           args  = ["python", "-m", "tools.licensepack", "serve", "--port", "8084"]
 
           port {
@@ -374,7 +374,7 @@ resource "kubernetes_deployment" "license_registry" {
 resource "kubernetes_deployment" "corridor_node" {
   metadata {
     name      = "corridor-node"
-    namespace = kubernetes_namespace.msez.metadata[0].name
+    namespace = kubernetes_namespace.mez.metadata[0].name
 
     labels = {
       app       = "corridor-node"
@@ -402,7 +402,7 @@ resource "kubernetes_deployment" "corridor_node" {
       spec {
         container {
           name  = "corridor-node"
-          image = "${var.ecr_registry}/msez-corridor-node:${var.image_tag}"
+          image = "${var.ecr_registry}/mez-corridor-node:${var.image_tag}"
 
           port {
             container_port = 8081
@@ -444,7 +444,7 @@ resource "kubernetes_deployment" "corridor_node" {
 resource "kubernetes_deployment" "watcher" {
   metadata {
     name      = "watcher"
-    namespace = kubernetes_namespace.msez.metadata[0].name
+    namespace = kubernetes_namespace.mez.metadata[0].name
 
     labels = {
       app       = "watcher"
@@ -472,7 +472,7 @@ resource "kubernetes_deployment" "watcher" {
       spec {
         container {
           name  = "watcher"
-          image = "${var.ecr_registry}/msez-watcher:${var.image_tag}"
+          image = "${var.ecr_registry}/mez-watcher:${var.image_tag}"
 
           port {
             container_port = 8082
@@ -514,7 +514,7 @@ resource "kubernetes_deployment" "watcher" {
 resource "kubernetes_service_account" "zone_authority" {
   metadata {
     name      = "zone-authority"
-    namespace = kubernetes_namespace.msez.metadata[0].name
+    namespace = kubernetes_namespace.mez.metadata[0].name
 
     annotations = {
       "eks.amazonaws.com/role-arn" = aws_iam_role.zone_authority.arn
@@ -523,7 +523,7 @@ resource "kubernetes_service_account" "zone_authority" {
 }
 
 resource "aws_iam_role" "zone_authority" {
-  name = "msez-${var.zone_id}-zone-authority"
+  name = "mez-${var.zone_id}-zone-authority"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -536,7 +536,7 @@ resource "aws_iam_role" "zone_authority" {
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringEquals = {
-            "${module.eks.oidc_provider}:sub" = "system:serviceaccount:msez:zone-authority"
+            "${module.eks.oidc_provider}:sub" = "system:serviceaccount:mez:zone-authority"
           }
         }
       }
@@ -570,7 +570,7 @@ resource "aws_iam_role_policy" "zone_authority_s3" {
           "kms:Encrypt",
           "kms:GenerateDataKey"
         ]
-        Resource = [aws_kms_key.msez.arn]
+        Resource = [aws_kms_key.mez.arn]
       }
     ]
   })
@@ -580,10 +580,10 @@ resource "aws_iam_role_policy" "zone_authority_s3" {
 # Ingress (ALB)
 # -----------------------------------------------------------------------------
 
-resource "kubernetes_ingress_v1" "msez" {
+resource "kubernetes_ingress_v1" "mez" {
   metadata {
-    name      = "msez-ingress"
-    namespace = kubernetes_namespace.msez.metadata[0].name
+    name      = "mez-ingress"
+    namespace = kubernetes_namespace.mez.metadata[0].name
 
     annotations = {
       "kubernetes.io/ingress.class"               = "alb"
@@ -701,5 +701,5 @@ variable "zone_domain" {
 
 output "ingress_hostname" {
   description = "Ingress hostname"
-  value       = kubernetes_ingress_v1.msez.status[0].load_balancer[0].ingress[0].hostname
+  value       = kubernetes_ingress_v1.mez.status[0].load_balancer[0].ingress[0].hostname
 }

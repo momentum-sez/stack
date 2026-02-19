@@ -1,4 +1,4 @@
-package msez.lic.bank-sponsor.ongoing
+package mez.lic.bank-sponsor.ongoing
 
 default compliant = true
 

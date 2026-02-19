@@ -1,4 +1,4 @@
-package msez.lic.exchange.eligibility
+package mez.lic.exchange.eligibility
 
 default allow = false
 

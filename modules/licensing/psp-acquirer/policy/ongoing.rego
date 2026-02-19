@@ -1,4 +1,4 @@
-package msez.lic.psp-acquirer.ongoing
+package mez.lic.psp-acquirer.ongoing
 
 default compliant = true
 

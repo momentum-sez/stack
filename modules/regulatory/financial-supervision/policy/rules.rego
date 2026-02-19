@@ -1,3 +1,3 @@
-package msez.reg.financial-supervision
+package mez.reg.financial-supervision
 
 default compliant = true

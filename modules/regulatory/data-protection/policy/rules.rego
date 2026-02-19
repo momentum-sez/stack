@@ -1,3 +1,3 @@
-package msez.reg.data-protection
+package mez.reg.data-protection
 
 default compliant = true

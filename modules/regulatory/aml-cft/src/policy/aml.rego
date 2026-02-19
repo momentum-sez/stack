@@ -1,4 +1,4 @@
-package msez.aml
+package mez.aml
 
 default allow = false
 

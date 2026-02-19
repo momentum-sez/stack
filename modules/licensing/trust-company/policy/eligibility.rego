@@ -1,4 +1,4 @@
-package msez.lic.trust-company.eligibility
+package mez.lic.trust-company.eligibility
 
 default allow = false
 

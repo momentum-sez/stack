@@ -1,4 +1,4 @@
-package msez.lic.csp.ongoing
+package mez.lic.csp.ongoing
 
 default compliant = true
 

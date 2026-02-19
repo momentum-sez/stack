@@ -1,4 +1,4 @@
-package msez.lic.fund-admin.ongoing
+package mez.lic.fund-admin.ongoing
 
 default compliant = true
 

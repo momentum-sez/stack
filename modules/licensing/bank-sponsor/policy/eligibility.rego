@@ -1,4 +1,4 @@
-package msez.lic.bank-sponsor.eligibility
+package mez.lic.bank-sponsor.eligibility
 
 default allow = false
 

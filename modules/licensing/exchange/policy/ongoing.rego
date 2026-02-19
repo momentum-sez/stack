@@ -1,4 +1,4 @@
-package msez.lic.exchange.ongoing
+package mez.lic.exchange.ongoing
 
 default compliant = true
 

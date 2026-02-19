@@ -1,4 +1,4 @@
-package msez.lic.csp.eligibility
+package mez.lic.csp.eligibility
 
 default allow = false
 

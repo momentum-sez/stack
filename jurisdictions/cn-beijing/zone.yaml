@@ -1,0 +1,28 @@
+zone_id: org.momentum.mez.zone.cn.beijing
+jurisdiction_id: cn-beijing
+zone_name: Beijing Financial Innovation Zone
+profile:
+  profile_id: org.momentum.mez.profile.technology-zone
+  version: 0.4.44
+
+jurisdiction_stack:
+  - cn
+  - cn-beijing
+
+lawpack_domains:
+  - civil
+  - financial
+
+overlays: []
+params_overrides: {}
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+trust_anchors: []
+key_rotation_policy:
+  default:
+    rotation_days: 90
+    grace_days: 14
+
+lockfile_path: stack.lock

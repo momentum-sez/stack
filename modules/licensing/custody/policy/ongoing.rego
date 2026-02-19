@@ -1,4 +1,4 @@
-package msez.lic.custody.ongoing
+package mez.lic.custody.ongoing
 
 default compliant = true
 

@@ -1,4 +1,4 @@
-package msez.lic.psp-acquirer.eligibility
+package mez.lic.psp-acquirer.eligibility
 
 default allow = false
 

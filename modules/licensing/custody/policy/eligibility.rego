@@ -1,4 +1,4 @@
-package msez.lic.custody.eligibility
+package mez.lic.custody.eligibility
 
 default allow = false
 

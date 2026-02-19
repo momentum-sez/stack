@@ -1,4 +1,4 @@
-package msez.lic.casp.eligibility
+package mez.lic.casp.eligibility
 
 default allow = false
 

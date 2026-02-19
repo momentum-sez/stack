@@ -1,1 +1,1 @@
-MSEZ example blob artifact (attachments/proofs)
+MEZ example blob artifact (attachments/proofs)

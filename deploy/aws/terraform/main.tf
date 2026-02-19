@@ -1,4 +1,4 @@
-# MSEZ Zone - AWS Infrastructure
+# MEZ Zone - AWS Infrastructure
 # Terraform configuration for production zone deployment
 #
 # This deploys a complete SEZ-in-a-Box with:
@@ -30,11 +30,11 @@ terraform {
 
   backend "s3" {
     # Configure in backend.hcl:
-    # bucket         = "msez-terraform-state"
+    # bucket         = "mez-terraform-state"
     # key            = "zones/${zone_id}/terraform.tfstate"
     # region         = "us-east-1"
     # encrypt        = true
-    # dynamodb_table = "msez-terraform-locks"
+    # dynamodb_table = "mez-terraform-locks"
   }
 }
 
@@ -43,7 +43,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "msez"
+      Project     = "mez"
       Environment = var.environment
       ZoneId      = var.zone_id
       ManagedBy   = "terraform"
@@ -68,7 +68,7 @@ variable "environment" {
 }
 
 variable "zone_id" {
-  description = "MSEZ Zone identifier"
+  description = "MEZ Zone identifier"
   type        = string
 }
 
@@ -144,8 +144,8 @@ data "aws_caller_identity" "current" {}
 # KMS Key for Encryption
 # -----------------------------------------------------------------------------
 
-resource "aws_kms_key" "msez" {
-  description             = "MSEZ Zone encryption key for ${var.zone_id}"
+resource "aws_kms_key" "mez" {
+  description             = "MEZ Zone encryption key for ${var.zone_id}"
   deletion_window_in_days = 30
   enable_key_rotation     = true
 
@@ -180,13 +180,13 @@ resource "aws_kms_key" "msez" {
   })
 
   tags = {
-    Name = "msez-${var.zone_id}-key"
+    Name = "mez-${var.zone_id}-key"
   }
 }
 
-resource "aws_kms_alias" "msez" {
-  name          = "alias/msez-${var.zone_id}"
-  target_key_id = aws_kms_key.msez.key_id
+resource "aws_kms_alias" "mez" {
+  name          = "alias/mez-${var.zone_id}"
+  target_key_id = aws_kms_key.mez.key_id
 }
 
 # -----------------------------------------------------------------------------
@@ -197,7 +197,7 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 5.0"
 
-  name = "msez-${var.zone_id}-vpc"
+  name = "mez-${var.zone_id}-vpc"
   cidr = "10.0.0.0/16"
 
   azs             = slice(data.aws_availability_zones.available.names, 0, 3)
@@ -212,12 +212,12 @@ module "vpc" {
   # Tags required for EKS
   public_subnet_tags = {
     "kubernetes.io/role/elb"                    = 1
-    "kubernetes.io/cluster/msez-${var.zone_id}" = "shared"
+    "kubernetes.io/cluster/mez-${var.zone_id}" = "shared"
   }
 
   private_subnet_tags = {
     "kubernetes.io/role/internal-elb"           = 1
-    "kubernetes.io/cluster/msez-${var.zone_id}" = "shared"
+    "kubernetes.io/cluster/mez-${var.zone_id}" = "shared"
   }
 }
 
@@ -229,7 +229,7 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 19.0"
 
-  cluster_name    = "msez-${var.zone_id}"
+  cluster_name    = "mez-${var.zone_id}"
   cluster_version = "1.29"
 
   vpc_id     = module.vpc.vpc_id
@@ -240,14 +240,14 @@ module "eks" {
 
   # Encryption
   cluster_encryption_config = var.enable_encryption ? {
-    provider_key_arn = aws_kms_key.msez.arn
+    provider_key_arn = aws_kms_key.mez.arn
     resources        = ["secrets"]
   } : {}
 
   # Managed node groups
   eks_managed_node_groups = {
-    msez_nodes = {
-      name           = "msez-nodes"
+    mez_nodes = {
+      name           = "mez-nodes"
       instance_types = var.eks_node_instance_types
 
       min_size     = 2
@@ -265,15 +265,15 @@ module "eks" {
             volume_size           = 100
             volume_type           = "gp3"
             encrypted             = var.enable_encryption
-            kms_key_id           = var.enable_encryption ? aws_kms_key.msez.arn : null
+            kms_key_id           = var.enable_encryption ? aws_kms_key.mez.arn : null
             delete_on_termination = true
           }
         }
       }
 
       labels = {
-        "msez.zone"    = var.zone_id
-        "msez.profile" = var.profile
+        "mez.zone"    = var.zone_id
+        "mez.profile" = var.profile
       }
 
       tags = {
@@ -307,18 +307,18 @@ module "eks" {
 # RDS PostgreSQL
 # -----------------------------------------------------------------------------
 
-resource "aws_db_subnet_group" "msez" {
-  name       = "msez-${var.zone_id}"
+resource "aws_db_subnet_group" "mez" {
+  name       = "mez-${var.zone_id}"
   subnet_ids = module.vpc.private_subnets
 
   tags = {
-    Name = "msez-${var.zone_id}-db-subnet-group"
+    Name = "mez-${var.zone_id}-db-subnet-group"
   }
 }
 
 resource "aws_security_group" "rds" {
-  name        = "msez-${var.zone_id}-rds"
-  description = "Security group for MSEZ RDS"
+  name        = "mez-${var.zone_id}-rds"
+  description = "Security group for MEZ RDS"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
@@ -337,7 +337,7 @@ resource "aws_security_group" "rds" {
   }
 
   tags = {
-    Name = "msez-${var.zone_id}-rds-sg"
+    Name = "mez-${var.zone_id}-rds-sg"
   }
 }
 
@@ -347,9 +347,9 @@ resource "random_password" "rds" {
 }
 
 resource "aws_secretsmanager_secret" "rds_password" {
-  name                    = "msez/${var.zone_id}/rds-password"
+  name                    = "mez/${var.zone_id}/rds-password"
   recovery_window_in_days = 7
-  kms_key_id             = aws_kms_key.msez.id
+  kms_key_id             = aws_kms_key.mez.id
 }
 
 resource "aws_secretsmanager_secret_version" "rds_password" {
@@ -357,8 +357,8 @@ resource "aws_secretsmanager_secret_version" "rds_password" {
   secret_string = random_password.rds.result
 }
 
-resource "aws_db_instance" "msez" {
-  identifier = "msez-${var.zone_id}"
+resource "aws_db_instance" "mez" {
+  identifier = "mez-${var.zone_id}"
 
   engine         = "postgres"
   engine_version = "16.1"
@@ -368,13 +368,13 @@ resource "aws_db_instance" "msez" {
   max_allocated_storage = var.rds_allocated_storage * 2
   storage_type          = "gp3"
   storage_encrypted     = var.enable_encryption
-  kms_key_id           = var.enable_encryption ? aws_kms_key.msez.arn : null
+  kms_key_id           = var.enable_encryption ? aws_kms_key.mez.arn : null
 
-  db_name  = "msez"
-  username = "msez"
+  db_name  = "mez"
+  username = "mez"
   password = random_password.rds.result
 
-  db_subnet_group_name   = aws_db_subnet_group.msez.name
+  db_subnet_group_name   = aws_db_subnet_group.mez.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
   multi_az               = var.enable_multi_az
@@ -386,13 +386,13 @@ resource "aws_db_instance" "msez" {
 
   deletion_protection = var.environment == "prod"
   skip_final_snapshot = var.environment != "prod"
-  final_snapshot_identifier = var.environment == "prod" ? "msez-${var.zone_id}-final" : null
+  final_snapshot_identifier = var.environment == "prod" ? "mez-${var.zone_id}-final" : null
 
   performance_insights_enabled    = true
-  performance_insights_kms_key_id = var.enable_encryption ? aws_kms_key.msez.arn : null
+  performance_insights_kms_key_id = var.enable_encryption ? aws_kms_key.mez.arn : null
 
   tags = {
-    Name = "msez-${var.zone_id}-postgres"
+    Name = "mez-${var.zone_id}-postgres"
   }
 }
 
@@ -400,14 +400,14 @@ resource "aws_db_instance" "msez" {
 # ElastiCache Redis
 # -----------------------------------------------------------------------------
 
-resource "aws_elasticache_subnet_group" "msez" {
-  name       = "msez-${var.zone_id}"
+resource "aws_elasticache_subnet_group" "mez" {
+  name       = "mez-${var.zone_id}"
   subnet_ids = module.vpc.private_subnets
 }
 
 resource "aws_security_group" "redis" {
-  name        = "msez-${var.zone_id}-redis"
-  description = "Security group for MSEZ Redis"
+  name        = "mez-${var.zone_id}-redis"
+  description = "Security group for MEZ Redis"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
@@ -426,13 +426,13 @@ resource "aws_security_group" "redis" {
   }
 
   tags = {
-    Name = "msez-${var.zone_id}-redis-sg"
+    Name = "mez-${var.zone_id}-redis-sg"
   }
 }
 
-resource "aws_elasticache_replication_group" "msez" {
-  replication_group_id = "msez-${var.zone_id}"
-  description          = "MSEZ Zone Redis cluster"
+resource "aws_elasticache_replication_group" "mez" {
+  replication_group_id = "mez-${var.zone_id}"
+  description          = "MEZ Zone Redis cluster"
 
   engine         = "redis"
   engine_version = "7.0"
@@ -443,19 +443,19 @@ resource "aws_elasticache_replication_group" "msez" {
   automatic_failover_enabled = var.enable_multi_az
   multi_az_enabled          = var.enable_multi_az
 
-  subnet_group_name  = aws_elasticache_subnet_group.msez.name
+  subnet_group_name  = aws_elasticache_subnet_group.mez.name
   security_group_ids = [aws_security_group.redis.id]
 
   at_rest_encryption_enabled = var.enable_encryption
   transit_encryption_enabled = true
-  kms_key_id                = var.enable_encryption ? aws_kms_key.msez.arn : null
+  kms_key_id                = var.enable_encryption ? aws_kms_key.mez.arn : null
 
   snapshot_retention_limit = 7
   snapshot_window         = "02:00-03:00"
   maintenance_window      = "sun:03:00-sun:04:00"
 
   tags = {
-    Name = "msez-${var.zone_id}-redis"
+    Name = "mez-${var.zone_id}-redis"
   }
 }
 
@@ -464,10 +464,10 @@ resource "aws_elasticache_replication_group" "msez" {
 # -----------------------------------------------------------------------------
 
 resource "aws_s3_bucket" "artifacts" {
-  bucket = "msez-${var.zone_id}-artifacts"
+  bucket = "mez-${var.zone_id}-artifacts"
 
   tags = {
-    Name = "msez-${var.zone_id}-artifacts"
+    Name = "mez-${var.zone_id}-artifacts"
   }
 }
 
@@ -484,7 +484,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "artifacts" {
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm     = "aws:kms"
-      kms_master_key_id = aws_kms_key.msez.arn
+      kms_master_key_id = aws_kms_key.mez.arn
     }
     bucket_key_enabled = true
   }
@@ -520,12 +520,12 @@ output "eks_cluster_endpoint" {
 
 output "rds_endpoint" {
   description = "RDS endpoint"
-  value       = aws_db_instance.msez.endpoint
+  value       = aws_db_instance.mez.endpoint
 }
 
 output "redis_endpoint" {
   description = "Redis primary endpoint"
-  value       = aws_elasticache_replication_group.msez.primary_endpoint_address
+  value       = aws_elasticache_replication_group.mez.primary_endpoint_address
 }
 
 output "artifacts_bucket" {
@@ -535,7 +535,7 @@ output "artifacts_bucket" {
 
 output "kms_key_arn" {
   description = "KMS key ARN"
-  value       = aws_kms_key.msez.arn
+  value       = aws_kms_key.mez.arn
 }
 
 output "rds_secret_arn" {

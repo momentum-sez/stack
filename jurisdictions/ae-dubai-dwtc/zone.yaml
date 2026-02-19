@@ -1,0 +1,29 @@
+zone_id: org.momentum.mez.zone.ae.dubai.dwtc
+jurisdiction_id: ae-dubai-dwtc
+zone_name: Dubai World Trade Centre Free Zone
+profile:
+  profile_id: org.momentum.mez.profile.free-zone
+  version: 0.4.44
+
+jurisdiction_stack:
+  - ae
+  - ae-dubai
+  - ae-dubai-dwtc
+
+lawpack_domains:
+  - civil
+  - financial
+
+overlays: []
+params_overrides: {}
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+trust_anchors: []
+key_rotation_policy:
+  default:
+    rotation_days: 90
+    grace_days: 14
+
+lockfile_path: stack.lock

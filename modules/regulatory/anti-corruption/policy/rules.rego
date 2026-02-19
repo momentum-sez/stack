@@ -1,3 +1,3 @@
-package msez.reg.anti-corruption
+package mez.reg.anti-corruption
 
 default compliant = true

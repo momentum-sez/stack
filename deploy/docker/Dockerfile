@@ -1,9 +1,9 @@
-# MSEZ Stack — Multi-Stage Rust Build
-# Produces two binaries: msez-api (Axum HTTP server) and msez-cli (validation/management tool)
+# MEZ Stack — Multi-Stage Rust Build
+# Produces two binaries: mez-api (Axum HTTP server) and mez-cli (validation/management tool)
 #
-# Build:   docker build -t msez-api .
-# Run:     docker run -p 8080:8080 msez-api
-# CLI:     docker run --rm msez-api msez-cli validate --all-modules
+# Build:   docker build -t mez-api .
+# Run:     docker run -p 8080:8080 mez-api
+# CLI:     docker run --rm mez-api mez-cli validate --all-modules
 
 # ============================================
 # Stage 1: Build
@@ -17,14 +17,14 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates/ ./crates/
 
 # Build release binaries
-RUN cargo build --release -p msez-api -p msez-cli
+RUN cargo build --release -p mez-api -p mez-cli
 
 # ============================================
 # Stage 2: Runtime
 # ============================================
 FROM debian:bookworm-slim
 
-LABEL org.opencontainers.image.title="MSEZ API"
+LABEL org.opencontainers.image.title="MEZ API"
 LABEL org.opencontainers.image.description="Momentum SEZ Stack — Axum API server and CLI toolchain"
 LABEL org.opencontainers.image.vendor="Momentum"
 LABEL org.opencontainers.image.version="0.4.44"
@@ -40,11 +40,11 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
-RUN groupadd -r msez && useradd -r -g msez -d /app -s /sbin/nologin msez
+RUN groupadd -r mez && useradd -r -g mez -d /app -s /sbin/nologin mez
 
 # Copy binaries from builder
-COPY --from=builder /app/target/release/msez-api /usr/local/bin/
-COPY --from=builder /app/target/release/msez-cli /usr/local/bin/
+COPY --from=builder /app/target/release/mez-api /usr/local/bin/
+COPY --from=builder /app/target/release/mez-cli /usr/local/bin/
 
 # Copy data files needed at runtime (module descriptors, schemas, jurisdictions)
 COPY modules/ /app/modules/
@@ -52,10 +52,10 @@ COPY schemas/ /app/schemas/
 COPY jurisdictions/ /app/jurisdictions/
 
 # Create data directories
-RUN mkdir -p /app/data /app/config && chown -R msez:msez /app
+RUN mkdir -p /app/data /app/config && chown -R mez:mez /app
 
 WORKDIR /app
-USER msez
+USER mez
 
 # Expose API port
 EXPOSE 8080
@@ -65,4 +65,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8080/health/liveness || exit 1
 
 # Default: run the API server
-CMD ["msez-api"]
+CMD ["mez-api"]

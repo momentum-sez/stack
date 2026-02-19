@@ -1,3 +1,3 @@
-package msez.reg.consumer-protection
+package mez.reg.consumer-protection
 
 default compliant = true

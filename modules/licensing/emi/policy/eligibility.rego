@@ -1,4 +1,4 @@
-package msez.lic.emi.eligibility
+package mez.lic.emi.eligibility
 
 default allow = false
 

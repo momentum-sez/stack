@@ -1,0 +1,28 @@
+zone_id: org.momentum.mez.zone.us.ut
+jurisdiction_id: us-ut
+zone_name: Utah
+profile:
+  profile_id: org.momentum.mez.profile.digital-financial-center
+  version: 0.4.44
+
+jurisdiction_stack:
+  - us
+  - us-ut
+
+lawpack_domains:
+  - civil
+  - financial
+
+overlays: []
+params_overrides: {}
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+trust_anchors: []
+key_rotation_policy:
+  default:
+    rotation_days: 90
+    grace_days: 14
+
+lockfile_path: stack.lock

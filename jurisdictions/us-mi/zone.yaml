@@ -1,0 +1,28 @@
+zone_id: org.momentum.mez.zone.us.mi
+jurisdiction_id: us-mi
+zone_name: Michigan
+profile:
+  profile_id: org.momentum.mez.profile.digital-financial-center
+  version: 0.4.44
+
+jurisdiction_stack:
+  - us
+  - us-mi
+
+lawpack_domains:
+  - civil
+  - financial
+
+overlays: []
+params_overrides: {}
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+trust_anchors: []
+key_rotation_policy:
+  default:
+    rotation_days: 90
+    grace_days: 14
+
+lockfile_path: stack.lock

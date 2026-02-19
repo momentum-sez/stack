@@ -1,4 +1,4 @@
-package msez.regulator.access
+package mez.regulator.access
 
 default allow = false
 

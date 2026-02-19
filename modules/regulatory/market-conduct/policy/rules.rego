@@ -1,3 +1,3 @@
-package msez.reg.market-conduct
+package mez.reg.market-conduct
 
 default compliant = true

@@ -1,0 +1,28 @@
+zone_id: org.momentum.mez.zone.us.nc
+jurisdiction_id: us-nc
+zone_name: North Carolina
+profile:
+  profile_id: org.momentum.mez.profile.digital-financial-center
+  version: 0.4.44
+
+jurisdiction_stack:
+  - us
+  - us-nc
+
+lawpack_domains:
+  - civil
+  - financial
+
+overlays: []
+params_overrides: {}
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+trust_anchors: []
+key_rotation_policy:
+  default:
+    rotation_days: 90
+    grace_days: 14
+
+lockfile_path: stack.lock

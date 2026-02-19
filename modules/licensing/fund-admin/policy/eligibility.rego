@@ -1,4 +1,4 @@
-package msez.lic.fund-admin.eligibility
+package mez.lic.fund-admin.eligibility
 
 default allow = false
 

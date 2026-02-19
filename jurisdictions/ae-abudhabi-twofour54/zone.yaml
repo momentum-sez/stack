@@ -1,0 +1,29 @@
+zone_id: org.momentum.mez.zone.ae.abudhabi.twofour54
+jurisdiction_id: ae-abudhabi-twofour54
+zone_name: twofour54 Abu Dhabi
+profile:
+  profile_id: org.momentum.mez.profile.media-zone
+  version: 0.4.44
+
+jurisdiction_stack:
+  - ae
+  - ae-abudhabi
+  - ae-abudhabi-twofour54
+
+lawpack_domains:
+  - civil
+  - financial
+
+overlays: []
+params_overrides: {}
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+trust_anchors: []
+key_rotation_policy:
+  default:
+    rotation_days: 90
+    grace_days: 14
+
+lockfile_path: stack.lock

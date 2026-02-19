@@ -1,4 +1,4 @@
-package msez.lic.emi.ongoing
+package mez.lic.emi.ongoing
 
 default compliant = true
 

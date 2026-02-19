@@ -1,0 +1,28 @@
+zone_id: org.momentum.mez.zone.us.as
+jurisdiction_id: us-as
+zone_name: American Samoa
+profile:
+  profile_id: org.momentum.mez.profile.digital-financial-center
+  version: 0.4.44
+
+jurisdiction_stack:
+  - us
+  - us-as
+
+lawpack_domains:
+  - civil
+  - financial
+
+overlays: []
+params_overrides: {}
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+trust_anchors: []
+key_rotation_policy:
+  default:
+    rotation_days: 90
+    grace_days: 14
+
+lockfile_path: stack.lock

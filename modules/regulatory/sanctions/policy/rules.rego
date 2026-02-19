@@ -1,3 +1,3 @@
-package msez.reg.sanctions
+package mez.reg.sanctions
 
 default compliant = true

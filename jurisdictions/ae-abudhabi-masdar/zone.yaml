@@ -1,0 +1,29 @@
+zone_id: org.momentum.mez.zone.ae.abudhabi.masdar
+jurisdiction_id: ae-abudhabi-masdar
+zone_name: Masdar City Free Zone
+profile:
+  profile_id: org.momentum.mez.profile.free-zone
+  version: 0.4.44
+
+jurisdiction_stack:
+  - ae
+  - ae-abudhabi
+  - ae-abudhabi-masdar
+
+lawpack_domains:
+  - civil
+  - financial
+
+overlays: []
+params_overrides: {}
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+trust_anchors: []
+key_rotation_policy:
+  default:
+    rotation_days: 90
+    grace_days: 14
+
+lockfile_path: stack.lock

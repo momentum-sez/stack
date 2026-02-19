@@ -1,4 +1,4 @@
-package msez.lic.token-issuer.eligibility
+package mez.lic.token-issuer.eligibility
 
 default allow = false
 

@@ -1,4 +1,4 @@
-package msez.lic.card-program-manager.eligibility
+package mez.lic.card-program-manager.eligibility
 
 default allow = false
 

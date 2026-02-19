@@ -1,4 +1,4 @@
-package msez.lic.token-issuer.ongoing
+package mez.lic.token-issuer.ongoing
 
 default compliant = true
 

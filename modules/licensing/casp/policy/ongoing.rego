@@ -1,4 +1,4 @@
-package msez.lic.casp.ongoing
+package mez.lic.casp.ongoing
 
 default compliant = true
 

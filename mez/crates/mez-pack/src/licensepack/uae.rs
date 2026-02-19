@@ -21,6 +21,7 @@ fn reg(id: &str, name: &str, jid: &str, url: Option<&str>, caps: &[&str]) -> Lic
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn lt(
     id: &str, name: &str, desc: &str, reg_id: &str, cat: &str,
     activities: &[&str], fee_app: Option<(&str, &str)>, fee_annual: Option<(&str, &str)>,

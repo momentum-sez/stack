@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [features]
-default = ["mock"]
+default = []
 mock = []
 groth16 = []
 plonk = []

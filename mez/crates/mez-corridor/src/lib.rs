@@ -50,7 +50,9 @@ pub use fork::{
     ForkBranch, ForkDetector, ForkError, ForkResolution, ResolutionReason, WatcherAttestation,
     WatcherRegistry, create_attestation, resolve_fork, MAX_CLOCK_SKEW, MAX_FUTURE_DRIFT,
 };
-pub use migration::{MigrationError, MigrationSaga, MigrationState, SideEffect};
+pub use migration::{
+    EffectExecutor, MigrationError, MigrationSaga, MigrationState, RecordingExecutor, SideEffect,
+};
 pub use netting::{
     Currency, NetPosition, NettingEngine, NettingError, Obligation, Party, SettlementLeg,
     SettlementPlan,

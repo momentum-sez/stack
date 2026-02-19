@@ -29,6 +29,43 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
+/// Trait for executing migration side-effects against external systems.
+///
+/// Implementations bridge the saga state machine to real zone infrastructure:
+/// - Lock/unlock assets at source zones
+/// - Mint/burn representations at destination zones
+///
+/// The executor is called during `advance_with_executor()` for forward effects
+/// and during `compensate_with_executor()` for compensation effects.
+///
+/// ## Idempotency Contract
+///
+/// Implementations MUST be idempotent: executing the same effect twice
+/// must produce the same result without error. This is required because
+/// compensation retry loops may re-execute effects after partial failure.
+pub trait EffectExecutor {
+    /// Execute a single side-effect. Returns `Ok(())` on success
+    /// or an error description on failure.
+    fn execute(&mut self, migration_id: &Uuid, effect: &SideEffect) -> Result<(), String>;
+}
+
+/// A no-op executor that records effects without executing them.
+///
+/// Used when callers only need effect tracking (the original `advance()`
+/// and `compensate()` behavior). Also useful in tests.
+#[derive(Debug, Default)]
+pub struct RecordingExecutor {
+    /// All effects that were passed to `execute()`.
+    pub executed: Vec<SideEffect>,
+}
+
+impl EffectExecutor for RecordingExecutor {
+    fn execute(&mut self, _migration_id: &Uuid, effect: &SideEffect) -> Result<(), String> {
+        self.executed.push(effect.clone());
+        Ok(())
+    }
+}
+
 /// Errors in migration saga operations.
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum MigrationError {
@@ -69,6 +106,15 @@ pub enum MigrationError {
         from: MigrationState,
         /// Attempted target state.
         to: MigrationState,
+    },
+
+    /// A side-effect execution failed.
+    #[error("effect execution failed for migration {id}: {reason}")]
+    EffectFailed {
+        /// Migration identifier.
+        id: Uuid,
+        /// Description of the failure.
+        reason: String,
     },
 }
 
@@ -224,7 +270,27 @@ impl MigrationSaga {
     /// `VersionConflict`.
     ///
     /// Checks the deadline and auto-compensates if expired.
+    ///
+    /// This is the recording-only variant. For executing effects against
+    /// external systems, use [`advance_with_executor`](Self::advance_with_executor).
     pub fn advance(&mut self, expected_version: u64) -> Result<MigrationState, MigrationError> {
+        self.advance_with_executor(expected_version, &mut RecordingExecutor::default())
+    }
+
+    /// Advance the migration to the next state, executing effects via the
+    /// provided [`EffectExecutor`].
+    ///
+    /// The executor is called for each forward side-effect produced by
+    /// the state transition. If the executor fails, the saga state is
+    /// NOT advanced (the effect is not recorded).
+    ///
+    /// On timeout, compensation effects are computed and executed via
+    /// the same executor.
+    pub fn advance_with_executor(
+        &mut self,
+        expected_version: u64,
+        executor: &mut dyn EffectExecutor,
+    ) -> Result<MigrationState, MigrationError> {
         // CAS check.
         if self.version != expected_version {
             return Err(MigrationError::VersionConflict {
@@ -245,7 +311,7 @@ impl MigrationSaga {
         // Deadline check — if expired, execute compensation.
         let now = Utc::now();
         if now > self.deadline {
-            self.execute_compensation();
+            self.execute_compensation_with_executor(executor)?;
             self.state = MigrationState::TimedOut;
             self.version += 1;
             self.updated_at = now;
@@ -255,34 +321,28 @@ impl MigrationSaga {
             });
         }
 
-        // Execute the next step.
-        let next_state = match self.state {
+        // Determine the next effect.
+        let effect = match self.state {
             MigrationState::Initiated => {
                 // Step 1: Lock source assets.
-                let effect = SideEffect::Lock {
+                SideEffect::Lock {
                     asset_id: self.asset_id.clone(),
                     zone_id: self.source_zone.clone(),
-                };
-                self.forward_effects.push(effect);
-                MigrationState::SourceLocked
+                }
             }
             MigrationState::SourceLocked => {
                 // Step 2: Mint at destination.
-                let effect = SideEffect::Mint {
+                SideEffect::Mint {
                     asset_id: self.asset_id.clone(),
                     zone_id: self.dest_zone.clone(),
-                };
-                self.forward_effects.push(effect);
-                MigrationState::DestinationMinted
+                }
             }
             MigrationState::DestinationMinted => {
                 // Step 3: Complete — burn the source lock (finalize).
-                let effect = SideEffect::Burn {
+                SideEffect::Burn {
                     asset_id: self.asset_id.clone(),
                     zone_id: self.source_zone.clone(),
-                };
-                self.forward_effects.push(effect);
-                MigrationState::Completed
+                }
             }
             // Terminal states handled above.
             MigrationState::Completed
@@ -290,6 +350,23 @@ impl MigrationSaga {
             | MigrationState::TimedOut => unreachable!(),
         };
 
+        // Execute the effect. If the executor fails, do NOT record
+        // the effect or transition state.
+        executor
+            .execute(&self.id, &effect)
+            .map_err(|reason| MigrationError::EffectFailed {
+                id: self.id,
+                reason,
+            })?;
+
+        let next_state = match self.state {
+            MigrationState::Initiated => MigrationState::SourceLocked,
+            MigrationState::SourceLocked => MigrationState::DestinationMinted,
+            MigrationState::DestinationMinted => MigrationState::Completed,
+            _ => unreachable!(),
+        };
+
+        self.forward_effects.push(effect);
         self.state = next_state;
         self.version += 1;
         self.updated_at = Utc::now();
@@ -310,7 +387,23 @@ impl MigrationSaga {
     /// This is required for financial safety: retry loops must not
     /// produce errors on re-compensation. The version check is skipped
     /// for idempotent no-op returns.
+    ///
+    /// This is the recording-only variant. For executing effects against
+    /// external systems, use [`compensate_with_executor`](Self::compensate_with_executor).
     pub fn compensate(&mut self, expected_version: u64) -> Result<MigrationState, MigrationError> {
+        self.compensate_with_executor(expected_version, &mut RecordingExecutor::default())
+    }
+
+    /// Compensate with an [`EffectExecutor`] that executes each
+    /// compensation effect against external systems.
+    ///
+    /// Idempotency: if the saga is already compensated or timed out,
+    /// this is a no-op (the executor is NOT called again).
+    pub fn compensate_with_executor(
+        &mut self,
+        expected_version: u64,
+        executor: &mut dyn EffectExecutor,
+    ) -> Result<MigrationState, MigrationError> {
         // Idempotent: already compensated or timed out = no-op.
         // No CAS check on idempotent path — retry loops must succeed.
         if self.state == MigrationState::Compensated
@@ -336,15 +429,24 @@ impl MigrationSaga {
             });
         }
 
-        self.execute_compensation();
+        self.execute_compensation_with_executor(executor)?;
         self.state = MigrationState::Compensated;
         self.version += 1;
         self.updated_at = Utc::now();
         Ok(MigrationState::Compensated)
     }
 
-    /// Execute compensation by inverting all forward effects in reverse order.
-    fn execute_compensation(&mut self) {
+    /// Compute and execute compensation effects.
+    ///
+    /// Compensation effects are the inverse of forward effects in reverse
+    /// order. Each effect is executed via the provided executor.
+    ///
+    /// If compensation effects were already computed (idempotent retry),
+    /// they are re-executed but not recomputed.
+    fn execute_compensation_with_executor(
+        &mut self,
+        executor: &mut dyn EffectExecutor,
+    ) -> Result<(), MigrationError> {
         if self.compensation_effects.is_empty() {
             // Compute compensation effects: reverse order, inverse of each.
             self.compensation_effects = self
@@ -354,8 +456,17 @@ impl MigrationSaga {
                 .map(|e| e.inverse())
                 .collect();
         }
-        // If compensation_effects was already computed (idempotent path),
-        // we don't recompute — the effects are already recorded.
+
+        // Execute each compensation effect.
+        for effect in &self.compensation_effects {
+            executor
+                .execute(&self.id, effect)
+                .map_err(|reason| MigrationError::EffectFailed {
+                    id: self.id,
+                    reason,
+                })?;
+        }
+        Ok(())
     }
 
     /// Check the no-duplicate invariant:
@@ -391,13 +502,14 @@ impl MigrationSaga {
         // After locking source and minting dest: source_locked=true, dest_minted=true
         // which is OK because the source is LOCKED (not available).
         // The invariant fails when source is UNLOCKED AND dest is MINTED.
-        !((!source_locked) && dest_minted)
+        source_locked || !dest_minted
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
 
     fn make_saga() -> MigrationSaga {
         MigrationSaga::new(
@@ -415,6 +527,87 @@ mod tests {
             "asset-002".to_string(),
             Utc::now() - chrono::Duration::hours(1), // Already expired
         )
+    }
+
+    /// Asset state in a zone — models the external world for property tests.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    enum AssetState {
+        /// Asset is locked (cannot be transferred).
+        Locked,
+        /// Asset representation has been minted.
+        Minted,
+    }
+
+    /// A simple ledger that tracks per-zone asset state.
+    /// Used by property tests to verify `forward + compensate = pre-state`.
+    #[derive(Debug, Clone)]
+    struct AssetLedger {
+        /// (zone_id, asset_id) → state
+        state: BTreeMap<(String, String), AssetState>,
+    }
+
+    impl AssetLedger {
+        fn new() -> Self {
+            Self {
+                state: BTreeMap::new(),
+            }
+        }
+
+        fn apply(&mut self, effect: &SideEffect) {
+            match effect {
+                SideEffect::Lock { asset_id, zone_id } => {
+                    self.state
+                        .insert((zone_id.clone(), asset_id.clone()), AssetState::Locked);
+                }
+                SideEffect::Unlock { asset_id, zone_id } => {
+                    // Unlock removes the lock — returns to pre-lock state
+                    // (absent from ledger). This ensures forward + compensate = pre-state.
+                    self.state.remove(&(zone_id.clone(), asset_id.clone()));
+                }
+                SideEffect::Mint { asset_id, zone_id } => {
+                    self.state
+                        .insert((zone_id.clone(), asset_id.clone()), AssetState::Minted);
+                }
+                SideEffect::Burn { asset_id, zone_id } => {
+                    // Burn removes the minted representation.
+                    self.state.remove(&(zone_id.clone(), asset_id.clone()));
+                }
+            }
+        }
+
+        fn apply_all(&mut self, effects: &[SideEffect]) {
+            for e in effects {
+                self.apply(e);
+            }
+        }
+    }
+
+    /// An executor that applies effects to an AssetLedger.
+    struct LedgerExecutor<'a> {
+        ledger: &'a mut AssetLedger,
+    }
+
+    impl EffectExecutor for LedgerExecutor<'_> {
+        fn execute(&mut self, _migration_id: &Uuid, effect: &SideEffect) -> Result<(), String> {
+            self.ledger.apply(effect);
+            Ok(())
+        }
+    }
+
+    /// An executor that fails on the Nth call, for testing partial failure.
+    struct FailingExecutor {
+        call_count: usize,
+        fail_on: usize,
+    }
+
+    impl EffectExecutor for FailingExecutor {
+        fn execute(&mut self, _migration_id: &Uuid, _effect: &SideEffect) -> Result<(), String> {
+            self.call_count += 1;
+            if self.call_count == self.fail_on {
+                return Err("simulated failure".to_string());
+            }
+            Ok(())
+        }
     }
 
     #[test]
@@ -642,5 +835,196 @@ mod tests {
         assert!(!MigrationState::Initiated.is_terminal());
         assert!(!MigrationState::SourceLocked.is_terminal());
         assert!(!MigrationState::DestinationMinted.is_terminal());
+    }
+
+    // ── EffectExecutor tests ────────────────────────────────────────────
+
+    #[test]
+    fn advance_with_executor_applies_effects_to_ledger() {
+        let mut saga = make_saga();
+        let mut ledger = AssetLedger::new();
+        let mut exec = LedgerExecutor { ledger: &mut ledger };
+
+        saga.advance_with_executor(0, &mut exec).unwrap();
+        assert_eq!(
+            exec.ledger
+                .state
+                .get(&("zone-pk-01".to_string(), "asset-001".to_string())),
+            Some(&AssetState::Locked)
+        );
+
+        saga.advance_with_executor(1, &mut exec).unwrap();
+        assert_eq!(
+            exec.ledger
+                .state
+                .get(&("zone-ae-01".to_string(), "asset-001".to_string())),
+            Some(&AssetState::Minted)
+        );
+    }
+
+    #[test]
+    fn compensate_with_executor_applies_inverse_effects() {
+        let mut saga = make_saga();
+        let mut ledger = AssetLedger::new();
+        let mut exec = LedgerExecutor { ledger: &mut ledger };
+
+        saga.advance_with_executor(0, &mut exec).unwrap(); // Lock
+        saga.advance_with_executor(1, &mut exec).unwrap(); // Mint
+
+        // Ledger: source locked, dest minted.
+        assert_eq!(
+            exec.ledger
+                .state
+                .get(&("zone-pk-01".to_string(), "asset-001".to_string())),
+            Some(&AssetState::Locked)
+        );
+        assert_eq!(
+            exec.ledger
+                .state
+                .get(&("zone-ae-01".to_string(), "asset-001".to_string())),
+            Some(&AssetState::Minted)
+        );
+
+        // Compensate: should burn dest, unlock source.
+        saga.compensate_with_executor(2, &mut exec).unwrap();
+
+        // Source should be unlocked (removed from ledger = pre-state).
+        assert_eq!(
+            exec.ledger
+                .state
+                .get(&("zone-pk-01".to_string(), "asset-001".to_string())),
+            None
+        );
+        // Dest should be burned (removed from ledger = pre-state).
+        assert_eq!(
+            exec.ledger
+                .state
+                .get(&("zone-ae-01".to_string(), "asset-001".to_string())),
+            None
+        );
+    }
+
+    #[test]
+    fn executor_failure_prevents_state_transition() {
+        let mut saga = make_saga();
+        let mut exec = FailingExecutor {
+            call_count: 0,
+            fail_on: 1, // Fail on first call.
+        };
+
+        let err = saga.advance_with_executor(0, &mut exec).unwrap_err();
+        assert!(matches!(err, MigrationError::EffectFailed { .. }));
+
+        // State should NOT have advanced.
+        assert_eq!(saga.state, MigrationState::Initiated);
+        assert_eq!(saga.version, 0);
+        assert!(saga.forward_effects.is_empty());
+    }
+
+    #[test]
+    fn recording_executor_captures_all_effects() {
+        let mut saga = make_saga();
+        let mut exec = RecordingExecutor::default();
+
+        saga.advance_with_executor(0, &mut exec).unwrap();
+        saga.advance_with_executor(1, &mut exec).unwrap();
+        assert_eq!(exec.executed.len(), 2);
+        assert!(matches!(exec.executed[0], SideEffect::Lock { .. }));
+        assert!(matches!(exec.executed[1], SideEffect::Mint { .. }));
+    }
+
+    // ── Property tests: forward + compensate = pre-state ────────────────
+
+    #[test]
+    fn forward_plus_compensate_equals_pre_state() {
+        // Property: for any partial migration (0..N steps), compensating
+        // must return the asset ledger to its pre-migration state.
+        for steps in 0..=2 {
+            let mut saga = make_saga();
+            let mut ledger = AssetLedger::new();
+            let pre_state = ledger.state.clone();
+
+            // Advance N steps.
+            let mut exec = LedgerExecutor { ledger: &mut ledger };
+            for v in 0..steps {
+                saga.advance_with_executor(v, &mut exec).unwrap();
+            }
+
+            // Compensate (if not already terminal from completion).
+            if !saga.state.is_terminal() {
+                saga.compensate_with_executor(steps, &mut exec).unwrap();
+            }
+
+            // After compensation, replay compensation effects on a fresh
+            // ledger alongside forward effects to verify net-zero.
+            let mut verify_ledger = AssetLedger::new();
+            verify_ledger.apply_all(&saga.forward_effects);
+            verify_ledger.apply_all(&saga.compensation_effects);
+
+            assert_eq!(
+                verify_ledger.state, pre_state,
+                "forward + compensate must equal pre-state for {steps} steps"
+            );
+        }
+    }
+
+    #[test]
+    fn no_duplicate_across_all_partial_states() {
+        // Property: at every intermediate state, the no-duplicate invariant holds.
+        let mut saga = make_saga();
+        assert!(saga.no_duplicate_invariant(), "initial state");
+
+        for v in 0..3u64 {
+            saga.advance(v).unwrap();
+            assert!(
+                saga.no_duplicate_invariant(),
+                "after advance to {:?}",
+                saga.state
+            );
+        }
+    }
+
+    #[test]
+    fn compensation_at_every_stage_preserves_no_dup() {
+        // Property: compensating at any stage preserves the no-duplicate invariant.
+        for stop_at in 0..=2 {
+            let mut saga = make_saga();
+            for v in 0..stop_at {
+                saga.advance(v).unwrap();
+            }
+            if !saga.state.is_terminal() {
+                saga.compensate(stop_at).unwrap();
+                assert!(
+                    saga.no_duplicate_invariant(),
+                    "no-dup after compensating at step {stop_at}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn idempotent_compensate_with_executor_does_not_re_execute() {
+        let mut saga = make_saga();
+        let mut ledger = AssetLedger::new();
+        let mut exec = LedgerExecutor { ledger: &mut ledger };
+
+        saga.advance_with_executor(0, &mut exec).unwrap();
+        saga.compensate_with_executor(1, &mut exec).unwrap();
+        let state_after_first = exec.ledger.state.clone();
+
+        // Second compensate — idempotent no-op. Executor should NOT be
+        // called (we pass a failing executor to prove it).
+        let mut fail_exec = FailingExecutor {
+            call_count: 0,
+            fail_on: 1,
+        };
+        let state = saga
+            .compensate_with_executor(999, &mut fail_exec)
+            .unwrap();
+        assert_eq!(state, MigrationState::Compensated);
+        assert_eq!(fail_exec.call_count, 0); // No calls made.
+
+        // Ledger unchanged.
+        assert_eq!(exec.ledger.state, state_after_first);
     }
 }

@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use mez_agentic::{PolicyEngine, TaxPipeline};
-use mez_corridor::{PeerRegistry, ReceiptChain};
+use mez_corridor::{InboundAttestation, PeerRegistry, ReceiptChain};
 use mez_crypto::SigningKey;
 use mez_state::{DynCorridorState, TransitionRecord};
 use parking_lot::{Mutex, RwLock};
@@ -518,6 +518,14 @@ pub struct AppState {
     /// for replay protection. Used by the peer exchange API routes.
     pub peer_registry: Arc<RwLock<PeerRegistry>>,
 
+    /// Genesis roots for corridors, stored when a corridor acceptance is processed.
+    /// Keyed by corridor ID string. Used to bootstrap receipt chains for inbound receipts.
+    pub corridor_genesis_roots: Arc<RwLock<HashMap<String, String>>>,
+
+    /// Watcher attestations stored for fork resolution input.
+    /// Keyed by corridor ID. Each corridor accumulates attestations from independent watchers.
+    pub attestation_log: Arc<RwLock<HashMap<String, Vec<InboundAttestation>>>>,
+
     // -- Database persistence (optional) --
     /// PostgreSQL connection pool for durable state persistence.
     /// When `Some`, corridor, smart asset, attestation, and audit data is
@@ -610,6 +618,8 @@ impl AppState {
             tax_pipeline: Arc::new(Mutex::new(TaxPipeline::default())),
             receipt_chains: Arc::new(RwLock::new(HashMap::new())),
             peer_registry: Arc::new(RwLock::new(PeerRegistry::new())),
+            corridor_genesis_roots: Arc::new(RwLock::new(HashMap::new())),
+            attestation_log: Arc::new(RwLock::new(HashMap::new())),
             db_pool,
             mass_client,
             zone_signing_key: Arc::new(zone_signing_key),

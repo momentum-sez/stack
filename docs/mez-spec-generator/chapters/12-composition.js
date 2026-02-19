@@ -15,7 +15,7 @@ module.exports = function build_chapter12() {
 
     // --- 12.2 Domain Enumeration ---
     h2("12.2 Domain Enumeration"),
-    p("The composition engine operates across all twenty compliance domains defined in the compliance tensor: CIVIC, CORPORATE, COMMERCIAL, FINANCIAL, SECURITIES, BANKING, PAYMENTS, DIGITAL_ASSETS, TAX, AML_CFT, DATA_PROTECTION, ARBITRATION, LICENSING, INSURANCE, ENVIRONMENTAL, LABOR, INTELLECTUAL_PROPERTY, IMMIGRATION, REAL_ESTATE, and HEALTH_SAFETY. Each domain is composed independently, allowing jurisdiction-specific overrides at domain granularity. Conflict resolution follows the strictest-rule-wins principle: when two jurisdictions impose different requirements on the same domain, the more restrictive requirement prevails."),
+    p("The composition engine operates across all twenty compliance domains defined in mez-core::ComplianceDomain: Aml, Kyc, Sanctions, Tax, Securities, Corporate, Custody, DataPrivacy, Licensing, Banking, Payments, Clearing, Settlement, DigitalAssets, Employment, Immigration, Ip, ConsumerProtection, Arbitration, and Trade. Each domain is composed independently, allowing jurisdiction-specific overrides at domain granularity. Conflict resolution follows the strictest-rule-wins principle: when two jurisdictions impose different requirements on the same domain, the more restrictive requirement prevails."),
 
     // --- 12.2.1 Composition Data Model ---
     h3("12.2.1 Composition Data Model"),
@@ -44,7 +44,7 @@ module.exports = function build_chapter12() {
     ),
     p_runs([
       bold("Kazakhstan Example. "),
-      "The Astana International Financial Centre (AIFC) composes three jurisdiction layers: Kazakhstan national law (base layer providing CIVIC, CORPORATE, TAX, and LABOR domains), AIFC common law framework (overlay replacing COMMERCIAL, FINANCIAL, SECURITIES, BANKING, and ARBITRATION with English common law equivalents), and FATF/EAG mutual evaluation requirements (overlay strengthening AML_CFT domain to meet enhanced due diligence standards). The resulting composition has 20 domains with 8 overridden by the AIFC layer, producing a compliance tensor of shape (3, 20) with 60 cells."
+      "The Astana International Financial Centre (AIFC) composes three jurisdiction layers: Kazakhstan national law (base layer providing Corporate, Tax, Employment, and Licensing domains), AIFC common law framework (overlay replacing Securities, Banking, Clearing, Settlement, and Arbitration with English common law equivalents), and FATF/EAG mutual evaluation requirements (overlay strengthening Aml and Sanctions domains to meet enhanced due diligence standards). The resulting composition has 20 domains with 8 overridden by the AIFC layer, producing a compliance tensor of shape (3, 20) with 60 cells."
     ]),
 
     // --- 12.3 Composition Validation ---
@@ -100,36 +100,36 @@ module.exports = function build_chapter12() {
     ]),
     p_runs([
       bold("Layer 2 — EZ Overlay (Economic Zone Act 2012). "),
-      "Overrides 6 domains from the PAK base layer with EZ-specific exemptions and incentives. TAX is overridden with 10-year income tax exemption per EZ Act Section 37, customs duty exemption on capital goods, and zero-rated sales tax on exports. CORPORATE is overridden with one-window SECP registration and reduced paid-up capital requirements. COMMERCIAL is overridden with streamlined import/export licensing. LABOR is overridden with EZ-specific labor terms per BOI guidelines. LICENSING is overridden with single-window BOI/zone developer approval. CUSTOMS (mapped to PAYMENTS) is overridden with bonded warehouse and duty drawback provisions."
+      "Overrides 6 domains from the PAK base layer with EZ-specific exemptions and incentives. Tax is overridden with 10-year income tax exemption per EZ Act Section 37, customs duty exemption on capital goods, and zero-rated sales tax on exports. Corporate is overridden with one-window SECP registration and reduced paid-up capital requirements. Trade is overridden with streamlined import/export licensing. Employment is overridden with EZ-specific labor terms per BOI guidelines. Licensing is overridden with single-window BOI/zone developer approval. Payments is overridden with bonded warehouse and duty drawback provisions."
     ]),
     p_runs([
       bold("Layer 3 — FATF Overlay (FATF Mutual Evaluation). "),
-      "Strengthens 3 domains beyond the PAK base layer requirements to meet FATF grey-list remediation commitments. AML_CFT is overridden with enhanced due diligence (EDD) for all cross-border transactions above USD 10,000, beneficial ownership transparency per FATF Recommendation 24, and STR filing within 24 hours. FINANCIAL is overridden with SBP real-time transaction monitoring and cross-border wire transfer reporting per FATF Recommendation 16. DATA_PROTECTION is overridden with mandatory 5-year record retention for all KYC/KYB data and secure data sharing protocols with FMU (Financial Monitoring Unit)."
+      "Strengthens 3 domains beyond the PAK base layer requirements to meet FATF grey-list remediation commitments. Aml is overridden with enhanced due diligence (EDD) for all cross-border transactions above USD 10,000, beneficial ownership transparency per FATF Recommendation 24, and STR filing within 24 hours. Sanctions is overridden with SBP real-time transaction monitoring and cross-border wire transfer reporting per FATF Recommendation 16. DataPrivacy is overridden with mandatory 5-year record retention for all KYC/KYB data and secure data sharing protocols with FMU (Financial Monitoring Unit)."
     ]),
     p("The domain assignment matrix for the Pakistan GovOS composition:"),
     table(
       ["Domain", "Governing Layer", "Key Provision"],
       [
-        ["CIVIC", "PAK Base", "Pakistan Citizenship Act 1951; NADRA CNIC verification"],
-        ["CORPORATE", "EZ Overlay", "One-window SECP registration; reduced capital requirements"],
-        ["COMMERCIAL", "EZ Overlay", "Streamlined import/export; EZ Act Section 23"],
-        ["FINANCIAL", "FATF Overlay", "SBP real-time monitoring; FATF Rec. 16 wire transfers"],
-        ["SECURITIES", "PAK Base", "Securities Act 2015; SECP regulatory framework"],
-        ["BANKING", "PAK Base", "Banking Companies Ordinance 1962; SBP prudential regulations"],
-        ["PAYMENTS", "EZ Overlay", "Bonded warehouse; duty drawback; SBP Raast integration"],
-        ["DIGITAL_ASSETS", "PAK Base", "SECP position paper 2023; pending Digital Assets Act"],
-        ["TAX", "EZ Overlay", "10-year exemption; zero-rated exports; EZ Act Section 37"],
-        ["AML_CFT", "FATF Overlay", "EDD above USD 10K; UBO transparency; 24-hour STR"],
-        ["DATA_PROTECTION", "FATF Overlay", "5-year KYC retention; FMU data sharing protocols"],
-        ["ARBITRATION", "PAK Base", "Arbitration Act 1940; ICSID Convention recognition"],
-        ["LICENSING", "EZ Overlay", "Single-window BOI approval; zone developer licensing"],
-        ["INSURANCE", "PAK Base", "Insurance Ordinance 2000; SECP insurance division"],
-        ["ENVIRONMENTAL", "PAK Base", "Pakistan Environmental Protection Act 1997; EPA NOCs"],
-        ["LABOR", "EZ Overlay", "EZ-specific labor terms; BOI workforce guidelines"],
-        ["INTELLECTUAL_PROPERTY", "PAK Base", "IPO Pakistan; Patents Ordinance 2000; Copyright Ordinance 1962"],
-        ["IMMIGRATION", "PAK Base", "Foreigners Act 1946; BOI investor visa facilitation"],
-        ["REAL_ESTATE", "PAK Base", "Transfer of Property Act 1882; land revenue codes"],
-        ["HEALTH_SAFETY", "PAK Base", "Factories Act 1934; OSHA-equivalent provincial rules"],
+        ["Aml", "FATF Overlay", "EDD above USD 10K; UBO transparency; 24-hour STR filing"],
+        ["Kyc", "PAK Base", "NADRA CNIC verification; Pakistan Citizenship Act 1951"],
+        ["Sanctions", "FATF Overlay", "SBP real-time monitoring; FATF Rec. 16 wire transfers"],
+        ["Tax", "EZ Overlay", "10-year exemption; zero-rated exports; EZ Act Section 37"],
+        ["Securities", "PAK Base", "Securities Act 2015; SECP regulatory framework"],
+        ["Corporate", "EZ Overlay", "One-window SECP registration; reduced capital requirements"],
+        ["Custody", "PAK Base", "Banking Companies Ordinance 1962; SBP prudential regulations"],
+        ["DataPrivacy", "FATF Overlay", "5-year KYC retention; FMU data sharing protocols"],
+        ["Licensing", "EZ Overlay", "Single-window BOI approval; zone developer licensing"],
+        ["Banking", "PAK Base", "SBP prudential regulations; capital adequacy framework"],
+        ["Payments", "EZ Overlay", "Bonded warehouse; duty drawback; SBP Raast integration"],
+        ["Clearing", "PAK Base", "NCCPL clearing framework; SBP settlement system"],
+        ["Settlement", "PAK Base", "NIFT/PRISM settlement; delivery-versus-payment rules"],
+        ["DigitalAssets", "PAK Base", "SECP position paper 2023; pending Digital Assets Act"],
+        ["Employment", "EZ Overlay", "EZ-specific labor terms; BOI workforce guidelines"],
+        ["Immigration", "PAK Base", "Foreigners Act 1946; BOI investor visa facilitation"],
+        ["Ip", "PAK Base", "IPO Pakistan; Patents Ordinance 2000; Copyright Ordinance 1962"],
+        ["ConsumerProtection", "PAK Base", "Consumer Protection Acts; provincial consumer courts"],
+        ["Arbitration", "PAK Base", "Arbitration Act 1940; ICSID Convention recognition"],
+        ["Trade", "EZ Overlay", "Streamlined import/export; EZ Act Section 23; customs automation"],
       ],
       [2200, 1800, 5360]
     ),

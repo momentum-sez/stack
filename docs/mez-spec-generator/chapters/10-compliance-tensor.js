@@ -17,38 +17,26 @@ module.exports = function build_chapter10() {
     ),
     ...codeBlock(
       "/// Compliance state for a single (jurisdiction, domain) pair.\n" +
+      "/// Five-state lattice as implemented in mez-tensor.\n" +
       "#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]\n" +
       "pub enum ComplianceState {\n" +
-      "    Unknown,       // No attestation\n" +
-      "    NonCompliant,  // Attested non-compliant\n" +
-      "    Expired,       // Previously compliant, attestation lapsed\n" +
-      "    Suspended,     // Compliance temporarily revoked pending review\n" +
-      "    Pending,       // Evaluation in progress\n" +
-      "    Compliant,     // Attested compliant\n" +
-      "    Exempt,        // Jurisdiction exempts this domain\n" +
+      "    Compliant,     // Entity meets all requirements in this domain\n" +
+      "    NonCompliant,  // Specific violations exist\n" +
+      "    Pending,       // Evaluation in progress or awaiting attestation\n" +
+      "    Exempt,        // Entity exempt from this domain (e.g., de minimis)\n" +
+      "    NotApplicable, // Domain does not apply to entity classification\n" +
       "}\n" +
       "\n" +
-      "/// Lattice order: NonCompliant < Expired < Suspended < Unknown < Pending\n" +
-      "///                < Compliant, Exempt (incomparable top pair)\n" +
-      "impl PartialOrd for ComplianceState {\n" +
-      "    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {\n" +
-      "        use ComplianceState::*;\n" +
-      "        fn rank(s: &ComplianceState) -> Option<u8> {\n" +
-      "            match s {\n" +
-      "                NonCompliant => Some(0),\n" +
-      "                Expired      => Some(1),\n" +
-      "                Suspended    => Some(2),\n" +
-      "                Unknown      => Some(3),\n" +
-      "                Pending      => Some(4),\n" +
-      "                Compliant    => Some(5),\n" +
-      "                Exempt       => Some(5), // Same rank: incomparable\n" +
-      "            }\n" +
-      "        }\n" +
-      "        match (self, other) {\n" +
-      "            (a, b) if a == b => Some(std::cmp::Ordering::Equal),\n" +
-      "            // Compliant and Exempt are incomparable\n" +
-      "            (Compliant, Exempt) | (Exempt, Compliant) => None,\n" +
-      "            _ => rank(self)?.partial_cmp(&rank(other)?),\n" +
+      "/// Lattice ordering (lower is more restrictive):\n" +
+      "/// NonCompliant(0) < Pending(1) < Compliant(2) = Exempt(2) = NotApplicable(2)\n" +
+      "impl ComplianceState {\n" +
+      "    fn ordering(self) -> u8 {\n" +
+      "        match self {\n" +
+      "            Self::NonCompliant  => 0,\n" +
+      "            Self::Pending       => 1,\n" +
+      "            Self::Compliant     => 2,\n" +
+      "            Self::Exempt        => 2,\n" +
+      "            Self::NotApplicable => 2,\n" +
       "        }\n" +
       "    }\n" +
       "}"
@@ -60,42 +48,41 @@ module.exports = function build_chapter10() {
     table(
       ["Domain", "Description"],
       [
-        ["CIVIC", "Civic obligations including residency, nationality, and public registry requirements"],
-        ["CORPORATE", "Corporate governance, formation, director duties, and beneficial ownership"],
-        ["COMMERCIAL", "Commercial law including contracts, trade, and consumer protection"],
-        ["FINANCIAL", "Financial regulation including prudential requirements and capital adequacy"],
-        ["SECURITIES", "Securities law including issuance, trading, and disclosure obligations"],
-        ["BANKING", "Banking regulation including deposit-taking, lending, and reserve requirements"],
-        ["PAYMENTS", "Payment systems regulation including e-money, remittance, and settlement"],
-        ["DIGITAL_ASSETS", "Digital asset regulation including classification, custody, and exchange"],
-        ["TAX", "Tax obligations including income, withholding, VAT/GST, and transfer pricing"],
-        ["AML_CFT", "Anti-money laundering and counter-terrorism financing requirements"],
-        ["DATA_PROTECTION", "Data protection and privacy including cross-border transfer restrictions"],
-        ["ARBITRATION", "Dispute resolution including arbitration, mediation, and enforcement"],
-        ["LICENSING", "Licensing requirements including permits, registrations, and renewals"],
-        ["INSURANCE", "Insurance regulation including mandatory coverage, reinsurance, and solvency requirements"],
-        ["ENVIRONMENTAL", "Environmental compliance including emissions, waste management, and impact assessments"],
-        ["LABOR", "Labor law including employment contracts, workplace safety, and collective bargaining"],
-        ["INTELLECTUAL_PROPERTY", "Intellectual property including patents, trademarks, copyrights, and trade secrets"],
-        ["IMMIGRATION", "Immigration requirements including work permits, visas, and foreign worker quotas"],
-        ["REAL_ESTATE", "Real estate regulation including land ownership, zoning, and foreign ownership restrictions"],
-        ["HEALTH_SAFETY", "Health and safety regulation including occupational hazards, public health, and product safety"],
+        ["Aml", "Anti-money laundering: transaction monitoring, suspicious activity reporting"],
+        ["Kyc", "Know Your Customer: identity verification, due diligence tiers"],
+        ["Sanctions", "Sanctions screening: OFAC, UN, EU lists, PEP checks"],
+        ["Tax", "Tax compliance: withholding, reporting, filing, transfer pricing"],
+        ["Securities", "Securities regulation: issuance, trading, disclosure obligations"],
+        ["Corporate", "Corporate governance: formation, director duties, beneficial ownership"],
+        ["Custody", "Custody requirements: asset safekeeping, segregation, reporting"],
+        ["DataPrivacy", "Data privacy: GDPR, PDPA, cross-border data transfer restrictions"],
+        ["Licensing", "Licensing: business permits, professional certifications, renewals"],
+        ["Banking", "Banking regulation: reserve requirements, capital adequacy, deposit-taking"],
+        ["Payments", "Payment services: PSP licensing, payment instrument rules, e-money"],
+        ["Clearing", "Clearing and settlement: CCP rules, netting, margin requirements"],
+        ["Settlement", "Settlement finality: delivery-versus-payment, settlement cycles"],
+        ["DigitalAssets", "Digital asset regulation: token classification, exchange licensing, custody"],
+        ["Employment", "Employment law: labor contracts, social security, workplace safety"],
+        ["Immigration", "Immigration: work permits, visa sponsorship, foreign worker quotas"],
+        ["Ip", "Intellectual property: patents, trademarks, copyrights, trade secrets"],
+        ["ConsumerProtection", "Consumer protection: disclosure, dispute resolution, warranties"],
+        ["Arbitration", "Arbitration: dispute resolution frameworks, enforcement of awards"],
+        ["Trade", "Trade regulation: import/export controls, customs, tariffs"],
       ],
       [2400, 6960]
     ),
 
     // --- 10.3 Compliance States ---
     h2("10.3 Compliance States"),
-    p("The seven compliance states form a bounded lattice with partial order:"),
-    p("NON_COMPLIANT < EXPIRED < SUSPENDED < UNKNOWN < PENDING < {COMPLIANT, EXEMPT}"),
+    p("The five compliance states form a bounded lattice with partial order:"),
+    p("NonCompliant(0) < Pending(1) < {Compliant, Exempt, NotApplicable}(2)"),
     p_runs([
-      bold("NON_COMPLIANT"), " is the bottom element and absorbing element under meet. ",
-      bold("COMPLIANT"), " and ", bold("EXEMPT"), " are incomparable top elements \u2014 neither dominates the other. ",
-      bold("EXPIRED"), " represents a previously compliant state whose attestation has lapsed; it transitions to NON_COMPLIANT after a configurable grace period. ",
-      bold("SUSPENDED"), " represents compliance temporarily revoked pending regulatory review; it ranks above EXPIRED because the underlying attestation still exists and may be reinstated. ",
-      bold("UNKNOWN"), " is the default state when no attestation has been submitted. ",
-      bold("PENDING"), " indicates an evaluation is in progress and an attestation is expected. ",
-      "Meet (\u2227) returns the pessimistic (lower) state of two operands. Join (\u2228) returns the optimistic (higher) state. For the incomparable pair {COMPLIANT, EXEMPT}, meet yields PENDING and join yields EXEMPT."
+      bold("NonCompliant"), " is the bottom element and absorbing element under meet. It indicates specific violations exist. ",
+      bold("Pending"), " indicates an evaluation is in progress or awaiting attestation. In production mode, unimplemented domains default to Pending (fail-closed) rather than passing. ",
+      bold("Compliant"), " means the entity meets all requirements in this domain. ",
+      bold("Exempt"), " means the entity is exempt from this domain (e.g., de minimis threshold). ",
+      bold("NotApplicable"), " means the domain does not apply to the entity\u2019s classification. ",
+      "Compliant, Exempt, and NotApplicable share the same lattice rank. Meet (\u2227) returns the pessimistic (lower) state. Join (\u2228) returns the optimistic (higher) state."
     ]),
 
     // --- 10.3.1 Lattice Operations ---
@@ -103,39 +90,23 @@ module.exports = function build_chapter10() {
     p("The meet (\u2227) operation computes the greatest lower bound (pessimistic composition). When composing compliance across multiple domains or jurisdictions, meet ensures the result reflects the weakest link. The join (\u2228) operation computes the least upper bound (optimistic composition), used when any single passing domain suffices."),
     definition(
       "Definition 10.6 (Meet / Greatest Lower Bound).",
-      "For states a, b: a \u2227 b = max(s) such that s \u2264 a and s \u2264 b. If a and b are comparable, meet is min(a, b). For the incomparable pair {Compliant, Exempt}, meet(Compliant, Exempt) = Pending."
+      "For states a, b: a \u2227 b = the state with min(ordering(a), ordering(b)). When both are rank 2, meet preserves the more specific (Compliant > Exempt > NotApplicable)."
     ),
     definition(
       "Definition 10.7 (Join / Least Upper Bound).",
-      "For states a, b: a \u2228 b = min(s) such that s \u2265 a and s \u2265 b. If a and b are comparable, join is max(a, b). For the incomparable pair {Compliant, Exempt}, join(Compliant, Exempt) = Exempt."
+      "For states a, b: a \u2228 b = the state with max(ordering(a), ordering(b)). When both are rank 2, join preserves the more permissive."
     ),
-    p("The following table shows meet (\u2227) results for all state pairs. The table is symmetric: meet(a, b) = meet(b, a)."),
+    p("The following table shows meet (\u2227) results for all state pairs. The table is symmetric."),
     table(
-      ["meet (\u2227)", "NonCompl", "Expired", "Suspended", "Unknown", "Pending", "Compliant", "Exempt"],
+      ["meet (\u2227)", "NonCompliant", "Pending", "Compliant", "Exempt", "N/A"],
       [
-        ["NonCompliant", "NonCompl", "NonCompl", "NonCompl", "NonCompl", "NonCompl", "NonCompl", "NonCompl"],
-        ["Expired",      "NonCompl", "Expired",  "Expired",  "Expired",  "Expired",  "Expired",  "Expired"],
-        ["Suspended",    "NonCompl", "Expired",  "Suspended","Suspended","Suspended","Suspended","Suspended"],
-        ["Unknown",      "NonCompl", "Expired",  "Suspended","Unknown",  "Unknown",  "Unknown",  "Unknown"],
-        ["Pending",      "NonCompl", "Expired",  "Suspended","Unknown",  "Pending",  "Pending",  "Pending"],
-        ["Compliant",    "NonCompl", "Expired",  "Suspended","Unknown",  "Pending",  "Compliant","Pending"],
-        ["Exempt",       "NonCompl", "Expired",  "Suspended","Unknown",  "Pending",  "Pending",  "Exempt"],
+        ["NonCompliant", "NonCompliant", "NonCompliant", "NonCompliant", "NonCompliant", "NonCompliant"],
+        ["Pending",      "NonCompliant", "Pending",      "Pending",      "Pending",      "Pending"],
+        ["Compliant",    "NonCompliant", "Pending",      "Compliant",    "Exempt",       "NotApplicable"],
+        ["Exempt",       "NonCompliant", "Pending",      "Exempt",       "Exempt",       "NotApplicable"],
+        ["NotApplicable","NonCompliant", "Pending",      "NotApplicable","NotApplicable", "NotApplicable"],
       ],
-      [1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170]
-    ),
-    p("The following table shows join (\u2228) results for all state pairs. The table is symmetric: join(a, b) = join(b, a)."),
-    table(
-      ["join (\u2228)", "NonCompl", "Expired", "Suspended", "Unknown", "Pending", "Compliant", "Exempt"],
-      [
-        ["NonCompliant", "NonCompl", "Expired",  "Suspended","Unknown",  "Pending",  "Compliant","Exempt"],
-        ["Expired",      "Expired",  "Expired",  "Suspended","Unknown",  "Pending",  "Compliant","Exempt"],
-        ["Suspended",    "Suspended","Suspended", "Suspended","Unknown",  "Pending",  "Compliant","Exempt"],
-        ["Unknown",      "Unknown",  "Unknown",  "Unknown",  "Unknown",  "Pending",  "Compliant","Exempt"],
-        ["Pending",      "Pending",  "Pending",  "Pending",  "Pending",  "Pending",  "Compliant","Exempt"],
-        ["Compliant",    "Compliant","Compliant", "Compliant","Compliant","Compliant","Compliant","Exempt"],
-        ["Exempt",       "Exempt",   "Exempt",   "Exempt",   "Exempt",   "Exempt",   "Exempt",  "Exempt"],
-      ],
-      [1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170]
+      [1560, 1560, 1560, 1560, 1560, 1560]
     ),
 
     // --- 10.4 Tensor Operations ---

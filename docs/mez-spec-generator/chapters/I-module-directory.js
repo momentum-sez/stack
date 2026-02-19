@@ -4,7 +4,7 @@ module.exports = function build_appendixI() {
   return [
     chapterHeading("Appendix I: Module Directory Structure"),
 
-    p("The EZ Stack organizes 298 module descriptors across 16 families in the modules/ directory. These YAML/JSON descriptors define the configuration vocabulary for zone deployments. The Rust crates in mez/crates/ provide the implementation logic that interprets these descriptors at runtime."),
+    p("The EZ Stack organizes 323 module descriptors across 16 families in the modules/ directory. These YAML/JSON descriptors define the configuration vocabulary for zone deployments. The Rust crates in mez/crates/ provide the implementation logic that interprets these descriptors at runtime."),
 
     ...codeBlock(
       "modules/\n" +
@@ -66,6 +66,6 @@ module.exports = function build_appendixI() {
       [1800, 1000, 6560]
     ),
 
-    p("Total workspace: approximately 74,000 lines of production Rust code across 136 source files in 16 crates, with an additional ~40,000 lines of test code (including the mez-integration-tests crate with 107 test files)."),
+    p("Total workspace: 151,000 lines of Rust across 154 source files in 16 crates, with 4,073 tests (including the mez-integration-tests crate with 113 test files)."),
   ];
 };

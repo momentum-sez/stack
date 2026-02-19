@@ -7,7 +7,7 @@ module.exports = function build_appendixB() {
     // --- Test Methodology ---
     h2("B.1 Test Methodology"),
     p(
-      "The EZ Stack employs a multi-tier testing methodology with over 3,800 tests executed " +
+      "The EZ Stack employs a multi-tier testing methodology with 4,073 tests executed " +
       "via cargo test --workspace. Tests span seven campaigns developed during the production " +
       "hardening phase, covering unit, integration, property-based, and contract tests. All tests " +
       "run in the standard Rust test harness with no external test frameworks."
@@ -25,7 +25,7 @@ module.exports = function build_appendixB() {
 
     h3("B.1.2 Integration Tests"),
     p(
-      "The mez-integration-tests crate (107 test files) exercises cross-crate interactions " +
+      "The mez-integration-tests crate (113 test files) exercises cross-crate interactions " +
       "and end-to-end workflows. Test suites cover: corridor lifecycle state transitions, " +
       "dual-commitment receipt chain append-and-verify cycles, compliance tensor evaluation " +
       "across multiple jurisdictions, pack trilogy composition (lawpack + regpack + licensepack), " +
@@ -116,7 +116,7 @@ mod tests {
 
     // --- Coverage Summary Table ---
     h2("B.3 Coverage by Crate"),
-    p("Test counts are derived from #[test] and #[tokio::test] annotations across the workspace. Total: over 3,800 tests."),
+    p("Test counts are derived from #[test] and #[tokio::test] annotations across the workspace. Total: 4,073 tests."),
     table(
       ["Crate", "Approx. Tests", "Key Coverage Areas"],
       [

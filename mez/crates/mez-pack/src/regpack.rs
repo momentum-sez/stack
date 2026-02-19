@@ -2542,6 +2542,7 @@ pub mod pakistan {
     ///
     /// Assembles regulators, sanctions, deadlines, and reporting requirements
     /// into a content-addressed regpack for the `pk` jurisdiction.
+    #[allow(clippy::type_complexity)]
     pub fn build_pakistan_regpack() -> PackResult<(Regpack, RegPackMetadata, SanctionsSnapshot, Vec<ComplianceDeadline>, Vec<ReportingRequirement>, Vec<WithholdingTaxRate>)> {
         let regulators = pakistan_regulators();
         let sanctions_snapshot = pakistan_sanctions_snapshot();

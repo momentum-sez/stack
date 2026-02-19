@@ -91,17 +91,29 @@ jobs:
           echo "OK: No default credentials in deploy paths"
 
       # P0-ZK-001: Release builds must not enable mock proof features.
+      # Checks that "mock" is NOT in the default feature set for mez-zkp.
+      # The mock feature is an opt-in marker for dev/test; release builds
+      # must not include it in defaults.
       - name: Guard — no mock proof backend in release
         working-directory: mez
         run: |
-          FEATURES=$(cargo metadata --format-version 1 --no-deps 2>/dev/null | \
-            python3 -c "import sys,json; pkgs=json.load(sys.stdin)['packages']; zkp=[p for p in pkgs if p['name']=='mez-zkp']; print(zkp[0]['features'] if zkp else '{}')" 2>/dev/null || echo "{}")
-          if echo "$FEATURES" | grep -qi "mock"; then
-            echo "FATAL: mez-zkp has mock-related features enabled: $FEATURES"
-            echo "Mock proof backends MUST NOT be enabled in release builds (P0-ZK-001)"
+          DEFAULTS=$(cargo metadata --format-version 1 --no-deps 2>/dev/null | \
+            python3 -c "
+          import sys, json
+          pkgs = json.load(sys.stdin)['packages']
+          zkp = [p for p in pkgs if p['name'] == 'mez-zkp']
+          if zkp:
+              defaults = zkp[0].get('features', {}).get('default', [])
+              print(' '.join(defaults))
+          else:
+              print('')
+          " 2>/dev/null || echo "")
+          if echo "$DEFAULTS" | grep -qi "mock"; then
+            echo "FATAL: mez-zkp default features include 'mock': $DEFAULTS"
+            echo "Mock proof backends MUST NOT be in default features (P0-ZK-001)"
             exit 1
           fi
-          echo "OK: Mock proof backend check complete — no mock features detected"
+          echo "OK: mez-zkp default features do not include mock ($DEFAULTS)"
 
       # P1-SCHEMA-003: additionalProperties policy on security-critical schemas.
       - name: Guard — additionalProperties policy on security-critical schemas

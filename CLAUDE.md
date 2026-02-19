@@ -368,10 +368,10 @@ This is the ordered sequence of work items. Dependencies are noted. Each item in
 6. P0-FORK-001     — CLOSED: Evidence-driven fork resolution with signed attestations (commit 0f54e69)
 ```
 
-### Phase B: Safety Properties — MOSTLY COMPLETED
+### Phase B: Safety Properties — COMPLETED
 
 ```
-7. P0-MIGRATION-001 — PARTIAL: CAS + idempotency added; full side-effect modeling remains
+7. P0-MIGRATION-001 — CLOSED: CAS + idempotency + EffectExecutor trait + side-effect modeling + property tests
 8. P0-TENSOR-001    — CLOSED: Fail-closed on extended domains (Pending default, commit 02b1984)
 9. P0-ZK-001        — CLOSED: Fail-closed production policy (ProofPolicy, commit 0f54e69)
 10. P0-DEPLOY-001   — CLOSED: Secret injection, no default credentials (commit 02b1984)
@@ -524,7 +524,7 @@ Based on synthesized audit findings. Status: ✅ Implemented | 🟡 Partial | �
 | 12-15 | Compliance tensor | ✅ | ~~P0-TENSOR-001~~ CLOSED | 20 domains, exhaustive match, fail-closed on extended |
 | 16-20 | Pack trilogy | ✅ | ~~P0-PACK-001~~ CLOSED | Pakistan lawpacks (4 domains), regpacks, 70+ licensepacks |
 | 21-25 | Corridors | ✅ | ~~P0-CORRIDOR-001..004~~ CLOSED | Dual-commitment receipt chain, inter-zone protocol, corridor registry |
-| 26-30 | Migration | 🟡 | P0-MIGRATION-001 | CAS + idempotency added; full compensation modeling partial |
+| 26-30 | Migration | ✅ | ~~P0-MIGRATION-001~~ CLOSED | CAS + idempotency + EffectExecutor + side-effect model + property tests |
 | 31-35 | Watcher economy | ✅ | ~~P0-FORK-001~~ CLOSED | Evidence-driven fork resolution with signed attestations |
 | 36-40 | Anchoring / ZK | 🔴 | P0-ANCHOR-001, P0-CRYPTO-001/002 | ZK policy fail-closed (P0-ZK-001 CLOSED); crypto stubs remain |
 | 41-45 | Deployment / infra | ✅ | ~~P0-DEPLOY-001~~ CLOSED | No default creds, zone manifests, two-zone compose, deploy scripts |

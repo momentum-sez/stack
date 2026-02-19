@@ -30,6 +30,7 @@ fn reg(id: &str, name: &str, jid: &str, url: Option<&str>, caps: &[&str]) -> Lic
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn lt(
     id: &str, name: &str, desc: &str, reg_id: &str, cat: &str,
     activities: &[&str], fee_app: Option<(&str, &str)>, fee_annual: Option<(&str, &str)>,
@@ -50,6 +51,7 @@ fn lt(
 }
 
 /// Standard state regulators: SoS, Banking, Insurance, Securities
+#[allow(clippy::too_many_arguments)]
 fn state_regulators(_st: &str, jid: &str, sos_name: &str, bank_name: &str, ins_name: &str, sec_name: &str, sos_url: &str, bank_url: &str) -> Vec<LicensepackRegulator> {
     vec![
         reg(&format!("{jid}-sos"), sos_name, jid, Some(sos_url), &["company_search", "filing_status"]),

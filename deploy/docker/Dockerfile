@@ -13,8 +13,9 @@ FROM rust:1.77-bookworm AS builder
 WORKDIR /app
 
 # Copy manifests first for layer caching
-COPY Cargo.toml Cargo.lock ./
-COPY crates/ ./crates/
+# Rust workspace lives under mez/ in the repo root (build context = repo root).
+COPY mez/Cargo.toml mez/Cargo.lock ./
+COPY mez/crates/ ./crates/
 
 # Build release binaries
 RUN cargo build --release -p mez-api -p mez-cli

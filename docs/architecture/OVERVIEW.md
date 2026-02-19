@@ -1,57 +1,51 @@
 # Architecture overview
 
-**Momentum EZ Stack** -- v0.4.44
+**Momentum EZ Stack** v0.4.44 GENESIS
 
-The EZ Stack is a **compliance orchestration layer** built in Rust. It sits above the live Mass APIs and provides the intelligence that primitive CRUD operations alone cannot express: multi-domain compliance evaluation, cross-border corridor management, cryptographic audit trails, and autonomous policy execution.
-
-This document covers the system design, data flow, key invariants, and the boundary between the EZ Stack and Mass.
+The EZ Stack is a compliance orchestration layer built in Rust that sits above Mass APIs and provides the intelligence that primitive CRUD alone cannot express: multi-domain compliance evaluation, cross-border corridor management, cryptographic audit trails, and autonomous policy execution.
 
 ---
 
 ## The two systems
 
-There are two systems. They are not the same thing.
+### Mass APIs (not in this repo)
 
-### Mass APIs (live, deployed, not in this repo)
-
-Mass implements the **five programmable primitives** as production API services:
+Mass implements the five programmable primitives as production API services:
 
 | Primitive | Endpoint | Domain |
 |-----------|----------|--------|
-| **Entities** | `organization-info.api.mass.inc` | Formation, lifecycle, dissolution, beneficial ownership |
-| **Ownership** | `investment-info` (Heroku) | Cap tables, share classes, transfers, fundraising |
-| **Fiscal** | `treasury-info.api.mass.inc` | Accounts, payments, treasury operations |
-| **Identity** | *(embedded)* | KYC/KYB, passportable credentials, DIDs |
-| **Consent** | `consent.api.mass.inc` | Multi-party governance, audit trails |
+| Entities | `organization-info.api.mass.inc` | Formation, lifecycle, dissolution, beneficial ownership |
+| Ownership | `investment-info` (Heroku) | Cap tables, share classes, transfers, fundraising |
+| Fiscal | `treasury-info.api.mass.inc` | Accounts, payments, treasury operations |
+| Identity | *(split across consent-info + org-info)* | KYC/KYB, credentials, DIDs |
+| Consent | `consent.api.mass.inc` | Multi-party governance, audit trails |
 
 Plus: `templating-engine` (Heroku) for document generation.
 
-These APIs have their own codebase, persistence, and deployment. They handle real entities, real capital, real government integrations.
+These have their own codebase, persistence, and deployment. They handle real entities, real capital, real government integrations.
 
 ### EZ Stack (this repository)
 
-The EZ Stack is the **orchestrator**. It provides:
-
-| Concern | Crate | What it adds beyond Mass primitives |
-|---------|-------|-------------------------------------|
-| Compliance intelligence | `mez-tensor`, `mez-compliance` | 20-domain compliance evaluation with Dijkstra path optimization across jurisdictions |
-| Corridor operations | `mez-corridor`, `mez-state` | Cross-border receipt chains (MMR), fork resolution, netting, SWIFT pacs.008 |
-| Jurisdictional configuration | `mez-pack` | Lawpacks (Akoma Ntoso statutes), regpacks (sanctions), licensepacks (license registries) |
-| Cryptographic audit trail | `mez-vc`, `mez-crypto` | W3C Verifiable Credentials, Ed25519 signing, content-addressed storage |
-| Autonomous policy execution | `mez-agentic` | 20 trigger types, deterministic evaluation, conflict resolution |
-| Dispute resolution | `mez-arbitration` | 7-phase dispute lifecycle, evidence chain-of-custody, escrow, enforcement |
-| Zero-knowledge proofs | `mez-zkp` | Sealed proof system with 12 circuit types (Phase 1: mock backend) |
-| Schema enforcement | `mez-schema` | 116 JSON Schema files validated at the API boundary |
-| HTTP API | `mez-api` | Axum server composing all of the above |
-| CLI | `mez-cli` | Offline zone management: validation, lockfiles, signing |
-| Mass API client | `mez-mass-client` | Typed Rust HTTP client -- the only path from EZ Stack to Mass |
+| Concern | Crate | What it adds beyond Mass CRUD |
+|---------|-------|-------------------------------|
+| Compliance intelligence | `mez-tensor`, `mez-compliance` | 20-domain evaluation, Dijkstra path optimization |
+| Corridor operations | `mez-corridor`, `mez-state` | Receipt chains (MMR), fork resolution, netting, SWIFT |
+| Jurisdictional config | `mez-pack` | Lawpacks (Akoma Ntoso), regpacks (sanctions), licensepacks |
+| Cryptographic audit trail | `mez-vc`, `mez-crypto` | W3C VCs, Ed25519, content-addressed storage |
+| Autonomous policy | `mez-agentic` | 20 trigger types, deterministic evaluation |
+| Dispute resolution | `mez-arbitration` | 7-phase lifecycle, evidence, escrow, enforcement |
+| Zero-knowledge proofs | `mez-zkp` | Sealed proof system, 12 circuit types |
+| Schema enforcement | `mez-schema` | 116 JSON Schemas validated at API boundary |
+| HTTP API | `mez-api` | Axum server composing all crates |
+| CLI | `mez-cli` | Zone validation, lockfiles, signing |
+| Mass gateway | `mez-mass-client` | Sole authorized HTTP client to Mass |
 
 ### The boundary
 
-The EZ Stack **never stores primitive data**. Entity records, cap tables, payment records, identity records, and consent records live in Mass. The EZ Stack stores:
+The EZ Stack **never stores primitive data**. Entity records, cap tables, payments, identity records, and consent records live in Mass. The EZ Stack stores:
 
 - Compliance state (tensor snapshots, evaluation results)
-- Corridor state (receipt chains, checkpoints, fork resolution records)
+- Corridor state (receipt chains, checkpoints, fork resolution)
 - Verifiable Credentials (attestations, compliance proofs, corridor agreements)
 - Zone configuration (module composition, lockfiles, pack trilogy)
 - Audit trails (agentic actions, arbitration records)
@@ -61,84 +55,80 @@ The EZ Stack **never stores primitive data**. Entity records, cap tables, paymen
 ## Data flow
 
 ```
-                                    ┌──────────────────────┐
-                                    │    Zone Admin / UI    │
-                                    └──────────┬───────────┘
-                                               │
-                                    ┌──────────▼───────────┐
-                                    │     mez-api (Axum)   │
-                                    │  Auth → Rate Limit    │
-                                    │  Trace → Metrics      │
-                                    └──────────┬───────────┘
-                                               │
-                    ┌──────────────┬────────────┼────────────┬──────────────┐
-                    │              │            │            │              │
-             ┌──────▼──────┐ ┌────▼────┐ ┌─────▼─────┐ ┌───▼───┐ ┌───────▼───────┐
-             │ mez-tensor │ │mez-vc  │ │mez-state │ │mez-  │ │mez-mass-     │
-             │ Compliance  │ │ VC sign │ │ Typestate │ │agentic│ │client         │
-             │ evaluation  │ │ /verify │ │ corridor  │ │ policy│ │               │
-             └──────┬──────┘ └────┬────┘ └─────┬─────┘ └───┬───┘ └───────┬───────┘
-                    │              │            │            │              │
-             ┌──────▼──────┐      │     ┌──────▼──────┐     │       ┌─────▼──────┐
-             │mez-        │      │     │mez-        │     │       │ Mass APIs  │
-             │compliance   │      │     │corridor     │     │       │ (live)     │
-             │ regpack →   │      │     │ receipt     │     │       │            │
-             │ tensor      │      │     │ chain, fork │     │       │ org-info   │
-             └──────┬──────┘      │     │ netting     │     │       │ treasury   │
-                    │              │     └──────┬──────┘     │       │ consent    │
-             ┌──────▼──────┐      │            │            │       │ identity   │
-             │ mez-pack   │      │     ┌──────▼──────┐     │       │ ownership  │
-             │ lawpack     │      │     │mez-crypto  │     │       └────────────┘
-             │ regpack     │      │     │ Ed25519     │     │
-             │ licensepack │      │     │ MMR, CAS    │     │
-             └─────────────┘      │     │ SHA-256     │     │
-                                  │     └──────┬──────┘     │
-                                  │            │            │
-                                  │     ┌──────▼──────┐     │
-                                  └────►│ mez-core   │◄────┘
-                                        │ Canonical   │
-                                        │ Bytes, IDs  │
-                                        │ Domains     │
-                                        └─────────────┘
+                                ┌──────────────────────┐
+                                │   Zone Admin / UI     │
+                                └──────────┬───────────┘
+                                           │
+                                ┌──────────▼───────────┐
+                                │    mez-api (Axum)     │
+                                │  Auth -> Rate Limit   │
+                                │  Trace -> Metrics     │
+                                └──────────┬───────────┘
+                                           │
+                ┌──────────┬───────────────┼───────────────┬──────────┐
+                │          │               │               │          │
+         ┌──────▼──────┐ ┌─▼──────┐ ┌─────▼──────┐ ┌─────▼────┐ ┌───▼──────────┐
+         │ mez-tensor  │ │mez-vc  │ │ mez-state  │ │mez-      │ │mez-mass-     │
+         │ compliance  │ │ sign/  │ │ typestate   │ │agentic   │ │client        │
+         │ evaluation  │ │ verify │ │ corridor    │ │ policy   │ │              │
+         └──────┬──────┘ └───┬────┘ └─────┬──────┘ └────┬─────┘ └──────┬───────┘
+                │            │            │              │              │
+         ┌──────▼──────┐     │     ┌──────▼──────┐      │       ┌──────▼──────┐
+         │mez-pack     │     │     │mez-corridor │      │       │ Mass APIs   │
+         │ lawpack     │     │     │ receipt     │      │       │ (live)      │
+         │ regpack     │     │     │ chain, fork │      │       │             │
+         │ licensepack │     │     │ netting     │      │       │ org-info    │
+         └─────────────┘     │     └──────┬──────┘      │       │ treasury    │
+                             │            │             │       │ consent     │
+                             │     ┌──────▼──────┐      │       │ ownership   │
+                             │     │mez-crypto   │      │       └─────────────┘
+                             │     │ Ed25519, MMR│      │
+                             │     │ CAS, SHA-256│      │
+                             │     └──────┬──────┘      │
+                             │            │             │
+                             └────►┌──────▼──────┐◄─────┘
+                                   │ mez-core    │
+                                   │ Canonical   │
+                                   │ Bytes, IDs  │
+                                   │ 20 Domains  │
+                                   └─────────────┘
 ```
 
-### A typical corridor operation
+### A typical write operation
 
-1. **Request arrives** at `POST /v1/corridors/{id}/receipts`
-2. **Auth middleware** validates bearer token (constant-time comparison)
+1. **Request** arrives at `POST /v1/corridors/{id}/receipts`
+2. **Auth** validates bearer token (constant-time comparison)
 3. **Rate limiter** checks token bucket for the route
-4. **Corridor state** is loaded; typestate machine validates the transition is legal (Active corridors can append receipts; Draft corridors cannot)
-5. **Compliance tensor** is evaluated for both jurisdictions in the corridor -- all 20 domains checked
-6. **Mass API client** calls into Mass if primitive data is needed (e.g., entity jurisdiction check)
-7. **Receipt chain** appends the new receipt to the MMR, computing a new root
-8. **VC issuance** signs an attestation for the receipt with the zone's Ed25519 key
-9. **Agentic engine** evaluates whether any policies trigger (e.g., sanctions list update → corridor halt)
-10. **Response** returns the receipt with MMR proof and attestation
+4. **Corridor state** loaded; typestate validates transition (Active can append; Draft cannot)
+5. **Compliance tensor** evaluated for both jurisdictions — all 20 domains
+6. **Mass client** calls Mass if primitive data needed (e.g., entity jurisdiction check)
+7. **Receipt chain** appends receipt to MMR, computes new root
+8. **VC issuance** signs attestation with zone's Ed25519 key
+9. **Agentic engine** evaluates triggered policies (e.g., sanctions update -> corridor halt)
+10. **Response** returns receipt with MMR proof and attestation
 
 ---
 
 ## Artifact model
 
-Everything that matters operationally is an **artifact** that can be:
+Everything operationally meaningful is an **artifact** that can be:
 
-- **Canonicalized** (deterministic bytes via JCS-compatible `CanonicalBytes::new()`)
-- **Digested** (SHA-256 via `ContentDigest`)
-- **Resolved** by digest from the content-addressed store
-
-Artifacts live in `dist/artifacts/<type>/<digest>.*`:
+- **Canonicalized** — deterministic bytes via `CanonicalBytes::new()` (JCS + MCF coercions)
+- **Digested** — SHA-256 via `ContentDigest`
+- **Resolved** — by digest from the content-addressed store
 
 ```
 dist/artifacts/
-├── lawpack/     *.lawpack.zip    (Akoma Ntoso statutory corpus)
-├── ruleset/     *.ruleset.json   (state transition rulesets)
-├── checkpoint/  *.checkpoint.json (corridor checkpoints)
-├── schema/      *.schema.json    (compiled schemas)
-├── proof-key/   *.proof-key      (cryptographic proof keys)
-├── circuit/     *.circuit         (ZK circuit definitions)
-└── blob/        *                 (arbitrary content)
+├── lawpack/      *.lawpack.zip     (Akoma Ntoso statutory corpus)
+├── ruleset/      *.ruleset.json    (state transition rulesets)
+├── checkpoint/   *.checkpoint.json (corridor checkpoints)
+├── schema/       *.schema.json     (compiled schemas)
+├── proof-key/    *.proof-key       (cryptographic proof keys)
+├── circuit/      *.circuit         (ZK circuit definitions)
+└── blob/         *                 (arbitrary content)
 ```
 
-The `ArtifactRef` structure (`artifact_type` + `digest_sha256` + optional `uri`) is the universal reference format across schemas.
+The `ArtifactRef` structure (`artifact_type` + `digest_sha256` + optional `uri`) is the universal reference format.
 
 ---
 
@@ -146,99 +136,39 @@ The `ArtifactRef` structure (`artifact_type` + `digest_sha256` + optional `uri`)
 
 ### Canonicalization
 
-`CanonicalBytes::new()` (in `mez-core`) is the **sole path** to digest computation. All signing flows require `&CanonicalBytes`. This eliminates the class of bugs where different JSON serialization orders produce different digests for the same logical value.
+`CanonicalBytes::new()` in `mez-core` is the sole path to digest computation. All signing flows require `&CanonicalBytes`. This eliminates bugs where different JSON serialization orders produce different digests.
 
-The canonicalization follows JCS (JSON Canonicalization Scheme, RFC 8785) with Momentum-specific type coercion rules. The `serde_json` `preserve_order` feature is guarded by a three-layer defense (compile-time check, CI check, runtime assertion).
+The canonicalization follows JCS (RFC 8785) with Momentum Coercion Framework (MCF) extensions. The `serde_json` `preserve_order` feature is guarded by compile-time check, CI check, and runtime assertion.
 
 ### Signing
 
-All signing uses Ed25519 (via `ed25519-dalek` with `zeroize` feature). Private keys:
-- Implement `Zeroize` + `ZeroizeOnDrop` (memory is scrubbed on drop)
-- Do **not** implement `Serialize` (cannot be accidentally exported to JSON)
-- Accept only `&CanonicalBytes` for signing (cannot sign non-canonical data)
+All signing uses Ed25519 via `ed25519-dalek` with `zeroize`. Private keys:
+- Implement `Zeroize` + `ZeroizeOnDrop`
+- Do **not** implement `Serialize`
+- Accept only `&CanonicalBytes` for signing
 
 ### Receipt chains
 
 Corridor receipts form an append-only chain backed by a Merkle Mountain Range (MMR). Each receipt commits to:
-- `prev_root`: the MMR root before this receipt
-- `next_root`: the canonical digest of this receipt's payload
+- `prev_root`: the previous state root (hash-chain continuity)
+- `next_root`: canonical digest of the receipt payload
 - `sequence`: monotonically increasing sequence number
 
-Fork detection uses 3-level ordering per spec section 3.5:
-1. **Primary**: Lexicographically earlier timestamp
-2. **Secondary**: More watcher attestations
-3. **Tertiary**: Lexicographic digest ordering
-
-Clock skew tolerance: 5 minutes.
-
----
-
-## Compliance tensor
-
-The compliance tensor is the core intelligence of the EZ Stack. It evaluates:
-
-```
-T(entity, jurisdiction) : ComplianceDomain → ComplianceState
-```
-
-Where:
-- **ComplianceDomain** has 20 variants: `Aml`, `Kyc`, `Sanctions`, `Tax`, `Securities`, `Corporate`, `Custody`, `DataPrivacy`, `Licensing`, `Banking`, `Payments`, `Clearing`, `Settlement`, `DigitalAssets`, `Employment`, `Immigration`, `Ip`, `ConsumerProtection`, `Arbitration`, `Trade`
-- **ComplianceState** is a 5-value lattice: `NotApplicable` > `Exempt` > `Compliant` > `Pending` > `NonCompliant`
-
-The tensor is parameterized by a `JurisdictionConfig` that determines which domains are applicable in a given jurisdiction. The `mez-compliance` crate bridges regpack data into jurisdiction configurations.
-
-**Manifold optimization**: The `ComplianceManifold` models jurisdictions as nodes and corridors as weighted edges. Dijkstra shortest-path finds the optimal migration route subject to constraints (max fee, max time, max risk, excluded jurisdictions).
-
-**Commitment**: Tensor state is Merkle-committed for anchoring to L1 chains or inclusion in VCs.
+Fork detection uses 3-level ordering: timestamp -> attestation count -> digest ordering. Clock skew tolerance: 5 minutes.
 
 ---
 
 ## State machines
 
-The EZ Stack uses the **typestate pattern** extensively. Each lifecycle state is a distinct zero-sized type (ZST). Transitions are methods that consume `self` and return the next state type. Invalid transitions are compile errors.
+The EZ Stack uses the **typestate pattern** extensively. Each state is a zero-sized type. Transitions consume `self` and return the next state type. Invalid transitions are compile errors.
 
-### Corridor lifecycle (6 states)
-
-```
-Draft ──submit──> Pending ──activate──> Active ──halt──> Halted ──deprecate──> Deprecated
-                                          │
-                                          └──suspend──> Suspended ──resume──> Active
-```
-
-`Corridor<Draft>` has `.submit()` but no `.halt()`. The compiler enforces it.
-
-### Entity lifecycle (10 stages)
-
-```
-Formation → Operational → Expansion/Contraction → Restructuring → Suspension → Dissolution (7 sub-stages)
-```
-
-### Migration saga (8 phases)
-
-```
-Phase0 (Initiation) → Phase1 (Planning) → Phase2 (Execution) → Phase3 (Settlement) → Phase4 (Finalization)
-```
-
-Terminal states: `Completed`, `Aborted`, `CompensationFailed`.
-
-### Watcher lifecycle (4 states)
-
-```
-Bonding ──> Active ──> Slashed ──> Unbonding
-```
-
-Slashing conditions: `InvalidProof`, `EquivocationDetected`, `InactivityViolation`, `PerjuryDetected`.
-
----
-
-## Agentic engine
-
-The agentic engine provides **autonomous policy execution** in response to environmental triggers. 20 trigger types cover regulatory changes, arbitration events, corridor state changes, fiscal events, and entity lifecycle events.
-
-**Determinism guarantee** (Theorem 17.1): Given identical trigger events and policy state, evaluation produces identical scheduled actions. This is enforced by:
-- `BTreeMap` for policy storage (deterministic iteration order)
-- Pure condition evaluation (no external state)
-- Deterministic conflict resolution: Priority → Jurisdiction specificity → Policy ID
+| Machine | States | Crate |
+|---------|--------|-------|
+| Corridor | Draft, Pending, Active, Halted, Suspended, Deprecated | `mez-state` |
+| Entity | Formation through Dissolution (10 stages) | `mez-state` |
+| Migration | Phase0-Phase4, Completed, Aborted, CompensationFailed | `mez-state` |
+| License | Pending, Active, Suspended, Revoked, Expired | `mez-state` |
+| Watcher | Bonding, Active, Slashed, Unbonding | `mez-state` |
 
 ---
 
@@ -246,25 +176,11 @@ The agentic engine provides **autonomous policy execution** in response to envir
 
 A verifier checks:
 
-1. **Configuration**: Resolve and validate `zone.yaml`, `corridor.yaml`
-2. **Artifacts**: Resolve all pinned artifacts from CAS, verify digests
-3. **Credentials**: Verify Corridor Definition VC and Agreement VCs
-4. **Receipt chain**: Verify receipts form a valid MMR chain (sequence, prev_root, next_root)
-5. **Checkpoints**: Verify checkpoint signatures and policy compliance
-6. **Watcher signals**: Check quorum and fork alarms
+1. **Configuration**: resolve and validate `zone.yaml`, `corridor.yaml`
+2. **Artifacts**: resolve all pinned artifacts from CAS, verify digests
+3. **Credentials**: verify Corridor Definition VC and Agreement VCs
+4. **Receipt chain**: verify receipts form valid MMR chain (sequence, prev_root, next_root)
+5. **Checkpoints**: verify checkpoint signatures and policy compliance
+6. **Watcher signals**: check quorum and fork alarms
 
 Strict modes: `--require-artifacts`, `--enforce-authority-registry`, `--enforce-checkpoint-policy`, `--require-quorum`.
-
----
-
-## Why this architecture
-
-The system is designed to be **machine-intelligence traversable**:
-
-- The legal substrate (lawpacks) is pinned and content-addressed
-- Operational commitments are explicit and resolvable
-- Verification is deterministic and automatable
-- Governance and authorization are separated from transport and storage
-- The corridor state channel model is settlement-rail agnostic (can anchor to Ethereum, L2, or operate standalone)
-
-The type system does the enforcement. If it compiles, the state transitions are valid, the signatures use canonical bytes, the identifiers don't mix, and the proof backends are authorized.

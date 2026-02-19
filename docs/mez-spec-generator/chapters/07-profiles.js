@@ -127,7 +127,7 @@ module.exports = function build_chapter07() {
 
     h3("7.3.1 Deployed Capabilities"),
     p("Trade-hub deployments activate corporate services for entity formation optimized for trading companies, freight forwarders, and logistics operators. Financial services are configured for trade finance instruments: letters of credit, documentary collections, trade receivables financing, and supply chain finance. The customs module operates at full depth with tariff classification, bonded warehousing, duty deferral schemes, and preferential origin determination under applicable free trade agreements."),
-    p("Corridor capabilities focus on trade corridors with receipt chain tracking (§9) for goods movement. The compliance tensor is configured with elevated weights for CUSTOMS, TRADE, SANCTIONS, and AML_CFT domains, reflecting the regulatory priorities of trade facilitation zones."),
+    p("Corridor capabilities focus on trade corridors with receipt chain tracking (\u00a79) for goods movement. The compliance tensor is configured with elevated weights for Trade, Sanctions, and Aml domains, reflecting the regulatory priorities of trade facilitation zones."),
 
     h3("7.3.2 Module Families"),
     table(
@@ -302,7 +302,7 @@ module.exports = function build_chapter07() {
 
     h3("7.6.1 Deployed Capabilities"),
     p("Charter-city deployments activate all civic and governance modules at full depth. Land and property management operates as a complete registry with parcel subdivision, title issuance, lease management, zoning enforcement, and development permit processing. Civic services cover workforce administration, health and safety regulation, environmental compliance, public utility management, and resident services. The governance module implements a full constitutional framework with citizen participation mechanisms, council voting, and charter amendment procedures."),
-    p("Corporate and financial modules support the full range of commercial activity within the charter city. The licensing module manages municipal business permits, professional licenses, and construction authorizations. Unlike the digital-financial-center profile, the charter-city profile gives equal weight to physical-world governance (land, infrastructure, civic services) and digital governance (corporate, financial, compliance). The compliance tensor is configured with elevated weights for ENVIRONMENTAL, LABOR, LAND, and CIVIC domains reflecting the planning-intensive nature of charter city operations."),
+    p("Corporate and financial modules support the full range of commercial activity within the charter city. The licensing module manages municipal business permits, professional licenses, and construction authorizations. Unlike the digital-financial-center profile, the charter-city profile gives equal weight to physical-world governance (land, infrastructure, civic services) and digital governance (corporate, financial, compliance). The compliance tensor is configured with elevated weights for Employment, Licensing, Corporate, and ConsumerProtection domains reflecting the planning-intensive nature of charter city operations."),
 
     h3("7.6.2 Module Families"),
     table(
@@ -406,7 +406,7 @@ module.exports = function build_chapter07() {
 
     h3("7.8.1 Deployed Capabilities"),
     p("Asset-history-bundle deployments activate the receipt chain subsystem (§9) at maximum fidelity. Every state transition of a tracked asset generates a receipt: creation, inspection, certification, transfer, encumbrance, release, and disposal. The credential module issues Verifiable Credentials for certifications, appraisals, and compliance attestations that can be independently verified without contacting the issuing system."),
-    p("Corporate services are minimal: just enough to register the entities involved in asset transactions. Financial services support escrow and settlement for asset transfers. The compliance tensor is configured with narrow focus on the specific regulatory domains relevant to the asset class being tracked. For art provenance, this might emphasize AML_CFT and SANCTIONS (anti-money-laundering in art transactions). For commodity lots, it would emphasize CUSTOMS, TRADE, and ENVIRONMENTAL (ethical sourcing). The profile is designed to be embedded within a larger system rather than to operate as a standalone zone."),
+    p("Corporate services are minimal: just enough to register the entities involved in asset transactions. Financial services support escrow and settlement for asset transfers. The compliance tensor is configured with narrow focus on the specific regulatory domains relevant to the asset class being tracked. For art provenance, this might emphasize Aml and Sanctions (anti-money-laundering in art transactions). For commodity lots, it would emphasize Trade and Clearing (ethical sourcing, customs). The profile is designed to be embedded within a larger system rather than to operate as a standalone zone."),
 
     h3("7.8.2 Module Families"),
     table(

@@ -64,7 +64,7 @@ Schema: `schemas/smart-asset.manifest.schema.json`
 
 ## Reference CLI
 
-The reference implementation lives in `tools/smart_asset.py` and is wired into `tools/mez.py`:
+Smart Asset operations are available through the `mez` CLI (`mez-cli` crate):
 
 ```bash
 # identity

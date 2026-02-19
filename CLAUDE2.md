@@ -9,7 +9,7 @@
 
 A Rust workspace (`momentum-ez/stack`, v0.4.44) that provides **jurisdictional orchestration** for Mass — Momentum's five programmable primitives. Mass is Java/Spring Boot, live, processing real capital. This repo sits above Mass and adds compliance intelligence, corridor management, and cryptographic provenance.
 
-The workspace has 16 crates, 109K lines of Rust, 3,029+ tests, zero Python.
+The workspace has 16 crates, 151K lines of Rust, 4,073 tests, zero Python.
 
 ## II. THE BOUNDARY (read this twice)
 
@@ -58,7 +58,7 @@ mez-compliance   Composes tensor + pack evaluation.
 mez-mass-client  Typed HTTP client for Mass APIs. Depends on mez-core only.
 mez-api          Axum HTTP server. Sole composition point — depends on all above.
 mez-cli          CLI: zone validate/build/lock/sign, VC keygen/sign/verify.
-mez-integration-tests  60+ test files, 34K lines.
+mez-integration-tests  113 test files.
 ```
 
 Dependency DAG (simplified):
@@ -79,7 +79,7 @@ mez-core (leaf)
 ```bash
 cargo check --workspace              # zero warnings required
 cargo clippy --workspace -- -D warnings  # zero diagnostics required
-cargo test --workspace               # all 3,029+ tests must pass
+cargo test --workspace               # all 4,073 tests must pass
 ```
 
 After any code change, run all three. No exceptions.
@@ -158,23 +158,17 @@ This pattern is the EZ Stack's entire value-add. Without it, Mass is generic CRU
 
 **IMPORTANT**: Do not write code that assumes STUB or PLANNED capabilities exist. Do not generate mock implementations that pretend to be real. When a feature is STUB, the code must return `MezError::NotImplemented` with a clear message. When PLANNED, no code should reference it as if it works.
 
-## VIII. SEVEN DEPLOYMENT BLOCKERS (current priority)
+## VIII. REMAINING DEPLOYMENT BLOCKERS
 
-These block sovereign zone deployment. Address in this order:
+Status as of 2026-02-19. Resolved items marked.
 
-1. **Mass API health gating** — `mez-api` bootstrap must verify Mass API connectivity before accepting traffic. Readiness probe must include Mass reachability.
-
-2. **Identity primitive** — No dedicated `identity-info.api.mass.inc`. Rust client (`IdentityClient`) is an aggregation facade. Ship the Java service or honestly flag it as 4/5.
-
-3. **Contract tests** — `mez-mass-client` tests use hardcoded mocks. No validation against live Swagger specs. A field rename in Java breaks the Rust client silently.
-
-4. **Inter-zone networking** — Corridors work in-process only. No P2P protocol for two zones to exchange receipts over the network. Each deployed zone is an island.
-
-5. **Pack Trilogy content** — Zero real lawpacks with real legislative text. No Pakistan Income Tax Ordinance 2001 in AKN XML. Tensor evaluates against empty rulesets.
-
-6. **National system adapters** — FBR IRIS, SBP Raast, NADRA, SECP have no implementations. `NationalSystemAdapter` trait needed with production + mock impls.
-
-7. **Placeholder crypto keys** — `deploy-zone.sh` writes placeholder Ed25519 keys. Use `mez-cli keygen` instead.
+1. ~~**Mass API health gating**~~ — RESOLVED. Readiness probe checks Mass connectivity.
+2. **Identity primitive** — OPEN. No dedicated `identity-info.api.mass.inc`. Rust client is a facade over consent-info + org-info.
+3. ~~**Contract tests**~~ — RESOLVED. OpenAPI snapshots + schema drift detection added.
+4. ~~**Inter-zone networking**~~ — RESOLVED. Inter-zone corridor protocol with handshake + receipt exchange.
+5. ~~**Pack Trilogy content**~~ — RESOLVED. Pakistan lawpacks (4 domains), regpacks, 70+ licensepacks.
+6. **National system adapters** — OPEN. FBR IRIS, SBP Raast, NADRA, SECP types defined but no HTTP adapters.
+7. ~~**Placeholder crypto keys**~~ — RESOLVED. Real Ed25519 JWK via `mez vc keygen`.
 
 ## IX. ANTI-SLOP PROTOCOL
 
@@ -255,9 +249,8 @@ For deep context, read these (don't embed them here):
 - `profiles/` — Deployment templates (digital-financial-center, charter-city, trade-playbook, etc.)
 - `governance/corridor.lifecycle.state-machine.v2.json` — Canonical corridor FSM definition
 - `deploy/` — Docker, Terraform (AWS), K8s manifests, deployment scripts
-- `EZ_Stack_Mass_API_Deep_Audit_v7.md` — Prior audit findings
-- `mez/AUDIT_FINDINGS.md` — Structural integrity audit
-- `mez/HARDENING_REPORT.md` — Security defect resolution evidence
+- `EZ_Stack_Mass_API_Audit_v8.md` — Architecture audit (v8.0, Feb 2026)
+- `docs/PRAGMATIC-DEPLOYMENT-ROADMAP.md` — Deployment phases and priorities
 
 For Pakistan GovOS context: see project knowledge for `mass_pakistan_architecture_v4` schematic.
 

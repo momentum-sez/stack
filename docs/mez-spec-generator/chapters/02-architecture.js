@@ -56,10 +56,10 @@ module.exports = function build_chapter02() {
       [2600, 3200, 3560]
     ),
 
-    // --- 2.2.1 PHOENIX Module Suite ---
-    h3("2.2.1 PHOENIX Module Suite"),
+    // --- 2.2.1 Rust Crate Map ---
+    h3("2.2.1 Rust Crate Map"),
 
-    p("The Rust implementation is organized as a Cargo workspace with the following crates, each mapping to a specific domain within the Stack architecture."),
+    p("The Rust implementation is organized as a Cargo workspace with 16 crates totaling 151,000 lines and 4,073 tests. Each crate maps to a specific domain within the Stack architecture."),
 
     table(
       ["Crate", "Lines", "Purpose"],
@@ -110,7 +110,7 @@ module.exports = function build_chapter02() {
 \u2502       \u251c\u2500\u2500 mez-cli/           # Command-Line Interface
 \u2502       \u2514\u2500\u2500 mez-integration-tests/  # Cross-crate test suites
 \u251c\u2500\u2500 schemas/                    # 116 JSON Schema files (Draft 2020-12)
-\u251c\u2500\u2500 modules/                    # 298 module descriptors (16 families)
+\u251c\u2500\u2500 modules/                    # 323 module descriptors (16 families)
 \u251c\u2500\u2500 apis/                       # OpenAPI specifications
 \u251c\u2500\u2500 deploy/                     # Docker Compose + AWS Terraform
 \u2514\u2500\u2500 docs/                       # Specifications and documentation`

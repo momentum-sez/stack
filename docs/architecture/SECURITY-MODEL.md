@@ -116,4 +116,4 @@ Recommended production modes:
 - **Key rotation**: explicit policies and artifacts for rotation
 - **Availability attestations**: operational evidence that pinned artifacts are stored and servable
 
-See `docs/operators/INCIDENT-RESPONSE.md` for a practical playbook.
+See `spec/80-security-privacy.md` for the normative security specification.

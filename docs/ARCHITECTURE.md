@@ -1,125 +1,97 @@
 # Architecture
 
-## Momentum EZ Stack -- Rust Workspace
+**Momentum EZ Stack** v0.4.44 GENESIS — 16 crates, 151K lines of Rust, 4,073 tests
 
-**v0.4.44** -- 16 crates, ~48K lines of Rust
-
-This document describes the architectural foundations of the EZ Stack: a compliance orchestration layer built in Rust that sits above the live Mass APIs and provides the intelligence that primitive CRUD operations alone cannot express.
-
-For the crate-by-crate API reference, see [Crate Reference](./architecture/CRATE-REFERENCE.md).
-For the system overview, see [Architecture Overview](./architecture/OVERVIEW.md).
+This document describes the system architecture. For per-crate API details, see [Crate Reference](./architecture/CRATE-REFERENCE.md). For the Mass integration boundary, see [Mass Integration](./architecture/MASS-INTEGRATION.md).
 
 ---
 
 ## Foundational premise
 
-Traditional Economic Zones take 3-7 years and $50-200M to establish. They require bilateral treaties, regulatory frameworks, banking relationships, corporate registries, dispute resolution, and licensing regimes.
+Traditional Economic Zones take 3-7 years and $50-200M to establish: bilateral treaties, regulatory frameworks, banking relationships, corporate registries, dispute resolution, licensing regimes.
 
-The EZ Stack reduces this to configuration files backed by a Rust workspace that provides:
+The EZ Stack reduces this to configuration. A `zone.yaml` file selects jurisdictions, composes modules, and the Rust workspace provides:
 
-- **Type-level correctness**: Invalid state transitions don't compile. Identifier types can't mix. Proof backends are sealed.
-- **Cryptographic integrity**: Every state transition produces verifiable proof via Ed25519 signatures, MMR-backed receipt chains, and W3C Verifiable Credentials.
-- **Compliance intelligence**: A 20-domain compliance tensor evaluates regulatory state per entity/jurisdiction pair, with Dijkstra-optimized migration paths across the jurisdiction graph.
-- **Autonomous policy execution**: 20 trigger types drive deterministic policy evaluation with formal conflict resolution guarantees (Theorem 17.1).
+- **Type-level correctness** — invalid state transitions don't compile
+- **Cryptographic integrity** — every state transition produces verifiable proof
+- **Compliance intelligence** — 20-domain tensor evaluation with Dijkstra-optimized migration paths
+- **Autonomous policy execution** — 20 trigger types with deterministic conflict resolution
 
 ---
 
 ## System layers
 
-The workspace is organized around distinct concerns, each implemented by one or more crates:
-
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        HTTP BOUNDARY                                │
-│  mez-api: Axum server, auth, rate limiting, OpenAPI generation     │
-│  mez-cli: Offline zone management, validation, signing            │
-├─────────────────────────────────────────────────────────────────────┤
-│                     ORCHESTRATION LAYER                              │
-│  mez-agentic:     20 triggers, policy engine, audit trail          │
-│  mez-arbitration: Dispute lifecycle, evidence, escrow              │
-│  mez-compliance:  Regpack → tensor bridge                          │
-├─────────────────────────────────────────────────────────────────────┤
-│                   DOMAIN INTELLIGENCE                               │
-│  mez-tensor:  Compliance Tensor V2 (20 domains, 5-state lattice)  │
-│  mez-corridor: Receipt chains, fork resolution, netting, SWIFT     │
-│  mez-state:   Typestate machines (corridor, entity, migration)     │
-│  mez-pack:    Lawpack, regpack, licensepack (Pack Trilogy)          │
-├─────────────────────────────────────────────────────────────────────┤
-│                  CRYPTOGRAPHIC FOUNDATION                           │
-│  mez-vc:     W3C Verifiable Credentials, Ed25519 proofs            │
-│  mez-crypto: Ed25519 (zeroize), MMR, CAS, SHA-256                 │
-│  mez-zkp:    Sealed ProofSystem trait, 12 circuits, CDB bridge     │
-│  mez-core:   CanonicalBytes, ComplianceDomain(20), ID newtypes     │
-├─────────────────────────────────────────────────────────────────────┤
-│                    EXTERNAL INTEGRATION                             │
-│  mez-mass-client: Typed HTTP client for 5 Mass API primitives      │
-│  mez-schema:      116 JSON Schema (Draft 2020-12) validation       │
-└─────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│                      HTTP BOUNDARY                             │
+│  mez-api:  Axum server, auth, rate limiting, OpenAPI          │
+│  mez-cli:  Offline zone management, validation, signing       │
+├───────────────────────────────────────────────────────────────┤
+│                   ORCHESTRATION LAYER                          │
+│  mez-agentic:     20 triggers, policy engine, audit trail     │
+│  mez-arbitration:  Dispute lifecycle, evidence, escrow        │
+│  mez-compliance:   Regpack -> tensor bridge                   │
+├───────────────────────────────────────────────────────────────┤
+│                 DOMAIN INTELLIGENCE                            │
+│  mez-tensor:   Compliance Tensor V2 (20 domains, 5 states)   │
+│  mez-corridor: Receipt chains, fork resolution, netting       │
+│  mez-state:    Typestate machines (corridor, entity, etc.)    │
+│  mez-pack:     Lawpack, regpack, licensepack                  │
+├───────────────────────────────────────────────────────────────┤
+│                CRYPTOGRAPHIC FOUNDATION                        │
+│  mez-vc:     W3C Verifiable Credentials, Ed25519 proofs       │
+│  mez-crypto: Ed25519 (zeroize), MMR, CAS, SHA-256            │
+│  mez-zkp:    Sealed ProofSystem trait, 12 circuits            │
+│  mez-core:   CanonicalBytes, ComplianceDomain(20), newtypes  │
+├───────────────────────────────────────────────────────────────┤
+│                  EXTERNAL INTEGRATION                          │
+│  mez-mass-client: Typed HTTP client for 5 Mass primitives     │
+│  mez-schema:      116 JSON Schema (Draft 2020-12) validation  │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Smart Assets
+## The Mass/EZ boundary
 
-A **Smart Asset** is an asset with embedded compliance intelligence. It carries a compliance tensor that tracks its regulatory state across all applicable domains and jurisdictions. The asset knows:
+**Mass APIs** (Java, not in this repo) own CRUD for five primitives: Entities, Ownership, Fiscal, Identity, Consent. **The EZ Stack** owns everything above primitive CRUD: compliance evaluation, corridor state, verifiable credentials, zone configuration, audit trails.
 
-- Whether it is compliant in a given jurisdiction
-- What attestations are missing
-- The optimal migration path to a target jurisdiction (via the compliance manifold)
+The boundary rule: if it's "create/read/update/delete a business object" — Mass. If it's "evaluate whether that operation is compliant in this jurisdiction" — this repo. `mez-mass-client` is the sole authorized gateway.
 
-Smart Assets are the EZ Stack's programmable substrate. An entity IS a Smart Asset. An ownership position IS a Smart Asset. The EZ Stack manages their compliance lifecycle; Mass manages the underlying primitive data.
+The EZ Stack **never stores primitive data**. Entity records, cap tables, payments, identity records, and consent records live in Mass.
 
-### Compliance Tensor
+---
 
-The compliance tensor is a function:
+## Compliance Tensor
+
+The tensor is a function:
 
 ```
-T(entity, jurisdiction) : ComplianceDomain → ComplianceState
+T(entity, jurisdiction) : ComplianceDomain -> ComplianceState
 ```
 
-20 regulatory domains, each producing a 5-state lattice value:
+20 domains, each producing a 5-state lattice value:
 
 ```
 NotApplicable > Exempt > Compliant > Pending > NonCompliant
 ```
 
-The `mez-tensor` crate implements this with pluggable `DomainEvaluator` instances per domain, parameterized by a `JurisdictionConfig` that determines which domains apply.
-
-### Compliance Manifold
-
-The `ComplianceManifold` models jurisdictions as nodes and corridors as weighted edges. Each edge carries a `ComplianceDistance` (fee, time, risk). Dijkstra shortest-path computes optimal migration routes subject to constraints:
-
-```rust
-manifold.shortest_path(
-    &from_jurisdiction,
-    &to_jurisdiction,
-    &[PathConstraint::MaxFee(1000.into()), PathConstraint::MaxDays(30)]
-) // → Option<MigrationPath>
-```
-
-### Tensor Commitment
-
-Tensor state is Merkle-committed via `TensorCommitment`. This allows:
-- Anchoring compliance state to L1 chains
-- Including compliance snapshots in Verifiable Credentials
-- Auditable proof of compliance evaluation at a point in time
+Parameterized by `JurisdictionConfig` that determines which domains apply. The `ComplianceManifold` models jurisdictions as nodes, corridors as weighted edges, and Dijkstra shortest-path computes optimal migration routes subject to constraints (max fee, time, risk). Tensor state is Merkle-committed for anchoring and VC inclusion.
 
 ---
 
 ## Corridors
 
-A **corridor** is a bilateral trade channel between two jurisdictions. It provides:
+A **corridor** is a bilateral trade channel between jurisdictions:
 
-- **Receipt chain**: Append-only sequence of signed receipts backed by a Merkle Mountain Range (MMR). Each receipt commits to `prev_root` and `next_root`, forming a tamper-evident chain.
-- **Fork detection**: Watchers monitor the receipt chain. Forks are detected when two receipts share the same `prev_root` but different `next_root`.
-- **Fork resolution**: 3-level deterministic ordering (timestamp → attestation count → digest).
-- **Netting**: Bilateral and multilateral settlement compression via `NettingEngine`.
-- **SWIFT pacs.008**: ISO 20022 payment instruction generation via `SwiftPacs008`.
-- **L1 anchoring**: Optional anchoring of checkpoints to external chains.
+- **Receipt chain**: append-only signed receipts backed by a Merkle Mountain Range (MMR)
+- **Fork detection**: watchers monitor for conflicting receipts at the same height
+- **Fork resolution**: 3-level deterministic ordering (timestamp, attestation count, digest)
+- **Netting**: bilateral and multilateral settlement compression
+- **SWIFT pacs.008**: ISO 20022 payment instruction generation
+- **L1 anchoring**: optional checkpoint anchoring to external chains
 
-### Corridor lifecycle
-
-The corridor lifecycle is enforced at the type level via the typestate pattern:
+### Corridor lifecycle (typestate-enforced)
 
 ```
 Draft ──submit──> Pending ──activate──> Active ──halt──> Halted ──deprecate──> Deprecated
@@ -127,15 +99,13 @@ Draft ──submit──> Pending ──activate──> Active ──halt──>
                                           └──suspend──> Suspended ──resume──> Active
 ```
 
-`Corridor<Draft>` has a `.submit()` method but no `.halt()` method. Attempting to halt a draft corridor is a compile error, not a runtime error.
+`Corridor<Draft>` has `.submit()` but no `.halt()`. Attempting to halt a draft is a compile error.
 
 ---
 
 ## Agentic policy engine
 
-The agentic engine executes autonomous policies in response to environmental triggers. When a sanctions list updates, the engine evaluates all affected corridors and freezes non-compliant ones. When a license expires, the engine suspends the entity. These policies operate ACROSS Mass primitives.
-
-### 20 trigger types
+20 trigger types drive autonomous policy evaluation:
 
 | Category | Triggers |
 |----------|----------|
@@ -146,114 +116,70 @@ The agentic engine executes autonomous policies in response to environmental tri
 | Fiscal | `TaxYearEnd`, `WithholdingDue` |
 | Entity | `EntityDissolution`, `PackUpdated`, `AssetTransferInitiated`, `MigrationDeadline` |
 
-### Determinism guarantee (Theorem 17.1)
-
-Given identical trigger events and policy state, evaluation produces identical scheduled actions. Enforced by:
-- `BTreeMap` for policy storage (deterministic iteration order)
-- Pure condition evaluation (no external state, no randomness)
-- Conflict resolution: Priority → Jurisdiction specificity → Policy ID
+**Determinism guarantee** (Theorem 17.1): given identical trigger events and policy state, evaluation produces identical scheduled actions. Enforced by `BTreeMap` iteration, pure condition evaluation, and priority-based conflict resolution.
 
 ---
 
 ## Arbitration
 
-The arbitration system manages dispute resolution through a 7-phase lifecycle:
+7-phase dispute lifecycle:
 
 ```
-Filed → EvidencePhase → HearingScheduled → UnderDecision → Decided → EnforcementInitiated
-                                                            │
-                                                            └→ Settled
-                                                            └→ DismissedOrWithdrawn
-                                                            └→ ReviewInitiated
+Filed -> Evidence -> Hearing -> Decision -> Enforcement
+                                    │
+                                    ├-> Settled
+                                    ├-> Dismissed
+                                    └-> Review
 ```
 
-Key capabilities:
-- **Evidence management**: Content-addressed evidence items with authenticity attestations and chain-of-custody tracking
-- **Escrow**: Held funds with configurable release conditions (dispute resolved, time elapsed, ruling enforced)
-- **Enforcement**: Ordered actions (`PayAmount`, `TransferAsset`, `FreezeAsset`, `UpdateCompliance`) executed via VC-triggered state transitions
+Evidence is content-addressed with chain-of-custody tracking. Escrow supports configurable release conditions. Enforcement actions (`PayAmount`, `TransferAsset`, `FreezeAsset`, `UpdateCompliance`) execute via VC-triggered state transitions.
 
 ---
 
 ## Pack Trilogy
 
-The Pack Trilogy provides jurisdictional configuration:
-
-| Pack | Source format | What it configures |
-|------|---------------|-------------------|
+| Pack | Source | Configures |
+|------|--------|-----------|
 | **Lawpack** | Akoma Ntoso XML | Statutory corpus: enabling acts, tax law, corporate law |
-| **Regpack** | YAML/JSON | Regulatory requirements: sanctions lists, reporting obligations, compliance calendars |
-| **Licensepack** | YAML/JSON | License registry: license types, issuing authorities, validity periods, renewal windows |
+| **Regpack** | YAML/JSON | Sanctions lists, reporting obligations, compliance calendars |
+| **Licensepack** | YAML/JSON | License types, issuing authorities, validity periods |
 
-Each pack is content-addressed (SHA-256 digest via `CanonicalBytes`) and version-controlled. The `SanctionsChecker` in `mez-pack` provides fuzzy name matching against OFAC/UN/EU sanctions lists with configurable confidence thresholds.
+Each pack is content-addressed (SHA-256 via `CanonicalBytes`) and version-controlled. The `SanctionsChecker` in `mez-pack` provides fuzzy name matching against OFAC/UN/EU sanctions lists with configurable confidence thresholds.
 
 ---
 
 ## Zero-knowledge proofs
 
-The `mez-zkp` crate defines a **sealed** `ProofSystem` trait that external crates cannot implement. This prevents unauthorized proof backends from entering the system.
+`mez-zkp` defines a **sealed** `ProofSystem` trait — external crates cannot implement it.
 
-### Phase 1 (current)
+**Phase 1** (current): `MockProofSystem` produces deterministic SHA-256 mock proofs across 12 circuit types. Production policy (`ProofPolicy`) rejects mock proofs in release builds.
 
-`MockProofSystem`: Deterministic SHA-256 mock. All 12 circuit types produce transparent, reproducible proofs. Used for development, testing, and cross-language parity verification.
-
-### Phase 2 (feature-gated)
-
-| Backend | Feature flag | Framework |
-|---------|-------------|-----------|
-| Groth16 SNARK | `groth16` | arkworks |
-| PLONK | `plonk` | halo2 |
-| Poseidon2 in CDB | `poseidon2` | *(built-in)* |
-
-### Canonical Digest Bridge (CDB)
-
-The CDB transformation bridges between SHA-256 (used everywhere in the stack) and ZK-friendly hashing:
-
-```
-CDB(A) = Poseidon2(Split256(SHA256(JCS(A))))
-```
-
-Phase 1: Poseidon2 is an identity transform. Phase 2: Poseidon2 is activated for efficient in-circuit verification.
-
-### 12 circuit types
-
-Compliance: `BalanceSufficiency`, `SanctionsClearance`, `TensorInclusion`
-Migration: `MigrationEvidence`, `OwnershipChain`, `CompensationValidity`
-Identity: `KycAttestation`, `AttestationValidity`, `ThresholdSignature`
-Settlement: `RangeProof`, `MerkleMembership`, `NettingValidity`
-
----
-
-## Mass API integration
-
-The EZ Stack does not reimplement Mass primitives. It orchestrates them.
-
-| Mass Primitive | Mass API Endpoint | EZ Stack adds |
-|----------------|-------------------|----------------|
-| Entities | `organization-info.api.mass.inc` | Compliance tensor evaluation, VC issuance, state machine lifecycle |
-| Ownership | `investment-info` | Smart asset binding, corridor-aware transfer validation |
-| Fiscal | `treasury-info.api.mass.inc` | Tax withholding computation (regpack rates), settlement netting, SWIFT instruction generation |
-| Identity | *(embedded)* | KYC attestation VCs, sanctions screening (regpack checker) |
-| Consent | `consent.api.mass.inc` | Multi-party corridor activation, governance-gated state transitions |
-
-The `mez-mass-client` crate provides typed Rust HTTP clients for each primitive. All other crates are forbidden from making direct HTTP requests to Mass endpoints.
+**Phase 2** (feature-gated): Groth16 (`groth16` flag) and PLONK (`plonk` flag) backends. The Canonical Digest Bridge (CDB) transforms `SHA256(JCS(A))` to `Poseidon2(Split256(...))` for efficient in-circuit verification.
 
 ---
 
 ## Watcher economy
 
-Watchers are bonded attestors that monitor corridor receipt chains for integrity. The watcher lifecycle uses the typestate pattern:
+Watchers are bonded attestors that monitor corridor receipt chains:
 
 ```
-Bonding → Active → Slashed → Unbonding
+Bonding -> Active -> Slashed -> Unbonding
 ```
 
-Slashing conditions:
-- `InvalidProof`: Watcher submitted a proof that fails verification
-- `EquivocationDetected`: Watcher signed conflicting attestations
-- `InactivityViolation`: Watcher failed to attest within the required window
-- `PerjuryDetected`: Watcher attested to a false receipt chain state
+Slashing conditions: `InvalidProof`, `EquivocationDetected`, `InactivityViolation`, `PerjuryDetected`. Fork detection relies on watcher attestation quorum — a fork alarm is raised when watchers report conflicting head roots.
 
-Fork detection relies on watcher attestation quorum. A fork alarm is raised when watchers report conflicting head roots for the same corridor.
+---
+
+## Cryptographic invariants
+
+| Invariant | Enforcement |
+|-----------|-------------|
+| All digests via canonical path | `CanonicalBytes::new()` is the sole entry to `sha256_digest()` |
+| No non-canonical signing | Signing requires `&CanonicalBytes` |
+| Key material zeroed on drop | `SigningKey`: `Zeroize` + `ZeroizeOnDrop`, no `Serialize` |
+| Deterministic serialization | `serde_json` `preserve_order` guarded (compile-time, CI, runtime) |
+| Receipt chain continuity | `receipt.prev_root == final_state_root` |
+| Receipt commitment integrity | `receipt.next_root == SHA256(JCS(payload_sans_proof))` |
 
 ---
 
@@ -261,9 +187,9 @@ Fork detection relies on watcher attestation quorum. A fork alarm is raised when
 
 ### What cryptography guarantees
 
-- **Integrity**: Content-addressed artifacts are verified by digest. Receipts chain via `prev_root` → `next_root`.
-- **Authorship**: Ed25519 signatures verify the signer's key.
-- **Causality**: MMR receipt chains enforce append-only ordering.
+- **Integrity**: content-addressed artifacts verified by digest; receipts chain via roots
+- **Authorship**: Ed25519 signatures verify the signer's key
+- **Causality**: MMR receipt chains enforce append-only ordering
 
 ### What cryptography does not guarantee
 
@@ -271,78 +197,27 @@ Fork detection relies on watcher attestation quorum. A fork alarm is raised when
 - **Social legitimacy** of an authority registry (requires operational controls)
 - **Availability** of artifacts (requires redundancy and monitoring)
 
-### Mitigations
-
-| Attack | Mitigation |
-|--------|-----------|
-| Receipt chain fork | Watcher attestation quorum + 3-level fork resolution |
-| Trust anchor circularity | Authority registry chaining (treaty → national → zone), pinned by digest |
-| Artifact withholding | CAS completeness checks, `--require-artifacts` strict mode |
-| Timing side-channel | `subtle::ConstantTimeEq` for bearer token comparison |
-| Key material in memory | `Zeroize` + `ZeroizeOnDrop` on `SigningKey` |
-| Serialization divergence | `CanonicalBytes` as sole digest path, `preserve_order` guard |
-
-See [Security Model](./architecture/SECURITY-MODEL.md) for the full threat model.
+See [Security Model](./architecture/SECURITY-MODEL.md) for the full threat model and mitigation matrix.
 
 ---
 
 ## Deployment architecture
 
-### Docker Compose (development)
-
-```
-mez-api (Rust binary) ──> PostgreSQL 16
-                        ──> Prometheus
-                        ──> Grafana
-```
-
-### Kubernetes (production)
-
-- 2 replicas with rolling updates
-- Non-root security context, read-only filesystem
-- Liveness, readiness, and startup probes
-- Resource limits: 250m-1000m CPU, 256Mi-512Mi memory
-
-### AWS (Terraform)
-
-- EKS with auto-scaling node groups
-- RDS PostgreSQL (Multi-AZ)
-- ElastiCache Redis
-- S3 for artifact storage
-- KMS for key management
-- ALB with TLS termination
+| Environment | Components |
+|-------------|-----------|
+| **Docker Compose** | `mez-api` binary + PostgreSQL 16 + Prometheus + Grafana |
+| **Kubernetes** | 2 replicas, rolling updates, non-root, resource limits, probes |
+| **AWS (Terraform)** | EKS (auto-scaling) + RDS (Multi-AZ) + ElastiCache + S3 + KMS + ALB/TLS |
 
 ---
 
 ## Design principles
 
-| Principle | Enforcement |
-|-----------|------------|
+| Principle | How |
+|-----------|-----|
 | **The type system does the work** | Typestate machines, sealed traits, identifier newtypes, exhaustive matching |
-| **Single source of truth** | `CanonicalBytes` for digests, `ComplianceDomain` enum for all 20 domains, Mass APIs for primitive data |
-| **Fail closed** | Unknown = `NonCompliant`. Missing attestations invalidate. System fails safe. |
-| **No magic** | No floating point. No randomness in evaluation. No external state in condition evaluation. BTreeMap for deterministic iteration. |
-| **Defense in depth** | Zeroize on key drop. Constant-time auth. Rate limit after auth. Schema validation at boundary. |
-| **Verify, never trust** | All inputs validated. Signatures verified. Digests recomputed. Receipt chains verified. |
-
----
-
-## Key external dependencies
-
-| Crate | Purpose |
-|-------|---------|
-| `serde` / `serde_json` | Serialization (with `preserve_order` guard) |
-| `axum` / `tokio` / `tower` | HTTP server and async runtime |
-| `ed25519-dalek` | Ed25519 signing with zeroize support |
-| `sha2` | SHA-256 digest computation |
-| `chrono` | Timestamp handling |
-| `clap` | CLI argument parsing |
-| `tracing` | Structured logging and distributed tracing |
-| `reqwest` | HTTP client (used only in `mez-mass-client`) |
-| `sqlx` | PostgreSQL driver (async, compile-time query checking) |
-| `utoipa` | OpenAPI spec generation |
-| `proptest` | Property-based testing |
-| `parking_lot` | Non-poisoning RwLock |
-| `subtle` | Constant-time operations |
-| `zeroize` | Memory scrubbing for key material |
-| `uuid` | UUID v4 generation for identifiers |
+| **Single source of truth** | `CanonicalBytes` for digests, `ComplianceDomain` for all 20 domains, Mass for primitives |
+| **Fail closed** | Unknown = `NonCompliant`. Missing attestations invalidate. Empty tensor slices = error. |
+| **No magic** | No floating point. No randomness. No external state in evaluation. `BTreeMap` ordering. |
+| **Defense in depth** | Zeroize on drop. Constant-time auth. Rate limit after auth. Schema validation at boundary. |
+| **Verify, never trust** | All inputs validated. Signatures verified. Digests recomputed. Chains verified. |

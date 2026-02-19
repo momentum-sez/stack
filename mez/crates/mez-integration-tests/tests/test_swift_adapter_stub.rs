@@ -18,7 +18,7 @@ fn sample_instruction() -> SettlementInstruction {
         creditor_name: "Momentum EZ Operator AED".to_string(),
         amount: 100000, // 1000.00
         currency: "USD".to_string(),
-        remittance_info: Some("Corridor settlement PK-RSEZ/AE-DIFC".to_string()),
+        remittance_info: Some("Corridor settlement PK-REZ/AE-DIFC".to_string()),
     }
 }
 
@@ -56,7 +56,7 @@ fn swift_iso20022_serialization() {
     assert!(xml.contains("<BICFI>MEZSEXX</BICFI>"));
     assert!(xml.contains("Ccy=\"USD\""));
     assert!(xml.contains("1000.00"));
-    assert!(xml.contains("Corridor settlement PK-RSEZ/AE-DIFC"));
+    assert!(xml.contains("Corridor settlement PK-REZ/AE-DIFC"));
 }
 
 // ---------------------------------------------------------------------------

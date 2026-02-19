@@ -33,7 +33,7 @@ fn test_digest(label: &str) -> ContentDigest {
 #[test]
 fn corridor_full_lifecycle() {
     let id = CorridorId::new();
-    let ja = JurisdictionId::new("PK-RSEZ").unwrap();
+    let ja = JurisdictionId::new("PK-REZ").unwrap();
     let jb = JurisdictionId::new("AE-DIFC").unwrap();
 
     // Draft
@@ -72,7 +72,7 @@ fn corridor_full_lifecycle() {
     // Halted
     let halted = active_again.halt(HaltReason {
         reason: "Fork detected".to_string(),
-        authority: JurisdictionId::new("PK-RSEZ").unwrap(),
+        authority: JurisdictionId::new("PK-REZ").unwrap(),
         evidence: test_digest("fork-evidence"),
     });
     assert_eq!(halted.state_name(), "HALTED");
@@ -137,7 +137,7 @@ fn license_active_suspend_revoke() {
 #[test]
 fn migration_saga_advance_through_phases() {
     let mut saga = MigrationBuilder::new(MigrationId::new())
-        .source(JurisdictionId::new("PK-RSEZ").unwrap())
+        .source(JurisdictionId::new("PK-REZ").unwrap())
         .destination(JurisdictionId::new("AE-DIFC").unwrap())
         .deadline(Utc::now() + TimeDelta::try_hours(24).unwrap())
         .build();
@@ -170,7 +170,7 @@ fn migration_saga_advance_through_phases() {
 fn corridor_transition_log_complete() {
     let corridor = Corridor::<Draft>::new(
         CorridorId::new(),
-        JurisdictionId::new("PK-RSEZ").unwrap(),
+        JurisdictionId::new("PK-REZ").unwrap(),
         JurisdictionId::new("AE-DIFC").unwrap(),
     );
 

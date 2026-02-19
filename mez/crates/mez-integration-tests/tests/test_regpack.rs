@@ -12,17 +12,17 @@ use mez_pack::regpack::{Regpack, SanctionsChecker, SanctionsEntry};
 
 #[test]
 fn regpack_creation() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let regpack = Regpack {
         jurisdiction: jid.clone(),
-        name: "PK-RSEZ Regulatory Pack".to_string(),
+        name: "PK-REZ Regulatory Pack".to_string(),
         version: "1.0".to_string(),
         digest: None,
         metadata: None,
     };
 
-    assert_eq!(regpack.jurisdiction.as_str(), "PK-RSEZ");
-    assert_eq!(regpack.name, "PK-RSEZ Regulatory Pack");
+    assert_eq!(regpack.jurisdiction.as_str(), "PK-REZ");
+    assert_eq!(regpack.name, "PK-REZ Regulatory Pack");
     assert_eq!(regpack.version, "1.0");
     assert!(regpack.digest.is_none());
 }
@@ -33,7 +33,7 @@ fn regpack_creation() {
 
 #[test]
 fn regpack_digest_deterministic() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
 
     let rp1 = Regpack {
         jurisdiction: jid.clone(),
@@ -67,7 +67,7 @@ fn regpack_digest_deterministic() {
 #[test]
 fn regpack_different_jurisdictions_different_digest() {
     let rp_a = Regpack {
-        jurisdiction: JurisdictionId::new("PK-RSEZ").unwrap(),
+        jurisdiction: JurisdictionId::new("PK-REZ").unwrap(),
         name: "Test".to_string(),
         version: "1.0".to_string(),
         digest: None,

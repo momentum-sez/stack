@@ -20,8 +20,8 @@ fn build_manifold() -> ComplianceManifold {
     let mut manifold = ComplianceManifold::new();
 
     manifold.add_jurisdiction(JurisdictionNode {
-        jurisdiction_id: "pk-rsez".into(),
-        name: "Rashakai SEZ".into(),
+        jurisdiction_id: "pk-rez".into(),
+        name: "Rashakai EZ".into(),
         country_code: "PK".into(),
         supported_asset_classes: vec!["trade".into()],
         entry_fee_usd: 200,
@@ -54,7 +54,7 @@ fn build_manifold() -> ComplianceManifold {
 
     manifold.add_corridor(CorridorEdge {
         corridor_id: "c-pk-ae".into(),
-        source_jurisdiction: "pk-rsez".into(),
+        source_jurisdiction: "pk-rez".into(),
         target_jurisdiction: "ae-difc".into(),
         is_bidirectional: true,
         is_active: true,
@@ -87,7 +87,7 @@ fn build_manifold() -> ComplianceManifold {
 
 #[test]
 fn tensor_creation_and_evaluation() {
-    let mut tensor = ComplianceTensor::new(test_jurisdiction("PK-RSEZ"));
+    let mut tensor = ComplianceTensor::new(test_jurisdiction("PK-REZ"));
     assert_eq!(tensor.cell_count(), 20);
 
     // Set some domains
@@ -125,7 +125,7 @@ fn tensor_creation_and_evaluation() {
     let commitment = tensor.commit().unwrap();
     assert_eq!(commitment.to_hex().len(), 64);
     assert_eq!(commitment.cell_count(), 20);
-    assert_eq!(commitment.jurisdiction_id(), "PK-RSEZ");
+    assert_eq!(commitment.jurisdiction_id(), "PK-REZ");
 }
 
 // ---------------------------------------------------------------------------
@@ -138,24 +138,24 @@ fn manifold_shortest_path() {
 
     // Direct path
     let path = manifold
-        .find_path("pk-rsez", "ae-difc", None, 10_000)
+        .find_path("pk-rez", "ae-difc", None, 10_000)
         .expect("direct path should exist");
     assert_eq!(path.hop_count(), 1);
     assert!(path.total_cost_usd > 0);
 
     // Multi-hop path
     let path2 = manifold
-        .find_path("pk-rsez", "kz-aifc", None, 10_000)
+        .find_path("pk-rez", "kz-aifc", None, 10_000)
         .expect("2-hop path should exist");
     assert_eq!(path2.hop_count(), 2);
     assert!(path2.total_cost_usd > path.total_cost_usd);
 
     // Compliance distance
     let dist = manifold
-        .compliance_distance("pk-rsez", "kz-aifc", None)
+        .compliance_distance("pk-rez", "kz-aifc", None)
         .unwrap();
     assert_eq!(dist.hop_count, 2);
-    assert_eq!(dist.source, "pk-rsez");
+    assert_eq!(dist.source, "pk-rez");
     assert_eq!(dist.target, "kz-aifc");
 }
 
@@ -170,7 +170,7 @@ fn migration_saga_full_lifecycle() {
 
     let mut saga = MigrationBuilder::new(id)
         .deadline(deadline)
-        .source(JurisdictionId::new("PK-RSEZ").unwrap())
+        .source(JurisdictionId::new("PK-REZ").unwrap())
         .destination(JurisdictionId::new("AE-DIFC").unwrap())
         .asset_description("Trade settlement")
         .build();

@@ -7,7 +7,7 @@ evaluation pipeline.
 ## Scope
 
 The corpus covers key operative provisions from the following statutes relevant to
-commercial activity, entity formation, contract enforcement, and special economic
+commercial activity, entity formation, contract enforcement, and economic
 zone operations within Pakistan:
 
 | Statute | Citation | Domain |
@@ -15,7 +15,7 @@ zone operations within Pakistan:
 | Contract Act, 1872 | Act IX of 1872 | Contract formation, validity, breach |
 | Companies Act, 2017 | Act XIX of 2017 | Entity formation, governance, disclosure |
 | Partnership Act, 1932 | Act IX of 1932 | Partnership definition, registration |
-| Special Economic Zones Act, 2012 | Act XXIX of 2012 | Zone enterprise approval, tax/customs exemptions |
+| Economic Zones Act, 2012 | Act XXIX of 2012 | Zone enterprise approval, tax/customs exemptions |
 | Arbitration Act, 1940 | Act X of 1940 | Dispute resolution framework |
 
 ## Content status
@@ -33,7 +33,7 @@ relevance to:
 - entity registration and minimum capital requirements,
 - annual filing and disclosure obligations,
 - insider trading and beneficial ownership rules,
-- SEZ-specific tax, customs, and approval frameworks.
+- EZ-specific tax, customs, and approval frameworks.
 
 ## Provenance
 

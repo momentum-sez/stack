@@ -17,7 +17,7 @@ fn transition_lock_deterministic() {
     let transition = json!({
         "transition_type": "formation",
         "entity_id": "ent-001",
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "from_state": "APPLIED",
         "to_state": "ACTIVE",
         "evidence_digest": "aa".repeat(32)
@@ -131,7 +131,7 @@ fn nested_transition_lock_stable() {
     let transition = json!({
         "transition_type": "migration",
         "migration": {
-            "source": "PK-RSEZ",
+            "source": "PK-REZ",
             "destination": "AE-DIFC",
             "phases": [
                 {"name": "compliance_check", "completed": true},

@@ -22,7 +22,7 @@ fn attachment_with_type_field() {
     let attachment = json!({
         "attachment_type": "regulatory-filing",
         "content_type": "application/json",
-        "jurisdiction": "PK-RSEZ",
+        "jurisdiction": "PK-REZ",
         "payload": {
             "filing_number": "FBR-2026-001",
             "entity_ntn": "1234567-8",

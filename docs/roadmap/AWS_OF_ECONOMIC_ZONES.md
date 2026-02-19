@@ -438,7 +438,7 @@ The rebranding from "Economic Zone in a Box" to "Economic Zone in a Box" has bee
 **Preserved unchanged:**
 - `mez-*` crate names (product prefix, deeply embedded)
 - `momentum-ez` GitHub org/repo (requires org rename, separate decision)
-- `PK-RSEZ` and other jurisdiction identifiers
+- `PK-REZ` and other jurisdiction identifiers
 - `MezError` and all Rust type names
 - SQL migration filenames (migration tooling depends on these)
 

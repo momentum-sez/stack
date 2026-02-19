@@ -48,7 +48,7 @@ fn defective_state_names_rejected() {
 #[test]
 fn jurisdiction_id_format_validation() {
     // Valid jurisdiction IDs.
-    assert!(JurisdictionId::new("PK-RSEZ").is_ok());
+    assert!(JurisdictionId::new("PK-REZ").is_ok());
     assert!(JurisdictionId::new("AE-DIFC").is_ok());
     assert!(JurisdictionId::new("KZ-AIFC").is_ok());
 
@@ -63,7 +63,7 @@ fn jurisdiction_id_format_validation() {
 #[test]
 fn corridor_state_machine_spec_aligned() {
     // Verify the typestate-encoded corridor state machine uses spec names.
-    let ja = JurisdictionId::new("PK-RSEZ").unwrap();
+    let ja = JurisdictionId::new("PK-REZ").unwrap();
     let jb = JurisdictionId::new("AE-DIFC").unwrap();
 
     let draft = Corridor::<Draft>::new(CorridorId::new(), ja, jb);
@@ -73,7 +73,7 @@ fn corridor_state_machine_spec_aligned() {
 
 #[test]
 fn corridor_draft_to_pending_to_active() {
-    let ja = JurisdictionId::new("PK-RSEZ").unwrap();
+    let ja = JurisdictionId::new("PK-REZ").unwrap();
     let jb = JurisdictionId::new("AE-DIFC").unwrap();
 
     let draft = Corridor::<Draft>::new(CorridorId::new(), ja, jb);
@@ -95,7 +95,7 @@ fn corridor_draft_to_pending_to_active() {
 
 #[test]
 fn corridor_active_to_halted_to_deprecated() {
-    let ja = JurisdictionId::new("PK-RSEZ").unwrap();
+    let ja = JurisdictionId::new("PK-REZ").unwrap();
     let jb = JurisdictionId::new("AE-DIFC").unwrap();
 
     let draft = Corridor::<Draft>::new(CorridorId::new(), ja.clone(), jb);

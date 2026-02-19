@@ -109,7 +109,7 @@ fn serde_rt_watcher_id() {
 
 #[test]
 fn serde_rt_jurisdiction_id() {
-    let original = JurisdictionId::new("PK-RSEZ").unwrap();
+    let original = JurisdictionId::new("PK-REZ").unwrap();
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: JurisdictionId = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(original, recovered);
@@ -1081,7 +1081,7 @@ fn serde_rt_arb_party() {
     let original = ArbParty {
         did: Did::new("did:key:z6MkTest123").unwrap(),
         legal_name: "Test Corp".to_string(),
-        jurisdiction_id: Some(JurisdictionId::new("PK-RSEZ").unwrap()),
+        jurisdiction_id: Some(JurisdictionId::new("PK-REZ").unwrap()),
     };
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: ArbParty = serde_json::from_str(&json).expect("deserialize");
@@ -2291,10 +2291,10 @@ fn serde_rt_mass_entity_full() {
     let original = MassEntity {
         id: mez_core::EntityId::from(uuid::Uuid::new_v4()),
         name: "Momentum Technologies Pvt Ltd".to_string(),
-        jurisdiction: Some("PAK-RSEZ".to_string()),
+        jurisdiction: Some("PAK-REZ".to_string()),
         status: Some(MassEntityStatus::Active),
         address: None,
-        tags: vec!["sez".to_string()],
+        tags: vec!["ez".to_string()],
         created_at: Some(Utc::now()),
         updated_at: Some(Utc::now()),
         board: None,
@@ -2303,7 +2303,7 @@ fn serde_rt_mass_entity_full() {
     let json = serde_json::to_string(&original).expect("serialize");
     let recovered: MassEntity = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(recovered.name, original.name);
-    assert_eq!(recovered.jurisdiction, Some("PAK-RSEZ".to_string()));
+    assert_eq!(recovered.jurisdiction, Some("PAK-REZ".to_string()));
 }
 
 #[test]
@@ -2340,7 +2340,7 @@ fn serde_rt_mass_consent_full() {
         rejection_count: Some(0),
         document_url: None,
         signatory: Some("director-001".to_string()),
-        jurisdiction: Some("PAK-RSEZ".to_string()),
+        jurisdiction: Some("PAK-REZ".to_string()),
         requested_by: Some("admin".to_string()),
         expires_at: None,
         created_at: Some(Utc::now()),

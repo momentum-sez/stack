@@ -37,7 +37,7 @@ use mez_core::{CanonicalBytes, ComplianceDomain};
 /// supported asset classes, and cost structure.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JurisdictionNode {
-    /// Unique identifier (e.g., "uae-difc", "kz-aifc", "pk-rsez").
+    /// Unique identifier (e.g., "uae-difc", "kz-aifc", "pk-rez").
     pub jurisdiction_id: String,
     /// Human-readable name.
     pub name: String,
@@ -744,10 +744,10 @@ pub fn create_kz_aifc_jurisdiction() -> JurisdictionNode {
     }
 }
 
-/// Create the Pakistan-RSEZ jurisdiction node.
-pub fn create_pk_rsez_jurisdiction() -> JurisdictionNode {
+/// Create the Pakistan-REZ jurisdiction node.
+pub fn create_pk_rez_jurisdiction() -> JurisdictionNode {
     JurisdictionNode {
-        jurisdiction_id: "pk-rsez".into(),
+        jurisdiction_id: "pk-rez".into(),
         name: "Rashakai Economic Zone".into(),
         country_code: "PK".into(),
         supported_asset_classes: vec!["trade".into(), "digital_assets".into()],
@@ -774,12 +774,12 @@ pub fn create_difc_aifc_corridor() -> CorridorEdge {
     }
 }
 
-/// Create a corridor between AIFC and RSEZ.
-pub fn create_aifc_rsez_corridor() -> CorridorEdge {
+/// Create a corridor between AIFC and REZ.
+pub fn create_aifc_rez_corridor() -> CorridorEdge {
     CorridorEdge {
-        corridor_id: "corridor-aifc-rsez".into(),
+        corridor_id: "corridor-aifc-rez".into(),
         source_jurisdiction: "kz-aifc".into(),
-        target_jurisdiction: "pk-rsez".into(),
+        target_jurisdiction: "pk-rez".into(),
         is_bidirectional: true,
         is_active: true,
         transfer_fee_bps: 15,
@@ -796,9 +796,9 @@ pub fn create_standard_manifold() -> ComplianceManifold {
 
     manifold.add_jurisdiction(create_uae_difc_jurisdiction());
     manifold.add_jurisdiction(create_kz_aifc_jurisdiction());
-    manifold.add_jurisdiction(create_pk_rsez_jurisdiction());
+    manifold.add_jurisdiction(create_pk_rez_jurisdiction());
     manifold.add_corridor(create_difc_aifc_corridor());
-    manifold.add_corridor(create_aifc_rsez_corridor());
+    manifold.add_corridor(create_aifc_rez_corridor());
 
     manifold
 }
@@ -840,14 +840,14 @@ mod tests {
     fn find_multi_hop_path() {
         let manifold = create_standard_manifold();
         let path = manifold
-            .find_path("uae-difc", "pk-rsez", None, 10_000)
+            .find_path("uae-difc", "pk-rez", None, 10_000)
             .expect("should find 2-hop path");
 
         assert_eq!(path.hop_count(), 2);
         let jurisdictions = path.jurisdictions();
         assert_eq!(jurisdictions[0], "uae-difc");
         assert_eq!(jurisdictions[1], "kz-aifc");
-        assert_eq!(jurisdictions[2], "pk-rsez");
+        assert_eq!(jurisdictions[2], "pk-rez");
     }
 
     #[test]
@@ -897,8 +897,8 @@ mod tests {
             excluded_jurisdictions: excluded,
             ..Default::default()
         };
-        // DIFC→RSEZ requires going through AIFC, which is excluded.
-        let path = manifold.find_path("uae-difc", "pk-rsez", Some(&constraints), 0);
+        // DIFC→REZ requires going through AIFC, which is excluded.
+        let path = manifold.find_path("uae-difc", "pk-rez", Some(&constraints), 0);
         assert!(path.is_none());
     }
 
@@ -909,8 +909,8 @@ mod tests {
             max_hops: 1,
             ..Default::default()
         };
-        // DIFC→RSEZ is 2 hops, but limit is 1.
-        let path = manifold.find_path("uae-difc", "pk-rsez", Some(&constraints), 0);
+        // DIFC→REZ is 2 hops, but limit is 1.
+        let path = manifold.find_path("uae-difc", "pk-rez", Some(&constraints), 0);
         assert!(path.is_none());
     }
 
@@ -1133,10 +1133,10 @@ mod tests {
     fn compliance_distance_multi_hop() {
         let manifold = create_standard_manifold();
         let dist = manifold
-            .compliance_distance("uae-difc", "pk-rsez", None)
+            .compliance_distance("uae-difc", "pk-rez", None)
             .expect("should compute multi-hop distance");
         assert_eq!(dist.source, "uae-difc");
-        assert_eq!(dist.target, "pk-rsez");
+        assert_eq!(dist.target, "pk-rez");
         assert_eq!(dist.hop_count, 2);
         assert!(dist.total_time_hours > 0);
     }
@@ -1160,7 +1160,7 @@ mod tests {
     #[test]
     fn find_all_paths_sorted_by_cost() {
         let manifold = create_standard_manifold();
-        let paths = manifold.find_all_paths("uae-difc", "pk-rsez", None, 10_000, 5);
+        let paths = manifold.find_all_paths("uae-difc", "pk-rez", None, 10_000, 5);
         // Paths should be sorted by cost ascending.
         for w in paths.windows(2) {
             assert!(w[0].total_cost_usd <= w[1].total_cost_usd);
@@ -1216,8 +1216,8 @@ mod tests {
     }
 
     #[test]
-    fn aifc_rsez_corridor_transfer_cost() {
-        let corridor = create_aifc_rsez_corridor();
+    fn aifc_rez_corridor_transfer_cost() {
+        let corridor = create_aifc_rez_corridor();
         // 15bps on $100,000 = $150, plus $50 flat = $200.
         assert_eq!(corridor.transfer_cost(100_000), 200);
         assert_eq!(corridor.total_time_hours(), 36); // 12 + 24

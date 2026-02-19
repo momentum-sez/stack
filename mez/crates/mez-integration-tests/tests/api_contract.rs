@@ -1405,7 +1405,7 @@ async fn mass_proxy_create_entity_without_client() {
     let resp = app
         .oneshot(post_json(
             "/v1/entities",
-            json!({"legal_name": "New Corp", "jurisdiction": "PK-RSEZ"}),
+            json!({"legal_name": "New Corp", "jurisdiction": "PK-REZ"}),
         ))
         .await
         .unwrap();

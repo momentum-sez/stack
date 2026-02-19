@@ -61,9 +61,9 @@ fn lawpack_digest_is_deterministic() {
 
 #[test]
 fn lawpack_ref_parse_valid() {
-    let ref_str = &format!("PK-RSEZ:financial:{}", "ab".repeat(32));
+    let ref_str = &format!("PK-REZ:financial:{}", "ab".repeat(32));
     let parsed = LawpackRef::parse(ref_str).unwrap();
-    assert_eq!(parsed.jurisdiction_id, "PK-RSEZ");
+    assert_eq!(parsed.jurisdiction_id, "PK-REZ");
     assert_eq!(parsed.domain, "financial");
     assert_eq!(parsed.lawpack_digest_sha256, "ab".repeat(32));
 }
@@ -71,11 +71,11 @@ fn lawpack_ref_parse_valid() {
 #[test]
 fn lawpack_ref_parse_rejects_invalid() {
     // Too few parts
-    assert!(LawpackRef::parse("PK-RSEZ:financial").is_err());
+    assert!(LawpackRef::parse("PK-REZ:financial").is_err());
     // Too many parts
-    assert!(LawpackRef::parse(&format!("PK-RSEZ:financial:{}:extra", "ab".repeat(32))).is_err());
+    assert!(LawpackRef::parse(&format!("PK-REZ:financial:{}:extra", "ab".repeat(32))).is_err());
     // Invalid digest length
-    assert!(LawpackRef::parse("PK-RSEZ:financial:tooshort").is_err());
+    assert!(LawpackRef::parse("PK-REZ:financial:tooshort").is_err());
 }
 
 // ---------------------------------------------------------------------------
@@ -85,11 +85,11 @@ fn lawpack_ref_parse_rejects_invalid() {
 #[test]
 fn canonical_bytes_determinism_for_zone_config() {
     let zone = json!({
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "zone_name": "Reko Diq Economic Zone",
         "lawpack_refs": [
-            "PK-RSEZ:financial:aabbccdd",
-            "PK-RSEZ:corporate:eeff0011"
+            "PK-REZ:financial:aabbccdd",
+            "PK-REZ:corporate:eeff0011"
         ],
         "modules": {
             "corporate/formation": {"version": "1.0"},
@@ -140,7 +140,7 @@ fn artifact_content_addressing_is_stable() {
     let artifact = json!({
         "type": "lawpack",
         "version": "1.0",
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "statutes": [
             {"name": "Income Tax Ordinance 2001", "sections": [80, 114, 153]},
             {"name": "Sales Tax Act 1990", "sections": [3, 7, 8]}
@@ -168,7 +168,7 @@ fn lockfile_data_multiple_runs_identical() {
     let lockfile = json!({
         "schema_version": "1.0",
         "locked_at": "2026-02-12T00:00:00Z",
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "packs": {
             "lawpack": {
                 "digest": "a".repeat(64),

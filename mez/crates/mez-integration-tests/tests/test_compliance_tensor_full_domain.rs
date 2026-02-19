@@ -12,7 +12,7 @@ use mez_tensor::{
 };
 
 fn test_jurisdiction() -> DefaultJurisdiction {
-    DefaultJurisdiction::new(JurisdictionId::new("PK-RSEZ").unwrap())
+    DefaultJurisdiction::new(JurisdictionId::new("PK-REZ").unwrap())
 }
 
 // ---------------------------------------------------------------------------
@@ -138,7 +138,7 @@ fn set_all_domains_and_commit() {
     let c2 = tensor.commit().unwrap();
     assert_eq!(c1.to_hex(), c2.to_hex());
     assert_eq!(c1.cell_count(), 20);
-    assert_eq!(c1.jurisdiction_id(), "PK-RSEZ");
+    assert_eq!(c1.jurisdiction_id(), "PK-REZ");
 }
 
 // ---------------------------------------------------------------------------
@@ -243,11 +243,11 @@ fn commitment_digest_standalone() {
         .iter()
         .map(|&d| (d, ComplianceState::Pending))
         .collect();
-    let digest = commitment_digest("PK-RSEZ", &states).unwrap();
+    let digest = commitment_digest("PK-REZ", &states).unwrap();
     assert_eq!(digest.to_hex().len(), 64);
 
     // Running again should produce the same digest
-    let digest2 = commitment_digest("PK-RSEZ", &states).unwrap();
+    let digest2 = commitment_digest("PK-REZ", &states).unwrap();
     assert_eq!(digest, digest2);
 }
 
@@ -257,7 +257,7 @@ fn commitment_digest_different_jurisdictions_differ() {
         .iter()
         .map(|&d| (d, ComplianceState::Pending))
         .collect();
-    let d1 = commitment_digest("PK-RSEZ", &states).unwrap();
+    let d1 = commitment_digest("PK-REZ", &states).unwrap();
     let d2 = commitment_digest("AE-DIFC", &states).unwrap();
     assert_ne!(d1, d2);
 }
@@ -305,8 +305,8 @@ fn merkle_root_single() {
 
 #[test]
 fn empty_commitment_is_deterministic() {
-    let c1 = TensorCommitment::empty("PK-RSEZ").unwrap();
-    let c2 = TensorCommitment::empty("PK-RSEZ").unwrap();
+    let c1 = TensorCommitment::empty("PK-REZ").unwrap();
+    let c2 = TensorCommitment::empty("PK-REZ").unwrap();
     assert_eq!(c1.to_hex(), c2.to_hex());
     assert_eq!(c1.cell_count(), 0);
 }

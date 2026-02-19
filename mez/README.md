@@ -194,5 +194,5 @@ Current coverage: **98% line coverage** across all crates.
 |----------|------|
 | Spec-to-Crate Traceability | [docs/traceability-matrix.md](../docs/traceability-matrix.md) |
 | Architecture Deep Dive | [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) |
-| Security Audit | [docs/fortification/sez_stack_audit_v2.md](../docs/fortification/sez_stack_audit_v2.md) |
+| Security Audit | [docs/fortification/ez_stack_audit_v2.md](../docs/fortification/ez_stack_audit_v2.md) |
 | CI Pipeline | [.github/workflows/ci.yml](../.github/workflows/ci.yml) |

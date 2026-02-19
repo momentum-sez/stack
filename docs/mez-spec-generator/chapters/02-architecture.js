@@ -127,7 +127,7 @@ module.exports = function build_chapter02() {
         ["Pakistan GovOS (PDA)", "Active", "Full government OS: 40+ ministries, FBR tax integration, SBP Raast payments, NADRA identity, SECP corporate registry."],
         ["UAE / ADGM", "Live", "1,000+ entities onboarded, $1.7B+ capital processed via Northern Trust custody."],
         ["Dubai Free Zone Council", "Integration", "27 free zones. Mass APIs serve entity + fiscal; MEZ provides zone-specific licensing."],
-        ["Kazakhstan (Alatau City)", "Partnership", "SEZ + AIFC integration. Composition engine: Kazakh law + AIFC financial regulation."],
+        ["Kazakhstan (Alatau City)", "Partnership", "EZ + AIFC integration. Composition engine: Kazakh law + AIFC financial regulation."],
         ["Seychelles", "Deployment", "Sovereign GovOS at national scale."],
         ["PAK \u2194 KSA Corridor", "Active", "$5.4B bilateral trade. Receipt chain sync with SBP + SAMA."],
         ["PAK \u2194 UAE Corridor", "Active", "$10.1B bilateral trade. SWIFT pacs.008 adapter for cross-border payments."],

@@ -18,7 +18,7 @@
 //! |------|-----------------|---------------|
 //! | Hainan Free Trade Port | `cn-hainan` | Hainan FTP Administration |
 //! | Hangzhou | `cn-hangzhou` | Hangzhou Commerce Bureau |
-//! | Shenzhen SEZ | `cn-shenzhen` | Shenzhen Financial Regulatory Bureau |
+//! | Shenzhen EZ | `cn-shenzhen` | Shenzhen Financial Regulatory Bureau |
 //! | Shanghai | `cn-shanghai` | Shanghai FTZ Administration, Shanghai Financial Regulatory Bureau |
 //! | Beijing | `cn-beijing` | Beijing Financial Regulatory Bureau |
 //!
@@ -536,7 +536,7 @@ pub fn shenzhen_frb_license_types() -> Vec<LicenseTypeDefinition> {
             license_type_id: "cn-shenzhen-frb:digital-asset-pilot".to_string(),
             name: "Digital Asset Pilot License".to_string(),
             description:
-                "Pilot license for digital asset services under Shenzhen SEZ innovation framework"
+                "Pilot license for digital asset services under Shenzhen EZ innovation framework"
                     .to_string(),
             regulator_id: "cn-shenzhen-frb".to_string(),
             category: Some("financial".to_string()),

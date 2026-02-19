@@ -537,7 +537,7 @@ mod tests {
             },
             {
                 "name": "zone",
-                "jurisdiction_id": "pk-kp-rsez",
+                "jurisdiction_id": "pk-kp-rez",
                 "domains": ["corporate", "licensing"]
             }
         ]);
@@ -556,7 +556,7 @@ mod tests {
             },
             {
                 "name": "zone",
-                "jurisdiction_id": "pk-kp-rsez",
+                "jurisdiction_id": "pk-kp-rez",
                 "domains": ["tax", "corporate"]
             }
         ]);

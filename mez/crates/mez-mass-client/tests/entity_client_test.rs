@@ -50,7 +50,7 @@ async fn create_entity_sends_correct_path_and_returns_entity() {
             "name": "Test Corp",
             "jurisdiction": "pk-ez-01",
             "status": "ACTIVE",
-            "tags": ["sez"],
+            "tags": ["ez"],
             "createdAt": "2026-01-15T12:00:00Z",
             "updatedAt": "2026-01-15T12:00:00Z"
         })))
@@ -64,14 +64,14 @@ async fn create_entity_sends_correct_path_and_returns_entity() {
         jurisdiction: Some("pk-ez-01".into()),
         address: None,
         entity_type: Some("llc".into()),
-        tags: vec!["sez".into()],
+        tags: vec!["ez".into()],
     };
 
     let entity = client.entities().create(&req).await.unwrap();
     assert_eq!(entity.name, "Test Corp");
     assert_eq!(entity.jurisdiction.as_deref(), Some("pk-ez-01"));
     assert_eq!(entity.status, Some(MassEntityStatus::Active));
-    assert_eq!(entity.tags, vec!["sez"]);
+    assert_eq!(entity.tags, vec!["ez"]);
 }
 
 #[tokio::test]
@@ -116,7 +116,7 @@ async fn create_entity_with_address_and_tags() {
             "jurisdiction": "ae-difc",
             "status": "ACTIVE",
             "address": {"street": "123 Main St", "city": "Dubai"},
-            "tags": ["sez", "tech"],
+            "tags": ["ez", "tech"],
             "board": [{"name": "Alice"}],
             "members": [{"userId": "u1"}],
             "createdAt": "2026-01-15T12:00:00Z",
@@ -131,7 +131,7 @@ async fn create_entity_with_address_and_tags() {
         jurisdiction: Some("ae-difc".into()),
         address: Some(serde_json::json!({"street": "123 Main St", "city": "Dubai"})),
         entity_type: Some("company".into()),
-        tags: vec!["sez".into(), "tech".into()],
+        tags: vec!["ez".into(), "tech".into()],
     };
 
     let entity = client.entities().create(&req).await.unwrap();

@@ -86,7 +86,7 @@ async fn test_create_entity_returns_503_without_mass_client() {
                     serde_json::to_string(&serde_json::json!({
                         "entity_type": "company",
                         "legal_name": "Test Corp",
-                        "jurisdiction_id": "PK-RSEZ"
+                        "jurisdiction_id": "PK-REZ"
                     }))
                     .unwrap(),
                 ))
@@ -333,7 +333,7 @@ async fn test_create_corridor() {
                 .header("content-type", "application/json")
                 .body(Body::from(
                     serde_json::to_string(&serde_json::json!({
-                        "jurisdiction_a": "PK-RSEZ",
+                        "jurisdiction_a": "PK-REZ",
                         "jurisdiction_b": "AE-DIFC"
                     }))
                     .unwrap(),
@@ -359,8 +359,8 @@ async fn test_corridor_same_jurisdiction_rejected() {
                 .header("content-type", "application/json")
                 .body(Body::from(
                     serde_json::to_string(&serde_json::json!({
-                        "jurisdiction_a": "PK-RSEZ",
-                        "jurisdiction_b": "PK-RSEZ"
+                        "jurisdiction_a": "PK-REZ",
+                        "jurisdiction_b": "PK-REZ"
                     }))
                     .unwrap(),
                 ))
@@ -385,7 +385,7 @@ async fn test_create_smart_asset() {
                 .body(Body::from(
                     serde_json::to_string(&serde_json::json!({
                         "asset_type": "equity",
-                        "jurisdiction_id": "PK-RSEZ",
+                        "jurisdiction_id": "PK-REZ",
                         "metadata": {"description": "Test asset"}
                     }))
                     .unwrap(),

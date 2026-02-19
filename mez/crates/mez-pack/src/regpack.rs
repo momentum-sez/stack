@@ -1050,7 +1050,7 @@ mod tests {
         let regulators = vec![RegulatorProfile {
             regulator_id: "fsra".to_string(),
             name: "Financial Services Regulatory Authority".to_string(),
-            jurisdiction_id: "pk-kp-rsez".to_string(),
+            jurisdiction_id: "pk-kp-rez".to_string(),
             parent_authority: None,
             scope: BTreeMap::new(),
             contact: BTreeMap::new(),
@@ -1122,7 +1122,7 @@ mod tests {
         let regulators = vec![RegulatorProfile {
             regulator_id: "fsra".to_string(),
             name: "FSRA".to_string(),
-            jurisdiction_id: "pk-kp-rsez".to_string(),
+            jurisdiction_id: "pk-kp-rez".to_string(),
             parent_authority: None,
             scope: BTreeMap::new(),
             contact: BTreeMap::new(),
@@ -1291,7 +1291,7 @@ mod tests {
         let reg = RegulatorProfile {
             regulator_id: "fsra".to_string(),
             name: "Financial Services Regulatory Authority".to_string(),
-            jurisdiction_id: "pk-kp-rsez".to_string(),
+            jurisdiction_id: "pk-kp-rez".to_string(),
             parent_authority: Some("sbp".to_string()),
             scope,
             contact: BTreeMap::new(),

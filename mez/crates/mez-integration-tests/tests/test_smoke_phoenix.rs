@@ -18,7 +18,7 @@ use serde_json::json;
 // ---------------------------------------------------------------------------
 
 fn test_jurisdiction() -> DefaultJurisdiction {
-    DefaultJurisdiction::new(JurisdictionId::new("PK-RSEZ").unwrap())
+    DefaultJurisdiction::new(JurisdictionId::new("PK-REZ").unwrap())
 }
 
 // ---------------------------------------------------------------------------
@@ -70,7 +70,7 @@ fn smoke_tensor_commitment() {
     assert_eq!(commitment.cell_count(), 20);
 
     // Jurisdiction ID should be correct
-    assert_eq!(commitment.jurisdiction_id(), "PK-RSEZ");
+    assert_eq!(commitment.jurisdiction_id(), "PK-REZ");
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn smoke_tensor_commitment_deterministic() {
 
 #[test]
 fn smoke_tensor_empty_commitment() {
-    let c = TensorCommitment::empty("PK-RSEZ").unwrap();
+    let c = TensorCommitment::empty("PK-REZ").unwrap();
     assert_eq!(c.to_hex().len(), 64);
     assert_eq!(c.cell_count(), 0);
 }
@@ -259,11 +259,11 @@ fn smoke_commitment_digest_standalone() {
         .iter()
         .map(|&d| (d, ComplianceState::Pending))
         .collect();
-    let digest = commitment_digest("PK-RSEZ", &states).unwrap();
+    let digest = commitment_digest("PK-REZ", &states).unwrap();
     assert_eq!(digest.to_hex().len(), 64);
 
     // Deterministic
-    let digest2 = commitment_digest("PK-RSEZ", &states).unwrap();
+    let digest2 = commitment_digest("PK-REZ", &states).unwrap();
     assert_eq!(digest, digest2);
 }
 

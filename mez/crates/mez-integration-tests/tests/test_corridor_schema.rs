@@ -59,7 +59,7 @@ fn corridor_schema_rejects_defective_names() {
 #[test]
 fn corridor_schema_all_states_accessible() {
     let id = CorridorId::new();
-    let ja = JurisdictionId::new("PK-RSEZ").unwrap();
+    let ja = JurisdictionId::new("PK-REZ").unwrap();
     let jb = JurisdictionId::new("AE-DIFC").unwrap();
 
     // DRAFT
@@ -115,7 +115,7 @@ fn corridor_schema_all_states_accessible() {
 #[test]
 fn corridor_transition_log_structure() {
     let id = CorridorId::new();
-    let ja = JurisdictionId::new("PK-RSEZ").unwrap();
+    let ja = JurisdictionId::new("PK-REZ").unwrap();
     let jb = JurisdictionId::new("AE-DIFC").unwrap();
 
     let draft = Corridor::<Draft>::new(id, ja, jb);

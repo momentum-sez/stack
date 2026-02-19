@@ -16,7 +16,7 @@ use serde_json::json;
 fn empty_tensor_has_stable_commitment() {
     // An empty tensor (all domains NotApplicable) must produce a stable,
     // deterministic commitment across invocations.
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let config = DefaultJurisdiction::new(jid);
     let tensor = ComplianceTensor::new(config);
 
@@ -127,7 +127,7 @@ fn domain_enum_no_duplicates() {
 #[test]
 fn tensor_covers_all_domains() {
     // A freshly created tensor should be queryable for every domain.
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let config = DefaultJurisdiction::new(jid);
     let tensor = ComplianceTensor::new(config);
 

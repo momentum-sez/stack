@@ -1018,7 +1018,7 @@ use mez_corridor::bridge::{BridgeEdge, CorridorBridge};
 #[test]
 fn bridge_route_no_path_returns_none() {
     let bridge = CorridorBridge::new();
-    let src = JurisdictionId::new("PK-RSEZ").unwrap();
+    let src = JurisdictionId::new("PK-REZ").unwrap();
     let tgt = JurisdictionId::new("AE-DIFC").unwrap();
     let result = bridge.find_route(&src, &tgt);
     assert!(result.is_none(), "Empty graph should return no route");
@@ -1027,7 +1027,7 @@ fn bridge_route_no_path_returns_none() {
 #[test]
 fn bridge_route_same_source_target_returns_none() {
     let mut bridge = CorridorBridge::new();
-    let pk = JurisdictionId::new("PK-RSEZ").unwrap();
+    let pk = JurisdictionId::new("PK-REZ").unwrap();
     let ae = JurisdictionId::new("AE-DIFC").unwrap();
     bridge.add_edge(BridgeEdge {
         from: pk.clone(),
@@ -1047,7 +1047,7 @@ fn bridge_route_same_source_target_returns_none() {
 #[test]
 fn bridge_route_single_hop() {
     let mut bridge = CorridorBridge::new();
-    let pk = JurisdictionId::new("PK-RSEZ").unwrap();
+    let pk = JurisdictionId::new("PK-REZ").unwrap();
     let ae = JurisdictionId::new("AE-DIFC").unwrap();
     bridge.add_edge(BridgeEdge {
         from: pk.clone(),
@@ -1841,7 +1841,7 @@ fn agentic_policy_engine_evaluate_and_resolve_no_panic() {
     let mut engine = PolicyEngine::with_standard_policies();
     let trigger = Trigger::new(TriggerType::DisputeFiled, json!({"dispute_id": "D-001"}));
     let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        engine.evaluate_and_resolve(&trigger, Some("asset-001"), Some("PK-RSEZ"))
+        engine.evaluate_and_resolve(&trigger, Some("asset-001"), Some("PK-REZ"))
     }));
     assert!(result.is_ok(), "evaluate_and_resolve should not panic");
 }

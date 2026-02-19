@@ -31,9 +31,9 @@ fn make_test_vc() -> VerifiableCredential {
             "name": "Legendary Mining License",
             "jurisdiction_bindings": [
                 {
-                    "jurisdiction_id": "PK-RSEZ",
+                    "jurisdiction_id": "PK-REZ",
                     "binding_status": "active",
-                    "lawpack_ref": format!("PK-RSEZ:financial:{}", "ab".repeat(32))
+                    "lawpack_ref": format!("PK-REZ:financial:{}", "ab".repeat(32))
                 }
             ],
             "compliance_status": {
@@ -101,7 +101,7 @@ fn cross_layer_digest_agreement() {
     // must produce identical bytes.
     let data = json!({
         "asset_id": "a".repeat(64),
-        "jurisdiction": "PK-RSEZ",
+        "jurisdiction": "PK-REZ",
         "status": "active"
     });
 

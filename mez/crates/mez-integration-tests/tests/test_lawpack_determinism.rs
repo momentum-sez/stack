@@ -81,14 +81,14 @@ fn lawpack_key_ordering_invariant() {
     // Lawpack data with different key ordering must produce the same
     // canonical bytes and digest.
     let a = json!({
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "version": "1.0",
         "name": "Test Lawpack"
     });
 
     let b = json!({
         "name": "Test Lawpack",
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "version": "1.0"
     });
 
@@ -105,7 +105,7 @@ fn lawpack_key_ordering_invariant() {
 #[test]
 fn lawpack_nested_key_ordering_invariant() {
     let a = json!({
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "statutes": {
             "z_act": {"title": "Z Act"},
             "a_act": {"title": "A Act"}
@@ -117,7 +117,7 @@ fn lawpack_nested_key_ordering_invariant() {
             "a_act": {"title": "A Act"},
             "z_act": {"title": "Z Act"}
         },
-        "jurisdiction_id": "PK-RSEZ"
+        "jurisdiction_id": "PK-REZ"
     });
 
     let ca = CanonicalBytes::new(&a).unwrap();
@@ -132,7 +132,7 @@ fn lawpack_different_jurisdictions_different_digest() {
     let mut paths_a = BTreeMap::new();
     paths_a.insert(
         "lawpack.yaml",
-        json!({"jurisdiction_id": "PK-RSEZ", "domain": "financial"}),
+        json!({"jurisdiction_id": "PK-REZ", "domain": "financial"}),
     );
 
     let mut paths_b = BTreeMap::new();

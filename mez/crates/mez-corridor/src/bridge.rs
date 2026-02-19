@@ -32,7 +32,7 @@ use mez_core::{CorridorId, JurisdictionId};
 /// An edge in the corridor bridge graph representing an active corridor.
 ///
 /// Each edge connects two jurisdictions with associated fee and settlement
-/// time metadata. Edges are directional — a corridor between PK-RSEZ and
+/// time metadata. Edges are directional — a corridor between PK-REZ and
 /// AE-DIFC produces two edges (one in each direction) if fees differ by
 /// direction, or two identical edges for symmetric corridors.
 #[derive(Debug, Clone, PartialEq)]
@@ -325,24 +325,24 @@ mod tests {
 
     fn sample_bridge() -> CorridorBridge {
         let mut bridge = CorridorBridge::new();
-        // PK-RSEZ <-> AE-DIFC (50 bps, 1 day)
-        bridge.add_edge(edge("PK-RSEZ", "AE-DIFC", 50, 86400));
-        bridge.add_edge(edge("AE-DIFC", "PK-RSEZ", 55, 86400));
+        // PK-REZ <-> AE-DIFC (50 bps, 1 day)
+        bridge.add_edge(edge("PK-REZ", "AE-DIFC", 50, 86400));
+        bridge.add_edge(edge("AE-DIFC", "PK-REZ", 55, 86400));
         // AE-DIFC <-> GB-LNDN (30 bps, 2 days)
         bridge.add_edge(edge("AE-DIFC", "GB-LNDN", 30, 172800));
         bridge.add_edge(edge("GB-LNDN", "AE-DIFC", 35, 172800));
         // GB-LNDN <-> US-NYFC (25 bps, 1 day)
         bridge.add_edge(edge("GB-LNDN", "US-NYFC", 25, 86400));
         bridge.add_edge(edge("US-NYFC", "GB-LNDN", 25, 86400));
-        // PK-RSEZ -> US-NYFC direct (expensive: 200 bps, 3 days)
-        bridge.add_edge(edge("PK-RSEZ", "US-NYFC", 200, 259200));
+        // PK-REZ -> US-NYFC direct (expensive: 200 bps, 3 days)
+        bridge.add_edge(edge("PK-REZ", "US-NYFC", 200, 259200));
         bridge
     }
 
     #[test]
     fn direct_route() {
         let bridge = sample_bridge();
-        let route = bridge.find_route(&jid("PK-RSEZ"), &jid("AE-DIFC")).unwrap();
+        let route = bridge.find_route(&jid("PK-REZ"), &jid("AE-DIFC")).unwrap();
         assert_eq!(route.hop_count(), 1);
         assert_eq!(route.total_fee_bps, 50);
         assert_eq!(route.total_settlement_time_secs, 86400);
@@ -351,9 +351,9 @@ mod tests {
     #[test]
     fn multi_hop_cheaper_than_direct() {
         let bridge = sample_bridge();
-        let route = bridge.find_route(&jid("PK-RSEZ"), &jid("US-NYFC")).unwrap();
-        // Multi-hop: PK-RSEZ -> AE-DIFC (50) -> GB-LNDN (30) -> US-NYFC (25) = 105 bps
-        // Direct: PK-RSEZ -> US-NYFC = 200 bps
+        let route = bridge.find_route(&jid("PK-REZ"), &jid("US-NYFC")).unwrap();
+        // Multi-hop: PK-REZ -> AE-DIFC (50) -> GB-LNDN (30) -> US-NYFC (25) = 105 bps
+        // Direct: PK-REZ -> US-NYFC = 200 bps
         assert_eq!(route.hop_count(), 3);
         assert_eq!(route.total_fee_bps, 105);
         assert_eq!(route.total_settlement_time_secs, 86400 + 172800 + 86400);
@@ -361,18 +361,18 @@ mod tests {
         let jurisdictions: Vec<&str> = route.jurisdictions().iter().map(|j| j.as_str()).collect();
         assert_eq!(
             jurisdictions,
-            vec!["PK-RSEZ", "AE-DIFC", "GB-LNDN", "US-NYFC"]
+            vec!["PK-REZ", "AE-DIFC", "GB-LNDN", "US-NYFC"]
         );
     }
 
     #[test]
     fn no_route_between_disconnected_nodes() {
         let mut bridge = CorridorBridge::new();
-        bridge.add_edge(edge("PK-RSEZ", "AE-DIFC", 50, 86400));
+        bridge.add_edge(edge("PK-REZ", "AE-DIFC", 50, 86400));
         bridge.add_edge(edge("SG-SGFZ", "JP-TKYO", 40, 86400));
 
         assert!(bridge
-            .find_route(&jid("PK-RSEZ"), &jid("SG-SGFZ"))
+            .find_route(&jid("PK-REZ"), &jid("SG-SGFZ"))
             .is_none());
     }
 
@@ -380,7 +380,7 @@ mod tests {
     fn same_source_and_target_returns_none() {
         let bridge = sample_bridge();
         assert!(bridge
-            .find_route(&jid("PK-RSEZ"), &jid("PK-RSEZ"))
+            .find_route(&jid("PK-REZ"), &jid("PK-REZ"))
             .is_none());
     }
 
@@ -388,7 +388,7 @@ mod tests {
     fn nonexistent_source() {
         let bridge = sample_bridge();
         assert!(bridge
-            .find_route(&jid("NOWHERE"), &jid("PK-RSEZ"))
+            .find_route(&jid("NOWHERE"), &jid("PK-REZ"))
             .is_none());
     }
 
@@ -396,7 +396,7 @@ mod tests {
     fn empty_graph() {
         let bridge = CorridorBridge::new();
         assert!(bridge
-            .find_route(&jid("PK-RSEZ"), &jid("AE-DIFC"))
+            .find_route(&jid("PK-REZ"), &jid("AE-DIFC"))
             .is_none());
         assert_eq!(bridge.edge_count(), 0);
         assert_eq!(bridge.node_count(), 0);
@@ -405,8 +405,8 @@ mod tests {
     #[test]
     fn reachable_from_source() {
         let bridge = sample_bridge();
-        let reachable = bridge.reachable_from(&jid("PK-RSEZ"));
-        assert_eq!(reachable.get("PK-RSEZ"), Some(&0));
+        let reachable = bridge.reachable_from(&jid("PK-REZ"));
+        assert_eq!(reachable.get("PK-REZ"), Some(&0));
         assert_eq!(reachable.get("AE-DIFC"), Some(&50));
         assert_eq!(reachable.get("GB-LNDN"), Some(&80));
         assert_eq!(reachable.get("US-NYFC"), Some(&105));
@@ -415,10 +415,10 @@ mod tests {
     #[test]
     fn bidirectional_routing() {
         let bridge = sample_bridge();
-        let forward = bridge.find_route(&jid("PK-RSEZ"), &jid("AE-DIFC")).unwrap();
+        let forward = bridge.find_route(&jid("PK-REZ"), &jid("AE-DIFC")).unwrap();
         assert_eq!(forward.total_fee_bps, 50);
 
-        let reverse = bridge.find_route(&jid("AE-DIFC"), &jid("PK-RSEZ")).unwrap();
+        let reverse = bridge.find_route(&jid("AE-DIFC"), &jid("PK-REZ")).unwrap();
         assert_eq!(reverse.total_fee_bps, 55);
     }
 

@@ -12,10 +12,10 @@ use serde_json::json;
 // Helpers
 // ---------------------------------------------------------------------------
 
-fn pk_rsez_node() -> JurisdictionNode {
+fn pk_rez_node() -> JurisdictionNode {
     JurisdictionNode {
-        jurisdiction_id: "pk-rsez".to_string(),
-        name: "Pakistan Rashakai SEZ".to_string(),
+        jurisdiction_id: "pk-rez".to_string(),
+        name: "Pakistan Rashakai EZ".to_string(),
         country_code: "PK".to_string(),
         supported_asset_classes: vec!["equity".to_string(), "debt".to_string()],
         entry_fee_usd: 5000,
@@ -44,8 +44,8 @@ fn ae_difc_node() -> JurisdictionNode {
 
 fn corridor_pk_ae() -> TensorCorridorEdge {
     TensorCorridorEdge {
-        corridor_id: "pk-rsez--ae-difc".to_string(),
-        source_jurisdiction: "pk-rsez".to_string(),
+        corridor_id: "pk-rez--ae-difc".to_string(),
+        source_jurisdiction: "pk-rez".to_string(),
         target_jurisdiction: "ae-difc".to_string(),
         is_bidirectional: true,
         is_active: true,
@@ -64,7 +64,7 @@ fn corridor_pk_ae() -> TensorCorridorEdge {
 #[test]
 fn two_zone_composition() {
     let mut manifold = ComplianceManifold::new();
-    manifold.add_jurisdiction(pk_rsez_node());
+    manifold.add_jurisdiction(pk_rez_node());
     manifold.add_jurisdiction(ae_difc_node());
     manifold.add_corridor(corridor_pk_ae());
 
@@ -80,7 +80,7 @@ fn two_zone_composition() {
 fn multi_zone_routing() {
     let mut manifold = ComplianceManifold::new();
 
-    manifold.add_jurisdiction(pk_rsez_node());
+    manifold.add_jurisdiction(pk_rez_node());
     manifold.add_jurisdiction(ae_difc_node());
     manifold.add_jurisdiction(JurisdictionNode {
         jurisdiction_id: "kz-aifc".to_string(),
@@ -119,8 +119,8 @@ fn multi_zone_routing() {
 fn composition_deterministic_digest() {
     // The same composition data must produce the same digest.
     let data = json!({
-        "jurisdictions": ["pk-rsez", "ae-difc"],
-        "corridors": ["pk-rsez--ae-difc"],
+        "jurisdictions": ["pk-rez", "ae-difc"],
+        "corridors": ["pk-rez--ae-difc"],
         "version": "0.4.44"
     });
 
@@ -145,14 +145,14 @@ fn corridor_edge_transfer_cost_computation() {
 #[test]
 fn composition_key_ordering_invariant() {
     let a = json!({
-        "zone_a": "pk-rsez",
+        "zone_a": "pk-rez",
         "zone_b": "ae-difc",
         "corridors": 1
     });
     let b = json!({
         "corridors": 1,
         "zone_b": "ae-difc",
-        "zone_a": "pk-rsez"
+        "zone_a": "pk-rez"
     });
 
     let ca = CanonicalBytes::new(&a).unwrap();

@@ -84,10 +84,10 @@ module.exports = function build_chapter11() {
     // --- 11.5 SAVM Execution Context ---
     h2("11.3 Execution Context"),
     p("The SAVM execution context encapsulates all state required to execute a compliance-aware smart asset program. The following example traces a complete compliance check execution flow for a cross-border payment from a Pakistan EZ entity to a UAE free zone counterparty."),
-    definition("Example 11.1 (Cross-Border Payment Compliance Check).", "An entity in KSEZ (Karachi SEZ) initiates a USD 250,000 payment to a DMCC (Dubai) counterparty. The SAVM executes the compliance verification bytecode with the following flow:"),
+    definition("Example 11.1 (Cross-Border Payment Compliance Check).", "An entity in KEZ (Karachi EZ) initiates a USD 250,000 payment to a DMCC (Dubai) counterparty. The SAVM executes the compliance verification bytecode with the following flow:"),
     ...codeBlock(
       "// Step 1: Initialize execution context\n" +
-      "// caller = KSEZ entity (EntityId), jurisdiction = PAK\n" +
+      "// caller = KEZ entity (EntityId), jurisdiction = PAK\n" +
       "// gas_limit = 2,000,000 (sufficient for tensor + ZK ops)\n" +
       "\n" +
       "PUSH entity_id          // Stack: [entity_id]\n" +

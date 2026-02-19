@@ -764,7 +764,7 @@ mod tests {
             .uri("/v1/assets/genesis")
             .header("content-type", "application/json")
             .body(Body::from(
-                r#"{"asset_type":"commodity","jurisdiction_id":"PK-RSEZ"}"#,
+                r#"{"asset_type":"commodity","jurisdiction_id":"PK-REZ"}"#,
             ))
             .unwrap();
 

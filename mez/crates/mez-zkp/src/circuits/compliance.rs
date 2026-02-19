@@ -246,7 +246,7 @@ mod tests {
             tensor_commitment: [0xff; 32],
             claimed_state: 2,
             asset_id: "SA-PK-001".to_string(),
-            jurisdiction_id: "PK-RSEZ".to_string(),
+            jurisdiction_id: "PK-REZ".to_string(),
             domain: 0,
             time_quantum: 202601,
             merkle_proof: vec![[0x10; 32], [0x20; 32]],
@@ -254,7 +254,7 @@ mod tests {
         let json = serde_json::to_string(&circuit).unwrap();
         let deserialized: TensorInclusionCircuit = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.claimed_state, 2);
-        assert_eq!(deserialized.jurisdiction_id, "PK-RSEZ");
+        assert_eq!(deserialized.jurisdiction_id, "PK-REZ");
     }
 
     #[test]

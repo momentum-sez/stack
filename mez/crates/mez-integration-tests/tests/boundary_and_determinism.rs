@@ -297,7 +297,7 @@ fn content_digest_mixed_case() {
 
 #[test]
 fn tensor_evaluate_all_20_domains() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
     let all = tensor.evaluate_all("entity-001");
     // Should have entries for all 20 domains
@@ -311,7 +311,7 @@ fn tensor_evaluate_all_20_domains() {
 
 #[test]
 fn tensor_set_then_overwrite_domain() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let mut tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
 
     tensor.set(
@@ -556,7 +556,7 @@ fn compliance_tensor_commitment_deterministic_100_runs() {
 
     let mut digests = Vec::new();
     for _ in 0..100 {
-        let digest = mez_tensor::commitment_digest("PK-RSEZ", &states).unwrap();
+        let digest = mez_tensor::commitment_digest("PK-REZ", &states).unwrap();
         digests.push(digest.to_hex());
     }
     assert!(
@@ -962,7 +962,7 @@ fn ed25519_sign_deterministic_100_runs() {
 
 #[test]
 fn tensor_evaluate_all_deterministic_100_runs() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let mut results_list = Vec::new();
     for _ in 0..100 {
         let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid.clone()));
@@ -1385,7 +1385,7 @@ fn agentic_policy_engine_evaluate_all_trigger_types() {
         let mut engine = PolicyEngine::with_standard_policies();
         let trigger = Trigger::new(tt.clone(), json!({"test": true}));
         let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-            engine.evaluate(&trigger, Some("asset-001"), Some("PK-RSEZ"))
+            engine.evaluate(&trigger, Some("asset-001"), Some("PK-REZ"))
         }));
         assert!(
             result.is_ok(),
@@ -1401,7 +1401,7 @@ fn agentic_policy_engine_evaluate_all_trigger_types() {
 
 #[test]
 fn tensor_evaluate_empty_entity_id() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
     let results = tensor.evaluate_all("");
     // Should not panic; may return empty or default results
@@ -1410,7 +1410,7 @@ fn tensor_evaluate_empty_entity_id() {
 
 #[test]
 fn tensor_evaluate_huge_entity_id() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
     let huge_id = "E".repeat(100_000);
     let result = panic::catch_unwind(panic::AssertUnwindSafe(|| tensor.evaluate_all(&huge_id)));

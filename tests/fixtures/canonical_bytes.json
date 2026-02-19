@@ -116,19 +116,19 @@
     },
     {
       "name": "entity_like",
-      "input": {"entity_id": "ENT-001", "jurisdiction": "PK-RSEZ", "status": "ACTIVE", "beneficial_owners": ["BO-001", "BO-002"]},
+      "input": {"entity_id": "ENT-001", "jurisdiction": "PK-REZ", "status": "ACTIVE", "beneficial_owners": ["BO-001", "BO-002"]},
       "has_rfc3339_string": false,
-      "canonical_hex": "7b2262656e6566696369616c5f6f776e657273223a5b22424f2d303031222c22424f2d303032225d2c22656e746974795f6964223a22454e542d303031222c226a7572697364696374696f6e223a22504b2d5253455a222c22737461747573223a22414354495645227d",
-      "canonical_utf8": "{\"beneficial_owners\":[\"BO-001\",\"BO-002\"],\"entity_id\":\"ENT-001\",\"jurisdiction\":\"PK-RSEZ\",\"status\":\"ACTIVE\"}",
-      "sha256_digest": "8b6f9f40b34ce8d1df71dbd6bb3b3274de45a3f4def4001e3b94dc3a29e0eac0"
+      "canonical_hex": "7b2262656e6566696369616c5f6f776e657273223a5b22424f2d303031222c22424f2d303032225d2c22656e746974795f6964223a22454e542d303031222c226a7572697364696374696f6e223a22504b2d52455a222c22737461747573223a22414354495645227d",
+      "canonical_utf8": "{\"beneficial_owners\":[\"BO-001\",\"BO-002\"],\"entity_id\":\"ENT-001\",\"jurisdiction\":\"PK-REZ\",\"status\":\"ACTIVE\"}",
+      "sha256_digest": "34011d6b04dbe0f42f1074f6d59687ddd8f78d0f79969241b4de8f8f18fb61dc"
     },
     {
       "name": "corridor_like",
-      "input": {"corridor_id": "CORR-PK-AE-001", "source_zone": "PK-RSEZ", "target_zone": "AE-JAFZA", "state": "ACTIVE"},
+      "input": {"corridor_id": "CORR-PK-AE-001", "source_zone": "PK-REZ", "target_zone": "AE-JAFZA", "state": "ACTIVE"},
       "has_rfc3339_string": false,
-      "canonical_hex": "7b22636f727269646f725f6964223a22434f52522d504b2d41452d303031222c22736f757263655f7a6f6e65223a22504b2d5253455a222c227374617465223a22414354495645222c227461726765745f7a6f6e65223a2241452d4a41465a41227d",
-      "canonical_utf8": "{\"corridor_id\":\"CORR-PK-AE-001\",\"source_zone\":\"PK-RSEZ\",\"state\":\"ACTIVE\",\"target_zone\":\"AE-JAFZA\"}",
-      "sha256_digest": "ca010c46da744ed281f9ee270d879fad84d347d062f790843a7359a37d33f423"
+      "canonical_hex": "7b22636f727269646f725f6964223a22434f52522d504b2d41452d303031222c22736f757263655f7a6f6e65223a22504b2d52455a222c227374617465223a22414354495645222c227461726765745f7a6f6e65223a2241452d4a41465a41227d",
+      "canonical_utf8": "{\"corridor_id\":\"CORR-PK-AE-001\",\"source_zone\":\"PK-REZ\",\"state\":\"ACTIVE\",\"target_zone\":\"AE-JAFZA\"}",
+      "sha256_digest": "b0706ef0428eb57f522b32bceeb13df8b3c377bea31b1eea0c3a623e41cd4fea"
     }
   ]
 }

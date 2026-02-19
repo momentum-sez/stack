@@ -27,7 +27,7 @@ fn emit_artifact_ref_from_lock() {
 
     let lock = json!({
         "schema_version": "1.0",
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "lawpack_digest": "aa".repeat(32),
         "regpack_digest": "bb".repeat(32),
         "licensepack_digest": "cc".repeat(32),
@@ -75,7 +75,7 @@ fn multiple_emissions_deterministic() {
 
     let lock = json!({
         "schema_version": "1.0",
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "content_hash": "dd".repeat(32)
     });
 
@@ -115,7 +115,7 @@ fn emission_preserves_artifact_type() {
 fn different_content_different_refs() {
     let (_dir, store) = make_store();
 
-    let lock_a = json!({"jurisdiction_id": "PK-RSEZ", "version": 1});
+    let lock_a = json!({"jurisdiction_id": "PK-REZ", "version": 1});
     let lock_b = json!({"jurisdiction_id": "AE-DIFC", "version": 1});
 
     let ref_a = store.store("lockfile", &lock_a).unwrap();

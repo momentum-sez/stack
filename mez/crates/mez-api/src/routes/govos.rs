@@ -98,7 +98,7 @@ pub struct TaxRevenueDashboard {
 pub struct FreeZoneDashboard {
     /// Snapshot timestamp.
     pub snapshot_at: DateTime<Utc>,
-    /// Zone identifier (e.g., "PK-PEZ", "PK-RSEZ").
+    /// Zone identifier (e.g., "PK-PEZ", "PK-REZ").
     pub zone_id: String,
     /// Number of entities registered in this free zone.
     pub registered_entities: usize,
@@ -371,10 +371,10 @@ async fn freezone_dashboard(
         (compliant as f64 / unique_entities.len() as f64) * 100.0
     };
 
-    // Pakistan SEZ incentive programs (structural data).
+    // Pakistan EZ incentive programs (structural data).
     let active_incentives = vec![
         IncentiveProgram {
-            program_id: "pk-sez-tax-holiday".to_string(),
+            program_id: "pk-ez-tax-holiday".to_string(),
             name: "EZ Tax Holiday (10 years)".to_string(),
             tax_holiday_years: 10,
             customs_duty_exempt: true,

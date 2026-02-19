@@ -251,7 +251,7 @@ mod tests {
     use mez_core::JurisdictionId;
 
     fn test_jurisdiction() -> DefaultJurisdiction {
-        DefaultJurisdiction::new(JurisdictionId::new("PK-RSEZ").unwrap())
+        DefaultJurisdiction::new(JurisdictionId::new("PK-REZ").unwrap())
     }
 
     #[test]
@@ -298,19 +298,19 @@ mod tests {
     fn commitment_jurisdiction_id() {
         let tensor = ComplianceTensor::new(test_jurisdiction());
         let commitment = tensor.commit().unwrap();
-        assert_eq!(commitment.jurisdiction_id(), "PK-RSEZ");
+        assert_eq!(commitment.jurisdiction_id(), "PK-REZ");
     }
 
     #[test]
     fn empty_commitment_is_deterministic() {
-        let c1 = TensorCommitment::empty("PK-RSEZ").unwrap();
-        let c2 = TensorCommitment::empty("PK-RSEZ").unwrap();
+        let c1 = TensorCommitment::empty("PK-REZ").unwrap();
+        let c2 = TensorCommitment::empty("PK-REZ").unwrap();
         assert_eq!(c1.to_hex(), c2.to_hex());
     }
 
     #[test]
     fn different_jurisdictions_different_commitments() {
-        let c1 = TensorCommitment::empty("PK-RSEZ").unwrap();
+        let c1 = TensorCommitment::empty("PK-REZ").unwrap();
         let c2 = TensorCommitment::empty("AE-DIFC").unwrap();
         assert_ne!(c1.to_hex(), c2.to_hex());
     }
@@ -402,7 +402,7 @@ mod tests {
             .iter()
             .map(|&d| (d, ComplianceState::Pending))
             .collect();
-        let digest = commitment_digest("PK-RSEZ", &states).unwrap();
+        let digest = commitment_digest("PK-REZ", &states).unwrap();
         assert_eq!(digest.to_hex().len(), 64);
     }
 

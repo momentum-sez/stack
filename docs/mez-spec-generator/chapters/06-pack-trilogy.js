@@ -550,10 +550,10 @@ module.exports = function build_chapter06() {
       ],
       [1400, 1800, 1800, 4360]
     ),
-    p("A zone manifest example showing licensepack binding for the PAK-KP-RSEZ zone:"),
+    p("A zone manifest example showing licensepack binding for the PAK-KP-REZ zone:"),
     ...codeBlock(
       '# zone.yaml (fragment)\n' +
-      'zone_id: "pk-kp-rsez"\n' +
+      'zone_id: "pk-kp-rez"\n' +
       'jurisdiction_id: "pk"\n' +
       'licensepacks:\n' +
       '  - jurisdiction_id: "pk"\n' +

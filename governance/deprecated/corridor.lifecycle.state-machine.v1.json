@@ -3,7 +3,7 @@
   "version": "v1",
   "deprecated": true,
   "superseded_by": "v2",
-  "deprecation_note": "SUPERSEDED by corridor.lifecycle.state-machine.v2.json. This v1 definition uses incorrect state names (PROPOSED, OPERATIONAL) that diverge from the spec (DRAFT, PENDING, ACTIVE, HALTED, SUSPENDED, DEPRECATED). See audit finding 2.3 in docs/fortification/sez_stack_audit_v2.md. The Rust implementation (mez-state crate) uses the spec-correct typestate names. All new code MUST reference v2.",
+  "deprecation_note": "SUPERSEDED by corridor.lifecycle.state-machine.v2.json. This v1 definition uses incorrect state names (PROPOSED, OPERATIONAL) that diverge from the spec (DRAFT, PENDING, ACTIVE, HALTED, SUSPENDED, DEPRECATED). See audit finding 2.3 in docs/fortification/ez_stack_audit_v2.md. The Rust implementation (mez-state crate) uses the spec-correct typestate names. All new code MUST reference v2.",
   "states": ["PROPOSED", "OPERATIONAL", "HALTED", "DEPRECATED"],
   "initial_state": "PROPOSED",
   "allowed_transitions": [

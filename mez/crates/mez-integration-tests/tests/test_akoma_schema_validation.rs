@@ -165,11 +165,11 @@ fn akoma_legislative_reference_format() {
                 "showAs": "Sales Tax Act 1990, Section 3"
             },
             {
-                "href": "/pk/regulation/2026/sez-rules#rule15",
+                "href": "/pk/regulation/2026/ez-rules#rule15",
                 "showAs": "EZ Rules 2026, Rule 15"
             }
         ],
-        "jurisdiction": "PK-RSEZ",
+        "jurisdiction": "PK-REZ",
         "effective_date": "2026-01-01T00:00:00Z"
     });
 

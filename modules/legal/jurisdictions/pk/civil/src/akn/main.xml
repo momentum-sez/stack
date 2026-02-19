@@ -36,7 +36,7 @@
     <preface>
       <p eId="preface_1">Pakistan civil and corporate law compilation for EZ Stack sovereign deployment.
         This document consolidates key provisions from the Companies Act 2017 (Act No. XL of 2017),
-        the Contract Act 1872 (Act No. IX of 1872), the Special Economic Zones Act 2012
+        the Contract Act 1872 (Act No. IX of 1872), the Economic Zones Act 2012
         (Act No. XII of 2012), and the Partnership Act 1932 (Act No. IX of 1932) as in force
         on 1 January 2024.</p>
       <p eId="preface_2">This compilation is provided for machine-readable regulatory analysis. It does not
@@ -237,12 +237,12 @@
 
         <section eId="ca2017_s460">
           <num>460</num>
-          <heading>Company formation in Special Economic Zones</heading>
+          <heading>Company formation in Economic Zones</heading>
           <content>
             <p eId="ca2017_s460__p1">(1) Notwithstanding anything contained in this Act, the Commission
               may, in consultation with the federal government, prescribe simplified procedures
-              for the incorporation of companies within Special Economic Zones established under
-              the Special Economic Zones Act, 2012.</p>
+              for the incorporation of companies within Economic Zones established under
+              the Economic Zones Act, 2012.</p>
             <p eId="ca2017_s460__p2">(2) Such simplified procedures may include: (a) one-window
               registration combining company incorporation, tax registration and social security
               enrolment; (b) electronic filing and processing of all incorporation documents;
@@ -263,7 +263,7 @@
           <content>
             <p eId="ca2017_s461__p1">(1) Notwithstanding section 17, the Commission may prescribe
               reduced minimum paid-up capital requirements for companies formed and operating
-              exclusively within a Special Economic Zone notified under the Special Economic
+              exclusively within an Economic Zone notified under the Economic
               Zones Act, 2012.</p>
             <p eId="ca2017_s461__p2">(2) Such reduced requirements shall not be less than: (a) fifty
               thousand rupees (PKR 50,000) for a private company; and (b) one hundred thousand
@@ -437,50 +437,50 @@
       </part>
 
       <!-- ================================================================ -->
-      <!-- PART III — SPECIAL ECONOMIC ZONES ACT 2012 (Act No. XII of 2012)  -->
+      <!-- PART III — ECONOMIC ZONES ACT 2012 (Act No. XII of 2012)          -->
       <!-- Administered by: Board of Investment, Government of Pakistan       -->
       <!-- Gazette: Gazette of Pakistan, Extraordinary, Part I, 2012          -->
       <!-- ================================================================ -->
 
-      <part eId="part_sez">
+      <part eId="part_ez">
         <num>III</num>
-        <heading>Special Economic Zones Act 2012 (Act No. XII of 2012)</heading>
+        <heading>Economic Zones Act 2012 (Act No. XII of 2012)</heading>
 
-        <section eId="sez2012_s2">
+        <section eId="ez2012_s2">
           <num>2</num>
           <heading>Definitions</heading>
           <content>
-            <p eId="sez2012_s2__p1">In this Act, unless there is anything repugnant in the subject
+            <p eId="ez2012_s2__p1">In this Act, unless there is anything repugnant in the subject
               or context:</p>
-            <blockList eId="sez2012_s2__defs">
-              <item eId="sez2012_s2__def_approval_board">
+            <blockList eId="ez2012_s2__defs">
+              <item eId="ez2012_s2__def_approval_board">
                 <num>(a)</num>
                 <p><b>"Approval Board"</b> means the Board of Approval constituted under section 4;</p>
               </item>
-              <item eId="sez2012_s2__def_developer">
+              <item eId="ez2012_s2__def_developer">
                 <num>(b)</num>
                 <p><b>"developer"</b> means a person who has been granted permission under this Act
-                  to develop a Special Economic Zone;</p>
+                  to develop an Economic Zone;</p>
               </item>
-              <item eId="sez2012_s2__def_sez">
+              <item eId="ez2012_s2__def_ez">
                 <num>(c)</num>
-                <p><b>"Special Economic Zone"</b> or <b>"Zone"</b> means a geographically delineated
+                <p><b>"Economic Zone"</b> or <b>"Zone"</b> means a geographically delineated
                   area within the territory of Pakistan which is notified by the federal government
-                  as a Special Economic Zone under section 3 of this Act;</p>
+                  as an Economic Zone under section 3 of this Act;</p>
               </item>
-              <item eId="sez2012_s2__def_enterprise">
+              <item eId="ez2012_s2__def_enterprise">
                 <num>(d)</num>
                 <p><b>"zone enterprise"</b> means any person who holds a valid licence granted
                   under section 14 to undertake manufacturing, processing, assembling, trading,
-                  warehousing or the provision of services in a Special Economic Zone;</p>
+                  warehousing or the provision of services in an Economic Zone;</p>
               </item>
-              <item eId="sez2012_s2__def_one_window">
+              <item eId="ez2012_s2__def_one_window">
                 <num>(e)</num>
                 <p><b>"One Window Operation"</b> means the single-point facilitation mechanism
                   established under section 7 to provide all regulatory approvals, licences and
                   permits to zone developers and zone enterprises;</p>
               </item>
-              <item eId="sez2012_s2__def_tariff_area">
+              <item eId="ez2012_s2__def_tariff_area">
                 <num>(f)</num>
                 <p><b>"domestic tariff area"</b> means the whole of Pakistan except the Special
                   Economic Zones;</p>
@@ -489,100 +489,100 @@
           </content>
         </section>
 
-        <section eId="sez2012_s3">
+        <section eId="ez2012_s3">
           <num>3</num>
-          <heading>Establishment of Special Economic Zones</heading>
+          <heading>Establishment of Economic Zones</heading>
           <content>
-            <p eId="sez2012_s3__p1">(1) The federal government may, by notification in the official
-              Gazette, establish one or more Special Economic Zones in any part of Pakistan.</p>
-            <p eId="sez2012_s3__p2">(2) A provincial government or a private sector entity may propose
-              the establishment of a Special Economic Zone in any area of the province, and the
+            <p eId="ez2012_s3__p1">(1) The federal government may, by notification in the official
+              Gazette, establish one or more Economic Zones in any part of Pakistan.</p>
+            <p eId="ez2012_s3__p2">(2) A provincial government or a private sector entity may propose
+              the establishment of an Economic Zone in any area of the province, and the
               Approval Board shall consider and approve or reject such proposals on the basis of
               criteria prescribed by rules.</p>
           </content>
         </section>
 
-        <section eId="sez2012_s4">
+        <section eId="ez2012_s4">
           <num>4</num>
           <heading>Board of Approval</heading>
           <content>
-            <p eId="sez2012_s4__p1">(1) There shall be constituted a Board of Approval for the purposes
+            <p eId="ez2012_s4__p1">(1) There shall be constituted a Board of Approval for the purposes
               of this Act, consisting of: (a) the Prime Minister or his nominee, who shall be
               chairperson; (b) the Chief Ministers of the provinces or their nominees; (c) the
               federal ministers for finance, commerce, industries and production, and planning;
               (d) the chairman of the Board of Investment; (e) two representatives of the private
               sector nominated by the federal government; and (f) such other members as the federal
               government may determine.</p>
-            <p eId="sez2012_s4__p2">(2) The Board of Approval shall approve proposals for the
-              establishment of Special Economic Zones, prescribe the terms and conditions for the
-              grant of permits to developers, and review the performance of Special Economic Zones.</p>
-            <p eId="sez2012_s4__p3">(3) The Board of Approval shall meet at least twice a year at
+            <p eId="ez2012_s4__p2">(2) The Board of Approval shall approve proposals for the
+              establishment of Economic Zones, prescribe the terms and conditions for the
+              grant of permits to developers, and review the performance of Economic Zones.</p>
+            <p eId="ez2012_s4__p3">(3) The Board of Approval shall meet at least twice a year at
               such place and time as the chairperson may determine.</p>
           </content>
         </section>
 
-        <section eId="sez2012_s7">
+        <section eId="ez2012_s7">
           <num>7</num>
           <heading>One Window Operation</heading>
           <content>
-            <p eId="sez2012_s7__p1">(1) The Board of Investment shall establish a One Window Operation
+            <p eId="ez2012_s7__p1">(1) The Board of Investment shall establish a One Window Operation
               at the federal level for the purpose of providing facilitation to zone developers and
               zone enterprises in obtaining all regulatory approvals, licences and permits required
               under any law.</p>
-            <p eId="sez2012_s7__p2">(2) Each provincial government shall establish a provincial
+            <p eId="ez2012_s7__p2">(2) Each provincial government shall establish a provincial
               One Window Operation for facilitating zone developers and zone enterprises within the
               province.</p>
-            <p eId="sez2012_s7__p3">(3) The One Window Operation shall have representatives of all
+            <p eId="ez2012_s7__p3">(3) The One Window Operation shall have representatives of all
               relevant federal and provincial departments, and shall process applications within
               thirty days of receipt of a complete application.</p>
           </content>
         </section>
 
-        <section eId="sez2012_s9">
+        <section eId="ez2012_s9">
           <num>9</num>
           <heading>Obligations of zone developer</heading>
           <content>
-            <p eId="sez2012_s9__p1">(1) The zone developer shall: (a) develop the infrastructure of
-              the Special Economic Zone as specified in the development agreement, including roads,
+            <p eId="ez2012_s9__p1">(1) The zone developer shall: (a) develop the infrastructure of
+              the Economic Zone as specified in the development agreement, including roads,
               drainage, water supply, electricity, gas, telecommunications and waste disposal;
               (b) allocate space and provide developed plots or built-up space to zone enterprises;
-              (c) ensure that the Special Economic Zone is demarcated and fenced or otherwise
+              (c) ensure that the Economic Zone is demarcated and fenced or otherwise
               physically segregated from the domestic tariff area; (d) maintain common facilities
               and shared infrastructure; and (e) comply with all environmental laws and regulations
               applicable to the zone.</p>
-            <p eId="sez2012_s9__p2">(2) The zone developer shall submit an annual report to the Board
+            <p eId="ez2012_s9__p2">(2) The zone developer shall submit an annual report to the Board
               of Investment detailing the development progress, occupancy rates, investment levels,
               and employment generated within the zone.</p>
           </content>
         </section>
 
-        <section eId="sez2012_s13">
+        <section eId="ez2012_s13">
           <num>13</num>
           <heading>Eligibility for zone enterprises</heading>
           <content>
-            <p eId="sez2012_s13__p1">(1) Any person, whether a company registered under the Companies
+            <p eId="ez2012_s13__p1">(1) Any person, whether a company registered under the Companies
               Act or an association of persons, may apply to set up a zone enterprise, provided
               that: (a) the applicant proposes to carry on a business activity as approved for the
               zone; (b) the minimum investment is not less than the amount prescribed for the
               category of zone enterprise; and (c) the applicant has not been convicted of an
               offence involving fraud, tax evasion, or money laundering within the five years
               preceding the application.</p>
-            <p eId="sez2012_s13__p2">(2) Preference shall be given to applications from enterprises
+            <p eId="ez2012_s13__p2">(2) Preference shall be given to applications from enterprises
               proposing to undertake manufacturing, processing, assembling, or value-added services
               that generate employment and promote exports.</p>
-            <p eId="sez2012_s13__p3">(3) A zone enterprise shall not undertake any activity prohibited
+            <p eId="ez2012_s13__p3">(3) A zone enterprise shall not undertake any activity prohibited
               by any law for the time being in force or any activity that the Board of Approval may
               specify as prohibited for a particular zone.</p>
           </content>
         </section>
 
-        <section eId="sez2012_s14">
+        <section eId="ez2012_s14">
           <num>14</num>
           <heading>Licence to zone enterprises</heading>
           <content>
-            <p eId="sez2012_s14__p1">(1) Upon approval of an application under section 13, the zone
+            <p eId="ez2012_s14__p1">(1) Upon approval of an application under section 13, the zone
               authority shall issue a licence to the zone enterprise in the prescribed form.</p>
-            <p eId="sez2012_s14__p2">(2) The licence shall specify: (a) the nature and scope of the
+            <p eId="ez2012_s14__p2">(2) The licence shall specify: (a) the nature and scope of the
               business activities; (b) the area allocated within the zone; (c) the period of the
               licence and conditions for renewal; (d) the obligations of the enterprise regarding
               employment, investment and export targets; and (e) such other conditions as the zone
@@ -590,70 +590,70 @@
           </content>
         </section>
 
-        <section eId="sez2012_s23">
+        <section eId="ez2012_s23">
           <num>23</num>
           <heading>Import and export licensing simplification</heading>
           <content>
-            <p eId="sez2012_s23__p1">(1) Zone enterprises shall be exempt from import licensing
+            <p eId="ez2012_s23__p1">(1) Zone enterprises shall be exempt from import licensing
               requirements for goods imported into the zone for use in the manufacturing, processing,
               assembling or packaging of goods intended for export.</p>
-            <p eId="sez2012_s23__p2">(2) Goods manufactured, processed, assembled or packaged within a
+            <p eId="ez2012_s23__p2">(2) Goods manufactured, processed, assembled or packaged within a
               zone may be exported without an export licence, provided that the zone enterprise
               maintains proper records of all imports and exports as prescribed by customs
               regulations.</p>
-            <p eId="sez2012_s23__p3">(3) The movement of goods between a Special Economic Zone and the
+            <p eId="ez2012_s23__p3">(3) The movement of goods between an Economic Zone and the
               domestic tariff area shall be treated as import into or export from Pakistan and shall
               be subject to applicable customs duties and regulations, save as otherwise provided in
               this Act.</p>
           </content>
         </section>
 
-        <section eId="sez2012_s37">
+        <section eId="ez2012_s37">
           <num>37</num>
           <heading>Tax exemptions for zone enterprises</heading>
           <content>
-            <p eId="sez2012_s37__p1">(1) Subject to the conditions laid down in this Act and rules
+            <p eId="ez2012_s37__p1">(1) Subject to the conditions laid down in this Act and rules
               made thereunder, a zone enterprise that commences commercial production within the
               zone on or after the date of notification of the zone shall be entitled to exemption
               from income tax for a period of ten years from the date of commencement of commercial
               production.</p>
-            <p eId="sez2012_s37__p2">(2) The ten-year exemption from income tax under sub-section (1)
-              shall apply to income derived exclusively from operations within the Special Economic
+            <p eId="ez2012_s37__p2">(2) The ten-year exemption from income tax under sub-section (1)
+              shall apply to income derived exclusively from operations within the Economic
               Zone.</p>
-            <p eId="sez2012_s37__p3">(3) Zone developers shall be entitled to exemption from income tax
+            <p eId="ez2012_s37__p3">(3) Zone developers shall be entitled to exemption from income tax
               for a period of ten years from the date of signing of the development agreement.</p>
-            <p eId="sez2012_s37__p4">(4) The federal government may, by notification in the official
+            <p eId="ez2012_s37__p4">(4) The federal government may, by notification in the official
               Gazette, prescribe further tax incentives or modify the period of exemption for
               specific zones or categories of zone enterprises, having regard to the national
               interest and the objectives of this Act.</p>
-            <p eId="sez2012_s37__p5">(5) A zone enterprise that relocates from the domestic tariff area
-              to a Special Economic Zone shall not be eligible for the exemption under this section
+            <p eId="ez2012_s37__p5">(5) A zone enterprise that relocates from the domestic tariff area
+              to an Economic Zone shall not be eligible for the exemption under this section
               unless it makes new investment of the prescribed minimum amount.</p>
           </content>
         </section>
 
-        <section eId="sez2012_s38">
+        <section eId="ez2012_s38">
           <num>38</num>
           <heading>Exemption from sales tax and federal excise duty</heading>
           <content>
-            <p eId="sez2012_s38__p1">(1) All goods imported into a Special Economic Zone for the
+            <p eId="ez2012_s38__p1">(1) All goods imported into an Economic Zone for the
               purpose of a zone enterprise shall be exempt from sales tax and federal excise duty,
               subject to the conditions prescribed by rules.</p>
-            <p eId="sez2012_s38__p2">(2) This exemption applies only where the goods are consumed or
+            <p eId="ez2012_s38__p2">(2) This exemption applies only where the goods are consumed or
               utilized within the zone or are incorporated into goods exported from the zone.</p>
           </content>
         </section>
 
-        <section eId="sez2012_s39">
+        <section eId="ez2012_s39">
           <num>39</num>
           <heading>Customs duty exemption on capital goods</heading>
           <content>
-            <p eId="sez2012_s39__p1">(1) Capital goods, including plant, machinery and equipment,
-              imported into a Special Economic Zone by a zone developer or zone enterprise for the
+            <p eId="ez2012_s39__p1">(1) Capital goods, including plant, machinery and equipment,
+              imported into an Economic Zone by a zone developer or zone enterprise for the
               development, operation or maintenance of the zone or for use in manufacturing,
               processing, assembling or other authorized activities within the zone shall be exempt
               from customs duties.</p>
-            <p eId="sez2012_s39__p2">(2) The exemption under sub-section (1) shall be subject to the
+            <p eId="ez2012_s39__p2">(2) The exemption under sub-section (1) shall be subject to the
               following conditions: (a) the capital goods shall be used exclusively within the zone;
               (b) the zone developer or zone enterprise shall furnish an undertaking to customs
               authorities that the goods will not be sold or transferred to the domestic tariff area
@@ -662,19 +662,19 @@
               customs officers; and (d) any transfer of duty-exempt capital goods to the domestic
               tariff area shall be subject to payment of customs duty calculated on the depreciated
               value of the goods at the rates applicable at the time of such transfer.</p>
-            <p eId="sez2012_s39__p3">(3) Raw materials and intermediary goods imported for use in the
+            <p eId="ez2012_s39__p3">(3) Raw materials and intermediary goods imported for use in the
               manufacturing or processing of goods for export shall be exempt from customs duties
               subject to such conditions as may be prescribed.</p>
           </content>
         </section>
 
-        <section eId="sez2012_s40">
+        <section eId="ez2012_s40">
           <num>40</num>
           <heading>Labour laws</heading>
           <content>
-            <p eId="sez2012_s40__p1">(1) All labour laws in force in Pakistan shall apply to Special
+            <p eId="ez2012_s40__p1">(1) All labour laws in force in Pakistan shall apply to Special
               Economic Zones.</p>
-            <p eId="sez2012_s40__p2">(2) Notwithstanding sub-section (1), the federal government may,
+            <p eId="ez2012_s40__p2">(2) Notwithstanding sub-section (1), the federal government may,
               by notification in the official Gazette and in consultation with the provinces,
               provide for simplified labour compliance procedures within zones, provided that the
               core labour standards recognized under international conventions ratified by Pakistan
@@ -766,9 +766,9 @@
           <content>
             <p eId="annot_incorporation__p1">For EZ Stack zone deployments in Pakistan, the minimum
               incorporation requirements are: (a) private company: at least one subscriber, minimum
-              paid-up capital PKR 100,000 (or PKR 50,000 within a notified SEZ per section 461
+              paid-up capital PKR 100,000 (or PKR 50,000 within a notified EZ per section 461
               Companies Act 2017); (b) public company: at least three subscribers, minimum paid-up
-              capital PKR 200,000 (or PKR 100,000 within a notified SEZ); (c) single member company:
+              capital PKR 200,000 (or PKR 100,000 within a notified EZ); (c) single member company:
               one subscriber, minimum paid-up capital PKR 100,000.</p>
             <p eId="annot_incorporation__p2">Documents required: memorandum of association, articles
               of association, declaration of compliance, registered office notice, NIC/passport copies
@@ -792,23 +792,23 @@
           </content>
         </section>
 
-        <section eId="annot_sez_benefits">
+        <section eId="annot_ez_benefits">
           <num>A3</num>
-          <heading>SEZ fiscal incentive summary</heading>
+          <heading>EZ fiscal incentive summary</heading>
           <content>
-            <p eId="annot_sez_benefits__p1">Zone enterprises commencing commercial production within
-              a notified SEZ are entitled to: (a) ten-year income tax exemption from date of
-              commercial production commencement (section 37 SEZ Act 2012); (b) exemption from sales
+            <p eId="annot_ez_benefits__p1">Zone enterprises commencing commercial production within
+              a notified EZ are entitled to: (a) ten-year income tax exemption from date of
+              commercial production commencement (section 37 EZ Act 2012); (b) exemption from sales
               tax and federal excise on goods imported for zone use (section 38); (c) customs duty
               exemption on capital goods including plant, machinery and equipment (section 39);
               (d) import licensing waiver for goods used in export manufacturing (section 23);
               (e) simplified one-window registration (section 7, read with section 460 Companies
               Act 2017).</p>
-            <p eId="annot_sez_benefits__p2">Zone developers are separately entitled to a ten-year
+            <p eId="annot_ez_benefits__p2">Zone developers are separately entitled to a ten-year
               income tax exemption from the date of signing the development agreement (section 37(3)
-              SEZ Act 2012).</p>
-            <p eId="annot_sez_benefits__p3">Restriction: enterprises relocating from the domestic
-              tariff area to an SEZ must make new investment of the prescribed minimum to qualify
+              EZ Act 2012).</p>
+            <p eId="annot_ez_benefits__p3">Restriction: enterprises relocating from the domestic
+              tariff area to an EZ must make new investment of the prescribed minimum to qualify
               for the ten-year exemption (section 37(5)).</p>
           </content>
         </section>

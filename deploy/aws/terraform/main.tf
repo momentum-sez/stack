@@ -1,7 +1,7 @@
 # MEZ Zone - AWS Infrastructure
 # Terraform configuration for production zone deployment
 #
-# This deploys a complete SEZ-in-a-Box with:
+# This deploys a complete EZ-in-a-Box with:
 # - EKS cluster for container orchestration
 # - RDS PostgreSQL for persistence
 # - ElastiCache Redis for caching/pub-sub

@@ -448,7 +448,7 @@ mod tests {
     use super::*;
 
     fn test_jurisdiction() -> DefaultJurisdiction {
-        DefaultJurisdiction::new(JurisdictionId::new("PK-RSEZ").unwrap())
+        DefaultJurisdiction::new(JurisdictionId::new("PK-REZ").unwrap())
     }
 
     #[test]
@@ -664,7 +664,7 @@ mod tests {
     fn tensor_jurisdiction_accessor() {
         let jur = test_jurisdiction();
         let tensor = ComplianceTensor::new(jur);
-        assert_eq!(tensor.jurisdiction().jurisdiction_id().as_str(), "PK-RSEZ");
+        assert_eq!(tensor.jurisdiction().jurisdiction_id().as_str(), "PK-REZ");
     }
 
     #[test]

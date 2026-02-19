@@ -508,7 +508,7 @@ mod tests {
     fn test_corridor() -> Corridor<Draft> {
         Corridor::new(
             CorridorId::new(),
-            JurisdictionId::new("PK-RSEZ").unwrap(),
+            JurisdictionId::new("PK-REZ").unwrap(),
             JurisdictionId::new("AE-DIFC").unwrap(),
         )
     }
@@ -568,7 +568,7 @@ mod tests {
             });
         let halted = active.halt(HaltReason {
             reason: "Fork detected".to_string(),
-            authority: JurisdictionId::new("PK-RSEZ").unwrap(),
+            authority: JurisdictionId::new("PK-REZ").unwrap(),
             evidence: test_digest(),
         });
         assert_eq!(halted.state_name(), "HALTED");
@@ -612,7 +612,7 @@ mod tests {
             })
             .halt(HaltReason {
                 reason: "Permanent issue".to_string(),
-                authority: JurisdictionId::new("PK-RSEZ").unwrap(),
+                authority: JurisdictionId::new("PK-REZ").unwrap(),
                 evidence: test_digest(),
             });
 
@@ -637,7 +637,7 @@ mod tests {
             })
             .halt(HaltReason {
                 reason: "Issue".to_string(),
-                authority: JurisdictionId::new("PK-RSEZ").unwrap(),
+                authority: JurisdictionId::new("PK-REZ").unwrap(),
                 evidence: test_digest(),
             })
             .deprecate(DeprecationEvidence {
@@ -719,7 +719,7 @@ mod tests {
     #[test]
     fn corridor_preserves_jurisdiction_ids() {
         let id = CorridorId::new();
-        let ja = JurisdictionId::new("PK-RSEZ").unwrap();
+        let ja = JurisdictionId::new("PK-REZ").unwrap();
         let jb = JurisdictionId::new("AE-DIFC").unwrap();
         let corridor = Corridor::<Draft>::new(id.clone(), ja.clone(), jb.clone());
         assert_eq!(corridor.id, id);
@@ -774,7 +774,7 @@ mod tests {
         let evidence = test_digest();
         let halted = active.halt(HaltReason {
             reason: "Sanctions violation detected".to_string(),
-            authority: JurisdictionId::new("PK-RSEZ").unwrap(),
+            authority: JurisdictionId::new("PK-REZ").unwrap(),
             evidence: evidence.clone(),
         });
         let log = halted.transition_log();
@@ -1023,7 +1023,7 @@ mod tests {
             })
             .halt(HaltReason {
                 reason: "Test".to_string(),
-                authority: JurisdictionId::new("PK-RSEZ").unwrap(),
+                authority: JurisdictionId::new("PK-REZ").unwrap(),
                 evidence: test_digest(),
             });
         let dyn_halted = DynCorridorData::from(&halted);
@@ -1058,7 +1058,7 @@ mod tests {
             })
             .halt(HaltReason {
                 reason: "Test".to_string(),
-                authority: JurisdictionId::new("PK-RSEZ").unwrap(),
+                authority: JurisdictionId::new("PK-REZ").unwrap(),
                 evidence: test_digest(),
             })
             .deprecate(DeprecationEvidence {

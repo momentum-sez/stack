@@ -32,7 +32,7 @@ fn test_party(name: &str) -> Party {
     Party {
         did: Did::new(format!("did:key:z6Mk{}", name)).unwrap(),
         legal_name: name.to_string(),
-        jurisdiction_id: Some(JurisdictionId::new("PK-RSEZ").unwrap()),
+        jurisdiction_id: Some(JurisdictionId::new("PK-REZ").unwrap()),
     }
 }
 

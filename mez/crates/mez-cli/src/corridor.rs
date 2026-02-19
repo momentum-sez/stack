@@ -38,7 +38,7 @@ pub struct CorridorArgs {
 pub enum CorridorCommand {
     /// Create a new corridor in DRAFT state.
     Create {
-        /// Corridor identifier (e.g., "pk-rsez--ae-difc").
+        /// Corridor identifier (e.g., "pk-rez--ae-difc").
         #[arg(long)]
         id: String,
         /// Jurisdiction A identifier.
@@ -433,7 +433,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let state_dir = dir.path().join("corridors");
 
-        let result = cmd_create(&state_dir, "test-corridor", "PK-RSEZ", "AE-DIFC");
+        let result = cmd_create(&state_dir, "test-corridor", "PK-REZ", "AE-DIFC");
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 0);
 
@@ -673,7 +673,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let state_dir = dir.path().join("corridors");
 
-        cmd_create(&state_dir, "json-test", "PK-RSEZ", "AE-DIFC").unwrap();
+        cmd_create(&state_dir, "json-test", "PK-REZ", "AE-DIFC").unwrap();
 
         let state_file = state_dir.join("json-test.json");
         assert!(state_file.exists());

@@ -18,7 +18,7 @@ use serde_json::json;
 // ---------------------------------------------------------------------------
 
 fn test_jurisdiction() -> DefaultJurisdiction {
-    DefaultJurisdiction::new(JurisdictionId::new("PK-RSEZ").unwrap())
+    DefaultJurisdiction::new(JurisdictionId::new("PK-REZ").unwrap())
 }
 
 // ---------------------------------------------------------------------------
@@ -73,7 +73,7 @@ fn entity_with_tensor_compliance() {
 fn entity_and_tensor_digest_combined() {
     let entity_data = json!({
         "entity_id": EntityId::new().to_string(),
-        "jurisdiction": "PK-RSEZ",
+        "jurisdiction": "PK-REZ",
         "status": "ACTIVE"
     });
 

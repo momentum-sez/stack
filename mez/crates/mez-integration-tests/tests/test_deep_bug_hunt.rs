@@ -129,7 +129,7 @@ fn repeated_canonicalization_idempotent() {
 #[test]
 fn tensor_commitment_repeated_access_stable() {
     let mut tensor = ComplianceTensor::new(DefaultJurisdiction::new(
-        JurisdictionId::new("PK-RSEZ").unwrap(),
+        JurisdictionId::new("PK-REZ").unwrap(),
     ));
     tensor.set(
         ComplianceDomain::Aml,

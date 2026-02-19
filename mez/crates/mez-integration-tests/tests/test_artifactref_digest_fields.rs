@@ -55,7 +55,7 @@ fn artifact_ref_roundtrip_through_store() {
 
     let data = json!({
         "entity": "entity-001",
-        "jurisdiction": "PK-RSEZ",
+        "jurisdiction": "PK-REZ",
         "compliance": {"aml": "pass", "kyc": "pass"}
     });
 

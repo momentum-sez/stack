@@ -18,7 +18,7 @@ use serde_json::json;
 fn tensor_commitment_changes_with_domain_state() {
     // Changing a single domain's compliance state must change the
     // tensor commitment digest.
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let config = DefaultJurisdiction::new(jid);
     let mut tensor = ComplianceTensor::new(config);
 
@@ -75,7 +75,7 @@ fn migration_deadline_boundary_exact() {
     // A migration with a future deadline should advance normally.
     let id = MigrationId::new();
     let deadline = Utc::now() + Duration::hours(24);
-    let jid_src = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid_src = JurisdictionId::new("PK-REZ").unwrap();
     let jid_dst = JurisdictionId::new("AE-DIFC").unwrap();
 
     let mut saga = MigrationBuilder::new(id)
@@ -96,7 +96,7 @@ fn migration_expired_deadline_triggers_timeout() {
     // A migration with an expired deadline must transition to TimedOut.
     let id = MigrationId::new();
     let deadline = Utc::now() - Duration::hours(1);
-    let jid_src = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid_src = JurisdictionId::new("PK-REZ").unwrap();
     let jid_dst = JurisdictionId::new("AE-DIFC").unwrap();
 
     let mut saga = MigrationBuilder::new(id)

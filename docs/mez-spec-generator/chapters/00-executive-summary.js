@@ -10,7 +10,7 @@ module.exports = function build_executive_summary() {
 
     p("Version 0.4.44 adds institutional infrastructure (corporate services, identity, tax, capital markets, trade), a four-layer GovOS architecture for sovereign deployment (\u00a738), a multi-jurisdiction composition engine (\u00a712), and production deployment tooling (\u00a749\u201353). The system can be configured for a target jurisdiction and deployed to yield a zone that processes entity formation, enforces tax law, clears securities, manages trade corridors, and produces compliance attestations."),
 
-    p("Production deployments: Pakistan GovOS (40+ ministries, FBR tax integration, SBP Raast payments, NADRA identity, SECP corporate registry); UAE/ADGM (1,000+ entities, $1.7B+ capital processed); Dubai Free Zone Council (27 free zones); Kazakhstan Alatau City (SEZ + AIFC composition). Active trade corridors: PAK\u2194KSA ($5.4B), PAK\u2194UAE ($10.1B), PAK\u2194CHN ($23.1B planned)."),
+    p("Production deployments: Pakistan GovOS (40+ ministries, FBR tax integration, SBP Raast payments, NADRA identity, SECP corporate registry); UAE/ADGM (1,000+ entities, $1.7B+ capital processed); Dubai Free Zone Council (27 free zones); Kazakhstan Alatau City (EZ + AIFC composition). Active trade corridors: PAK\u2194KSA ($5.4B), PAK\u2194UAE ($10.1B), PAK\u2194CHN ($23.1B planned)."),
 
     h3("Key Capabilities"),
     table(

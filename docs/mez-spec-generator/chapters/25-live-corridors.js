@@ -47,7 +47,7 @@ module.exports = function build_chapter25() {
 
     // --- 25.3 PAK<->CHN Corridor ---
     h2("25.3 PAK\u2194CHN Corridor ($23.1B Bilateral)"),
-    p("China-Pakistan trade totals $23.1B annually, primarily through CPEC 2.0. Nine SEZs, Gwadar customs operations, and e-trade documentation planned for corridor integration. Status: planned."),
+    p("China-Pakistan trade totals $23.1B annually, primarily through CPEC 2.0. Nine EZs, Gwadar customs operations, and e-trade documentation planned for corridor integration. Status: planned."),
 
     h3("25.3.1 Strategic Importance"),
     p("The PAK\u2194CHN corridor is the largest by trade volume at $23.1B annually and the most architecturally complex due to the depth of China-Pakistan Economic Corridor (CPEC) 2.0 integration. CPEC has invested over $62B in Pakistani infrastructure since 2015, creating nine operational Economic Zones, the Gwadar deep-water port, and extensive road and rail networks connecting Chinese manufacturing to Arabian Sea shipping lanes. Phase 2 of CPEC shifts focus from infrastructure construction to industrial cooperation, agricultural modernization, and digital trade, all of which require the kind of automated compliance, multi-jurisdictional entity management, and trade documentation that the EZ Stack provides. The corridor must handle the unique complexity of Chinese customs regulations, PBOC currency controls, and the intersection of Pakistani and Chinese EZ incentive regimes. Direct PKR/CNY settlement via the SBP-PBOC bilateral swap agreement eliminates USD intermediation for corridor transactions, reducing settlement costs and FX exposure. This corridor, once fully operational, will process more transaction volume than the KSA and UAE corridors combined."),
@@ -56,7 +56,7 @@ module.exports = function build_chapter25() {
     table(
       ["Component", "Implementation"],
       [
-        ["CPEC 2.0 Integration", "Nine operational SEZs with Gwadar customs automation; HS code mapping between Chinese GB/T and Pakistani PTC tariff classifications; duty-free import verification for CPEC-designated machinery and raw materials; integration with China Customs SWAPP platform"],
+        ["CPEC 2.0 Integration", "Nine operational EZs with Gwadar customs automation; HS code mapping between Chinese GB/T and Pakistani PTC tariff classifications; duty-free import verification for CPEC-designated machinery and raw materials; integration with China Customs SWAPP platform"],
         ["Trade Documentation", "E-trade platform for electronic bills of lading, packing lists, and commercial invoices; Chinese customs integration via CIQ inspection certificates and CCC product certification; automated certificate of origin generation for CPFTA-II preferential rates"],
         ["Currency Settlement", "PKR/CNY direct settlement via SBP-PBOC bilateral currency swap agreement; elimination of USD intermediation for corridor transactions; real-time exchange rate feeds from both central banks; automatic conversion and reconciliation through Mass treasury-info APIs"],
         ["EZ Coordination", "Coordinated compliance across Allama Iqbal (Faisalabad), Rashakai (Nowshera), Dhabeji (Thatta), and M-3 Industrial City (Faisalabad); zone-specific incentive tracking including tax holidays, duty exemptions, and profit repatriation rules; unified entity registration across Pakistani BOI and Chinese MOFCOM requirements"],
@@ -72,7 +72,7 @@ module.exports = function build_chapter25() {
       [
         ["PAK\u2194KSA", "$5.4B", "Launch", "Customs automation, remittance WHT, diaspora services, trade docs"],
         ["PAK\u2194UAE", "$10.1B", "Live", "27 free zones, SIFC FDI pipeline, $6.7B remittances"],
-        ["PAK\u2194CHN", "$23.1B", "Planned", "CPEC 2.0, 9 SEZs, Gwadar customs, e-trade documentation"],
+        ["PAK\u2194CHN", "$23.1B", "Planned", "CPEC 2.0, 9 EZs, Gwadar customs, e-trade documentation"],
       ],
       [1600, 1400, 1200, 5160]
     ),

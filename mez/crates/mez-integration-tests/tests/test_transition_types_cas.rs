@@ -27,7 +27,7 @@ fn store_formation_transition() {
     let formation = json!({
         "transition_type": "formation",
         "entity_id": "ent-001",
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "from_state": "APPLIED",
         "to_state": "ACTIVE",
         "timestamp": "2026-01-15T12:00:00Z",

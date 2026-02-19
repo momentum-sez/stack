@@ -19,7 +19,7 @@ fn make_store() -> (tempfile::TempDir, ContentAddressedStore) {
 fn smart_asset_artifact_has_required_fields() {
     let (_dir, store) = make_store();
     let entity_id = EntityId::new();
-    let jurisdiction = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jurisdiction = JurisdictionId::new("PK-REZ").unwrap();
 
     let smart_asset = json!({
         "asset_type": "SmartAsset",
@@ -43,7 +43,7 @@ fn smart_asset_artifact_has_required_fields() {
 
     assert_eq!(parsed["asset_type"], "SmartAsset");
     assert!(parsed["entity_id"].is_string());
-    assert_eq!(parsed["jurisdiction"], "PK-RSEZ");
+    assert_eq!(parsed["jurisdiction"], "PK-REZ");
     assert_eq!(parsed["compliance_status"], "evaluated");
     assert!(parsed["lawpack_digest"].is_string());
     assert!(parsed["registry_digest"].is_string());
@@ -75,7 +75,7 @@ fn smart_asset_artifact_digest_deterministic() {
 #[test]
 fn smart_asset_jurisdiction_binding_in_graph() {
     let (_dir, store) = make_store();
-    let ja = JurisdictionId::new("PK-RSEZ").unwrap();
+    let ja = JurisdictionId::new("PK-REZ").unwrap();
     let jb = JurisdictionId::new("AE-DIFC").unwrap();
 
     // Create jurisdiction-specific compliance artifacts

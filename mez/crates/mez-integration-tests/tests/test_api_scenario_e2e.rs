@@ -1,4 +1,4 @@
-//! # End-to-End API Scenario: PK-RSEZ Opens Corridor to AE-DIFC
+//! # End-to-End API Scenario: PK-REZ Opens Corridor to AE-DIFC
 //!
 //! The first test that exercises the full HTTP API as a unified system.
 //! One test function, seven acts, one story: a Pakistani EZ opens a trade
@@ -96,12 +96,12 @@ async fn try_endpoint(
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn scenario_pk_rsez_opens_corridor_to_ae_difc() {
+async fn scenario_pk_rez_opens_corridor_to_ae_difc() {
     let app = test_app();
 
     // =====================================================================
     // Act 1: Create the corridor
-    // The PK-RSEZ zone opens a bilateral trade corridor to AE-DIFC.
+    // The PK-REZ zone opens a bilateral trade corridor to AE-DIFC.
     // This is the foundational operation — everything else flows from here.
     // =====================================================================
 
@@ -155,7 +155,7 @@ async fn scenario_pk_rsez_opens_corridor_to_ae_difc() {
             serde_json::json!({
                 "target_state": "PENDING",
                 "evidence_digest": evidence_a,
-                "reason": "Bilateral agreement signed by PK-RSEZ and AE-DIFC authorities"
+                "reason": "Bilateral agreement signed by PK-REZ and AE-DIFC authorities"
             }),
         ))
         .await
@@ -206,7 +206,7 @@ async fn scenario_pk_rsez_opens_corridor_to_ae_difc() {
 
     // =====================================================================
     // Act 3: First receipt — a cross-border payment instruction
-    // Acme Corp (PK-RSEZ) sends $50,000 to Gulf Trading (AE-DIFC).
+    // Acme Corp (PK-REZ) sends $50,000 to Gulf Trading (AE-DIFC).
     // The receipt is the cryptographic proof of this corridor event.
     // =====================================================================
 
@@ -218,7 +218,7 @@ async fn scenario_pk_rsez_opens_corridor_to_ae_difc() {
                 "corridor_id": corridor_id,
                 "payload": {
                     "type": "payment_instruction",
-                    "from": "pk-sez-01:entity:acme-corp",
+                    "from": "pk-ez-01:entity:acme-corp",
                     "to": "ae-difc:entity:gulf-trading",
                     "amount": "50000.00",
                     "currency": "USD"
@@ -286,7 +286,7 @@ async fn scenario_pk_rsez_opens_corridor_to_ae_difc() {
                 "payload": {
                     "type": "payment_instruction",
                     "from": "ae-difc:entity:gulf-trading",
-                    "to": "pk-sez-01:entity:acme-corp",
+                    "to": "pk-ez-01:entity:acme-corp",
                     "amount": "48500.00",
                     "currency": "USD",
                     "reference": "counter-payment"
@@ -328,7 +328,7 @@ async fn scenario_pk_rsez_opens_corridor_to_ae_difc() {
 
     // =====================================================================
     // Act 5: Create a smart asset and evaluate its compliance
-    // An equity instrument registered in the PK-RSEZ jurisdiction.
+    // An equity instrument registered in the PK-REZ jurisdiction.
     // The compliance tensor evaluates the asset across regulatory
     // domains to determine whether it can operate in this corridor.
     // =====================================================================
@@ -342,7 +342,7 @@ async fn scenario_pk_rsez_opens_corridor_to_ae_difc() {
                 "jurisdiction_id": "pk-ez-01",
                 "metadata": {
                     "name": "Acme Corp Series A Preferred",
-                    "issuer": "pk-sez-01:entity:acme-corp"
+                    "issuer": "pk-ez-01:entity:acme-corp"
                 }
             }),
         ))
@@ -379,7 +379,7 @@ async fn scenario_pk_rsez_opens_corridor_to_ae_difc() {
             serde_json::json!({
                 "domains": ["aml", "kyc", "sanctions"],
                 "context": {
-                    "entity_id": "pk-sez-01:entity:acme-corp",
+                    "entity_id": "pk-ez-01:entity:acme-corp",
                     "corridor_id": corridor_id
                 }
             }),

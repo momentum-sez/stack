@@ -19,7 +19,7 @@ fn store_json_object_artifact() {
     let (_dir, store) = make_store();
     let data = json!({
         "entity_id": "ent-001",
-        "jurisdiction": "PK-RSEZ",
+        "jurisdiction": "PK-REZ",
         "status": "active"
     });
     let artifact_ref = store.store("entity", &data).unwrap();
@@ -56,7 +56,7 @@ fn store_nested_artifact() {
         "corridor": {
             "id": "corr-001",
             "jurisdictions": {
-                "a": {"code": "PK-RSEZ", "zone": "rashakai"},
+                "a": {"code": "PK-REZ", "zone": "rashakai"},
                 "b": {"code": "AE-DIFC", "zone": "difc"}
             },
             "receipts": [

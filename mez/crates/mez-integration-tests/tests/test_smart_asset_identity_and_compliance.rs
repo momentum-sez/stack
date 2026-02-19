@@ -9,7 +9,7 @@ use mez_tensor::evaluation::ComplianceState;
 use mez_tensor::tensor::{ComplianceTensor, DefaultJurisdiction};
 
 fn test_jurisdiction() -> DefaultJurisdiction {
-    DefaultJurisdiction::new(JurisdictionId::new("PK-RSEZ").unwrap())
+    DefaultJurisdiction::new(JurisdictionId::new("PK-REZ").unwrap())
 }
 
 // ---------------------------------------------------------------------------
@@ -149,8 +149,8 @@ fn entity_ids_are_unique() {
 
 #[test]
 fn jurisdiction_id_creation() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
-    assert_eq!(jid.as_str(), "PK-RSEZ");
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
+    assert_eq!(jid.as_str(), "PK-REZ");
 
     // Empty is rejected
     assert!(JurisdictionId::new("").is_err());

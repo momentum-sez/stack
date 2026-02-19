@@ -18,7 +18,7 @@ fn all_core_types_constructible() {
     let _eid = EntityId::new();
     let _mid = MigrationId::new();
     let _wid = WatcherId::new();
-    let _jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let _jid = JurisdictionId::new("PK-REZ").unwrap();
     let _cid = CorridorId::new();
     let _ts = Timestamp::now();
     let _did = Did::new("did:key:z6MkTest123").unwrap();
@@ -43,7 +43,7 @@ fn all_crypto_primitives_functional() {
 
 #[test]
 fn all_state_machines_initializable() {
-    let ja = JurisdictionId::new("PK-RSEZ").unwrap();
+    let ja = JurisdictionId::new("PK-REZ").unwrap();
     let jb = JurisdictionId::new("AE-DIFC").unwrap();
     let corridor = Corridor::<Draft>::new(CorridorId::new(), ja.clone(), jb);
     assert_eq!(corridor.state_name(), "DRAFT");

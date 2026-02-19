@@ -16,7 +16,7 @@ use serde_json::json;
 fn hybrid_zone_with_multiple_corridors() {
     let mut bridge = CorridorBridge::new();
 
-    let ja = JurisdictionId::new("PK-RSEZ").unwrap();
+    let ja = JurisdictionId::new("PK-REZ").unwrap();
     let jb = JurisdictionId::new("AE-DIFC").unwrap();
     let jc = JurisdictionId::new("KZ-AIFC").unwrap();
 
@@ -59,10 +59,10 @@ fn hybrid_zone_with_multiple_corridors() {
 #[test]
 fn zone_configuration_digest() {
     let config = json!({
-        "zone_id": "pk-rsez",
+        "zone_id": "pk-rez",
         "corridors": [
-            {"from": "pk-rsez", "to": "ae-difc", "fee_bps": 15},
-            {"from": "pk-rsez", "to": "kz-aifc", "fee_bps": 20}
+            {"from": "pk-rez", "to": "ae-difc", "fee_bps": 15},
+            {"from": "pk-rez", "to": "kz-aifc", "fee_bps": 20}
         ],
         "mode": "hybrid"
     });
@@ -84,7 +84,7 @@ fn zone_configuration_digest() {
 fn zone_deployment_fields_deterministic() {
     // Key ordering must not affect the canonical digest.
     let config_a = json!({
-        "zone_id": "pk-rsez",
+        "zone_id": "pk-rez",
         "version": "0.4.44",
         "mode": "hybrid",
         "corridors": ["ae-difc", "kz-aifc"]
@@ -93,7 +93,7 @@ fn zone_deployment_fields_deterministic() {
     let config_b = json!({
         "mode": "hybrid",
         "corridors": ["ae-difc", "kz-aifc"],
-        "zone_id": "pk-rsez",
+        "zone_id": "pk-rez",
         "version": "0.4.44"
     });
 
@@ -110,7 +110,7 @@ fn zone_deployment_fields_deterministic() {
 #[test]
 fn bridge_routing_basic() {
     let mut bridge = CorridorBridge::new();
-    let ja = JurisdictionId::new("PK-RSEZ").unwrap();
+    let ja = JurisdictionId::new("PK-REZ").unwrap();
     let jb = JurisdictionId::new("AE-DIFC").unwrap();
 
     bridge.add_edge(BridgeEdge {
@@ -124,7 +124,7 @@ fn bridge_routing_basic() {
     let route = bridge.find_route(&ja, &jb);
     assert!(
         route.is_some(),
-        "Route from PK-RSEZ to AE-DIFC should exist"
+        "Route from PK-REZ to AE-DIFC should exist"
     );
 
     let route = route.unwrap();

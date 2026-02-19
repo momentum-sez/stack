@@ -27,7 +27,7 @@ fn entity_like_data_digest_is_deterministic() {
     let entity = json!({
         "entity_id": "ent-001",
         "name": "Acme Corp",
-        "jurisdiction": "PK-RSEZ",
+        "jurisdiction": "PK-REZ",
         "formation_date": "2026-01-15T00:00:00Z",
         "status": "ACTIVE",
         "beneficial_owners": [
@@ -54,7 +54,7 @@ fn entity_like_data_digest_is_deterministic() {
 fn corridor_like_data_digest_is_deterministic() {
     let corridor = json!({
         "corridor_id": "c-pk-ae-001",
-        "jurisdiction_a": "PK-RSEZ",
+        "jurisdiction_a": "PK-REZ",
         "jurisdiction_b": "AE-DIFC",
         "state": "ACTIVE",
         "created_at": "2026-01-15T12:00:00Z",
@@ -78,7 +78,7 @@ fn vc_like_data_digest_is_deterministic() {
             "asset_id": "a".repeat(64),
             "name": "Test Asset",
             "jurisdiction_bindings": [
-                {"jurisdiction_id": "PK-RSEZ", "status": "bound"}
+                {"jurisdiction_id": "PK-REZ", "status": "bound"}
             ]
         }
     });
@@ -91,7 +91,7 @@ fn vc_like_data_digest_is_deterministic() {
 #[test]
 fn compliance_tensor_like_data_digest_is_deterministic() {
     let tensor = json!({
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "cells": {
             "aml": "compliant",
             "kyc": "pending",

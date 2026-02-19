@@ -476,7 +476,7 @@ mod tests {
 
     fn test_saga() -> MigrationSaga {
         MigrationBuilder::new(MigrationId::new())
-            .source(JurisdictionId::new("PK-RSEZ").unwrap())
+            .source(JurisdictionId::new("PK-REZ").unwrap())
             .destination(JurisdictionId::new("AE-DIFC").unwrap())
             .deadline(future_deadline())
             .build()
@@ -619,7 +619,7 @@ mod tests {
     #[test]
     fn builder_with_all_fields() {
         let saga = MigrationBuilder::new(MigrationId::new())
-            .source(JurisdictionId::new("PK-RSEZ").unwrap())
+            .source(JurisdictionId::new("PK-REZ").unwrap())
             .destination(JurisdictionId::new("AE-DIFC").unwrap())
             .asset_description("Manufacturing equipment")
             .deadline(future_deadline())
@@ -823,7 +823,7 @@ mod tests {
         // Test that builder methods can be called in any order
         let saga = MigrationBuilder::new(MigrationId::new())
             .destination(JurisdictionId::new("AE-DIFC").unwrap())
-            .source(JurisdictionId::new("PK-RSEZ").unwrap())
+            .source(JurisdictionId::new("PK-REZ").unwrap())
             .asset_description("Textiles")
             .deadline(future_deadline())
             .build();

@@ -8,7 +8,7 @@ use mez_core::{CanonicalBytes, ComplianceDomain, JurisdictionId};
 use mez_tensor::{commitment_digest, ComplianceState, ComplianceTensor, DefaultJurisdiction};
 
 fn test_jurisdiction() -> DefaultJurisdiction {
-    DefaultJurisdiction::new(JurisdictionId::new("PK-RSEZ").unwrap())
+    DefaultJurisdiction::new(JurisdictionId::new("PK-REZ").unwrap())
 }
 
 // ---------------------------------------------------------------------------
@@ -122,8 +122,8 @@ fn commitment_digest_standalone() {
         .map(|&d| (d, ComplianceState::Pending))
         .collect();
 
-    let d1 = commitment_digest("PK-RSEZ", &states).unwrap();
-    let d2 = commitment_digest("PK-RSEZ", &states).unwrap();
+    let d1 = commitment_digest("PK-REZ", &states).unwrap();
+    let d2 = commitment_digest("PK-REZ", &states).unwrap();
     assert_eq!(d1, d2);
     assert_eq!(d1.to_hex().len(), 64);
 

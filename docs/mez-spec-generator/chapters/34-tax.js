@@ -41,7 +41,7 @@ module.exports = function build_chapter34() {
         ["Hybrid", "Combines territorial and worldwide elements; typically territorial for active business income, worldwide for passive income", "United Kingdom, Japan, France"],
         ["Flat Rate", "Applies a single uniform tax rate to all taxable income regardless of amount or source", "Estonia (20%), Georgia (20%), Hungary (9%)"],
         ["Progressive", "Applies increasing tax rates to successive income brackets; higher income taxed at higher rates", "Pakistan, Germany, Australia"],
-        ["Economic Zone", "Provides preferential tax treatment within designated zones; may include full exemptions or reduced rates for qualifying activities", "Pakistan SEZs (SEZ Act 2012), UAE Free Zones, China SEZs"],
+        ["Economic Zone", "Provides preferential tax treatment within designated zones; may include full exemptions or reduced rates for qualifying activities", "Pakistan EZs (EZ Act 2012), UAE Free Zones, China EZs"],
       ],
       [1800, 4560, 3000]
     ),
@@ -70,11 +70,11 @@ module.exports = function build_chapter34() {
     table(
       ["Program", "Mechanism", "Typical Duration", "Eligibility Criteria"],
       [
-        ["Tax Holiday", "Full exemption from income tax for a defined period after formation or investment", "5 - 10 years", "New entity in designated SEZ; minimum capital investment; approved activity sector"],
-        ["Reduced Rate", "Lower tax rate applied instead of standard rate for qualifying income", "Indefinite or time-limited", "Entity operating within SEZ; income derived from approved activities"],
+        ["Tax Holiday", "Full exemption from income tax for a defined period after formation or investment", "5 - 10 years", "New entity in designated EZ; minimum capital investment; approved activity sector"],
+        ["Reduced Rate", "Lower tax rate applied instead of standard rate for qualifying income", "Indefinite or time-limited", "Entity operating within EZ; income derived from approved activities"],
         ["Investment Allowance", "Accelerated depreciation or additional deduction on qualifying capital expenditure", "Per asset useful life", "Capital investment in plant, machinery, or technology above minimum threshold"],
         ["R&D Credit", "Tax credit computed as a percentage of qualifying research and development expenditure", "Annual claim", "R&D expenditure exceeding baseline; approved research activities per lawpack"],
-        ["Employment Incentive", "Tax credit or deduction for each qualifying employee hired above baseline headcount", "2 - 5 years per hire", "New hires in SEZ; minimum employment duration; local workforce percentage targets"],
+        ["Employment Incentive", "Tax credit or deduction for each qualifying employee hired above baseline headcount", "2 - 5 years per hire", "New hires in EZ; minimum employment duration; local workforce percentage targets"],
         ["Export Incentive", "Reduced rate or exemption on income derived from qualifying export transactions", "Linked to export volume", "Export revenue exceeding threshold; goods/services shipped outside jurisdiction via corridor"],
       ],
       [1600, 3000, 1600, 3160]

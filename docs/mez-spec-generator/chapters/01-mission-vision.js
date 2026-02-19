@@ -25,7 +25,7 @@ module.exports = function build_chapter01() {
         ["Pakistan GovOS (PDA)", "Active", "Full government OS: 40+ ministries, FBR tax integration (Income Tax Ordinance 2001, Sales Tax Act 1990, Federal Excise Act, Customs Act), SBP Raast payments, NADRA identity, SECP corporate registry. Target: raise tax-to-GDP from 10.3% to 15%+."],
         ["UAE / ADGM", "Live", "1,000+ entities onboarded, $1.7B+ capital processed via Northern Trust custody."],
         ["Dubai Free Zone Council", "Integration", "27 free zones. Mass APIs serve entity + fiscal; MEZ provides zone-specific licensing."],
-        ["Kazakhstan (Alatau City)", "Partnership", "SEZ + AIFC integration. Tests composition engine: Kazakh law + AIFC financial regulation."],
+        ["Kazakhstan (Alatau City)", "Partnership", "EZ + AIFC integration. Tests composition engine: Kazakh law + AIFC financial regulation."],
         ["Seychelles", "Deployment", "Sovereign GovOS at national scale."],
       ],
       [2400, 1200, 5760]

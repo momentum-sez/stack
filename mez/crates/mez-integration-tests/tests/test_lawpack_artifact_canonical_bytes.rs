@@ -102,7 +102,7 @@ fn lawpack_digest_changes_with_content() {
 fn lawpack_data_canonical_bytes() {
     // Verify that lawpack-like data produces consistent canonical bytes.
     let data = json!({
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "version": "1.0",
         "statutes": {
             "companies-act": {"title": "Companies Act"}

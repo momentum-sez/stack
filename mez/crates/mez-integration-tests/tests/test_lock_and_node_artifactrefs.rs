@@ -25,7 +25,7 @@ fn lock_artifact_ref_matches_content() {
 
     let lock_data = json!({
         "schema_version": "1.0",
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "locked_at": "2026-02-12T00:00:00Z",
         "packs": {
             "lawpack": {"digest": "aa".repeat(32)},
@@ -49,7 +49,7 @@ fn lock_artifact_ref_matches_content() {
 fn node_artifact_ref_deterministic() {
     let node_data = json!({
         "node_type": "zone",
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "modules": ["tax/withholding", "aml/screening", "kyc/identity"],
         "version": 1
     });
@@ -67,13 +67,13 @@ fn node_artifact_ref_deterministic() {
 fn lock_and_node_refs_differ() {
     let lock_data = json!({
         "type": "lockfile",
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "digest": "aa".repeat(32)
     });
 
     let node_data = json!({
         "type": "node",
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "digest": "aa".repeat(32)
     });
 

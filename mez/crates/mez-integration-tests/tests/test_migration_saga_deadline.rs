@@ -22,7 +22,7 @@ fn past_deadline() -> chrono::DateTime<Utc> {
 
 fn test_saga() -> MigrationSaga {
     MigrationBuilder::new(MigrationId::new())
-        .source(JurisdictionId::new("PK-RSEZ").unwrap())
+        .source(JurisdictionId::new("PK-REZ").unwrap())
         .destination(JurisdictionId::new("AE-DIFC").unwrap())
         .deadline(future_deadline())
         .build()
@@ -75,7 +75,7 @@ fn past_deadline_triggers_timeout() {
 fn past_deadline_at_in_transit_triggers_timeout() {
     // Start with future deadline, advance to InTransit, then simulate deadline passing
     let mut saga = MigrationBuilder::new(MigrationId::new())
-        .source(JurisdictionId::new("PK-RSEZ").unwrap())
+        .source(JurisdictionId::new("PK-REZ").unwrap())
         .destination(JurisdictionId::new("AE-DIFC").unwrap())
         .deadline(past_deadline()) // Will trigger on first advance
         .build();
@@ -203,14 +203,14 @@ fn compensation_failure_preserves_error_detail() {
     let mut saga = test_saga();
     saga.record_compensation_failure(
         "unlock_source",
-        "connection timeout to source jurisdiction node at pk-rsez.mass.gov.pk:8443",
+        "connection timeout to source jurisdiction node at pk-rez.mass.gov.pk:8443",
     );
 
     assert_eq!(saga.compensation_log.len(), 1);
     assert!(!saga.compensation_log[0].succeeded);
     assert_eq!(
         saga.compensation_log[0].error_detail.as_deref(),
-        Some("connection timeout to source jurisdiction node at pk-rsez.mass.gov.pk:8443")
+        Some("connection timeout to source jurisdiction node at pk-rez.mass.gov.pk:8443")
     );
 }
 
@@ -221,7 +221,7 @@ fn compensation_failure_preserves_error_detail() {
 #[test]
 fn builder_with_all_fields() {
     let saga = MigrationBuilder::new(MigrationId::new())
-        .source(JurisdictionId::new("PK-RSEZ").unwrap())
+        .source(JurisdictionId::new("PK-REZ").unwrap())
         .destination(JurisdictionId::new("AE-DIFC").unwrap())
         .asset_description("Heavy manufacturing equipment line A-7")
         .deadline(future_deadline())

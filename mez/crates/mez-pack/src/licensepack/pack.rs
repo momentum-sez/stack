@@ -400,7 +400,7 @@ mod tests {
             regulator: LicensepackRegulator {
                 regulator_id: "fsra".to_string(),
                 name: "FSRA".to_string(),
-                jurisdiction_id: "pk-kp-rsez".to_string(),
+                jurisdiction_id: "pk-kp-rez".to_string(),
                 registry_url: None,
                 did: None,
                 api_capabilities: vec![],

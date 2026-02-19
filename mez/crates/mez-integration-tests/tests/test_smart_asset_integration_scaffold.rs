@@ -28,7 +28,7 @@ fn smart_asset_registration_vc() {
 
 #[test]
 fn smart_asset_compliance_evaluation() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let config = DefaultJurisdiction::new(jid);
     let _tensor = ComplianceTensor::new(config);
     let domains = ComplianceDomain::all();
@@ -40,7 +40,7 @@ fn smart_asset_cas_storage() {
     let dir = tempfile::tempdir().unwrap();
     let store = ContentAddressedStore::new(dir.path());
     let asset_data =
-        json!({"asset_id": "test", "type": "mining_license", "jurisdiction": "PK-RSEZ"});
+        json!({"asset_id": "test", "type": "mining_license", "jurisdiction": "PK-REZ"});
     let aref = store.store("smart-asset", &asset_data).unwrap();
     let resolved = store.resolve("smart-asset", &aref.digest).unwrap();
     assert!(resolved.is_some());

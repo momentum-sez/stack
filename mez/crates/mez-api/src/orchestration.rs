@@ -740,14 +740,14 @@ mod tests {
 
     #[test]
     fn evaluate_compliance_returns_20_domain_results() {
-        let (_tensor, summary) = evaluate_compliance("PK-RSEZ", "entity-1", ENTITY_DOMAINS);
+        let (_tensor, summary) = evaluate_compliance("PK-REZ", "entity-1", ENTITY_DOMAINS);
         assert_eq!(summary.domain_results.len(), 20);
         assert!(!summary.jurisdiction_id.is_empty());
     }
 
     #[test]
     fn evaluate_compliance_entity_domains_pending() {
-        let (_tensor, summary) = evaluate_compliance("PK-RSEZ", "entity-1", ENTITY_DOMAINS);
+        let (_tensor, summary) = evaluate_compliance("PK-REZ", "entity-1", ENTITY_DOMAINS);
         // With no attestations, relevant domains should be pending.
         for domain in ENTITY_DOMAINS {
             let state = summary.domain_results.get(domain.as_str());
@@ -757,7 +757,7 @@ mod tests {
 
     #[test]
     fn no_hard_blocks_on_fresh_evaluation() {
-        let (_tensor, summary) = evaluate_compliance("PK-RSEZ", "entity-1", ENTITY_DOMAINS);
+        let (_tensor, summary) = evaluate_compliance("PK-REZ", "entity-1", ENTITY_DOMAINS);
         // Fresh tensor has no NonCompliant sanctions — no hard blocks.
         assert!(summary.hard_blocks.is_empty());
         assert!(check_hard_blocks(&summary).is_none());
@@ -783,12 +783,12 @@ mod tests {
     #[test]
     fn issue_compliance_vc_signs_with_zone_key() {
         let state = AppState::new();
-        let (_tensor, summary) = evaluate_compliance("PK-RSEZ", "entity-1", ENTITY_DOMAINS);
+        let (_tensor, summary) = evaluate_compliance("PK-REZ", "entity-1", ENTITY_DOMAINS);
 
         let vc = issue_compliance_vc(
             &state,
             vc_types::FORMATION_COMPLIANCE,
-            "PK-RSEZ",
+            "PK-REZ",
             "entity-1",
             &summary,
         );
@@ -806,7 +806,7 @@ mod tests {
             &state,
             Uuid::new_v4(),
             "test_attestation",
-            "PK-RSEZ",
+            "PK-REZ",
             serde_json::json!({"test": true}),
         );
         let record = state.attestations.get(&id);

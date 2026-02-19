@@ -15,11 +15,11 @@ use std::collections::BTreeMap;
 
 #[test]
 fn licensepack_creation() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
-    let lp = Licensepack::new(jid.clone(), "PK-RSEZ Financial Licenses".to_string());
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
+    let lp = Licensepack::new(jid.clone(), "PK-REZ Financial Licenses".to_string());
 
-    assert_eq!(lp.jurisdiction.as_str(), "PK-RSEZ");
-    assert_eq!(lp.name, "PK-RSEZ Financial Licenses");
+    assert_eq!(lp.jurisdiction.as_str(), "PK-REZ");
+    assert_eq!(lp.name, "PK-REZ Financial Licenses");
     assert_eq!(lp.version, "1.0");
 }
 
@@ -29,7 +29,7 @@ fn licensepack_creation() {
 
 #[test]
 fn licensepack_digest_deterministic() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let lp1 = Licensepack::new(jid.clone(), "Test Pack".to_string());
     let lp2 = Licensepack::new(jid, "Test Pack".to_string());
 
@@ -42,7 +42,7 @@ fn licensepack_digest_deterministic() {
 
 #[test]
 fn licensepack_different_content_different_digest() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let lp1 = Licensepack::new(jid.clone(), "Pack A".to_string());
 
     let mut lp2 = Licensepack::new(jid, "Pack B".to_string());
@@ -75,7 +75,7 @@ fn licensepack_different_content_different_digest() {
 
 #[test]
 fn licensepack_license_types() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let mut lp = Licensepack::new(jid, "Financial Licenses".to_string());
 
     assert!(lp.license_types.is_empty());
@@ -106,7 +106,7 @@ fn licensepack_license_types() {
 
 #[test]
 fn licensepack_compliance_evaluation() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let mut lp = Licensepack::new(jid, "Financial Licenses".to_string());
 
     lp.add_license(License {
@@ -163,7 +163,7 @@ fn licensepack_terminal_license_status() {
 
 #[test]
 fn licensepack_digest_changes_with_license() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let lp_empty = Licensepack::new(jid.clone(), "Test Pack".to_string());
     let d1 = lp_empty.compute_digest().unwrap();
 

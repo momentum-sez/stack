@@ -28,7 +28,7 @@ impl<'de> Deserialize<'de> for JurisdictionId {
 }
 
 /// A jurisdiction identifier, typically an ISO 3166-1 code or a
-/// zone-specific identifier (e.g., "PK-RSEZ" for Pakistan Rashakai EZ).
+/// zone-specific identifier (e.g., "PK-REZ" for Pakistan Rashakai EZ).
 ///
 /// # Validation
 ///
@@ -103,8 +103,8 @@ mod tests {
 
     #[test]
     fn jurisdiction_id_valid() {
-        let jid = JurisdictionId::new("PK-RSEZ").unwrap();
-        assert_eq!(jid.as_str(), "PK-RSEZ");
+        let jid = JurisdictionId::new("PK-REZ").unwrap();
+        assert_eq!(jid.as_str(), "PK-REZ");
     }
 
     #[test]
@@ -129,8 +129,8 @@ mod tests {
 
     #[test]
     fn jurisdiction_id_display() {
-        let jid = JurisdictionId::new("PK-RSEZ").unwrap();
-        assert_eq!(format!("{jid}"), "PK-RSEZ");
+        let jid = JurisdictionId::new("PK-REZ").unwrap();
+        assert_eq!(format!("{jid}"), "PK-REZ");
     }
 
     #[test]

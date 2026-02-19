@@ -144,8 +144,8 @@ fn entity_id_uniqueness() {
 
 #[test]
 fn jurisdiction_id_validation() {
-    let valid = JurisdictionId::new("PK-RSEZ");
-    assert!(valid.is_ok(), "PK-RSEZ should be a valid JurisdictionId");
+    let valid = JurisdictionId::new("PK-REZ");
+    assert!(valid.is_ok(), "PK-REZ should be a valid JurisdictionId");
 
     let also_valid = JurisdictionId::new("AE-DIFC");
     assert!(
@@ -160,6 +160,6 @@ fn jurisdiction_id_validation() {
 
 #[test]
 fn jurisdiction_id_display() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
-    assert_eq!(jid.as_str(), "PK-RSEZ");
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
+    assert_eq!(jid.as_str(), "PK-REZ");
 }

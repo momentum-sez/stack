@@ -25,10 +25,10 @@ RUN cargo build --release -p mez-api -p mez-cli
 FROM debian:bookworm-slim
 
 LABEL org.opencontainers.image.title="MEZ API"
-LABEL org.opencontainers.image.description="Momentum SEZ Stack — Axum API server and CLI toolchain"
+LABEL org.opencontainers.image.description="Momentum EZ Stack — Axum API server and CLI toolchain"
 LABEL org.opencontainers.image.vendor="Momentum"
 LABEL org.opencontainers.image.version="0.4.44"
-LABEL org.opencontainers.image.source="https://github.com/momentum-sez/stack"
+LABEL org.opencontainers.image.source="https://github.com/momentum-ez/stack"
 
 # Install minimal runtime dependencies (TLS certs for HTTPS, libpq for PostgreSQL)
 RUN apt-get update \

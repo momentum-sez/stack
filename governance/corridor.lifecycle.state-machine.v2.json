@@ -71,10 +71,10 @@
       "authorization": "zone_authority"
     }
   ],
-  "notes": "v2 state machine aligned with spec/40-corridors.md. Supersedes v1 which used incorrect state names (PROPOSED, OPERATIONAL). See docs/fortification/sez_stack_audit_v2.md finding 2.3.",
+  "notes": "v2 state machine aligned with spec/40-corridors.md. Supersedes v1 which used incorrect state names (PROPOSED, OPERATIONAL). See docs/fortification/ez_stack_audit_v2.md finding 2.3.",
   "meta": {
     "spec_reference": "spec/40-corridors.md",
-    "audit_reference": "docs/fortification/sez_stack_audit_v2.md#2.3",
+    "audit_reference": "docs/fortification/ez_stack_audit_v2.md#2.3",
     "rust_implementation": "mez-state::corridor (typestate pattern)"
   }
 }

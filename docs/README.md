@@ -108,7 +108,7 @@ The `spec/` directory is the normative protocol specification. Implementation de
 
 | Document | Scope |
 |----------|-------|
-| [Audit v2](./fortification/sez_stack_audit_v2.md) | Seven-pass audit, tiered execution roadmap |
+| [Audit v2](./fortification/ez_stack_audit_v2.md) | Seven-pass audit, tiered execution roadmap |
 | [Bug Hunt Log](./bughunt/BUGHUNT_LOG.md) | Historical bug tracking |
 
 ---

@@ -35,7 +35,7 @@
       <p eId="preface-1">Pakistan federal tax legal corpus for the Momentum EZ compliance stack.
         Consolidates key provisions from the Income Tax Ordinance, 2001 (Ordinance XLIX of 2001)
         as amended through Finance Act 2024, the Sales Tax Act, 1990 (Act VII of 1990),
-        and the Special Economic Zones Act, 2012. Rates and thresholds reflect fiscal year 2025-26.</p>
+        and the Economic Zones Act, 2012. Rates and thresholds reflect fiscal year 2025-26.</p>
     </preface>
 
     <body>
@@ -405,40 +405,40 @@
       </part>
 
       <!-- ================================================================ -->
-      <!-- PART II: SPECIAL ECONOMIC ZONES ACT, 2012 (Tax Provisions)       -->
+      <!-- PART II: ECONOMIC ZONES ACT, 2012 (Tax Provisions)               -->
       <!-- ================================================================ -->
-      <part eId="part-sez">
-        <heading>Special Economic Zones Act, 2012 (Act XXI of 2012) -- Tax Provisions</heading>
+      <part eId="part-ez">
+        <heading>Economic Zones Act, 2012 (Act XXI of 2012) -- Tax Provisions</heading>
 
         <!-- Section 37: Income Tax Exemption -->
-        <section eId="sec-sez-37">
+        <section eId="sec-ez-37">
           <num>Section 37</num>
           <heading>Income Tax Exemption for Zone Enterprises</heading>
           <content>
-            <p eId="sec-sez-37.p1">A zone enterprise that has been granted admission by the zone
+            <p eId="sec-ez-37.p1">A zone enterprise that has been granted admission by the zone
               authority shall be exempt from income tax for a period of
               <num value="10">ten years</num> commencing from the date of commencement of
               commercial operations, as certified by the zone authority and notified to the
               Federal Board of Revenue.</p>
-            <p eId="sec-sez-37.p2">The exemption under this section applies to all income derived
-              from the business operations of the zone enterprise within the special economic zone,
+            <p eId="sec-ez-37.p2">The exemption under this section applies to all income derived
+              from the business operations of the zone enterprise within the economic zone,
               including income from manufacturing, processing, assembling, and related activities.</p>
-            <p eId="sec-sez-37.p3">This exemption shall not apply to income derived from sources
-              outside the special economic zone or to income from activities not approved under the
+            <p eId="sec-ez-37.p3">This exemption shall not apply to income derived from sources
+              outside the economic zone or to income from activities not approved under the
               enterprise's admission letter.</p>
           </content>
         </section>
 
         <!-- Section 38: Customs Duty Exemption -->
-        <section eId="sec-sez-38">
+        <section eId="sec-ez-38">
           <num>Section 38</num>
           <heading>One-Time Customs Duty Exemption on Capital Goods</heading>
           <content>
-            <p eId="sec-sez-38.p1">A zone enterprise shall be entitled to a one-time exemption
+            <p eId="sec-ez-38.p1">A zone enterprise shall be entitled to a one-time exemption
               from customs duties on the import of capital goods, including plant, machinery,
               equipment, and apparatus, required for the establishment of the enterprise within
-              the special economic zone.</p>
-            <p eId="sec-sez-38.p2">This exemption shall be subject to the enterprise obtaining
+              the economic zone.</p>
+            <p eId="sec-ez-38.p2">This exemption shall be subject to the enterprise obtaining
               prior approval from the zone authority and the goods being installed and used
               exclusively within the zone for a period of not less than
               <num value="5">five years</num> from the date of import.</p>
@@ -446,14 +446,14 @@
         </section>
 
         <!-- Section 39: Sales Tax Zero-Rating for Zone Exports -->
-        <section eId="sec-sez-39">
+        <section eId="sec-ez-39">
           <num>Section 39</num>
           <heading>Zero-Rated Sales Tax for Zone Exports</heading>
           <content>
-            <p eId="sec-sez-39.p1">Goods manufactured or produced within a special economic zone
+            <p eId="sec-ez-39.p1">Goods manufactured or produced within an economic zone
               by a zone enterprise and exported outside Pakistan shall be subject to sales tax
               at the rate of <num value="0">zero percent</num>.</p>
-            <p eId="sec-sez-39.p2">Input tax credit on raw materials and components consumed in
+            <p eId="sec-ez-39.p2">Input tax credit on raw materials and components consumed in
               the manufacture of zero-rated goods shall be refundable in accordance with the
               provisions of the Sales Tax Act, 1990.</p>
           </content>

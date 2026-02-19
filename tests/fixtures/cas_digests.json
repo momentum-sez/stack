@@ -14,18 +14,18 @@
     {
       "artifact_type": "vc",
       "input": {"@context": ["https://www.w3.org/2018/credentials/v1"], "type": ["VerifiableCredential"], "issuer": "did:mez:issuer-001", "credentialSubject": {"id": "did:mez:subject-001", "status": "active"}},
-      "canonical_hex": "7b2240636f6e74657874223a5b2268747470733a2f2f7777772e77332e6f72672f323031382f63726564656e7469616c732f7631225d2c2263726564656e7469616c5375626a656374223a7b226964223a226469643a6d73657a3a7375626a6563742d303031222c22737461747573223a22616374697665227d2c22697373756572223a226469643a6d73657a3a6973737565722d303031222c2274797065223a5b2256657269666961626c6543726564656e7469616c225d7d",
+      "canonical_hex": "7b2240636f6e74657874223a5b2268747470733a2f2f7777772e77332e6f72672f323031382f63726564656e7469616c732f7631225d2c2263726564656e7469616c5375626a656374223a7b226964223a226469643a6d657a3a7375626a6563742d303031222c22737461747573223a22616374697665227d2c22697373756572223a226469643a6d657a3a6973737565722d303031222c2274797065223a5b2256657269666961626c6543726564656e7469616c225d7d",
       "canonical_utf8": "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"credentialSubject\":{\"id\":\"did:mez:subject-001\",\"status\":\"active\"},\"issuer\":\"did:mez:issuer-001\",\"type\":[\"VerifiableCredential\"]}",
-      "sha256_digest": "532a794aada544619a81cd5529777ea456112f91bef440b759bd8ea5e1279e00",
-      "expected_path": "dist/artifacts/vc/532a794aada544619a81cd5529777ea456112f91bef440b759bd8ea5e1279e00.json"
+      "sha256_digest": "028ae38a61a9577386d7e7be43a7e321691f65634f6dee6e0a6032610a2de8b6",
+      "expected_path": "dist/artifacts/vc/028ae38a61a9577386d7e7be43a7e321691f65634f6dee6e0a6032610a2de8b6.json"
     },
     {
       "artifact_type": "lawpack",
-      "input": {"name": "test-lawpack", "jurisdiction": "PK-RSEZ", "version": 1},
-      "canonical_hex": "7b226a7572697364696374696f6e223a22504b2d5253455a222c226e616d65223a22746573742d6c61777061636b222c2276657273696f6e223a317d",
-      "canonical_utf8": "{\"jurisdiction\":\"PK-RSEZ\",\"name\":\"test-lawpack\",\"version\":1}",
-      "sha256_digest": "4c30a0f20a279bf658fc6c3cb1b5d7607703f1b570f8b5831e811e1c946b2c67",
-      "expected_path": "dist/artifacts/lawpack/4c30a0f20a279bf658fc6c3cb1b5d7607703f1b570f8b5831e811e1c946b2c67.json"
+      "input": {"name": "test-lawpack", "jurisdiction": "PK-REZ", "version": 1},
+      "canonical_hex": "7b226a7572697364696374696f6e223a22504b2d52455a222c226e616d65223a22746573742d6c61777061636b222c2276657273696f6e223a317d",
+      "canonical_utf8": "{\"jurisdiction\":\"PK-REZ\",\"name\":\"test-lawpack\",\"version\":1}",
+      "sha256_digest": "c21ad06dd03e6885cdc7a23ade9a60aa8c04d19983d9e5bf0b4384b2cfdfcb8f",
+      "expected_path": "dist/artifacts/lawpack/c21ad06dd03e6885cdc7a23ade9a60aa8c04d19983d9e5bf0b4384b2cfdfcb8f.json"
     },
     {
       "artifact_type": "ruleset",

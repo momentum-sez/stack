@@ -20,7 +20,7 @@ fn make_witness(id: &str, attestation: &str) -> serde_json::Value {
         "witness_id": id,
         "attestation": attestation,
         "timestamp": "2026-01-15T12:00:00Z",
-        "jurisdiction": "PK-RSEZ"
+        "jurisdiction": "PK-REZ"
     })
 }
 

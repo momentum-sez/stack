@@ -31,9 +31,9 @@ fn make_test_vc() -> VerifiableCredential {
             "name": "Reko Diq Mining License",
             "jurisdiction_bindings": [
                 {
-                    "jurisdiction_id": "PK-RSEZ",
+                    "jurisdiction_id": "PK-REZ",
                     "binding_status": "active",
-                    "lawpack_ref": format!("PK-RSEZ:financial:{}", "ab".repeat(32))
+                    "lawpack_ref": format!("PK-REZ:financial:{}", "ab".repeat(32))
                 }
             ],
             "compliance_status": {

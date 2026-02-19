@@ -21,8 +21,8 @@ fn past_deadline() -> chrono::DateTime<Utc> {
     Utc::now() - TimeDelta::try_hours(1).unwrap()
 }
 
-fn pk_rsez() -> JurisdictionId {
-    JurisdictionId::new("PK-RSEZ").unwrap()
+fn pk_rez() -> JurisdictionId {
+    JurisdictionId::new("PK-REZ").unwrap()
 }
 
 fn ae_difc() -> JurisdictionId {
@@ -36,7 +36,7 @@ fn ae_difc() -> JurisdictionId {
 #[test]
 fn migration_flow_complete_lifecycle() {
     let mut saga = MigrationBuilder::new(MigrationId::new())
-        .source(pk_rsez())
+        .source(pk_rez())
         .destination(ae_difc())
         .asset_description("Heavy manufacturing equipment line A-7")
         .deadline(future_deadline())
@@ -98,7 +98,7 @@ fn migration_flow_state_display_names() {
 #[test]
 fn migration_flow_with_deadline_future() {
     let mut saga = MigrationBuilder::new(MigrationId::new())
-        .source(pk_rsez())
+        .source(pk_rez())
         .destination(ae_difc())
         .deadline(future_deadline())
         .build();
@@ -111,7 +111,7 @@ fn migration_flow_with_deadline_future() {
 #[test]
 fn migration_flow_with_deadline_past() {
     let mut saga = MigrationBuilder::new(MigrationId::new())
-        .source(pk_rsez())
+        .source(pk_rez())
         .destination(ae_difc())
         .deadline(past_deadline())
         .build();
@@ -143,7 +143,7 @@ fn migration_timed_out_cannot_advance() {
 #[test]
 fn migration_flow_cancellation() {
     let mut saga = MigrationBuilder::new(MigrationId::new())
-        .source(pk_rsez())
+        .source(pk_rez())
         .destination(ae_difc())
         .deadline(future_deadline())
         .build();
@@ -159,7 +159,7 @@ fn migration_cancel_allowed_before_transit() {
     // Cancel should be allowed for first 4 states (before InTransit)
     for advance_count in 0..4 {
         let mut saga = MigrationBuilder::new(MigrationId::new())
-            .source(pk_rsez())
+            .source(pk_rez())
             .destination(ae_difc())
             .deadline(future_deadline())
             .build();
@@ -180,7 +180,7 @@ fn migration_cancel_allowed_before_transit() {
 #[test]
 fn migration_cancel_rejected_at_and_after_transit() {
     let mut saga = MigrationBuilder::new(MigrationId::new())
-        .source(pk_rsez())
+        .source(pk_rez())
         .destination(ae_difc())
         .deadline(future_deadline())
         .build();
@@ -202,7 +202,7 @@ fn migration_cancel_rejected_at_and_after_transit() {
 #[test]
 fn migration_flow_compensation() {
     let mut saga = MigrationBuilder::new(MigrationId::new())
-        .source(pk_rsez())
+        .source(pk_rez())
         .destination(ae_difc())
         .deadline(future_deadline())
         .build();
@@ -236,7 +236,7 @@ fn migration_flow_compensation() {
 #[test]
 fn migration_compensation_failure_records_error_detail() {
     let mut saga = MigrationBuilder::new(MigrationId::new())
-        .source(pk_rsez())
+        .source(pk_rez())
         .destination(ae_difc())
         .deadline(future_deadline())
         .build();
@@ -274,7 +274,7 @@ fn migration_compensation_from_terminal_fails() {
 #[test]
 fn migration_builder_all_fields() {
     let saga = MigrationBuilder::new(MigrationId::new())
-        .source(pk_rsez())
+        .source(pk_rez())
         .destination(ae_difc())
         .asset_description("Mining equipment transfer batch 42")
         .deadline(future_deadline())

@@ -40,14 +40,14 @@ fn make_corridor_agreement_vc(jurisdiction_a: &str, jurisdiction_b: &str) -> Ver
 
 #[test]
 fn corridor_agreement_vc_creation() {
-    let ja = JurisdictionId::new("PK-RSEZ").unwrap();
+    let ja = JurisdictionId::new("PK-REZ").unwrap();
     let jb = JurisdictionId::new("AE-DIFC").unwrap();
 
     let vc = make_corridor_agreement_vc(ja.as_str(), jb.as_str());
 
     assert!(vc.credential_type.contains_vc_type());
-    assert_eq!(vc.issuer, "did:mez:jurisdiction:PK-RSEZ");
-    assert_eq!(vc.credential_subject["jurisdiction_a"], "PK-RSEZ");
+    assert_eq!(vc.issuer, "did:mez:jurisdiction:PK-REZ");
+    assert_eq!(vc.credential_subject["jurisdiction_a"], "PK-REZ");
     assert_eq!(vc.credential_subject["jurisdiction_b"], "AE-DIFC");
     assert!(vc.proof.is_empty());
 }
@@ -57,7 +57,7 @@ fn corridor_agreement_vc_sign_verify() {
     let sk = SigningKey::generate(&mut OsRng);
     let vk = sk.verifying_key();
 
-    let mut vc = make_corridor_agreement_vc("PK-RSEZ", "AE-DIFC");
+    let mut vc = make_corridor_agreement_vc("PK-REZ", "AE-DIFC");
     vc.sign_ed25519(
         &sk,
         "did:key:z6MkPKREZ#key-1".to_string(),
@@ -82,12 +82,12 @@ fn corridor_agreement_vc_bilateral_fields() {
     let vk_a = sk_a.verifying_key();
     let vk_b = sk_b.verifying_key();
 
-    let mut vc = make_corridor_agreement_vc("PK-RSEZ", "AE-DIFC");
+    let mut vc = make_corridor_agreement_vc("PK-REZ", "AE-DIFC");
 
     // Both jurisdictions sign the agreement
     vc.sign_ed25519(
         &sk_a,
-        "did:mez:jurisdiction:PK-RSEZ#key-1".to_string(),
+        "did:mez:jurisdiction:PK-REZ#key-1".to_string(),
         ProofType::Ed25519Signature2020,
         None,
     )
@@ -105,7 +105,7 @@ fn corridor_agreement_vc_bilateral_fields() {
 
     // Both signatures must verify with the correct key resolver
     let results = vc.verify(move |vm: &str| {
-        if vm.contains("PK-RSEZ") {
+        if vm.contains("PK-REZ") {
             Ok(vk_a.clone())
         } else if vm.contains("AE-DIFC") {
             Ok(vk_b.clone())
@@ -129,7 +129,7 @@ fn corridor_agreement_vc_bilateral_fields() {
 
 #[test]
 fn corridor_agreement_vc_signing_input_deterministic() {
-    let vc = make_corridor_agreement_vc("PK-RSEZ", "AE-DIFC");
+    let vc = make_corridor_agreement_vc("PK-REZ", "AE-DIFC");
 
     let input_1 = vc.signing_input().unwrap();
     let input_2 = vc.signing_input().unwrap();

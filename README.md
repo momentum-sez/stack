@@ -176,7 +176,7 @@ mez lock zone.yaml --check                 # verify existing lockfile
 mez lock zone.yaml --strict --out prod.lock
 
 # Corridor lifecycle
-mez corridor create --id PK-AE --jurisdiction-a PK-RSEZ --jurisdiction-b AE-DIFC
+mez corridor create --id PK-AE --jurisdiction-a PK-REZ --jurisdiction-b AE-DIFC
 mez corridor submit --id PK-AE --agreement corridor-agreement.json --pack-trilogy packs/
 mez corridor activate --id PK-AE --approval-a sig-a.json --approval-b sig-b.json
 mez corridor status --id PK-AE
@@ -240,7 +240,7 @@ curl -X POST http://localhost:3000/v1/corridors \
   -H "Content-Type: application/json" \
   -d '{
     "corridor_id": "PK-AE-001",
-    "jurisdiction_a": "PK-RSEZ",
+    "jurisdiction_a": "PK-REZ",
     "jurisdiction_b": "AE-DIFC",
     "agreement_digest": "abc123...",
     "pack_trilogy_digest": "def456..."

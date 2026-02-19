@@ -18,7 +18,7 @@ fn module_descriptor_has_required_fields() {
         "name": "formation",
         "version": "1.0.0",
         "domain": "corporate",
-        "jurisdiction_scope": ["PK-RSEZ", "AE-DIFC"],
+        "jurisdiction_scope": ["PK-REZ", "AE-DIFC"],
         "dependencies": [],
         "description": "Entity formation module",
         "status": "active"
@@ -47,7 +47,7 @@ fn module_descriptor_digest_deterministic() {
         "name": "withholding",
         "version": "2.1.0",
         "domain": "tax",
-        "jurisdiction_scope": ["PK-RSEZ"],
+        "jurisdiction_scope": ["PK-REZ"],
         "dependencies": ["corporate/formation"],
         "description": "Tax withholding at source"
     });

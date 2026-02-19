@@ -51,7 +51,7 @@ fn make_receipt(chain: &ReceiptChain, _i: u64) -> CorridorReceipt {
 #[test]
 fn full_corridor_lifecycle() {
     let id = CorridorId::new();
-    let ja = JurisdictionId::new("PK-RSEZ").unwrap();
+    let ja = JurisdictionId::new("PK-REZ").unwrap();
     let jb = JurisdictionId::new("AE-DIFC").unwrap();
 
     // 1. Create Draft
@@ -101,7 +101,7 @@ fn full_corridor_lifecycle() {
     // 6. Halt → Halted
     let halted = active_again.halt(HaltReason {
         reason: "Fork detected in receipt chain".to_string(),
-        authority: JurisdictionId::new("PK-RSEZ").unwrap(),
+        authority: JurisdictionId::new("PK-REZ").unwrap(),
         evidence: test_digest("fork-evidence"),
     });
     assert_eq!(halted.state_name(), "HALTED");
@@ -228,7 +228,7 @@ fn tampered_proof_fails_verification() {
 fn dyn_corridor_from_typed_preserves_state() {
     let corridor = Corridor::<Draft>::new(
         CorridorId::new(),
-        JurisdictionId::new("PK-RSEZ").unwrap(),
+        JurisdictionId::new("PK-REZ").unwrap(),
         JurisdictionId::new("AE-DIFC").unwrap(),
     );
     let dyn_data = DynCorridorData::from(&corridor);

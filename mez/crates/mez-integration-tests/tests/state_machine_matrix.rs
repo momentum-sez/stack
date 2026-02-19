@@ -841,7 +841,7 @@ fn future_deadline() -> chrono::DateTime<chrono::Utc> {
 
 fn build_test_saga() -> mez_state::MigrationSaga {
     MigrationBuilder::new(mez_core::MigrationId::new())
-        .source(JurisdictionId::new("PK-RSEZ").unwrap())
+        .source(JurisdictionId::new("PK-REZ").unwrap())
         .destination(JurisdictionId::new("AE-DIFC").unwrap())
         .deadline(future_deadline())
         .build()

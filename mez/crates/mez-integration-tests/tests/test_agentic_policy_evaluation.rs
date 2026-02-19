@@ -251,7 +251,7 @@ fn jurisdiction_scope_filters_correctly() {
     let mut engine = PolicyEngine::new();
 
     let pk_policy = Policy::new("pk-only", TriggerType::TaxYearEnd, PolicyAction::Halt)
-        .with_jurisdiction_scope(vec!["PK-RSEZ".to_string()]);
+        .with_jurisdiction_scope(vec!["PK-REZ".to_string()]);
 
     let global_policy = Policy::new("global", TriggerType::TaxYearEnd, PolicyAction::Resume);
 
@@ -260,7 +260,7 @@ fn jurisdiction_scope_filters_correctly() {
 
     // PK jurisdiction: both should match
     let trigger = Trigger::new(TriggerType::TaxYearEnd, json!({}));
-    let results = engine.evaluate(&trigger, Some("asset:test"), Some("PK-RSEZ"));
+    let results = engine.evaluate(&trigger, Some("asset:test"), Some("PK-REZ"));
     let matched: Vec<_> = results.iter().filter(|r| r.matched).collect();
     assert_eq!(matched.len(), 2);
 

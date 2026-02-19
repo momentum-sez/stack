@@ -46,7 +46,7 @@ fn regpack_with_dispute_context() {
 
     // File a dispute in the same jurisdiction.
     let claimant = test_party("Claimant1", "AE-DIFC");
-    let respondent = test_party("Respondent1", "PK-RSEZ");
+    let respondent = test_party("Respondent1", "PK-REZ");
 
     let claim = Claim {
         claim_id: "CLM-001".to_string(),
@@ -143,9 +143,9 @@ fn institution_supports_dispute_types() {
 
 #[test]
 fn dispute_filing_with_regulatory_context() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
 
-    let claimant = test_party("ExporterPK", "PK-RSEZ");
+    let claimant = test_party("ExporterPK", "PK-REZ");
     let respondent = test_party("ImporterAE", "AE-DIFC");
 
     let claims = vec![

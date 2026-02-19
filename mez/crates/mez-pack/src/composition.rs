@@ -49,7 +49,7 @@ use crate::regpack::RegpackRef;
 /// Jurisdiction ID format: two lowercase letters, optionally followed
 /// by hyphen-separated segments of lowercase alphanumerics.
 ///
-/// Examples: `us`, `us-ny`, `ae-abudhabi-adgm`, `pk-rsez`
+/// Examples: `us`, `us-ny`, `ae-abudhabi-adgm`, `pk-rez`
 fn is_valid_jurisdiction_id(s: &str) -> bool {
     lazy_static_regex(s)
 }
@@ -916,7 +916,7 @@ mod tests {
         assert!(is_valid_jurisdiction_id("us"));
         assert!(is_valid_jurisdiction_id("us-ny"));
         assert!(is_valid_jurisdiction_id("ae-abudhabi-adgm"));
-        assert!(is_valid_jurisdiction_id("pk-rsez"));
+        assert!(is_valid_jurisdiction_id("pk-rez"));
         assert!(is_valid_jurisdiction_id("sg"));
     }
 
@@ -933,7 +933,7 @@ mod tests {
     #[test]
     fn valid_zone_ids() {
         assert!(is_valid_zone_id("momentum.demo.hybrid"));
-        assert!(is_valid_zone_id("pk-rsez"));
+        assert!(is_valid_zone_id("pk-rez"));
         assert!(is_valid_zone_id("test"));
     }
 

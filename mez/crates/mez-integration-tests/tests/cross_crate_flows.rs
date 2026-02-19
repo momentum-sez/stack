@@ -20,7 +20,7 @@ fn canonical_to_cas_round_trip() {
     // 1. Create a value, canonicalize it.
     let value = json!({
         "corridor_id": "corr-001",
-        "jurisdiction_a": "PK-RSEZ",
+        "jurisdiction_a": "PK-REZ",
         "jurisdiction_b": "AE-DIFC",
         "amount": 500000
     });
@@ -112,7 +112,7 @@ fn vc_sign_serialize_deserialize_verify() {
         expiration_date: None,
         credential_subject: json!({
             "entity_id": "ent-001",
-            "jurisdiction": "PK-RSEZ",
+            "jurisdiction": "PK-REZ",
             "compliance_state": "Compliant",
             "domains_evaluated": ["Aml", "Kyc", "Sanctions"]
         }),
@@ -276,7 +276,7 @@ fn test_digest(label: &str) -> ContentDigest {
 #[test]
 fn corridor_lifecycle_draft_to_active() {
     let corridor_id = CorridorId::new();
-    let jid_a = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid_a = JurisdictionId::new("PK-REZ").unwrap();
     let jid_b = JurisdictionId::new("AE-DIFC").unwrap();
 
     // 1. Create a corridor in DRAFT.
@@ -307,7 +307,7 @@ fn corridor_lifecycle_draft_to_active() {
 #[test]
 fn corridor_lifecycle_to_halted_preserves_history() {
     let corridor_id = CorridorId::new();
-    let jid_a = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid_a = JurisdictionId::new("PK-REZ").unwrap();
     let jid_b = JurisdictionId::new("AE-DIFC").unwrap();
 
     let draft = Corridor::new(corridor_id, jid_a.clone(), jid_b.clone());
@@ -342,7 +342,7 @@ fn corridor_transition_digests_feed_mmr() {
     let mut mmr = MerkleMountainRange::new();
 
     let corridor_id = CorridorId::new();
-    let jid_a = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid_a = JurisdictionId::new("PK-REZ").unwrap();
     let jid_b = JurisdictionId::new("AE-DIFC").unwrap();
 
     let agreement_digest = test_digest("agreement");
@@ -390,7 +390,7 @@ fn compliance_tensor_evaluate_and_store_commitment() {
     let tmp = tempfile::tempdir().unwrap();
     let cas = ContentAddressedStore::new(tmp.path());
 
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let jurisdiction = DefaultJurisdiction::new(jid.clone());
     let mut tensor = ComplianceTensor::new(jurisdiction);
 
@@ -441,7 +441,7 @@ fn compliance_tensor_evaluate_and_store_commitment() {
 
 #[test]
 fn compliance_tensor_commitment_digest_is_deterministic() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
 
     // Create two tensors with same state
     let mut tensor1 = ComplianceTensor::new(DefaultJurisdiction::new(jid.clone()));
@@ -480,8 +480,8 @@ fn compliance_tensor_commitment_digest_is_deterministic() {
         .map(|&d| (d, tensor2.get(d)))
         .collect();
 
-    let digest1 = mez_tensor::commitment_digest("PK-RSEZ", &states).expect("commitment digest 1");
-    let digest2 = mez_tensor::commitment_digest("PK-RSEZ", &states2).expect("commitment digest 2");
+    let digest1 = mez_tensor::commitment_digest("PK-REZ", &states).expect("commitment digest 1");
+    let digest2 = mez_tensor::commitment_digest("PK-REZ", &states2).expect("commitment digest 2");
 
     assert_eq!(
         digest1.to_hex(),
@@ -742,7 +742,7 @@ fn all_trigger_types_evaluate_without_panic() {
     for tt in &trigger_types {
         let trigger = Trigger::new(tt.clone(), json!({"test": true}));
         // Should not panic for any trigger type
-        let _results = engine.evaluate(&trigger, Some("asset:test"), Some("PK-RSEZ"));
+        let _results = engine.evaluate(&trigger, Some("asset:test"), Some("PK-REZ"));
     }
 }
 
@@ -772,7 +772,7 @@ fn content_digest_from_core_used_in_crypto_cas() {
 #[test]
 fn jurisdiction_id_used_across_corridor_and_tensor() {
     // Verify JurisdictionId from mez-core works in both mez-state and mez-tensor
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
 
     // Use in corridor construction
     let corridor = Corridor::new(
@@ -976,7 +976,7 @@ use mez_corridor::bridge::{BridgeEdge, CorridorBridge};
 fn bridge_route_fees_used_in_settlement() {
     let mut bridge = CorridorBridge::new();
 
-    let pk = JurisdictionId::new("PK-RSEZ").unwrap();
+    let pk = JurisdictionId::new("PK-REZ").unwrap();
     let ae = JurisdictionId::new("AE-DIFC").unwrap();
     let sg = JurisdictionId::new("SG-MAS").unwrap();
 
@@ -1030,13 +1030,13 @@ fn migration_saga_with_corridor_and_tensor() {
     let deadline = chrono::Utc::now() + chrono::Duration::hours(24);
     let mut saga = MigrationBuilder::new(MigrationId::new())
         .deadline(deadline)
-        .source(JurisdictionId::new("PK-RSEZ").unwrap())
+        .source(JurisdictionId::new("PK-REZ").unwrap())
         .destination(JurisdictionId::new("AE-DIFC").unwrap())
         .asset_description("Entity migration PK→AE".to_string())
         .build();
 
     // Build a compliance tensor for the source jurisdiction
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let mut tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
     tensor.set(
         ComplianceDomain::Kyc,
@@ -1084,7 +1084,7 @@ fn policy_engine_corridor_trigger_to_vc() {
         }),
     );
 
-    let actions = engine.process_trigger(&trigger, "asset:entity-001", Some("PK-RSEZ"));
+    let actions = engine.process_trigger(&trigger, "asset:entity-001", Some("PK-REZ"));
 
     // Actions should be serializable (cross-crate: agentic → serde)
     let serialized = serde_json::to_string(&actions).unwrap();
@@ -1130,7 +1130,7 @@ fn policy_engine_corridor_trigger_to_vc() {
 
 #[test]
 fn tensor_commitment_feeds_mmr_and_receipt_chain() {
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let mut tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid.clone()));
 
     // Set compliance states across multiple domains
@@ -1163,7 +1163,7 @@ fn tensor_commitment_feeds_mmr_and_receipt_chain() {
         .iter()
         .map(|&d| (d, tensor.get(d)))
         .collect();
-    let commitment = mez_tensor::commitment_digest("PK-RSEZ", &states).unwrap();
+    let commitment = mez_tensor::commitment_digest("PK-REZ", &states).unwrap();
 
     // Feed the commitment digest into an MMR
     let mut mmr = MerkleMountainRange::new();
@@ -1270,7 +1270,7 @@ use mez_pack::regpack::validate_compliance_domain;
 fn pack_domains_match_tensor_compliance_domains() {
     // Verify that all ComplianceDomain variants recognized by mez-pack
     // are also valid in mez-tensor evaluations.
-    let jid = JurisdictionId::new("PK-RSEZ").unwrap();
+    let jid = JurisdictionId::new("PK-REZ").unwrap();
     let tensor = ComplianceTensor::new(DefaultJurisdiction::new(jid));
     let all_states = tensor.evaluate_all("entity-001");
 
@@ -1321,7 +1321,7 @@ fn corridor_state_change_trigger_generates_actions() {
     let _actions = engine.process_trigger(
         &trigger,
         &format!("corridor:{}", corridor_id),
-        Some("PK-RSEZ"),
+        Some("PK-REZ"),
     );
 
     // Standard policies should respond to corridor state changes
@@ -1344,7 +1344,7 @@ fn sanctions_trigger_generates_halt_or_review_action() {
     );
 
     let mut engine = PolicyEngine::with_standard_policies();
-    let actions = engine.process_trigger(&trigger, "asset-001", Some("PK-RSEZ"));
+    let actions = engine.process_trigger(&trigger, "asset-001", Some("PK-REZ"));
 
     // Standard policies should have at least one response to sanctions updates
     // (either Halt, Review, or NotifyRegulator)
@@ -1458,7 +1458,7 @@ fn vc_store_in_cas_retrieve_and_verify() {
         expiration_date: None,
         credential_subject: json!({
             "entity_id": "entity-001",
-            "jurisdiction": "PK-RSEZ",
+            "jurisdiction": "PK-REZ",
             "compliance_status": "compliant"
         }),
         proof: ProofValue::default(),

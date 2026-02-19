@@ -33,7 +33,7 @@ fn make_vc() -> VerifiableCredential {
             "name": "CLI Test Asset",
             "jurisdiction_bindings": [
                 {
-                    "jurisdiction_id": "PK-RSEZ",
+                    "jurisdiction_id": "PK-REZ",
                     "binding_status": "active"
                 }
             ]

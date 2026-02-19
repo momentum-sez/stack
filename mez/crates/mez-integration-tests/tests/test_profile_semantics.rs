@@ -19,7 +19,7 @@ fn profile_descriptor_has_required_fields() {
     let profile = json!({
         "profile_id": "trade-zone",
         "profile_name": "Trade Zone Profile",
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "modules": [
             "corporate/formation",
             "tax/withholding",
@@ -50,7 +50,7 @@ fn profile_descriptor_digest_deterministic() {
     let profile = json!({
         "profile_id": "default",
         "profile_name": "Default Profile",
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "modules": ["corporate/formation", "tax/reporting"],
         "version": "1.0"
     });
@@ -169,7 +169,7 @@ fn profile_with_nested_metadata() {
         "profile_id": "enriched",
         "modules": ["corporate/formation"],
         "metadata": {
-            "author": "mass-sez-admin",
+            "author": "mass-ez-admin",
             "created_at": "2026-01-15T12:00:00Z",
             "tags": ["financial", "trade-zone"]
         }

@@ -87,7 +87,7 @@ module.exports = function build_chapter56() {
         ["Q2 2025", "Expansion", "3 (+KSA)", "2 (+PAK-KSA)", "KSA lawpack, SMDA framework integration, remittance WHT automation"],
         ["Q3 2025", "Scale", "4 (+KAZ)", "2", "AIFC partnership, Kazakhstan lawpack development, Alatau City deployment"],
         ["Q4 2025", "Consolidation", "5 (+SYC)", "2", "Seychelles GovOS deployment, IBC Act 2016 lawpack, offshore corridor planning"],
-        ["Q1 2026", "Corridor Depth", "5", "3 (+PAK-CHN)", "CPEC 2.0 integration, CNY/PKR settlement, 9-SEZ coordination"],
+        ["Q1 2026", "Corridor Depth", "5", "3 (+PAK-CHN)", "CPEC 2.0 integration, CNY/PKR settlement, 9-EZ coordination"],
         ["Q2 2026", "Network Mesh", "7 (+TUR, MYS)", "5", "Turkey and Malaysia onboarding, new bilateral corridors, multilateral netting"],
         ["Q3 2026", "Multilateral", "8 (+KSA)", "7", "Saudi Arabia full deployment, triangular netting, GCC corridor network"],
         ["Q4 2026", "Scale-Out", "10 (+NGA, +1)", "10+", "Africa expansion, 10+ corridors, full multilateral settlement mesh"],
@@ -132,7 +132,7 @@ module.exports = function build_chapter56() {
       [
         ["Turkey", "Q2 2026", "digital-financial-center", "TUR-UAE, TUR-PAK, TUR-KSA", "Manufacturing corridor, IFC alignment, FAST payments"],
         ["Malaysia", "Q2 2026", "islamic-finance-hub", "MYS-UAE, MYS-CHN, MYS-PAK", "ASEAN gateway, Islamic finance, RCEP/CPTPP compliance"],
-        ["Saudi Arabia (Full)", "Q3 2026", "sovereign-govos", "KSA-UAE, KSA-PAK, KSA-TUR, KSA-NGA", "GCC hub, Vision 2030, 15 new SEZs"],
+        ["Saudi Arabia (Full)", "Q3 2026", "sovereign-govos", "KSA-UAE, KSA-PAK, KSA-TUR, KSA-NGA", "GCC hub, Vision 2030, 15 new EZs"],
         ["Nigeria", "Q4 2026", "sovereign-govos", "NGA-UAE, NGA-CHN, NGA-KSA", "Africa anchor, AfCFTA gateway, $3.4T continental market"],
       ],
       [1600, 1200, 1800, 2800, 1960]

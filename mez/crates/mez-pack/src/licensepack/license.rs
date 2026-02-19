@@ -482,7 +482,7 @@ mod tests {
         let reg = LicensepackRegulator {
             regulator_id: "fsra".to_string(),
             name: "FSRA".to_string(),
-            jurisdiction_id: "pk-kp-rsez".to_string(),
+            jurisdiction_id: "pk-kp-rez".to_string(),
             registry_url: Some("https://registry.example.com".to_string()),
             did: Some("did:web:fsra.gov.pk".to_string()),
             api_capabilities: vec!["realtime_query".to_string()],
@@ -527,7 +527,7 @@ mod tests {
             regulator: LicensepackRegulator {
                 regulator_id: "fsra".to_string(),
                 name: "FSRA".to_string(),
-                jurisdiction_id: "pk-kp-rsez".to_string(),
+                jurisdiction_id: "pk-kp-rez".to_string(),
                 registry_url: None,
                 did: None,
                 api_capabilities: vec![],

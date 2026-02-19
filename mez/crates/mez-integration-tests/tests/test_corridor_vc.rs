@@ -32,7 +32,7 @@ fn make_corridor_lifecycle_vc(
             "from_state": from_state,
             "to_state": to_state,
             "evidence_digest": "aa".repeat(32),
-            "jurisdiction_a": "PK-RSEZ",
+            "jurisdiction_a": "PK-REZ",
             "jurisdiction_b": "AE-DIFC"
         }),
         proof: ProofValue::default(),
@@ -134,7 +134,7 @@ fn corridor_vc_multi_jurisdiction() {
         issuance_date: chrono::Utc::now(),
         expiration_date: None,
         credential_subject: json!({
-            "jurisdictions": ["PK-RSEZ", "AE-DIFC", "SG-JURONG"],
+            "jurisdictions": ["PK-REZ", "AE-DIFC", "SG-JURONG"],
             "agreement_type": "trilateral",
             "compliance_domains": ["aml", "kyc", "sanctions"]
         }),
@@ -144,7 +144,7 @@ fn corridor_vc_multi_jurisdiction() {
     // Three jurisdictions sign
     vc.sign_ed25519(
         &sk_pk,
-        "did:mez:jurisdiction:PK-RSEZ#key-1".to_string(),
+        "did:mez:jurisdiction:PK-REZ#key-1".to_string(),
         ProofType::Ed25519Signature2020,
         None,
     )
@@ -169,7 +169,7 @@ fn corridor_vc_multi_jurisdiction() {
     assert_eq!(vc.proof.as_list().len(), 3);
 
     let results = vc.verify(move |vm: &str| {
-        if vm.contains("PK-RSEZ") {
+        if vm.contains("PK-REZ") {
             Ok(vk_pk.clone())
         } else if vm.contains("AE-DIFC") {
             Ok(vk_ae.clone())
@@ -211,7 +211,7 @@ fn corridor_vc_tamper_detection() {
         "from_state": "PENDING",
         "to_state": "DEPRECATED",
         "evidence_digest": "ff".repeat(32),
-        "jurisdiction_a": "PK-RSEZ",
+        "jurisdiction_a": "PK-REZ",
         "jurisdiction_b": "AE-DIFC"
     });
 

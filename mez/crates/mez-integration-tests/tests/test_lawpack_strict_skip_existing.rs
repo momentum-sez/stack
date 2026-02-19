@@ -15,7 +15,7 @@ fn store_lawpack_artifact_once() {
     let dir = tempfile::tempdir().unwrap();
     let store = ContentAddressedStore::new(dir.path());
     let data = json!({
-        "jurisdiction_id": "PK-RSEZ",
+        "jurisdiction_id": "PK-REZ",
         "version": "1.0",
         "name": "Test Lawpack"
     });

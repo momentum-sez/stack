@@ -689,7 +689,7 @@ lawpack_domains:
         let zone_path = write_temp_zone(tmp.path(), zone_yaml);
         let manifest = load_zone_manifest(&zone_path).unwrap();
         assert_eq!(manifest.zone_id, "test-zone");
-        assert_eq!(manifest.jurisdiction_id, "pk-sez-01");
+        assert_eq!(manifest.jurisdiction_id, "pk-ez-01");
         assert_eq!(manifest.applicable_domains.len(), 4);
         assert!(manifest.applicable_domains.contains(&"aml".to_string()));
     }

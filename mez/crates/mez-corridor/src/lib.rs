@@ -40,6 +40,7 @@ pub mod netting;
 pub mod network;
 pub mod payment_rail;
 pub mod receipt;
+pub mod registry;
 pub mod swift;
 
 // Re-export primary types.
@@ -66,6 +67,10 @@ pub use network::{
     CorridorAcceptance, CorridorNetworkConfig, CorridorPeer, CorridorProposal, CorridorRejection,
     InboundAttestation, InboundReceipt, InboundReceiptResult, NetworkError, PeerEndpoint,
     PeerRegistry, PeerStatus, validate_inbound_receipt, validate_proposal,
+};
+pub use registry::{
+    CorridorDefinition, CorridorRegistry, CorridorType, ZoneEntry, classify_corridor,
+    generate_corridor_id,
 };
 pub use swift::{SettlementInstruction, SettlementRail, SettlementRailError, SwiftPacs008};
 

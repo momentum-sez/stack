@@ -19,8 +19,8 @@ profile:
   version: "0.4.44"
 
 # Jurisdiction stack — Pakistan federal layer.
-# For sub-national zones (e.g., pk-kp-rsez), add the sub-jurisdiction:
-#   jurisdiction_stack: [pk-kp-rsez, pk]
+# For sub-national zones (e.g., pk-kp-rez), add the sub-jurisdiction:
+#   jurisdiction_stack: [pk-kp-rez, pk]
 jurisdiction_stack:
   - pk
 

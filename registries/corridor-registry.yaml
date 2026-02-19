@@ -1,0 +1,933 @@
+# Corridor Registry — N-factorial pairwise corridor definitions
+#
+# Every zone in the MEZ network can establish corridors with every other zone.
+# This registry defines corridor families by type and lists representative
+# corridor definitions with their required compliance domains.
+#
+# Corridor ID format: org.momentum.mez.corridor.{jurisdiction_a}--{jurisdiction_b}
+# where jurisdiction_a < jurisdiction_b (lexicographic ordering ensures uniqueness).
+#
+# This file enumerates representative corridors across the full 99-zone network.
+# The complete N*(N-1)/2 = 4851 pairwise corridors are derivable from the zone
+# catalog in registries/jurisdictions.yaml. Only exemplar corridors are listed
+# here; the full matrix is computed at deploy time by `mez corridor enumerate`.
+#
+# Spec: 0.4.44-GENESIS | License: BUSL-1.1
+
+registry_id: org.momentum.mez.registry.corridors
+spec_version: "0.4.44"
+generated_at: "2026-02-19T00:00:00Z"
+schema_ref: "https://schemas.momentum-ez.org/mez/corridor-registry.schema.json"
+
+# ---------------------------------------------------------------------------
+# Corridor Families
+# ---------------------------------------------------------------------------
+
+corridor_families:
+
+  # =========================================================================
+  # 1. Cross-border corridors (different sovereign jurisdictions)
+  # =========================================================================
+  cross_border:
+    description: >
+      Corridors between zones in different sovereign jurisdictions. These
+      require bilateral compliance evaluation across all applicable domains
+      including AML, KYC, sanctions, trade, and jurisdiction-specific
+      regulatory requirements. Each corridor must satisfy the compliance
+      tensor for both endpoint zones.
+    corridors:
+
+      # --- Pakistan trade corridors ---
+
+      - corridor_id: org.momentum.mez.corridor.ae-dubai-difc--pk-sifc
+        zone_a:
+          jurisdiction_id: ae-dubai-difc
+          zone_name: "Dubai International Financial Centre"
+        zone_b:
+          jurisdiction_id: pk-sifc
+          zone_name: "Pakistan SIFC Economic Zone"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - licensing
+          - tax
+          - data_privacy
+        trade_context: "Pakistan-UAE remittance corridor and trade finance"
+        priority: critical
+
+      - corridor_id: org.momentum.mez.corridor.cn--pk-sifc
+        zone_a:
+          jurisdiction_id: cn
+          zone_name: "China"
+        zone_b:
+          jurisdiction_id: pk-sifc
+          zone_name: "Pakistan SIFC Economic Zone"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - tax
+          - data_privacy
+        trade_context: "CPEC trade corridor and infrastructure investment flows"
+        priority: critical
+
+      - corridor_id: org.momentum.mez.corridor.hk--pk-sifc
+        zone_a:
+          jurisdiction_id: hk
+          zone_name: "Hong Kong SAR"
+        zone_b:
+          jurisdiction_id: pk-sifc
+          zone_name: "Pakistan SIFC Economic Zone"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - securities
+          - tax
+        trade_context: "Pakistan-Hong Kong trade and investment gateway"
+        priority: high
+
+      - corridor_id: org.momentum.mez.corridor.pk-sifc--sg
+        zone_a:
+          jurisdiction_id: pk-sifc
+          zone_name: "Pakistan SIFC Economic Zone"
+        zone_b:
+          jurisdiction_id: sg
+          zone_name: "Singapore"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - securities
+          - tax
+        trade_context: "Pakistan-Singapore trade and fintech flows"
+        priority: high
+
+      # --- Major Asia-Pacific trade corridors ---
+
+      - corridor_id: org.momentum.mez.corridor.hk--sg
+        zone_a:
+          jurisdiction_id: hk
+          zone_name: "Hong Kong SAR"
+        zone_b:
+          jurisdiction_id: sg
+          zone_name: "Singapore"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - securities
+          - banking
+          - licensing
+        trade_context: "Asia-Pacific dual financial center corridor"
+        priority: critical
+
+      - corridor_id: org.momentum.mez.corridor.cn--hk
+        zone_a:
+          jurisdiction_id: cn
+          zone_name: "China"
+        zone_b:
+          jurisdiction_id: hk
+          zone_name: "Hong Kong SAR"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - securities
+          - banking
+          - data_privacy
+        trade_context: "Mainland China - Hong Kong Stock/Bond Connect and trade"
+        priority: critical
+
+      - corridor_id: org.momentum.mez.corridor.cn--sg
+        zone_a:
+          jurisdiction_id: cn
+          zone_name: "China"
+        zone_b:
+          jurisdiction_id: sg
+          zone_name: "Singapore"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - securities
+          - data_privacy
+        trade_context: "China-Singapore bilateral investment and trade finance"
+        priority: high
+
+      # --- UAE-international corridors ---
+
+      - corridor_id: org.momentum.mez.corridor.ae-dubai-difc--hk
+        zone_a:
+          jurisdiction_id: ae-dubai-difc
+          zone_name: "Dubai International Financial Centre"
+        zone_b:
+          jurisdiction_id: hk
+          zone_name: "Hong Kong SAR"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - securities
+          - banking
+          - licensing
+        trade_context: "DIFC-Hong Kong financial services and capital markets"
+        priority: high
+
+      - corridor_id: org.momentum.mez.corridor.ae-dubai-difc--sg
+        zone_a:
+          jurisdiction_id: ae-dubai-difc
+          zone_name: "Dubai International Financial Centre"
+        zone_b:
+          jurisdiction_id: sg
+          zone_name: "Singapore"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - securities
+          - banking
+          - licensing
+        trade_context: "DIFC-Singapore fintech and wealth management corridor"
+        priority: high
+
+      # --- US-international corridors ---
+
+      - corridor_id: org.momentum.mez.corridor.ae-dubai-difc--us-ny
+        zone_a:
+          jurisdiction_id: ae-dubai-difc
+          zone_name: "Dubai International Financial Centre"
+        zone_b:
+          jurisdiction_id: us-ny
+          zone_name: "New York"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - securities
+          - banking
+          - licensing
+          - tax
+          - data_privacy
+        trade_context: "DIFC-New York capital markets and trade finance"
+        priority: high
+
+      - corridor_id: org.momentum.mez.corridor.hk--us-ny
+        zone_a:
+          jurisdiction_id: hk
+          zone_name: "Hong Kong SAR"
+        zone_b:
+          jurisdiction_id: us-ny
+          zone_name: "New York"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - securities
+          - banking
+          - tax
+          - data_privacy
+        trade_context: "Hong Kong-New York dual listing and capital markets"
+        priority: high
+
+      - corridor_id: org.momentum.mez.corridor.sg--us-ca
+        zone_a:
+          jurisdiction_id: sg
+          zone_name: "Singapore"
+        zone_b:
+          jurisdiction_id: us-ca
+          zone_name: "California"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - securities
+          - tax
+          - data_privacy
+        trade_context: "Singapore-California technology investment and venture flows"
+        priority: high
+
+      # --- Africa & emerging market corridors ---
+
+      - corridor_id: org.momentum.mez.corridor.ae-dubai-difc--ke
+        zone_a:
+          jurisdiction_id: ae-dubai-difc
+          zone_name: "Dubai International Financial Centre"
+        zone_b:
+          jurisdiction_id: ke
+          zone_name: "Kenya"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - licensing
+          - tax
+        trade_context: "DIFC-Kenya East Africa trade and remittance corridor"
+        priority: medium
+
+      - corridor_id: org.momentum.mez.corridor.ae-dubai-difc--eg
+        zone_a:
+          jurisdiction_id: ae-dubai-difc
+          zone_name: "Dubai International Financial Centre"
+        zone_b:
+          jurisdiction_id: eg
+          zone_name: "Egypt"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - licensing
+          - tax
+        trade_context: "DIFC-Egypt remittance and infrastructure investment"
+        priority: medium
+
+      - corridor_id: org.momentum.mez.corridor.ke--za
+        zone_a:
+          jurisdiction_id: ke
+          zone_name: "Kenya"
+        zone_b:
+          jurisdiction_id: za
+          zone_name: "South Africa"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - tax
+        trade_context: "Kenya-South Africa intra-Africa trade corridor"
+        priority: medium
+
+      # --- Offshore financial center corridors ---
+
+      - corridor_id: org.momentum.mez.corridor.ky--sg
+        zone_a:
+          jurisdiction_id: ky
+          zone_name: "Cayman Islands"
+        zone_b:
+          jurisdiction_id: sg
+          zone_name: "Singapore"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - corporate
+          - securities
+          - tax
+        trade_context: "Cayman-Singapore fund administration corridor"
+        priority: medium
+
+      - corridor_id: org.momentum.mez.corridor.hk--vg
+        zone_a:
+          jurisdiction_id: hk
+          zone_name: "Hong Kong SAR"
+        zone_b:
+          jurisdiction_id: vg
+          zone_name: "British Virgin Islands"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - corporate
+          - securities
+          - tax
+        trade_context: "Hong Kong-BVI holding company and fund structuring"
+        priority: medium
+
+      # --- Kazakhstan financial center corridors ---
+
+      - corridor_id: org.momentum.mez.corridor.ae-abudhabi-adgm--kz-aifc
+        zone_a:
+          jurisdiction_id: ae-abudhabi-adgm
+          zone_name: "Abu Dhabi Global Market"
+        zone_b:
+          jurisdiction_id: kz-aifc
+          zone_name: "Astana International Financial Centre"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - securities
+          - banking
+          - licensing
+        trade_context: "ADGM-AIFC Central Asia investment and fintech corridor"
+        priority: medium
+
+      # --- Latin America corridors ---
+
+      - corridor_id: org.momentum.mez.corridor.br--us-fl
+        zone_a:
+          jurisdiction_id: br
+          zone_name: "Brazil"
+        zone_b:
+          jurisdiction_id: us-fl
+          zone_name: "Florida"
+        compliance_domains:
+          - aml
+          - kyc
+          - sanctions
+          - trade
+          - corporate
+          - tax
+          - data_privacy
+        trade_context: "Brazil-Florida trade and remittance corridor"
+        priority: medium
+
+  # =========================================================================
+  # 2. Intra-federal corridors — United States
+  # =========================================================================
+  intra_federal_us:
+    description: >
+      Corridors between US state zones within the same federal jurisdiction.
+      These share federal-level AML/KYC/sanctions compliance but may diverge
+      on state-level corporate, securities, banking, and licensing rules.
+      The federal compliance layer (jurisdiction_stack root: us) is shared;
+      state-specific overlays determine delta compliance requirements.
+    corridors:
+
+      - corridor_id: org.momentum.mez.corridor.us-ca--us-ny
+        zone_a:
+          jurisdiction_id: us-ca
+          zone_name: "California"
+        zone_b:
+          jurisdiction_id: us-ny
+          zone_name: "New York"
+        compliance_domains:
+          - corporate
+          - securities
+          - banking
+          - licensing
+          - consumer_protection
+          - data_privacy
+        trade_context: "NY-CA financial services and technology investment"
+        priority: high
+
+      - corridor_id: org.momentum.mez.corridor.us-ny--us-tx
+        zone_a:
+          jurisdiction_id: us-ny
+          zone_name: "New York"
+        zone_b:
+          jurisdiction_id: us-tx
+          zone_name: "Texas"
+        compliance_domains:
+          - corporate
+          - securities
+          - banking
+          - licensing
+          - consumer_protection
+        trade_context: "NY-TX energy finance and capital markets"
+        priority: high
+
+      - corridor_id: org.momentum.mez.corridor.us-ca--us-tx
+        zone_a:
+          jurisdiction_id: us-ca
+          zone_name: "California"
+        zone_b:
+          jurisdiction_id: us-tx
+          zone_name: "Texas"
+        compliance_domains:
+          - corporate
+          - securities
+          - banking
+          - licensing
+          - consumer_protection
+        trade_context: "CA-TX technology and energy cross-state commerce"
+        priority: high
+
+      - corridor_id: org.momentum.mez.corridor.us-de--us-ny
+        zone_a:
+          jurisdiction_id: us-de
+          zone_name: "Delaware"
+        zone_b:
+          jurisdiction_id: us-ny
+          zone_name: "New York"
+        compliance_domains:
+          - corporate
+          - securities
+          - banking
+          - licensing
+        trade_context: "DE-NY corporate domicile and financial services"
+        priority: high
+
+      - corridor_id: org.momentum.mez.corridor.us-fl--us-ny
+        zone_a:
+          jurisdiction_id: us-fl
+          zone_name: "Florida"
+        zone_b:
+          jurisdiction_id: us-ny
+          zone_name: "New York"
+        compliance_domains:
+          - corporate
+          - securities
+          - banking
+          - licensing
+          - consumer_protection
+        trade_context: "FL-NY financial services and wealth management"
+        priority: high
+
+      - corridor_id: org.momentum.mez.corridor.us-ca--us-il
+        zone_a:
+          jurisdiction_id: us-ca
+          zone_name: "California"
+        zone_b:
+          jurisdiction_id: us-il
+          zone_name: "Illinois"
+        compliance_domains:
+          - corporate
+          - securities
+          - banking
+          - licensing
+          - consumer_protection
+        trade_context: "CA-IL technology and commodities commerce"
+        priority: medium
+
+      - corridor_id: org.momentum.mez.corridor.us-ca--us-fl
+        zone_a:
+          jurisdiction_id: us-ca
+          zone_name: "California"
+        zone_b:
+          jurisdiction_id: us-fl
+          zone_name: "Florida"
+        compliance_domains:
+          - corporate
+          - securities
+          - banking
+          - licensing
+          - consumer_protection
+        trade_context: "CA-FL cross-state technology and real estate"
+        priority: medium
+
+  # =========================================================================
+  # 3. Intra-federal corridors — China
+  # =========================================================================
+  intra_federal_cn:
+    description: >
+      Corridors between Chinese sub-national economic zones. These share
+      PRC federal compliance requirements but have zone-specific regulatory
+      frameworks (free trade zones, special economic zones, innovation zones).
+      Cross-zone data transfer and capital flow rules may differ.
+    corridors:
+
+      - corridor_id: org.momentum.mez.corridor.cn-shanghai--cn-shenzhen
+        zone_a:
+          jurisdiction_id: cn-shanghai
+          zone_name: "Shanghai Free Trade Zone"
+        zone_b:
+          jurisdiction_id: cn-shenzhen
+          zone_name: "Shenzhen Special Economic Zone"
+        compliance_domains:
+          - corporate
+          - securities
+          - banking
+          - trade
+          - data_privacy
+        trade_context: "Shanghai-Shenzhen dual exchange and technology transfer"
+        priority: high
+
+      - corridor_id: org.momentum.mez.corridor.cn-beijing--cn-shanghai
+        zone_a:
+          jurisdiction_id: cn-beijing
+          zone_name: "Beijing Financial Innovation Zone"
+        zone_b:
+          jurisdiction_id: cn-shanghai
+          zone_name: "Shanghai Free Trade Zone"
+        compliance_domains:
+          - corporate
+          - securities
+          - banking
+          - trade
+          - data_privacy
+        trade_context: "Beijing-Shanghai financial innovation and capital markets"
+        priority: high
+
+      - corridor_id: org.momentum.mez.corridor.cn-hainan--cn-shenzhen
+        zone_a:
+          jurisdiction_id: cn-hainan
+          zone_name: "Hainan Free Trade Port"
+        zone_b:
+          jurisdiction_id: cn-shenzhen
+          zone_name: "Shenzhen Special Economic Zone"
+        compliance_domains:
+          - corporate
+          - trade
+          - banking
+          - licensing
+        trade_context: "Hainan-Shenzhen free trade port and EZ integration"
+        priority: medium
+
+  # =========================================================================
+  # 4. Free zone to host economy corridors
+  # =========================================================================
+  free_zone_to_host:
+    description: >
+      Corridors between free zones and their host economies (emirate or
+      national level). These corridors govern the regulatory boundary
+      between the special-purpose free zone and the broader domestic
+      economy. Compliance domains focus on the regulatory delta between
+      the free zone's self-contained regime and the host jurisdiction's
+      requirements for cross-boundary transactions.
+    corridors:
+
+      - corridor_id: org.momentum.mez.corridor.ae-dubai--ae-dubai-difc
+        zone_a:
+          jurisdiction_id: ae-dubai
+          zone_name: "Dubai"
+        zone_b:
+          jurisdiction_id: ae-dubai-difc
+          zone_name: "Dubai International Financial Centre"
+        compliance_domains:
+          - corporate
+          - securities
+          - banking
+          - licensing
+          - consumer_protection
+        trade_context: "DIFC onshore-offshore boundary for Dubai entities"
+        priority: high
+
+      - corridor_id: org.momentum.mez.corridor.ae-abudhabi--ae-abudhabi-adgm
+        zone_a:
+          jurisdiction_id: ae-abudhabi
+          zone_name: "Abu Dhabi"
+        zone_b:
+          jurisdiction_id: ae-abudhabi-adgm
+          zone_name: "Abu Dhabi Global Market"
+        compliance_domains:
+          - corporate
+          - securities
+          - banking
+          - licensing
+          - consumer_protection
+        trade_context: "ADGM onshore-offshore boundary for Abu Dhabi entities"
+        priority: high
+
+      - corridor_id: org.momentum.mez.corridor.ae-dubai--ae-dubai-jafza
+        zone_a:
+          jurisdiction_id: ae-dubai
+          zone_name: "Dubai"
+        zone_b:
+          jurisdiction_id: ae-dubai-jafza
+          zone_name: "Jebel Ali Free Zone"
+        compliance_domains:
+          - corporate
+          - trade
+          - licensing
+          - tax
+        trade_context: "JAFZA onshore-offshore logistics and trade boundary"
+        priority: high
+
+      - corridor_id: org.momentum.mez.corridor.kz--kz-aifc
+        zone_a:
+          jurisdiction_id: kz
+          zone_name: "Kazakhstan"
+        zone_b:
+          jurisdiction_id: kz-aifc
+          zone_name: "Astana International Financial Centre"
+        compliance_domains:
+          - corporate
+          - securities
+          - banking
+          - licensing
+        trade_context: "AIFC onshore-offshore boundary for Kazakhstan entities"
+        priority: medium
+
+      - corridor_id: org.momentum.mez.corridor.qa--qa-qfc
+        zone_a:
+          jurisdiction_id: qa
+          zone_name: "Qatar"
+        zone_b:
+          jurisdiction_id: qa-qfc
+          zone_name: "Qatar Financial Centre"
+        compliance_domains:
+          - corporate
+          - securities
+          - banking
+          - licensing
+        trade_context: "QFC onshore-offshore boundary for Qatar entities"
+        priority: medium
+
+      - corridor_id: org.momentum.mez.corridor.tz--tz-zanzibar
+        zone_a:
+          jurisdiction_id: tz
+          zone_name: "Tanzania"
+        zone_b:
+          jurisdiction_id: tz-zanzibar
+          zone_name: "Zanzibar"
+        compliance_domains:
+          - corporate
+          - trade
+          - banking
+          - licensing
+          - tax
+        trade_context: "Tanzania mainland-Zanzibar semi-autonomous boundary"
+        priority: medium
+
+  # =========================================================================
+  # 5. Free zone to free zone corridors (UAE)
+  # =========================================================================
+  free_zone_to_free_zone:
+    description: >
+      Corridors between independent free zone authorities, typically within
+      the same host country but governed by distinct regulatory regimes.
+      These corridors enable inter-free-zone commerce without routing
+      through the host economy's onshore regime. Each free zone maintains
+      its own licensing, corporate governance, and (in the case of financial
+      free zones) securities/banking regulations.
+    corridors:
+
+      # --- Dubai financial/commodity free zone pairs ---
+
+      - corridor_id: org.momentum.mez.corridor.ae-dubai-difc--ae-dubai-dmcc
+        zone_a:
+          jurisdiction_id: ae-dubai-difc
+          zone_name: "Dubai International Financial Centre"
+        zone_b:
+          jurisdiction_id: ae-dubai-dmcc
+          zone_name: "Dubai Multi Commodities Centre"
+        compliance_domains:
+          - corporate
+          - securities
+          - licensing
+          - trade
+        trade_context: "DIFC-DMCC financial services and commodities trading"
+        priority: high
+
+      - corridor_id: org.momentum.mez.corridor.ae-dubai-difc--ae-dubai-jafza
+        zone_a:
+          jurisdiction_id: ae-dubai-difc
+          zone_name: "Dubai International Financial Centre"
+        zone_b:
+          jurisdiction_id: ae-dubai-jafza
+          zone_name: "Jebel Ali Free Zone"
+        compliance_domains:
+          - corporate
+          - trade
+          - licensing
+        trade_context: "DIFC-JAFZA trade finance and logistics integration"
+        priority: high
+
+      - corridor_id: org.momentum.mez.corridor.ae-dubai-dmcc--ae-dubai-jafza
+        zone_a:
+          jurisdiction_id: ae-dubai-dmcc
+          zone_name: "Dubai Multi Commodities Centre"
+        zone_b:
+          jurisdiction_id: ae-dubai-jafza
+          zone_name: "Jebel Ali Free Zone"
+        compliance_domains:
+          - corporate
+          - trade
+          - licensing
+        trade_context: "DMCC-JAFZA commodities logistics and warehousing"
+        priority: high
+
+      # --- Cross-emirate free zone pairs ---
+
+      - corridor_id: org.momentum.mez.corridor.ae-abudhabi-adgm--ae-dubai-difc
+        zone_a:
+          jurisdiction_id: ae-abudhabi-adgm
+          zone_name: "Abu Dhabi Global Market"
+        zone_b:
+          jurisdiction_id: ae-dubai-difc
+          zone_name: "Dubai International Financial Centre"
+        compliance_domains:
+          - corporate
+          - securities
+          - banking
+          - licensing
+        trade_context: "ADGM-DIFC dual financial centre passporting"
+        priority: critical
+
+      - corridor_id: org.momentum.mez.corridor.ae-abudhabi-adgm--ae-dubai-dmcc
+        zone_a:
+          jurisdiction_id: ae-abudhabi-adgm
+          zone_name: "Abu Dhabi Global Market"
+        zone_b:
+          jurisdiction_id: ae-dubai-dmcc
+          zone_name: "Dubai Multi Commodities Centre"
+        compliance_domains:
+          - corporate
+          - securities
+          - licensing
+          - trade
+        trade_context: "ADGM-DMCC financial services and commodities"
+        priority: medium
+
+      # --- Technology and specialist free zone pairs ---
+
+      - corridor_id: org.momentum.mez.corridor.ae-dubai-dic--ae-dubai-dso
+        zone_a:
+          jurisdiction_id: ae-dubai-dic
+          zone_name: "Dubai Internet City / Media City"
+        zone_b:
+          jurisdiction_id: ae-dubai-dso
+          zone_name: "Dubai Silicon Oasis"
+        compliance_domains:
+          - corporate
+          - licensing
+          - data_privacy
+        trade_context: "DIC-DSO technology company inter-zone operations"
+        priority: medium
+
+      - corridor_id: org.momentum.mez.corridor.ae-dubai-dwtc--ae-dubai-ifza
+        zone_a:
+          jurisdiction_id: ae-dubai-dwtc
+          zone_name: "Dubai World Trade Centre Free Zone"
+        zone_b:
+          jurisdiction_id: ae-dubai-ifza
+          zone_name: "International Free Zone Authority"
+        compliance_domains:
+          - corporate
+          - trade
+          - licensing
+        trade_context: "DWTC-IFZA trade events and business formation"
+        priority: low
+
+      - corridor_id: org.momentum.mez.corridor.ae-abudhabi-masdar--ae-dubai-dso
+        zone_a:
+          jurisdiction_id: ae-abudhabi-masdar
+          zone_name: "Masdar City Free Zone"
+        zone_b:
+          jurisdiction_id: ae-dubai-dso
+          zone_name: "Dubai Silicon Oasis"
+        compliance_domains:
+          - corporate
+          - licensing
+          - environmental
+        trade_context: "Masdar-DSO clean technology and innovation corridor"
+        priority: low
+
+# ---------------------------------------------------------------------------
+# Network Statistics
+# ---------------------------------------------------------------------------
+
+network_stats:
+  # Total zones in the network (excluding _starter template)
+  total_zones: 99
+
+  # N*(N-1)/2 = 99*98/2
+  total_possible_corridors: 4851
+
+  # Zone breakdown by jurisdiction family
+  zone_breakdown:
+    us_states_and_territories: 56
+    uae_zones: 16          # ae + ae-abudhabi + ae-dubai + 13 free zones
+    china_zones: 6          # cn + 5 sub-national
+    kazakhstan_zones: 3     # kz + kz-aifc + kz-alatau
+    qatar_zones: 2          # qa + qa-qfc
+    tanzania_zones: 2       # tz + tz-zanzibar
+    standalone_sovereigns: 14  # br, eg, hk, hn-prospera, id, ie, ke, ky, pk-sifc, pt, sc, sg, vg, za
+
+  # Corridor counts by family type (theoretical maximum for each category)
+  #
+  # These are computed from the zone breakdown above. A corridor is
+  # classified by the relationship between its two endpoints:
+  #
+  #   cross_border:          corridors where zone_a and zone_b belong to
+  #                          different sovereign jurisdictions (different
+  #                          country-level jurisdiction_stack roots)
+  #
+  #   intra_federal_us:      both endpoints are us-* zones
+  #                          56*55/2 = 1540
+  #
+  #   intra_federal_cn:      both endpoints are cn or cn-* zones
+  #                          6*5/2 = 15
+  #
+  #   intra_uae:             both endpoints are ae or ae-* zones
+  #                          (includes free_zone_to_host, free_zone_to_free_zone,
+  #                           and emirate-to-emirate corridors)
+  #                          16*15/2 = 120
+  #
+  #   intra_kazakhstan:      both endpoints are kz or kz-* zones
+  #                          3*2/2 = 3
+  #
+  #   intra_qatar:           both endpoints are qa or qa-* zones
+  #                          2*1/2 = 1
+  #
+  #   intra_tanzania:        both endpoints are tz or tz-* zones
+  #                          2*1/2 = 1
+  #
+  #   cross_border total:    4851 - 1540 - 15 - 120 - 3 - 1 - 1 = 3171
+
+  corridor_family_counts:
+    cross_border: 3171
+    intra_federal_us: 1540
+    intra_federal_cn: 15
+    intra_uae: 120
+    intra_kazakhstan: 3
+    intra_qatar: 1
+    intra_tanzania: 1
+
+  # Representative corridors enumerated in this registry
+  representative_corridors_listed: 43
+
+# ---------------------------------------------------------------------------
+# Compliance Domain Reference
+# ---------------------------------------------------------------------------
+#
+# The compliance_domains field on each corridor references domains from the
+# MEZ compliance tensor (mez-tensor crate, 20 base domains). Common domains:
+#
+#   aml                 - Anti-money laundering
+#   kyc                 - Know your customer / CDD / EDD
+#   sanctions           - Sanctions screening (OFAC, UN, EU, local)
+#   trade               - Trade compliance, export controls, customs
+#   corporate           - Corporate governance, formation, reporting
+#   securities          - Securities regulation, prospectus, disclosure
+#   banking             - Banking regulation, prudential, capital adequacy
+#   licensing           - Business / activity licensing requirements
+#   tax                 - Tax compliance, withholding, reporting
+#   data_privacy        - Data protection, cross-border data transfer
+#   consumer_protection - Consumer protection, disclosure, fair dealing
+#   environmental       - Environmental compliance, ESG reporting
+#
+# Cross-border corridors typically require: aml, kyc, sanctions, trade
+# Intra-federal corridors typically require: corporate, securities, banking, licensing
+# Free zone corridors focus on: corporate, licensing, trade
+
+# ---------------------------------------------------------------------------
+# Corridor Lifecycle
+# ---------------------------------------------------------------------------
+#
+# Each corridor progresses through the lifecycle defined in
+# governance/corridor.lifecycle.state-machine.v2.json:
+#
+#   proposed -> approved -> active -> suspended|terminated
+#
+# Corridor activation requires:
+#   1. Both endpoint zones deployed and healthy
+#   2. Compliance tensor fully evaluated for all listed domains
+#   3. Pack trilogy content available for both jurisdictions
+#   4. Inter-zone corridor protocol handshake completed (P0-CORRIDOR-NET-001)
+#   5. Trust anchors exchanged and watcher attestations bootstrapped
+#
+# See spec/40-corridors.md for receipt chain and checkpoint requirements.

@@ -37,6 +37,7 @@ pub mod licensepack;
 pub mod parser;
 pub mod regpack;
 pub mod validation;
+pub mod zone_manifest;
 
 // Re-export primary types.
 pub use composition::ZoneComposition;
@@ -45,3 +46,4 @@ pub use lawpack::Lawpack;
 pub use licensepack::Licensepack;
 pub use regpack::Regpack;
 pub use validation::PackValidationResult;
+pub use zone_manifest::{NetworkTopology, ZoneManifest};

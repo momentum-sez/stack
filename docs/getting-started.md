@@ -1,61 +1,49 @@
 # Getting started
 
-Build the workspace, run tests, start the API server, use the CLI.
+Build, test, run the API server, use the CLI.
 
 ---
 
 ## Prerequisites
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| **Rust** | 1.75+ | Workspace: 16 crates, API server, CLI |
-| **Git** | 2.30+ | Clone and contribute |
-
-Optional for deployment:
-
-| Tool | Version | Purpose |
-|------|---------|---------|
-| **Docker** | 24+ | Container deployment |
-| **kubectl** | 1.28+ | Kubernetes deployment |
-| **Terraform** | 1.5+ | AWS infrastructure provisioning |
+| Tool | Version | Required |
+|------|---------|----------|
+| Rust | 1.75+ | Yes |
+| Git | 2.30+ | Yes |
+| Docker | 24+ | For containerized deployment |
+| kubectl | 1.28+ | For Kubernetes deployment |
+| Terraform | 1.5+ | For AWS provisioning |
 
 ---
 
-## Clone and build
+## Build and test
 
 ```bash
 git clone https://github.com/momentum-ez/stack.git
 cd stack/mez
 
-# Build all 16 crates
-cargo build --workspace
-
-# Run the full test suite (2,580+ tests)
-cargo test --workspace
-
-# Lint with zero warnings
-cargo clippy --workspace -- -D warnings
-
-# Generate rustdoc
-cargo doc --workspace --no-deps --open
+cargo build --workspace                     # build all 16 crates
+cargo test  --workspace                     # run 4,073 tests
+cargo clippy --workspace -- -D warnings     # zero warnings policy
+cargo doc --workspace --no-deps --open      # generate rustdoc
 ```
 
 ---
 
 ## Repository layout
 
-| Directory | Purpose |
-|-----------|---------|
-| `mez/` | **Rust workspace** -- 16 crates implementing the protocol |
-| `modules/` | 146 zone modules across 16 families |
+| Directory | Contents |
+|-----------|----------|
+| `mez/` | Rust workspace — 16 crates, 151K lines |
+| `modules/` | 323 zone modules across 16 families |
 | `schemas/` | 116 JSON Schema files (Draft 2020-12) |
-| `spec/` | 25 normative specification chapters |
+| `spec/` | 24 normative specification chapters |
 | `apis/` | OpenAPI 3.x specifications |
 | `deploy/` | Docker, Kubernetes, Terraform manifests |
 | `contexts/` | Zone composition contexts |
 | `jurisdictions/` | Zone configuration files |
-| `dist/artifacts/` | CAS-indexed built artifacts |
-| `governance/` | Governance state machines |
+| `dist/artifacts/` | Content-addressed built artifacts |
+| `governance/` | Lifecycle state machines, changelog |
 | `docs/` | This documentation |
 
 ---
@@ -64,27 +52,30 @@ cargo doc --workspace --no-deps --open
 
 ### Zones
 
-A **zone** is a deployable Economic Zone defined by a `zone.yaml` file. It selects which jurisdictions provide which legal, regulatory, and financial capabilities.
+A **zone** is a deployable Economic Zone defined by a `zone.yaml` file. It selects which jurisdictions provide legal, regulatory, and financial capabilities, and composes modules to generate the complete operational substrate.
 
 ### Modules
 
-**Modules** are the building blocks. Each module implements one capability (entity formation, AML screening, SWIFT settlement, etc.). 146 modules across 16 families.
+**Modules** are building blocks. Each implements one capability — entity formation, AML screening, SWIFT settlement, license issuance, etc. 323 modules across 16 families: legal, corporate, regulatory, licensing, identity, financial, capital markets, trade, tax, corridors, governance, arbitration, operations, smart assets, mass primitives, and template.
 
 ### Corridors
 
-**Corridors** are bilateral trade channels between jurisdictions. They manage settlement, receipt chains (MMR-backed), fork resolution, and optional L1 anchoring.
+**Corridors** are bilateral trade channels between jurisdictions. They manage receipt chains (MMR-backed), fork detection and resolution, settlement netting, and optional L1 anchoring.
 
 ### Compliance Tensor
 
-The **Compliance Tensor** evaluates an entity's compliance state across 20 regulatory domains (AML, KYC, Sanctions, Tax, Securities, etc.) per jurisdiction. It produces a 5-state lattice value per domain: `Compliant`, `Pending`, `NonCompliant`, `Exempt`, `NotApplicable`.
+The **Compliance Tensor** evaluates an entity's regulatory state across 20 domains (AML, KYC, Sanctions, Tax, Securities, Corporate, Custody, DataPrivacy, Licensing, Banking, Payments, Clearing, Settlement, DigitalAssets, Employment, Immigration, IP, ConsumerProtection, Arbitration, Trade) per jurisdiction, producing a 5-state lattice value per domain: `Compliant`, `Pending`, `NonCompliant`, `Exempt`, `NotApplicable`.
 
-### Smart Assets
+### Pack Trilogy
 
-A **Smart Asset** is an asset with embedded compliance intelligence. It carries a compliance tensor, can identify missing attestations, and migrates across jurisdictions via the compliance manifold.
+Three content-addressed configuration packs define jurisdictional rules:
+- **Lawpacks** — Akoma Ntoso XML statutes (enabling acts, tax law, corporate law)
+- **Regpacks** — sanctions lists, reporting obligations, compliance calendars
+- **Licensepacks** — license types, issuing authorities, validity periods
 
 ### Mass APIs
 
-The five **Mass primitives** (Entities, Ownership, Fiscal, Identity, Consent) are live API services operated by Mass. The EZ Stack orchestrates these primitives through the `mez-mass-client` crate -- it never stores primitive data directly.
+The five **Mass primitives** (Entities, Ownership, Fiscal, Identity, Consent) are live API services operated by [Mass](https://mass.inc). The EZ Stack orchestrates them through `mez-mass-client` — the sole authorized gateway.
 
 ---
 
@@ -96,7 +87,7 @@ The five **Mass primitives** (Entities, Ownership, Fiscal, Identity, Consent) ar
 cargo run -p mez-cli -- validate --all-modules
 ```
 
-Validates all 146 module YAML descriptors against their JSON schemas and verifies artifact references.
+Validates all 323 module YAML descriptors against their JSON Schemas and verifies artifact references.
 
 ### 2. Validate a zone
 
@@ -110,9 +101,9 @@ cargo run -p mez-cli -- validate jurisdictions/_starter/zone.yaml
 cargo run -p mez-cli -- lock jurisdictions/_starter/zone.yaml
 ```
 
-The lockfile (`stack.lock`) contains cryptographic hashes of every module, ensuring reproducible deployments.
+The lockfile (`stack.lock`) pins every module, artifact, and dependency by SHA-256 digest for reproducible deployments.
 
-### 4. Check lockfile integrity
+### 4. Verify lockfile integrity
 
 ```bash
 cargo run -p mez-cli -- lock jurisdictions/_starter/zone.yaml --check
@@ -126,7 +117,7 @@ cargo run -p mez-api
 # OpenAPI spec at http://localhost:3000/openapi.json
 ```
 
-The API server exposes corridor operations, smart asset management, compliance evaluation, settlement, VC issuance, agentic policy triggers, and regulator queries. Mass primitive routes (`/v1/entities/*`, `/v1/fiscal/*`, etc.) proxy through to the live Mass APIs via `mez-mass-client`.
+The API server exposes corridor operations, smart asset management, compliance evaluation, settlement, VC issuance, agentic policy triggers, and regulator queries. Mass primitive routes (`/v1/entities/*`, `/v1/fiscal/*`, etc.) proxy through `mez-mass-client`.
 
 ### 6. Generate Ed25519 keys
 
@@ -135,25 +126,21 @@ cargo run -p mez-cli -- vc keygen --output keys/ --prefix dev
 # Creates keys/dev.priv.json and keys/dev.pub.json
 ```
 
-### 7. Sign a document
+### 7. Sign and verify documents
 
 ```bash
 cargo run -p mez-cli -- vc sign --key keys/dev.priv.json document.json
+cargo run -p mez-cli -- vc verify --pubkey keys/dev.pub.json document.json --signature abc...
 ```
 
 ### 8. Run individual crate tests
 
 ```bash
-# Run tests for a specific crate
 cargo test -p mez-corridor
 cargo test -p mez-tensor
 cargo test -p mez-agentic
-
-# Run integration tests
 cargo test -p mez-integration-tests
-
-# Run with output
-cargo test -p mez-crypto -- --nocapture
+cargo test -p mez-crypto -- --nocapture     # with output
 ```
 
 ---
@@ -165,8 +152,8 @@ cargo test -p mez-crypto -- --nocapture
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `MEZ_PORT` | `3000` | HTTP listen port |
-| `MEZ_AUTH_TOKEN` | *(none)* | Bearer token for authenticated routes |
-| `MASS_API_TOKEN` | *(none)* | Authentication token for Mass APIs |
+| `MEZ_AUTH_TOKEN` | *(required)* | Bearer token for authenticated routes |
+| `MASS_API_TOKEN` | *(required)* | Authentication token for Mass APIs |
 | `MASS_ORG_INFO_URL` | `https://organization-info.api.mass.inc` | Mass Entities endpoint |
 | `MASS_TREASURY_INFO_URL` | `https://treasury-info.api.mass.inc` | Mass Fiscal endpoint |
 | `MASS_CONSENT_INFO_URL` | `https://consent.api.mass.inc` | Mass Consent endpoint |
@@ -183,10 +170,10 @@ cd deploy/docker
 docker-compose up -d
 
 # Services:
-#   mez-api    → port 8080
-#   postgres    → port 5432
-#   prometheus  → port 9090
-#   grafana     → port 3000
+#   mez-api     -> port 8080
+#   postgres    -> port 5432
+#   prometheus  -> port 9090
+#   grafana     -> port 3000
 ```
 
 ---
@@ -195,11 +182,10 @@ docker-compose up -d
 
 | Topic | Document |
 |-------|----------|
-| Architecture deep dive | [docs/architecture/OVERVIEW.md](./architecture/OVERVIEW.md) |
-| Per-crate API reference | [docs/architecture/CRATE-REFERENCE.md](./architecture/CRATE-REFERENCE.md) |
-| Security model | [docs/architecture/SECURITY-MODEL.md](./architecture/SECURITY-MODEL.md) |
-| Zone deployment | [docs/operators/ZONE-DEPLOYMENT-GUIDE.md](./operators/ZONE-DEPLOYMENT-GUIDE.md) |
-| Corridor formation | [docs/operators/CORRIDOR-FORMATION-GUIDE.md](./operators/CORRIDOR-FORMATION-GUIDE.md) |
-| Module authoring | [docs/authoring/modules.md](./authoring/modules.md) |
-| Error codes | [docs/ERRORS.md](./ERRORS.md) |
-| Spec-to-code mapping | [docs/traceability-matrix.md](./traceability-matrix.md) |
+| System design | [Architecture Overview](./architecture/OVERVIEW.md) |
+| Per-crate API | [Crate Reference](./architecture/CRATE-REFERENCE.md) |
+| Security model | [Security Model](./architecture/SECURITY-MODEL.md) |
+| Mass integration | [Mass Integration](./architecture/MASS-INTEGRATION.md) |
+| Module authoring | [Module Authoring](./authoring/modules.md) |
+| Error codes | [Error Taxonomy](./ERRORS.md) |
+| Spec-to-code mapping | [Traceability Matrix](./traceability-matrix.md) |

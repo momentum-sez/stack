@@ -1,0 +1,69 @@
+# Profile: Atlantic Fintech Hub (Synthetic)
+#
+# Synthetic zone profile composed from regulatory primitives.
+# Each regulatory domain is sourced from a different jurisdiction.
+#
+# Layers:
+#   corporate_formation <- us-de (DGCL Title 8)
+#   civic_code <- us-ny (GOL)
+#   digital_assets <- ae-abudhabi-adgm (FSMR 2015)
+#   arbitration <- hk (Cap 609)
+#   tax <- sg (ITA)
+#   aml_cft <- ae (FDL 20/2018)
+
+profile_id: org.momentum.mez.profile.synthetic-synth-atlantic-fintech
+profile_name: Atlantic Fintech Hub
+version: "0.4.44"
+zone_type: synthetic
+
+composition:
+  - domain: corporate_formation
+    source: us-de
+  - domain: civic_code
+    source: us-ny
+  - domain: digital_assets
+    source: ae-abudhabi-adgm
+  - domain: arbitration
+    source: hk
+  - domain: tax
+    source: sg
+  - domain: aml_cft
+    source: ae
+
+modules:
+  - id: org.momentum.mez.legal.core
+    variant: synthetic-composed
+  - id: org.momentum.mez.legal.commercial-code
+    variant: us-de-dgcl
+  - id: org.momentum.mez.legal.civil-code
+    variant: us-ny-gol
+  - id: org.momentum.mez.reg.aml-cft
+    variant: risk-based
+    parameters:
+      kyc_tier: 3
+      edd_threshold_usd: 10000
+      law_reference: "UAE Federal Decree-Law No. 20/2018"
+  - id: org.momentum.mez.reg.digital-assets
+    variant: adgm-fsmr
+    parameters:
+      framework: "FSMR 2015"
+      regulator: "ADGM FSRA"
+  - id: org.momentum.mez.legal.dispute-resolution
+    variant: hk-arbitration
+    parameters:
+      framework: "Arbitration Ordinance Cap 609"
+      institution: "HKIAC"
+  - id: org.momentum.mez.tax
+    variant: sg-ita
+    parameters:
+      corporate_rate_percent: 17
+      gst_rate_percent: 9
+      authority: "IRAS"
+  - id: org.momentum.mez.fin.payments-adapter
+    variant: iso20022-mapping
+  - id: org.momentum.mez.corridor.swift
+    variant: iso20022-cross-border
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin

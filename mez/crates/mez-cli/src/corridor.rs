@@ -22,8 +22,10 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
-use clap::{Args, Subcommand};
+use clap::{Args, Subcommand, ValueEnum};
 
+use mez_corridor::registry::{CorridorRegistry, ZoneEntry};
+use mez_corridor::composition::ZoneType;
 use mez_state::{DynCorridorData, DynCorridorState};
 
 /// Arguments for the `mez corridor` subcommand.
@@ -117,6 +119,30 @@ pub enum CorridorCommand {
 
     /// List all known corridors.
     List,
+
+    /// Generate corridor mesh topology from zone manifests.
+    ///
+    /// Reads zone.yaml files, registers them in a corridor registry,
+    /// generates all N*(N-1)/2 pairwise corridors, and outputs the
+    /// mesh in DOT (Graphviz) or JSON (adjacency) format.
+    Mesh {
+        /// Comma-separated list of zone jurisdiction IDs.
+        /// Zones are resolved from `jurisdictions/<id>/zone.yaml`.
+        #[arg(long)]
+        zones: String,
+        /// Output format for the mesh topology.
+        #[arg(long, value_enum, default_value = "dot")]
+        format: MeshFormat,
+    },
+}
+
+/// Output format for the corridor mesh command.
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum MeshFormat {
+    /// Graphviz DOT graph (renderable with `dot -Tsvg`).
+    Dot,
+    /// JSON adjacency representation.
+    Json,
 }
 
 /// Execute the corridor subcommand.
@@ -170,6 +196,8 @@ pub fn run_corridor(args: &CorridorArgs, repo_root: &Path) -> Result<u8> {
         CorridorCommand::Status { id } => cmd_status(&state_dir, id),
 
         CorridorCommand::List => cmd_list(&state_dir),
+
+        CorridorCommand::Mesh { zones, format } => cmd_mesh(repo_root, zones, *format),
     }
 }
 
@@ -418,6 +446,110 @@ fn cmd_list(state_dir: &Path) -> Result<u8> {
         println!("Corridors ({count}):");
         for (name, state) in &entries {
             println!("  {name}: {state}");
+        }
+    }
+
+    Ok(0)
+}
+
+/// Parse a zone.yaml file and extract the fields needed for corridor registration.
+fn parse_zone_yaml(repo_root: &Path, jurisdiction_id: &str) -> Result<ZoneEntry> {
+    let zone_path = repo_root
+        .join("jurisdictions")
+        .join(jurisdiction_id)
+        .join("zone.yaml");
+    let content = std::fs::read_to_string(&zone_path)
+        .with_context(|| format!("failed to read zone manifest: {}", zone_path.display()))?;
+    let yaml: serde_yaml::Value =
+        serde_yaml::from_str(&content).with_context(|| format!("invalid YAML in {}", zone_path.display()))?;
+
+    let zone_id = yaml
+        .get("zone_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let jid = yaml
+        .get("jurisdiction_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or(jurisdiction_id)
+        .to_string();
+    let profile_id = yaml
+        .get("profile")
+        .and_then(|p| p.get("profile_id"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    // Derive country code from the first component of jurisdiction_id.
+    let country_code = jid
+        .split('-')
+        .next()
+        .unwrap_or("")
+        .to_string();
+
+    // A zone is a free zone if its jurisdiction_stack has more than 2 entries
+    // (country > region > free-zone) or its profile indicates a free zone.
+    let stack_len = yaml
+        .get("jurisdiction_stack")
+        .and_then(|v| v.as_sequence())
+        .map(|s| s.len())
+        .unwrap_or(1);
+    let is_free_zone = stack_len > 2
+        || profile_id.contains("free-zone")
+        || profile_id.contains("financial-center");
+
+    // Detect zone type: check for zone_type field or composition block.
+    let zone_type = if yaml.get("zone_type").and_then(|v| v.as_str()) == Some("synthetic")
+        || yaml.get("composition").is_some()
+    {
+        ZoneType::Synthetic
+    } else {
+        ZoneType::Natural
+    };
+
+    Ok(ZoneEntry {
+        zone_id,
+        jurisdiction_id: jid,
+        country_code,
+        is_free_zone,
+        profile_id,
+        zone_type,
+    })
+}
+
+/// Generate mesh topology from zone manifests and output in the requested format.
+fn cmd_mesh(repo_root: &Path, zones_csv: &str, format: MeshFormat) -> Result<u8> {
+    let zone_ids: Vec<&str> = zones_csv.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+    if zone_ids.len() < 2 {
+        bail!("mesh requires at least 2 zones (got {})", zone_ids.len());
+    }
+
+    let mut registry = CorridorRegistry::new();
+    for jid in &zone_ids {
+        let entry = parse_zone_yaml(repo_root, jid)?;
+        registry.register_zone(entry);
+    }
+    registry.generate_corridors();
+
+    let stats = registry.corridor_mesh_stats();
+    let total_corridors: usize = stats.values().sum();
+    eprintln!(
+        "Mesh: {} zones, {} corridors ({} pairs)",
+        zone_ids.len(),
+        total_corridors,
+        zone_ids.len() * (zone_ids.len() - 1) / 2,
+    );
+    for (ctype, count) in &stats {
+        eprintln!("  {}: {}", ctype, count);
+    }
+
+    match format {
+        MeshFormat::Dot => {
+            println!("{}", registry.to_dot());
+        }
+        MeshFormat::Json => {
+            let json = registry.to_adjacency_json();
+            println!("{}", serde_json::to_string_pretty(&json)?);
         }
     }
 
@@ -960,5 +1092,129 @@ mod tests {
         assert!(err_msg.contains("DRAFT"));
         assert!(err_msg.contains("HALTED"));
         assert!(err_msg.contains("invalid transition"));
+    }
+
+    // ── Mesh command tests ──────────────────────────────────────────
+
+    /// Create a minimal zone.yaml for testing mesh generation.
+    fn write_test_zone(root: &Path, jid: &str, zone_id: &str, profile: &str, stack: &[&str]) {
+        let dir = root.join("jurisdictions").join(jid);
+        std::fs::create_dir_all(&dir).unwrap();
+        let stack_yaml: String = stack.iter().map(|s| format!("  - {s}\n")).collect();
+        let content = format!(
+            "zone_id: {zone_id}\n\
+             jurisdiction_id: {jid}\n\
+             zone_name: Test Zone {jid}\n\
+             profile:\n\
+             \x20 profile_id: {profile}\n\
+             \x20 version: 0.4.44\n\
+             jurisdiction_stack:\n\
+             {stack_yaml}\
+             lawpack_domains:\n\
+             \x20 - civil\n",
+        );
+        std::fs::write(dir.join("zone.yaml"), content).unwrap();
+    }
+
+    #[test]
+    fn mesh_dot_output_contains_graph() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        // Also need schemas/ and modules/ for repo root detection, but cmd_mesh takes explicit root.
+        write_test_zone(root, "pk-sifc", "org.momentum.mez.zone.pk.sifc", "org.momentum.mez.profile.financial-center", &["pk", "pk-sifc"]);
+        write_test_zone(root, "ae-dubai-difc", "org.momentum.mez.zone.ae.dubai.difc", "org.momentum.mez.profile.financial-center", &["ae", "ae-dubai", "ae-dubai-difc"]);
+        write_test_zone(root, "sg", "org.momentum.mez.zone.sg", "org.momentum.mez.profile.sovereign-govos", &["sg"]);
+
+        let result = cmd_mesh(root, "pk-sifc,ae-dubai-difc,sg", MeshFormat::Dot);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn mesh_json_output_contains_zones() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        write_test_zone(root, "pk-sifc", "org.momentum.mez.zone.pk.sifc", "org.momentum.mez.profile.sovereign-govos", &["pk", "pk-sifc"]);
+        write_test_zone(root, "hk", "org.momentum.mez.zone.hk", "org.momentum.mez.profile.sovereign-govos", &["hk"]);
+
+        let result = cmd_mesh(root, "pk-sifc,hk", MeshFormat::Json);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn mesh_requires_at_least_two_zones() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        write_test_zone(root, "pk-sifc", "org.momentum.mez.zone.pk.sifc", "org.momentum.mez.profile.sovereign-govos", &["pk", "pk-sifc"]);
+
+        let result = cmd_mesh(root, "pk-sifc", MeshFormat::Dot);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("at least 2 zones"));
+    }
+
+    #[test]
+    fn mesh_detects_synthetic_zone() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        write_test_zone(root, "pk-sifc", "org.momentum.mez.zone.pk.sifc", "org.momentum.mez.profile.sovereign-govos", &["pk", "pk-sifc"]);
+
+        // Write a synthetic zone with composition block.
+        let synth_dir = root.join("jurisdictions").join("synth-test");
+        std::fs::create_dir_all(&synth_dir).unwrap();
+        std::fs::write(
+            synth_dir.join("zone.yaml"),
+            "zone_id: org.momentum.mez.zone.synth.test\n\
+             jurisdiction_id: synth-test\n\
+             zone_name: Synthetic Test\n\
+             zone_type: synthetic\n\
+             profile:\n\
+             \x20 profile_id: org.momentum.mez.profile.synthetic\n\
+             \x20 version: 0.4.44\n\
+             jurisdiction_stack:\n\
+             \x20 - synth-test\n\
+             composition:\n\
+             \x20 layers: []\n\
+             lawpack_domains:\n\
+             \x20 - civil\n",
+        )
+        .unwrap();
+
+        let result = cmd_mesh(root, "pk-sifc,synth-test", MeshFormat::Dot);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn mesh_missing_zone_returns_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        write_test_zone(root, "pk-sifc", "org.momentum.mez.zone.pk.sifc", "org.momentum.mez.profile.sovereign-govos", &["pk", "pk-sifc"]);
+
+        let result = cmd_mesh(root, "pk-sifc,nonexistent-zone", MeshFormat::Dot);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_zone_yaml_extracts_free_zone() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        write_test_zone(root, "ae-dubai-difc", "org.momentum.mez.zone.ae.dubai.difc", "org.momentum.mez.profile.financial-center", &["ae", "ae-dubai", "ae-dubai-difc"]);
+
+        let entry = parse_zone_yaml(root, "ae-dubai-difc").unwrap();
+        assert_eq!(entry.country_code, "ae");
+        assert!(entry.is_free_zone); // 3-level stack → free zone
+        assert_eq!(entry.zone_type, ZoneType::Natural);
+    }
+
+    #[test]
+    fn parse_zone_yaml_non_free_zone() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        write_test_zone(root, "sg", "org.momentum.mez.zone.sg", "org.momentum.mez.profile.sovereign-govos", &["sg"]);
+
+        let entry = parse_zone_yaml(root, "sg").unwrap();
+        assert_eq!(entry.country_code, "sg");
+        assert!(!entry.is_free_zone); // 1-level stack
+        assert_eq!(entry.zone_type, ZoneType::Natural);
     }
 }

@@ -34,6 +34,7 @@
 
 pub mod anchor;
 pub mod bridge;
+pub mod composition;
 pub mod fork;
 pub mod migration;
 pub mod netting;
@@ -69,6 +70,10 @@ pub use network::{
     CorridorAcceptance, CorridorNetworkConfig, CorridorPeer, CorridorProposal, CorridorRejection,
     InboundAttestation, InboundReceipt, InboundReceiptResult, NetworkError, PeerEndpoint,
     PeerRegistry, PeerStatus, validate_inbound_receipt, validate_proposal,
+};
+pub use composition::{
+    CompositionError, RegulatoryDomain, RegulatoryLayer, ZoneComposition, ZoneType,
+    validate_composition,
 };
 pub use registry::{
     CorridorDefinition, CorridorRegistry, CorridorType, ZoneEntry, classify_corridor,

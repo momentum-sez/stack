@@ -1,8 +1,18 @@
+# Zone Manifest: UAE Federal
+#
+# Sovereign federal-level zone for the United Arab Emirates.
+# Federal regulators: CBUAE (monetary), SCA (securities), UAE FIU (AML/CFT).
+# All emirate and free zone jurisdictions inherit from this federal baseline.
+#
+# jurisdiction_stack: ae
+#   - ae: UAE federal laws (AML/CFT, VAT, Commercial Companies Law, FCTL)
+
 zone_id: org.momentum.mez.zone.ae
 jurisdiction_id: ae
 zone_name: UAE Federal
+
 profile:
-  profile_id: org.momentum.mez.profile.sovereign-nation
+  profile_id: org.momentum.mez.profile.sovereign-govos-ae
   version: 0.4.44
 
 jurisdiction_stack:
@@ -12,16 +22,54 @@ lawpack_domains:
   - civil
   - financial
 
-overlays: []
-params_overrides: {}
+licensepack_domains:
+  - financial
+  - corporate
+
+licensepack_refresh_policy:
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+  financial:
+    frequency: hourly
+    max_staleness_hours: 4
+
+regpacks:
+  - domain: financial
+    jurisdiction_id: ae
+    regpack_digest_sha256: "5ce776c2d59b4fd9ec1f6bdaea7317550fd0b7d1792be86a475b4db6602a685b"
+    as_of_date: 2026-01-15
+  - domain: sanctions
+    jurisdiction_id: ae
+    regpack_digest_sha256: "34bb8fcb760935931216ab810fb3e66caa6980125f7e88f588eed8a0747509c0"
+    as_of_date: 2026-01-15
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+  - consumer_protection
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
 
+national_adapters:
+  ica_emirates_id:
+    enabled: false
+    endpoint: ${ICA_EMIRATES_ID_URL:-}
+  fta:
+    enabled: false
+    endpoint: ${FTA_URL:-}
+
 trust_anchors: []
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

@@ -29,6 +29,8 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::composition::{ZoneComposition, ZoneType};
+
 // ---------------------------------------------------------------------------
 // Zone Entry
 // ---------------------------------------------------------------------------
@@ -51,6 +53,10 @@ pub struct ZoneEntry {
     pub is_free_zone: bool,
     /// Profile identifier for this zone's configuration.
     pub profile_id: String,
+    /// Whether this zone is natural (single jurisdiction) or synthetic (composed).
+    /// Defaults to [`Natural`](ZoneType::Natural) for backward compatibility.
+    #[serde(default)]
+    pub zone_type: ZoneType,
 }
 
 // ---------------------------------------------------------------------------
@@ -58,7 +64,7 @@ pub struct ZoneEntry {
 // ---------------------------------------------------------------------------
 
 /// Classification of a corridor based on the relationship between its two zones.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CorridorType {
     /// Zones are in different countries (e.g., pk-sifc <-> ae-dubai-difc).
@@ -128,6 +134,14 @@ pub struct CorridorDefinition {
 /// 3. Same country, exactly one free zone -> `FreeZoneToHost`
 /// 4. Same country, neither free zone -> `IntraFederal`
 pub fn classify_corridor(a: &ZoneEntry, b: &ZoneEntry) -> CorridorType {
+    // Rule 0: synthetic-to-anything corridors classify as CrossBorder.
+    // This is the conservative choice — applies the maximum compliance domain
+    // set (6 domains), ensuring synthetic zones never accidentally get the
+    // reduced compliance surface of IntraFederal.
+    if a.zone_type == ZoneType::Synthetic || b.zone_type == ZoneType::Synthetic {
+        return CorridorType::CrossBorder;
+    }
+
     // Rule 1: both free zones (regardless of country).
     if a.is_free_zone && b.is_free_zone {
         return CorridorType::FreeZoneToFreeZone;
@@ -190,6 +204,7 @@ pub fn generate_corridor_id(a: &str, b: &str) -> String {
 ///
 /// ```
 /// use mez_corridor::registry::{CorridorRegistry, ZoneEntry};
+/// use mez_corridor::composition::ZoneType;
 ///
 /// let mut registry = CorridorRegistry::new();
 /// registry.register_zone(ZoneEntry {
@@ -198,6 +213,7 @@ pub fn generate_corridor_id(a: &str, b: &str) -> String {
 ///     country_code: "pk".into(),
 ///     is_free_zone: true,
 ///     profile_id: "pk-sifc-profile".into(),
+///     zone_type: ZoneType::Natural,
 /// });
 /// registry.register_zone(ZoneEntry {
 ///     zone_id: "org.momentum.mez.zone.ae-dubai-difc".into(),
@@ -205,6 +221,7 @@ pub fn generate_corridor_id(a: &str, b: &str) -> String {
 ///     country_code: "ae".into(),
 ///     is_free_zone: true,
 ///     profile_id: "ae-difc-profile".into(),
+///     zone_type: ZoneType::Natural,
 /// });
 ///
 /// let corridors = registry.generate_corridors();
@@ -346,6 +363,145 @@ impl CorridorRegistry {
     pub fn corridors(&self) -> &[CorridorDefinition] {
         &self.corridors
     }
+
+    /// Return corridor counts grouped by corridor type.
+    pub fn corridor_mesh_stats(&self) -> BTreeMap<CorridorType, usize> {
+        let mut stats = BTreeMap::new();
+        for corridor in &self.corridors {
+            *stats.entry(corridor.corridor_type).or_insert(0) += 1;
+        }
+        stats
+    }
+
+    /// Generate a Graphviz DOT representation of the corridor mesh.
+    ///
+    /// Zones are nodes shaped by zone type: box for Natural, diamond for Synthetic.
+    /// Corridors are edges colored by type:
+    /// - CrossBorder: red
+    /// - IntraFederal: blue
+    /// - FreeZoneToHost: green
+    /// - FreeZoneToFreeZone: orange
+    pub fn to_dot(&self) -> String {
+        let mut dot = String::from("graph corridor_mesh {\n");
+        dot.push_str("    rankdir=LR;\n");
+        dot.push_str("    node [style=filled, fontname=\"Helvetica\"];\n\n");
+
+        // Emit zone nodes.
+        for zone in self.zones.values() {
+            let shape = match zone.zone_type {
+                ZoneType::Synthetic => "diamond",
+                ZoneType::Natural => "box",
+            };
+            let fill = match zone.zone_type {
+                ZoneType::Synthetic => "#e8d5f5",
+                ZoneType::Natural => "#d5e8f5",
+            };
+            let label = zone
+                .jurisdiction_id
+                .replace('-', "\\n");
+            dot.push_str(&format!(
+                "    \"{}\" [shape={}, fillcolor=\"{}\", label=\"{}\"];\n",
+                escape_dot_id(&zone.jurisdiction_id),
+                shape,
+                fill,
+                label,
+            ));
+        }
+
+        dot.push('\n');
+
+        // Emit corridor edges.
+        for corridor in &self.corridors {
+            let color = match corridor.corridor_type {
+                CorridorType::CrossBorder => "red",
+                CorridorType::IntraFederal => "blue",
+                CorridorType::FreeZoneToHost => "green",
+                CorridorType::FreeZoneToFreeZone => "orange",
+            };
+            dot.push_str(&format!(
+                "    \"{}\" -- \"{}\" [color={}, label=\"{}\"];\n",
+                escape_dot_id(&corridor.zone_a_jurisdiction),
+                escape_dot_id(&corridor.zone_b_jurisdiction),
+                color,
+                corridor.corridor_type,
+            ));
+        }
+
+        dot.push_str("}\n");
+        dot
+    }
+
+    /// Generate a JSON adjacency representation of the corridor mesh.
+    ///
+    /// Returns a JSON object with `zones` (list of zone entries) and
+    /// `corridors` (list of corridor definitions with type metadata).
+    pub fn to_adjacency_json(&self) -> serde_json::Value {
+        let zones: Vec<serde_json::Value> = self
+            .zones
+            .values()
+            .map(|z| {
+                serde_json::json!({
+                    "jurisdiction_id": z.jurisdiction_id,
+                    "zone_id": z.zone_id,
+                    "country_code": z.country_code,
+                    "is_free_zone": z.is_free_zone,
+                    "zone_type": z.zone_type,
+                })
+            })
+            .collect();
+
+        let corridors: Vec<serde_json::Value> = self
+            .corridors
+            .iter()
+            .map(|c| {
+                serde_json::json!({
+                    "corridor_id": c.corridor_id,
+                    "zone_a": c.zone_a_jurisdiction,
+                    "zone_b": c.zone_b_jurisdiction,
+                    "corridor_type": c.corridor_type,
+                    "compliance_domains": c.compliance_domains,
+                })
+            })
+            .collect();
+
+        let stats = self.corridor_mesh_stats();
+        let stats_json: serde_json::Map<String, serde_json::Value> = stats
+            .iter()
+            .map(|(k, v)| (k.to_string(), serde_json::Value::from(*v)))
+            .collect();
+
+        serde_json::json!({
+            "zone_count": self.zones.len(),
+            "corridor_count": self.corridors.len(),
+            "stats_by_type": stats_json,
+            "zones": zones,
+            "corridors": corridors,
+        })
+    }
+
+    /// Register a synthetic zone from a [`ZoneComposition`].
+    ///
+    /// Creates a [`ZoneEntry`] with `zone_type: Synthetic`, deriving
+    /// `country_code` from the first 2 characters of `primary_jurisdiction`.
+    pub fn register_synthetic_zone(&mut self, composition: &ZoneComposition) {
+        let entry = ZoneEntry {
+            zone_id: composition.zone_id.clone(),
+            jurisdiction_id: composition.jurisdiction_id.clone(),
+            country_code: composition.country_code().to_string(),
+            is_free_zone: false,
+            profile_id: format!(
+                "org.momentum.mez.profile.synthetic-{}",
+                composition.jurisdiction_id
+            ),
+            zone_type: ZoneType::Synthetic,
+        };
+        self.register_zone(entry);
+    }
+}
+
+/// Escape a string for use as a DOT node/edge identifier.
+fn escape_dot_id(s: &str) -> String {
+    s.replace('"', "\\\"")
 }
 
 // ---------------------------------------------------------------------------
@@ -410,6 +566,22 @@ mod tests {
             country_code: country_code.to_string(),
             is_free_zone,
             profile_id: format!("{jurisdiction_id}-profile"),
+            zone_type: ZoneType::default(),
+        }
+    }
+
+    fn synthetic_zone(
+        zone_id: &str,
+        jurisdiction_id: &str,
+        country_code: &str,
+    ) -> ZoneEntry {
+        ZoneEntry {
+            zone_id: zone_id.to_string(),
+            jurisdiction_id: jurisdiction_id.to_string(),
+            country_code: country_code.to_string(),
+            is_free_zone: false,
+            profile_id: format!("{jurisdiction_id}-profile"),
+            zone_type: ZoneType::Synthetic,
         }
     }
 
@@ -676,6 +848,7 @@ mod tests {
             country_code: "pk".to_string(),
             is_free_zone: false,
             profile_id: "updated-profile".to_string(),
+            zone_type: ZoneType::default(),
         });
 
         // Corridors should be cleared.
@@ -724,5 +897,150 @@ mod tests {
         // Free zone corridors should contain LICENSING.
         assert!(fz_host.contains(&"LICENSING".to_string()));
         assert!(fz_fz.contains(&"LICENSING".to_string()));
+    }
+
+    // -- Synthetic zone tests --
+
+    #[test]
+    fn synthetic_zone_always_classifies_as_cross_border() {
+        let synth = synthetic_zone(
+            "org.momentum.mez.zone.synthetic.atlantic",
+            "synth-atlantic",
+            "us",
+        );
+        let natural_us = zone("z-us", "us-ny", "us", false);
+        // Synthetic + same country natural -> CrossBorder (not IntraFederal).
+        assert_eq!(
+            classify_corridor(&synth, &natural_us),
+            CorridorType::CrossBorder
+        );
+    }
+
+    #[test]
+    fn synthetic_to_synthetic_is_cross_border() {
+        let synth_a = synthetic_zone("z-synth-a", "synth-a", "us");
+        let synth_b = synthetic_zone("z-synth-b", "synth-b", "sg");
+        assert_eq!(
+            classify_corridor(&synth_a, &synth_b),
+            CorridorType::CrossBorder
+        );
+    }
+
+    #[test]
+    fn synthetic_to_free_zone_is_cross_border() {
+        let synth = synthetic_zone("z-synth", "synth-test", "ae");
+        let fz = zone("z-ae-adgm", "ae-abudhabi-adgm", "ae", true);
+        // Even same country + free zone, synthetic takes priority -> CrossBorder.
+        assert_eq!(
+            classify_corridor(&synth, &fz),
+            CorridorType::CrossBorder
+        );
+    }
+
+    #[test]
+    fn register_synthetic_zone_creates_correct_entry() {
+        use crate::composition::{RegulatoryDomain, RegulatoryLayer, ZoneComposition};
+
+        let composition = ZoneComposition {
+            zone_id: "org.momentum.mez.zone.synthetic.atlantic".into(),
+            zone_name: "Atlantic Fintech Hub".into(),
+            zone_type: ZoneType::Synthetic,
+            layers: vec![RegulatoryLayer {
+                domain: RegulatoryDomain::AmlCft,
+                source_jurisdiction: "ae".into(),
+                source_profile_module: None,
+            }],
+            primary_jurisdiction: "us".into(),
+            jurisdiction_id: "synth-atlantic-fintech".into(),
+        };
+
+        let mut registry = CorridorRegistry::new();
+        registry.register_synthetic_zone(&composition);
+
+        assert_eq!(registry.zone_count(), 1);
+        let entry = registry.zones().get("synth-atlantic-fintech").unwrap();
+        assert_eq!(entry.zone_type, ZoneType::Synthetic);
+        assert_eq!(entry.country_code, "us");
+        assert!(!entry.is_free_zone);
+    }
+
+    // -- Mesh stats tests --
+
+    #[test]
+    fn corridor_mesh_stats_counts_by_type() {
+        let mut registry = CorridorRegistry::new();
+        registry.register_zone(zone("z-pk", "pk-sifc", "pk", true));
+        registry.register_zone(zone("z-ae", "ae-abudhabi-adgm", "ae", true));
+        registry.register_zone(zone("z-us-ny", "us-ny", "us", false));
+        registry.register_zone(zone("z-us-ca", "us-ca", "us", false));
+        registry.generate_corridors();
+
+        let stats = registry.corridor_mesh_stats();
+        // pk-sifc <-> ae-abudhabi-adgm = FreeZoneToFreeZone
+        // pk-sifc <-> us-ny = CrossBorder (different countries, pk is free zone)
+        // pk-sifc <-> us-ca = CrossBorder
+        // ae-abudhabi-adgm <-> us-ny = CrossBorder
+        // ae-abudhabi-adgm <-> us-ca = CrossBorder
+        // us-ny <-> us-ca = IntraFederal
+        assert_eq!(
+            stats.get(&CorridorType::FreeZoneToFreeZone),
+            Some(&1)
+        );
+        assert_eq!(
+            stats.get(&CorridorType::CrossBorder),
+            Some(&4)
+        );
+        assert_eq!(
+            stats.get(&CorridorType::IntraFederal),
+            Some(&1)
+        );
+    }
+
+    // -- DOT output tests --
+
+    #[test]
+    fn to_dot_produces_valid_structure() {
+        let mut registry = CorridorRegistry::new();
+        registry.register_zone(zone("z-pk", "pk-sifc", "pk", true));
+        registry.register_zone(zone("z-ae", "ae-abudhabi-adgm", "ae", true));
+        registry.register_zone(synthetic_zone(
+            "z-synth",
+            "synth-atlantic",
+            "us",
+        ));
+        registry.generate_corridors();
+
+        let dot = registry.to_dot();
+        assert!(dot.starts_with("graph corridor_mesh {"));
+        assert!(dot.ends_with("}\n"));
+        // Check node declarations exist.
+        assert!(dot.contains("\"pk-sifc\""));
+        assert!(dot.contains("\"ae-abudhabi-adgm\""));
+        assert!(dot.contains("\"synth-atlantic\""));
+        // Synthetic zone should be diamond-shaped.
+        assert!(dot.contains("shape=diamond"));
+        // Natural zones should be box-shaped.
+        assert!(dot.contains("shape=box"));
+        // Check edge declarations exist.
+        assert!(dot.contains(" -- "));
+        // Check edge colors.
+        assert!(dot.contains("color=red") || dot.contains("color=orange"));
+    }
+
+    // -- Adjacency JSON tests --
+
+    #[test]
+    fn to_adjacency_json_has_correct_structure() {
+        let mut registry = CorridorRegistry::new();
+        registry.register_zone(zone("z-pk", "pk-sifc", "pk", false));
+        registry.register_zone(zone("z-ae", "ae", "ae", false));
+        registry.generate_corridors();
+
+        let json = registry.to_adjacency_json();
+        assert_eq!(json["zone_count"], 2);
+        assert_eq!(json["corridor_count"], 1);
+        assert!(json["zones"].is_array());
+        assert!(json["corridors"].is_array());
+        assert!(json["stats_by_type"].is_object());
     }
 }

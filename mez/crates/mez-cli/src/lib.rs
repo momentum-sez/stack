@@ -25,7 +25,9 @@
 //! ```
 
 pub mod artifact;
+pub mod compose;
 pub mod corridor;
+pub mod deploy_gen;
 pub mod lock;
 pub mod regpack;
 pub mod signing;

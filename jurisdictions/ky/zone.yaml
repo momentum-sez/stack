@@ -1,6 +1,14 @@
+# Zone Manifest: Cayman Islands
+#
+# Offshore financial center regulated by CIMA (financial services,
+# insurance, banking), Registrar of Companies (corporate), and FRA (FIU).
+#
+# jurisdiction_stack: ky (single level — British Overseas Territory)
+
 zone_id: org.momentum.mez.zone.ky
 jurisdiction_id: ky
 zone_name: Cayman Islands
+
 profile:
   profile_id: org.momentum.mez.profile.digital-financial-center
   version: "0.4.44"
@@ -17,17 +25,24 @@ licensepack_domains:
   - corporate
 
 licensepack_refresh_policy:
-  financial: "hourly, max 4h staleness"
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+  financial:
+    frequency: hourly
+    max_staleness_hours: 4
 
 regpacks:
   - domain: financial
     jurisdiction_id: ky
+    regpack_digest_sha256: "11164f51b4df5ce5949b9b27427b1c7e6dc8361a643f8fe7f75d285f4dc9ec20"
     as_of_date: "2026-01-15"
   - domain: sanctions
     jurisdiction_id: ky
+    regpack_digest_sha256: "e96216921ef8ee21e1a21e4b6f9c075fc5b7e7736a96dd1af31892ed0bdaab47"
     as_of_date: "2026-01-15"
 
-domains:
+compliance_domains:
   - aml
   - kyc
   - sanctions
@@ -40,12 +55,21 @@ domains:
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
 
-corridor_peers: []
+national_adapters:
+  cima:
+    enabled: false
+    endpoint: ${CIMA_API_URL:-}
+  tci:
+    enabled: false
+    endpoint: ${TCI_API_URL:-}
+  jacs:
+    enabled: false
+    endpoint: ${JACS_API_URL:-}
+
 trust_anchors: []
 
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

@@ -12,6 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 mez-core = { workspace = true }
+mez-corridor = { workspace = true }
 mez-crypto = { workspace = true }
 mez-pack = { workspace = true }
 mez-schema = { workspace = true }

@@ -28,6 +28,7 @@ pub mod corridors;
 pub mod mass_primitives;
 pub mod smart_assets;
 pub mod tax_events;
+pub mod trade;
 
 use sqlx::postgres::{PgPool, PgPoolOptions};
 

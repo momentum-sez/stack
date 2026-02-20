@@ -430,6 +430,31 @@ This is the ordered sequence of work items. Dependencies are noted. Each item in
 35. Sovereign orchestration pipeline — CLOSED: /v1/* write handlers branch to sovereign_ops in sovereign mode, full compliance tensor + VC + attestation + audit trail
 ```
 
+### NEW: Phase H — Trade Corridor Instruments Runtime (v0.4.37)
+
+```
+# Trade instruments runtime — the execution layer for cross-border trade flows.
+# Spec layer complete (15 schemas, 10 rulesets, 10 transition types, 5 modules).
+# This phase builds the Rust runtime that brings those specs to life.
+
+36. Trade document types (TradeInvoice, BillOfLading, LetterOfCredit, TradeParty, TradeAmount)
+    — CLOSED: mez-corridor/src/trade.rs — exact schema-match Rust structs with serde roundtrip
+37. Transition payload enum (10 variants matching transition payload schemas)
+    — CLOSED: TradeTransitionPayload with tagged serde, field names match schemas exactly
+38. Trade flow state machine (4 archetypes: Export, Import, LetterOfCredit, OpenAccount)
+    — CLOSED: validate_transition() enforces transition ordering per archetype at runtime
+39. TradeFlowManager (DashMap-backed, TOCTOU-free transitions)
+    — CLOSED: mez-corridor/src/trade_manager.rs — create/transition/query with atomic state updates
+40. Trade API endpoints (/v1/trade/flows/*)
+    — CLOSED: 5 endpoints (create, list, get, submit transition, list transitions)
+      Full orchestration pipeline: compliance evaluation → execute → VC issuance → attestation → audit
+41. Trade persistence (Postgres)
+    — CLOSED: db/trade.rs + migration 20260221000001_trade_flow_tables.sql
+      Upsert/load with hydration on startup
+42. Integration tests (8 tests: export lifecycle, LC lifecycle, negative cases, digest determinism)
+    — CLOSED: test_trade_flow.rs — 7-step export flow, LC flow, invalid transition, 404 cases
+```
+
 ---
 
 ## 6. FORMAL VERIFICATION OBLIGATIONS
@@ -515,12 +540,12 @@ Each must be implemented as test cases in the relevant crate:
 
 Based on synthesized audit findings. Status: ✅ Implemented | 🟡 Partial | 🔴 Stub/Missing | ⚪ Not Applicable
 
-**Updated 2026-02-19** — reflects post-audit remediation work (commits `02b1984` through `af6c70e`).
+**Updated 2026-02-20** — reflects post-audit remediation work (commits `02b1984` through `af6c70e`) + Phase H trade instruments runtime.
 
 | # | Spec Area | Status | Blocking P0s | Notes |
 |---|---|---|---|---|
 | 1-5 | Core primitives / entities | 🟡 | P0-IDENTITY-001 | Identity facade only; Mass client + contract tests exist |
-| 6-10 | Ownership / instruments | 🟡 | — | Mass API contract tests added; live alignment still unverified |
+| 6-10 | Ownership / instruments | ✅ | — | Trade instruments runtime: 5 doc types, 10 transitions, 4 archetype state machines, 5 API endpoints, Postgres persistence |
 | 11 | Mass primitives mapping | 🟡 | P1-NAMING-001 | Naming inconsistency remains |
 | 12-15 | Compliance tensor | ✅ | ~~P0-TENSOR-001~~ CLOSED | 20 domains, exhaustive match, fail-closed on extended |
 | 16-20 | Pack trilogy | ✅ | ~~P0-PACK-001~~ CLOSED | Pakistan lawpacks (4 domains), regpacks, 70+ licensepacks |

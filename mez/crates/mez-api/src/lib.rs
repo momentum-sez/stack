@@ -23,6 +23,7 @@
 //! | `/v1/assets/*`        | [`routes::smart_assets`]   | Smart Assets (EZ)  |
 //! | `/v1/assets/*/credentials/*` | [`routes::credentials`] | VC Issuance (EZ) |
 //! | `/v1/credentials/*`  | [`routes::credentials`]    | VC Verification (EZ) |
+//! | `/v1/trade/flows/*`   | [`routes::trade`]          | Trade Instruments (EZ) |
 //! | `/v1/triggers`        | [`routes::agentic`]        | Agentic Engine (EZ)|
 //! | `/v1/policies/*`      | [`routes::agentic`]        | Policy Mgmt (EZ)   |
 //! | `/v1/tax/*`           | [`routes::tax`]            | Tax Pipeline (EZ)  |
@@ -129,6 +130,7 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::regulator::router())
         .merge(routes::agentic::router())
         .merge(routes::peers::router())
+        .merge(routes::trade::router())
         .merge(openapi::router());
 
     // GovOS Console — M-009: Pakistan sovereign deployment dashboards

@@ -1472,6 +1472,7 @@ name = "mez-corridor"
 version = "0.4.44"
 dependencies = [
  "chrono",
+ "dashmap",
  "mez-core",
  "mez-crypto",
  "mez-state",

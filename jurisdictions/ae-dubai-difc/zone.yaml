@@ -1,9 +1,21 @@
+# Zone Manifest: Dubai International Financial Centre (DIFC)
+#
+# Premier financial free zone in Dubai, UAE.
+# Independent common law jurisdiction with own courts and regulator (DFSA).
+# Major hub for banking, insurance, asset management, and fintech.
+#
+# jurisdiction_stack: ae > ae-dubai > ae-dubai-difc
+#   - ae: UAE federal laws (AML/CFT, VAT, Commercial Companies Law)
+#   - ae-dubai: Dubai emirate regulations
+#   - ae-dubai-difc: DIFC laws and DFSA regulations (common law framework)
+
 zone_id: org.momentum.mez.zone.ae.dubai.difc
 jurisdiction_id: ae-dubai-difc
 zone_name: Dubai International Financial Centre
+
 profile:
   profile_id: org.momentum.mez.profile.digital-financial-center
-  version: "0.4.44"
+  version: 0.4.44
 
 jurisdiction_stack:
   - ae
@@ -19,17 +31,24 @@ licensepack_domains:
   - corporate
 
 licensepack_refresh_policy:
-  financial: "hourly, max 4h staleness"
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+  financial:
+    frequency: hourly
+    max_staleness_hours: 4
 
 regpacks:
   - domain: financial
     jurisdiction_id: ae
-    as_of_date: "2026-01-15"
+    regpack_digest_sha256: "5ce776c2d59b4fd9ec1f6bdaea7317550fd0b7d1792be86a475b4db6602a685b"
+    as_of_date: 2026-01-15
   - domain: sanctions
     jurisdiction_id: ae
-    as_of_date: "2026-01-15"
+    regpack_digest_sha256: "34bb8fcb760935931216ab810fb3e66caa6980125f7e88f588eed8a0747509c0"
+    as_of_date: 2026-01-15
 
-domains:
+compliance_domains:
   - aml
   - kyc
   - sanctions
@@ -42,14 +61,20 @@ domains:
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
-  - org.momentum.mez.corridor.stablecoin.usdc-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin
 
-corridor_peers: []
+national_adapters:
+  ica_emirates_id:
+    enabled: false
+    endpoint: ${ICA_EMIRATES_ID_URL:-}
+  fta:
+    enabled: false
+    endpoint: ${FTA_URL:-}
+
 trust_anchors: []
 
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

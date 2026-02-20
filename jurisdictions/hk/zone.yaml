@@ -1,6 +1,15 @@
+# Zone Manifest: Hong Kong SAR
+#
+# Sovereign economic zone covering Hong Kong's financial and corporate
+# regulatory domains. Regulated by HKMA (banking), SFC (securities, futures),
+# IA (insurance), and JFIU (FIU, AML/CFT).
+#
+# jurisdiction_stack: hk (single level — SAR)
+
 zone_id: org.momentum.mez.zone.hk
 jurisdiction_id: hk
 zone_name: Hong Kong SAR
+
 profile:
   profile_id: org.momentum.mez.profile.digital-financial-center
   version: "0.4.44"
@@ -17,17 +26,24 @@ licensepack_domains:
   - corporate
 
 licensepack_refresh_policy:
-  financial: "hourly, max 4h staleness"
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+  financial:
+    frequency: hourly
+    max_staleness_hours: 4
 
 regpacks:
   - domain: financial
     jurisdiction_id: hk
+    regpack_digest_sha256: "89dc928a5460dc90ef39c5557c9563b395da4560e5004b868adbe013d1b6d256"
     as_of_date: "2026-01-15"
   - domain: sanctions
     jurisdiction_id: hk
+    regpack_digest_sha256: "6bd125db0d30631dd446a40e4fde9bbafd13c1e292d97f8fc060c7c235c2e204"
     as_of_date: "2026-01-15"
 
-domains:
+compliance_domains:
   - aml
   - kyc
   - sanctions
@@ -42,12 +58,24 @@ corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
   - org.momentum.mez.corridor.stablecoin.usdc-cross-border
 
-corridor_peers: []
+national_adapters:
+  hkma:
+    enabled: false
+    endpoint: ${HKMA_API_URL:-}
+  ird:
+    enabled: false
+    endpoint: ${IRD_API_URL:-}
+  cr:
+    enabled: false
+    endpoint: ${CR_API_URL:-}
+  fps:
+    enabled: false
+    endpoint: ${FPS_API_URL:-}
+
 trust_anchors: []
 
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

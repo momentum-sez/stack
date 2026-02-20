@@ -96,9 +96,17 @@ pub fn app(state: AppState) -> Router {
     //
     // Auth runs BEFORE rate limiting so unauthenticated requests are rejected
     // without consuming rate limit quota (prevents DoS via auth bypass).
+    // Sovereign Mass mode: serve Mass primitives directly from in-memory stores
+    // backed by Postgres. Proxy mode: delegate to centralized Mass APIs.
+    let mass_routes = if state.sovereign_mass {
+        tracing::info!("Sovereign Mass mode enabled — serving Mass primitives locally");
+        routes::mass_sovereign::sovereign_mass_router()
+    } else {
+        routes::mass_proxy::router()
+    };
+
     let api = Router::new()
-        // Mass API proxy (all five primitives via Mass client)
-        .merge(routes::mass_proxy::router())
+        .merge(mass_routes)
         // Identity orchestration — P1-005: CNIC/NTN verification,
         // consolidated entity identity, service status.
         .merge(routes::identity::router())

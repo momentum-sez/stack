@@ -25,6 +25,7 @@
 pub mod attestations;
 pub mod audit;
 pub mod corridors;
+pub mod mass_primitives;
 pub mod smart_assets;
 pub mod tax_events;
 

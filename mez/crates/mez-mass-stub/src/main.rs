@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
-//! Sovereign Mass API stub server.
+//! Sovereign Mass API stub server — standalone development server.
 //!
 //! In-memory implementation of the Mass API endpoints that `mez-mass-client`
 //! calls. Designed for per-zone deployment so each economic zone operates
 //! against its own data store, achieving sovereign data residency.
 //!
-//! This is a demonstration/staging artifact — not production Mass.
-//! Storage is in-memory (DashMap) with no persistence.
+//! **For production sovereign deployments, use `mez-api` with
+//! `SOVEREIGN_MASS=true` which provides Postgres-backed persistence
+//! (ADR-007). This standalone stub is for development and testing
+//! without a database.**
+//!
+//! Storage is in-memory (DashMap) with no persistence — data is lost on
+//! restart.
 
 mod routes;
 mod store;

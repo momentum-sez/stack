@@ -128,8 +128,12 @@ pub enum CorridorCommand {
     Mesh {
         /// Comma-separated list of zone jurisdiction IDs.
         /// Zones are resolved from `jurisdictions/<id>/zone.yaml`.
+        /// Mutually exclusive with `--all`.
+        #[arg(long, required_unless_present = "all")]
+        zones: Option<String>,
+        /// Discover all `jurisdictions/*/zone.yaml` and include every zone.
         #[arg(long)]
-        zones: String,
+        all: bool,
         /// Output format for the mesh topology.
         #[arg(long, value_enum, default_value = "dot")]
         format: MeshFormat,
@@ -197,7 +201,9 @@ pub fn run_corridor(args: &CorridorArgs, repo_root: &Path) -> Result<u8> {
 
         CorridorCommand::List => cmd_list(&state_dir),
 
-        CorridorCommand::Mesh { zones, format } => cmd_mesh(repo_root, zones, *format),
+        CorridorCommand::Mesh { zones, all, format } => {
+            cmd_mesh(repo_root, zones.as_deref(), *all, *format)
+        }
     }
 }
 
@@ -517,9 +523,39 @@ fn parse_zone_yaml(repo_root: &Path, jurisdiction_id: &str) -> Result<ZoneEntry>
     })
 }
 
+/// Discover all jurisdiction IDs that have a `zone.yaml` under `jurisdictions/`.
+fn discover_all_zones(repo_root: &Path) -> Result<Vec<String>> {
+    let jdir = repo_root.join("jurisdictions");
+    let mut zone_ids = Vec::new();
+    for entry in std::fs::read_dir(&jdir)
+        .with_context(|| format!("failed to read jurisdictions directory: {}", jdir.display()))?
+    {
+        let entry = entry?;
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy().to_string();
+        // Skip _starter template directory
+        if name_str.starts_with('_') {
+            continue;
+        }
+        let zone_file = entry.path().join("zone.yaml");
+        if zone_file.is_file() {
+            zone_ids.push(name_str);
+        }
+    }
+    zone_ids.sort();
+    Ok(zone_ids)
+}
+
 /// Generate mesh topology from zone manifests and output in the requested format.
-fn cmd_mesh(repo_root: &Path, zones_csv: &str, format: MeshFormat) -> Result<u8> {
-    let zone_ids: Vec<&str> = zones_csv.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+fn cmd_mesh(repo_root: &Path, zones_csv: Option<&str>, all: bool, format: MeshFormat) -> Result<u8> {
+    let zone_ids: Vec<String> = if all {
+        discover_all_zones(repo_root)?
+    } else if let Some(csv) = zones_csv {
+        csv.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
+    } else {
+        bail!("either --zones or --all is required");
+    };
+
     if zone_ids.len() < 2 {
         bail!("mesh requires at least 2 zones (got {})", zone_ids.len());
     }
@@ -533,11 +569,12 @@ fn cmd_mesh(repo_root: &Path, zones_csv: &str, format: MeshFormat) -> Result<u8>
 
     let stats = registry.corridor_mesh_stats();
     let total_corridors: usize = stats.values().sum();
+    let expected_pairs = zone_ids.len() * (zone_ids.len() - 1) / 2;
     eprintln!(
         "Mesh: {} zones, {} corridors ({} pairs)",
         zone_ids.len(),
         total_corridors,
-        zone_ids.len() * (zone_ids.len() - 1) / 2,
+        expected_pairs,
     );
     for (ctype, count) in &stats {
         eprintln!("  {}: {}", ctype, count);
@@ -1125,7 +1162,7 @@ mod tests {
         write_test_zone(root, "ae-dubai-difc", "org.momentum.mez.zone.ae.dubai.difc", "org.momentum.mez.profile.financial-center", &["ae", "ae-dubai", "ae-dubai-difc"]);
         write_test_zone(root, "sg", "org.momentum.mez.zone.sg", "org.momentum.mez.profile.sovereign-govos", &["sg"]);
 
-        let result = cmd_mesh(root, "pk-sifc,ae-dubai-difc,sg", MeshFormat::Dot);
+        let result = cmd_mesh(root, Some("pk-sifc,ae-dubai-difc,sg"), false, MeshFormat::Dot);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 0);
     }
@@ -1137,7 +1174,7 @@ mod tests {
         write_test_zone(root, "pk-sifc", "org.momentum.mez.zone.pk.sifc", "org.momentum.mez.profile.sovereign-govos", &["pk", "pk-sifc"]);
         write_test_zone(root, "hk", "org.momentum.mez.zone.hk", "org.momentum.mez.profile.sovereign-govos", &["hk"]);
 
-        let result = cmd_mesh(root, "pk-sifc,hk", MeshFormat::Json);
+        let result = cmd_mesh(root, Some("pk-sifc,hk"), false, MeshFormat::Json);
         assert!(result.is_ok());
     }
 
@@ -1147,7 +1184,7 @@ mod tests {
         let root = dir.path();
         write_test_zone(root, "pk-sifc", "org.momentum.mez.zone.pk.sifc", "org.momentum.mez.profile.sovereign-govos", &["pk", "pk-sifc"]);
 
-        let result = cmd_mesh(root, "pk-sifc", MeshFormat::Dot);
+        let result = cmd_mesh(root, Some("pk-sifc"), false, MeshFormat::Dot);
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(err.contains("at least 2 zones"));
@@ -1180,7 +1217,7 @@ mod tests {
         )
         .unwrap();
 
-        let result = cmd_mesh(root, "pk-sifc,synth-test", MeshFormat::Dot);
+        let result = cmd_mesh(root, Some("pk-sifc,synth-test"), false, MeshFormat::Dot);
         assert!(result.is_ok());
     }
 
@@ -1190,7 +1227,7 @@ mod tests {
         let root = dir.path();
         write_test_zone(root, "pk-sifc", "org.momentum.mez.zone.pk.sifc", "org.momentum.mez.profile.sovereign-govos", &["pk", "pk-sifc"]);
 
-        let result = cmd_mesh(root, "pk-sifc,nonexistent-zone", MeshFormat::Dot);
+        let result = cmd_mesh(root, Some("pk-sifc,nonexistent-zone"), false, MeshFormat::Dot);
         assert!(result.is_err());
     }
 
@@ -1216,5 +1253,107 @@ mod tests {
         assert_eq!(entry.country_code, "sg");
         assert!(!entry.is_free_zone); // 1-level stack
         assert_eq!(entry.zone_type, ZoneType::Natural);
+    }
+
+    // ── --all flag tests ──────────────────────────────────────────────
+
+    #[test]
+    fn mesh_all_discovers_zones() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        write_test_zone(root, "pk-sifc", "org.momentum.mez.zone.pk.sifc", "org.momentum.mez.profile.sovereign-govos", &["pk", "pk-sifc"]);
+        write_test_zone(root, "sg", "org.momentum.mez.zone.sg", "org.momentum.mez.profile.sovereign-govos", &["sg"]);
+        write_test_zone(root, "hk", "org.momentum.mez.zone.hk", "org.momentum.mez.profile.sovereign-govos", &["hk"]);
+
+        // --all should discover all 3 zones
+        let result = cmd_mesh(root, None, true, MeshFormat::Dot);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn mesh_all_skips_underscore_dirs() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        write_test_zone(root, "pk-sifc", "org.momentum.mez.zone.pk.sifc", "org.momentum.mez.profile.sovereign-govos", &["pk", "pk-sifc"]);
+        write_test_zone(root, "sg", "org.momentum.mez.zone.sg", "org.momentum.mez.profile.sovereign-govos", &["sg"]);
+        // Create a _starter directory that should be skipped
+        write_test_zone(root, "_starter", "org.momentum.mez.zone.starter", "org.momentum.mez.profile.minimal-mvp", &["starter"]);
+
+        let zones = discover_all_zones(root).unwrap();
+        assert_eq!(zones.len(), 2);
+        assert!(!zones.contains(&"_starter".to_string()));
+    }
+
+    #[test]
+    fn mesh_all_generates_correct_pair_count() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let n = 5;
+        for i in 0..n {
+            let jid = format!("zone-{i}");
+            let zid = format!("org.momentum.mez.zone.z{i}");
+            write_test_zone(root, &jid, &zid, "org.momentum.mez.profile.sovereign-govos", &[&jid]);
+        }
+
+        let result = cmd_mesh(root, None, true, MeshFormat::Json);
+        assert!(result.is_ok());
+    }
+
+    // ── Full-mesh integration test (uses real repo jurisdictions) ──────
+
+    #[test]
+    fn full_mesh_integration_test() {
+        // This test uses the real repo jurisdictions directory.
+        // It verifies that every zone.yaml can be parsed and registered,
+        // and that N*(N-1)/2 corridors are generated.
+        let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()  // crates/
+            .and_then(|p| p.parent())  // mez/
+            .and_then(|p| p.parent()); // repo root
+
+        let repo_root = match repo_root {
+            Some(r) if r.join("jurisdictions").is_dir() => r,
+            _ => {
+                eprintln!("SKIP: repo root not found for full-mesh test");
+                return;
+            }
+        };
+
+        let zone_ids = discover_all_zones(repo_root).unwrap();
+        assert!(
+            zone_ids.len() >= 100,
+            "expected at least 100 zones, found {}",
+            zone_ids.len()
+        );
+
+        let mut registry = CorridorRegistry::new();
+        let mut parsed = 0;
+        for jid in &zone_ids {
+            match parse_zone_yaml(repo_root, jid) {
+                Ok(entry) => {
+                    registry.register_zone(entry);
+                    parsed += 1;
+                }
+                Err(e) => {
+                    panic!("failed to parse zone {jid}: {e}");
+                }
+            }
+        }
+
+        registry.generate_corridors();
+        let stats = registry.corridor_mesh_stats();
+        let total_corridors: usize = stats.values().sum();
+        let expected = parsed * (parsed - 1) / 2;
+
+        eprintln!(
+            "Full mesh: {} zones parsed, {} corridors generated (expected {})",
+            parsed, total_corridors, expected
+        );
+
+        assert_eq!(
+            total_corridors, expected,
+            "corridor count {total_corridors} != expected N*(N-1)/2 = {expected}"
+        );
     }
 }

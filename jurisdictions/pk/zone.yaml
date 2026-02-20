@@ -5,9 +5,9 @@
 #
 # jurisdiction_stack: pk
 
-zone_id: org.momentum.mez.zone.pk
-jurisdiction_id: pk
-zone_name: Pakistan
+zone_id: org.momentum.mez.zone.pk.fed
+jurisdiction_id: pk-fed
+zone_name: Pakistan Federal
 
 profile:
   profile_id: org.momentum.mez.profile.sovereign-govos

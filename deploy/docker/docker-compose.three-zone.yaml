@@ -1,0 +1,238 @@
+# MEZ Stack — Three-Zone Integration Test Compose
+#
+# Deploys three independent MEZ zones that establish pairwise corridors
+# and exchange receipts over the shared Docker network.
+#
+# Default topology:
+#   Zone A = Pakistan SIFC (pk-sifc)
+#   Zone B = Abu Dhabi ADGM (ae-abudhabi-adgm)
+#   Zone C = Singapore (sg)
+#
+# Three pairwise corridors:
+#   A <-> B (pk-sifc <-> ae-abudhabi-adgm)
+#   A <-> C (pk-sifc <-> sg)
+#   B <-> C (ae-abudhabi-adgm <-> sg)
+#
+# Each zone runs on its own internal Docker network with shared
+# mez-corridor-net for inter-zone communication.
+#
+# Environment variables (with defaults):
+#   ZONE_A_ZONE_ID, ZONE_A_JURISDICTION, ZONE_A_PROFILE
+#   ZONE_B_ZONE_ID, ZONE_B_JURISDICTION, ZONE_B_PROFILE
+#   ZONE_C_ZONE_ID, ZONE_C_JURISDICTION, ZONE_C_PROFILE
+#   ZONE_A_AUTH_TOKEN, ZONE_B_AUTH_TOKEN, ZONE_C_AUTH_TOKEN (required)
+#   POSTGRES_PASSWORD (required)
+#
+# Usage:
+#   # Generate credentials:
+#   export POSTGRES_PASSWORD=$(openssl rand -base64 24)
+#   export ZONE_A_AUTH_TOKEN=$(openssl rand -base64 32)
+#   export ZONE_B_AUTH_TOKEN=$(openssl rand -base64 32)
+#   export ZONE_C_AUTH_TOKEN=$(openssl rand -base64 32)
+#
+#   docker compose -f docker-compose.three-zone.yaml up -d
+
+name: mez-three-zone
+
+services:
+  # ============================================
+  # ZONE A — Pakistan SIFC
+  # ============================================
+
+  zone-a:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: mez-zone-a
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      MEZ_ZONE_ID: ${ZONE_A_ZONE_ID:-org.momentum.mez.zone.pk-sifc}
+      MEZ_JURISDICTION: ${ZONE_A_JURISDICTION:-pk}
+      MEZ_PROFILE: ${ZONE_A_PROFILE:-sovereign-govos-pk}
+      MEZ_HOST: "0.0.0.0"
+      MEZ_PORT: "8080"
+      MEZ_LOG_LEVEL: debug
+      AUTH_TOKEN: ${ZONE_A_AUTH_TOKEN:?ZONE_A_AUTH_TOKEN must be set}
+      DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-a:5432/mez"
+      MEZ_WATCHER_ID: watcher-a-001
+      MEZ_BOND_AMOUNT: "100000"
+      MEZ_METRICS_ENABLED: "true"
+    depends_on:
+      postgres-a:
+        condition: service_healthy
+    networks:
+      - mez-corridor-net
+      - zone-a-internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/liveness"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  postgres-a:
+    image: postgres:16-alpine
+    container_name: mez-postgres-a
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mez
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: mez
+    volumes:
+      - postgres-a-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - zone-a-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mez -d mez"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # ============================================
+  # ZONE B — Abu Dhabi ADGM
+  # ============================================
+
+  zone-b:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: mez-zone-b
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      MEZ_ZONE_ID: ${ZONE_B_ZONE_ID:-org.momentum.mez.zone.ae.abudhabi.adgm}
+      MEZ_JURISDICTION: ${ZONE_B_JURISDICTION:-ae-abudhabi-adgm}
+      MEZ_PROFILE: ${ZONE_B_PROFILE:-sovereign-govos-ae}
+      MEZ_HOST: "0.0.0.0"
+      MEZ_PORT: "8080"
+      MEZ_LOG_LEVEL: debug
+      AUTH_TOKEN: ${ZONE_B_AUTH_TOKEN:?ZONE_B_AUTH_TOKEN must be set}
+      DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-b:5432/mez"
+      MEZ_WATCHER_ID: watcher-b-001
+      MEZ_BOND_AMOUNT: "100000"
+      MEZ_METRICS_ENABLED: "true"
+    depends_on:
+      postgres-b:
+        condition: service_healthy
+    networks:
+      - mez-corridor-net
+      - zone-b-internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/liveness"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  postgres-b:
+    image: postgres:16-alpine
+    container_name: mez-postgres-b
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mez
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: mez
+    volumes:
+      - postgres-b-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - zone-b-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mez -d mez"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # ============================================
+  # ZONE C — Singapore
+  # ============================================
+
+  zone-c:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: mez-zone-c
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+    environment:
+      MEZ_ZONE_ID: ${ZONE_C_ZONE_ID:-org.momentum.mez.zone.sg}
+      MEZ_JURISDICTION: ${ZONE_C_JURISDICTION:-sg}
+      MEZ_PROFILE: ${ZONE_C_PROFILE:-sovereign-govos-sg}
+      MEZ_HOST: "0.0.0.0"
+      MEZ_PORT: "8080"
+      MEZ_LOG_LEVEL: debug
+      AUTH_TOKEN: ${ZONE_C_AUTH_TOKEN:?ZONE_C_AUTH_TOKEN must be set}
+      DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-c:5432/mez"
+      MEZ_WATCHER_ID: watcher-c-001
+      MEZ_BOND_AMOUNT: "100000"
+      MEZ_METRICS_ENABLED: "true"
+    depends_on:
+      postgres-c:
+        condition: service_healthy
+    networks:
+      - mez-corridor-net
+      - zone-c-internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/liveness"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  postgres-c:
+    image: postgres:16-alpine
+    container_name: mez-postgres-c
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mez
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: mez
+    volumes:
+      - postgres-c-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - zone-c-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mez -d mez"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+# ============================================
+# NETWORKS
+# ============================================
+
+networks:
+  # Shared network for inter-zone corridor communication.
+  # All zones can reach each other via container names (zone-a, zone-b, zone-c).
+  mez-corridor-net:
+    driver: bridge
+    name: mez-corridor-net
+
+  # Zone-internal networks (DB access only within zone).
+  zone-a-internal:
+    driver: bridge
+    name: mez-zone-a-internal
+  zone-b-internal:
+    driver: bridge
+    name: mez-zone-b-internal
+  zone-c-internal:
+    driver: bridge
+    name: mez-zone-c-internal
+
+# ============================================
+# VOLUMES
+# ============================================
+
+volumes:
+  postgres-a-data:
+  postgres-b-data:
+  postgres-c-data:

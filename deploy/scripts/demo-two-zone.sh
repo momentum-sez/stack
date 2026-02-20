@@ -12,10 +12,23 @@
 # compliance tensor evaluation (P0-TENSOR-001).
 #
 # Architecture:
-#   Zone A (PK-SIFC)  ←— corridor —→  Zone B (AE-DIFC)
-#   PostgreSQL A                        PostgreSQL B
-#          ↕                                  ↕
-#          └──────── mez-corridor-net ────────┘
+#   Zone A  ←— corridor —→  Zone B
+#   PostgreSQL A              PostgreSQL B
+#          ↕                        ↕
+#          └──── mez-corridor-net ──┘
+#
+# Zone configuration is driven by environment variables:
+#   ZONE_A_JURISDICTION  (default: pk)
+#   ZONE_A_ZONE_ID       (default: org.momentum.mez.zone.pk-sifc)
+#   ZONE_A_PROFILE       (default: sovereign-govos)
+#   ZONE_B_JURISDICTION  (default: ae-difc)
+#   ZONE_B_ZONE_ID       (default: org.momentum.mez.zone.ae-difc)
+#   ZONE_B_PROFILE       (default: digital-financial-center)
+#
+# Example — Singapore <-> Hong Kong:
+#   ZONE_A_JURISDICTION=sg ZONE_A_ZONE_ID=org.momentum.mez.zone.sg \
+#   ZONE_B_JURISDICTION=hk ZONE_B_ZONE_ID=org.momentum.mez.zone.hk \
+#   ./deploy/scripts/demo-two-zone.sh
 #
 # Steps:
 #   1. Generate credentials and keys
@@ -53,7 +66,22 @@ COMPOSE_FILE="$COMPOSE_DIR/docker-compose.two-zone.yaml"
 ZONE_A="http://localhost:8080"
 ZONE_B="http://localhost:8081"
 
-CORRIDOR_ID="org.momentum.mez.corridor.pk-ae.cross-border"
+# Zone configuration — configurable via environment variables
+ZONE_A_JURISDICTION="${ZONE_A_JURISDICTION:-pk}"
+ZONE_A_ZONE_ID="${ZONE_A_ZONE_ID:-org.momentum.mez.zone.pk-sifc}"
+ZONE_A_PROFILE="${ZONE_A_PROFILE:-sovereign-govos}"
+ZONE_B_JURISDICTION="${ZONE_B_JURISDICTION:-ae-difc}"
+ZONE_B_ZONE_ID="${ZONE_B_ZONE_ID:-org.momentum.mez.zone.ae-difc}"
+ZONE_B_PROFILE="${ZONE_B_PROFILE:-digital-financial-center}"
+
+# Corridor ID: deterministic from sorted jurisdiction pair
+_SORTED_A=$(echo -e "$ZONE_A_JURISDICTION\n$ZONE_B_JURISDICTION" | sort | head -1)
+_SORTED_B=$(echo -e "$ZONE_A_JURISDICTION\n$ZONE_B_JURISDICTION" | sort | tail -1)
+CORRIDOR_ID="${CORRIDOR_ID:-org.momentum.mez.corridor.${_SORTED_A}--${_SORTED_B}.cross-border}"
+
+export ZONE_A_ZONE_ID ZONE_A_JURISDICTION ZONE_A_PROFILE
+export ZONE_B_ZONE_ID ZONE_B_JURISDICTION ZONE_B_PROFILE
+export CORRIDOR_ID
 
 # Parse arguments
 NO_TEARDOWN=false
@@ -141,6 +169,10 @@ echo "  ║  Phase 1 Exit Criterion                                  ║"
 echo "  ║  v0.4.44 GENESIS                                        ║"
 echo "  ╚══════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
+echo -e "  Zone A: ${BOLD}$ZONE_A_JURISDICTION${NC} ($ZONE_A_ZONE_ID) [$ZONE_A_PROFILE]"
+echo -e "  Zone B: ${BOLD}$ZONE_B_JURISDICTION${NC} ($ZONE_B_ZONE_ID) [$ZONE_B_PROFILE]"
+echo -e "  Corridor: $CORRIDOR_ID"
+echo ""
 
 # ── Step 1: Generate Credentials ──────────────────────────────────────────
 
@@ -232,8 +264,8 @@ check "Zone B readiness" "200" "$READINESS_B"
 step "Create corridor on both zones"
 
 CORRIDOR_CREATE='{
-    "jurisdiction_a": "pk",
-    "jurisdiction_b": "ae-difc"
+    "jurisdiction_a": "'"$ZONE_A_JURISDICTION"'",
+    "jurisdiction_b": "'"$ZONE_B_JURISDICTION"'"
 }'
 
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
@@ -256,11 +288,11 @@ step "Zone A proposes corridor to Zone B"
 
 PROPOSAL='{
     "corridor_id": "'"$CORRIDOR_ID"'",
-    "proposer_jurisdiction_id": "pk",
-    "proposer_zone_id": "org.momentum.mez.zone.pk-sifc",
+    "proposer_jurisdiction_id": "'"$ZONE_A_JURISDICTION"'",
+    "proposer_zone_id": "'"$ZONE_A_ZONE_ID"'",
     "proposer_verifying_key_hex": "'"$(openssl rand -hex 32)"'",
-    "proposer_did": "did:mass:zone:pk-sifc-demo",
-    "responder_jurisdiction_id": "ae-difc",
+    "proposer_did": "did:mass:zone:'"$ZONE_A_JURISDICTION"'-demo",
+    "responder_jurisdiction_id": "'"$ZONE_B_JURISDICTION"'",
     "proposed_at": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'",
     "parameters": {},
     "signature": "'"$(openssl rand -hex 64)"'"
@@ -283,9 +315,9 @@ GENESIS_ROOT=$(openssl rand -hex 32)
 
 ACCEPTANCE='{
     "corridor_id": "'"$CORRIDOR_ID"'",
-    "responder_zone_id": "org.momentum.mez.zone.ae-difc",
+    "responder_zone_id": "'"$ZONE_B_ZONE_ID"'",
     "responder_verifying_key_hex": "'"$(openssl rand -hex 32)"'",
-    "responder_did": "did:mass:zone:ae-difc-demo",
+    "responder_did": "did:mass:zone:'"$ZONE_B_JURISDICTION"'-demo",
     "genesis_root_hex": "'"$GENESIS_ROOT"'",
     "accepted_at": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'",
     "signature": "'"$(openssl rand -hex 64)"'"
@@ -303,9 +335,9 @@ check "Zone A receives acceptance" "200" "$STATUS"
 # Also register Zone A as peer on Zone B
 ACCEPTANCE_B='{
     "corridor_id": "'"$CORRIDOR_ID"'",
-    "responder_zone_id": "org.momentum.mez.zone.pk-sifc",
+    "responder_zone_id": "'"$ZONE_A_ZONE_ID"'",
     "responder_verifying_key_hex": "'"$(openssl rand -hex 32)"'",
-    "responder_did": "did:mass:zone:pk-sifc-demo",
+    "responder_did": "did:mass:zone:'"$ZONE_A_JURISDICTION"'-demo",
     "genesis_root_hex": "'"$GENESIS_ROOT"'",
     "accepted_at": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'",
     "signature": "'"$(openssl rand -hex 64)"'"
@@ -341,7 +373,7 @@ RECEIPT_DIGEST=$(openssl rand -hex 32)
 
 RECEIPT='{
     "corridor_id": "'"$CORRIDOR_ID"'",
-    "origin_zone_id": "org.momentum.mez.zone.pk-sifc",
+    "origin_zone_id": "'"$ZONE_A_ZONE_ID"'",
     "sequence": 0,
     "receipt_json": {
         "type": "CorridorReceipt",
@@ -384,7 +416,7 @@ step "Watcher attestation delivery"
 
 ATTESTATION='{
     "corridor_id": "'"$CORRIDOR_ID"'",
-    "watcher_id": "watcher-pk-001",
+    "watcher_id": "watcher-a-001",
     "attested_height": 1,
     "attested_root_hex": "'"$(openssl rand -hex 32)"'",
     "signature": "'"$(openssl rand -hex 64)"'",
@@ -405,7 +437,7 @@ step "Create smart asset with compliance evaluation"
 
 ASSET_CREATE='{
     "asset_type": "equity",
-    "jurisdiction_id": "pk",
+    "jurisdiction_id": "'"$ZONE_A_JURISDICTION"'",
     "metadata": {
         "issuer": "SIFC Demo Corp",
         "name": "Demo Equity Instrument",
@@ -489,7 +521,7 @@ TOTAL=$((PASS + FAIL))
 echo -e "  Tests:  ${GREEN}$PASS passed${NC}, ${RED}$FAIL failed${NC} out of $TOTAL"
 echo ""
 echo -e "  ${BOLD}Phase 1 Exit Criteria Demonstrated:${NC}"
-echo -e "    ${GREEN}✓${NC} Two zones deployed (PK-SIFC + AE-DIFC)"
+echo -e "    ${GREEN}✓${NC} Two zones deployed ($ZONE_A_JURISDICTION + $ZONE_B_JURISDICTION)"
 echo -e "    ${GREEN}✓${NC} Inter-zone corridor established (propose → accept)"
 echo -e "    ${GREEN}✓${NC} Receipt exchanged across zones"
 echo -e "    ${GREEN}✓${NC} Replay protection verified (duplicate rejected)"

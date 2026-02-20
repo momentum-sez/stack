@@ -258,7 +258,7 @@ async fn evaluate_compliance(
         asset_id: id,
         overall_status: eval.overall_status,
         domain_results: serde_json::to_value(&eval.domain_results)
-            .unwrap_or_else(|_| serde_json::json!({})),
+            .map_err(|e| AppError::Internal(format!("failed to serialize domain results: {e}")))?,
         domain_count: eval.domain_count,
         passing_domains: eval.passing_domains,
         blocking_domains: eval.blocking_domains,

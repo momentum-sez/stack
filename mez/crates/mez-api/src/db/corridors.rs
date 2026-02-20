@@ -14,19 +14,12 @@ use crate::state::CorridorRecord;
 /// Insert a new corridor record.
 pub async fn insert(pool: &PgPool, record: &CorridorRecord) -> Result<(), sqlx::Error> {
     let status = serde_json::to_value(record.state)
-        .map_err(|e| {
-            tracing::warn!(error = %e, state = ?record.state, "failed to serialize corridor state — defaulting to DRAFT");
-            e
-        })
-        .ok()
-        .and_then(|v| v.as_str().map(String::from))
-        .unwrap_or_else(|| "DRAFT".to_string());
+        .map_err(|e| sqlx::Error::Protocol(format!("failed to serialize corridor state: {e}")))?
+        .as_str()
+        .map(String::from)
+        .unwrap_or_else(|| format!("{:?}", record.state));
     let transition_log = serde_json::to_value(&record.transition_log)
-        .map_err(|e| {
-            tracing::warn!(error = %e, "failed to serialize corridor transition_log — defaulting to empty array");
-            e
-        })
-        .unwrap_or_else(|_| serde_json::Value::Array(vec![]));
+        .map_err(|e| sqlx::Error::Protocol(format!("failed to serialize corridor transition_log: {e}")))?;
 
     sqlx::query(
         "INSERT INTO corridors (id, jurisdiction_a, jurisdiction_b, status, transition_log, created_at, updated_at)
@@ -54,19 +47,12 @@ pub async fn update_state(
     updated_at: DateTime<Utc>,
 ) -> Result<bool, sqlx::Error> {
     let status = serde_json::to_value(state)
-        .map_err(|e| {
-            tracing::warn!(error = %e, state = ?state, "failed to serialize corridor state — defaulting to DRAFT");
-            e
-        })
-        .ok()
-        .and_then(|v| v.as_str().map(String::from))
-        .unwrap_or_else(|| "DRAFT".to_string());
+        .map_err(|e| sqlx::Error::Protocol(format!("failed to serialize corridor state: {e}")))?
+        .as_str()
+        .map(String::from)
+        .unwrap_or_else(|| format!("{state:?}"));
     let log_json = serde_json::to_value(transition_log)
-        .map_err(|e| {
-            tracing::warn!(error = %e, "failed to serialize corridor transition_log — defaulting to empty array");
-            e
-        })
-        .unwrap_or_else(|_| serde_json::Value::Array(vec![]));
+        .map_err(|e| sqlx::Error::Protocol(format!("failed to serialize corridor transition_log: {e}")))?;
 
     let result = sqlx::query(
         "UPDATE corridors SET status = $1, transition_log = $2, updated_at = $3 WHERE id = $4",

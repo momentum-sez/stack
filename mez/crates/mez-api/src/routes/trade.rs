@@ -127,12 +127,15 @@ async fn create_trade_flow(
 
     // Persist to DB.
     if let Some(ref pool) = state.db_pool {
-        let _ = db::trade::save_trade_flow(pool, &record).await;
+        if let Err(e) = db::trade::save_trade_flow(pool, &record).await {
+            tracing::error!(error = %e, flow_id = %flow_id, "failed to persist trade flow to database");
+            return Err(AppError::Internal(format!("failed to persist trade flow: {e}")));
+        }
     }
 
     // Audit trail.
     if let Some(ref pool) = state.db_pool {
-        let _ = db::audit::append(
+        if let Err(e) = db::audit::append(
             pool,
             db::audit::AuditEvent {
                 event_type: "trade.flow.created".to_string(),
@@ -146,7 +149,10 @@ async fn create_trade_flow(
                 }),
             },
         )
-        .await;
+        .await
+        {
+            tracing::warn!(error = %e, flow_id = %flow_id, "failed to append audit event for trade flow creation");
+        }
     }
 
     let response = TradeFlowResponse {
@@ -166,7 +172,13 @@ async fn list_trade_flows(
     let flows = state.trade_flow_manager.list_flows();
     let values: Vec<serde_json::Value> = flows
         .iter()
-        .map(|f| serde_json::to_value(f).unwrap_or_default())
+        .map(|f| {
+            serde_json::to_value(f).map_err(|e| {
+                tracing::warn!(error = %e, "failed to serialize trade flow record");
+                e
+            })
+        })
+        .filter_map(Result::ok)
         .collect();
     Ok(Json(serde_json::json!({ "flows": values, "total": values.len() })))
 }
@@ -238,12 +250,15 @@ async fn submit_transition(
 
     // Persist to DB.
     if let Some(ref pool) = state.db_pool {
-        let _ = db::trade::save_trade_flow(pool, &record).await;
+        if let Err(e) = db::trade::save_trade_flow(pool, &record).await {
+            tracing::error!(error = %e, flow_id = %flow_id, "failed to persist trade flow transition to database");
+            return Err(AppError::Internal(format!("failed to persist trade flow transition: {e}")));
+        }
     }
 
     // Audit trail.
     if let Some(ref pool) = state.db_pool {
-        let _ = db::audit::append(
+        if let Err(e) = db::audit::append(
             pool,
             db::audit::AuditEvent {
                 event_type: format!("trade.transition.{transition_kind}"),
@@ -258,7 +273,10 @@ async fn submit_transition(
                 }),
             },
         )
-        .await;
+        .await
+        {
+            tracing::warn!(error = %e, flow_id = %flow_id, "failed to append audit event for trade transition");
+        }
     }
 
     let response = TradeFlowResponse {
@@ -284,7 +302,13 @@ async fn list_transitions(
     let transitions: Vec<serde_json::Value> = record
         .transitions
         .iter()
-        .map(|t| serde_json::to_value(t).unwrap_or_default())
+        .map(|t| {
+            serde_json::to_value(t).map_err(|e| {
+                tracing::warn!(error = %e, "failed to serialize trade transition record");
+                e
+            })
+        })
+        .filter_map(Result::ok)
         .collect();
 
     Ok(Json(serde_json::json!({
@@ -329,7 +353,15 @@ fn issue_trade_vc_and_attestation(
         }
     };
 
-    let entity_uuid = Uuid::parse_str(entity_reference).unwrap_or_else(|_| Uuid::new_v4());
+    let entity_uuid = Uuid::parse_str(entity_reference).unwrap_or_else(|_| {
+        let fallback = Uuid::new_v4();
+        tracing::warn!(
+            entity_reference,
+            fallback_id = %fallback,
+            "entity reference is not a valid UUID — using generated fallback for trade attestation"
+        );
+        fallback
+    });
 
     let attestation_id = orchestration::store_attestation(
         state,

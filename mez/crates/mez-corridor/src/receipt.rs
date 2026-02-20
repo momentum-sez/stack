@@ -1341,7 +1341,6 @@ mod golden_vector_tests {
     const GOLDEN_CORRIDOR_ID: &str = "00000000-0000-4000-8000-000000000001";
     const GOLDEN_GENESIS_ROOT: &str =
         "0000000000000000000000000000000000000000000000000000000000000000";
-    const GOLDEN_TIMESTAMP: &str = "2025-01-01T00:00:00Z";
 
     fn golden_corridor_id() -> CorridorId {
         CorridorId::from_uuid(Uuid::parse_str(GOLDEN_CORRIDOR_ID).unwrap())

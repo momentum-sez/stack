@@ -6,17 +6,17 @@
 
 use chrono::{DateTime, Utc};
 use mez_corridor::{
-    TradeFlowRecord, TradeFlowState, TradeFlowType, TradeParty, TradeTransitionRecord,
+    TradeFlowRecord, TradeFlowState, TradeFlowType, TradeTransitionRecord,
 };
 use sqlx::PgPool;
 use uuid::Uuid;
 
 /// Save a trade flow record to the database (upsert).
 pub async fn save_trade_flow(pool: &PgPool, record: &TradeFlowRecord) -> Result<(), sqlx::Error> {
-    let seller_json =
-        serde_json::to_value(&record.seller).unwrap_or_else(|_| serde_json::json!({}));
-    let buyer_json =
-        serde_json::to_value(&record.buyer).unwrap_or_else(|_| serde_json::json!({}));
+    let seller_json = serde_json::to_value(&record.seller)
+        .map_err(|e| sqlx::Error::Protocol(format!("failed to serialize seller: {e}")))?;
+    let buyer_json = serde_json::to_value(&record.buyer)
+        .map_err(|e| sqlx::Error::Protocol(format!("failed to serialize buyer: {e}")))?;
 
     sqlx::query(
         "INSERT INTO trade_flows (flow_id, corridor_id, flow_type, state, seller, buyer, created_at, updated_at)
@@ -54,7 +54,7 @@ async fn save_trade_transition(
     t: &TradeTransitionRecord,
 ) -> Result<(), sqlx::Error> {
     let digests_json = serde_json::to_value(&t.document_digests)
-        .unwrap_or_else(|_| serde_json::json!([]));
+        .map_err(|e| sqlx::Error::Protocol(format!("failed to serialize document_digests: {e}")))?;
 
     sqlx::query(
         "INSERT INTO trade_transitions (transition_id, flow_id, kind, from_state, to_state, payload, document_digests, receipt_digest, created_at)
@@ -95,26 +95,18 @@ pub async fn load_all_trade_flows(
             corridor_id: row.corridor_id,
             flow_type: parse_flow_type(&row.flow_type),
             state: parse_flow_state(&row.state),
-            seller: serde_json::from_value(row.seller).unwrap_or_else(|_| TradeParty {
-                party_id: "unknown".to_string(),
-                name: None,
-                lei: None,
-                did: None,
-                account_id: None,
-                agent_id: None,
-                address: None,
-                meta: None,
-            }),
-            buyer: serde_json::from_value(row.buyer).unwrap_or_else(|_| TradeParty {
-                party_id: "unknown".to_string(),
-                name: None,
-                lei: None,
-                did: None,
-                account_id: None,
-                agent_id: None,
-                address: None,
-                meta: None,
-            }),
+            seller: serde_json::from_value(row.seller).map_err(|e| {
+                sqlx::Error::Protocol(format!(
+                    "corrupt seller data in trade flow {}: {e}",
+                    row.flow_id
+                ))
+            })?,
+            buyer: serde_json::from_value(row.buyer).map_err(|e| {
+                sqlx::Error::Protocol(format!(
+                    "corrupt buyer data in trade flow {}: {e}",
+                    row.flow_id
+                ))
+            })?,
             transitions,
             created_at: row.created_at,
             updated_at: row.updated_at,
@@ -138,20 +130,26 @@ pub async fn load_transitions_for_flow(
     .fetch_all(pool)
     .await?;
 
-    Ok(rows
-        .into_iter()
-        .map(|r| TradeTransitionRecord {
+    let mut records = Vec::with_capacity(rows.len());
+    for r in rows {
+        let document_digests = serde_json::from_value(r.document_digests).map_err(|e| {
+            sqlx::Error::Protocol(format!(
+                "corrupt document_digests in transition {}: {e}",
+                r.transition_id
+            ))
+        })?;
+        records.push(TradeTransitionRecord {
             transition_id: r.transition_id,
             kind: r.kind,
             from_state: parse_flow_state(&r.from_state),
             to_state: parse_flow_state(&r.to_state),
             payload: r.payload,
-            document_digests: serde_json::from_value(r.document_digests)
-                .unwrap_or_default(),
+            document_digests,
             receipt_digest: r.receipt_digest,
             created_at: r.created_at,
-        })
-        .collect())
+        });
+    }
+    Ok(records)
 }
 
 // ---------------------------------------------------------------------------
@@ -194,7 +192,10 @@ fn parse_flow_type(s: &str) -> TradeFlowType {
         "Import" => TradeFlowType::Import,
         "LetterOfCredit" => TradeFlowType::LetterOfCredit,
         "OpenAccount" => TradeFlowType::OpenAccount,
-        _ => TradeFlowType::Export, // fallback
+        other => {
+            tracing::warn!(value = other, "unrecognized trade flow type in database, defaulting to Export");
+            TradeFlowType::Export
+        }
     }
 }
 
@@ -212,6 +213,9 @@ fn parse_flow_state(s: &str) -> TradeFlowState {
         "LcHonored" => TradeFlowState::LcHonored,
         "SettlementInitiated" => TradeFlowState::SettlementInitiated,
         "Settled" => TradeFlowState::Settled,
-        _ => TradeFlowState::Created, // fallback
+        other => {
+            tracing::warn!(value = other, "unrecognized trade flow state in database, defaulting to Created");
+            TradeFlowState::Created
+        }
     }
 }

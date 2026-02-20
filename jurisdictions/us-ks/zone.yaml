@@ -1,9 +1,16 @@
+# Zone Manifest: Kansas
+#
+# US state zone for Kansas.
+#
+# jurisdiction_stack: us > us-ks
+
 zone_id: org.momentum.mez.zone.us.ks
 jurisdiction_id: us-ks
 zone_name: Kansas
+
 profile:
-  profile_id: org.momentum.mez.profile.digital-financial-center
-  version: 0.4.44
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
 
 jurisdiction_stack:
   - us
@@ -13,16 +20,34 @@ lawpack_domains:
   - civil
   - financial
 
-overlays: []
-params_overrides: {}
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
 
+national_adapters:
+  fincen:
+    enabled: false
+    endpoint: "${FINCEN_URL:-}"
+  irs:
+    enabled: false
+    endpoint: "${IRS_URL:-}"
+  osbc_ks:
+    enabled: false
+    endpoint: "${OSBC_KS_URL:-}"
+
 trust_anchors: []
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

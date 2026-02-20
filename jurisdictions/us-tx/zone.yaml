@@ -1,9 +1,17 @@
+# Zone Manifest: Texas
+#
+# TDOB framework; Texas Virtual Currency Act.
+# Texas DBA (Department of Banking) supervision of digital assets.
+#
+# jurisdiction_stack: us > us-tx
+
 zone_id: org.momentum.mez.zone.us.tx
 jurisdiction_id: us-tx
 zone_name: Texas
+
 profile:
-  profile_id: org.momentum.mez.profile.digital-financial-center
-  version: 0.4.44
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
 
 jurisdiction_stack:
   - us
@@ -13,16 +21,34 @@ lawpack_domains:
   - civil
   - financial
 
-overlays: []
-params_overrides: {}
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
 
+national_adapters:
+  fincen:
+    enabled: false
+    endpoint: "${FINCEN_URL:-}"
+  irs:
+    enabled: false
+    endpoint: "${IRS_URL:-}"
+  tdob:
+    enabled: false
+    endpoint: "${TDOB_URL:-}"
+
 trust_anchors: []
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

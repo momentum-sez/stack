@@ -1,30 +1,35 @@
-# Conformance tests
+# Conformance Tests
 
-This folder contains the **reference conformance suite**.
+This folder contains **reference conformance fixtures** used by the Rust test suite.
 
-Run:
-
-```bash
-pip install -r tools/requirements.txt
-pytest -q
-```
-
-## Optional suites
-
-Some suites are *intentionally* skipped by default to keep CI fast and deterministic.
-
-Enable them via environment flags:
+## Running tests
 
 ```bash
-# Slow correctness suites
-MEZ_RUN_SLOW=1 pytest -q
+# Build and test the full workspace (4,601 tests)
+cd mez && cargo test --workspace
 
-# Performance/benchmark suites
-MEZ_RUN_PERF=1 pytest -q
+# Run a specific crate's tests
+cargo test -p mez-corridor
 
-# Large scenario scaffolds (roadmap test matrix; mostly TODO stubs)
-MEZ_RUN_SCAFFOLD=1 pytest -q
+# Run adversarial security vectors
+cargo test -p mez-integration-tests -- adversarial
+
+# Run golden vector conformance tests
+cargo test -p mez-integration-tests -- golden_vector
+
+# Run cross-language canonicalization vectors
+cargo test -p mez-core -- cross_language
 ```
 
-CI runs this suite on every push/PR.
+## Fixtures
 
+| Directory | Contents |
+|-----------|----------|
+| `fixtures/` | JSON golden vectors: canonical bytes, CAS digests, corridor agreements, MMR roots, lockfile |
+
+## Test layers
+
+1. **Inline unit tests** — `#[cfg(test)]` modules co-located with source (145 files)
+2. **Crate integration tests** — `crates/*/tests/*.rs` (per-crate integration)
+3. **Cross-crate integration** — `mez-integration-tests` (90+ test files, adversarial vectors, E2E flows)
+4. **Mass API contract tests** — `mez-mass-client/tests/` (7 files; staleness checks are `#[ignore]`d)

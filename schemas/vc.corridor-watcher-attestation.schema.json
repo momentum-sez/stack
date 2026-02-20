@@ -58,7 +58,7 @@
             {"type": "string", "pattern": "^[a-f0-9]{64}$"},
             {
               "allOf": [
-                {"$ref": "artifact-ref.schema.json"},
+                {"$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"},
                 {
                   "properties": {"artifact_type": {"const": "checkpoint"}},
                   "required": ["artifact_type", "digest_sha256"]
@@ -69,7 +69,7 @@
         },
         "finality_level": {
           "description": "Optional explicit finality level claim (for downstream systems).",
-          "$ref": "finality-level.schema.json"
+          "$ref": "https://schemas.momentum-ez.org/mez/finality-level.schema.json"
         },
         "no_fork_observed": {
           "description": "Optional explicit claim that the watcher has not observed any fork for this corridor up to receipt_count.",

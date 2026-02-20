@@ -45,11 +45,11 @@
         "next_root_b": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
         "receipt_a": {
           "description": "Optional attachment reference to one conflicting receipt (recommended: artifact_type 'blob').",
-          "$ref": "artifact-ref.schema.json"
+          "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
         },
         "receipt_b": {
           "description": "Optional attachment reference to the other conflicting receipt (recommended: artifact_type 'blob').",
-          "$ref": "artifact-ref.schema.json"
+          "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"
         },
         "notes": {"type": "string"}
       },

@@ -1,5 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-ez.org/mez/vc.lawpack-attestation.schema.json",
   "title": "MEZ Lawpack Validity Attestation Verifiable Credential",
   "description": "A Verifiable Credential by a legal authority (or other recognized issuer) attesting that a given lawpack digest corresponds to a legally valid body of law for a specified jurisdiction+domain as-of a date. This credential is intended to narrow the legal-cryptographic gap by binding a lawpack digest to an assertion of legal force.",
   "type": "object",
@@ -45,7 +46,7 @@
               "pattern": "^[0-9a-f]{64}$"
             },
             {
-              "$ref": "artifact-ref.schema.json",
+              "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json",
               "properties": {
                 "artifact_type": {"const": "lawpack"}
               }
@@ -78,7 +79,7 @@
             "sources": {
               "description": "Evidence artifacts backing the attestation (gazette PDFs, links, hash commitments).",
               "type": "array",
-              "items": {"$ref": "artifact-ref.schema.json"}
+              "items": {"$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"}
             },
             "notes": {"type": "string"}
           },

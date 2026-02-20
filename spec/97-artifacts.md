@@ -64,7 +64,7 @@ Where:
 
 Recommended type set (non-exhaustive):
 
-- `lawpack` — jurisdictional legal corpora (see `spec/91-lawpacks.md`).
+- `lawpack` — jurisdictional legal corpora (see `spec/96-lawpacks.md`).
 - `ruleset` — ruleset descriptors / semantics definitions.
 - `transition-types` — registry lock snapshots (`*.transition-types.lock.json`).
 - `schema` — JSON Schemas referenced by digest.

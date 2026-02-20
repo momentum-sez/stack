@@ -83,7 +83,7 @@
           ]
         },
         "reference": {
-          "$ref": "artifact-ref.schema.json",
+          "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json",
           "description": "Reference to the artifact triggering this condition"
         },
         "satisfied": {
@@ -120,7 +120,7 @@
           "description": "Explanation for the transaction"
         },
         "ruling_ref": {
-          "$ref": "artifact-ref.schema.json",
+          "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json",
           "description": "Reference to authorizing ruling (if applicable)"
         },
         "timestamp": {

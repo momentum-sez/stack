@@ -1,0 +1,30 @@
+# Composition Spec: Atlantic Fintech Hub
+#
+# Synthetic zone composed from best-of-breed regulatory primitives:
+#   - Corporate formation: Delaware (DGCL Title 8)
+#   - Civic code: New York (GOL / General Obligations Law)
+#   - Digital assets: ADGM (FSMR 2015 — Financial Services and Markets Regulations)
+#   - Arbitration: Hong Kong (Cap 609 — Arbitration Ordinance)
+#   - Tax: Singapore (ITA — Income Tax Act, 17% corporate, 9% GST)
+#   - AML/CFT: UAE (Federal Decree-Law No. 20/2018)
+#
+# Use case: US-domiciled fintech companies seeking regulated digital asset
+# operations with favorable tax treatment and credible arbitration.
+
+zone_name: Atlantic Fintech Hub
+zone_id: org.momentum.mez.zone.synthetic.atlantic-fintech
+jurisdiction_id: synth-atlantic-fintech
+primary_jurisdiction: us
+layers:
+  - domain: corporate_formation
+    source: us-de
+  - domain: civic_code
+    source: us-ny
+  - domain: digital_assets
+    source: ae-abudhabi-adgm
+  - domain: arbitration
+    source: hk
+  - domain: tax
+    source: sg
+  - domain: aml_cft
+    source: ae

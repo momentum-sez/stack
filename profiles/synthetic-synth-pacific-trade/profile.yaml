@@ -1,0 +1,68 @@
+# Profile: Pacific Trade Hub (Synthetic)
+#
+# Synthetic zone profile composed from Asia-Pacific regulatory primitives.
+# Each regulatory domain is sourced from a different jurisdiction.
+#
+# Layers:
+#   corporate_formation <- us-ca (Cal. Corp. Code)
+#   civic_code <- us-ca (Cal. Civ. Code)
+#   digital_assets <- ae-dubai-difc (DIFC Law No. 2/2024)
+#   arbitration <- sg (IAA Cap 143A)
+#   tax <- hk (IRO — 16.5% flat)
+#   aml_cft <- sg (MAS Notice 626)
+
+profile_id: org.momentum.mez.profile.synthetic-synth-pacific-trade
+profile_name: Pacific Trade Hub
+version: "0.4.44"
+zone_type: synthetic
+
+composition:
+  - domain: corporate_formation
+    source: us-ca
+  - domain: civic_code
+    source: us-ca
+  - domain: digital_assets
+    source: ae-dubai-difc
+  - domain: arbitration
+    source: sg
+  - domain: tax
+    source: hk
+  - domain: aml_cft
+    source: sg
+
+modules:
+  - id: org.momentum.mez.legal.core
+    variant: synthetic-composed
+  - id: org.momentum.mez.legal.commercial-code
+    variant: us-ca-corp-code
+  - id: org.momentum.mez.legal.civil-code
+    variant: us-ca-civ-code
+  - id: org.momentum.mez.reg.aml-cft
+    variant: risk-based
+    parameters:
+      kyc_tier: 3
+      edd_threshold_sgd: 20000
+      law_reference: "MAS Notice 626, CDSA Cap 65A, TSOFA Cap 325"
+  - id: org.momentum.mez.reg.digital-assets
+    variant: difc-digital-assets
+    parameters:
+      framework: "DIFC Law No. 2/2024"
+      regulator: "DFSA"
+  - id: org.momentum.mez.legal.dispute-resolution
+    variant: sg-iaa
+    parameters:
+      framework: "International Arbitration Act Cap 143A"
+      institution: "SIAC"
+  - id: org.momentum.mez.tax
+    variant: hk-iro
+    parameters:
+      corporate_rate_percent: 16.5
+      authority: "IRD"
+  - id: org.momentum.mez.fin.payments-adapter
+    variant: iso20022-mapping
+  - id: org.momentum.mez.corridor.swift
+    variant: iso20022-cross-border
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin

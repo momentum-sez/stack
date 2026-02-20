@@ -11,7 +11,9 @@ use clap::{Parser, Subcommand};
 use tracing_subscriber::EnvFilter;
 
 use mez_cli::artifact::{run_artifact, ArtifactArgs};
+use mez_cli::compose::{run_zone, ZoneArgs};
 use mez_cli::corridor::{run_corridor, CorridorArgs};
+use mez_cli::deploy_gen::{run_deploy, DeployArgs};
 use mez_cli::lock::{run_lock, LockArgs};
 use mez_cli::regpack::{run_regpack, RegpackArgs};
 use mez_cli::signing::{run_signing, SigningArgs};
@@ -61,6 +63,12 @@ enum Commands {
     /// Ed25519 key generation, VC signing, and signature verification.
     #[command(name = "vc")]
     Signing(SigningArgs),
+
+    /// Zone composition and synthetic zone generation.
+    Zone(ZoneArgs),
+
+    /// Deploy infrastructure generation (Docker Compose for N zones).
+    Deploy(DeployArgs),
 }
 
 fn main() -> ExitCode {
@@ -96,6 +104,8 @@ fn main() -> ExitCode {
         Commands::Artifact(args) => run_artifact(&args, &repo_root),
         Commands::Regpack(args) => run_regpack(&args, &repo_root),
         Commands::Signing(args) => run_signing(&args, &repo_root),
+        Commands::Zone(args) => run_zone(&args, &repo_root),
+        Commands::Deploy(args) => run_deploy(&args, &repo_root),
     };
 
     match result {

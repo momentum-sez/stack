@@ -1,0 +1,30 @@
+# Composition Spec: Pacific Trade Hub
+#
+# Synthetic zone composed from Asia-Pacific regulatory primitives:
+#   - Corporate formation: California (Cal. Corp. Code)
+#   - Civic code: California (Cal. Civ. Code)
+#   - Digital assets: Dubai DIFC (DIFC Law No. 2/2024 — Digital Assets Law)
+#   - Arbitration: Singapore (IAA Cap 143A — International Arbitration Act)
+#   - Tax: Hong Kong (IRO — Inland Revenue Ordinance, 16.5% flat)
+#   - AML/CFT: Singapore (MAS Notice 626, CDSA Cap 65A, TSOFA Cap 325)
+#
+# Use case: Pacific Rim trade entities seeking digital-native settlement
+# with Hong Kong's territorial tax system and Singapore's arbitration framework.
+
+zone_name: Pacific Trade Hub
+zone_id: org.momentum.mez.zone.synthetic.pacific-trade
+jurisdiction_id: synth-pacific-trade
+primary_jurisdiction: us
+layers:
+  - domain: corporate_formation
+    source: us-ca
+  - domain: civic_code
+    source: us-ca
+  - domain: digital_assets
+    source: ae-dubai-difc
+  - domain: arbitration
+    source: sg
+  - domain: tax
+    source: hk
+  - domain: aml_cft
+    source: sg

@@ -1,6 +1,6 @@
 # MEZ Rust Workspace — v0.4.44 GENESIS
 
-The native Rust implementation of the MEZ Stack v0.4.44 GENESIS protocol. 14 crates, 70K lines, 2,580+ tests at 98% line coverage.
+The native Rust implementation of the Momentum EZ Stack. 17 crates, 159K lines, 4,601 tests.
 
 ---
 
@@ -15,17 +15,11 @@ cargo build --workspace
 # Run all tests
 cargo test --workspace
 
-# Lint (zero warnings)
+# Lint (zero warnings required)
 cargo clippy --workspace -- -D warnings
 
 # Check formatting
 cargo fmt --check --all
-
-# Generate documentation
-cargo doc --workspace --no-deps --open
-
-# Security audit
-cargo install cargo-audit --locked && cargo audit
 ```
 
 ---
@@ -33,19 +27,19 @@ cargo install cargo-audit --locked && cargo audit
 ## Crate Dependency Graph
 
 ```
-mez-core (foundation: canonicalization, types, domains)
+mez-core (foundation: canonicalization, types, 20 compliance domains)
   |
   +-- mez-crypto (Ed25519, MMR, CAS, SHA-256)
   |     |
   |     +-- mez-vc (W3C Verifiable Credentials)
   |     |
   |     +-- mez-zkp (ZK proof system, 12 circuits)
-  |     |
-  |     +-- mez-tensor (compliance tensor, Dijkstra manifold)
+  |
+  +-- mez-tensor (compliance tensor, Dijkstra manifold)
   |
   +-- mez-state (typestate machines: corridor, entity, migration, license, watcher)
   |     |
-  |     +-- mez-corridor (bridge routing, receipt chain, fork resolution, netting, SWIFT)
+  |     +-- mez-corridor (receipt chain, fork resolution, netting, SWIFT, trade flows)
   |     |
   |     +-- mez-arbitration (dispute lifecycle, evidence, escrow, enforcement)
   |
@@ -53,72 +47,42 @@ mez-core (foundation: canonicalization, types, domains)
   |
   +-- mez-agentic (policy engine: 20 triggers, evaluation, scheduling, audit)
   |
-  +-- mez-schema (JSON Schema validation, additionalProperties policy)
+  +-- mez-compliance (jurisdiction config bridge: regpack -> tensor)
+  |
+  +-- mez-schema (JSON Schema validation, Draft 2020-12)
+  |
+  +-- mez-mass-client (typed HTTP client for Mass APIs)
+  |
+  +-- mez-mass-stub (standalone Mass API stub for dev/testing)
 
-mez-api (Axum HTTP server: 5 primitives + corridors + assets + regulator)
-mez-cli (Rust CLI: validate, lock, artifact operations)
-mez-integration-tests (97 cross-crate E2E test files)
+mez-api (Axum HTTP server: composition root for all crates)
+mez-cli (CLI: validate, lock, corridor, artifact, vc, regpack, deploy)
+mez-integration-tests (cross-crate integration test suite)
 ```
 
 ---
 
 ## Crate Reference
 
-| Crate | Purpose | Key Types | Spec |
-|---|---|---|---|
-| **mez-core** | Canonical serialization (JCS), content digests, 20 compliance domains, identity newtypes | `CanonicalBytes`, `ContentDigest`, `ComplianceDomain`, `Did`, `EntityId`, `JurisdictionId`, `Cnic`, `Ntn` | 00, 02 |
-| **mez-crypto** | Ed25519 signing/verification, Merkle Mountain Range, content-addressed storage | `Ed25519Keypair`, `MerkleMountainRange`, `ContentAddressedStore`, `ArtifactRef` | 80, 90, 97 |
-| **mez-vc** | W3C Verifiable Credential envelope with Ed25519 proofs | `VerifiableCredential`, `ProofType`, `SmartAssetRegistryVc` | 12 |
-| **mez-state** | Typestate-encoded state machines (invalid transitions are compile errors) | `Corridor<Draft>`, `Entity<Active>`, `Migration<Transit>`, `License<Pending>`, `Watcher<Bonded>` | 40, 60, 98 |
-| **mez-tensor** | Compliance tensor (20 domains), Dijkstra manifold path optimization | `ComplianceTensor`, `ComplianceManifold`, `TensorCommitment` | 14 |
-| **mez-zkp** | Sealed `ProofSystem` trait, mock backend (Phase 1), 12 circuit definitions | `ProofSystem` (sealed), `MockProofSystem`, `CircuitType`, `Cdb` | 80 |
-| **mez-pack** | Pack trilogy: statute compilation, regulatory requirements, license lifecycle | `Lawpack`, `Regpack`, `Licensepack`, `PackValidationResult` | 96, 98 |
-| **mez-corridor** | Cross-border bridge with Dijkstra routing, MMR receipt chain, fork resolution | `CorridorBridge`, `ReceiptChain`, `ForkDetector`, `NettingEngine`, `SwiftPacs008` | 40 |
-| **mez-agentic** | Policy engine with 20 trigger types and deterministic evaluation | `PolicyEngine`, `TriggerType`, `ActionScheduler`, `AuditTrail` | 17 |
-| **mez-arbitration** | 7-phase dispute lifecycle with typestate enforcement | `Dispute<Filed>`, `EvidenceStore`, `Escrow`, `EnforcementOrder` | 21 |
-| **mez-schema** | JSON Schema Draft 2020-12 validation, security policy analysis | `SchemaValidator`, `AdditionalPropertiesViolation` | 07, 20 |
-| **mez-api** | Axum HTTP server with OpenAPI generation via utoipa | `AppState`, route modules for 8 endpoint groups | 11, 12 |
-| **mez-cli** | CLI with clap derive macros, backward-compatible with Python CLI | `validate`, `lock`, `artifact`, `signing` subcommands | 03 |
-
----
-
-## Key Design Patterns
-
-### Typestate Machines
-
-State machines use the typestate pattern — invalid transitions are caught at compile time, not runtime:
-
-```rust
-// Corridor can only transition Draft -> Pending -> Active
-let corridor = Corridor::<Draft>::new(id, jurisdiction_a, jurisdiction_b);
-let corridor = corridor.submit();       // Draft -> Pending (compiles)
-let corridor = corridor.activate();     // Pending -> Active (compiles)
-// corridor.submit();                   // Active -> Pending (COMPILE ERROR)
-```
-
-### Canonical Serialization
-
-All digest computation flows through `CanonicalBytes`, ensuring identical serialization everywhere:
-
-```rust
-use mez_core::{CanonicalBytes, sha256_digest};
-
-let canonical = CanonicalBytes::new(&json!({"b": 2, "a": 1}))?;
-// Keys are sorted, floats rejected, datetimes normalized
-let digest = sha256_digest(&canonical);
-// digest.to_hex() == "43258cff..."
-```
-
-### Sealed Proof System
-
-The `ProofSystem` trait is sealed — only crate-internal implementations can exist:
-
-```rust
-// Phase 1: MockProofSystem (deterministic, non-cryptographic)
-// Phase 2: Groth16ProofSystem, PlonkProofSystem (behind feature flags)
-let proof = MockProofSystem::prove(&circuit_data, &witness)?;
-let valid = MockProofSystem::verify(&proof, &public_inputs)?;
-```
+| Crate | Purpose | Key Types |
+|---|---|---|
+| **mez-core** | Canonical serialization (JCS+MCF), content digests, 20 compliance domains, identity newtypes | `CanonicalBytes`, `ContentDigest`, `ComplianceDomain`, `EntityId`, `JurisdictionId`, `Cnic`, `Ntn`, `EmiratesId`, `Nric` |
+| **mez-crypto** | Ed25519 signing/verification, Merkle Mountain Range, content-addressed storage | `Ed25519Keypair`, `MerkleMountainRange`, `ContentAddressedStore`, `ArtifactRef` |
+| **mez-vc** | W3C Verifiable Credential envelope with Ed25519 proofs | `VerifiableCredential`, `ProofType`, `SmartAssetRegistryVc` |
+| **mez-state** | Typestate-encoded state machines (invalid transitions are compile errors) | `Corridor<Draft>`, `Entity<Active>`, `Migration<Transit>`, `License<Pending>`, `Watcher<Bonded>` |
+| **mez-tensor** | Compliance tensor (20 domains), Dijkstra manifold path optimization | `ComplianceTensor`, `ComplianceManifold`, `TensorCommitment` |
+| **mez-zkp** | Sealed `ProofSystem` trait, mock backend (Phase 1), 12 circuit definitions | `ProofSystem` (sealed), `MockProofSystem`, `CircuitType`, `Cdb` |
+| **mez-pack** | Pack trilogy: statute compilation, regulatory requirements, license lifecycle | `Lawpack`, `Regpack`, `Licensepack`, `PackValidationResult` |
+| **mez-corridor** | Receipt chain (MMR), fork resolution, netting, SWIFT, trade flow instruments | `ReceiptChain`, `ForkDetector`, `NettingEngine`, `SwiftPacs008`, `TradeFlowManager` |
+| **mez-agentic** | Policy engine with 20 trigger types and deterministic evaluation | `PolicyEngine`, `TriggerType`, `ActionScheduler`, `AuditTrail` |
+| **mez-arbitration** | 7-phase dispute lifecycle with typestate enforcement | `Dispute<Filed>`, `EvidenceStore`, `Escrow`, `EnforcementOrder` |
+| **mez-compliance** | Jurisdiction config bridge (regpack -> tensor evaluation) | `JurisdictionConfig`, `ComplianceEvaluator` |
+| **mez-schema** | JSON Schema Draft 2020-12 validation with compiled validator cache | `SchemaValidator`, `AdditionalPropertiesViolation` |
+| **mez-mass-client** | Typed HTTP client for all five Mass API primitives | `FiscalClient`, `OwnershipClient`, `IdentityClient`, `ConsentClient` |
+| **mez-mass-stub** | Standalone Mass API stub server (DashMap-backed, for dev without Postgres) | Axum routes matching Mass API surface |
+| **mez-api** | Axum HTTP server — composition root, orchestration pipeline, Postgres persistence | `AppState`, route modules for all endpoint groups |
+| **mez-cli** | CLI: validate, lock, corridor, artifact, vc, regpack build, deploy gen | `validate`, `lock`, `artifact`, `signing`, `corridor`, `compose` subcommands |
+| **mez-integration-tests** | Cross-crate integration test suite | End-to-end flow tests |
 
 ---
 
@@ -131,18 +95,21 @@ cargo run -p mez-api
 # Listening on 0.0.0.0:3000
 ```
 
-| Route Group | Prefix | Primitive |
+| Route Group | Prefix | Domain |
 |---|---|---|
-| Entities | `/v1/entities` | Organization lifecycle, beneficial ownership |
-| Ownership | `/v1/ownership` | Cap table, transfers, share classes |
-| Fiscal | `/v1/fiscal` | Treasury, payments, withholding |
-| Identity | `/v1/identity` | KYC/KYB, identity linking |
-| Consent | `/v1/consent` | Multi-party consent, signing |
-| Corridors | `/v1/corridors` | State channel, receipts, fork resolution |
-| Smart Assets | `/v1/assets` | Registry, compliance eval, anchor verify |
-| Regulator | `/v1/regulator` | Query access, compliance reports |
-
-OpenAPI spec auto-generated at `/openapi.json`.
+| Entities | `/v1/entities` | Mass Entities (proxy or sovereign) |
+| Ownership | `/v1/ownership` | Mass Ownership |
+| Fiscal | `/v1/fiscal` | Mass Fiscal |
+| Identity | `/v1/identity` | Mass Identity |
+| Consent | `/v1/consent` | Mass Consent |
+| Corridors | `/v1/corridors` | Corridor lifecycle, receipts, forks |
+| Settlement | `/v1/settlement` | Netting, SWIFT instructions |
+| Smart Assets | `/v1/assets` | Registry, compliance eval |
+| Credentials | `/v1/credentials` | VC issuance, verification |
+| Trade Flows | `/v1/trade/flows` | Trade flow lifecycle, transitions |
+| Compliance | `/v1/compliance` | Entity compliance queries |
+| Regulator | `/v1/regulator` | Compliance monitoring |
+| Health | `/health/liveness`, `/health/readiness` | Probes |
 
 ---
 
@@ -158,22 +125,9 @@ cargo test -p mez-core
 # Specific test
 cargo test -p mez-corridor -- test_receipt_chain
 
-# With output
-cargo test -p mez-api -- --nocapture
-
 # Integration tests only
 cargo test -p mez-integration-tests
 ```
-
-### Coverage
-
-```bash
-cargo install cargo-llvm-cov
-cargo llvm-cov --workspace --html
-# Report at target/llvm-cov/html/index.html
-```
-
-Current coverage: **98% line coverage** across all crates.
 
 ---
 
@@ -192,7 +146,8 @@ Current coverage: **98% line coverage** across all crates.
 
 | Document | Path |
 |----------|------|
+| Project README | [README.md](../README.md) |
 | Spec-to-Crate Traceability | [docs/traceability-matrix.md](../docs/traceability-matrix.md) |
 | Architecture Deep Dive | [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) |
-| Security Audit | [docs/fortification/ez_stack_audit_v2.md](../docs/fortification/ez_stack_audit_v2.md) |
+| Crate Reference | [docs/architecture/CRATE-REFERENCE.md](../docs/architecture/CRATE-REFERENCE.md) |
 | CI Pipeline | [.github/workflows/ci.yml](../.github/workflows/ci.yml) |

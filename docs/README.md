@@ -112,13 +112,8 @@ Working examples in [`docs/examples/`](./examples/):
 
 | Directory | Contents |
 |-----------|----------|
-| [Agentic](./examples/agentic/) | Sanctions halt policy scenario |
 | [Keys](./examples/keys/) | Development Ed25519 key pairs |
-| [Lawpack](./examples/lawpack/) | Akoma Ntoso enabling act |
-| [Regpack](./examples/regpack/) | License registry, sanctions snapshots |
-| [State](./examples/state/) | State transition examples |
 | [Trade](./examples/trade/) | Trade playbook with receipts and settlement |
-| [VC](./examples/vc/) | Verifiable Credential examples |
 
 ---
 

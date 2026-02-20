@@ -350,6 +350,18 @@ sovereign deployments, not top-down from protocol design.
 `mez-mass-client` must abstract over both centralized and sovereign Mass endpoints.
 Key custody, data residency, and operational authority belong to the zone operator.
 
+### ADR-007: Sovereign Mass Persistence — Single Binary with Postgres
+**Decision**: Mass primitive data is persisted in Postgres within the mez-api process
+when `SOVEREIGN_MASS=true`, eliminating the separate mez-mass-stub container.
+**Rationale**: The stub was an ephemeral DashMap server. Sovereign partners need data
+that survives restarts. The mez-api already has SQLx + Postgres for corridor/asset
+persistence. Absorbing Mass primitives into the same persistence layer reduces the
+container count from 3 to 2 per zone, eliminates a network hop, and uses a proven
+code pattern.
+**Consequence**: Two deployment modes: `SOVEREIGN_MASS=true` (zone IS the Mass server,
+Postgres-backed) and `SOVEREIGN_MASS=false` (zone proxies to centralized Mass APIs).
+The standalone mez-mass-stub binary remains for development without Postgres.
+
 ---
 
 ## VII. RISK REGISTER

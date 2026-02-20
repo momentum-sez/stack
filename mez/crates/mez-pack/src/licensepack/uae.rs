@@ -53,20 +53,165 @@ pub fn federal_regulators() -> Vec<LicensepackRegulator> {
 
 pub fn federal_license_types() -> Vec<LicenseTypeDefinition> {
     vec![
-        lt("ae-cbuae:commercial-bank", "Commercial Banking License", "License to operate a commercial bank under CBUAE regulations", "ae-cbuae", "financial",
-           &["deposit_taking", "lending", "trade_finance", "foreign_exchange"], None, None, None),
-        lt("ae-cbuae:islamic-bank", "Islamic Banking License", "License for Sharia-compliant banking", "ae-cbuae", "financial",
-           &["islamic_deposit_taking", "murabaha", "ijara", "sukuk"], None, None, None),
-        lt("ae-cbuae:exchange-house", "Exchange House License", "License for money exchange and remittance", "ae-cbuae", "financial",
-           &["currency_exchange", "remittance", "money_transfer"], Some(("AED", "50000")), Some(("AED", "25000")), Some(1)),
-        lt("ae-cbuae:stored-value", "Stored Value Facility License", "License to issue stored value instruments", "ae-cbuae", "financial",
-           &["e_money_issuance", "payment_services"], Some(("AED", "100000")), Some(("AED", "50000")), Some(2)),
-        lt("ae-cbuae:insurance", "Insurance Company License", "License to underwrite insurance in the UAE", "ae-cbuae", "insurance",
-           &["general_insurance", "life_insurance", "takaful"], None, None, None),
-        lt("ae-sca:securities-broker", "Securities Broker License", "License for securities brokerage activities", "ae-sca", "financial",
-           &["securities_brokerage", "trading"], Some(("AED", "10000")), Some(("AED", "5000")), Some(1)),
-        lt("ae-sca:fund-manager", "Fund Manager License", "License for investment fund management", "ae-sca", "financial",
-           &["fund_management", "portfolio_management", "asset_allocation"], Some(("AED", "10000")), Some(("AED", "5000")), Some(1)),
+        // CBUAE Commercial Bank — Decretal Federal Law No. 14/2018, Article 68
+        LicenseTypeDefinition {
+            license_type_id: "ae-cbuae:commercial-bank".to_string(),
+            name: "Commercial Banking License".to_string(),
+            description: "License to operate a commercial bank under CBUAE regulations (Decretal Federal Law No. 14/2018)".to_string(),
+            regulator_id: "ae-cbuae".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "deposit_taking".to_string(),
+                "lending".to_string(),
+                "trade_finance".to_string(),
+                "foreign_exchange".to_string(),
+            ],
+            requirements: [
+                ("minimum_paid_up_capital_aed".to_string(), serde_json::json!("2000000000")),
+                ("capital_adequacy_ratio".to_string(), serde_json::json!("0.13")),
+                ("tier_1_capital_ratio".to_string(), serde_json::json!("0.105")),
+                ("liquidity_coverage_ratio".to_string(), serde_json::json!("1.00")),
+                ("statutory_reference".to_string(), serde_json::json!("Decretal Federal Law No. 14/2018 Art. 68; CBUAE Standards Re Capital Adequacy")),
+                ("fit_and_proper".to_string(), serde_json::json!("CBUAE Fit and Proper Requirements for Licensed Financial Institutions")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("Federal Decree-Law No. 20/2018 on AML/CFT")),
+                ("external_audit_required".to_string(), serde_json::json!("Annual external audit per CBUAE Regulations")),
+            ].into_iter().collect(),
+            application_fee: BTreeMap::new(),
+            annual_fee: BTreeMap::new(),
+            validity_period_years: None,
+        },
+        // CBUAE Islamic Bank
+        LicenseTypeDefinition {
+            license_type_id: "ae-cbuae:islamic-bank".to_string(),
+            name: "Islamic Banking License".to_string(),
+            description: "License for Sharia-compliant banking under Federal Law No. 6/1985 and Decretal Federal Law No. 14/2018".to_string(),
+            regulator_id: "ae-cbuae".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "islamic_deposit_taking".to_string(),
+                "murabaha".to_string(),
+                "ijara".to_string(),
+                "sukuk".to_string(),
+            ],
+            requirements: [
+                ("minimum_paid_up_capital_aed".to_string(), serde_json::json!("2000000000")),
+                ("capital_adequacy_ratio".to_string(), serde_json::json!("0.13")),
+                ("sharia_supervisory_board".to_string(), serde_json::json!("Internal Sharia Supervisory Board required; Higher Sharia Authority compliance")),
+                ("statutory_reference".to_string(), serde_json::json!("Federal Law No. 6/1985; Decretal Federal Law No. 14/2018 Art. 68")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("Federal Decree-Law No. 20/2018 on AML/CFT")),
+                ("fit_and_proper".to_string(), serde_json::json!("CBUAE Fit and Proper Requirements")),
+            ].into_iter().collect(),
+            application_fee: BTreeMap::new(),
+            annual_fee: BTreeMap::new(),
+            validity_period_years: None,
+        },
+        // CBUAE Exchange House
+        LicenseTypeDefinition {
+            license_type_id: "ae-cbuae:exchange-house".to_string(),
+            name: "Exchange House License".to_string(),
+            description: "License for money exchange and remittance services".to_string(),
+            regulator_id: "ae-cbuae".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "currency_exchange".to_string(),
+                "remittance".to_string(),
+                "money_transfer".to_string(),
+            ],
+            requirements: [
+                ("minimum_paid_up_capital_aed".to_string(), serde_json::json!("50000000")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("Federal Decree-Law No. 20/2018; CBUAE Notice No. 74/2019")),
+                ("compliance_officer_required".to_string(), serde_json::json!("Designated compliance officer and MLRO required")),
+                ("statutory_reference".to_string(), serde_json::json!("Decretal Federal Law No. 14/2018; CBUAE Regulations for Exchange Houses")),
+            ].into_iter().collect(),
+            application_fee: [("AED".to_string(), "50000".to_string())].into_iter().collect(),
+            annual_fee: [("AED".to_string(), "25000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
+        // CBUAE Stored Value Facility
+        LicenseTypeDefinition {
+            license_type_id: "ae-cbuae:stored-value".to_string(),
+            name: "Stored Value Facility License".to_string(),
+            description: "License to issue stored value instruments under CBUAE Stored Value Facilities Regulation".to_string(),
+            regulator_id: "ae-cbuae".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "e_money_issuance".to_string(),
+                "payment_services".to_string(),
+            ],
+            requirements: [
+                ("minimum_paid_up_capital_aed".to_string(), serde_json::json!("15000000")),
+                ("safeguarding_requirement".to_string(), serde_json::json!("100% of outstanding SVF float must be safeguarded")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("Federal Decree-Law No. 20/2018")),
+                ("statutory_reference".to_string(), serde_json::json!("CBUAE Stored Value Facilities Regulation 2020")),
+            ].into_iter().collect(),
+            application_fee: [("AED".to_string(), "100000".to_string())].into_iter().collect(),
+            annual_fee: [("AED".to_string(), "50000".to_string())].into_iter().collect(),
+            validity_period_years: Some(2),
+        },
+        // CBUAE Insurance
+        LicenseTypeDefinition {
+            license_type_id: "ae-cbuae:insurance".to_string(),
+            name: "Insurance Company License".to_string(),
+            description: "License to underwrite insurance in the UAE under Federal Law No. 6/2007".to_string(),
+            regulator_id: "ae-cbuae".to_string(),
+            category: Some("insurance".to_string()),
+            permitted_activities: vec![
+                "general_insurance".to_string(),
+                "life_insurance".to_string(),
+                "takaful".to_string(),
+            ],
+            requirements: [
+                ("minimum_paid_up_capital_aed".to_string(), serde_json::json!("100000000")),
+                ("solvency_margin_required".to_string(), serde_json::json!("Per Federal Law No. 6/2007 and CBUAE Insurance Regulations")),
+                ("actuarial_function_required".to_string(), serde_json::json!("Appointed actuary required")),
+                ("statutory_reference".to_string(), serde_json::json!("Federal Law No. 6/2007 on Insurance; CBUAE Insurance Authority Regulations")),
+            ].into_iter().collect(),
+            application_fee: BTreeMap::new(),
+            annual_fee: BTreeMap::new(),
+            validity_period_years: None,
+        },
+        // SCA Securities Broker
+        LicenseTypeDefinition {
+            license_type_id: "ae-sca:securities-broker".to_string(),
+            name: "Securities Broker License".to_string(),
+            description: "License for securities brokerage activities under SCA Board Decision No. 3/2000".to_string(),
+            regulator_id: "ae-sca".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "securities_brokerage".to_string(),
+                "trading".to_string(),
+            ],
+            requirements: [
+                ("minimum_paid_up_capital_aed".to_string(), serde_json::json!("50000000")),
+                ("net_capital_requirement".to_string(), serde_json::json!("Per SCA Board Decision No. 3/2000")),
+                ("compliance_officer_required".to_string(), serde_json::json!("Designated compliance officer")),
+                ("statutory_reference".to_string(), serde_json::json!("Federal Decree-Law No. 32/2021 Art. 50; SCA Board Decision No. 3/2000")),
+            ].into_iter().collect(),
+            application_fee: [("AED".to_string(), "10000".to_string())].into_iter().collect(),
+            annual_fee: [("AED".to_string(), "5000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
+        // SCA Fund Manager
+        LicenseTypeDefinition {
+            license_type_id: "ae-sca:fund-manager".to_string(),
+            name: "Fund Manager License".to_string(),
+            description: "License for investment fund management under SCA regulations".to_string(),
+            regulator_id: "ae-sca".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "fund_management".to_string(),
+                "portfolio_management".to_string(),
+                "asset_allocation".to_string(),
+            ],
+            requirements: [
+                ("minimum_paid_up_capital_aed".to_string(), serde_json::json!("5000000")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("Federal Decree-Law No. 20/2018")),
+                ("statutory_reference".to_string(), serde_json::json!("SCA Administrative Decision No. 3/RM/2017 on Mutual Funds")),
+            ].into_iter().collect(),
+            application_fee: [("AED".to_string(), "10000".to_string())].into_iter().collect(),
+            annual_fee: [("AED".to_string(), "5000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
         lt("ae-moec:foreign-company", "Foreign Company Registration", "Registration of a foreign company branch in the UAE", "ae-moec", "corporate",
            &["business_operations"], Some(("AED", "3000")), Some(("AED", "1500")), Some(1)),
     ]
@@ -89,14 +234,55 @@ pub fn adgm_license_types() -> Vec<LicenseTypeDefinition> {
            &["special_purpose_activities", "securitization"], Some(("USD", "1500")), Some(("USD", "750")), Some(1)),
         lt("ae-adgm-ra:foundation", "ADGM Foundation", "Registration of a foundation in ADGM", "ae-adgm-ra", "corporate",
            &["charitable_activities", "asset_holding"], Some(("USD", "2000")), Some(("USD", "1000")), Some(1)),
-        lt("ae-adgm-fsra:banking", "ADGM Banking License", "License to conduct banking in ADGM", "ae-adgm-fsra", "financial",
-           &["deposit_taking", "lending", "trade_finance"], None, None, None),
+        // ADGM Banking — FSMR 2015, PRU Rulebook
+        LicenseTypeDefinition {
+            license_type_id: "ae-adgm-fsra:banking".to_string(),
+            name: "ADGM Banking License".to_string(),
+            description: "License to conduct banking in ADGM under FSMR 2015".to_string(),
+            regulator_id: "ae-adgm-fsra".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "deposit_taking".to_string(),
+                "lending".to_string(),
+                "trade_finance".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("10000000")),
+                ("capital_adequacy_ratio".to_string(), serde_json::json!("0.125")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("ADGM AML/CFT Rulebook; Federal Decree-Law No. 20/2018")),
+                ("statutory_reference".to_string(), serde_json::json!("FSMR 2015; ADGM PRU Rulebook Chapter 3")),
+                ("fit_and_proper".to_string(), serde_json::json!("ADGM GEN Rulebook — Approved Persons regime")),
+            ].into_iter().collect(),
+            application_fee: BTreeMap::new(),
+            annual_fee: BTreeMap::new(),
+            validity_period_years: None,
+        },
         lt("ae-adgm-fsra:insurance", "ADGM Insurance License", "License to underwrite insurance in ADGM", "ae-adgm-fsra", "insurance",
            &["general_insurance", "life_insurance", "reinsurance"], None, None, None),
         lt("ae-adgm-fsra:insurance-broker", "ADGM Insurance Broker License", "License for insurance brokerage in ADGM", "ae-adgm-fsra", "insurance",
            &["insurance_brokerage", "insurance_advisory"], Some(("USD", "5000")), Some(("USD", "2500")), Some(1)),
-        lt("ae-adgm-fsra:asset-management", "ADGM Asset Management License", "License for asset/fund management in ADGM", "ae-adgm-fsra", "financial",
-           &["fund_management", "portfolio_management", "asset_allocation"], Some(("USD", "10000")), Some(("USD", "5000")), Some(1)),
+        // ADGM Asset Management — FSMR 2015, FUNDS Rulebook
+        LicenseTypeDefinition {
+            license_type_id: "ae-adgm-fsra:asset-management".to_string(),
+            name: "ADGM Asset Management License".to_string(),
+            description: "License for asset/fund management in ADGM under FSMR 2015".to_string(),
+            regulator_id: "ae-adgm-fsra".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "fund_management".to_string(),
+                "portfolio_management".to_string(),
+                "asset_allocation".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("250000")),
+                ("expenditure_requirement".to_string(), serde_json::json!("18 weeks of annual audited expenditure")),
+                ("statutory_reference".to_string(), serde_json::json!("FSMR 2015; ADGM PRU Rulebook Chapter 4; FUNDS Rulebook")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("ADGM AML/CFT Rulebook")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "10000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "5000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
         lt("ae-adgm-fsra:digital-asset-exchange", "ADGM Digital Asset Exchange License", "License to operate a digital asset exchange (MLP framework)", "ae-adgm-fsra", "financial",
            &["digital_asset_exchange", "digital_asset_custody", "digital_asset_settlement", "orderbook_matching"], Some(("USD", "25000")), Some(("USD", "15000")), Some(1)),
         lt("ae-adgm-fsra:digital-asset-custodian", "ADGM Digital Asset Custodian License", "License for digital asset custody services", "ae-adgm-fsra", "financial",
@@ -133,16 +319,76 @@ pub fn difc_license_types() -> Vec<LicenseTypeDefinition> {
            &["charitable_activities", "asset_holding"], Some(("USD", "8000")), Some(("USD", "4000")), Some(1)),
         lt("ae-difc-roc:spv", "DIFC Special Purpose Vehicle", "Registration of an SPV in DIFC", "ae-difc-roc", "corporate",
            &["special_purpose_activities"], Some(("USD", "4000")), Some(("USD", "2000")), Some(1)),
-        lt("ae-difc-dfsa:banking", "DIFC Banking License", "License to conduct banking in DIFC", "ae-difc-dfsa", "financial",
-           &["deposit_taking", "lending", "trade_finance", "foreign_exchange"], None, None, None),
+        // DFSA Banking — DFSA Regulatory Law 2004, PIB Module
+        LicenseTypeDefinition {
+            license_type_id: "ae-difc-dfsa:banking".to_string(),
+            name: "DIFC Banking License".to_string(),
+            description: "License to conduct banking in DIFC under DFSA Regulatory Law 2004".to_string(),
+            regulator_id: "ae-difc-dfsa".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "deposit_taking".to_string(),
+                "lending".to_string(),
+                "trade_finance".to_string(),
+                "foreign_exchange".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("10000000")),
+                ("capital_adequacy_ratio".to_string(), serde_json::json!("0.125")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("DFSA AML Module; Federal Decree-Law No. 20/2018")),
+                ("statutory_reference".to_string(), serde_json::json!("DFSA Regulatory Law 2004; PIB Module Chapter 3")),
+                ("fit_and_proper".to_string(), serde_json::json!("DFSA GEN Module — Authorised Individual regime")),
+            ].into_iter().collect(),
+            application_fee: BTreeMap::new(),
+            annual_fee: BTreeMap::new(),
+            validity_period_years: None,
+        },
         lt("ae-difc-dfsa:insurance", "DIFC Insurance License", "License to underwrite insurance in DIFC", "ae-difc-dfsa", "insurance",
            &["general_insurance", "life_insurance", "reinsurance"], None, None, None),
         lt("ae-difc-dfsa:insurance-broker", "DIFC Insurance Intermediary License", "License for insurance brokerage in DIFC", "ae-difc-dfsa", "insurance",
            &["insurance_brokerage", "insurance_advisory"], Some(("USD", "5000")), Some(("USD", "3000")), Some(1)),
-        lt("ae-difc-dfsa:asset-management", "DIFC Asset Management License", "License for asset/fund management in DIFC", "ae-difc-dfsa", "financial",
-           &["fund_management", "portfolio_management"], Some(("USD", "10000")), Some(("USD", "5000")), Some(1)),
-        lt("ae-difc-dfsa:securities-broker", "DIFC Securities Broker License", "License for securities dealing/brokerage in DIFC", "ae-difc-dfsa", "financial",
-           &["securities_brokerage", "securities_dealing", "trading"], Some(("USD", "10000")), Some(("USD", "5000")), Some(1)),
+        // DFSA Category 3A — Asset Management
+        LicenseTypeDefinition {
+            license_type_id: "ae-difc-dfsa:asset-management".to_string(),
+            name: "DIFC Asset Management License".to_string(),
+            description: "License for asset/fund management in DIFC (Category 3A per PIB Module)".to_string(),
+            regulator_id: "ae-difc-dfsa".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "fund_management".to_string(),
+                "portfolio_management".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("500000")),
+                ("expenditure_requirement".to_string(), serde_json::json!("13 weeks of annual audited expenditure")),
+                ("statutory_reference".to_string(), serde_json::json!("DFSA PIB Module Chapter 4; CIR Module")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("DFSA AML Module")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "10000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "5000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
+        // DFSA Category 4 — Securities Dealing
+        LicenseTypeDefinition {
+            license_type_id: "ae-difc-dfsa:securities-broker".to_string(),
+            name: "DIFC Securities Broker License".to_string(),
+            description: "License for securities dealing/brokerage in DIFC (Category 4 per PIB Module)".to_string(),
+            regulator_id: "ae-difc-dfsa".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "securities_brokerage".to_string(),
+                "securities_dealing".to_string(),
+                "trading".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("4000000")),
+                ("statutory_reference".to_string(), serde_json::json!("DFSA PIB Module Chapter 4; COB Module")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("DFSA AML Module")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "10000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "5000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
         lt("ae-difc-dfsa:digital-asset-exchange", "DIFC Digital Asset Exchange License", "License to operate a digital asset trading facility", "ae-difc-dfsa", "financial",
            &["digital_asset_exchange", "digital_asset_custody", "orderbook_matching"], Some(("USD", "20000")), Some(("USD", "15000")), Some(1)),
         lt("ae-difc-dfsa:digital-asset-custodian", "DIFC Digital Asset Custodian", "License for digital asset custody in DIFC", "ae-difc-dfsa", "financial",
@@ -387,6 +633,57 @@ mod tests {
             let json = serde_json::to_string(&lt).expect("serialize");
             let d: LicenseTypeDefinition = serde_json::from_str(&json).expect("deserialize");
             assert_eq!(lt.license_type_id, d.license_type_id);
+        }
+    }
+
+    #[test]
+    fn cbuae_commercial_bank_has_requirements() {
+        let types = federal_license_types();
+        let bank = types.iter().find(|t| t.license_type_id == "ae-cbuae:commercial-bank").expect("missing commercial bank");
+        assert!(!bank.requirements.is_empty(), "CBUAE commercial bank should have requirements");
+        assert!(bank.requirements.contains_key("minimum_paid_up_capital_aed"), "missing capital requirement");
+        assert!(bank.requirements.contains_key("capital_adequacy_ratio"), "missing CAR requirement");
+        assert!(bank.requirements.contains_key("aml_cft_program_required"), "missing AML/CFT requirement");
+    }
+
+    #[test]
+    fn adgm_banking_has_requirements() {
+        let types = adgm_license_types();
+        let bank = types.iter().find(|t| t.license_type_id == "ae-adgm-fsra:banking").expect("missing ADGM banking");
+        assert!(!bank.requirements.is_empty(), "ADGM banking should have requirements");
+        assert!(bank.requirements.contains_key("minimum_base_capital_usd"), "missing base capital");
+        assert_eq!(bank.requirements["minimum_base_capital_usd"], serde_json::json!("10000000"));
+    }
+
+    #[test]
+    fn dfsa_banking_has_requirements() {
+        let types = difc_license_types();
+        let bank = types.iter().find(|t| t.license_type_id == "ae-difc-dfsa:banking").expect("missing DFSA banking");
+        assert!(!bank.requirements.is_empty(), "DFSA banking should have requirements");
+        assert!(bank.requirements.contains_key("minimum_base_capital_usd"), "missing base capital");
+    }
+
+    #[test]
+    fn financial_license_types_have_requirements() {
+        let key_ids = [
+            "ae-cbuae:commercial-bank",
+            "ae-cbuae:islamic-bank",
+            "ae-cbuae:exchange-house",
+            "ae-cbuae:stored-value",
+            "ae-cbuae:insurance",
+            "ae-sca:securities-broker",
+            "ae-sca:fund-manager",
+            "ae-adgm-fsra:banking",
+            "ae-adgm-fsra:asset-management",
+            "ae-difc-dfsa:banking",
+            "ae-difc-dfsa:asset-management",
+            "ae-difc-dfsa:securities-broker",
+        ];
+        let all = uae_license_types();
+        for id in &key_ids {
+            let lt = all.iter().find(|t| t.license_type_id == *id)
+                .unwrap_or_else(|| panic!("missing license type: {id}"));
+            assert!(!lt.requirements.is_empty(), "{id} should have non-empty requirements");
         }
     }
 }

@@ -1,16 +1,16 @@
-# MEZ Stack — Two-Zone Integration Test Compose
+# MEZ Stack — Two-Zone Sovereign Deployment Compose
 #
-# Deploys two independent MEZ zones that can establish an inter-zone
-# corridor and exchange receipts over the internal Docker network.
+# Deploys two independent MEZ zones, each with its own sovereign Mass API
+# stub instance and Postgres database. Zones communicate via the corridor
+# network but Mass data never crosses zone boundaries.
 #
-# Zone configuration is driven by environment variables, enabling any
-# pair of jurisdictions to be deployed — not limited to PK-SIFC/AE-DIFC.
+# Architecture:
+#   Zone A: mez-zone-a + postgres-a + mass-stub-a (zone-a-internal network)
+#   Zone B: mez-zone-b + postgres-b + mass-stub-b (zone-b-internal network)
+#   Corridor: zone-a <-> zone-b (mez-corridor-net)
 #
-# This compose file validates the P0-CORRIDOR-NET-001 inter-zone protocol:
-#   1. Zone A proposes a corridor to Zone B
-#   2. Zone B accepts the proposal
-#   3. Both zones exchange receipts via the peer exchange API
-#   4. Watcher attestations can be delivered between zones
+# Data sovereignty: mass-stub-a is ONLY on zone-a-internal, mass-stub-b is
+# ONLY on zone-b-internal. No cross-zone Mass data leakage by network topology.
 #
 # Environment variables (with defaults for backward compatibility):
 #   ZONE_A_ZONE_ID     — Zone A identifier (default: org.momentum.mez.zone.pk-sifc)
@@ -34,7 +34,29 @@ name: mez-two-zone
 
 services:
   # ============================================
-  # ZONE A
+  # ZONE A — Sovereign Mass API Stub
+  # ============================================
+
+  mass-stub-a:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.mass-stub
+    container_name: mez-mass-stub-a
+    restart: unless-stopped
+    environment:
+      MASS_STUB_PORT: "8090"
+      RUST_LOG: info
+    networks:
+      - zone-a-internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # ============================================
+  # ZONE A — MEZ API + Postgres
   # ============================================
 
   zone-a:
@@ -58,8 +80,17 @@ services:
       MEZ_WATCHER_ID: watcher-a-001
       MEZ_BOND_AMOUNT: "100000"
       MEZ_METRICS_ENABLED: "true"
+      # Sovereign Mass API: zone-local stub, not centralized mass.inc
+      MASS_ORG_INFO_URL: "http://mass-stub-a:8090"
+      MASS_TREASURY_INFO_URL: "http://mass-stub-a:8090"
+      MASS_CONSENT_INFO_URL: "http://mass-stub-a:8090"
+      MASS_INVESTMENT_INFO_URL: "http://mass-stub-a:8090"
+      MASS_TEMPLATING_URL: "http://mass-stub-a:8090"
+      MASS_API_TOKEN: "sovereign-zone-a-token"
     depends_on:
       postgres-a:
+        condition: service_healthy
+      mass-stub-a:
         condition: service_healthy
     networks:
       - mez-corridor-net
@@ -92,7 +123,29 @@ services:
       start_period: 5s
 
   # ============================================
-  # ZONE B
+  # ZONE B — Sovereign Mass API Stub
+  # ============================================
+
+  mass-stub-b:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.mass-stub
+    container_name: mez-mass-stub-b
+    restart: unless-stopped
+    environment:
+      MASS_STUB_PORT: "8090"
+      RUST_LOG: info
+    networks:
+      - zone-b-internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # ============================================
+  # ZONE B — MEZ API + Postgres
   # ============================================
 
   zone-b:
@@ -116,8 +169,17 @@ services:
       MEZ_WATCHER_ID: watcher-b-001
       MEZ_BOND_AMOUNT: "100000"
       MEZ_METRICS_ENABLED: "true"
+      # Sovereign Mass API: zone-local stub, not centralized mass.inc
+      MASS_ORG_INFO_URL: "http://mass-stub-b:8090"
+      MASS_TREASURY_INFO_URL: "http://mass-stub-b:8090"
+      MASS_CONSENT_INFO_URL: "http://mass-stub-b:8090"
+      MASS_INVESTMENT_INFO_URL: "http://mass-stub-b:8090"
+      MASS_TEMPLATING_URL: "http://mass-stub-b:8090"
+      MASS_API_TOKEN: "sovereign-zone-b-token"
     depends_on:
       postgres-b:
+        condition: service_healthy
+      mass-stub-b:
         condition: service_healthy
     networks:
       - mez-corridor-net
@@ -156,11 +218,12 @@ services:
 networks:
   # Shared network for inter-zone corridor communication.
   # Both zones can reach each other via container names (zone-a, zone-b).
+  # Mass stubs are NOT on this network — sovereign data residency.
   mez-corridor-net:
     driver: bridge
     name: mez-corridor-net
 
-  # Zone-internal networks (DB access only within zone).
+  # Zone-internal networks (DB + Mass stub access only within zone).
   zone-a-internal:
     driver: bridge
     name: mez-zone-a-internal

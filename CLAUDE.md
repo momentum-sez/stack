@@ -567,6 +567,7 @@ Based on synthesized audit findings. Status: ✅ Implemented | 🟡 Partial | �
 - [x] End-to-end two-zone corridor test with real receipt exchange (commit 620bb1d)
 - [x] Cross-zone compliance query endpoint (commit 0563021)
 - [x] Corridor health monitoring dashboard (Prometheus exporter + Grafana provisioning)
+- [x] Sovereign Mass API stubs for per-zone deployment (`mez-mass-stub` crate, `Dockerfile.mass-stub`, `docker-compose.two-zone.yaml` updated with zone-local Mass instances, `sovereign_mass_test.rs` proving data isolation)
 
 ### Phase 3 — Production (PARTIALLY BLOCKED)
 

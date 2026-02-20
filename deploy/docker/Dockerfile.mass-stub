@@ -1,0 +1,56 @@
+# MEZ Mass API Stub — Multi-Stage Rust Build
+# Sovereign per-zone Mass API stub server with in-memory storage.
+#
+# Build:   docker build -f Dockerfile.mass-stub -t mez-mass-stub ../..
+# Run:     docker run -p 8090:8090 mez-mass-stub
+
+# ============================================
+# Stage 1: Build
+# ============================================
+FROM rust:1.77-bookworm AS builder
+
+WORKDIR /app
+
+# Copy manifests first for layer caching
+COPY mez/Cargo.toml mez/Cargo.lock ./
+COPY mez/crates/ ./crates/
+
+# Build release binary
+RUN cargo build --release -p mez-mass-stub
+
+# ============================================
+# Stage 2: Runtime
+# ============================================
+FROM debian:bookworm-slim
+
+LABEL org.opencontainers.image.title="MEZ Mass API Stub"
+LABEL org.opencontainers.image.description="Sovereign per-zone Mass API stub for data residency"
+LABEL org.opencontainers.image.vendor="Momentum"
+LABEL org.opencontainers.image.version="0.4.44"
+LABEL org.opencontainers.image.source="https://github.com/momentum-ez/stack"
+
+# Minimal runtime dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN groupadd -r mez && useradd -r -g mez -d /app -s /sbin/nologin mez
+
+# Copy binary from builder
+COPY --from=builder /app/target/release/mez-mass-stub /usr/local/bin/
+
+WORKDIR /app
+USER mez
+
+# Default port
+ENV MASS_STUB_PORT=8090
+EXPOSE 8090
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8090/health || exit 1
+
+CMD ["mez-mass-stub"]

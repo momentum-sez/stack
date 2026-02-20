@@ -267,10 +267,10 @@ inside the zone's infrastructure. Corridor established between them. Receipts
 exchanged and verified bilaterally. This is the first step toward decentralized Mass.
 
 Infrastructure exists (`docker-compose.two-zone.yaml`), needs:
-- [ ] Containerized Mass API services deployable per-zone
+- [x] Containerized Mass API services deployable per-zone (`mez-mass-stub` crate + `Dockerfile.mass-stub`)
 - [ ] Real corridor establishment flow tested end-to-end
 - [ ] Cross-zone compliance query
-- [ ] Demo proving sovereign data residency (Zone A's data never leaves Zone A)
+- [x] Demo proving sovereign data residency (`sovereign_mass_test.rs` — Zone A's data never leaves Zone A)
 
 ### Phase 3: Sovereign GovOS Pilot (Weeks 4-12)
 

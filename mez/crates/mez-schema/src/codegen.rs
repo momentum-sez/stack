@@ -61,6 +61,8 @@ pub const SECURITY_CRITICAL_SCHEMAS: &[&str] = &[
     "vc.watcher-bond.schema.json",
     "vc.dispute-claim.schema.json",
     "vc.arbitration-award.schema.json",
+    "vc.lawpack-attestation.schema.json",
+    "vc.corridor-watcher-attestation.schema.json",
 ];
 
 /// Paths within security-critical schemas where `additionalProperties`

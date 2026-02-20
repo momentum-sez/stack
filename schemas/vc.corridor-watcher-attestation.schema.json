@@ -27,7 +27,7 @@
             "id": {"type": "string"},
             "name": {"type": "string"}
           },
-          "additionalProperties": true
+          "additionalProperties": false
         }
       ]
     },

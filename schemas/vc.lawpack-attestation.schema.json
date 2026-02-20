@@ -27,7 +27,7 @@
             "id": {"type": "string"},
             "name": {"type": "string"}
           },
-          "additionalProperties": true
+          "additionalProperties": false
         }
       ]
     },
@@ -83,7 +83,7 @@
             },
             "notes": {"type": "string"}
           },
-          "additionalProperties": true
+          "additionalProperties": false
         }
       },
       "additionalProperties": true
@@ -99,5 +99,5 @@
       ]
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

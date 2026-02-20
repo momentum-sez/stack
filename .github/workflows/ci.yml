@@ -69,16 +69,30 @@ jobs:
 
       # P1-SCHEMA-002: Schema $id URI consistency (hard failure).
       # All schemas must use the canonical domain: schemas.momentum-ez.org/mez/
+      # Also detects schemas that are missing $id entirely.
       - name: Guard — schema $id URI consistency
         run: |
           CANONICAL="schemas.momentum-ez.org/mez/"
+          FAIL=0
+
+          # Check 1: Non-canonical $id URIs
           BAD_IDS=$(grep -rn '"$id"' schemas/ | grep -v "$CANONICAL" | grep -v '.schema.json":' || true)
           if [ -n "$BAD_IDS" ]; then
             echo "FAIL: Non-canonical schema \$id URIs found (P1-SCHEMA-002):"
             echo "$BAD_IDS"
             echo "Expected domain: $CANONICAL"
-            exit 1
+            FAIL=1
           fi
+
+          # Check 2: Schemas missing $id entirely
+          MISSING_IDS=$(grep -rL '"$id"' schemas/*.schema.json || true)
+          if [ -n "$MISSING_IDS" ]; then
+            echo "FAIL: Schemas missing \$id field:"
+            echo "$MISSING_IDS"
+            FAIL=1
+          fi
+
+          [ "$FAIL" -eq 0 ] || exit 1
           echo "OK: All schema \$id URIs use canonical domain"
 
       # P0-DEPLOY-001: No default credentials in deploy paths.

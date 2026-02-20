@@ -1,8 +1,20 @@
+# Zone Manifest: Abu Dhabi Global Market (ADGM)
+#
+# Sovereign economic zone in the ADGM free zone, Abu Dhabi, UAE.
+# Regulated by ADGM FSRA (financial services) and ADGM RA (corporate).
+# Federal-level compliance via CBUAE, SCA, and UAE FIU.
+#
+# jurisdiction_stack: ae > ae-abudhabi > ae-abudhabi-adgm
+#   - ae: UAE federal laws (AML/CFT, VAT, Commercial Companies Law)
+#   - ae-abudhabi: Abu Dhabi emirate regulations
+#   - ae-abudhabi-adgm: ADGM free zone regulations (FSMR 2015, common law)
+
 zone_id: org.momentum.mez.zone.ae.abudhabi.adgm
 jurisdiction_id: ae-abudhabi-adgm
-zone_name: Abu Dhabi Global Market
+zone_name: Abu Dhabi Global Market Economic Zone
+
 profile:
-  profile_id: org.momentum.mez.profile.digital-financial-center
+  profile_id: org.momentum.mez.profile.sovereign-govos-ae
   version: 0.4.44
 
 jurisdiction_stack:
@@ -14,16 +26,58 @@ lawpack_domains:
   - civil
   - financial
 
-overlays: []
-params_overrides: {}
+licensepack_domains:
+  - financial
+  - corporate
+
+licensepack_refresh_policy:
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+  financial:
+    frequency: hourly
+    max_staleness_hours: 4
+
+regpacks:
+  - domain: financial
+    jurisdiction_id: ae
+    regpack_digest_sha256: "5ce776c2d59b4fd9ec1f6bdaea7317550fd0b7d1792be86a475b4db6602a685b"
+    as_of_date: 2026-01-15
+  - domain: sanctions
+    jurisdiction_id: ae
+    regpack_digest_sha256: "34bb8fcb760935931216ab810fb3e66caa6980125f7e88f588eed8a0747509c0"
+    as_of_date: 2026-01-15
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+  - consumer_protection
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin
+
+national_adapters:
+  ica_emirates_id:
+    enabled: false
+    endpoint: ${ICA_EMIRATES_ID_URL:-}
+  fta:
+    enabled: false
+    endpoint: ${FTA_URL:-}
+  adgm_ra:
+    enabled: false
+    endpoint: ${ADGM_RA_URL:-}
 
 trust_anchors: []
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

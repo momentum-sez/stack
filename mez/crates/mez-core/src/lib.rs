@@ -38,7 +38,9 @@ pub use digest::{
 };
 pub use domain::ComplianceDomain;
 pub use error::{CanonicalizationError, MezError, ValidationError};
-pub use identity::{Cnic, Did, EntityId, MigrationId, Ntn, PassportNumber, WatcherId};
+pub use identity::{
+    Cnic, Did, EmiratesId, EntityId, MigrationId, Nric, Ntn, PassportNumber, Uen, WatcherId,
+};
 pub use jurisdiction::{CorridorId, JurisdictionId};
 pub use sovereignty::{DataCategory, SovereigntyEnforcer, SovereigntyPolicy, SovereigntyVerdict};
 pub use temporal::Timestamp;

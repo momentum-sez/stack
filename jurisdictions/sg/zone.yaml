@@ -1,9 +1,18 @@
+# Zone Manifest: Singapore
+#
+# Sovereign economic zone covering Singapore's financial and corporate
+# regulatory domains. Regulated by MAS (financial services, banking,
+# insurance, capital markets, payments), ACRA (corporate), and STRO (FIU).
+#
+# jurisdiction_stack: sg (single level — city-state)
+
 zone_id: org.momentum.mez.zone.sg
 jurisdiction_id: sg
-zone_name: Singapore
+zone_name: Singapore Economic Zone
+
 profile:
-  profile_id: org.momentum.mez.profile.digital-financial-center
-  version: "0.4.44"
+  profile_id: org.momentum.mez.profile.sovereign-govos-sg
+  version: 0.4.44
 
 jurisdiction_stack:
   - sg
@@ -11,23 +20,32 @@ jurisdiction_stack:
 lawpack_domains:
   - civil
   - financial
+  - tax
+  - aml
 
 licensepack_domains:
   - financial
   - corporate
 
 licensepack_refresh_policy:
-  financial: "hourly, max 4h staleness"
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+  financial:
+    frequency: hourly
+    max_staleness_hours: 4
 
 regpacks:
   - domain: financial
     jurisdiction_id: sg
-    as_of_date: "2026-01-15"
+    regpack_digest_sha256: "4d2a1f73a440fc67f5281e70436737b340e114173138cddd20f98c60d0154496"
+    as_of_date: 2026-01-15
   - domain: sanctions
     jurisdiction_id: sg
-    as_of_date: "2026-01-15"
+    regpack_digest_sha256: "2afd914d470a8d8c6934c2195a51d8130637ded17ca714732ca0ff5ee3c25108"
+    as_of_date: 2026-01-15
 
-domains:
+compliance_domains:
   - aml
   - kyc
   - sanctions
@@ -40,14 +58,23 @@ domains:
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
-  - org.momentum.mez.corridor.stablecoin.usdc-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin
 
-corridor_peers: []
+national_adapters:
+  myinfo:
+    enabled: false
+    endpoint: ${MYINFO_API_URL:-}
+  iras:
+    enabled: false
+    endpoint: ${IRAS_API_URL:-}
+  acra:
+    enabled: false
+    endpoint: ${ACRA_API_URL:-}
+
 trust_anchors: []
 
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

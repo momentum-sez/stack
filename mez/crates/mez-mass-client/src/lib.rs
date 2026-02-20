@@ -21,6 +21,7 @@
 //! pattern is: `{base_url}/{context-path}/api/v1/{resource}`.
 //! For example: `https://consent.api.mass.inc/consent-info/api/v1/consents`.
 
+pub mod adapter;
 pub mod config;
 pub mod consent;
 pub mod entities;
@@ -33,8 +34,10 @@ pub mod ownership;
 pub mod raast;
 pub(crate) mod retry;
 pub mod secp;
+pub mod singapore;
 pub mod templating;
 pub mod types;
+pub mod uae;
 
 pub use config::MassApiConfig;
 pub use error::MassApiError;
@@ -43,7 +46,7 @@ pub use types::MassEntityId;
 // Re-export mez-core identifier newtypes for callers that need type-safe
 // identifiers when working with Mass API data. Per CLAUDE.md §V.2, this
 // crate depends on mez-core ONLY for these identifier types.
-pub use mez_core::{Cnic, Did, EntityId, JurisdictionId, Ntn};
+pub use mez_core::{Cnic, Did, EmiratesId, EntityId, JurisdictionId, Nric, Ntn, Uen};
 
 use std::time::Duration;
 

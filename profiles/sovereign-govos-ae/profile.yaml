@@ -1,0 +1,163 @@
+# Profile: Sovereign GovOS — United Arab Emirates
+#
+# Full-stack sovereign economic zone profile for UAE national, emirate, or
+# free zone deployments. Covers:
+#   - Civil-law legal corpus (UAE Civil Code, Commercial Companies Law)
+#   - Multi-regulator oversight (CBUAE, SCA, ADGM FSRA, DIFC DFSA, UAE FIU)
+#   - Tax pipeline integration (FTA — VAT/Excise, ESR)
+#   - National system adapters (ICA Emirates ID, FTA, DED/ADGM RA/DIFC ROC)
+#   - GovOS multi-ministry dashboard
+#   - Cross-border corridor support (SWIFT + stablecoin)
+#
+# Target deployments: ae-abudhabi-adgm, ae-dubai-difc, ae-difc
+#
+# Deploy via:
+#   ./deploy/scripts/deploy-zone.sh sovereign-govos-ae org.momentum.mez.zone.ae-abudhabi-adgm ae
+
+profile_id: org.momentum.mez.profile.sovereign-govos-ae
+stack_spec_version: 0.4.44
+
+modules:
+# --- Legal Foundation ---
+- module_id: org.momentum.mez.legal.core
+  version: 0.1.0
+  variant: civillaw-uae
+- module_id: org.momentum.mez.legal.akn-templates
+  version: 0.1.0
+  variant: default
+- module_id: org.momentum.mez.legal.enabling-act
+  version: 0.2.0
+  variant: baseline
+- module_id: org.momentum.mez.legal.authority-charter
+  version: 0.2.0
+  variant: baseline
+- module_id: org.momentum.mez.legal.admin-procedure
+  version: 0.2.0
+  variant: baseline
+- module_id: org.momentum.mez.legal.civil-code
+  version: 0.2.0
+  variant: uae-federal
+- module_id: org.momentum.mez.legal.commercial-code
+  version: 0.2.0
+  variant: uae-ccl
+- module_id: org.momentum.mez.legal.dispute-resolution
+  version: 0.2.0
+  variant: baseline
+- module_id: org.momentum.mez.legal.entity-registry
+  version: 0.2.0
+  variant: baseline
+
+# --- Regulatory Framework ---
+- module_id: org.momentum.mez.reg.aml-cft
+  version: 0.1.0
+  variant: risk-based
+  params:
+    kyc_tier_required: 3
+    max_amount_without_enhanced_due_diligence: 55000
+    aml_law: "Federal Decree-Law No. 20/2018"
+    reporting_system: goAML
+- module_id: org.momentum.mez.reg.fin-supervision
+  version: 0.2.0
+  variant: baseline
+- module_id: org.momentum.mez.reg.sanctions
+  version: 0.1.0
+  variant: national-list
+  params:
+    local_list: "UAE Local Terrorist List (Cabinet Decision No. 83/2014)"
+- module_id: org.momentum.mez.reg.data-protection
+  version: 0.1.0
+  variant: baseline
+  params:
+    data_protection_law: "Federal Decree-Law No. 45/2021 on Personal Data Protection"
+- module_id: org.momentum.mez.reg.consumer-protection
+  version: 0.1.0
+  variant: baseline
+
+# --- Identity & KYC ---
+- module_id: org.momentum.mez.identity.core
+  version: 0.1.0
+  variant: emirates-id
+  params:
+    identity_provider: ica
+    tax_authority: fta
+- module_id: org.momentum.mez.identity.kyc-tiers
+  version: 0.1.0
+  variant: tier-3
+
+# --- Financial Infrastructure ---
+- module_id: org.momentum.mez.fin.payments-adapter
+  version: 0.1.0
+  variant: iso20022-mapping
+- module_id: org.momentum.mez.fin.domestic-payments
+  version: 0.1.0
+  variant: uaefts
+  params:
+    payment_rail: uaefts-ipp
+    settlement_currency: AED
+- module_id: org.momentum.mez.fin.treasury
+  version: 0.1.0
+  variant: baseline
+
+# --- Tax Pipeline ---
+- module_id: org.momentum.mez.tax.withholding
+  version: 0.1.0
+  variant: uae-vat
+  params:
+    reporting_authority: fta
+    vat_rate: "0.05"
+    vat_law: "Federal Decree-Law No. 8/2017"
+    esr_law: "Cabinet Resolution No. 57/2020"
+    fiscal_year_start: "01-01"
+    fiscal_year_end: "12-31"
+
+# --- Corporate Registry ---
+- module_id: org.momentum.mez.corporate.formation
+  version: 0.1.0
+  variant: baseline
+  params:
+    corporate_registry: ded
+    free_zone_registries: "adgm-ra,difc-roc,dmcc,jafza"
+- module_id: org.momentum.mez.corporate.beneficial-ownership
+  version: 0.1.0
+  variant: baseline
+  params:
+    ubo_law: "Cabinet Decision No. 58/2020 on UBO"
+
+# --- Licensing ---
+- module_id: org.momentum.mez.lic.financial
+  version: 0.1.0
+  variant: cbuae-regulated
+- module_id: org.momentum.mez.lic.corporate
+  version: 0.1.0
+  variant: moec-regulated
+
+# --- Operations & Oversight ---
+- module_id: org.momentum.mez.ops.regulator-console
+  version: 0.1.0
+  variant: multi-regulator
+- module_id: org.momentum.mez.ops.govos-console
+  version: 0.1.0
+  variant: multi-ministry
+- module_id: org.momentum.mez.ops.deployment-telemetry
+  version: 0.1.0
+  variant: baseline
+
+# --- Governance ---
+- module_id: org.momentum.mez.governance.core
+  version: 0.1.0
+  variant: baseline
+
+# --- Corridors ---
+- module_id: org.momentum.mez.corridor.swift
+  version: 0.1.0
+  variant: iso20022-cross-border
+- module_id: org.momentum.mez.corridor.stablecoin
+  version: 0.1.0
+  variant: regulated-stablecoin
+  params:
+    settlement_currency: USD
+    max_single_transfer: 1000000
+
+corridors:
+- org.momentum.mez.corridor.swift.iso20022-cross-border
+- org.momentum.mez.corridor.stablecoin.regulated-stablecoin

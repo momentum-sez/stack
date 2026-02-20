@@ -486,10 +486,11 @@ fn load_or_generate_zone_key() -> Result<SigningKey, ZoneKeyError> {
 /// VC issuance, and application configuration.
 /// Clone-friendly via `Arc` internals in each `Store`.
 ///
-/// ## What is NOT here
+/// ## Sovereign Mass Mode (ADR-007)
 ///
-/// Entity, ownership, fiscal, identity, and consent stores have been removed.
-/// That data lives in the Mass APIs and is accessed via `state.mass_client`.
+/// When `sovereign_mass` is `true`, the zone serves Mass primitive endpoints
+/// directly from Postgres-backed in-memory stores (no separate mass-stub).
+/// When `false`, Mass primitives are proxied to centralized Mass APIs.
 #[derive(Debug, Clone)]
 pub struct AppState {
     // -- EZ Stack owned state --
@@ -562,6 +563,33 @@ pub struct AppState {
 
     // -- Configuration --
     pub config: AppConfig,
+
+    // -- Sovereign Mass mode (ADR-007) --
+    /// When true, this zone serves Mass primitive endpoints directly with
+    /// Postgres-backed persistence. When false, proxies to centralized Mass APIs.
+    pub sovereign_mass: bool,
+
+    // -- Sovereign Mass in-memory stores (UUID-keyed) --
+    pub mass_organizations: Store<serde_json::Value>,
+    pub mass_treasuries: Store<serde_json::Value>,
+    pub mass_accounts: Store<serde_json::Value>,
+    pub mass_transactions: Store<serde_json::Value>,
+    pub mass_tax_events_sovereign: Store<serde_json::Value>,
+    pub mass_consents: Store<serde_json::Value>,
+    pub mass_cap_tables: Store<serde_json::Value>,
+    pub mass_investments: Store<serde_json::Value>,
+
+    // -- Sovereign Mass in-memory stores (String-keyed) --
+    pub mass_templates: Arc<RwLock<HashMap<String, serde_json::Value>>>,
+    pub mass_submissions: Arc<RwLock<HashMap<String, serde_json::Value>>>,
+
+    // -- Sovereign Mass org-keyed identity stores --
+    pub mass_members_by_org: Arc<RwLock<HashMap<String, Vec<serde_json::Value>>>>,
+    pub mass_board_by_org: Arc<RwLock<HashMap<String, Vec<serde_json::Value>>>>,
+    pub mass_shareholders_by_org: Arc<RwLock<HashMap<String, Vec<serde_json::Value>>>>,
+
+    /// Optional bearer token for sovereign Mass auth middleware.
+    pub mass_auth_token: Option<String>,
 }
 
 impl AppState {
@@ -607,6 +635,12 @@ impl AppState {
             zone_signing_key.verifying_key().to_hex()
         );
 
+        let sovereign_mass = std::env::var("SOVEREIGN_MASS")
+            .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
+            .unwrap_or(false);
+
+        let mass_auth_token = std::env::var("MASS_STUB_AUTH_TOKEN").ok();
+
         Ok(Self {
             corridors: Store::new(),
             smart_assets: Store::new(),
@@ -627,6 +661,21 @@ impl AppState {
             policy_engine: Arc::new(Mutex::new(PolicyEngine::with_extended_policies())),
             zone: None,
             config,
+            sovereign_mass,
+            mass_organizations: Store::new(),
+            mass_treasuries: Store::new(),
+            mass_accounts: Store::new(),
+            mass_transactions: Store::new(),
+            mass_tax_events_sovereign: Store::new(),
+            mass_consents: Store::new(),
+            mass_cap_tables: Store::new(),
+            mass_investments: Store::new(),
+            mass_templates: Arc::new(RwLock::new(HashMap::new())),
+            mass_submissions: Arc::new(RwLock::new(HashMap::new())),
+            mass_members_by_org: Arc::new(RwLock::new(HashMap::new())),
+            mass_board_by_org: Arc::new(RwLock::new(HashMap::new())),
+            mass_shareholders_by_org: Arc::new(RwLock::new(HashMap::new())),
+            mass_auth_token,
         })
     }
 
@@ -682,7 +731,155 @@ impl AppState {
             smart_assets = asset_count,
             attestations = attestation_count,
             tax_events = tax_event_count,
-            "Hydrated in-memory stores from database"
+            "Hydrated EZ Stack stores from database"
+        );
+
+        // Hydrate sovereign Mass stores when in sovereign mode.
+        if self.sovereign_mass {
+            self.hydrate_sovereign_mass(pool).await?;
+        }
+
+        Ok(())
+    }
+
+    /// Hydrate sovereign Mass in-memory stores from Postgres.
+    async fn hydrate_sovereign_mass(&self, pool: &PgPool) -> Result<(), String> {
+        use crate::db::mass_primitives;
+
+        let orgs = mass_primitives::load_all_organizations(pool)
+            .await
+            .map_err(|e| format!("failed to load mass_organizations: {e}"))?;
+        let org_count = orgs.len();
+        for (id, val) in orgs {
+            self.mass_organizations.insert(id, val);
+        }
+
+        let treasuries = mass_primitives::load_all_treasuries(pool)
+            .await
+            .map_err(|e| format!("failed to load mass_treasuries: {e}"))?;
+        let treasury_count = treasuries.len();
+        for (id, val) in treasuries {
+            self.mass_treasuries.insert(id, val);
+        }
+
+        let accounts = mass_primitives::load_all_accounts(pool)
+            .await
+            .map_err(|e| format!("failed to load mass_accounts: {e}"))?;
+        let account_count = accounts.len();
+        for (id, val) in accounts {
+            self.mass_accounts.insert(id, val);
+        }
+
+        let transactions = mass_primitives::load_all_transactions(pool)
+            .await
+            .map_err(|e| format!("failed to load mass_transactions: {e}"))?;
+        let tx_count = transactions.len();
+        for (id, val) in transactions {
+            self.mass_transactions.insert(id, val);
+        }
+
+        let tax_events = mass_primitives::load_all_mass_tax_events(pool)
+            .await
+            .map_err(|e| format!("failed to load mass_tax_events_sovereign: {e}"))?;
+        let tax_count = tax_events.len();
+        for (id, val) in tax_events {
+            self.mass_tax_events_sovereign.insert(id, val);
+        }
+
+        let consents = mass_primitives::load_all_consents(pool)
+            .await
+            .map_err(|e| format!("failed to load mass_consents: {e}"))?;
+        let consent_count = consents.len();
+        for (id, val) in consents {
+            self.mass_consents.insert(id, val);
+        }
+
+        let cap_tables = mass_primitives::load_all_cap_tables(pool)
+            .await
+            .map_err(|e| format!("failed to load mass_cap_tables: {e}"))?;
+        let cap_count = cap_tables.len();
+        for (id, val) in cap_tables {
+            self.mass_cap_tables.insert(id, val);
+        }
+
+        let investments = mass_primitives::load_all_investments(pool)
+            .await
+            .map_err(|e| format!("failed to load mass_investments: {e}"))?;
+        let inv_count = investments.len();
+        for (id, val) in investments {
+            self.mass_investments.insert(id, val);
+        }
+
+        let templates = mass_primitives::load_all_templates(pool)
+            .await
+            .map_err(|e| format!("failed to load mass_templates: {e}"))?;
+        let tmpl_count = templates.len();
+        {
+            let mut guard = self.mass_templates.write();
+            for (id, val) in templates {
+                guard.insert(id, val);
+            }
+        }
+
+        let submissions = mass_primitives::load_all_submissions(pool)
+            .await
+            .map_err(|e| format!("failed to load mass_submissions: {e}"))?;
+        let sub_count = submissions.len();
+        {
+            let mut guard = self.mass_submissions.write();
+            for (id, val) in submissions {
+                guard.insert(id, val);
+            }
+        }
+
+        let members = mass_primitives::load_all_members_by_org(pool)
+            .await
+            .map_err(|e| format!("failed to load mass_members: {e}"))?;
+        let member_org_count = members.len();
+        {
+            let mut guard = self.mass_members_by_org.write();
+            for (org_id, vals) in members {
+                guard.insert(org_id, vals);
+            }
+        }
+
+        let board = mass_primitives::load_all_board_by_org(pool)
+            .await
+            .map_err(|e| format!("failed to load mass_board_members: {e}"))?;
+        let board_org_count = board.len();
+        {
+            let mut guard = self.mass_board_by_org.write();
+            for (org_id, vals) in board {
+                guard.insert(org_id, vals);
+            }
+        }
+
+        let shareholders = mass_primitives::load_all_shareholders_by_org(pool)
+            .await
+            .map_err(|e| format!("failed to load mass_shareholders: {e}"))?;
+        let sh_org_count = shareholders.len();
+        {
+            let mut guard = self.mass_shareholders_by_org.write();
+            for (org_id, vals) in shareholders {
+                guard.insert(org_id, vals);
+            }
+        }
+
+        tracing::info!(
+            organizations = org_count,
+            treasuries = treasury_count,
+            accounts = account_count,
+            transactions = tx_count,
+            tax_events = tax_count,
+            consents = consent_count,
+            cap_tables = cap_count,
+            investments = inv_count,
+            templates = tmpl_count,
+            submissions = sub_count,
+            member_orgs = member_org_count,
+            board_orgs = board_org_count,
+            shareholder_orgs = sh_org_count,
+            "Hydrated sovereign Mass stores from database"
         );
 
         Ok(())

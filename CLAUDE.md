@@ -568,6 +568,7 @@ Based on synthesized audit findings. Status: ✅ Implemented | 🟡 Partial | �
 - [x] Cross-zone compliance query endpoint (commit 0563021)
 - [x] Corridor health monitoring dashboard (Prometheus exporter + Grafana provisioning)
 - [x] Sovereign Mass API stubs for per-zone deployment (`mez-mass-stub` crate with 100% endpoint coverage — all FiscalClient, ConsentClient, OwnershipClient, IdentityClient, and TemplatingClient methods have working stub routes; `Dockerfile.mass-stub`, `docker-compose.two-zone.yaml` updated with zone-local Mass instances, `sovereign_mass_test.rs` proving data isolation, `sovereign_pipeline_test.rs` proving full 13-step GovOS pipeline)
+- [x] Sovereign Mass persistence — Postgres-backed Mass primitives in mez-api (ADR-007). Eliminates separate mass-stub container. Two-zone compose reduced from 6 to 4 containers. Zero data loss on restart.
 
 ### Phase 3 — Production (PARTIALLY BLOCKED)
 
@@ -582,6 +583,9 @@ Based on synthesized audit findings. Status: ✅ Implemented | 🟡 Partial | �
 - P0-ANCHOR-001 (real anchor target for L1 finality)
 - HSM/KMS key custody model + rotation
 - External security audit / pen test
+
+**Resolved (previously blocking):**
+- ~~Data loss on restart~~ CLOSED: Sovereign Mass persistence (ADR-007) — Mass primitives persisted to Postgres in mez-api when `SOVEREIGN_MASS=true`
 
 ### Phase 4 — Cross-Border Expansion
 
@@ -697,7 +701,7 @@ The Mass spec's end-state emerges bottom-up from sovereign deployments, not top-
 building a monolithic L1. See `docs/roadmap/AWS_OF_ECONOMIC_ZONES.md` for full sequencing.
 
 **Do NOT proceed to Phase 3 (Production)** until:
-1. Sovereign Mass API deployment demonstrated (containerized per-zone)
+1. ~~Sovereign Mass API deployment demonstrated (containerized per-zone)~~ CLOSED (ADR-007: Postgres-backed Mass primitives in mez-api)
 2. Remaining red items resolved (identity service, national adapters)
 3. ~~Receipt chain conforms to spec (P0-CORRIDOR-001..004)~~ CLOSED
 4. ~~Fork resolution is evidence-driven (P0-FORK-001)~~ CLOSED
@@ -713,3 +717,12 @@ building a monolithic L1. See `docs/roadmap/AWS_OF_ECONOMIC_ZONES.md` for full s
 - Single-binary docker-compose baseline with observability
 - `mez-mass-client` abstracts Mass endpoint topology (supports both centralized and sovereign)
 - Zone manifest system supports sovereign deployment with operator-controlled key custody
+- Sovereign Mass persistence (ADR-007): Mass primitives survive restarts via Postgres; 4-container two-zone deploy
+
+### ADR-007: Sovereign Mass Persistence — Single Binary with Postgres
+
+**Decision**: Mass primitive data is persisted in Postgres within the mez-api process when `SOVEREIGN_MASS=true`, eliminating the separate mez-mass-stub container.
+
+**Rationale**: The stub was a 40-then-100% demo server with ephemeral DashMap storage. Sovereign partners need data that survives restarts. The mez-api already has SQLx + Postgres for corridor/asset/attestation persistence. Absorbing Mass primitives into the same persistence layer reduces the container count from 3 to 2 per zone, eliminates a network hop, and uses a proven code pattern.
+
+**Consequence**: Two deployment modes: `SOVEREIGN_MASS=true` (zone IS the Mass server, Postgres-backed) and `SOVEREIGN_MASS=false` (zone proxies to centralized Mass APIs). The standalone mez-mass-stub binary remains for development without Postgres.

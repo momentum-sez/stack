@@ -703,6 +703,95 @@ mod tests {
         );
     }
 
+    // -- AWS-of-Zones full mesh test --
+
+    #[test]
+    fn five_primary_zones_produce_ten_corridors() {
+        let mut registry = CorridorRegistry::new();
+        // The five primary deployable zones from the zone manifests.
+        let zones = [
+            ("org.momentum.mez.zone.pk-sifc", "pk-sifc", "pk", true),
+            ("org.momentum.mez.zone.ae-dubai-difc", "ae-dubai-difc", "ae", true),
+            ("org.momentum.mez.zone.sg", "sg", "sg", false),
+            ("org.momentum.mez.zone.hk", "hk", "hk", false),
+            ("org.momentum.mez.zone.ky", "ky", "ky", false),
+        ];
+        for (zid, jid, cc, fz) in &zones {
+            registry.register_zone(zone(zid, jid, cc, *fz));
+        }
+        let corridors = registry.generate_corridors();
+        // 5 zones -> 5*4/2 = 10 unique corridor pairs.
+        assert_eq!(corridors.len(), 10);
+        assert_eq!(registry.corridor_count(), 10);
+
+        // Every zone should participate in exactly 4 corridors.
+        for (_, jid, _, _) in &zones {
+            let zone_corridors = registry.corridors_for_zone(jid);
+            assert_eq!(
+                zone_corridors.len(),
+                4,
+                "zone {jid} should have 4 corridors but has {}",
+                zone_corridors.len()
+            );
+        }
+
+        // Corridor IDs should all be unique.
+        let mut ids: Vec<&str> = corridors.iter().map(|c| c.corridor_id.as_str()).collect();
+        ids.sort();
+        ids.dedup();
+        assert_eq!(ids.len(), 10);
+
+        // All corridors between zones in different countries should be CrossBorder,
+        // except the two free-zone pairs (pk-sifc/ae-dubai-difc = FreeZoneToFreeZone).
+        for c in &corridors {
+            if c.zone_a_jurisdiction == "pk-sifc" && c.zone_b_jurisdiction == "ae-dubai-difc"
+                || c.zone_a_jurisdiction == "ae-dubai-difc"
+                    && c.zone_b_jurisdiction == "pk-sifc"
+            {
+                assert_eq!(
+                    c.corridor_type,
+                    CorridorType::FreeZoneToFreeZone,
+                    "pk-sifc <-> ae-dubai-difc should be FreeZoneToFreeZone"
+                );
+            } else {
+                assert_eq!(
+                    c.corridor_type,
+                    CorridorType::CrossBorder,
+                    "{} <-> {} should be CrossBorder",
+                    c.zone_a_jurisdiction,
+                    c.zone_b_jurisdiction
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn corridor_matrix_covers_all_five_primary_zones() {
+        let mut registry = CorridorRegistry::new();
+        let zones = [
+            ("org.momentum.mez.zone.pk-sifc", "pk-sifc", "pk", true),
+            ("org.momentum.mez.zone.ae-dubai-difc", "ae-dubai-difc", "ae", true),
+            ("org.momentum.mez.zone.sg", "sg", "sg", false),
+            ("org.momentum.mez.zone.hk", "hk", "hk", false),
+            ("org.momentum.mez.zone.ky", "ky", "ky", false),
+        ];
+        for (zid, jid, cc, fz) in &zones {
+            registry.register_zone(zone(zid, jid, cc, *fz));
+        }
+        registry.generate_corridors();
+        let matrix = registry.corridor_matrix();
+
+        // Matrix should have 5 entries, each with 4 neighbors.
+        assert_eq!(matrix.len(), 5);
+        for (zone_jid, neighbors) in &matrix {
+            assert_eq!(
+                neighbors.len(),
+                4,
+                "zone {zone_jid} should have 4 neighbors"
+            );
+        }
+    }
+
     #[test]
     fn compliance_domains_vary_by_type() {
         let cross = default_compliance_domains(CorridorType::CrossBorder);

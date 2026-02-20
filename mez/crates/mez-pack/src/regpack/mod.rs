@@ -1597,269 +1597,170 @@ pub fn domains_for_jurisdiction(jurisdiction: &str) -> Option<Vec<&'static str>>
         .map(|j| j.available_domains.to_vec())
 }
 
+// ---------------------------------------------------------------------------
+// Artifact Serialization Helpers
+// ---------------------------------------------------------------------------
+
+/// Extract digest hex from a built regpack, or return validation error.
+fn extract_digest(regpack: &Regpack) -> PackResult<String> {
+    regpack
+        .digest
+        .as_ref()
+        .ok_or_else(|| PackError::Validation("regpack has no digest".to_string()))
+        .map(|d| d.to_hex())
+}
+
+/// Serialize a financial regpack artifact to CAS-storable JSON.
+///
+/// All jurisdictions share the same base fields; Pakistan additionally
+/// includes `withholding_tax_rates` via the `extra_fields` parameter.
+fn serialize_financial_artifact(
+    regpack: &Regpack,
+    metadata: &RegPackMetadata,
+    sanctions: &SanctionsSnapshot,
+    regulators: &[RegulatorProfile],
+    deadlines: &[ComplianceDeadline],
+    reporting: &[ReportingRequirement],
+    extra_fields: Option<serde_json::Value>,
+) -> PackResult<(String, Vec<u8>)> {
+    let digest_hex = extract_digest(regpack)?;
+    let mut artifact = serde_json::json!({
+        "regpack_id": metadata.regpack_id,
+        "jurisdiction_id": metadata.jurisdiction_id,
+        "domain": metadata.domain,
+        "as_of_date": metadata.as_of_date,
+        "snapshot_type": metadata.snapshot_type,
+        "sources": metadata.sources,
+        "includes": metadata.includes,
+        "created_at": metadata.created_at,
+        "expires_at": metadata.expires_at,
+        "digest_sha256": digest_hex,
+        "sanctions_snapshot": sanctions,
+        "regulators": regulators,
+        "compliance_deadlines": deadlines,
+        "reporting_requirements": reporting,
+    });
+    if let Some(extra) = extra_fields {
+        if let (Some(obj), Some(extra_obj)) = (artifact.as_object_mut(), extra.as_object()) {
+            for (k, v) in extra_obj {
+                obj.insert(k.clone(), v.clone());
+            }
+        }
+    }
+    let json_bytes = serde_json::to_vec_pretty(&artifact)?;
+    Ok((digest_hex, json_bytes))
+}
+
+/// Serialize a sanctions-only regpack artifact to CAS-storable JSON.
+fn serialize_sanctions_artifact(
+    regpack: &Regpack,
+    metadata: &RegPackMetadata,
+    sanctions: &SanctionsSnapshot,
+) -> PackResult<(String, Vec<u8>)> {
+    let digest_hex = extract_digest(regpack)?;
+    let artifact = serde_json::json!({
+        "regpack_id": metadata.regpack_id,
+        "jurisdiction_id": metadata.jurisdiction_id,
+        "domain": metadata.domain,
+        "as_of_date": metadata.as_of_date,
+        "snapshot_type": metadata.snapshot_type,
+        "sources": metadata.sources,
+        "includes": metadata.includes,
+        "created_at": metadata.created_at,
+        "expires_at": metadata.expires_at,
+        "digest_sha256": digest_hex,
+        "sanctions_snapshot": sanctions,
+    });
+    let json_bytes = serde_json::to_vec_pretty(&artifact)?;
+    Ok((digest_hex, json_bytes))
+}
+
+/// Format the "unknown jurisdiction" error with available options.
+fn unknown_jurisdiction_error(jurisdiction: &str, domain: &str) -> PackError {
+    PackError::Validation(format!(
+        "No {domain} regpack content available for jurisdiction '{jurisdiction}'. \
+         Available: {}",
+        available_jurisdictions()
+            .iter()
+            .map(|j| j.jurisdiction_id)
+            .collect::<Vec<_>>()
+            .join(", ")
+    ))
+}
+
+// ---------------------------------------------------------------------------
+// Multi-Jurisdiction Dispatch — Financial
+// ---------------------------------------------------------------------------
+
 /// Build a financial regpack for any supported jurisdiction.
 ///
-/// Returns the same tuple as the jurisdiction-specific builders:
-/// `(Regpack, RegPackMetadata, SanctionsSnapshot, Vec<ComplianceDeadline>, Vec<ReportingRequirement>, jurisdiction-specific extra)`.
-///
-/// The return type is unified as a JSON artifact for CAS storage.
+/// Returns the content-addressed digest hex and serialized JSON bytes,
+/// suitable for CAS storage via `mez regpack build --store`.
 pub fn build_financial_regpack_artifact(jurisdiction: &str) -> PackResult<(String, Vec<u8>)> {
     match jurisdiction {
         "pk" => {
-            let (regpack, metadata, sanctions, deadlines, reporting, wht) =
-                pakistan::build_pakistan_regpack()?;
-            let digest_hex = regpack.digest.as_ref()
-                .ok_or_else(|| PackError::Validation("regpack has no digest".to_string()))?
-                .to_hex();
-            let artifact = serde_json::json!({
-                "regpack_id": metadata.regpack_id,
-                "jurisdiction_id": metadata.jurisdiction_id,
-                "domain": metadata.domain,
-                "as_of_date": metadata.as_of_date,
-                "snapshot_type": metadata.snapshot_type,
-                "sources": metadata.sources,
-                "includes": metadata.includes,
-                "created_at": metadata.created_at,
-                "expires_at": metadata.expires_at,
-                "digest_sha256": digest_hex,
-                "sanctions_snapshot": sanctions,
-                "regulators": pakistan::pakistan_regulators(),
-                "compliance_deadlines": deadlines,
-                "reporting_requirements": reporting,
-                "withholding_tax_rates": wht,
-            });
-            let json_bytes = serde_json::to_vec_pretty(&artifact)?;
-            Ok((digest_hex, json_bytes))
+            let (rp, meta, sanc, dl, rpt, wht) = pakistan::build_pakistan_regpack()?;
+            serialize_financial_artifact(
+                &rp, &meta, &sanc, &pakistan::pakistan_regulators(), &dl, &rpt,
+                Some(serde_json::json!({ "withholding_tax_rates": wht })),
+            )
         }
         "ae" => {
-            let (regpack, metadata, sanctions, deadlines, reporting) =
-                uae::build_uae_regpack()?;
-            let digest_hex = regpack.digest.as_ref()
-                .ok_or_else(|| PackError::Validation("regpack has no digest".to_string()))?
-                .to_hex();
-            let artifact = serde_json::json!({
-                "regpack_id": metadata.regpack_id,
-                "jurisdiction_id": metadata.jurisdiction_id,
-                "domain": metadata.domain,
-                "as_of_date": metadata.as_of_date,
-                "snapshot_type": metadata.snapshot_type,
-                "sources": metadata.sources,
-                "includes": metadata.includes,
-                "created_at": metadata.created_at,
-                "expires_at": metadata.expires_at,
-                "digest_sha256": digest_hex,
-                "sanctions_snapshot": sanctions,
-                "regulators": uae::uae_regulators(),
-                "compliance_deadlines": deadlines,
-                "reporting_requirements": reporting,
-            });
-            let json_bytes = serde_json::to_vec_pretty(&artifact)?;
-            Ok((digest_hex, json_bytes))
+            let (rp, meta, sanc, dl, rpt) = uae::build_uae_regpack()?;
+            serialize_financial_artifact(
+                &rp, &meta, &sanc, &uae::uae_regulators(), &dl, &rpt, None,
+            )
         }
         "sg" => {
-            let (regpack, metadata, sanctions, deadlines, reporting) =
-                singapore::build_singapore_regpack()?;
-            let digest_hex = regpack.digest.as_ref()
-                .ok_or_else(|| PackError::Validation("regpack has no digest".to_string()))?
-                .to_hex();
-            let artifact = serde_json::json!({
-                "regpack_id": metadata.regpack_id,
-                "jurisdiction_id": metadata.jurisdiction_id,
-                "domain": metadata.domain,
-                "as_of_date": metadata.as_of_date,
-                "snapshot_type": metadata.snapshot_type,
-                "sources": metadata.sources,
-                "includes": metadata.includes,
-                "created_at": metadata.created_at,
-                "expires_at": metadata.expires_at,
-                "digest_sha256": digest_hex,
-                "sanctions_snapshot": sanctions,
-                "regulators": singapore::singapore_regulators(),
-                "compliance_deadlines": deadlines,
-                "reporting_requirements": reporting,
-            });
-            let json_bytes = serde_json::to_vec_pretty(&artifact)?;
-            Ok((digest_hex, json_bytes))
+            let (rp, meta, sanc, dl, rpt) = singapore::build_singapore_regpack()?;
+            serialize_financial_artifact(
+                &rp, &meta, &sanc, &singapore::singapore_regulators(), &dl, &rpt, None,
+            )
         }
         "hk" => {
-            let (regpack, metadata, sanctions, deadlines, reporting) =
-                hong_kong::build_hong_kong_regpack()?;
-            let digest_hex = regpack.digest.as_ref()
-                .ok_or_else(|| PackError::Validation("regpack has no digest".to_string()))?
-                .to_hex();
-            let artifact = serde_json::json!({
-                "regpack_id": metadata.regpack_id,
-                "jurisdiction_id": metadata.jurisdiction_id,
-                "domain": metadata.domain,
-                "as_of_date": metadata.as_of_date,
-                "snapshot_type": metadata.snapshot_type,
-                "sources": metadata.sources,
-                "includes": metadata.includes,
-                "created_at": metadata.created_at,
-                "expires_at": metadata.expires_at,
-                "digest_sha256": digest_hex,
-                "sanctions_snapshot": sanctions,
-                "regulators": hong_kong::hong_kong_regulators(),
-                "compliance_deadlines": deadlines,
-                "reporting_requirements": reporting,
-            });
-            let json_bytes = serde_json::to_vec_pretty(&artifact)?;
-            Ok((digest_hex, json_bytes))
+            let (rp, meta, sanc, dl, rpt) = hong_kong::build_hong_kong_regpack()?;
+            serialize_financial_artifact(
+                &rp, &meta, &sanc, &hong_kong::hong_kong_regulators(), &dl, &rpt, None,
+            )
         }
         "ky" => {
-            let (regpack, metadata, sanctions, deadlines, reporting) =
-                cayman::build_cayman_regpack()?;
-            let digest_hex = regpack.digest.as_ref()
-                .ok_or_else(|| PackError::Validation("regpack has no digest".to_string()))?
-                .to_hex();
-            let artifact = serde_json::json!({
-                "regpack_id": metadata.regpack_id,
-                "jurisdiction_id": metadata.jurisdiction_id,
-                "domain": metadata.domain,
-                "as_of_date": metadata.as_of_date,
-                "snapshot_type": metadata.snapshot_type,
-                "sources": metadata.sources,
-                "includes": metadata.includes,
-                "created_at": metadata.created_at,
-                "expires_at": metadata.expires_at,
-                "digest_sha256": digest_hex,
-                "sanctions_snapshot": sanctions,
-                "regulators": cayman::cayman_regulators(),
-                "compliance_deadlines": deadlines,
-                "reporting_requirements": reporting,
-            });
-            let json_bytes = serde_json::to_vec_pretty(&artifact)?;
-            Ok((digest_hex, json_bytes))
+            let (rp, meta, sanc, dl, rpt) = cayman::build_cayman_regpack()?;
+            serialize_financial_artifact(
+                &rp, &meta, &sanc, &cayman::cayman_regulators(), &dl, &rpt, None,
+            )
         }
-        _ => Err(PackError::Validation(format!(
-            "No regpack content available for jurisdiction '{jurisdiction}'. \
-             Available: {}",
-            available_jurisdictions()
-                .iter()
-                .map(|j| j.jurisdiction_id)
-                .collect::<Vec<_>>()
-                .join(", ")
-        ))),
+        _ => Err(unknown_jurisdiction_error(jurisdiction, "financial")),
     }
 }
+
+// ---------------------------------------------------------------------------
+// Multi-Jurisdiction Dispatch — Sanctions
+// ---------------------------------------------------------------------------
 
 /// Build a sanctions-only regpack for any supported jurisdiction.
 pub fn build_sanctions_regpack_artifact(jurisdiction: &str) -> PackResult<(String, Vec<u8>)> {
     match jurisdiction {
         "pk" => {
-            let (regpack, metadata, sanctions) = pakistan::build_pakistan_sanctions_regpack()?;
-            let digest_hex = regpack.digest.as_ref()
-                .ok_or_else(|| PackError::Validation("regpack has no digest".to_string()))?
-                .to_hex();
-            let artifact = serde_json::json!({
-                "regpack_id": metadata.regpack_id,
-                "jurisdiction_id": metadata.jurisdiction_id,
-                "domain": metadata.domain,
-                "as_of_date": metadata.as_of_date,
-                "snapshot_type": metadata.snapshot_type,
-                "sources": metadata.sources,
-                "includes": metadata.includes,
-                "created_at": metadata.created_at,
-                "expires_at": metadata.expires_at,
-                "digest_sha256": digest_hex,
-                "sanctions_snapshot": sanctions,
-            });
-            let json_bytes = serde_json::to_vec_pretty(&artifact)?;
-            Ok((digest_hex, json_bytes))
+            let (rp, meta, sanc) = pakistan::build_pakistan_sanctions_regpack()?;
+            serialize_sanctions_artifact(&rp, &meta, &sanc)
         }
         "ae" => {
-            let (regpack, metadata, sanctions) = uae::build_uae_sanctions_regpack()?;
-            let digest_hex = regpack.digest.as_ref()
-                .ok_or_else(|| PackError::Validation("regpack has no digest".to_string()))?
-                .to_hex();
-            let artifact = serde_json::json!({
-                "regpack_id": metadata.regpack_id,
-                "jurisdiction_id": metadata.jurisdiction_id,
-                "domain": metadata.domain,
-                "as_of_date": metadata.as_of_date,
-                "snapshot_type": metadata.snapshot_type,
-                "sources": metadata.sources,
-                "includes": metadata.includes,
-                "created_at": metadata.created_at,
-                "expires_at": metadata.expires_at,
-                "digest_sha256": digest_hex,
-                "sanctions_snapshot": sanctions,
-            });
-            let json_bytes = serde_json::to_vec_pretty(&artifact)?;
-            Ok((digest_hex, json_bytes))
+            let (rp, meta, sanc) = uae::build_uae_sanctions_regpack()?;
+            serialize_sanctions_artifact(&rp, &meta, &sanc)
         }
         "sg" => {
-            let (regpack, metadata, sanctions) = singapore::build_singapore_sanctions_regpack()?;
-            let digest_hex = regpack.digest.as_ref()
-                .ok_or_else(|| PackError::Validation("regpack has no digest".to_string()))?
-                .to_hex();
-            let artifact = serde_json::json!({
-                "regpack_id": metadata.regpack_id,
-                "jurisdiction_id": metadata.jurisdiction_id,
-                "domain": metadata.domain,
-                "as_of_date": metadata.as_of_date,
-                "snapshot_type": metadata.snapshot_type,
-                "sources": metadata.sources,
-                "includes": metadata.includes,
-                "created_at": metadata.created_at,
-                "expires_at": metadata.expires_at,
-                "digest_sha256": digest_hex,
-                "sanctions_snapshot": sanctions,
-            });
-            let json_bytes = serde_json::to_vec_pretty(&artifact)?;
-            Ok((digest_hex, json_bytes))
+            let (rp, meta, sanc) = singapore::build_singapore_sanctions_regpack()?;
+            serialize_sanctions_artifact(&rp, &meta, &sanc)
         }
         "hk" => {
-            let (regpack, metadata, sanctions) = hong_kong::build_hong_kong_sanctions_regpack()?;
-            let digest_hex = regpack.digest.as_ref()
-                .ok_or_else(|| PackError::Validation("regpack has no digest".to_string()))?
-                .to_hex();
-            let artifact = serde_json::json!({
-                "regpack_id": metadata.regpack_id,
-                "jurisdiction_id": metadata.jurisdiction_id,
-                "domain": metadata.domain,
-                "as_of_date": metadata.as_of_date,
-                "snapshot_type": metadata.snapshot_type,
-                "sources": metadata.sources,
-                "includes": metadata.includes,
-                "created_at": metadata.created_at,
-                "expires_at": metadata.expires_at,
-                "digest_sha256": digest_hex,
-                "sanctions_snapshot": sanctions,
-            });
-            let json_bytes = serde_json::to_vec_pretty(&artifact)?;
-            Ok((digest_hex, json_bytes))
+            let (rp, meta, sanc) = hong_kong::build_hong_kong_sanctions_regpack()?;
+            serialize_sanctions_artifact(&rp, &meta, &sanc)
         }
         "ky" => {
-            let (regpack, metadata, sanctions) = cayman::build_cayman_sanctions_regpack()?;
-            let digest_hex = regpack.digest.as_ref()
-                .ok_or_else(|| PackError::Validation("regpack has no digest".to_string()))?
-                .to_hex();
-            let artifact = serde_json::json!({
-                "regpack_id": metadata.regpack_id,
-                "jurisdiction_id": metadata.jurisdiction_id,
-                "domain": metadata.domain,
-                "as_of_date": metadata.as_of_date,
-                "snapshot_type": metadata.snapshot_type,
-                "sources": metadata.sources,
-                "includes": metadata.includes,
-                "created_at": metadata.created_at,
-                "expires_at": metadata.expires_at,
-                "digest_sha256": digest_hex,
-                "sanctions_snapshot": sanctions,
-            });
-            let json_bytes = serde_json::to_vec_pretty(&artifact)?;
-            Ok((digest_hex, json_bytes))
+            let (rp, meta, sanc) = cayman::build_cayman_sanctions_regpack()?;
+            serialize_sanctions_artifact(&rp, &meta, &sanc)
         }
-        _ => Err(PackError::Validation(format!(
-            "No sanctions regpack content available for jurisdiction '{jurisdiction}'. \
-             Available: {}",
-            available_jurisdictions()
-                .iter()
-                .map(|j| j.jurisdiction_id)
-                .collect::<Vec<_>>()
-                .join(", ")
-        ))),
+        _ => Err(unknown_jurisdiction_error(jurisdiction, "sanctions")),
     }
 }
 

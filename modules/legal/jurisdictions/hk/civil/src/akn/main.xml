@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act contains="originalVersion">
+    <meta>
+      <identification source="#mez">
+        <FRBRWork>
+          <FRBRthis value="/akn/hk/act/civil-corpus/0.1.0"/>
+          <FRBRuri value="/akn/hk/act/civil-corpus"/>
+          <FRBRdate date="2026-02-20" name="Generation"/>
+          <FRBRauthor href="#mez"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/hk/act/civil-corpus/0.1.0/eng@"/>
+          <FRBRuri value="/akn/hk/act/civil-corpus/eng@"/>
+          <FRBRdate date="2026-02-20" name="Generation"/>
+          <FRBRauthor href="#mez"/>
+          <FRBRlanguage language="eng"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/hk/act/civil-corpus/0.1.0/eng@.xml"/>
+          <FRBRuri value="/akn/hk/act/civil-corpus/eng@.xml"/>
+          <FRBRdate date="2026-02-20" name="Generation"/>
+          <FRBRauthor href="#mez"/>
+        </FRBRManifestation>
+      </identification>
+      <publication name="MEZ Stack" showAs="MEZ Stack" date="2026-02-20" number="0.1.0"/>
+    </meta>
+    <preface>
+      <p eId="p1">Placeholder corpus for Hong Kong SAR — domain: civil. Populate via the law ingestion pipeline.</p>
+    </preface>
+    <body>
+      <section eId="s1">
+        <heading>Placeholder</heading>
+        <p eId="s1.p1">No legal text is embedded in this repository for this corpus.</p>
+      </section>
+    </body>
+  </act>
+</akomaNtoso>

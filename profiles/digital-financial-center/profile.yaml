@@ -1,20 +1,142 @@
+# Profile: Digital Financial Center
+#
+# Full-stack profile for international financial center zones that operate
+# under their own regulatory framework (distinct from their host country).
+# Designed for jurisdictions like:
+#   - AE-DIFC (Dubai International Financial Centre)
+#   - SG (Singapore)
+#   - HK (Hong Kong SAR)
+#   - KY (Cayman Islands)
+#   - AE-ADGM (Abu Dhabi Global Market)
+#
+# Unlike sovereign-govos (which integrates national systems like NADRA/FBR),
+# this profile uses international standards and generic adapter interfaces.
+#
+# Capabilities:
+#   - Common-law legal foundation with enabling act framework
+#   - Multi-regulator oversight (AML/CFT, financial supervision, sanctions)
+#   - International identity/KYC (passport + corporate registry)
+#   - ISO 20022 payments + regulated stablecoin corridors
+#   - Licensing regime for financial services
+#   - Regulator console with compliance monitoring
+#
+# Deploy via:
+#   ./deploy/scripts/deploy-zone.sh digital-financial-center org.momentum.mez.zone.sg sg
+
 profile_id: org.momentum.mez.profile.digital-financial-center
 stack_spec_version: 0.4.44
+
 modules:
+# --- Legal Foundation ---
 - module_id: org.momentum.mez.legal.core
   version: 0.1.0
   variant: commonlaw-minimal
+- module_id: org.momentum.mez.legal.akn-templates
+  version: 0.1.0
+  variant: default
+- module_id: org.momentum.mez.legal.enabling-act
+  version: 0.2.0
+  variant: baseline
+- module_id: org.momentum.mez.legal.authority-charter
+  version: 0.2.0
+  variant: baseline
+- module_id: org.momentum.mez.legal.admin-procedure
+  version: 0.2.0
+  variant: baseline
+- module_id: org.momentum.mez.legal.civil-code
+  version: 0.2.0
+  variant: baseline
+- module_id: org.momentum.mez.legal.commercial-code
+  version: 0.2.0
+  variant: baseline
+- module_id: org.momentum.mez.legal.dispute-resolution
+  version: 0.2.0
+  variant: baseline
+- module_id: org.momentum.mez.legal.entity-registry
+  version: 0.2.0
+  variant: baseline
+
+# --- Regulatory Framework ---
 - module_id: org.momentum.mez.reg.aml-cft
   version: 0.1.0
   variant: risk-based
   params:
     kyc_tier_required: 2
     max_amount_without_enhanced_due_diligence: 10000
+- module_id: org.momentum.mez.reg.fin-supervision
+  version: 0.2.0
+  variant: baseline
+- module_id: org.momentum.mez.reg.sanctions
+  version: 0.1.0
+  variant: international-list
+- module_id: org.momentum.mez.reg.data-protection
+  version: 0.1.0
+  variant: baseline
+- module_id: org.momentum.mez.reg.consumer-protection
+  version: 0.1.0
+  variant: baseline
+
+# --- Identity & KYC ---
+- module_id: org.momentum.mez.identity.core
+  version: 0.1.0
+  variant: international-passport
+  params:
+    identity_provider: local-registry
+    tax_authority: local-revenue
+- module_id: org.momentum.mez.identity.kyc-tiers
+  version: 0.1.0
+  variant: tier-2
+
+# --- Financial Infrastructure ---
 - module_id: org.momentum.mez.fin.payments-adapter
   version: 0.1.0
   variant: iso20022-mapping
+- module_id: org.momentum.mez.fin.treasury
+  version: 0.1.0
+  variant: baseline
+
+# --- Corporate Registry ---
+- module_id: org.momentum.mez.corporate.formation
+  version: 0.1.0
+  variant: baseline
+  params:
+    corporate_registry: local-registrar
+- module_id: org.momentum.mez.corporate.beneficial-ownership
+  version: 0.1.0
+  variant: baseline
+
+# --- Licensing ---
+- module_id: org.momentum.mez.lic.financial
+  version: 0.1.0
+  variant: tiered-licensing
+- module_id: org.momentum.mez.lic.corporate
+  version: 0.1.0
+  variant: international-business
+
+# --- Operations & Oversight ---
+- module_id: org.momentum.mez.ops.regulator-console
+  version: 0.1.0
+  variant: multi-regulator
+- module_id: org.momentum.mez.ops.deployment-telemetry
+  version: 0.1.0
+  variant: baseline
+
+# --- Governance ---
+- module_id: org.momentum.mez.governance.core
+  version: 0.1.0
+  variant: baseline
+
+# --- Corridors ---
 - module_id: org.momentum.mez.corridor.swift
   version: 0.1.0
   variant: iso20022-cross-border
+- module_id: org.momentum.mez.corridor.stablecoin
+  version: 0.1.0
+  variant: regulated-stablecoin
+  params:
+    settlement_currency: USD
+    max_single_transfer: 1000000
+
 corridors:
 - org.momentum.mez.corridor.swift.iso20022-cross-border
+- org.momentum.mez.corridor.stablecoin.regulated-stablecoin

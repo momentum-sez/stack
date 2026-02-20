@@ -406,6 +406,200 @@ impl std::fmt::Display for PassportNumber {
     }
 }
 
+/// UAE Emirates ID number.
+///
+/// A 15-digit identity number issued by the UAE Federal Authority for
+/// Identity and Citizenship (ICA). Format: 784-XXXX-XXXXXXX-X where
+/// 784 is the UAE country code (ISO 3166).
+///
+/// # Validation
+///
+/// - Must be exactly 15 digits after stripping dashes
+/// - Must start with "784"
+/// - If dashes are present, must follow 3-4-7-1 pattern
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct EmiratesId(String);
+
+impl_validating_deserialize!(EmiratesId);
+
+impl EmiratesId {
+    /// Create an Emirates ID from a string, validating format.
+    ///
+    /// Accepts both `"784199012345671"` and `"784-1990-1234567-1"` formats.
+    /// Stores in canonical 15-digit format (dashes stripped).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ValidationError::InvalidEmiratesId`] if format is invalid.
+    pub fn new(value: impl Into<String>) -> Result<Self, ValidationError> {
+        let raw = value.into();
+        let digits: String = raw.chars().filter(|c| *c != '-').collect();
+
+        if digits.len() != 15 || !digits.chars().all(|c| c.is_ascii_digit()) {
+            return Err(ValidationError::InvalidEmiratesId(raw));
+        }
+
+        if !digits.starts_with("784") {
+            return Err(ValidationError::InvalidEmiratesId(raw));
+        }
+
+        if raw.contains('-') {
+            let parts: Vec<&str> = raw.split('-').collect();
+            if parts.len() != 4
+                || parts[0].len() != 3
+                || parts[1].len() != 4
+                || parts[2].len() != 7
+                || parts[3].len() != 1
+            {
+                return Err(ValidationError::InvalidEmiratesId(raw));
+            }
+        }
+
+        Ok(Self(digits))
+    }
+
+    /// Access the Emirates ID in canonical 15-digit format (no dashes).
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Return the Emirates ID in formatted form: 784-XXXX-XXXXXXX-X.
+    pub fn formatted(&self) -> String {
+        format!(
+            "{}-{}-{}-{}",
+            &self.0[..3],
+            &self.0[3..7],
+            &self.0[7..14],
+            &self.0[14..]
+        )
+    }
+}
+
+impl std::fmt::Display for EmiratesId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.formatted())
+    }
+}
+
+/// Singapore National Registration Identity Card (NRIC) number.
+///
+/// A 9-character alphanumeric identity number issued by the Immigration
+/// & Checkpoints Authority (ICA) of Singapore.
+///
+/// Format: `[STFGM]XXXXXXX[A-Z]`
+/// - First character: S (born before 2000), T (born 2000+), F (foreigner before 2000),
+///   G (foreigner 2000+), M (foreigner 2022+)
+/// - 7 digits
+/// - 1 check letter (A-Z)
+///
+/// # Validation
+///
+/// - Must be exactly 9 characters
+/// - First character must be S, T, F, G, or M
+/// - Middle 7 characters must be digits
+/// - Last character must be a letter (A-Z)
+/// - Stored in uppercase
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct Nric(String);
+
+impl_validating_deserialize!(Nric);
+
+impl Nric {
+    /// Create an NRIC from a string, validating format.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ValidationError::InvalidNric`] if format is invalid.
+    pub fn new(value: impl Into<String>) -> Result<Self, ValidationError> {
+        let raw = value.into();
+        let upper = raw.trim().to_uppercase();
+
+        if upper.len() != 9 {
+            return Err(ValidationError::InvalidNric(raw));
+        }
+
+        let chars: Vec<char> = upper.chars().collect();
+
+        if !matches!(chars[0], 'S' | 'T' | 'F' | 'G' | 'M') {
+            return Err(ValidationError::InvalidNric(raw));
+        }
+
+        if !chars[1..8].iter().all(|c| c.is_ascii_digit()) {
+            return Err(ValidationError::InvalidNric(raw));
+        }
+
+        if !chars[8].is_ascii_uppercase() {
+            return Err(ValidationError::InvalidNric(raw));
+        }
+
+        Ok(Self(upper))
+    }
+
+    /// Access the NRIC string value (uppercase).
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for Nric {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+/// Singapore Unique Entity Number (UEN).
+///
+/// A standard identification number for entities registered in Singapore.
+/// Issued by ACRA, IRAS, or other government agencies.
+///
+/// Format varies by entity type:
+/// - Business (ROB): 8 digits + 1 letter (e.g., `53345678K`)
+/// - Local company (ROC): 6 digits + 1 letter (e.g., `201012345K`) — 10 chars
+/// - Others: 9-10 alphanumeric characters
+///
+/// # Validation
+///
+/// - Must be 9 or 10 characters
+/// - Must be alphanumeric (ASCII)
+/// - Stored in uppercase
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct Uen(String);
+
+impl_validating_deserialize!(Uen);
+
+impl Uen {
+    /// Create a UEN from a string, validating format.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ValidationError::InvalidUen`] if format is invalid.
+    pub fn new(value: impl Into<String>) -> Result<Self, ValidationError> {
+        let raw = value.into();
+        let upper = raw.trim().to_uppercase();
+
+        if upper.len() < 9 || upper.len() > 10 {
+            return Err(ValidationError::InvalidUen(raw));
+        }
+
+        if !upper.chars().all(|c| c.is_ascii_alphanumeric()) {
+            return Err(ValidationError::InvalidUen(raw));
+        }
+
+        Ok(Self(upper))
+    }
+
+    /// Access the UEN string value (uppercase).
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for Uen {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -753,6 +947,163 @@ mod tests {
         set.insert(Did::new("did:web:a.com").unwrap());
         set.insert(Did::new("did:web:b.com").unwrap());
         set.insert(Did::new("did:web:a.com").unwrap());
+        assert_eq!(set.len(), 2);
+    }
+
+    // -- EmiratesId --
+
+    #[test]
+    fn emirates_id_valid_15_digits() {
+        let eid = EmiratesId::new("784199012345671").unwrap();
+        assert_eq!(eid.as_str(), "784199012345671");
+    }
+
+    #[test]
+    fn emirates_id_valid_formatted() {
+        let eid = EmiratesId::new("784-1990-1234567-1").unwrap();
+        assert_eq!(eid.as_str(), "784199012345671");
+        assert_eq!(eid.formatted(), "784-1990-1234567-1");
+    }
+
+    #[test]
+    fn emirates_id_display_formatted() {
+        let eid = EmiratesId::new("784199012345671").unwrap();
+        assert_eq!(format!("{eid}"), "784-1990-1234567-1");
+    }
+
+    #[test]
+    fn emirates_id_rejects_invalid() {
+        assert!(EmiratesId::new("").is_err());
+        assert!(EmiratesId::new("78419901234567").is_err()); // 14 digits
+        assert!(EmiratesId::new("7841990123456712").is_err()); // 16 digits
+        assert!(EmiratesId::new("123199012345671").is_err()); // wrong prefix
+        assert!(EmiratesId::new("784-199-01234567-1").is_err()); // wrong dash pattern
+        assert!(EmiratesId::new("78419901234567a").is_err()); // non-digit
+    }
+
+    #[test]
+    fn emirates_id_serde_roundtrip() {
+        let eid = EmiratesId::new("784199012345671").unwrap();
+        let json = serde_json::to_string(&eid).unwrap();
+        let d: EmiratesId = serde_json::from_str(&json).unwrap();
+        assert_eq!(eid, d);
+    }
+
+    #[test]
+    fn emirates_id_in_hashset() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(EmiratesId::new("784199012345671").unwrap());
+        set.insert(EmiratesId::new("784199012345672").unwrap());
+        set.insert(EmiratesId::new("784199012345671").unwrap());
+        assert_eq!(set.len(), 2);
+    }
+
+    // -- Nric --
+
+    #[test]
+    fn nric_valid() {
+        let nric = Nric::new("S1234567D").unwrap();
+        assert_eq!(nric.as_str(), "S1234567D");
+    }
+
+    #[test]
+    fn nric_all_prefixes() {
+        for prefix in ['S', 'T', 'F', 'G', 'M'] {
+            let id = format!("{prefix}1234567A");
+            assert!(Nric::new(id).is_ok(), "prefix {prefix} should be valid");
+        }
+    }
+
+    #[test]
+    fn nric_lowercased() {
+        let nric = Nric::new("s1234567d").unwrap();
+        assert_eq!(nric.as_str(), "S1234567D");
+    }
+
+    #[test]
+    fn nric_display() {
+        let nric = Nric::new("T0123456Z").unwrap();
+        assert_eq!(format!("{nric}"), "T0123456Z");
+    }
+
+    #[test]
+    fn nric_rejects_invalid() {
+        assert!(Nric::new("").is_err());
+        assert!(Nric::new("S123456D").is_err()); // 8 chars (too short)
+        assert!(Nric::new("S12345678D").is_err()); // 10 chars (too long)
+        assert!(Nric::new("A1234567D").is_err()); // invalid prefix
+        assert!(Nric::new("S123456AD").is_err()); // letter in digits
+        assert!(Nric::new("S12345671").is_err()); // digit as check char
+    }
+
+    #[test]
+    fn nric_serde_roundtrip() {
+        let nric = Nric::new("S1234567D").unwrap();
+        let json = serde_json::to_string(&nric).unwrap();
+        let d: Nric = serde_json::from_str(&json).unwrap();
+        assert_eq!(nric, d);
+    }
+
+    #[test]
+    fn nric_in_hashset() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(Nric::new("S1234567D").unwrap());
+        set.insert(Nric::new("T7654321A").unwrap());
+        set.insert(Nric::new("S1234567D").unwrap());
+        assert_eq!(set.len(), 2);
+    }
+
+    // -- Uen --
+
+    #[test]
+    fn uen_valid_9_chars() {
+        let uen = Uen::new("53345678K").unwrap();
+        assert_eq!(uen.as_str(), "53345678K");
+    }
+
+    #[test]
+    fn uen_valid_10_chars() {
+        let uen = Uen::new("201012345K").unwrap();
+        assert_eq!(uen.as_str(), "201012345K");
+    }
+
+    #[test]
+    fn uen_lowercased() {
+        let uen = Uen::new("201012345k").unwrap();
+        assert_eq!(uen.as_str(), "201012345K");
+    }
+
+    #[test]
+    fn uen_display() {
+        let uen = Uen::new("53345678K").unwrap();
+        assert_eq!(format!("{uen}"), "53345678K");
+    }
+
+    #[test]
+    fn uen_rejects_invalid() {
+        assert!(Uen::new("").is_err());
+        assert!(Uen::new("12345678").is_err()); // 8 chars (too short)
+        assert!(Uen::new("12345678901").is_err()); // 11 chars (too long)
+        assert!(Uen::new("5334567-K").is_err()); // non-alphanumeric
+    }
+
+    #[test]
+    fn uen_serde_roundtrip() {
+        let uen = Uen::new("53345678K").unwrap();
+        let json = serde_json::to_string(&uen).unwrap();
+        let d: Uen = serde_json::from_str(&json).unwrap();
+        assert_eq!(uen, d);
+    }
+
+    #[test]
+    fn uen_in_hashset() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(Uen::new("53345678K").unwrap());
+        set.insert(Uen::new("201012345K").unwrap());
+        set.insert(Uen::new("53345678K").unwrap());
         assert_eq!(set.len(), 2);
     }
 }

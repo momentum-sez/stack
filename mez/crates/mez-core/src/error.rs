@@ -124,6 +124,18 @@ pub enum ValidationError {
     #[error("invalid passport number: \"{0}\" (expected 5-20 alphanumeric characters)")]
     InvalidPassportNumber(String),
 
+    /// Emirates ID does not conform to UAE ICA format (15 digits, prefix 784).
+    #[error("invalid Emirates ID format: \"{0}\" (expected 15 digits starting with 784)")]
+    InvalidEmiratesId(String),
+
+    /// NRIC does not conform to Singapore format ([STFGM]XXXXXXX[A-Z]).
+    #[error("invalid NRIC format: \"{0}\" (expected [STFGM] + 7 digits + letter)")]
+    InvalidNric(String),
+
+    /// UEN does not conform to Singapore ACRA format (9-10 alphanumeric characters).
+    #[error("invalid UEN format: \"{0}\" (expected 9-10 alphanumeric characters)")]
+    InvalidUen(String),
+
     /// Jurisdiction identifier is empty.
     #[error("invalid jurisdiction ID: must be non-empty")]
     InvalidJurisdictionId,

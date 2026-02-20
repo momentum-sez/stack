@@ -27,7 +27,7 @@ module.exports = function build_cover() {
 
     // Subtitle line — Georgia italic, understated
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [
-      new TextRun({ text: "Open Source EZ Stack", font: C.SUBTITLE_FONT, size: 32, italics: true, color: C.SECONDARY_TEXT })
+      new TextRun({ text: "Open Source Economic Zone Stack", font: C.SUBTITLE_FONT, size: 32, italics: true, color: C.SECONDARY_TEXT })
     ]}),
 
     // Document type — Garamond, steel blue, formal
@@ -44,7 +44,7 @@ module.exports = function build_cover() {
 
     // Tagline — charcoal italic, two lines
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [
-      new TextRun({ text: "Complete EZ-in-a-Box: Multi-Jurisdiction Composition", font: C.BODY_FONT, size: C.BODY_SIZE, italics: true, color: C.DARK })
+      new TextRun({ text: "Complete Economic Zone-in-a-Box: Multi-Jurisdiction Composition", font: C.BODY_FONT, size: C.BODY_SIZE, italics: true, color: C.DARK })
     ]}),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [
       new TextRun({ text: "with One-Click Deployment via Mass", font: C.BODY_FONT, size: C.BODY_SIZE, italics: true, color: C.DARK })

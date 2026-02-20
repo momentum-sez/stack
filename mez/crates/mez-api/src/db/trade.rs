@@ -173,8 +173,8 @@ struct TradeFlowRow {
 #[derive(sqlx::FromRow)]
 struct TradeTransitionRow {
     transition_id: Uuid,
-    #[allow(dead_code)]
-    flow_id: Uuid,
+    #[sqlx(rename = "flow_id")]
+    _flow_id: Uuid,
     kind: String,
     from_state: String,
     to_state: String,

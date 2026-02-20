@@ -8,7 +8,7 @@ collection of files:
 - two zones (exporter/importer)
 - jurisdiction stacks ("lawpack overlays") pinned via zone locks
 - settlement rails (SWIFT ISO20022 + regulated stablecoin)
-- room for obligation corridors (invoice/BOL/LC) and proof-bindings
+- trade flow instruments (invoice, BOL, letter of credit)
 
 ## Trade Playbook Profile
 
@@ -33,16 +33,13 @@ witness bundles.
 To generate locks:
 
 ```bash
-./mez zone lock --zone docs/examples/trade/src/zones/exporter/zone.yaml
-./mez zone lock --zone docs/examples/trade/src/zones/importer/zone.yaml
+mez lock docs/examples/trade/src/zones/exporter/zone.yaml
+mez lock docs/examples/trade/src/zones/importer/zone.yaml
 ```
 
-## Deterministic generation
+## Trade Flow API
 
-The deterministic generator entrypoint is:
-
-- tools/dev/generate_trade_playbook.py
-
-At this stage, the generator only scaffolds the on-disk layout and root manifest.
-Subsequent parts of the .40 gate expand it to generate corridor instances, receipts,
-checkpoints, settlement anchors, proof-bindings, and a complete CAS closure.
+The trade flow instruments runtime is implemented in `mez-corridor` with 4 archetypes
+(Export, Import, LetterOfCredit, OpenAccount) and 10 transition types. API endpoints
+are available at `/v1/trade/flows/*`. See the [Corridor Overview](../../corridors/overview.md)
+for the full trade flow lifecycle documentation.

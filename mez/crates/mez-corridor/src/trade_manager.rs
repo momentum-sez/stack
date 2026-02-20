@@ -181,25 +181,19 @@ fn extract_document_digests(payload: &TradeTransitionPayload) -> Result<Vec<Stri
     let mut digests = Vec::new();
 
     match payload {
-        TradeTransitionPayload::InvoiceIssue { invoice, .. } => {
-            if let Some(inv) = invoice {
-                let d = compute_trade_document_digest(inv)?;
-                digests.push(d.to_hex());
-            }
+        TradeTransitionPayload::InvoiceIssue { invoice: Some(inv), .. } => {
+            let d = compute_trade_document_digest(inv.as_ref())?;
+            digests.push(d.to_hex());
         }
-        TradeTransitionPayload::BolIssue { bol, .. } => {
-            if let Some(b) = bol {
-                let d = compute_trade_document_digest(b)?;
-                digests.push(d.to_hex());
-            }
+        TradeTransitionPayload::BolIssue { bol: Some(b), .. } => {
+            let d = compute_trade_document_digest(b.as_ref())?;
+            digests.push(d.to_hex());
         }
-        TradeTransitionPayload::LcIssue { lc, .. } => {
-            if let Some(l) = lc {
-                let d = compute_trade_document_digest(l)?;
-                digests.push(d.to_hex());
-            }
+        TradeTransitionPayload::LcIssue { lc: Some(l), .. } => {
+            let d = compute_trade_document_digest(l.as_ref())?;
+            digests.push(d.to_hex());
         }
-        // Non-document-issuing transitions have no embedded docs to digest.
+        // Non-document-issuing transitions or missing embedded docs.
         _ => {}
     }
 
@@ -315,7 +309,7 @@ mod tests {
         );
 
         let payload = TradeTransitionPayload::InvoiceIssue {
-            invoice: Some(sample_invoice()),
+            invoice: Some(Box::new(sample_invoice())),
             invoice_ref: None,
             issued_by_party_id: None,
             notes: None,
@@ -416,7 +410,7 @@ mod tests {
             .submit_transition(
                 fid,
                 TradeTransitionPayload::InvoiceIssue {
-                    invoice: Some(sample_invoice()),
+                    invoice: Some(Box::new(sample_invoice())),
                     invoice_ref: None,
                     issued_by_party_id: None,
                     notes: None,
@@ -447,7 +441,7 @@ mod tests {
             .submit_transition(
                 fid,
                 TradeTransitionPayload::BolIssue {
-                    bol: Some(sample_bol()),
+                    bol: Some(Box::new(sample_bol())),
                     bol_ref: None,
                     issued_by_party_id: None,
                     notes: None,

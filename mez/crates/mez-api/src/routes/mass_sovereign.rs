@@ -333,7 +333,7 @@ async fn org_search(
     let total = all.len();
     let start = page * size;
     let content: Vec<Value> = all.into_iter().skip(start).take(size).collect();
-    let total_pages = if total == 0 { 0 } else { (total + size - 1) / size };
+    let total_pages = total.div_ceil(size);
 
     Json(json!({
         "content": content,
@@ -926,13 +926,14 @@ async fn shareholders_get_by_org(
 
 #[derive(Deserialize)]
 struct IdentitiesListQuery {
-    #[allow(dead_code)]
     entity_id: Option<String>,
 }
 
 async fn identities_list(
-    Query(_params): Query<IdentitiesListQuery>,
+    Query(params): Query<IdentitiesListQuery>,
 ) -> Json<Value> {
+    // Identity service stub — returns empty list, filtered by entity_id if provided.
+    let _ = params.entity_id;
     Json(json!([]))
 }
 

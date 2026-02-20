@@ -1,17 +1,17 @@
 [package]
 name = "mez-compliance"
+description = "Jurisdiction configuration bridge: regpack-driven compliance domain scoping for the EZ Stack."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-repository.workspace = true
 
 [dependencies]
 mez-core = { workspace = true }
 mez-tensor = { workspace = true }
 mez-pack = { workspace = true }
 chrono = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
+serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
 

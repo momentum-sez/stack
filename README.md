@@ -8,8 +8,8 @@
 
 [![CI](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square)]()
 [![Rust](https://img.shields.io/badge/rust-1.75+-93450a?style=flat-square)]()
-[![Tests](https://img.shields.io/badge/tests-4%2C073-brightgreen?style=flat-square)]()
-[![Crates](https://img.shields.io/badge/crates-16-blue?style=flat-square)]()
+[![Tests](https://img.shields.io/badge/tests-4%2C601-brightgreen?style=flat-square)]()
+[![Crates](https://img.shields.io/badge/crates-17-blue?style=flat-square)]()
 [![Modules](https://img.shields.io/badge/modules-323-blue?style=flat-square)]()
 [![Schemas](https://img.shields.io/badge/schemas-116-blue?style=flat-square)]()
 
@@ -41,8 +41,8 @@ Zone Admin ──> mez-api ──> Compliance Tensor ──> 20-domain evaluatio
 ```bash
 git clone https://github.com/momentum-ez/stack.git && cd stack/mez
 
-cargo build --workspace                     # build all 16 crates
-cargo test  --workspace                     # run 4,073 tests
+cargo build --workspace                     # build all 17 crates
+cargo test  --workspace                     # run 4,601 tests
 cargo clippy --workspace -- -D warnings     # zero warnings policy
 
 cargo run -p mez-api                        # start API server on :3000
@@ -122,9 +122,10 @@ mez/crates/
 ├── mez-compliance       Jurisdiction config bridge (regpack -> tensor).
 ├── mez-schema           JSON Schema validation (Draft 2020-12, 116 schemas).
 ├── mez-mass-client      Typed HTTP client for all 5 Mass API primitives.
+├── mez-mass-stub        Standalone Mass API stub server for dev/testing.
 ├── mez-api              Axum HTTP server — composition root for all crates.
 ├── mez-cli              CLI: validate, lock, corridor, artifact, vc.
-└── mez-integration-tests  113 cross-crate test files.
+└── mez-integration-tests  Cross-crate integration test suite.
 ```
 
 ### Type-level safety
@@ -191,6 +192,8 @@ cargo run -p mez-api          # http://localhost:3000
 | `/v1/credentials/*` | Credentials | Native: VC issuance, verification |
 | `/v1/triggers` | Agentic | Native: policy trigger evaluation |
 | `/v1/regulator/*` | Regulator | Native: compliance monitoring |
+| `/v1/trade/flows/*` | Trade | Native: trade flow lifecycle, transitions |
+| `/v1/compliance/*` | Compliance | Native: entity compliance queries |
 | `/health/liveness` | Health | Always 200 |
 | `/health/readiness` | Health | Checks stores, key, locks |
 
@@ -225,7 +228,7 @@ cd deploy/aws/terraform && terraform apply -var-file=examples/hybrid-zone.tfvars
 
 ```
 stack/
-├── mez/                   Rust workspace (16 crates, 151K lines)
+├── mez/                   Rust workspace (17 crates, 159K lines)
 │   ├── Cargo.toml          Workspace manifest
 │   └── crates/             All crate source
 ├── modules/                323 zone modules across 16 families
@@ -234,7 +237,7 @@ stack/
 ├── apis/                   OpenAPI 3.x specifications
 ├── deploy/                 Docker, Kubernetes, Terraform
 ├── contexts/               Zone composition contexts
-├── jurisdictions/           100 zone definitions (US states, UAE free zones, PK, CN, etc.)
+├── jurisdictions/           210 zone definitions (US states, UAE free zones, PK, SG, etc.)
 ├── rulesets/                Regulatory rulesets
 ├── registries/              Registry data
 ├── dist/artifacts/          Content-addressed built artifacts

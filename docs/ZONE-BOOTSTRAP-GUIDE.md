@@ -281,26 +281,30 @@ MASS_INVESTMENT_INFO_URL=https://investment-info-production-....herokuapp.com
 MASS_TEMPLATING_URL=https://templating-engine-prod-....herokuapp.com
 ```
 
-### Sovereign Mode (Per-Zone Mass API Stub)
+### Sovereign Mode (Postgres-Backed Mass Primitives)
 
-Each zone runs its own Mass API instance using `mez-mass-stub`, an in-memory
-Axum server that implements the CRUD endpoints `mez-mass-client` calls.
-Data never leaves the zone's infrastructure boundary.
+When `SOVEREIGN_MASS=true`, the `mez-api` binary persists Mass primitive data
+directly to Postgres — no separate Mass service needed. Each zone's data is
+fully isolated within its own Postgres instance. Data never leaves the zone's
+infrastructure boundary.
 
 The two-zone compose (`docker-compose.two-zone.yaml`) deploys sovereign mode
 by default:
 
 ```
-Zone A: mez-zone-a + postgres-a + mass-stub-a  (zone-a-internal network)
-Zone B: mez-zone-b + postgres-b + mass-stub-b  (zone-b-internal network)
-Corridor: zone-a <-> zone-b                     (mez-corridor-net)
+Zone A: mez-zone-a + postgres-a  (zone-a-internal network)
+Zone B: mez-zone-b + postgres-b  (zone-b-internal network)
+Corridor: zone-a <-> zone-b      (mez-corridor-net)
 ```
 
-Key properties:
-- `mass-stub-a` is ONLY on `zone-a-internal` network
-- `mass-stub-b` is ONLY on `zone-b-internal` network
-- Mass stubs are never on `mez-corridor-net` — no cross-zone data leakage
-- Each zone's `MASS_*_URL` variables point to its local stub
+Key properties (ADR-007):
+- Each zone is a single `mez-api` binary + Postgres (2 containers per zone)
+- Mass primitives are persisted to Postgres — data survives restarts
+- No separate mass-stub container needed (the standalone `mez-mass-stub`
+  binary remains available for development without Postgres)
+- Zone A's Postgres is ONLY on `zone-a-internal` network — no cross-zone leakage
+- Every write goes through the full orchestration pipeline: compliance tensor ->
+  sanctions check -> CRUD -> VC issuance -> attestation -> audit trail
 
 To deploy two sovereign zones:
 
@@ -313,19 +317,18 @@ docker compose -f deploy/docker/docker-compose.two-zone.yaml up -d
 ```
 
 The `sovereign_mass_test.rs` integration test proves data isolation: an entity
-created in Zone A's Mass stub is not visible from Zone B's Mass stub.
+created in Zone A is not visible from Zone B.
 
-### Migration Path
+### Deployment Modes
 
-The sovereign Mass stub is a staging/demonstration artifact. The progression is:
-
-1. **Today**: `mez-mass-stub` provides in-memory CRUD for zone-local data
-2. **Near-term**: Replace stub with containerized real Mass API services
-3. **End-state**: Sovereign Mass deployments federate via corridor receipt chains
+| Mode | Env var | Architecture | Use case |
+|------|---------|-------------|----------|
+| Sovereign | `SOVEREIGN_MASS=true` | mez-api + Postgres | Production zone deployment |
+| Proxy | `SOVEREIGN_MASS=false` | mez-api -> centralized Mass APIs | Integration with existing Mass |
+| Dev stub | N/A (standalone binary) | `mez-mass-stub` (in-memory) | Local dev without Postgres |
 
 The `MassApiConfig` in `mez-mass-client` is fully URL-parametric — switching
-from centralized to sovereign mode requires only changing environment variables,
-no code changes.
+between modes requires only changing environment variables, no code changes.
 
 ## Available CLI Commands
 

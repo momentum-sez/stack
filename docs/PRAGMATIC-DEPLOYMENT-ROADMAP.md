@@ -57,7 +57,7 @@ to "functional prototype with production-grade internals." Here is what is real:
 | P0-FORK-001: Evidence-driven fork resolution | CLOSED | `0f54e69` |
 | P0-TENSOR-001: Fail-closed extended domains | CLOSED | `02b1984` |
 | P0-DEPLOY-001: Default credentials eliminated | CLOSED | `02b1984` |
-| P0-MIGRATION-001: Saga safety properties | PARTIAL | `0f54e69` (CAS + idempotency added) |
+| P0-MIGRATION-001: Saga safety properties | CLOSED | `0f54e69` (CAS + idempotency + EffectExecutor + property tests) |
 | P0-ZK-001: Fail-closed ZK policy | CLOSED | `0f54e69` |
 | P0-CORRIDOR-NET-001: Inter-zone protocol | CLOSED | `6ea3f8e` |
 | P0-PACK-001: Pakistan Pack Trilogy | CLOSED | `b996ecc` |

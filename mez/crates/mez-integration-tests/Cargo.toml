@@ -1,5 +1,6 @@
 [package]
 name = "mez-integration-tests"
+description = "Cross-crate integration test suite for the EZ Stack."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -34,6 +35,6 @@ axum = { workspace = true }
 tower = { workspace = true }
 http-body-util = { workspace = true }
 proptest = { workspace = true }
-tempfile = "3"
+tempfile = { workspace = true }
 reqwest = { workspace = true }
-dashmap = "6"
+dashmap = { workspace = true }

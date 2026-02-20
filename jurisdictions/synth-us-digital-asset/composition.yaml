@@ -1,0 +1,28 @@
+# Composition Spec: US Digital Asset Interstate Zone
+#
+# US domestic interstate digital asset operations. Wyoming DAO-friendly + Delaware corporate + New York BitLicense + Texas tax.
+#
+#   - corporate_formation <- us-wy
+#   - civic_code <- us-de
+#   - digital_assets <- us-ny
+#   - tax <- us-tx
+#   - aml_cft <- us-ny
+#   - securities <- us-ca
+
+zone_name: US Digital Asset Interstate Zone
+zone_id: org.momentum.mez.zone.synthetic.us-digital-asset
+jurisdiction_id: synth-us-digital-asset
+primary_jurisdiction: us
+layers:
+  - domain: corporate_formation
+    source: us-wy
+  - domain: civic_code
+    source: us-de
+  - domain: digital_assets
+    source: us-ny
+  - domain: tax
+    source: us-tx
+  - domain: aml_cft
+    source: us-ny
+  - domain: securities
+    source: us-ca

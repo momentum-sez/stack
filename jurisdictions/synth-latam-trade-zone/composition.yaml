@@ -1,0 +1,34 @@
+# Composition Spec: Latin America Trade Zone
+#
+# Cross-border trade in South America. Panama incorporation + Brazil PIX + Chile securities.
+#
+#   - corporate_formation <- pa
+#   - civic_code <- br
+#   - tax <- uy
+#   - aml_cft <- br
+#   - payment_rails <- br
+#   - securities <- cl
+#   - arbitration <- mx
+#   - licensing <- co
+
+zone_name: Latin America Trade Zone
+zone_id: org.momentum.mez.zone.synthetic.latam-trade-zone
+jurisdiction_id: synth-latam-trade-zone
+primary_jurisdiction: pa
+layers:
+  - domain: corporate_formation
+    source: pa
+  - domain: civic_code
+    source: br
+  - domain: tax
+    source: uy
+  - domain: aml_cft
+    source: br
+  - domain: payment_rails
+    source: br
+  - domain: securities
+    source: cl
+  - domain: arbitration
+    source: mx
+  - domain: licensing
+    source: co

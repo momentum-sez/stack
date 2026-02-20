@@ -1,0 +1,28 @@
+# Composition Spec: Pacific Islands Economic Development Zone
+#
+# Pacific Islands economic development. NZ FMA framework + Fiji financial hub + Vanuatu tax regime.
+#
+#   - corporate_formation <- nz
+#   - civic_code <- fj
+#   - tax <- vu
+#   - aml_cft <- nz
+#   - licensing <- fj
+#   - payment_rails <- nz
+
+zone_name: Pacific Islands Economic Development Zone
+zone_id: org.momentum.mez.zone.synthetic.pacific-islands-development
+jurisdiction_id: synth-pacific-islands-development
+primary_jurisdiction: nz
+layers:
+  - domain: corporate_formation
+    source: nz
+  - domain: civic_code
+    source: fj
+  - domain: tax
+    source: vu
+  - domain: aml_cft
+    source: nz
+  - domain: licensing
+    source: fj
+  - domain: payment_rails
+    source: nz

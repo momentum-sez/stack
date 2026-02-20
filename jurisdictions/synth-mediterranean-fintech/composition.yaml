@@ -1,0 +1,31 @@
+# Composition Spec: Mediterranean Digital Finance Hub
+#
+# Mediterranean digital finance. Malta VFA Act + Cyprus CySEC + Portugal NHR + Ireland fund licensing.
+#
+#   - corporate_formation <- mt
+#   - civic_code <- cy
+#   - digital_assets <- mt
+#   - tax <- pt
+#   - aml_cft <- mt
+#   - licensing <- ie
+#   - securities <- cy
+
+zone_name: Mediterranean Digital Finance Hub
+zone_id: org.momentum.mez.zone.synthetic.mediterranean-fintech
+jurisdiction_id: synth-mediterranean-fintech
+primary_jurisdiction: mt
+layers:
+  - domain: corporate_formation
+    source: mt
+  - domain: civic_code
+    source: cy
+  - domain: digital_assets
+    source: mt
+  - domain: tax
+    source: pt
+  - domain: aml_cft
+    source: mt
+  - domain: licensing
+    source: ie
+  - domain: securities
+    source: cy

@@ -1,0 +1,67 @@
+# Profile: Crypto-Native Regulatory Zone (Synthetic)
+#
+# Synthetic zone profile composed from regulatory primitives.
+# Each regulatory domain is sourced from a different jurisdiction.
+#
+# Layers:
+#   corporate_formation <- ky
+#   digital_assets <- ae-abudhabi-adgm
+#   arbitration <- sg
+#   tax <- ky
+#   aml_cft <- sg
+#   securities <- hk
+#   licensing <- ae-dubai-dmcc
+#   data_privacy <- sg
+
+profile_id: org.momentum.mez.profile.synthetic-synth-crypto-native-zone
+profile_name: Crypto-Native Regulatory Zone
+version: "0.4.44"
+zone_type: synthetic
+
+composition:
+  - domain: corporate_formation
+    source: ky
+  - domain: digital_assets
+    source: ae-abudhabi-adgm
+  - domain: arbitration
+    source: sg
+  - domain: tax
+    source: ky
+  - domain: aml_cft
+    source: sg
+  - domain: securities
+    source: hk
+  - domain: licensing
+    source: ae-dubai-dmcc
+  - domain: data_privacy
+    source: sg
+
+modules:
+  - id: org.momentum.mez.legal.core
+    variant: synthetic-composed
+  - id: org.momentum.mez.legal.commercial-code
+    variant: ky-corp
+  - id: org.momentum.mez.reg.digital-assets
+    variant: ae-abudhabi-adgm-framework
+    parameters:
+      source_jurisdiction: "ae-abudhabi-adgm"
+  - id: org.momentum.mez.legal.dispute-resolution
+    variant: sg-arbitration
+  - id: org.momentum.mez.tax
+    variant: ky-tax
+    parameters:
+      source_jurisdiction: "ky"
+  - id: org.momentum.mez.reg.aml-cft
+    variant: risk-based
+    parameters:
+      kyc_tier: 3
+      edd_threshold_usd: 10000
+      source_jurisdiction: "sg"
+  - id: org.momentum.mez.fin.payments-adapter
+    variant: iso20022-mapping
+  - id: org.momentum.mez.corridor.swift
+    variant: iso20022-cross-border
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin

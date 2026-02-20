@@ -1,0 +1,34 @@
+# Composition Spec: Swiss-Liechtenstein-Asian Innovation Bridge
+#
+# Swiss-Liechtenstein blockchain to Asian markets. FINMA + FMA TVTG + Singapore + Hong Kong.
+#
+#   - corporate_formation <- ch
+#   - civic_code <- li
+#   - digital_assets <- ch-zug
+#   - tax <- li
+#   - aml_cft <- ch
+#   - securities <- sg
+#   - licensing <- hk
+#   - data_privacy <- ch
+
+zone_name: Swiss-Liechtenstein-Asian Innovation Bridge
+zone_id: org.momentum.mez.zone.synthetic.swiss-asian-bridge
+jurisdiction_id: synth-swiss-asian-bridge
+primary_jurisdiction: ch
+layers:
+  - domain: corporate_formation
+    source: ch
+  - domain: civic_code
+    source: li
+  - domain: digital_assets
+    source: ch-zug
+  - domain: tax
+    source: li
+  - domain: aml_cft
+    source: ch
+  - domain: securities
+    source: sg
+  - domain: licensing
+    source: hk
+  - domain: data_privacy
+    source: ch

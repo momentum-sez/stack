@@ -1,0 +1,34 @@
+# Composition Spec: Africa Fintech Gateway
+#
+# Pan-African fintech operations hub. Mauritius holding company + Kenya mobile money + South Africa AML framework.
+#
+#   - corporate_formation <- mu
+#   - civic_code <- ke
+#   - tax <- mu
+#   - aml_cft <- za
+#   - payment_rails <- ke
+#   - securities <- ng
+#   - data_privacy <- za
+#   - licensing <- rw
+
+zone_name: Africa Fintech Gateway
+zone_id: org.momentum.mez.zone.synthetic.africa-fintech-gateway
+jurisdiction_id: synth-africa-fintech-gateway
+primary_jurisdiction: mu
+layers:
+  - domain: corporate_formation
+    source: mu
+  - domain: civic_code
+    source: ke
+  - domain: tax
+    source: mu
+  - domain: aml_cft
+    source: za
+  - domain: payment_rails
+    source: ke
+  - domain: securities
+    source: ng
+  - domain: data_privacy
+    source: za
+  - domain: licensing
+    source: rw

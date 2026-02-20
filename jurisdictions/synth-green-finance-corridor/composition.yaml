@@ -1,0 +1,34 @@
+# Composition Spec: Green Finance and ESG Corridor
+#
+# Sustainable finance and ESG compliance. Green bonds, carbon credit tokenization, ESG reporting.
+#
+#   - corporate_formation <- lu
+#   - civic_code <- lu
+#   - digital_assets <- ch
+#   - tax <- nl
+#   - aml_cft <- lu
+#   - securities <- gb
+#   - licensing <- sg
+#   - data_privacy <- de
+
+zone_name: Green Finance and ESG Corridor
+zone_id: org.momentum.mez.zone.synthetic.green-finance-corridor
+jurisdiction_id: synth-green-finance-corridor
+primary_jurisdiction: lu
+layers:
+  - domain: corporate_formation
+    source: lu
+  - domain: civic_code
+    source: lu
+  - domain: digital_assets
+    source: ch
+  - domain: tax
+    source: nl
+  - domain: aml_cft
+    source: lu
+  - domain: securities
+    source: gb
+  - domain: licensing
+    source: sg
+  - domain: data_privacy
+    source: de

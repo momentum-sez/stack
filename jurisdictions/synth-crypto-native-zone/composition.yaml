@@ -1,0 +1,34 @@
+# Composition Spec: Crypto-Native Regulatory Zone
+#
+# Pure digital asset platform. Optimized for token issuance, exchange, and custody across APAC/ME.
+#
+#   - corporate_formation <- ky
+#   - digital_assets <- ae-abudhabi-adgm
+#   - arbitration <- sg
+#   - tax <- ky
+#   - aml_cft <- sg
+#   - securities <- hk
+#   - licensing <- ae-dubai-dmcc
+#   - data_privacy <- sg
+
+zone_name: Crypto-Native Regulatory Zone
+zone_id: org.momentum.mez.zone.synthetic.crypto-native-zone
+jurisdiction_id: synth-crypto-native-zone
+primary_jurisdiction: ky
+layers:
+  - domain: corporate_formation
+    source: ky
+  - domain: digital_assets
+    source: ae-abudhabi-adgm
+  - domain: arbitration
+    source: sg
+  - domain: tax
+    source: ky
+  - domain: aml_cft
+    source: sg
+  - domain: securities
+    source: hk
+  - domain: licensing
+    source: ae-dubai-dmcc
+  - domain: data_privacy
+    source: sg

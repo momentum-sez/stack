@@ -1,0 +1,31 @@
+# Composition Spec: Central Asian Gateway Zone
+#
+# Central Asian corridor / Belt and Road gateway. AIFC common law + Georgia flat tax + Uzbekistan licensing.
+#
+#   - corporate_formation <- kz-aifc
+#   - civic_code <- kz
+#   - digital_assets <- kz-aifc
+#   - tax <- ge
+#   - aml_cft <- kz
+#   - licensing <- uz
+#   - arbitration <- kz-aifc
+
+zone_name: Central Asian Gateway Zone
+zone_id: org.momentum.mez.zone.synthetic.central-asian-gateway
+jurisdiction_id: synth-central-asian-gateway
+primary_jurisdiction: kz
+layers:
+  - domain: corporate_formation
+    source: kz-aifc
+  - domain: civic_code
+    source: kz
+  - domain: digital_assets
+    source: kz-aifc
+  - domain: tax
+    source: ge
+  - domain: aml_cft
+    source: kz
+  - domain: licensing
+    source: uz
+  - domain: arbitration
+    source: kz-aifc

@@ -1,0 +1,65 @@
+# Profile: Indo-Pacific Trade Corridor (Synthetic)
+#
+# Synthetic zone profile composed from regulatory primitives.
+# Each regulatory domain is sourced from a different jurisdiction.
+#
+# Layers:
+#   corporate_formation <- in-gift
+#   civic_code <- sg
+#   digital_assets <- sg
+#   tax <- sg
+#   aml_cft <- sg
+#   securities <- au
+#   payment_rails <- sg
+#   data_privacy <- nz
+
+profile_id: org.momentum.mez.profile.synthetic-synth-indo-pacific-trade
+profile_name: Indo-Pacific Trade Corridor
+version: "0.4.44"
+zone_type: synthetic
+
+composition:
+  - domain: corporate_formation
+    source: in-gift
+  - domain: civic_code
+    source: sg
+  - domain: digital_assets
+    source: sg
+  - domain: tax
+    source: sg
+  - domain: aml_cft
+    source: sg
+  - domain: securities
+    source: au
+  - domain: payment_rails
+    source: sg
+  - domain: data_privacy
+    source: nz
+
+modules:
+  - id: org.momentum.mez.legal.core
+    variant: synthetic-composed
+  - id: org.momentum.mez.legal.commercial-code
+    variant: in-gift-corp
+  - id: org.momentum.mez.reg.digital-assets
+    variant: sg-framework
+    parameters:
+      source_jurisdiction: "sg"
+  - id: org.momentum.mez.tax
+    variant: sg-tax
+    parameters:
+      source_jurisdiction: "sg"
+  - id: org.momentum.mez.reg.aml-cft
+    variant: risk-based
+    parameters:
+      kyc_tier: 3
+      edd_threshold_usd: 10000
+      source_jurisdiction: "sg"
+  - id: org.momentum.mez.fin.payments-adapter
+    variant: iso20022-mapping
+  - id: org.momentum.mez.corridor.swift
+    variant: iso20022-cross-border
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin

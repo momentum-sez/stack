@@ -1,0 +1,34 @@
+# Composition Spec: Maritime Trade and Logistics Hub
+#
+# Shipping, trade finance, and logistics. Singapore maritime + London law + HK shipping tax exemption.
+#
+#   - corporate_formation <- sg
+#   - civic_code <- gb
+#   - arbitration <- gb
+#   - tax <- hk
+#   - aml_cft <- sg
+#   - payment_rails <- hk
+#   - licensing <- ae-dubai-jafza
+#   - securities <- sg
+
+zone_name: Maritime Trade and Logistics Hub
+zone_id: org.momentum.mez.zone.synthetic.maritime-trade-hub
+jurisdiction_id: synth-maritime-trade-hub
+primary_jurisdiction: sg
+layers:
+  - domain: corporate_formation
+    source: sg
+  - domain: civic_code
+    source: gb
+  - domain: arbitration
+    source: gb
+  - domain: tax
+    source: hk
+  - domain: aml_cft
+    source: sg
+  - domain: payment_rails
+    source: hk
+  - domain: licensing
+    source: ae-dubai-jafza
+  - domain: securities
+    source: sg

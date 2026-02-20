@@ -1,0 +1,59 @@
+# Profile: US Digital Asset Interstate Zone (Synthetic)
+#
+# Synthetic zone profile composed from regulatory primitives.
+# Each regulatory domain is sourced from a different jurisdiction.
+#
+# Layers:
+#   corporate_formation <- us-wy
+#   civic_code <- us-de
+#   digital_assets <- us-ny
+#   tax <- us-tx
+#   aml_cft <- us-ny
+#   securities <- us-ca
+
+profile_id: org.momentum.mez.profile.synthetic-synth-us-digital-asset
+profile_name: US Digital Asset Interstate Zone
+version: "0.4.44"
+zone_type: synthetic
+
+composition:
+  - domain: corporate_formation
+    source: us-wy
+  - domain: civic_code
+    source: us-de
+  - domain: digital_assets
+    source: us-ny
+  - domain: tax
+    source: us-tx
+  - domain: aml_cft
+    source: us-ny
+  - domain: securities
+    source: us-ca
+
+modules:
+  - id: org.momentum.mez.legal.core
+    variant: synthetic-composed
+  - id: org.momentum.mez.legal.commercial-code
+    variant: us-wy-corp
+  - id: org.momentum.mez.reg.digital-assets
+    variant: us-ny-framework
+    parameters:
+      source_jurisdiction: "us-ny"
+  - id: org.momentum.mez.tax
+    variant: us-tx-tax
+    parameters:
+      source_jurisdiction: "us-tx"
+  - id: org.momentum.mez.reg.aml-cft
+    variant: risk-based
+    parameters:
+      kyc_tier: 3
+      edd_threshold_usd: 10000
+      source_jurisdiction: "us-ny"
+  - id: org.momentum.mez.fin.payments-adapter
+    variant: iso20022-mapping
+  - id: org.momentum.mez.corridor.swift
+    variant: iso20022-cross-border
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin

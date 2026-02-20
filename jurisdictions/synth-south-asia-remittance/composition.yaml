@@ -1,0 +1,31 @@
+# Composition Spec: South Asia Remittance Corridor
+#
+# Pakistan-India-Bangladesh remittance optimization. Built around SIFC framework and SBP Raast instant payments.
+#
+#   - corporate_formation <- pk-sifc
+#   - civic_code <- pk
+#   - tax <- pk
+#   - aml_cft <- pk
+#   - payment_rails <- pk
+#   - securities <- sg
+#   - data_privacy <- sg
+
+zone_name: South Asia Remittance Corridor
+zone_id: org.momentum.mez.zone.synthetic.south-asia-remittance
+jurisdiction_id: synth-south-asia-remittance
+primary_jurisdiction: pk
+layers:
+  - domain: corporate_formation
+    source: pk-sifc
+  - domain: civic_code
+    source: pk
+  - domain: tax
+    source: pk
+  - domain: aml_cft
+    source: pk
+  - domain: payment_rails
+    source: pk
+  - domain: securities
+    source: sg
+  - domain: data_privacy
+    source: sg

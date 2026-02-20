@@ -1,0 +1,34 @@
+# Composition Spec: Gulf Cooperation Council Trade Bridge
+#
+# Intra-GCC trade and logistics. Combines UAE free zone infrastructure with Bahrain crypto regulation and Qatar financial licensing.
+#
+#   - corporate_formation <- ae-dubai-dmcc
+#   - civic_code <- ae
+#   - digital_assets <- bh
+#   - arbitration <- ae-dubai-difc
+#   - tax <- ae
+#   - aml_cft <- ae
+#   - payment_rails <- ae
+#   - licensing <- qa-qfc
+
+zone_name: Gulf Cooperation Council Trade Bridge
+zone_id: org.momentum.mez.zone.synthetic.gulf-trade-bridge
+jurisdiction_id: synth-gulf-trade-bridge
+primary_jurisdiction: ae
+layers:
+  - domain: corporate_formation
+    source: ae-dubai-dmcc
+  - domain: civic_code
+    source: ae
+  - domain: digital_assets
+    source: bh
+  - domain: arbitration
+    source: ae-dubai-difc
+  - domain: tax
+    source: ae
+  - domain: aml_cft
+    source: ae
+  - domain: payment_rails
+    source: ae
+  - domain: licensing
+    source: qa-qfc

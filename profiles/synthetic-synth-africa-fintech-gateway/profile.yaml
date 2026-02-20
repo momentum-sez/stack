@@ -1,0 +1,61 @@
+# Profile: Africa Fintech Gateway (Synthetic)
+#
+# Synthetic zone profile composed from regulatory primitives.
+# Each regulatory domain is sourced from a different jurisdiction.
+#
+# Layers:
+#   corporate_formation <- mu
+#   civic_code <- ke
+#   tax <- mu
+#   aml_cft <- za
+#   payment_rails <- ke
+#   securities <- ng
+#   data_privacy <- za
+#   licensing <- rw
+
+profile_id: org.momentum.mez.profile.synthetic-synth-africa-fintech-gateway
+profile_name: Africa Fintech Gateway
+version: "0.4.44"
+zone_type: synthetic
+
+composition:
+  - domain: corporate_formation
+    source: mu
+  - domain: civic_code
+    source: ke
+  - domain: tax
+    source: mu
+  - domain: aml_cft
+    source: za
+  - domain: payment_rails
+    source: ke
+  - domain: securities
+    source: ng
+  - domain: data_privacy
+    source: za
+  - domain: licensing
+    source: rw
+
+modules:
+  - id: org.momentum.mez.legal.core
+    variant: synthetic-composed
+  - id: org.momentum.mez.legal.commercial-code
+    variant: mu-corp
+  - id: org.momentum.mez.tax
+    variant: mu-tax
+    parameters:
+      source_jurisdiction: "mu"
+  - id: org.momentum.mez.reg.aml-cft
+    variant: risk-based
+    parameters:
+      kyc_tier: 3
+      edd_threshold_usd: 10000
+      source_jurisdiction: "za"
+  - id: org.momentum.mez.fin.payments-adapter
+    variant: iso20022-mapping
+  - id: org.momentum.mez.corridor.swift
+    variant: iso20022-cross-border
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin

@@ -8,14 +8,14 @@
 #   mez zone lock --zone jurisdictions/pk-sifc/zone.yaml --check
 #
 # Deploy via:
-#   ./deploy/scripts/deploy-zone.sh sovereign-govos org.momentum.mez.zone.pk-sifc pk
+#   ./deploy/scripts/deploy-zone.sh sovereign-govos-pk org.momentum.mez.zone.pk-sifc pk
 
 zone_id: org.momentum.mez.zone.pk-sifc
 jurisdiction_id: pk
 zone_name: Pakistan SIFC Economic Zone
 
 profile:
-  profile_id: org.momentum.mez.profile.sovereign-govos
+  profile_id: org.momentum.mez.profile.sovereign-govos-pk
   version: "0.4.44"
 
 # Jurisdiction stack — Pakistan federal layer.

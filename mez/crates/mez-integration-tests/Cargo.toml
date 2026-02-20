@@ -35,3 +35,5 @@ tower = { workspace = true }
 http-body-util = { workspace = true }
 proptest = { workspace = true }
 tempfile = "3"
+reqwest = { workspace = true }
+dashmap = "6"

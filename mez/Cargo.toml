@@ -17,6 +17,7 @@ members = [
     "crates/mez-mass-client",
     "crates/mez-cli",
     "crates/mez-integration-tests",
+    "crates/mez-mass-stub",
 ]
 
 [workspace.package]

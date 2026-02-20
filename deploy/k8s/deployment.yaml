@@ -78,18 +78,41 @@ spec:
                 configMapKeyRef:
                   name: mez-config
                   key: profile
+            # Corridor configuration from ConfigMap
+            - name: MEZ_CORRIDOR_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: mez-config
+                  key: corridor-id
+            - name: MEZ_WATCHER_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: mez-config
+                  key: watcher-id
+            - name: MEZ_BOND_AMOUNT
+              valueFrom:
+                configMapKeyRef:
+                  name: mez-config
+                  key: bond-amount
             # Database credentials from Secret
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: mez-secrets
                   key: database-url
-            # JWT signing key from Secret
-            - name: MEZ_JWT_SECRET
+            # Authentication token from Secret
+            - name: AUTH_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: mez-secrets
-                  key: jwt-secret
+                  key: auth-token
+            # Zone signing key from Secret
+            - name: ZONE_SIGNING_KEY_HEX
+              valueFrom:
+                secretKeyRef:
+                  name: mez-secrets
+                  key: zone-signing-key-hex
+                  optional: true
           # Health probes
           livenessProbe:
             httpGet:

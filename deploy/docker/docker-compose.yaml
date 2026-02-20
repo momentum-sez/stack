@@ -72,7 +72,6 @@ services:
     volumes:
       - api-data:/app/data
       - api-config:/app/config
-      - ./config:/app/config:ro
     depends_on:
       postgres:
         condition: service_healthy

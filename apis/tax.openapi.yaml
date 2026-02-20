@@ -17,7 +17,7 @@ info:
     identifier: BUSL-1.1
 
 servers:
-  - url: https://{zone_host}/api
+  - url: https://{zone_host}
     variables:
       zone_host:
         default: localhost:8080

@@ -17,8 +17,8 @@ WORKDIR /app
 COPY mez/Cargo.toml mez/Cargo.lock ./
 COPY mez/crates/ ./crates/
 
-# Build release binaries
-RUN cargo build --release -p mez-api -p mez-cli
+# Build release binaries (--locked ensures Cargo.lock is respected exactly)
+RUN cargo build --release --locked -p mez-api -p mez-cli
 
 # ============================================
 # Stage 2: Runtime

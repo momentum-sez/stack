@@ -30,6 +30,7 @@ pub mod govos;
 pub mod identity;
 pub mod mass_proxy;
 pub mod mass_sovereign;
+pub mod sovereign_ops;
 pub mod peers;
 pub mod regulator;
 pub mod settlement;

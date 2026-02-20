@@ -427,6 +427,7 @@ This is the ordered sequence of work items. Dependencies are noted. Each item in
 32. OpenAPI spec promotion — CLOSED: All specs contract-grade (commit 6bd628d)
 33. Compliance query endpoint — CLOSED: GET /v1/compliance/{entity_id} in regulator router + OpenAPI spec
 34. Pakistan national system adapter interfaces (trait contracts + mocks) — CLOSED (FBR IRIS + SECP)
+35. Sovereign orchestration pipeline — CLOSED: /v1/* write handlers branch to sovereign_ops in sovereign mode, full compliance tensor + VC + attestation + audit trail
 ```
 
 ---
@@ -569,6 +570,7 @@ Based on synthesized audit findings. Status: ✅ Implemented | 🟡 Partial | �
 - [x] Corridor health monitoring dashboard (Prometheus exporter + Grafana provisioning)
 - [x] Sovereign Mass API stubs for per-zone deployment (`mez-mass-stub` crate with 100% endpoint coverage — all FiscalClient, ConsentClient, OwnershipClient, IdentityClient, and TemplatingClient methods have working stub routes; `Dockerfile.mass-stub`, `docker-compose.two-zone.yaml` updated with zone-local Mass instances, `sovereign_mass_test.rs` proving data isolation, `sovereign_pipeline_test.rs` proving full 13-step GovOS pipeline)
 - [x] Sovereign Mass persistence — Postgres-backed Mass primitives in mez-api (ADR-007). Eliminates separate mass-stub container. Two-zone compose reduced from 6 to 4 containers. Zero data loss on restart.
+- [x] Sovereign orchestration pipeline — every /v1/* write in sovereign mode runs the full 6-step pipeline: compliance tensor → sanctions check → sovereign_ops CRUD → VC issuance → attestation storage → audit trail. No HTTP self-loop. Both /v1/* (orchestrated) and /organization-info/* (direct) routes mount simultaneously.
 
 ### Phase 3 — Production (PARTIALLY BLOCKED)
 

@@ -1,0 +1,563 @@
+openapi: 3.1.0
+info:
+  title: MEZ Tax Collection Pipeline API
+  version: 0.4.44
+  description: |
+    EZ-Stack-owned tax collection pipeline. Provides jurisdictional tax
+    awareness on top of Mass fiscal operations: tax event recording,
+    withholding computation, obligation tracking, report generation,
+    and withholding rule queries.
+
+    Tax events are generated when Mass fiscal activity is observed.
+    Withholding is computed using jurisdiction-specific rules from
+    regpacks. Reports are generated for tax authority submission
+    (e.g., FBR IRIS for Pakistan).
+  license:
+    name: BUSL-1.1
+    identifier: BUSL-1.1
+
+servers:
+  - url: https://{zone_host}/api
+    variables:
+      zone_host:
+        default: localhost:8080
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/tax/events:
+    post:
+      summary: Record a tax event and compute withholding
+      operationId: createTaxEvent
+      description: |
+        Observes an economic activity, classifies it as a tax event,
+        runs it through the withholding pipeline using jurisdiction-
+        specific rules from regpacks, and persists the result.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaxEventRequest'
+      responses:
+        '200':
+          description: Tax event recorded with withholding computed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxEventResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      summary: List tax events with filtering
+      operationId: listTaxEvents
+      parameters:
+        - name: entity_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by entity ID.
+        - name: jurisdiction_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by jurisdiction.
+        - name: tax_year
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by tax year.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+          description: Maximum number of items to return.
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of items to skip.
+      responses:
+        '200':
+          description: Paginated tax event list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items, total]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TaxEventRecord'
+                  total:
+                    type: integer
+                    minimum: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/tax/events/{id}:
+    get:
+      summary: Get a specific tax event by ID
+      operationId: getTaxEvent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Tax event ID.
+      responses:
+        '200':
+          description: Tax event details with withholding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxEventResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/tax/withhold:
+    post:
+      summary: Compute withholding for a tax event (dry run)
+      operationId: computeWithholding
+      description: |
+        Computes withholding amounts using jurisdiction-specific rules
+        without persisting the result. Useful for previewing withholding
+        before recording the event.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaxEventRequest'
+      responses:
+        '200':
+          description: Withholding computed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxEventResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/tax/obligations/{entity_id}:
+    get:
+      summary: Get tax obligations for an entity
+      operationId: getTaxObligations
+      parameters:
+        - name: entity_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Entity UUID.
+      responses:
+        '200':
+          description: Tax obligation summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxObligationSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/tax/report:
+    post:
+      summary: Generate a tax report for authority submission
+      operationId: generateTaxReport
+      description: |
+        Generates a tax report for FBR IRIS submission. Aggregates
+        tax events for the specified entity, jurisdiction, and period
+        into a structured report with line items.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateReportRequest'
+      responses:
+        '200':
+          description: Tax report generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxReportResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/tax/rules:
+    get:
+      summary: List loaded withholding rules for a jurisdiction
+      operationId: listWithholdingRules
+      parameters:
+        - name: jurisdiction_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Jurisdiction to list rules for (e.g., "PK").
+      responses:
+        '200':
+          description: Withholding rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WithholdingRuleResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Zone-issued JWT with role claims (operator, regulator, auditor).
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Client-generated UUID for at-most-once delivery.
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    UnprocessableEntity:
+      description: Schema validation failed or business rule violation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+  schemas:
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Details for HTTP APIs.
+      additionalProperties: false
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+
+    CreateTaxEventRequest:
+      type: object
+      additionalProperties: false
+      required: [entity_id, event_type, jurisdiction_id, gross_amount, currency, tax_year]
+      properties:
+        entity_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+          maxLength: 100
+          description: Event type (e.g., "payment_for_goods", "salary_payment").
+        jurisdiction_id:
+          type: string
+          maxLength: 10
+        gross_amount:
+          type: string
+          description: Gross amount of the economic activity (numeric string).
+        currency:
+          type: string
+          minLength: 1
+          maxLength: 5
+          description: ISO 4217 currency code.
+        tax_year:
+          type: string
+          maxLength: 20
+          description: Tax year (e.g., "2025-2026").
+        ntn:
+          type: string
+          pattern: '^\d{7}$'
+          description: Pakistan NTN (exactly 7 digits).
+        filer_status:
+          type: string
+          enum: [filer, late_filer, non_filer]
+        statutory_section:
+          type: string
+        mass_payment_id:
+          type: string
+          format: uuid
+          description: Reference to Mass payment ID.
+        counterparty_entity_id:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+          description: Additional metadata.
+
+    TaxEventRecord:
+      type: object
+      additionalProperties: false
+      required: [id, entity_id, event_type, tax_category, jurisdiction_id, gross_amount, withholding_amount, net_amount, currency, tax_year, filer_status, withholding_executed]
+      properties:
+        id:
+          type: string
+          format: uuid
+        entity_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+        tax_category:
+          type: string
+        jurisdiction_id:
+          type: string
+        gross_amount:
+          type: string
+        withholding_amount:
+          type: string
+        net_amount:
+          type: string
+        currency:
+          type: string
+        tax_year:
+          type: string
+        ntn:
+          type: string
+        filer_status:
+          type: string
+        statutory_section:
+          type: string
+        withholding_executed:
+          type: boolean
+        mass_payment_id:
+          type: string
+          format: uuid
+
+    TaxEventResponse:
+      type: object
+      additionalProperties: false
+      required: [event, withholdings]
+      properties:
+        event:
+          $ref: '#/components/schemas/TaxEventRecord'
+        withholdings:
+          type: array
+          items:
+            $ref: '#/components/schemas/WithholdingResultResponse'
+
+    WithholdingResultResponse:
+      type: object
+      additionalProperties: false
+      required: [rule_id, rate_percent, withholding_amount, net_amount, statutory_section, tax_category, is_final_tax]
+      properties:
+        rule_id:
+          type: string
+        rate_percent:
+          type: string
+        withholding_amount:
+          type: string
+        net_amount:
+          type: string
+        statutory_section:
+          type: string
+        tax_category:
+          type: string
+        is_final_tax:
+          type: boolean
+
+    GenerateReportRequest:
+      type: object
+      additionalProperties: false
+      required: [entity_id, jurisdiction_id, tax_year, period_start, period_end, report_type]
+      properties:
+        entity_id:
+          type: string
+          format: uuid
+        ntn:
+          type: string
+        jurisdiction_id:
+          type: string
+        tax_year:
+          type: string
+        period_start:
+          type: string
+          description: Report period start (YYYY-MM-DD).
+        period_end:
+          type: string
+          description: Report period end (YYYY-MM-DD).
+        report_type:
+          type: string
+          description: Report type (e.g., "monthly_withholding", "annual_return").
+
+    TaxReportResponse:
+      type: object
+      additionalProperties: false
+      required: [report_id, entity_id, jurisdiction_id, tax_year, period_start, period_end, report_type, total_gross, total_withholding, currency, event_count, line_item_count, status, generated_at]
+      properties:
+        report_id:
+          type: string
+          format: uuid
+        entity_id:
+          type: string
+          format: uuid
+        jurisdiction_id:
+          type: string
+        tax_year:
+          type: string
+        period_start:
+          type: string
+        period_end:
+          type: string
+        report_type:
+          type: string
+        total_gross:
+          type: string
+        total_withholding:
+          type: string
+        currency:
+          type: string
+        event_count:
+          type: integer
+          minimum: 0
+        line_item_count:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+        generated_at:
+          type: string
+          format: date-time
+
+    TaxObligationSummary:
+      type: object
+      additionalProperties: false
+      required: [entity_id, jurisdiction_id, total_events, total_gross, total_withholding, currency, by_category]
+      properties:
+        entity_id:
+          type: string
+          format: uuid
+        jurisdiction_id:
+          type: string
+        total_events:
+          type: integer
+          minimum: 0
+        total_gross:
+          type: string
+        total_withholding:
+          type: string
+        currency:
+          type: string
+        by_category:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategorySummary'
+
+    CategorySummary:
+      type: object
+      additionalProperties: false
+      required: [tax_category, event_count, total_gross, total_withholding]
+      properties:
+        tax_category:
+          type: string
+        event_count:
+          type: integer
+          minimum: 0
+        total_gross:
+          type: string
+        total_withholding:
+          type: string
+
+    WithholdingRuleResponse:
+      type: object
+      additionalProperties: false
+      required: [rule_id, applicable_event_types, applicable_filer_status, tax_category, rate_percent, statutory_section, description, effective_from, is_final_tax]
+      properties:
+        rule_id:
+          type: string
+        applicable_event_types:
+          type: array
+          items:
+            type: string
+        applicable_filer_status:
+          type: array
+          items:
+            type: string
+        tax_category:
+          type: string
+        rate_percent:
+          type: string
+        statutory_section:
+          type: string
+        description:
+          type: string
+        effective_from:
+          type: string
+        is_final_tax:
+          type: boolean

@@ -339,7 +339,7 @@ pub enum TradeTransitionPayload {
     #[serde(rename = "trade.invoice.issue.v1")]
     InvoiceIssue {
         #[serde(skip_serializing_if = "Option::is_none")]
-        invoice: Option<TradeInvoice>,
+        invoice: Option<Box<TradeInvoice>>,
         #[serde(skip_serializing_if = "Option::is_none")]
         invoice_ref: Option<ArtifactRef>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -384,7 +384,7 @@ pub enum TradeTransitionPayload {
     #[serde(rename = "trade.bol.issue.v1")]
     BolIssue {
         #[serde(skip_serializing_if = "Option::is_none")]
-        bol: Option<BillOfLading>,
+        bol: Option<Box<BillOfLading>>,
         #[serde(skip_serializing_if = "Option::is_none")]
         bol_ref: Option<ArtifactRef>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -426,7 +426,7 @@ pub enum TradeTransitionPayload {
     #[serde(rename = "trade.lc.issue.v1")]
     LcIssue {
         #[serde(skip_serializing_if = "Option::is_none")]
-        lc: Option<LetterOfCredit>,
+        lc: Option<Box<LetterOfCredit>>,
         #[serde(skip_serializing_if = "Option::is_none")]
         lc_ref: Option<ArtifactRef>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -836,7 +836,7 @@ mod tests {
     #[test]
     fn trade_transition_payload_serde_roundtrip() {
         let payload = TradeTransitionPayload::InvoiceIssue {
-            invoice: Some(sample_invoice()),
+            invoice: Some(Box::new(sample_invoice())),
             invoice_ref: None,
             issued_by_party_id: Some("seller-1".to_string()),
             notes: None,
@@ -857,7 +857,7 @@ mod tests {
 
         // Step 1: invoice.issue
         let p = TradeTransitionPayload::InvoiceIssue {
-            invoice: Some(sample_invoice()),
+            invoice: Some(Box::new(sample_invoice())),
             invoice_ref: None,
             issued_by_party_id: None,
             notes: None,
@@ -880,7 +880,7 @@ mod tests {
 
         // Step 3: bol.issue
         let p = TradeTransitionPayload::BolIssue {
-            bol: Some(sample_bol()),
+            bol: Some(Box::new(sample_bol())),
             bol_ref: None,
             issued_by_party_id: None,
             notes: None,
@@ -934,7 +934,7 @@ mod tests {
 
         // lc.issue
         let p = TradeTransitionPayload::LcIssue {
-            lc: Some(sample_lc()),
+            lc: Some(Box::new(sample_lc())),
             lc_ref: None,
             issued_by_party_id: None,
             notes: None,
@@ -944,7 +944,7 @@ mod tests {
 
         // bol.issue
         let p = TradeTransitionPayload::BolIssue {
-            bol: Some(sample_bol()),
+            bol: Some(Box::new(sample_bol())),
             bol_ref: None,
             issued_by_party_id: None,
             notes: None,
@@ -1007,7 +1007,7 @@ mod tests {
         let mut state = TradeFlowState::Created;
 
         let p = TradeTransitionPayload::InvoiceIssue {
-            invoice: Some(sample_invoice()),
+            invoice: Some(Box::new(sample_invoice())),
             invoice_ref: None,
             issued_by_party_id: None,
             notes: None,
@@ -1054,7 +1054,7 @@ mod tests {
         let mut state = TradeFlowState::Created;
 
         let p = TradeTransitionPayload::InvoiceIssue {
-            invoice: Some(sample_invoice()),
+            invoice: Some(Box::new(sample_invoice())),
             invoice_ref: None,
             issued_by_party_id: None,
             notes: None,
@@ -1062,7 +1062,7 @@ mod tests {
         state = validate_transition(ft, state, &p).expect("invoice.issue");
 
         let p = TradeTransitionPayload::BolIssue {
-            bol: Some(sample_bol()),
+            bol: Some(Box::new(sample_bol())),
             bol_ref: None,
             issued_by_party_id: None,
             notes: None,

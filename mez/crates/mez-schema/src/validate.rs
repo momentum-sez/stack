@@ -311,7 +311,9 @@ impl SchemaValidator {
         }
 
         // Cache miss — compile the validator and cache it.
-        let schema = self.schema_map.get(schema_id).unwrap();
+        let schema = self.schema_map.get(schema_id).ok_or_else(|| {
+            SchemaValidationError::SchemaNotFound(schema_id.to_string())
+        })?;
         let retriever = LocalSchemaRetriever {
             schemas: Arc::clone(&self.schema_map),
         };

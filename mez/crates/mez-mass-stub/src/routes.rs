@@ -346,7 +346,7 @@ async fn org_search(
     let total = all.len();
     let start = page * size;
     let content: Vec<Value> = all.into_iter().skip(start).take(size).collect();
-    let total_pages = (total + size - 1) / size;
+    let total_pages = total.div_ceil(size);
 
     Json(json!({
         "content": content,

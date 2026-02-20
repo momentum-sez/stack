@@ -103,20 +103,15 @@ pub struct RegulatoryLayer {
 // ---------------------------------------------------------------------------
 
 /// Classification of a zone based on how its regulatory layers are composed.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ZoneType {
     /// All layers sourced from a single root jurisdiction.
+    #[default]
     Natural,
     /// Layers sourced from multiple jurisdictions, composed into a novel
     /// regulatory environment.
     Synthetic,
-}
-
-impl Default for ZoneType {
-    fn default() -> Self {
-        Self::Natural
-    }
 }
 
 impl std::fmt::Display for ZoneType {

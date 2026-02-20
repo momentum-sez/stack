@@ -176,9 +176,9 @@ fn run_generate(
                 .to_uppercase()
                 .replace('-', "_")
         ));
-        compose.push_str(&format!(
-            "      POSTGRES_PASSWORD: \"${{POSTGRES_PASSWORD:?must be set}}\"\n"
-        ));
+        compose.push_str(
+            "      POSTGRES_PASSWORD: \"${POSTGRES_PASSWORD:?must be set}\"\n"
+        );
         compose.push_str(&format!(
             "      POSTGRES_HOST: \"pg-{}\"\n",
             zc.jurisdiction_id.replace('.', "-")

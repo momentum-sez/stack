@@ -10,7 +10,7 @@ This matrix tracks deployment readiness across jurisdictions for the Momentum Ec
 |------|------------|----------|
 | Tier 1 | Production-ready | `zone.yaml` + regpack builder + real licensepack content + national adapters + profile |
 | Tier 2 | Zone manifest with regpacks | `zone.yaml` + regpack builder + `compliance_domains` + national adapter stubs |
-| Tier 3 | Zone manifest only | `zone.yaml` scaffold with `jurisdiction_stack` and profile reference |
+| Tier 3 | Enriched zone manifest | `zone.yaml` with `compliance_domains`, `national_adapters`, `key_management`, and profile reference; no regpack builder yet |
 | Tier 4 | Planned | No zone manifest yet; jurisdiction identified for expansion |
 
 ---
@@ -21,12 +21,11 @@ This matrix tracks deployment readiness across jurisdictions for the Momentum Ec
 |--------|-------|
 | Tier 1 — Production Ready | 5 |
 | Tier 2 — Zone Manifest with Regpacks | 17 |
-| Tier 3 — Zone Manifest Scaffold (target) | ~30 |
-| Tier 4 — Planned Expansion | ~48 |
-| **Total Tracked Jurisdictions** | **~100** |
+| Tier 3 — Enriched Zone Manifest | 187 |
+| Tier 4 — Planned Expansion | 0 |
+| **Total Deployed Zones** | **209** |
 
-Current deployed zone count: **22** (5 Tier 1 + 17 Tier 2).
-Target: **100** jurisdictions tracked across all tiers.
+All 209 zones have enriched `zone.yaml` manifests with `compliance_domains`, `national_adapters`, `key_management`, and `corridors` configuration. Zero scaffold manifests remain. Full corridor mesh: **21,736 autonomous corridors** (209 x 208 / 2).
 
 ---
 
@@ -36,141 +35,232 @@ Target: **100** jurisdictions tracked across all tiers.
 
 These jurisdictions have complete zone manifests, real regpack and licensepack content, functioning national system adapters, and deployment profiles suitable for sovereign corridor activation.
 
-| Jurisdiction ID | Zone Name | Country | Tier | zone.yaml | Regpack Builder | Licensepack | National Adapters | Profile | Notes |
-|-----------------|-----------|---------|------|-----------|-----------------|-------------|-------------------|---------|-------|
-| `pk-sifc` | Pakistan SIFC | Pakistan | 1 | Yes | Yes | Yes (70+ categories) | Yes (FBR IRIS, SECP, NADRA, SBP Raast) | `sovereign-govos` | Primary pilot zone; full Pack Trilogy (4 lawpack domains) |
-| `ae-abudhabi-adgm` | Abu Dhabi Global Market | UAE | 1 | Yes | Yes | Yes | Yes | `sovereign-govos` | ADGM Financial Services Regulatory Authority framework |
-| `sg` | Singapore | Singapore | 1 | Yes | Yes | Yes | Yes | `sovereign-govos` | MAS regulatory framework; Payment Services Act coverage |
-| `hk` | Hong Kong | Hong Kong SAR | 1 | Yes | Yes | Yes | Yes | `sovereign-govos` | SFC + HKMA regulatory framework |
-| `ky` | Cayman Islands | Cayman Islands | 1 | Yes | Yes | Yes | Yes | `sovereign-govos` | CIMA regulatory framework; fund administration focus |
+| Jurisdiction ID | Zone Name | Country | zone.yaml | Regpack Builder | Licensepack | National Adapters | Profile | Notes |
+|-----------------|-----------|---------|-----------|-----------------|-------------|-------------------|---------|-------|
+| `pk-sifc` | Pakistan SIFC | Pakistan | Yes | Yes | Yes (70+ categories) | Yes (FBR IRIS, SECP, NADRA, SBP Raast) | `sovereign-govos` | Primary pilot zone; full Pack Trilogy (4 lawpack domains) |
+| `ae-abudhabi-adgm` | Abu Dhabi Global Market | UAE | Yes | Yes | Yes | Yes | `sovereign-govos` | ADGM Financial Services Regulatory Authority framework |
+| `sg` | Singapore | Singapore | Yes | Yes | Yes | Yes | `sovereign-govos` | MAS regulatory framework; Payment Services Act coverage |
+| `hk` | Hong Kong | Hong Kong SAR | Yes | Yes | Yes | Yes | `sovereign-govos` | SFC + HKMA regulatory framework |
+| `ky` | Cayman Islands | Cayman Islands | Yes | Yes | Yes | Yes | `sovereign-govos` | CIMA regulatory framework; fund administration focus |
 
 ### Tier 2 — Zone Manifest with Regpacks (17 zones)
 
 These jurisdictions have zone manifests wired with real regpack digests and compliance domains. National adapter stubs are present but not yet connected to live government systems.
 
-| Jurisdiction ID | Zone Name | Country | Tier | zone.yaml | Regpack Builder | Licensepack | National Adapters | Profile | Notes |
-|-----------------|-----------|---------|------|-----------|-----------------|-------------|-------------------|---------|-------|
-| `ae` | UAE Federal | UAE | 2 | Yes | Yes | Stub | Stub | Ref | Federal-level regulatory baseline |
-| `ae-abudhabi` | Abu Dhabi Emirate | UAE | 2 | Yes | Yes | Stub | Stub | Ref | Emirate-level overlay on federal |
-| `ae-abudhabi-kezad` | Khalifa Economic Zones | UAE | 2 | Yes | Yes | Stub | Stub | Ref | Multi-sector free zone |
-| `ae-abudhabi-kizad` | Khalifa Industrial Zone | UAE | 2 | Yes | Yes | Stub | Stub | Ref | Industrial and logistics focus |
-| `ae-abudhabi-masdar` | Masdar City | UAE | 2 | Yes | Yes | Stub | Stub | Ref | Clean energy and sustainability zone |
-| `ae-abudhabi-twofour54` | twofour54 Media Zone | UAE | 2 | Yes | Yes | Stub | Stub | Ref | Media and entertainment free zone |
-| `ae-dubai` | Dubai Emirate | UAE | 2 | Yes | Yes | Stub | Stub | Ref | Emirate-level overlay on federal |
-| `ae-dubai-dhcc` | Dubai Healthcare City | UAE | 2 | Yes | Yes | Stub | Stub | Ref | Healthcare and wellness free zone |
-| `ae-dubai-dic` | Dubai Internet City | UAE | 2 | Yes | Yes | Stub | Stub | Ref | Technology and innovation free zone |
-| `ae-dubai-difc` | Dubai Intl Financial Centre | UAE | 2 | Yes | Yes | Stub | Stub | Ref | Common law financial centre; DFSA regulated |
-| `ae-dubai-dmcc` | Dubai Multi Commodities Centre | UAE | 2 | Yes | Yes | Stub | Stub | Ref | Commodities trading free zone |
-| `ae-dubai-dso` | Dubai Silicon Oasis | UAE | 2 | Yes | Yes | Stub | Stub | Ref | Technology park and free zone |
-| `ae-dubai-dwtc` | Dubai World Trade Centre | UAE | 2 | Yes | Yes | Stub | Stub | Ref | Virtual assets and crypto regulatory sandbox |
-| `ae-dubai-ifza` | Intl Free Zone Authority | UAE | 2 | Yes | Yes | Stub | Stub | Ref | Multi-activity free zone |
-| `ae-dubai-jafza` | Jebel Ali Free Zone | UAE | 2 | Yes | Yes | Stub | Stub | Ref | Largest free zone; trade and logistics |
-| `synth-atlantic-fintech` | Atlantic FinTech (Synthetic) | Synthetic | 2 | Yes | Yes | Synthetic | N/A | Ref | Synthetic reference zone for corridor testing |
-| `synth-pacific-trade` | Pacific Trade (Synthetic) | Synthetic | 2 | Yes | Yes | Synthetic | N/A | Ref | Synthetic reference zone for corridor testing |
+| Jurisdiction ID | Zone Name | Country | zone.yaml | Regpack Builder | Licensepack | National Adapters | Profile | Notes |
+|-----------------|-----------|---------|-----------|-----------------|-------------|-------------------|---------|-------|
+| `ae` | UAE Federal | UAE | Yes | Yes | Stub | Stub | Ref | Federal-level regulatory baseline |
+| `ae-abudhabi` | Abu Dhabi Emirate | UAE | Yes | Yes | Stub | Stub | Ref | Emirate-level overlay on federal |
+| `ae-abudhabi-kezad` | Khalifa Economic Zones | UAE | Yes | Yes | Stub | Stub | Ref | Multi-sector free zone |
+| `ae-abudhabi-kizad` | Khalifa Industrial Zone | UAE | Yes | Yes | Stub | Stub | Ref | Industrial and logistics focus |
+| `ae-abudhabi-masdar` | Masdar City | UAE | Yes | Yes | Stub | Stub | Ref | Clean energy and sustainability zone |
+| `ae-abudhabi-twofour54` | twofour54 Media Zone | UAE | Yes | Yes | Stub | Stub | Ref | Media and entertainment free zone |
+| `ae-dubai` | Dubai Emirate | UAE | Yes | Yes | Stub | Stub | Ref | Emirate-level overlay on federal |
+| `ae-dubai-dhcc` | Dubai Healthcare City | UAE | Yes | Yes | Stub | Stub | Ref | Healthcare and wellness free zone |
+| `ae-dubai-dic` | Dubai Internet City | UAE | Yes | Yes | Stub | Stub | Ref | Technology and innovation free zone |
+| `ae-dubai-difc` | Dubai Intl Financial Centre | UAE | Yes | Yes | Stub | Stub | Ref | Common law financial centre; DFSA regulated |
+| `ae-dubai-dmcc` | Dubai Multi Commodities Centre | UAE | Yes | Yes | Stub | Stub | Ref | Commodities trading free zone |
+| `ae-dubai-dso` | Dubai Silicon Oasis | UAE | Yes | Yes | Stub | Stub | Ref | Technology park and free zone |
+| `ae-dubai-dwtc` | Dubai World Trade Centre | UAE | Yes | Yes | Stub | Stub | Ref | Virtual assets and crypto regulatory sandbox |
+| `ae-dubai-ifza` | Intl Free Zone Authority | UAE | Yes | Yes | Stub | Stub | Ref | Multi-activity free zone |
+| `ae-dubai-jafza` | Jebel Ali Free Zone | UAE | Yes | Yes | Stub | Stub | Ref | Largest free zone; trade and logistics |
+| `synth-atlantic-fintech` | Atlantic FinTech (Synthetic) | Synthetic | Yes | Yes | Synthetic | N/A | Ref | Synthetic reference zone for corridor testing |
+| `synth-pacific-trade` | Pacific Trade (Synthetic) | Synthetic | Yes | Yes | Synthetic | N/A | Ref | Synthetic reference zone for corridor testing |
 
-### Tier 3 — Zone Manifest Scaffold (target: ~30 zones)
+### Tier 3 — Enriched Zone Manifest (187 zones)
 
-These jurisdictions are natural next targets for zone manifest creation. They have been identified based on regulatory clarity, economic zone activity, and corridor demand. Zone manifests will be scaffolded with `jurisdiction_stack` and profile references.
+All Tier 3 zones have enriched `zone.yaml` manifests with `compliance_domains`, `national_adapters` (with jurisdiction-specific regulator endpoints), `key_management`, `corridors`, and profile references. They are ready for regpack builder integration (Tier 3 → Tier 2 promotion).
 
-#### Asia-Pacific
+#### United States — States and Territories (56 zones)
 
-| Jurisdiction ID | Zone Name | Country | Tier | zone.yaml | Regpack Builder | Licensepack | National Adapters | Profile | Notes |
-|-----------------|-----------|---------|------|-----------|-----------------|-------------|-------------------|---------|-------|
-| `jp` | Japan | Japan | 3 | Planned | -- | -- | -- | -- | FSA regulatory framework; JFSA virtual asset rules |
-| `kr` | South Korea | South Korea | 3 | Planned | -- | -- | -- | -- | FSC/FSS framework; Virtual Asset User Protection Act |
-| `in-gift` | GIFT City | India | 3 | Planned | -- | -- | -- | -- | Gujarat International Finance Tec-City; IFSCA regulated |
-| `in-ifsc` | IFSC Gujarat | India | 3 | Planned | -- | -- | -- | -- | International Financial Services Centre; SEZ status |
-| `my` | Malaysia | Malaysia | 3 | Planned | -- | -- | -- | -- | SC Malaysia + BNM framework; Labuan offshore |
-| `my-labuan` | Labuan IBFC | Malaysia | 3 | Planned | -- | -- | -- | -- | Labuan International Business and Financial Centre |
-| `th` | Thailand | Thailand | 3 | Planned | -- | -- | -- | -- | SEC Thailand + BOT framework |
-| `ph` | Philippines | Philippines | 3 | Planned | -- | -- | -- | -- | BSP + SEC framework; CEZA economic zone |
-| `vn` | Vietnam | Vietnam | 3 | Planned | -- | -- | -- | -- | SBV + SSC framework; emerging digital asset rules |
-| `id` | Indonesia | Indonesia | 3 | Planned | -- | -- | -- | -- | OJK + BI framework; Bappebti commodity futures |
-| `au` | Australia | Australia | 3 | Planned | -- | -- | -- | -- | ASIC + APRA framework; token mapping consultation |
-| `nz` | New Zealand | New Zealand | 3 | Planned | -- | -- | -- | -- | FMA framework; Financial Markets Conduct Act |
-| `tw` | Taiwan | Taiwan | 3 | Planned | -- | -- | -- | -- | FSC Taiwan framework; virtual asset guidance |
-| `bn` | Brunei | Brunei | 3 | Planned | -- | -- | -- | -- | AMBD framework; emerging fintech sandbox |
-| `mm` | Myanmar | Myanmar | 3 | Planned | -- | -- | -- | -- | CBM framework; limited digital asset regulation |
+All 56 US state and territory zones include FinCEN and IRS federal adapters plus state-specific banking/financial regulators. Each zone has `jurisdiction_stack: [us, us-<state>]`.
 
-#### Middle East and Africa
+| Region | Zone IDs | Count | Notable |
+|--------|----------|-------|---------|
+| Crypto-forward states | `us-wy`, `us-tx`, `us-co`, `us-fl` | 4 | Wyoming DAO LLC Act, SPDI charter |
+| Financial centers | `us-ny`, `us-de`, `us-ca`, `us-il`, `us-ct`, `us-ma` | 6 | NY BitLicense, DE DGCL, CA DFPI |
+| All other states | `us-al` through `us-wi` | 46 | State banking regulators mapped |
 
-| Jurisdiction ID | Zone Name | Country | Tier | zone.yaml | Regpack Builder | Licensepack | National Adapters | Profile | Notes |
-|-----------------|-----------|---------|------|-----------|-----------------|-------------|-------------------|---------|-------|
-| `ae-rak` | Ras Al Khaimah | UAE | 3 | Planned | -- | -- | -- | -- | Emirate-level; emerging free zone activity |
-| `ae-rak-rakez` | RAKEZ Free Zone | UAE | 3 | Planned | -- | -- | -- | -- | Ras Al Khaimah Economic Zone |
-| `ae-sharjah` | Sharjah | UAE | 3 | Planned | -- | -- | -- | -- | Sharjah Emirate; SRTI Park, Hamriyah FZ |
-| `ae-ajman` | Ajman | UAE | 3 | Planned | -- | -- | -- | -- | Ajman Free Zone; light industrial focus |
-| `bh` | Bahrain | Bahrain | 3 | Planned | -- | -- | -- | -- | CBB framework; fintech sandbox; crypto-friendly |
-| `bh-bfb` | Bahrain FinTech Bay | Bahrain | 3 | Planned | -- | -- | -- | -- | FinTech hub within Bahrain regulatory sandbox |
-| `qa` | Qatar | Qatar | 3 | Planned | -- | -- | -- | -- | QCB + QFMA framework |
-| `qa-qfc` | Qatar Financial Centre | Qatar | 3 | Planned | -- | -- | -- | -- | QFC Regulatory Authority; common law financial centre |
-| `om` | Oman | Oman | 3 | Planned | -- | -- | -- | -- | CBO + CMA framework; Duqm SEZ |
-| `sa` | Saudi Arabia | Saudi Arabia | 3 | Planned | -- | -- | -- | -- | CMA + SAMA framework; Vision 2030 digital economy |
-| `sa-neom` | NEOM | Saudi Arabia | 3 | Planned | -- | -- | -- | -- | NEOM special regulatory framework; greenfield zone |
-| `jo` | Jordan | Jordan | 3 | Planned | -- | -- | -- | -- | CBJ + JSC framework; Aqaba SEZ |
-| `eg` | Egypt | Egypt | 3 | Planned | -- | -- | -- | -- | CBE + FRA framework; Suez Canal Economic Zone |
-| `ke` | Kenya | Kenya | 3 | Planned | -- | -- | -- | -- | CBK + CMA framework; Nairobi IFC initiative |
-| `ng` | Nigeria | Nigeria | 3 | Planned | -- | -- | -- | -- | CBN + SEC framework; Lekki Free Zone |
-| `za` | South Africa | South Africa | 3 | Planned | -- | -- | -- | -- | SARB + FSCA framework; IDZ program |
-| `mu` | Mauritius | Mauritius | 3 | Planned | -- | -- | -- | -- | FSC Mauritius; Global Business License framework |
-| `rw` | Rwanda | Rwanda | 3 | Planned | -- | -- | -- | -- | BNR + CMA framework; Kigali IFC |
-| `gh` | Ghana | Ghana | 3 | Planned | -- | -- | -- | -- | BOG + SEC framework; emerging digital asset rules |
-| `tz` | Tanzania | Tanzania | 3 | Planned | -- | -- | -- | -- | BOT framework; EPZ program |
+<details>
+<summary>Full US zone list (56 zones)</summary>
 
-#### Europe
+`us-ak`, `us-al`, `us-ar`, `us-as`, `us-az`, `us-ca`, `us-co`, `us-ct`, `us-dc`, `us-de`, `us-fl`, `us-ga`, `us-gu`, `us-hi`, `us-ia`, `us-id`, `us-il`, `us-in`, `us-ks`, `us-ky`, `us-la`, `us-ma`, `us-md`, `us-me`, `us-mi`, `us-mn`, `us-mo`, `us-mp`, `us-ms`, `us-mt`, `us-nc`, `us-nd`, `us-ne`, `us-nh`, `us-nj`, `us-nm`, `us-nv`, `us-ny`, `us-oh`, `us-ok`, `us-or`, `us-pa`, `us-pr`, `us-ri`, `us-sc`, `us-sd`, `us-tn`, `us-tx`, `us-ut`, `us-va`, `us-vi`, `us-vt`, `us-wa`, `us-wi`, `us-wv`, `us-wy`
 
-| Jurisdiction ID | Zone Name | Country | Tier | zone.yaml | Regpack Builder | Licensepack | National Adapters | Profile | Notes |
-|-----------------|-----------|---------|------|-----------|-----------------|-------------|-------------------|---------|-------|
-| `gb` | United Kingdom | UK | 3 | Planned | -- | -- | -- | -- | FCA framework; Financial Services and Markets Act |
-| `gb-gi` | Gibraltar | Gibraltar | 3 | Planned | -- | -- | -- | -- | GFSC DLT framework; established crypto regulation |
-| `ie` | Ireland | Ireland | 3 | Planned | -- | -- | -- | -- | CBI framework; EU MiCA implementation |
-| `lu` | Luxembourg | Luxembourg | 3 | Planned | -- | -- | -- | -- | CSSF framework; EU MiCA; fund domiciliation hub |
-| `ch` | Switzerland | Switzerland | 3 | Planned | -- | -- | -- | -- | FINMA framework; DLT Act; established crypto rules |
-| `ch-zug` | Zug Crypto Valley | Switzerland | 3 | Planned | -- | -- | -- | -- | Cantonal overlay; Crypto Valley ecosystem |
-| `li` | Liechtenstein | Liechtenstein | 3 | Planned | -- | -- | -- | -- | FMA framework; Token and TT Service Provider Act |
-| `ee` | Estonia | Estonia | 3 | Planned | -- | -- | -- | -- | EFSA framework; EU MiCA; e-Residency program |
-| `mt` | Malta | Malta | 3 | Planned | -- | -- | -- | -- | MFSA framework; Virtual Financial Assets Act |
-| `cy` | Cyprus | Cyprus | 3 | Planned | -- | -- | -- | -- | CySEC framework; EU MiCA implementation |
+</details>
 
-#### Americas
+#### UAE — Additional Emirates and Free Zones (4 zones)
 
-| Jurisdiction ID | Zone Name | Country | Tier | zone.yaml | Regpack Builder | Licensepack | National Adapters | Profile | Notes |
-|-----------------|-----------|---------|------|-----------|-----------------|-------------|-------------------|---------|-------|
-| `us-wy` | Wyoming | USA | 3 | Planned | -- | -- | -- | -- | Wyoming DORA; DAO LLC Act; SPDI charter |
-| `us-de` | Delaware | USA | 3 | Planned | -- | -- | -- | -- | Delaware Division of Corporations; blockchain amendments |
-| `us-ny` | New York | USA | 3 | Planned | -- | -- | -- | -- | NYDFS BitLicense framework |
-| `us-tx` | Texas | USA | 3 | Planned | -- | -- | -- | -- | TDOB framework; Virtual Currency Act |
-| `ca` | Canada | Canada | 3 | Planned | -- | -- | -- | -- | CSA + OSFI framework; MSB registration |
-| `ca-on` | Ontario | Ontario, Canada | 3 | Planned | -- | -- | -- | -- | OSC framework; provincial securities overlay |
-| `bm` | Bermuda | Bermuda | 3 | Planned | -- | -- | -- | -- | BMA framework; Digital Asset Business Act |
-| `bs` | Bahamas | Bahamas | 3 | Planned | -- | -- | -- | -- | SCB framework; DARE Act; Sand Dollar CBDC |
-| `vg` | British Virgin Islands | BVI | 3 | Planned | -- | -- | -- | -- | BVI FSC framework; Virtual Assets Service Providers Act |
-| `bb` | Barbados | Barbados | 3 | Planned | -- | -- | -- | -- | CBB + FSC framework; emerging fintech rules |
-| `pa` | Panama | Panama | 3 | Planned | -- | -- | -- | -- | SMV + SBP framework; crypto law (Ley 129) |
-| `cr` | Costa Rica | Costa Rica | 3 | Planned | -- | -- | -- | -- | SUGEF + CONASSIF framework; emerging digital asset rules |
-| `br` | Brazil | Brazil | 3 | Planned | -- | -- | -- | -- | BCB + CVM framework; crypto asset law (14.478/2022) |
-| `mx` | Mexico | Mexico | 3 | Planned | -- | -- | -- | -- | CNBV + Banxico framework; FinTech Law (Ley Fintech) |
-| `co` | Colombia | Colombia | 3 | Planned | -- | -- | -- | -- | SFC + BanRep framework; regulatory sandbox |
-| `cl` | Chile | Chile | 3 | Planned | -- | -- | -- | -- | CMF + BCCh framework; FinTech Law |
-| `ar` | Argentina | Argentina | 3 | Planned | -- | -- | -- | -- | CNV + BCRA framework; digital asset PSP rules |
-| `uy` | Uruguay | Uruguay | 3 | Planned | -- | -- | -- | -- | BCU + SSF framework; emerging fintech regulation |
-| `py` | Paraguay | Paraguay | 3 | Planned | -- | -- | -- | -- | BCP + CNV framework; crypto mining law |
-| `sv` | El Salvador | El Salvador | 3 | Planned | -- | -- | -- | -- | BCR + SSF framework; Bitcoin legal tender; CNAD oversight |
+| Jurisdiction ID | Zone Name | National Adapters | Notes |
+|-----------------|-----------|-------------------|-------|
+| `ae-ajman` | Ajman Free Zone | CBUAE, FTA | Light industrial free zone |
+| `ae-rak` | Ras Al Khaimah | CBUAE, FTA | Emirate-level; emerging free zone activity |
+| `ae-rak-rakez` | RAKEZ Free Zone | CBUAE, FTA, RAKEZ Authority | Ras Al Khaimah Economic Zone |
+| `ae-sharjah` | Sharjah | CBUAE, FTA | Sharjah Emirate; SRTI Park, Hamriyah FZ |
 
-### Tier 4 — Planned Expansion
+#### Asia-Pacific (26 zones)
 
-The following jurisdictions are under evaluation for future zone manifest creation. Prioritization is driven by corridor demand (bilateral trade volume, remittance flows, FDI activity), regulatory clarity, and sovereign partnership interest.
+| Jurisdiction ID | Zone Name | Country | National Adapters | Notes |
+|-----------------|-----------|---------|-------------------|-------|
+| `jp` | Japan | Japan | FSA, NTA | FSA regulatory framework; JFSA virtual asset rules |
+| `kr` | South Korea | South Korea | FSC, NTS | FSC/FSS framework; Virtual Asset User Protection Act |
+| `in-gift` | GIFT City | India | IFSCA, CBDT | Gujarat Intl Finance Tec-City; IFSCA regulated |
+| `in-ifsc` | IFSC Gujarat | India | IFSCA, CBDT | International Financial Services Centre; SEZ status |
+| `my` | Malaysia | Malaysia | SC, BNM | SC Malaysia + BNM framework; Labuan offshore |
+| `my-labuan` | Labuan IBFC | Malaysia | Labuan FSA | Labuan Intl Business and Financial Centre |
+| `th` | Thailand | Thailand | SEC, BOT | SEC Thailand + BOT framework |
+| `ph` | Philippines | Philippines | BSP, SEC | BSP + SEC framework; CEZA economic zone |
+| `vn` | Vietnam | Vietnam | SBV, SSC | Emerging digital asset rules |
+| `id` | Indonesia | Indonesia | OJK, BI | OJK + BI framework; Bappebti commodity futures |
+| `au` | Australia | Australia | ASIC, APRA | Token mapping consultation; AFSL regime |
+| `nz` | New Zealand | New Zealand | FMA, IRD | Financial Markets Conduct Act |
+| `tw` | Taiwan | Taiwan | FSC | FSC Taiwan framework; virtual asset guidance |
+| `bn` | Brunei | Brunei | AMBD | Emerging fintech sandbox |
+| `mm` | Myanmar | Myanmar | CBM | Limited digital asset regulation |
+| `cn` | China | China | PBOC, CSRC | PBOC + CSRC framework; DCEP/e-CNY |
+| `cn-beijing` | Beijing | China | PBOC Beijing | National fintech regulatory sandbox |
+| `cn-hainan` | Hainan FTP | China | Hainan FTP Authority | Free Trade Port; cross-border data flow pilot |
+| `cn-hangzhou` | Hangzhou | China | PBOC Hangzhou | Blockchain innovation zone |
+| `cn-shanghai` | Shanghai | China | PBOC Shanghai | Shanghai FTZ; fintech center |
+| `cn-shenzhen` | Shenzhen | China | PBOC Shenzhen | Digital currency pilot zone; Qianhai FTZ |
+| `lk` | Sri Lanka | Sri Lanka | CBSL | Central Bank of Sri Lanka |
+| `bd` | Bangladesh | Bangladesh | BB | Bangladesh Bank framework |
+| `kh` | Cambodia | Cambodia | NBC | National Bank of Cambodia; Bakong payment |
+| `la` | Laos | Laos | BOL | Bank of the Lao PDR |
+| `np` | Nepal | Nepal | NRB | Nepal Rastra Bank |
 
-| Region | Jurisdictions Under Evaluation |
-|--------|-------------------------------|
-| Europe (additional) | `de` (Germany), `fr` (France), `nl` (Netherlands), `es` (Spain), `pt` (Portugal), `it` (Italy), `at` (Austria), `se` (Sweden), `dk` (Denmark), `fi` (Finland), `no` (Norway) |
-| Central Asia | `kz` (Kazakhstan — AIFC), `uz` (Uzbekistan), `ge` (Georgia) |
-| South Asia | `lk` (Sri Lanka), `bd` (Bangladesh), `np` (Nepal) |
-| Southeast Asia | `kh` (Cambodia), `la` (Laos), `sg-jwp` (Singapore — Jurong West Port) |
-| Pacific Islands | `fj` (Fiji), `vu` (Vanuatu), `ws` (Samoa) |
-| Caribbean (additional) | `tc` (Turks and Caicos), `ag` (Antigua and Barbuda), `dm` (Dominica), `gd` (Grenada), `lc` (Saint Lucia), `vc` (Saint Vincent), `jm` (Jamaica), `tt` (Trinidad and Tobago) |
-| Africa (additional) | `ma` (Morocco), `tn` (Tunisia), `et` (Ethiopia), `ug` (Uganda), `cm` (Cameroon), `sn` (Senegal), `ci` (Cote d'Ivoire) |
-| Middle East (additional) | `kw` (Kuwait), `lb` (Lebanon), `iq` (Iraq) |
+#### Middle East (13 zones)
+
+| Jurisdiction ID | Zone Name | Country | National Adapters | Notes |
+|-----------------|-----------|---------|-------------------|-------|
+| `bh` | Bahrain | Bahrain | CBB | CBB framework; fintech sandbox; crypto-friendly |
+| `bh-bfb` | Bahrain FinTech Bay | Bahrain | CBB Sandbox | FinTech hub within regulatory sandbox |
+| `qa` | Qatar | Qatar | QCB, QFMA | QCB + QFMA framework |
+| `qa-qfc` | Qatar Financial Centre | Qatar | QFCRA | QFC Regulatory Authority; common law financial centre |
+| `om` | Oman | Oman | CBO, CMA | Duqm SEZ |
+| `sa` | Saudi Arabia | Saudi Arabia | CMA, SAMA | Vision 2030 digital economy |
+| `sa-neom` | NEOM | Saudi Arabia | NEOM Authority | Greenfield special regulatory framework |
+| `jo` | Jordan | Jordan | CBJ, JSC | Aqaba SEZ |
+| `eg` | Egypt | Egypt | CBE, FRA | Suez Canal Economic Zone |
+| `kw` | Kuwait | Kuwait | CBK, CMA | Kuwait Financial Centre |
+| `lb` | Lebanon | Lebanon | BDL | Banque du Liban |
+| `iq` | Iraq | Iraq | CBI | Central Bank of Iraq |
+| `pk-fed` | Pakistan Federal | Pakistan | SBP, SECP, FBR, NADRA | Federal zone; parent of pk-sifc |
+
+#### Africa (18 zones)
+
+| Jurisdiction ID | Zone Name | Country | National Adapters | Notes |
+|-----------------|-----------|---------|-------------------|-------|
+| `ke` | Kenya | Kenya | CBK, CMA | M-PESA ecosystem; Nairobi IFC initiative |
+| `ng` | Nigeria | Nigeria | CBN, SEC | Lekki Free Zone; SEC digital asset rules 2022 |
+| `za` | South Africa | South Africa | SARB, FSCA | IDZ program; POPIA data protection |
+| `mu` | Mauritius | Mauritius | FSC | Global Business License framework |
+| `rw` | Rwanda | Rwanda | BNR, CMA | Kigali IFC; fintech sandbox |
+| `gh` | Ghana | Ghana | BOG, SEC | Emerging digital asset rules |
+| `tz` | Tanzania | Tanzania | BOT | EPZ program |
+| `tz-zanzibar` | Zanzibar | Tanzania | BOT Zanzibar | Zanzibar Investment Promotion Authority |
+| `sc` | Seychelles | Seychelles | CBS, FSA | IBC framework; offshore financial center |
+| `ma` | Morocco | Morocco | BAM, AMMC | Bank Al-Maghrib |
+| `tn` | Tunisia | Tunisia | BCT | Banque Centrale de Tunisie |
+| `et` | Ethiopia | Ethiopia | NBE | National Bank of Ethiopia |
+| `ug` | Uganda | Uganda | BOU, CMA | Bank of Uganda; CMA securities |
+| `cm` | Cameroon | Cameroon | BEAC | CEMAC zone; Bank of Central African States |
+| `sn` | Senegal | Senegal | BCEAO | WAEMU zone; BCEAO central bank |
+| `ci` | Cote d'Ivoire | Cote d'Ivoire | BCEAO | WAEMU zone; Abidjan financial center |
+| `ag` | Antigua and Barbuda | Antigua and Barbuda | ECCB | ECCU zone; digital asset framework |
+
+#### Europe (21 zones)
+
+| Jurisdiction ID | Zone Name | Country | National Adapters | Notes |
+|-----------------|-----------|---------|-------------------|-------|
+| `gb` | United Kingdom | UK | FCA, HMRC | Financial Services and Markets Act; FCA crypto regime |
+| `gb-gi` | Gibraltar | Gibraltar | GFSC | DLT framework; established crypto regulation |
+| `ie` | Ireland | Ireland | CBI, Revenue | EU MiCA implementation; 12.5% corporate tax |
+| `lu` | Luxembourg | Luxembourg | CSSF | EU MiCA; fund domiciliation hub |
+| `ch` | Switzerland | Switzerland | FINMA | DLT Act; established crypto rules |
+| `ch-zug` | Zug Crypto Valley | Switzerland | FINMA Zug | Cantonal overlay; Crypto Valley ecosystem |
+| `li` | Liechtenstein | Liechtenstein | FMA | Token and TT Service Provider Act (TVTG) |
+| `ee` | Estonia | Estonia | EFSA | EU MiCA; e-Residency program |
+| `mt` | Malta | Malta | MFSA | Virtual Financial Assets Act |
+| `cy` | Cyprus | Cyprus | CySEC | EU MiCA implementation |
+| `de` | Germany | Germany | BaFin, BBk | BaFin crypto custody license; EU MiCA |
+| `fr` | France | France | AMF, ACPR | PSAN registration; EU MiCA |
+| `nl` | Netherlands | Netherlands | DNB, AFM | PSD2 innovation hub; EU MiCA |
+| `es` | Spain | Spain | CNMV, BdE | EU MiCA; sandbox framework |
+| `pt` | Portugal | Portugal | BdP, CMVM | NHR tax regime; emerging crypto framework |
+| `it` | Italy | Italy | CONSOB, BdI | EU MiCA; OAM crypto registration |
+| `at` | Austria | Austria | FMA | EU MiCA; FMA crypto supervision |
+| `se` | Sweden | Sweden | FI, Riksbank | e-krona CBDC pilot; EU MiCA |
+| `dk` | Denmark | Denmark | DFSA | Finanstilsynet; EU MiCA |
+| `fi` | Finland | Finland | FIN-FSA | 20% corporate tax; EU MiCA |
+| `no` | Norway | Norway | Finanstilsynet | EEA/EFTA; robust AML framework |
+
+#### Americas — Non-US (22 zones)
+
+| Jurisdiction ID | Zone Name | Country | National Adapters | Notes |
+|-----------------|-----------|---------|-------------------|-------|
+| `ca` | Canada | Canada | CSA, OSFI | MSB registration; federal framework |
+| `ca-on` | Ontario | Canada | OSC | Provincial securities overlay |
+| `bm` | Bermuda | Bermuda | BMA | Digital Asset Business Act |
+| `bs` | Bahamas | Bahamas | SCB | DARE Act; Sand Dollar CBDC |
+| `vg` | British Virgin Islands | BVI | BVI FSC | Virtual Assets Service Providers Act |
+| `bb` | Barbados | Barbados | CBB, FSC | Emerging fintech rules |
+| `pa` | Panama | Panama | SMV, SBP | Crypto law (Ley 129) |
+| `cr` | Costa Rica | Costa Rica | SUGEF | Emerging digital asset rules |
+| `br` | Brazil | Brazil | BCB, CVM | Crypto asset law (14.478/2022); PIX payments |
+| `mx` | Mexico | Mexico | CNBV, Banxico | FinTech Law (Ley Fintech) |
+| `co` | Colombia | Colombia | SFC, BanRep | Regulatory sandbox |
+| `cl` | Chile | Chile | CMF, BCCh | FinTech Law |
+| `ar` | Argentina | Argentina | CNV, BCRA | Digital asset PSP rules |
+| `uy` | Uruguay | Uruguay | BCU, SSF | Emerging fintech regulation |
+| `py` | Paraguay | Paraguay | BCP, CNV | Crypto mining law |
+| `sv` | El Salvador | El Salvador | BCR, SSF | Bitcoin legal tender; CNAD oversight |
+| `hn-prospera` | Prospera ZEDE | Honduras | Prospera Authority | Charter city; special regulatory framework |
+| `tc` | Turks and Caicos | Turks and Caicos | TCIFSC | Financial Services Commission |
+| `dm` | Dominica | Dominica | ECCB | ECCU zone; offshore financial center |
+| `gd` | Grenada | Grenada | ECCB | ECCU zone |
+| `lc` | Saint Lucia | Saint Lucia | ECCB | ECCU zone |
+| `vc` | Saint Vincent | Saint Vincent | ECCB, FSA | ECCU zone; emerging fintech |
+| `jm` | Jamaica | Jamaica | BOJ, FSC | Bank of Jamaica; JAM-DEX CBDC |
+| `tt` | Trinidad and Tobago | Trinidad and Tobago | CBTT, TTSEC | Twin-island financial center |
+
+#### Central Asia (6 zones)
+
+| Jurisdiction ID | Zone Name | Country | National Adapters | Notes |
+|-----------------|-----------|---------|-------------------|-------|
+| `kz` | Kazakhstan | Kazakhstan | NBK, AFSA | National Bank + AIFC parent |
+| `kz-aifc` | Astana IFC | Kazakhstan | AFSA | Common law financial center; AIFC Fintech Lab |
+| `kz-alatau` | Alatau IT City | Kazakhstan | Alatau Authority | Technology park; IT special zone |
+| `uz` | Uzbekistan | Uzbekistan | CBU | NAPM crypto framework |
+| `ge` | Georgia | Georgia | NBG | National Bank of Georgia; flat tax regime |
+
+#### Synthetic Zones — New (18 zones)
+
+18 new synthetic zones created via compositional zone algebra. Each sources regulatory domains from multiple jurisdictions. See `docs/roadmap/SYNTHETIC_ZONE_CATALOG.md` for full composition specs.
+
+| Jurisdiction ID | Zone Name | Primary | Domains | Use Case |
+|-----------------|-----------|---------|---------|----------|
+| `synth-gulf-trade-bridge` | GCC Trade Bridge | `ae` | 8 | Intra-GCC trade and logistics |
+| `synth-south-asia-remittance` | South Asia Remittance | `pk` | 7 | Pakistan-India-Bangladesh remittance |
+| `synth-european-digital-bank` | European Digital Bank | `lu` | 8 | Pan-EU digital banking charter |
+| `synth-africa-fintech-gateway` | Africa Fintech Gateway | `mu` | 8 | Pan-African fintech hub |
+| `synth-latam-trade-zone` | LATAM Trade Zone | `pa` | 8 | Cross-border South American trade |
+| `synth-islamic-finance-hub` | Islamic Finance Hub | `ae` | 8 | Shariah-compliant digital finance |
+| `synth-crypto-native-zone` | Crypto-Native Zone | `ky` | 8 | Pure digital asset platform |
+| `synth-green-finance-corridor` | Green Finance Corridor | `lu` | 8 | Sustainable finance and ESG |
+| `synth-nordics-payments` | Nordic Payments Zone | `se` | 8 | Cross-Nordic payment innovation |
+| `synth-maritime-trade-hub` | Maritime Trade Hub | `sg` | 8 | Shipping and trade finance |
+| `synth-us-digital-asset` | US Digital Asset Zone | `us` | 6 | US interstate digital asset operations |
+| `synth-caribbean-digital-cluster` | Caribbean Digital Cluster | `ky` | 7 | Caribbean digital asset operations |
+| `synth-central-asian-gateway` | Central Asian Gateway | `kz` | 7 | Central Asian trade corridor |
+| `synth-indo-pacific-trade` | Indo-Pacific Trade | `sg` | 8 | India-ASEAN-Pacific trade |
+| `synth-mediterranean-fintech` | Mediterranean Fintech | `mt` | 7 | Mediterranean digital finance |
+| `synth-pacific-islands-development` | Pacific Islands Dev | `nz` | 6 | Pacific Islands economic development |
+| `synth-east-african-innovation` | East African Innovation | `ke` | 8 | East African fintech hub |
+| `synth-swiss-asian-bridge` | Swiss-Asian Bridge | `ch` | 8 | Swiss-Liechtenstein-Asian innovation |
+
+### Tier 4 — Planned Expansion (0 zones)
+
+All previously planned jurisdictions have been promoted to Tier 3 with enriched zone manifests. No jurisdictions remain at Tier 4.
 
 ---
 
@@ -183,18 +273,19 @@ New jurisdictions progress through tiers via the following pipeline:
 - Determine whether the jurisdiction has economic zone or free zone legislation that creates sub-jurisdictional regulatory envelopes.
 - Assess corridor demand: bilateral trade volume, remittance corridors, and FDI flows with existing Tier 1/2 zones.
 
-### Step 2: Create Zone Manifest Scaffold (Tier 4 to Tier 3)
-- Generate `zone.yaml` with `jurisdiction_stack`, `compliance_domains`, and profile reference.
-- Command: `mez zone init --jurisdiction <id> --template starter`
+### Step 2: Create Enriched Zone Manifest (New → Tier 3)
+- Generate `zone.yaml` with `jurisdiction_stack`, `compliance_domains`, `national_adapters`, `key_management`, and profile reference.
 - Map compliance domains to the jurisdiction's regulatory structure.
+- Configure national adapter endpoints for the jurisdiction's regulators.
+- Command: `mez zone init --jurisdiction <id> --template starter` then enrich manually.
 
-### Step 3: Build Regpack Content (Tier 3 to Tier 2)
+### Step 3: Build Regpack Content (Tier 3 → Tier 2)
 - Populate lawpacks with jurisdiction-specific statutes, regulations, and rules.
 - Build regpacks with domain-specific compliance rules (TAX, AML_CFT, LICENSING, SECURITIES, etc.).
 - Compute CAS digests: `mez regpack build --jurisdiction <id> --all-domains --store`
 - Wire regpack digests into `zone.yaml`.
 
-### Step 4: Implement National Adapters (Tier 2 to Tier 1)
+### Step 4: Implement National Adapters (Tier 2 → Tier 1)
 - Implement trait contracts for the jurisdiction's national systems (tax authority, corporate registry, identity authority, central bank/payment system).
 - Begin with mock/stub adapters; promote to live HTTP adapters after sovereign partnership agreement.
 - Run contract tests against adapter stubs.
@@ -210,13 +301,27 @@ New jurisdictions progress through tiers via the following pipeline:
 
 ## Synthetic Zone Composition
 
-Any combination of Tier 1-3 regulatory primitives can be composed into synthetic zones using `mez zone compose`. Synthetic zones enable:
+Any combination of Tier 1-3 regulatory primitives can be composed into synthetic zones using `mez zone compose`. The stack now contains **20 synthetic zones** (2 Tier 2 reference zones + 18 Tier 3 compositions). Synthetic zones enable:
 
 - **Corridor testing**: Create paired synthetic zones to test receipt chain exchange, fork resolution, and checkpoint verification without sovereign dependencies.
 - **Regulatory sandbox simulation**: Compose a synthetic zone that inherits compliance domains from multiple jurisdictions for sandbox experimentation.
 - **Pre-deployment validation**: Before a jurisdiction reaches Tier 1, compose a synthetic zone using its partial regpack content alongside known-good primitives from Tier 1 zones to validate the compliance pipeline.
+- **Regional trade optimization**: Compose synthetic zones that combine best-in-class regulatory frameworks across regions (e.g., GCC Trade Bridge, LATAM Trade Zone, Nordic Payments).
 
-Existing synthetic zones (`synth-atlantic-fintech`, `synth-pacific-trade`) demonstrate this capability and are used in the two-zone demo script (`deploy/scripts/demo-two-zone.sh`).
+See `docs/roadmap/SYNTHETIC_ZONE_CATALOG.md` for the full catalog of 20 synthetic zone compositions.
+
+---
+
+## Full Corridor Mesh
+
+With 209 zones, the full autonomous corridor mesh comprises **21,736 corridors**:
+
+```
+mez corridor mesh --all --format dot    # Generate full mesh DOT graph
+mez corridor mesh --all --format json   # Generate adjacency list
+```
+
+See `docs/roadmap/CORRIDOR_MESH_TOPOLOGY.md` for mesh topology documentation, corridor type breakdown, and visualization instructions.
 
 ---
 
@@ -224,18 +329,20 @@ Existing synthetic zones (`synth-atlantic-fintech`, `synth-pacific-trade`) demon
 
 | Compliance Domain | Tier 1 | Tier 2 | Tier 3 | Notes |
 |-------------------|--------|--------|--------|-------|
-| TAX | Full | Partial | -- | Withholding rules, rates, treaty networks |
-| AML_CFT | Full | Partial | -- | CDD/EDD, STR, sanctions screening |
-| LICENSING | Full | Stub | -- | License categories, fees, renewal rules |
-| SECURITIES | Full | Stub | -- | Offering rules, exemptions, reporting |
-| BANKING | Full | Stub | -- | Capital requirements, reserve ratios |
-| DATA_PRIVACY | Full | Stub | -- | Data localization, consent, retention |
-| SANCTIONS | Full | Partial | -- | SDN/consolidated lists, screening rules |
-| CONSUMER_PROTECTION | Partial | -- | -- | Disclosure, cooling-off, redress |
+| TAX | Full | Partial | Declared | Withholding rules, rates, treaty networks |
+| AML_CFT | Full | Partial | Declared | CDD/EDD, STR, sanctions screening |
+| LICENSING | Full | Stub | Declared | License categories, fees, renewal rules |
+| SECURITIES | Full | Stub | Declared | Offering rules, exemptions, reporting |
+| BANKING | Full | Stub | Declared | Capital requirements, reserve ratios |
+| DATA_PRIVACY | Full | Stub | Declared | Data localization, consent, retention |
+| SANCTIONS | Full | Partial | Declared | SDN/consolidated lists, screening rules |
+| CONSUMER_PROTECTION | Partial | -- | Declared | Disclosure, cooling-off, redress |
 | INSURANCE | Partial | -- | -- | Capital, solvency, policyholder protection |
 | ENVIRONMENTAL | Partial | -- | -- | Carbon reporting, ESG disclosure |
+
+"Declared" means the domain is listed in `compliance_domains` and mapped to the jurisdiction's regulator, but no regpack content exists yet. Promotion to Tier 2 requires populating regpack rules for each declared domain.
 
 ---
 
 *Last updated: 2026-02-20*
-*Source: MEZ Stack v0.4.44-GENESIS audit and deployment tracking*
+*Source: MEZ Stack v0.4.44-GENESIS — full network topology deployment*

@@ -58,18 +58,20 @@ mez zone compose --spec composition.yaml --output jurisdictions/synth-my-zone/
 
 ## Reference Implementations
 
-Two synthetic zones are already implemented and available as reference:
+Two synthetic zones are Tier 2 reference implementations with regpack builders:
 
-| Zone ID | Name | Path |
-|---|---|---|
-| `synth-atlantic-fintech` | Atlantic Fintech Hub | `jurisdictions/synth-atlantic-fintech/` |
-| `synth-pacific-trade` | Pacific Trade Hub | `jurisdictions/synth-pacific-trade/` |
+| Zone ID | Name | Path | Tier |
+|---|---|---|---|
+| `synth-atlantic-fintech` | Atlantic Fintech Hub | `jurisdictions/synth-atlantic-fintech/` | 2 |
+| `synth-pacific-trade` | Pacific Trade Hub | `jurisdictions/synth-pacific-trade/` | 2 |
 
 Both include `composition.yaml` (input spec) and `zone.yaml` (generated output).
 
+An additional 18 synthetic zones are deployed at Tier 3 (enriched manifest with composition spec, zone.yaml, and profile.yaml). All 20 synthetic zones participate in the full 209-zone corridor mesh.
+
 ---
 
-## Catalog: 12 High-Value Synthetic Zone Compositions
+## Catalog: 20 Synthetic Zone Compositions
 
 ---
 
@@ -736,6 +738,363 @@ layers:
 
 ---
 
+### 13. synth-us-digital-asset
+
+**US Digital Asset Interstate Zone**
+
+**Use case:** US-domiciled digital asset operations spanning multiple states. Combines
+Wyoming's DAO-friendly corporate formation with Delaware's corporate law, New York's
+BitLicense framework, Texas's tax environment, and California's securities expertise.
+Designed for interstate digital asset platforms seeking regulatory clarity across
+multiple US jurisdictions.
+
+| Domain | Source | Rationale |
+|---|---|---|
+| CorporateFormation | `us-wy` | Wyoming DAO LLC Act (SF0038) + SPDI charter -- most crypto-forward US state |
+| CivicCode | `us-de` | Delaware DGCL Title 8 -- gold standard for US corporate governance |
+| DigitalAssets | `us-ny` | NYDFS BitLicense framework -- established virtual currency regulation |
+| Tax | `us-tx` | Texas -- no state income tax, business-friendly environment |
+| AmlCft | `us-ny` | NYDFS AML/CFT requirements -- BSA/FinCEN aligned |
+| Securities | `us-ca` | California DFPI -- tech-forward securities regulation |
+
+```yaml
+# jurisdictions/synth-us-digital-asset/composition.yaml
+zone_name: US Digital Asset Interstate Zone
+zone_id: org.momentum.mez.zone.synthetic.us-digital-asset
+jurisdiction_id: synth-us-digital-asset
+primary_jurisdiction: us
+layers:
+  - domain: corporate_formation
+    source: us-wy
+  - domain: civic_code
+    source: us-de
+  - domain: digital_assets
+    source: us-ny
+  - domain: tax
+    source: us-tx
+  - domain: aml_cft
+    source: us-ny
+  - domain: securities
+    source: us-ca
+```
+
+---
+
+### 14. synth-caribbean-digital-cluster
+
+**Caribbean Digital Asset Cluster**
+
+**Use case:** Caribbean-based digital asset operations combining Cayman Islands'
+fund infrastructure with Bermuda's DABA framework, Bahamas' DARE Act, BVI's VASP
+regime, and Barbados' arbitration. Designed for crypto funds and digital asset
+platforms serving the Americas.
+
+| Domain | Source | Rationale |
+|---|---|---|
+| CorporateFormation | `ky` | Cayman Islands Exempted Company -- crypto fund standard |
+| DigitalAssets | `bm` | Bermuda Digital Asset Business Act (DABA) -- comprehensive framework |
+| Tax | `ky` | Cayman Islands -- 0% corporate, capital gains, withholding |
+| AmlCft | `ky` | Cayman Anti-Money Laundering Regulations -- FATF compliant |
+| Securities | `bs` | Bahamas DARE Act -- Digital Assets and Registered Exchanges |
+| Licensing | `vg` | BVI Virtual Assets Service Providers Act -- streamlined VASP licensing |
+| Arbitration | `bb` | Barbados International Business and Arbitration framework |
+
+```yaml
+# jurisdictions/synth-caribbean-digital-cluster/composition.yaml
+zone_name: Caribbean Digital Asset Cluster
+zone_id: org.momentum.mez.zone.synthetic.caribbean-digital-cluster
+jurisdiction_id: synth-caribbean-digital-cluster
+primary_jurisdiction: ky
+layers:
+  - domain: corporate_formation
+    source: ky
+  - domain: digital_assets
+    source: bm
+  - domain: tax
+    source: ky
+  - domain: aml_cft
+    source: ky
+  - domain: securities
+    source: bs
+  - domain: licensing
+    source: vg
+  - domain: arbitration
+    source: bb
+```
+
+---
+
+### 15. synth-central-asian-gateway
+
+**Central Asian Gateway Zone**
+
+**Use case:** Central Asian trade and investment corridor. Combines Kazakhstan's
+Astana International Financial Centre (AIFC) with Georgia's flat tax regime and
+Uzbekistan's emerging crypto framework. Designed for trade companies and fintech
+platforms operating across Central Asia.
+
+| Domain | Source | Rationale |
+|---|---|---|
+| CorporateFormation | `kz-aifc` | AIFC common law corporate formation -- English law jurisdiction in Central Asia |
+| CivicCode | `kz` | Kazakhstan Civil Code -- Central Asian commercial baseline |
+| DigitalAssets | `kz-aifc` | AIFC digital asset framework -- AFSA regulated |
+| Tax | `ge` | Georgia flat tax (15% corporate, 20% distributed profits) -- simple, predictable |
+| AmlCft | `kz` | Kazakhstan AML/CFT -- FATF/EAG mutual evaluation |
+| Licensing | `uz` | Uzbekistan NAPM crypto licensing -- emerging framework |
+| Arbitration | `kz-aifc` | AIFC International Arbitration Centre -- English law arbitration |
+
+```yaml
+# jurisdictions/synth-central-asian-gateway/composition.yaml
+zone_name: Central Asian Gateway Zone
+zone_id: org.momentum.mez.zone.synthetic.central-asian-gateway
+jurisdiction_id: synth-central-asian-gateway
+primary_jurisdiction: kz
+layers:
+  - domain: corporate_formation
+    source: kz-aifc
+  - domain: civic_code
+    source: kz
+  - domain: digital_assets
+    source: kz-aifc
+  - domain: tax
+    source: ge
+  - domain: aml_cft
+    source: kz
+  - domain: licensing
+    source: uz
+  - domain: arbitration
+    source: kz-aifc
+```
+
+---
+
+### 16. synth-indo-pacific-trade
+
+**Indo-Pacific Trade Corridor**
+
+**Use case:** India-ASEAN-Pacific trade facilitation. Combines India's GIFT City
+IFSCA framework with Singapore's financial infrastructure, Australia's securities
+regulation, and New Zealand's data protection. Designed for trade finance
+platforms and cross-border payment companies serving the Indo-Pacific region.
+
+| Domain | Source | Rationale |
+|---|---|---|
+| CorporateFormation | `in-gift` | India GIFT City / IFSCA -- dedicated international financial services |
+| CivicCode | `sg` | Singapore common law -- established ASEAN commercial baseline |
+| DigitalAssets | `sg` | MAS Payment Services Act 2019 -- comprehensive digital asset framework |
+| Tax | `sg` | Singapore ITA -- 17% flat corporate, extensive treaty network |
+| AmlCft | `sg` | MAS AML/CFT framework -- FATF compliant, Travel Rule |
+| Securities | `au` | ASIC framework -- established securities regulation, AFSL regime |
+| PaymentRails | `sg` | MAS FAST/PayNow -- Singapore instant payment infrastructure |
+| DataPrivacy | `nz` | New Zealand Privacy Act 2020 -- balanced Pacific data protection |
+
+```yaml
+# jurisdictions/synth-indo-pacific-trade/composition.yaml
+zone_name: Indo-Pacific Trade Corridor
+zone_id: org.momentum.mez.zone.synthetic.indo-pacific-trade
+jurisdiction_id: synth-indo-pacific-trade
+primary_jurisdiction: sg
+layers:
+  - domain: corporate_formation
+    source: in-gift
+  - domain: civic_code
+    source: sg
+  - domain: digital_assets
+    source: sg
+  - domain: tax
+    source: sg
+  - domain: aml_cft
+    source: sg
+  - domain: securities
+    source: au
+  - domain: payment_rails
+    source: sg
+  - domain: data_privacy
+    source: nz
+```
+
+---
+
+### 17. synth-mediterranean-fintech
+
+**Mediterranean Digital Finance Hub**
+
+**Use case:** Mediterranean-region digital finance platform. Combines Malta's
+established VFA Act with Cyprus's CySEC securities framework, Portugal's favorable
+NHR tax regime, and Ireland's EU-passported licensing. Designed for fintech
+companies serving Southern Europe and North Africa.
+
+| Domain | Source | Rationale |
+|---|---|---|
+| CorporateFormation | `mt` | Malta Companies Act -- EU member, established fintech domicile |
+| CivicCode | `cy` | Cyprus common law -- EU member, English-influenced commercial law |
+| DigitalAssets | `mt` | Malta Virtual Financial Assets Act (VFAA) -- pioneering EU framework |
+| Tax | `pt` | Portugal NHR regime -- favorable crypto tax treatment for residents |
+| AmlCft | `mt` | Malta FIAU -- EU 6AMLD compliant AML/CFT framework |
+| Licensing | `ie` | Ireland CBI -- EU-passportable e-money and payment institution license |
+| Securities | `cy` | CySEC -- EU MiFID II passporting, established investment firm regulation |
+
+```yaml
+# jurisdictions/synth-mediterranean-fintech/composition.yaml
+zone_name: Mediterranean Digital Finance Hub
+zone_id: org.momentum.mez.zone.synthetic.mediterranean-fintech
+jurisdiction_id: synth-mediterranean-fintech
+primary_jurisdiction: mt
+layers:
+  - domain: corporate_formation
+    source: mt
+  - domain: civic_code
+    source: cy
+  - domain: digital_assets
+    source: mt
+  - domain: tax
+    source: pt
+  - domain: aml_cft
+    source: mt
+  - domain: licensing
+    source: ie
+  - domain: securities
+    source: cy
+```
+
+---
+
+### 18. synth-pacific-islands-development
+
+**Pacific Islands Economic Development Zone**
+
+**Use case:** Pacific Islands economic development and financial inclusion. Combines
+New Zealand's regulatory infrastructure with Fiji's commercial framework, Vanuatu's
+favorable tax environment, and New Zealand's payment systems. Designed for
+development finance institutions and remittance platforms serving the Pacific.
+
+| Domain | Source | Rationale |
+|---|---|---|
+| CorporateFormation | `nz` | New Zealand Companies Office -- transparent, digital-friendly registration |
+| CivicCode | `fj` | Fiji common law -- established Pacific commercial baseline |
+| Tax | `vu` | Vanuatu -- 0% income tax, favorable for development zone operations |
+| AmlCft | `nz` | New Zealand FMA/DIA -- FATF/APG mutual evaluation compliant |
+| Licensing | `fj` | Reserve Bank of Fiji -- emerging fintech sandbox and licensing |
+| PaymentRails | `nz` | New Zealand ESAS/SBI -- real-time payments infrastructure |
+
+```yaml
+# jurisdictions/synth-pacific-islands-development/composition.yaml
+zone_name: Pacific Islands Economic Development Zone
+zone_id: org.momentum.mez.zone.synthetic.pacific-islands-development
+jurisdiction_id: synth-pacific-islands-development
+primary_jurisdiction: nz
+layers:
+  - domain: corporate_formation
+    source: nz
+  - domain: civic_code
+    source: fj
+  - domain: tax
+    source: vu
+  - domain: aml_cft
+    source: nz
+  - domain: licensing
+    source: fj
+  - domain: payment_rails
+    source: nz
+```
+
+---
+
+### 19. synth-east-african-innovation
+
+**East African Innovation Hub**
+
+**Use case:** East African fintech and innovation platform. Combines Kenya's
+M-PESA mobile money leadership with Rwanda's fintech sandbox, Tanzania's EPZ
+program, and Uganda's securities framework. Designed for mobile-first fintech
+companies and payment platforms serving East Africa's high-growth markets.
+
+| Domain | Source | Rationale |
+|---|---|---|
+| CorporateFormation | `ke` | Kenya Companies Act 2015 -- established East African commercial hub |
+| CivicCode | `ke` | Kenya Law of Contract Act (Cap 23) -- East African commercial baseline |
+| DigitalAssets | `rw` | Rwanda BNR fintech sandbox (Regulation No. 12/2021) -- emerging framework |
+| Tax | `rw` | Rwanda Revenue Authority -- 30% corporate, EAC harmonized |
+| AmlCft | `ke` | Kenya Proceeds of Crime and Anti-Money Laundering Act -- FATF/ESAAMLG |
+| PaymentRails | `ke` | Kenya M-PESA + CBK RTGS -- mobile money leadership (50M+ users) |
+| Licensing | `tz` | Tanzania BOT EPZ licensing -- Export Processing Zone framework |
+| Securities | `ug` | Uganda CMA -- Capital Markets Authority securities framework |
+
+```yaml
+# jurisdictions/synth-east-african-innovation/composition.yaml
+zone_name: East African Innovation Hub
+zone_id: org.momentum.mez.zone.synthetic.east-african-innovation
+jurisdiction_id: synth-east-african-innovation
+primary_jurisdiction: ke
+layers:
+  - domain: corporate_formation
+    source: ke
+  - domain: civic_code
+    source: ke
+  - domain: digital_assets
+    source: rw
+  - domain: tax
+    source: rw
+  - domain: aml_cft
+    source: ke
+  - domain: payment_rails
+    source: ke
+  - domain: licensing
+    source: tz
+  - domain: securities
+    source: ug
+```
+
+---
+
+### 20. synth-swiss-asian-bridge
+
+**Swiss-Liechtenstein-Asian Innovation Bridge**
+
+**Use case:** Cross-continental innovation corridor connecting Swiss/Liechtenstein
+regulatory excellence with Asian financial centers. Combines Switzerland's DLT Act
+and Zug Crypto Valley with Liechtenstein's TVTG, Singapore's securities framework,
+and Hong Kong's licensing. Designed for tokenization platforms and digital asset
+managers serving both European and Asian markets.
+
+| Domain | Source | Rationale |
+|---|---|---|
+| CorporateFormation | `ch` | Swiss Code of Obligations -- established corporate formation, FINMA supervised |
+| CivicCode | `li` | Liechtenstein TVTG (Token and TT Service Provider Act) -- pioneering token law |
+| DigitalAssets | `ch-zug` | Zug Crypto Valley / FINMA -- mature token classification and DLT Act |
+| Tax | `li` | Liechtenstein FMA -- 12.5% corporate, EEA/EFTA member |
+| AmlCft | `ch` | Swiss AMLA (Anti-Money Laundering Act) -- FATF member, robust framework |
+| Securities | `sg` | MAS Securities and Futures Act -- Asian securities framework |
+| Licensing | `hk` | Hong Kong SFC -- VASP licensing, established financial center |
+| DataPrivacy | `ch` | Swiss FADP (Federal Act on Data Protection) -- EU adequacy decision |
+
+```yaml
+# jurisdictions/synth-swiss-asian-bridge/composition.yaml
+zone_name: Swiss-Liechtenstein-Asian Innovation Bridge
+zone_id: org.momentum.mez.zone.synthetic.swiss-asian-bridge
+jurisdiction_id: synth-swiss-asian-bridge
+primary_jurisdiction: ch
+layers:
+  - domain: corporate_formation
+    source: ch
+  - domain: civic_code
+    source: li
+  - domain: digital_assets
+    source: ch-zug
+  - domain: tax
+    source: li
+  - domain: aml_cft
+    source: ch
+  - domain: securities
+    source: sg
+  - domain: licensing
+    source: hk
+  - domain: data_privacy
+    source: ch
+```
+
+---
+
 ## Generating Synthetic Zones
 
 ### From a composition spec
@@ -754,6 +1113,9 @@ mez zone validate jurisdictions/synth-my-zone/zone.yaml
 ```bash
 # Verify corridor connectivity between zones
 mez corridor mesh --zones pk-sifc,synth-my-zone,sg --format dot
+
+# Generate full mesh across all 209 zones (21,736 corridors)
+mez corridor mesh --all --format dot
 
 # Test receipt exchange between synthetic zone and real jurisdiction
 mez corridor test --source pk-sifc --dest synth-atlantic-fintech --receipts 10

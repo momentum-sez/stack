@@ -6,7 +6,7 @@
 #   ./deploy-zone.sh [profile] [zone-id] [jurisdiction]
 #
 # Examples:
-#   ./deploy-zone.sh sovereign-govos org.momentum.mez.zone.pk-sifc pk
+#   ./deploy-zone.sh sovereign-govos-pk org.momentum.mez.zone.pk-sifc pk
 #   ./deploy-zone.sh digital-financial-center my-zone ae-dubai-difc
 #   ./deploy-zone.sh minimal-mvp test-zone ex
 #

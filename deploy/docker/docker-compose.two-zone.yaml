@@ -15,7 +15,7 @@
 # Environment variables (with defaults for backward compatibility):
 #   ZONE_A_ZONE_ID     — Zone A identifier (default: org.momentum.mez.zone.pk-sifc)
 #   ZONE_A_JURISDICTION — Zone A jurisdiction (default: pk)
-#   ZONE_A_PROFILE      — Zone A profile (default: sovereign-govos)
+#   ZONE_A_PROFILE      — Zone A profile (default: sovereign-govos-pk)
 #   ZONE_B_ZONE_ID     — Zone B identifier (default: org.momentum.mez.zone.ae-difc)
 #   ZONE_B_JURISDICTION — Zone B jurisdiction (default: ae-difc)
 #   ZONE_B_PROFILE      — Zone B profile (default: digital-financial-center)
@@ -70,7 +70,7 @@ services:
     environment:
       MEZ_ZONE_ID: ${ZONE_A_ZONE_ID:-org.momentum.mez.zone.pk-sifc}
       MEZ_JURISDICTION: ${ZONE_A_JURISDICTION:-pk}
-      MEZ_PROFILE: ${ZONE_A_PROFILE:-sovereign-govos}
+      MEZ_PROFILE: ${ZONE_A_PROFILE:-sovereign-govos-pk}
       MEZ_HOST: "0.0.0.0"
       MEZ_PORT: "8080"
       MEZ_LOG_LEVEL: debug

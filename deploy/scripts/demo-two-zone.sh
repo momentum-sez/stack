@@ -20,7 +20,7 @@
 # Zone configuration is driven by environment variables:
 #   ZONE_A_JURISDICTION  (default: pk)
 #   ZONE_A_ZONE_ID       (default: org.momentum.mez.zone.pk-sifc)
-#   ZONE_A_PROFILE       (default: sovereign-govos)
+#   ZONE_A_PROFILE       (default: sovereign-govos-pk)
 #   ZONE_B_JURISDICTION  (default: ae-difc)
 #   ZONE_B_ZONE_ID       (default: org.momentum.mez.zone.ae-difc)
 #   ZONE_B_PROFILE       (default: digital-financial-center)
@@ -69,7 +69,7 @@ ZONE_B="http://localhost:8081"
 # Zone configuration — configurable via environment variables
 ZONE_A_JURISDICTION="${ZONE_A_JURISDICTION:-pk}"
 ZONE_A_ZONE_ID="${ZONE_A_ZONE_ID:-org.momentum.mez.zone.pk-sifc}"
-ZONE_A_PROFILE="${ZONE_A_PROFILE:-sovereign-govos}"
+ZONE_A_PROFILE="${ZONE_A_PROFILE:-sovereign-govos-pk}"
 ZONE_B_JURISDICTION="${ZONE_B_JURISDICTION:-ae-difc}"
 ZONE_B_ZONE_ID="${ZONE_B_ZONE_ID:-org.momentum.mez.zone.ae-difc}"
 ZONE_B_PROFILE="${ZONE_B_PROFILE:-digital-financial-center}"

@@ -257,10 +257,50 @@ pub fn adgm_license_types() -> Vec<LicenseTypeDefinition> {
             annual_fee: BTreeMap::new(),
             validity_period_years: None,
         },
-        lt("ae-adgm-fsra:insurance", "ADGM Insurance License", "License to underwrite insurance in ADGM", "ae-adgm-fsra", "insurance",
-           &["general_insurance", "life_insurance", "reinsurance"], None, None, None),
-        lt("ae-adgm-fsra:insurance-broker", "ADGM Insurance Broker License", "License for insurance brokerage in ADGM", "ae-adgm-fsra", "insurance",
-           &["insurance_brokerage", "insurance_advisory"], Some(("USD", "5000")), Some(("USD", "2500")), Some(1)),
+        // ADGM Insurance — FSMR 2015, PIN Rulebook
+        LicenseTypeDefinition {
+            license_type_id: "ae-adgm-fsra:insurance".to_string(),
+            name: "ADGM Insurance License".to_string(),
+            description: "License to underwrite insurance in ADGM under FSMR 2015".to_string(),
+            regulator_id: "ae-adgm-fsra".to_string(),
+            category: Some("insurance".to_string()),
+            permitted_activities: vec![
+                "general_insurance".to_string(),
+                "life_insurance".to_string(),
+                "reinsurance".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("10000000")),
+                ("solvency_margin_required".to_string(), serde_json::json!("Per ADGM PIN Rulebook Chapter 4 — Minimum Capital Requirement")),
+                ("actuarial_function_required".to_string(), serde_json::json!("Appointed actuary required per PIN Rulebook Chapter 7")),
+                ("statutory_reference".to_string(), serde_json::json!("FSMR 2015; ADGM PIN Rulebook")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("ADGM AML/CFT Rulebook")),
+            ].into_iter().collect(),
+            application_fee: BTreeMap::new(),
+            annual_fee: BTreeMap::new(),
+            validity_period_years: None,
+        },
+        // ADGM Insurance Intermediary — FSMR 2015, PIN Rulebook Chapter 7
+        LicenseTypeDefinition {
+            license_type_id: "ae-adgm-fsra:insurance-broker".to_string(),
+            name: "ADGM Insurance Broker License".to_string(),
+            description: "License for insurance brokerage in ADGM under FSMR 2015".to_string(),
+            regulator_id: "ae-adgm-fsra".to_string(),
+            category: Some("insurance".to_string()),
+            permitted_activities: vec![
+                "insurance_brokerage".to_string(),
+                "insurance_advisory".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("250000")),
+                ("professional_indemnity_insurance".to_string(), serde_json::json!("PII coverage required per PIN Rulebook Chapter 7")),
+                ("statutory_reference".to_string(), serde_json::json!("FSMR 2015; ADGM PIN Rulebook Chapter 7")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("ADGM AML/CFT Rulebook")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "5000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "2500".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
         // ADGM Asset Management — FSMR 2015, FUNDS Rulebook
         LicenseTypeDefinition {
             license_type_id: "ae-adgm-fsra:asset-management".to_string(),
@@ -283,22 +323,183 @@ pub fn adgm_license_types() -> Vec<LicenseTypeDefinition> {
             annual_fee: [("USD".to_string(), "5000".to_string())].into_iter().collect(),
             validity_period_years: Some(1),
         },
-        lt("ae-adgm-fsra:digital-asset-exchange", "ADGM Digital Asset Exchange License", "License to operate a digital asset exchange (MLP framework)", "ae-adgm-fsra", "financial",
-           &["digital_asset_exchange", "digital_asset_custody", "digital_asset_settlement", "orderbook_matching"], Some(("USD", "25000")), Some(("USD", "15000")), Some(1)),
-        lt("ae-adgm-fsra:digital-asset-custodian", "ADGM Digital Asset Custodian License", "License for digital asset custody services", "ae-adgm-fsra", "financial",
-           &["digital_asset_custody", "digital_asset_safekeeping"], Some(("USD", "15000")), Some(("USD", "10000")), Some(1)),
-        lt("ae-adgm-fsra:casp", "ADGM Crypto-Asset Service Provider License", "CASP license under ADGM Virtual Asset framework", "ae-adgm-fsra", "financial",
-           &["crypto_advisory", "crypto_brokerage", "crypto_dealing"], Some(("USD", "15000")), Some(("USD", "10000")), Some(1)),
-        lt("ae-adgm-fsra:venture-capital", "ADGM Venture Capital Manager License", "License for venture capital fund management", "ae-adgm-fsra", "financial",
-           &["venture_capital", "fund_management"], Some(("USD", "5000")), Some(("USD", "3000")), Some(1)),
-        lt("ae-adgm-fsra:crowdfunding", "ADGM Crowdfunding License", "License to operate an investment crowdfunding platform", "ae-adgm-fsra", "financial",
-           &["equity_crowdfunding", "debt_crowdfunding", "platform_operation"], Some(("USD", "10000")), Some(("USD", "5000")), Some(1)),
-        lt("ae-adgm-fsra:credit-rating", "ADGM Credit Rating Agency License", "License to provide credit rating services", "ae-adgm-fsra", "financial",
-           &["credit_rating", "rating_advisory"], Some(("USD", "10000")), Some(("USD", "5000")), Some(1)),
-        lt("ae-adgm-fsra:custody", "ADGM Custody License", "License for traditional asset custody services", "ae-adgm-fsra", "financial",
-           &["custody_services", "asset_servicing", "settlement"], Some(("USD", "10000")), Some(("USD", "5000")), Some(1)),
-        lt("ae-adgm-fsra:advisory", "ADGM Financial Advisory License", "License for financial advisory services", "ae-adgm-fsra", "financial",
-           &["investment_advisory", "financial_planning"], Some(("USD", "5000")), Some(("USD", "2500")), Some(1)),
+        // ADGM Digital Asset Exchange — FSMR 2015, Virtual Assets Framework 2023
+        LicenseTypeDefinition {
+            license_type_id: "ae-adgm-fsra:digital-asset-exchange".to_string(),
+            name: "ADGM Digital Asset Exchange License".to_string(),
+            description: "License to operate a digital asset exchange under ADGM Multilateral Trading Facility (MLP) framework".to_string(),
+            regulator_id: "ae-adgm-fsra".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "digital_asset_exchange".to_string(),
+                "digital_asset_custody".to_string(),
+                "digital_asset_settlement".to_string(),
+                "orderbook_matching".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("2000000")),
+                ("technology_governance".to_string(), serde_json::json!("ADGM Technology Governance Guidelines; cyber-resilience framework required")),
+                ("customer_asset_segregation".to_string(), serde_json::json!("Client assets must be segregated from proprietary assets at all times")),
+                ("statutory_reference".to_string(), serde_json::json!("FSMR 2015; ADGM Virtual Assets Framework 2023; MIR Rulebook")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("ADGM AML/CFT Rulebook; Virtual Asset AML provisions")),
+                ("fit_and_proper".to_string(), serde_json::json!("ADGM GEN Rulebook — Approved Persons regime")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "25000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "15000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
+        // ADGM Digital Asset Custodian — FSMR 2015, Virtual Assets Framework 2023
+        LicenseTypeDefinition {
+            license_type_id: "ae-adgm-fsra:digital-asset-custodian".to_string(),
+            name: "ADGM Digital Asset Custodian License".to_string(),
+            description: "License for digital asset custody services in ADGM".to_string(),
+            regulator_id: "ae-adgm-fsra".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "digital_asset_custody".to_string(),
+                "digital_asset_safekeeping".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("500000")),
+                ("custody_technology_requirements".to_string(), serde_json::json!("Cold storage for majority of client assets; multi-signature controls; disaster recovery")),
+                ("insurance_or_reserve".to_string(), serde_json::json!("Insurance coverage or equivalent reserve for client asset loss")),
+                ("statutory_reference".to_string(), serde_json::json!("FSMR 2015; ADGM Virtual Assets Framework 2023; COBS Rulebook")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("ADGM AML/CFT Rulebook")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "15000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "10000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
+        // ADGM CASP — FSMR 2015, Virtual Assets Framework 2023
+        LicenseTypeDefinition {
+            license_type_id: "ae-adgm-fsra:casp".to_string(),
+            name: "ADGM Crypto-Asset Service Provider License".to_string(),
+            description: "CASP license under ADGM Virtual Asset framework for advisory, brokerage, and dealing".to_string(),
+            regulator_id: "ae-adgm-fsra".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "crypto_advisory".to_string(),
+                "crypto_brokerage".to_string(),
+                "crypto_dealing".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("150000")),
+                ("expenditure_requirement".to_string(), serde_json::json!("6 months of annual audited expenditure")),
+                ("statutory_reference".to_string(), serde_json::json!("FSMR 2015; ADGM Virtual Assets Framework 2023")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("ADGM AML/CFT Rulebook; FATF Travel Rule compliance")),
+                ("fit_and_proper".to_string(), serde_json::json!("ADGM GEN Rulebook — Approved Persons regime")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "15000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "10000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
+        // ADGM Venture Capital Manager — FSMR 2015, FUNDS Rulebook
+        LicenseTypeDefinition {
+            license_type_id: "ae-adgm-fsra:venture-capital".to_string(),
+            name: "ADGM Venture Capital Manager License".to_string(),
+            description: "License for venture capital fund management under ADGM VC Manager regime".to_string(),
+            regulator_id: "ae-adgm-fsra".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "venture_capital".to_string(),
+                "fund_management".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("50000")),
+                ("aum_cap_usd".to_string(), serde_json::json!("Per ADGM VC Manager regime; reduced requirements for qualifying VC funds")),
+                ("statutory_reference".to_string(), serde_json::json!("FSMR 2015; ADGM FUNDS Rulebook; VC Manager regime")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("ADGM AML/CFT Rulebook")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "5000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "3000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
+        // ADGM Crowdfunding — FSMR 2015, COBS Rulebook
+        LicenseTypeDefinition {
+            license_type_id: "ae-adgm-fsra:crowdfunding".to_string(),
+            name: "ADGM Crowdfunding License".to_string(),
+            description: "License to operate an investment crowdfunding platform in ADGM".to_string(),
+            regulator_id: "ae-adgm-fsra".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "equity_crowdfunding".to_string(),
+                "debt_crowdfunding".to_string(),
+                "platform_operation".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("250000")),
+                ("investor_limits".to_string(), serde_json::json!("Retail investor per-offering cap per COBS Rulebook")),
+                ("statutory_reference".to_string(), serde_json::json!("FSMR 2015; ADGM COBS Rulebook — Crowdfunding provisions")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("ADGM AML/CFT Rulebook")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "10000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "5000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
+        // ADGM Credit Rating Agency — FSMR 2015
+        LicenseTypeDefinition {
+            license_type_id: "ae-adgm-fsra:credit-rating".to_string(),
+            name: "ADGM Credit Rating Agency License".to_string(),
+            description: "License to provide credit rating services in ADGM".to_string(),
+            regulator_id: "ae-adgm-fsra".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "credit_rating".to_string(),
+                "rating_advisory".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("250000")),
+                ("independence_requirements".to_string(), serde_json::json!("Conflicts of interest policy; analytical independence")),
+                ("statutory_reference".to_string(), serde_json::json!("FSMR 2015; ADGM COBS Rulebook")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("ADGM AML/CFT Rulebook")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "10000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "5000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
+        // ADGM Custody — FSMR 2015, PRU Rulebook
+        LicenseTypeDefinition {
+            license_type_id: "ae-adgm-fsra:custody".to_string(),
+            name: "ADGM Custody License".to_string(),
+            description: "License for traditional asset custody services in ADGM".to_string(),
+            regulator_id: "ae-adgm-fsra".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "custody_services".to_string(),
+                "asset_servicing".to_string(),
+                "settlement".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("500000")),
+                ("client_asset_segregation".to_string(), serde_json::json!("Client assets segregated from proprietary; third-party reconciliation")),
+                ("statutory_reference".to_string(), serde_json::json!("FSMR 2015; ADGM PRU Rulebook; COBS Rulebook — Safe Custody provisions")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("ADGM AML/CFT Rulebook")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "10000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "5000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
+        // ADGM Financial Advisory — FSMR 2015 Category 4
+        LicenseTypeDefinition {
+            license_type_id: "ae-adgm-fsra:advisory".to_string(),
+            name: "ADGM Financial Advisory License".to_string(),
+            description: "License for financial advisory services in ADGM (Category 4)".to_string(),
+            regulator_id: "ae-adgm-fsra".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "investment_advisory".to_string(),
+                "financial_planning".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("10000")),
+                ("professional_indemnity_insurance".to_string(), serde_json::json!("PII coverage required; minimum per ADGM PRU Rulebook")),
+                ("statutory_reference".to_string(), serde_json::json!("FSMR 2015; ADGM PRU Rulebook Chapter 4 — Category 4")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("ADGM AML/CFT Rulebook")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "5000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "2500".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
     ]
 }
 
@@ -343,10 +544,50 @@ pub fn difc_license_types() -> Vec<LicenseTypeDefinition> {
             annual_fee: BTreeMap::new(),
             validity_period_years: None,
         },
-        lt("ae-difc-dfsa:insurance", "DIFC Insurance License", "License to underwrite insurance in DIFC", "ae-difc-dfsa", "insurance",
-           &["general_insurance", "life_insurance", "reinsurance"], None, None, None),
-        lt("ae-difc-dfsa:insurance-broker", "DIFC Insurance Intermediary License", "License for insurance brokerage in DIFC", "ae-difc-dfsa", "insurance",
-           &["insurance_brokerage", "insurance_advisory"], Some(("USD", "5000")), Some(("USD", "3000")), Some(1)),
+        // DFSA Insurance — DFSA Regulatory Law 2004, PIB Module
+        LicenseTypeDefinition {
+            license_type_id: "ae-difc-dfsa:insurance".to_string(),
+            name: "DIFC Insurance License".to_string(),
+            description: "License to underwrite insurance in DIFC under DFSA Regulatory Law 2004".to_string(),
+            regulator_id: "ae-difc-dfsa".to_string(),
+            category: Some("insurance".to_string()),
+            permitted_activities: vec![
+                "general_insurance".to_string(),
+                "life_insurance".to_string(),
+                "reinsurance".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("10000000")),
+                ("solvency_margin_required".to_string(), serde_json::json!("Per DFSA PIB Module Chapter 5 — Minimum Capital Requirement")),
+                ("actuarial_function_required".to_string(), serde_json::json!("Appointed actuary required per DFSA PIN Module")),
+                ("statutory_reference".to_string(), serde_json::json!("DFSA Regulatory Law 2004; PIB Module; PIN Module")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("DFSA AML Module")),
+            ].into_iter().collect(),
+            application_fee: BTreeMap::new(),
+            annual_fee: BTreeMap::new(),
+            validity_period_years: None,
+        },
+        // DFSA Insurance Intermediary — DFSA PIB Module
+        LicenseTypeDefinition {
+            license_type_id: "ae-difc-dfsa:insurance-broker".to_string(),
+            name: "DIFC Insurance Intermediary License".to_string(),
+            description: "License for insurance brokerage in DIFC".to_string(),
+            regulator_id: "ae-difc-dfsa".to_string(),
+            category: Some("insurance".to_string()),
+            permitted_activities: vec![
+                "insurance_brokerage".to_string(),
+                "insurance_advisory".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("100000")),
+                ("professional_indemnity_insurance".to_string(), serde_json::json!("PII coverage required per DFSA PIB Module")),
+                ("statutory_reference".to_string(), serde_json::json!("DFSA Regulatory Law 2004; PIB Module")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("DFSA AML Module")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "5000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "3000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
         // DFSA Category 3A — Asset Management
         LicenseTypeDefinition {
             license_type_id: "ae-difc-dfsa:asset-management".to_string(),
@@ -389,18 +630,135 @@ pub fn difc_license_types() -> Vec<LicenseTypeDefinition> {
             annual_fee: [("USD".to_string(), "5000".to_string())].into_iter().collect(),
             validity_period_years: Some(1),
         },
-        lt("ae-difc-dfsa:digital-asset-exchange", "DIFC Digital Asset Exchange License", "License to operate a digital asset trading facility", "ae-difc-dfsa", "financial",
-           &["digital_asset_exchange", "digital_asset_custody", "orderbook_matching"], Some(("USD", "20000")), Some(("USD", "15000")), Some(1)),
-        lt("ae-difc-dfsa:digital-asset-custodian", "DIFC Digital Asset Custodian", "License for digital asset custody in DIFC", "ae-difc-dfsa", "financial",
-           &["digital_asset_custody", "digital_asset_safekeeping"], Some(("USD", "15000")), Some(("USD", "10000")), Some(1)),
-        lt("ae-difc-dfsa:crowdfunding", "DIFC Crowdfunding License", "License to operate a crowdfunding platform", "ae-difc-dfsa", "financial",
-           &["equity_crowdfunding", "debt_crowdfunding"], Some(("USD", "10000")), Some(("USD", "5000")), Some(1)),
-        lt("ae-difc-dfsa:credit-rating", "DIFC Credit Rating Agency License", "License for credit rating services", "ae-difc-dfsa", "financial",
-           &["credit_rating", "rating_advisory"], Some(("USD", "10000")), Some(("USD", "5000")), Some(1)),
-        lt("ae-difc-dfsa:money-services", "DIFC Money Services License", "License for money transfer/exchange services", "ae-difc-dfsa", "financial",
-           &["money_transmission", "currency_exchange"], Some(("USD", "10000")), Some(("USD", "5000")), Some(1)),
-        lt("ae-difc-dfsa:custody", "DIFC Custody License", "License for custody services in DIFC", "ae-difc-dfsa", "financial",
-           &["custody_services", "asset_servicing"], Some(("USD", "10000")), Some(("USD", "5000")), Some(1)),
+        // DFSA Digital Asset Exchange — DFSA Investment Token Framework
+        LicenseTypeDefinition {
+            license_type_id: "ae-difc-dfsa:digital-asset-exchange".to_string(),
+            name: "DIFC Digital Asset Exchange License".to_string(),
+            description: "License to operate a digital asset trading facility under DFSA Investment Token Framework".to_string(),
+            regulator_id: "ae-difc-dfsa".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "digital_asset_exchange".to_string(),
+                "digital_asset_custody".to_string(),
+                "orderbook_matching".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("2000000")),
+                ("technology_governance".to_string(), serde_json::json!("DFSA Technology Governance Module; cyber-resilience framework")),
+                ("customer_asset_segregation".to_string(), serde_json::json!("Client digital assets segregated from proprietary holdings")),
+                ("statutory_reference".to_string(), serde_json::json!("DFSA Regulatory Law 2004; Investment Token Framework; AMI Module")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("DFSA AML Module")),
+                ("fit_and_proper".to_string(), serde_json::json!("DFSA GEN Module — Authorised Individual regime")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "20000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "15000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
+        // DFSA Digital Asset Custodian
+        LicenseTypeDefinition {
+            license_type_id: "ae-difc-dfsa:digital-asset-custodian".to_string(),
+            name: "DIFC Digital Asset Custodian".to_string(),
+            description: "License for digital asset custody in DIFC".to_string(),
+            regulator_id: "ae-difc-dfsa".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "digital_asset_custody".to_string(),
+                "digital_asset_safekeeping".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("500000")),
+                ("custody_technology_requirements".to_string(), serde_json::json!("Cold storage for client assets; multi-signature controls")),
+                ("insurance_or_reserve".to_string(), serde_json::json!("Insurance coverage or equivalent reserve for client asset loss")),
+                ("statutory_reference".to_string(), serde_json::json!("DFSA Regulatory Law 2004; Investment Token Framework; COBS Module")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("DFSA AML Module")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "15000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "10000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
+        // DFSA Crowdfunding — DFSA Regulatory Law 2004
+        LicenseTypeDefinition {
+            license_type_id: "ae-difc-dfsa:crowdfunding".to_string(),
+            name: "DIFC Crowdfunding License".to_string(),
+            description: "License to operate a crowdfunding platform in DIFC".to_string(),
+            regulator_id: "ae-difc-dfsa".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "equity_crowdfunding".to_string(),
+                "debt_crowdfunding".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("140000")),
+                ("investor_limits".to_string(), serde_json::json!("Retail investor per-offering cap per DFSA COB Module")),
+                ("statutory_reference".to_string(), serde_json::json!("DFSA Regulatory Law 2004; COB Module — Crowdfunding provisions")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("DFSA AML Module")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "10000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "5000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
+        // DFSA Credit Rating Agency
+        LicenseTypeDefinition {
+            license_type_id: "ae-difc-dfsa:credit-rating".to_string(),
+            name: "DIFC Credit Rating Agency License".to_string(),
+            description: "License for credit rating services in DIFC".to_string(),
+            regulator_id: "ae-difc-dfsa".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "credit_rating".to_string(),
+                "rating_advisory".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("250000")),
+                ("independence_requirements".to_string(), serde_json::json!("Conflicts of interest policy required per DFSA COB Module")),
+                ("statutory_reference".to_string(), serde_json::json!("DFSA Regulatory Law 2004; COB Module")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("DFSA AML Module")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "10000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "5000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
+        // DFSA Money Services — DFSA Regulatory Law 2004
+        LicenseTypeDefinition {
+            license_type_id: "ae-difc-dfsa:money-services".to_string(),
+            name: "DIFC Money Services License".to_string(),
+            description: "License for money transfer/exchange services in DIFC".to_string(),
+            regulator_id: "ae-difc-dfsa".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "money_transmission".to_string(),
+                "currency_exchange".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("140000")),
+                ("statutory_reference".to_string(), serde_json::json!("DFSA Regulatory Law 2004; PIB Module")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("DFSA AML Module")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "10000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "5000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
+        // DFSA Custody — DFSA PIB Module
+        LicenseTypeDefinition {
+            license_type_id: "ae-difc-dfsa:custody".to_string(),
+            name: "DIFC Custody License".to_string(),
+            description: "License for custody services in DIFC".to_string(),
+            regulator_id: "ae-difc-dfsa".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "custody_services".to_string(),
+                "asset_servicing".to_string(),
+            ],
+            requirements: [
+                ("minimum_base_capital_usd".to_string(), serde_json::json!("500000")),
+                ("client_asset_segregation".to_string(), serde_json::json!("Client assets segregated per DFSA COBS Module — Safe Custody")),
+                ("statutory_reference".to_string(), serde_json::json!("DFSA Regulatory Law 2004; PIB Module; COBS Module")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("DFSA AML Module")),
+            ].into_iter().collect(),
+            application_fee: [("USD".to_string(), "10000".to_string())].into_iter().collect(),
+            annual_fee: [("USD".to_string(), "5000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
     ]
 }
 
@@ -418,8 +776,28 @@ pub fn dmcc_license_types() -> Vec<LicenseTypeDefinition> {
            &["gold_trading", "silver_trading", "precious_metals_refining"], Some(("AED", "25000")), Some(("AED", "20000")), Some(1)),
         lt("ae-dmcc:diamond-trading", "DMCC Diamond Trading License", "License for diamond trading in DMCC", "ae-dmcc", "trade",
            &["diamond_trading", "gemstone_trading"], Some(("AED", "25000")), Some(("AED", "20000")), Some(1)),
-        lt("ae-dmcc:casp", "DMCC Crypto-Asset Service Provider License", "License for crypto-asset services in DMCC", "ae-dmcc", "financial",
-           &["crypto_exchange", "crypto_custody", "crypto_advisory"], Some(("AED", "50000")), Some(("AED", "30000")), Some(1)),
+        // DMCC CASP — DMCC Crypto Centre Regulations
+        LicenseTypeDefinition {
+            license_type_id: "ae-dmcc:casp".to_string(),
+            name: "DMCC Crypto-Asset Service Provider License".to_string(),
+            description: "License for crypto-asset services under DMCC Crypto Centre regulations".to_string(),
+            regulator_id: "ae-dmcc".to_string(),
+            category: Some("financial".to_string()),
+            permitted_activities: vec![
+                "crypto_exchange".to_string(),
+                "crypto_custody".to_string(),
+                "crypto_advisory".to_string(),
+            ],
+            requirements: [
+                ("minimum_share_capital_aed".to_string(), serde_json::json!("50000")),
+                ("compliance_officer_required".to_string(), serde_json::json!("Designated MLRO and compliance officer")),
+                ("statutory_reference".to_string(), serde_json::json!("DMCC Crypto Centre Regulations 2022; DMCC Authority Regulations")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("Federal Decree-Law No. 20/2018; DMCC AML/CFT provisions")),
+            ].into_iter().collect(),
+            application_fee: [("AED".to_string(), "50000".to_string())].into_iter().collect(),
+            annual_fee: [("AED".to_string(), "30000".to_string())].into_iter().collect(),
+            validity_period_years: Some(1),
+        },
     ]
 }
 
@@ -666,6 +1044,7 @@ mod tests {
     #[test]
     fn financial_license_types_have_requirements() {
         let key_ids = [
+            // Federal
             "ae-cbuae:commercial-bank",
             "ae-cbuae:islamic-bank",
             "ae-cbuae:exchange-house",
@@ -673,11 +1052,33 @@ mod tests {
             "ae-cbuae:insurance",
             "ae-sca:securities-broker",
             "ae-sca:fund-manager",
+            // ADGM
             "ae-adgm-fsra:banking",
+            "ae-adgm-fsra:insurance",
+            "ae-adgm-fsra:insurance-broker",
             "ae-adgm-fsra:asset-management",
+            "ae-adgm-fsra:digital-asset-exchange",
+            "ae-adgm-fsra:digital-asset-custodian",
+            "ae-adgm-fsra:casp",
+            "ae-adgm-fsra:venture-capital",
+            "ae-adgm-fsra:crowdfunding",
+            "ae-adgm-fsra:credit-rating",
+            "ae-adgm-fsra:custody",
+            "ae-adgm-fsra:advisory",
+            // DIFC
             "ae-difc-dfsa:banking",
+            "ae-difc-dfsa:insurance",
+            "ae-difc-dfsa:insurance-broker",
             "ae-difc-dfsa:asset-management",
             "ae-difc-dfsa:securities-broker",
+            "ae-difc-dfsa:digital-asset-exchange",
+            "ae-difc-dfsa:digital-asset-custodian",
+            "ae-difc-dfsa:crowdfunding",
+            "ae-difc-dfsa:credit-rating",
+            "ae-difc-dfsa:money-services",
+            "ae-difc-dfsa:custody",
+            // DMCC
+            "ae-dmcc:casp",
         ];
         let all = uae_license_types();
         for id in &key_ids {
@@ -685,5 +1086,33 @@ mod tests {
                 .unwrap_or_else(|| panic!("missing license type: {id}"));
             assert!(!lt.requirements.is_empty(), "{id} should have non-empty requirements");
         }
+    }
+
+    #[test]
+    fn adgm_digital_asset_exchange_has_capital_requirements() {
+        let types = adgm_license_types();
+        let dax = types.iter().find(|t| t.license_type_id == "ae-adgm-fsra:digital-asset-exchange")
+            .expect("missing ADGM digital asset exchange");
+        assert!(dax.requirements.contains_key("minimum_base_capital_usd"), "missing capital req");
+        assert_eq!(dax.requirements["minimum_base_capital_usd"], serde_json::json!("2000000"));
+        assert!(dax.requirements.contains_key("customer_asset_segregation"), "missing segregation req");
+    }
+
+    #[test]
+    fn difc_insurance_has_capital_requirements() {
+        let types = difc_license_types();
+        let ins = types.iter().find(|t| t.license_type_id == "ae-difc-dfsa:insurance")
+            .expect("missing DIFC insurance");
+        assert!(ins.requirements.contains_key("minimum_base_capital_usd"), "missing capital req");
+        assert_eq!(ins.requirements["minimum_base_capital_usd"], serde_json::json!("10000000"));
+    }
+
+    #[test]
+    fn dmcc_casp_has_requirements() {
+        let types = dmcc_license_types();
+        let casp = types.iter().find(|t| t.license_type_id == "ae-dmcc:casp")
+            .expect("missing DMCC CASP");
+        assert!(!casp.requirements.is_empty(), "DMCC CASP should have requirements");
+        assert!(casp.requirements.contains_key("aml_cft_program_required"), "missing AML/CFT");
     }
 }

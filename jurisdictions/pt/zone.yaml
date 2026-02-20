@@ -1,9 +1,18 @@
+# Zone Manifest: Portugal
+#
+# Portugal zone.
+# BdP + CMVM framework; EU MiCA.
+# Historically crypto-tax-friendly (NHR regime); Lisbon fintech hub.
+#
+# jurisdiction_stack: pt
+
 zone_id: org.momentum.mez.zone.pt
 jurisdiction_id: pt
 zone_name: Portugal
+
 profile:
-  profile_id: org.momentum.mez.profile.sovereign-nation
-  version: 0.4.44
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
 
 jurisdiction_stack:
   - pt
@@ -12,16 +21,36 @@ lawpack_domains:
   - civil
   - financial
 
-overlays: []
-params_overrides: {}
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
 
+national_adapters:
+  bde_pt:
+    enabled: false
+    endpoint: "${BDE_PT_URL:-}"
+  cmvm:
+    enabled: false
+    endpoint: "${CMVM_URL:-}"
+  at_pt:
+    enabled: false
+    endpoint: "${AT_PT_URL:-}"
+
 trust_anchors: []
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

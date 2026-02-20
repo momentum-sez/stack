@@ -1,9 +1,18 @@
+# Zone Manifest: Zanzibar
+#
+# Zanzibar zone.
+# Semi-autonomous within Tanzania; own revenue authority.
+# Zanzibar Investment Promotion Authority.
+#
+# jurisdiction_stack: tz > tz-zanzibar
+
 zone_id: org.momentum.mez.zone.tz.zanzibar
 jurisdiction_id: tz-zanzibar
 zone_name: Zanzibar
+
 profile:
-  profile_id: org.momentum.mez.profile.semi-autonomous-region
-  version: 0.4.44
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
 
 jurisdiction_stack:
   - tz
@@ -13,16 +22,31 @@ lawpack_domains:
   - civil
   - financial
 
-overlays: []
-params_overrides: {}
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
 
+national_adapters:
+  zrb:
+    enabled: false
+    endpoint: "${ZRB_URL:-}"
+  bot_tz:
+    enabled: false
+    endpoint: "${BOT_TZ_URL:-}"
+
 trust_anchors: []
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

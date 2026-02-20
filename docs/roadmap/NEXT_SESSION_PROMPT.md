@@ -1,135 +1,81 @@
-# Next Session Prompt: Complete Network Topology
+# Next Session: Trade Corridor Instruments — Live Runtime
 
-The following is a Claude Code session prompt designed for Opus 4.6.
-Copy everything below the `---` line into a new "Ask Claude to write code..." session.
+Copy everything below the `---` line into "Ask Claude to write code..."
 
 ---
 
-Complete Network Topology — All N Natural Zones + All M Synthetic Zones → Full N×(N-1)/2 Autonomous Corridor Mesh
+Build the Trade Corridor Instruments runtime. The entire spec layer exists — 5 document schemas, 10 transition payload schemas, 10 rulesets, 10 registered transition types with CAS digests, 5 module descriptors. Zero Rust implementation. Wire trade flows as first-class corridor operations: schema-validated, receipt-chained, compliance-gated, settlement-integrated, cross-zone-propagated, Postgres-persisted.
 
-Read CLAUDE.md for full audit context. Then read these files before writing any code:
-- `docs/roadmap/AWS_OF_ECONOMIC_ZONES.md` — strategic framing
-- `docs/roadmap/SYNTHETIC_ZONE_CATALOG.md` — 12 cataloged synthetic compositions (zones 3-12 have exact `composition.yaml` specs ready to materialize)
-- `docs/roadmap/JURISDICTION_COVERAGE_MATRIX.md` — tiering system and expansion targets
-- `jurisdictions/pk-sifc/zone.yaml` — gold standard natural zone manifest (116 lines, full vertical)
-- `jurisdictions/ae-dubai-difc/zone.yaml` — gold standard Tier 2 free zone manifest (80 lines)
-- `jurisdictions/synth-atlantic-fintech/zone.yaml` — gold standard synthetic zone manifest (106 lines)
-- `jurisdictions/br/zone.yaml` — example of what a 28-line scaffold looks like (this is what needs enrichment)
-- `mez/crates/mez-corridor/src/composition.rs` — zone composition algebra (10 regulatory domains, validation rules)
-- `mez/crates/mez-corridor/src/registry.rs` — corridor registry (N×(N-1)/2 pairwise generation, DOT output, mesh stats, `classify_corridor()`)
-- `mez/crates/mez-cli/src/compose.rs` — synthetic zone generator
-- `mez/crates/mez-cli/src/main.rs` — CLI command dispatch
+Read CLAUDE.md. Then read these files before writing any code:
 
-## Current State (precise inventory)
+Specification (the source of truth — do not modify):
+- `schemas/trade.invoice.v1.schema.json` — invoice shape
+- `schemas/trade.bill-of-lading.v1.schema.json` — BOL shape
+- `schemas/trade.letter-of-credit.v1.schema.json` — LC shape
+- `schemas/trade.party.v1.schema.json` — party shape
+- `schemas/trade.amount.v1.schema.json` — amount shape (decimal string, never float)
+- `schemas/transition.payload.trade.invoice.{issue,accept,settle}.v1.schema.json` — invoice transition payloads
+- `schemas/transition.payload.trade.bol.{issue,endorse,release}.v1.schema.json` — BOL transition payloads
+- `schemas/transition.payload.trade.lc.{issue,amend,present,honor}.v1.schema.json` — LC transition payloads
+- `rulesets/mez.transition.trade.*.v1.json` — 10 validation profiles
+- `registries/transition-types.yaml` — trade entries (lines 39-131) with CAS digests
+- `modules/trade/module.yaml` — trade module family, compliance domains
 
-102 jurisdiction directories exist. 22 have enriched zone manifests. 80 are 28-line scaffolds.
+Implementation patterns (read to absorb the architecture):
+- `mez/crates/mez-corridor/src/receipt.rs` — how transitions become corridor receipts
+- `mez/crates/mez-corridor/src/netting.rs` — settlement netting engine (Obligation, Party, NettingPlan)
+- `mez/crates/mez-corridor/src/network.rs` — inter-zone peer exchange protocol
+- `mez/crates/mez-corridor/src/lib.rs` — crate module structure
+- `mez/crates/mez-core/src/canonical.rs` — CanonicalBytes: all digests via SHA256(JCS)
+- `mez/crates/mez-schema/src/validate.rs` — SchemaValidator for runtime Draft 2020-12 validation
+- `mez/crates/mez-api/src/orchestration.rs` — evaluate_compliance, check_hard_blocks, issue_compliance_vc, store_attestation, OrchestrationEnvelope
+- `mez/crates/mez-api/src/routes/corridors.rs` — corridor API pattern (style reference for trade endpoints)
+- `mez/crates/mez-api/src/routes/sovereign_ops.rs` — sovereign operation functions
+- `mez/crates/mez-api/src/state.rs` — AppState, Store<T>, hydrate_from_db pattern
+- `mez/crates/mez-api/src/db/mass_primitives.rs` — Postgres persistence: save_*, load_all_*
+- `mez/crates/mez-api/src/db/audit.rs` — AuditEvent and append()
+- `mez/crates/mez-api/src/auth.rs` — CallerIdentity, Role, require_role, RBAC
+- `mez/crates/mez-api/src/lib.rs` — router composition
+- `mez/crates/mez-api/migrations/` — SQL migration naming convention
 
-| Category | Count | Content level |
-|---|---|---|
-| Tier 1 (pk-sifc, ae-abudhabi-adgm, sg, hk, ky) | 5 | Full: regpack digests, national adapters, compliance domains, profiles |
-| Tier 2 UAE (ae, ae-abudhabi, ae-dubai, 12 sub-zones) | 15 | Wired: ae federal regpack digests, compliance domains, adapter stubs |
-| Tier 2 Synthetic (synth-atlantic-fintech, synth-pacific-trade) | 2 | Full: composition + merged regpacks + profile |
-| Scaffold (57 US states/territories, 5 China, br, eg, hn-prospera, id, ie, ke, kz, kz-aifc, kz-alatau, pt, qa, qa-qfc, sc, tz, tz-zanzibar, vg, za) | ~80 | Bare: 28 lines, jurisdiction_stack only, no compliance_domains, no regpacks, no adapters |
-| Missing directories (Tier 3/4 in coverage matrix but no dir exists) | ~60 | Nothing: bh, de, gb, nl, se, dk, fi, no, mu, ng, rw, pa, uy, cl, co, mx, my, sa, jp, kr, in-gift, in-ifsc, etc. |
-| Unbuilt synthetic (cataloged zones 3-12 in SYNTHETIC_ZONE_CATALOG.md) | 10 | Specs exist in doc, no directories |
+What to build (6 deliverables):
 
-Regpack builders: 6 (pakistan.rs, uae.rs, singapore.rs, hong_kong.rs, cayman.rs in `mez/crates/mez-pack/src/regpack/`).
-National adapter implementations: 12 (PK 4, AE 4, SG 4).
-Profiles: 12 (including 2 synthetic).
+1. Trade types and flow state machine in `mez/crates/mez-corridor/src/trade.rs`. Derive Rust structs from the 5 document schemas — field names match schema properties exactly, required fields are non-Option, optional fields are Option<T>. TradeAmount uses String for value (decimal, never f64). Build TradeTransitionPayload as a tagged enum with one variant per transition payload schema. Build TradeFlowState enum and TradeFlowType enum (Export, Import, LetterOfCredit, OpenAccount). Implement validate_transition(flow_type, current_state, transition_kind) -> Result<TradeFlowState, TradeError> as a match table encoding valid state orderings per archetype. Implement compute_trade_document_digest using CanonicalBytes + SHA256. Unit tests: full lifecycle per archetype, invalid transition rejection, serde roundtrip, digest determinism.
 
-## Target State — The Complete Graph
+2. Trade flow manager in `mez/crates/mez-corridor/src/trade_manager.rs`. TradeFlowRecord with flow_id, corridor_id, flow_type, state, seller, buyer, transitions vec, timestamps. TradeFlowManager with create_flow, submit_transition, get_flow, list_flows. submit_transition validates the transition, extracts embedded documents, computes their content digests, records the transition, advances state. No orchestration concern here — that belongs in the API layer.
 
-When done, every zone in the repository is a deployable node in a fully connected corridor mesh. Every pair of zones has an autonomous corridor. The "AWS of Economic Zones" thesis is demonstrated at scale.
+3. Trade API endpoints in `mez/crates/mez-api/src/routes/trade.rs`. Five endpoints: POST /v1/trade/flows (create), GET /v1/trade/flows (list), GET /v1/trade/flows/:flow_id (get), POST /v1/trade/flows/:flow_id/transitions (submit), GET /v1/trade/flows/:flow_id/transitions (list transitions). Every write handler follows the existing orchestration pattern: pre-flight compliance evaluation via evaluate_compliance → hard-block check → execute trade operation → issue compliance VC → store attestation → append audit event. RBAC: zone_admin and regulator can list all flows; entity_operator can only access flows where they are seller or buyer. Add orchestrate_trade_transition() to orchestration.rs following the existing orchestrate_entity_creation pattern. Wire trade::router() into the main router in lib.rs.
 
-Measurable completion criteria:
+4. AppState wiring and Postgres persistence. Add trade_flows: Store<TradeFlowRecord> to AppState. Add db/trade.rs with save_trade_flow, save_trade_transition, load_all_trade_flows, load_transitions_for_flow following the mass_primitives.rs pattern. Add migration 20260221000001_trade_flow_tables.sql with trade_flows and trade_transitions tables. Hydrate trade flows from DB on startup in hydrate_from_db.
 
-1. **Zero scaffold manifests remain.** Every `jurisdictions/*/zone.yaml` has: `compliance_domains`, `key_management`, `trust_anchors`, appropriate `national_adapters` stub block, and either real `regpacks` digests (when parent jurisdiction has a builder) or no regpacks block (with `# Regpack builder needed` comment).
+5. Integration tests in a new test file. Full export lifecycle test (create → 7 transitions → settled → verify history → reject post-settlement transition). Full LC lifecycle test. Invalid transition rejection test. Document digest determinism test. Use tower::ServiceExt::oneshot — match the test infrastructure pattern in existing integration tests. Every test creates its own AppState, builds the router, exercises the HTTP endpoints end-to-end.
 
-2. **All 12 cataloged synthetic zones materialized.** Each has `jurisdictions/synth-{id}/composition.yaml`, `jurisdictions/synth-{id}/zone.yaml`, `profiles/synthetic-synth-{id}/profile.yaml`.
+6. Update CLAUDE.md Section 5 with Phase H (Trade Corridor Instruments). Update Section 9 coverage matrix.
 
-3. **8+ new synthetic zone compositions created beyond the catalog.** Each targets a distinct economic corridor or regional use case not already covered by zones 1-12. Design principles below.
+Invariants (these are non-negotiable):
 
-4. **All source jurisdictions for all synthetic compositions have directories.** The catalog's zones 3-12 reference ~20 jurisdictions that currently lack directories (bh, de, gb, nl, se, dk, fi, no, mu, ng, rw, pa, uy, cl, co, mx, my, sa, etc.). These must exist before synthetic zones can reference them.
+- I-CANON: All trade document digests computed via SHA256(CanonicalBytes). No exceptions.
+- Amounts are TradeAmount { currency: String, value: String } where value matches ^[0-9]+(\.[0-9]{1,18})?$. Never f64.
+- Dates: String for date fields (YYYY-MM-DD), DateTime<Utc> for date-time fields.
+- additionalProperties: false is set on all trade schemas. Rust struct fields match schema properties exactly.
+- State transitions validated at runtime per archetype. Invalid transitions return TradeError, never panic.
+- Audit trail appends are fire-and-forget (let _ = ... .await;). Never block response on audit.
+- No unsafe. No unwrap() in non-test code.
 
-5. **All Tier 3/4 jurisdictions from the coverage matrix have directories with enriched manifests.**
+Constraints:
 
-6. **Full corridor mesh integration test.** Registers every zone, generates N×(N-1)/2 corridors, asserts completeness.
+- Do NOT modify existing schemas, rulesets, registries, or transition-types.yaml.
+- Do NOT modify receipt.rs, canonical.rs, or mez-core.
+- Do NOT modify existing orchestration functions — only add orchestrate_trade_transition().
+- Do NOT add new compliance tensor domains. Trade evaluates: aml, kyc, sanctions, tax.
+- Do NOT use TypeState for trade flows. Use runtime state enum — trade states vary by archetype.
+- Preserve all existing tests. Run cargo test --workspace before each commit.
 
-7. **`mez corridor mesh --all` CLI command.** Discovers all `jurisdictions/*/zone.yaml`, registers zones, generates mesh, outputs stats + optional DOT/JSON.
+Commit structure:
 
-8. **Updated docs.** `JURISDICTION_COVERAGE_MATRIX.md` reflects new state. `SYNTHETIC_ZONE_CATALOG.md` includes new compositions. New `docs/roadmap/CORRIDOR_MESH_TOPOLOGY.md` documents the complete mesh with statistics by corridor type.
+1. `feat: trade document types and flow state machine` — trade.rs, trade_manager.rs, unit tests in mez-corridor
+2. `feat: trade flow API endpoints with full orchestration pipeline` — routes/trade.rs, db/trade.rs, migration SQL, AppState wiring, orchestration.rs addition
+3. `feat: end-to-end trade flow integration tests` — lifecycle tests for export, LC, negative cases, digest determinism
+4. `docs: update CLAUDE.md with Phase H trade corridor instruments` — sections 5 and 9
 
-## Zone Manifest Enrichment Spec
-
-Transform every scaffold from 28 lines to a deployable zone manifest. Use `ae-dubai-difc/zone.yaml` as the structural template for enrichment. Every enriched manifest must contain:
-
-- **profile**: Assign by zone character. `sovereign-govos` for nation-states with regulatory authority. `digital-financial-center` for financial centers and free zones (DIFC, ADGM, GIFT City, Labuan, QFC, etc.). `charter-city` for charter cities and special zones (hn-prospera, sa-neom). `minimal-mvp` for early-stage and emerging jurisdictions.
-- **lawpack_domains**: `[civil, financial]` minimum. Add `tax`, `aml` for jurisdictions with real regulatory frameworks.
-- **licensepack_domains**: `[financial, corporate]` for financial centers. Omit for pure nation-state scaffolds without licensing frameworks.
-- **licensepack_refresh_policy**: Include when licensepack_domains present. Use the ae-dubai-difc pattern.
-- **regpacks**: For zones whose root country has a builder (pk→pk, ae→ae, sg→sg, hk→hk, ky→ky), reference the parent's real SHA-256 digests. For all others, omit the block entirely.
-- **compliance_domains**: Minimum `[aml, kyc, sanctions, tax, corporate, licensing]`. Financial centers and free zones add `[securities, data_privacy, consumer_protection]`.
-- **corridors**: `[org.momentum.mez.corridor.swift.iso20022-cross-border]` for all. Financial centers add `org.momentum.mez.corridor.stablecoin.regulated-stablecoin`.
-- **national_adapters**: Stub block with `enabled: false` entries named after the jurisdiction's actual regulators. Use real regulator names from domain knowledge (e.g., Germany: `bafin`, `bzst`; UK: `fca`, `hmrc`, `companies_house`; Japan: `fsa_japan`, `nta`; Brazil: `bcb`, `cvm`, `receita_federal`). If uncertain about a regulator name, add `# TODO: verify regulator` comment.
-- **trust_anchors**: `[]`
-- **key_management**: `{ rotation_interval_days: 90, grace_period_days: 14 }`
-
-Batch by country family for efficiency. All US states share a common structure (vary only zone_id, jurisdiction_id, zone_name, and state-specific regulator in national_adapters). Same for China zones, GCC zones, European zones, etc.
-
-## Synthetic Zone Design Principles (for the 8+ new compositions)
-
-Each new synthetic zone must:
-- Source regulatory domains from at least 3 different countries.
-- Include `aml_cft` domain (mandatory per composition algebra).
-- Target a distinct economic corridor, trade route, or regulatory use case not covered by the existing 12.
-- Use real statutory references for each layer's source jurisdiction. Mark uncertain citations with `# TODO: verify`.
-- Pass `validate_composition()` — no duplicate domains, AML/CFT present, all source jurisdictions have zone.yaml.
-
-Geographic coverage targets for the 8+ new compositions — ensure at least one composition for each underserved region/use case:
-- US domestic interstate digital asset operations (e.g., Wyoming DAO-friendly corporate + Delaware civic + New York securities + Texas tax)
-- Caribbean digital asset cluster (Cayman + BVI + Bermuda + Bahamas)
-- Central Asian gateway / Belt and Road corridor
-- Indo-Pacific trade (India GIFT City + ASEAN + Oceania)
-- Mediterranean / Southern European digital finance
-- Pacific Islands economic development
-- East African innovation hub
-- Swiss-Liechtenstein-Asian innovation bridge
-
-These are suggestions. Use your judgment on the most strategically valuable compositions. Each must produce a valid `composition.yaml` consumable by `mez zone compose`.
-
-## Execution Order (dependency-driven)
-
-1. Create jurisdiction directories for ALL missing jurisdictions: Tier 3/4 from coverage matrix + all source jurisdictions referenced by synthetic zone compositions that don't yet have directories. Each gets an enriched zone.yaml (not a scaffold).
-
-2. Enrich all existing US state scaffold manifests (57 zones). Batch — they share common structure.
-
-3. Enrich all remaining non-US scaffold manifests (China, existing GCC/ME/AF/EU/LATAM/APAC directories). Batch by region.
-
-4. Materialize all 12 cataloged synthetic zones from SYNTHETIC_ZONE_CATALOG.md specs + create 8+ new synthetic compositions.
-
-5. Add `mez corridor mesh --all` CLI command. Add full-mesh integration test.
-
-6. Update all three roadmap docs + create CORRIDOR_MESH_TOPOLOGY.md.
-
-## Constraints
-
-- All existing tests must pass. Run `cargo test --workspace` before each commit.
-- Do NOT modify existing enriched zone manifests (the 22 already-complete zones). Extend the network, don't alter existing nodes.
-- Regpack digests: Only use real SHA-256 values from existing builders. Never invent hashes. Zones without a parent builder get no regpacks block.
-- Corridor taxonomy: 4 types only (CrossBorder, IntraFederal, FreeZoneToHost, FreeZoneToFreeZone). Synthetic-to-anything = CrossBorder. Do not add a 5th type.
-- Do not modify `composition.rs` or `registry.rs` core logic. You may add CLI wiring and tests that USE these modules.
-- National adapter stubs must name real regulators. Do not invent regulator names.
-- Profile assignment must match zone character. A free zone gets `digital-financial-center`, not `sovereign-govos`.
-- Follow existing YAML formatting exactly. No trailing whitespace. Use the existing zone manifests as formatting references.
-- For the corridor mesh test: parse zone.yaml files to construct ZoneEntry structs. Determine `is_free_zone` from `jurisdiction_stack` length (>1 with free zone parent = true). Determine `zone_type` from presence of `composition:` block.
-
-## Commit Structure (6 commits, logical units)
-
-1. **New jurisdiction directories** — all missing Tier 3/4 jurisdictions + synthetic source jurisdictions. Each with enriched zone.yaml.
-2. **US state enrichment** — 57 US zone manifests promoted from scaffold to enriched.
-3. **Global zone enrichment** — all remaining non-US scaffolds enriched, batched by region.
-4. **Synthetic zone materialization** — all 12 catalog zones + 8+ new compositions. Each with composition.yaml, zone.yaml, profile.yaml.
-5. **Corridor mesh tooling** — `mez corridor mesh --all` CLI + full-mesh integration test asserting N×(N-1)/2 completeness.
-6. **Documentation update** — JURISDICTION_COVERAGE_MATRIX.md, SYNTHETIC_ZONE_CATALOG.md, new CORRIDOR_MESH_TOPOLOGY.md with complete mesh statistics and DOT visualization of the full graph.
-
-Push to the designated branch when complete.
+Run cargo test --workspace before each commit. Push to the designated branch when complete.

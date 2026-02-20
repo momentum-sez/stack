@@ -408,7 +408,7 @@ This is the ordered sequence of work items. Dependencies are noted. Each item in
 ### Phase F: Sovereign Deployment (ACTIVE — Parallel Track)
 
 ```
-24. P0-IDENTITY-001    — OPEN: Ship real Identity service (Mass-side dependency)
+24. P0-IDENTITY-001    — PARTIAL: Sovereign stub implements all identity endpoints (CNIC/NTN verify, members, board, shareholders); dedicated Mass-side service still needed
 25. P0-CORRIDOR-NET-001 — CLOSED: Inter-zone protocol with handshake (commit 6ea3f8e)
 26. P0-PACK-001        — CLOSED: Pakistan Pack Trilogy (commit b996ecc)
 27. P2-NATIONAL-001    — CLOSED: All four national adapters complete (commit 620bb1d)
@@ -567,7 +567,7 @@ Based on synthesized audit findings. Status: ✅ Implemented | 🟡 Partial | �
 - [x] End-to-end two-zone corridor test with real receipt exchange (commit 620bb1d)
 - [x] Cross-zone compliance query endpoint (commit 0563021)
 - [x] Corridor health monitoring dashboard (Prometheus exporter + Grafana provisioning)
-- [x] Sovereign Mass API stubs for per-zone deployment (`mez-mass-stub` crate, `Dockerfile.mass-stub`, `docker-compose.two-zone.yaml` updated with zone-local Mass instances, `sovereign_mass_test.rs` proving data isolation)
+- [x] Sovereign Mass API stubs for per-zone deployment (`mez-mass-stub` crate with 100% endpoint coverage — all FiscalClient, ConsentClient, OwnershipClient, IdentityClient, and TemplatingClient methods have working stub routes; `Dockerfile.mass-stub`, `docker-compose.two-zone.yaml` updated with zone-local Mass instances, `sovereign_mass_test.rs` proving data isolation, `sovereign_pipeline_test.rs` proving full 13-step GovOS pipeline)
 
 ### Phase 3 — Production (PARTIALLY BLOCKED)
 

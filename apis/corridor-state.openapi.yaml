@@ -3,29 +3,157 @@ info:
   title: MEZ Corridor State API
   version: 0.4.44
   description: |
-    Corridor state-channel operations: receipt proposals, fork resolution,
-    anchoring, and finality status computation.
+    Corridor lifecycle operations: creation, typestate transitions,
+    receipt chain management, fork resolution, anchor verification,
+    and finality status.
 
-    These endpoints mirror the CLI subcommands under `mez corridor state ...`.
+    Corridors are bilateral state channels connecting two jurisdictional
+    zones. Each corridor maintains a receipt chain (hash-chain + MMR)
+    for cross-border transaction evidence.
+
     All mutating endpoints are idempotent when called with the same
     `Idempotency-Key` header value.
   license:
     name: BUSL-1.1
     identifier: BUSL-1.1
 
-tags:
-  - name: corridor.state
-    description: Corridor state-channel operations (receipts, proposals, forks, anchors, finality).
+servers:
+  - url: https://{zone_host}/api
+    variables:
+      zone_host:
+        default: localhost:8080
 
 security:
   - bearerAuth: []
 
 paths:
-  /corridor/state/propose:
+  /v1/corridors:
+    get:
+      summary: List corridors with pagination
+      operationId: listCorridors
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+          description: Maximum number of items to return.
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of items to skip.
+      responses:
+        '200':
+          description: Paginated corridor list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCorridorList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
     post:
-      tags: [corridor.state]
-      summary: Propose the next corridor receipt
-      description: Equivalent to `mez corridor state propose` (unsigned proposal artifact).
+      summary: Create a new corridor in DRAFT state
+      operationId: createCorridor
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCorridorRequest'
+      responses:
+        '201':
+          description: Corridor created in DRAFT state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorridorRecord'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/corridors/{id}:
+    get:
+      summary: Get corridor by ID
+      operationId: getCorridor
+      parameters:
+        - $ref: '#/components/parameters/CorridorId'
+      responses:
+        '200':
+          description: Corridor details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorridorRecord'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/corridors/{id}/transition:
+    put:
+      summary: Transition a corridor's lifecycle state
+      description: |
+        Transitions a corridor through the typestate machine:
+        DRAFT → PENDING → ACTIVE → HALTED/SUSPENDED → DEPRECATED.
+
+        Evidence digests are required for security-critical transitions:
+        - DRAFT→PENDING: bilateral agreement digest
+        - PENDING→ACTIVE: regulatory approval digest
+        - ACTIVE→HALTED: halt evidence digest
+        - SUSPENDED→ACTIVE: resolution attestation digest
+      operationId: transitionCorridor
+      parameters:
+        - $ref: '#/components/parameters/CorridorId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransitionCorridorRequest'
+      responses:
+        '200':
+          description: Corridor transitioned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorridorRecord'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/corridors/state/propose:
+    post:
+      summary: Propose a receipt to the corridor's receipt chain
+      description: |
+        Appends a receipt to the receipt chain. The server computes the
+        canonical digest via CanonicalBytes → SHA-256, validates chain
+        integrity (prev_root == final_state_root), and appends to the MMR.
       operationId: proposeReceipt
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -34,246 +162,94 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: false
-              required: [corridor_id, sequence, prev_root, transition]
-              properties:
-                corridor_id:
-                  type: string
-                sequence:
-                  type: integer
-                  minimum: 0
-                timestamp:
-                  type: string
-                  format: date-time
-                  description: If omitted, the server MAY set it to now().
-                prev_root:
-                  type: string
-                  pattern: '^[a-f0-9]{64}$'
-                transition:
-                  $ref: 'https://schemas.momentum-ez.org/mez/transition-envelope.schema.json'
-                notes:
-                  type: string
+              $ref: '#/components/schemas/ProposeReceiptRequest'
       responses:
         '200':
-          description: Receipt proposal
+          description: Receipt appended to chain
           content:
             application/json:
               schema:
-                $ref: 'https://schemas.momentum-ez.org/mez/corridor.receipt-proposal.schema.json'
+                $ref: '#/components/schemas/ReceiptProposalResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '409':
-          description: Conflict — prev_root does not match current corridor head
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/corridors/state/fork-resolve:
+    post:
+      summary: Resolve a fork between two competing receipt branches
+      description: |
+        Evaluates two competing branches using evidence-driven fork
+        resolution with signed watcher attestations (P0-FORK-001).
+        Selection criteria: verified attestation count, timestamp
+        bounds, lexicographic candidate root.
+      operationId: forkResolve
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForkResolveRequest'
+      responses:
+        '200':
+          description: Fork resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForkResolveResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/corridors/state/anchor:
+    post:
+      summary: Anchor a corridor commitment to L1
+      description: |
+        Phase 2 feature. Currently returns 501 Not Implemented.
+        Will anchor corridor state commitments to an L1 chain
+        for finality proofs.
+      operationId: anchorCommitment
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '501':
+          description: Not implemented — Phase 2 feature
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '500':
-          $ref: '#/components/responses/InternalError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
-  /corridor/state/fork-resolve:
+  /v1/corridors/state/finality-status:
     post:
-      tags: [corridor.state]
-      summary: Resolve a receipt fork
-      description: Equivalent to `mez corridor state fork-resolve` (unsigned VC).
-      operationId: resolveFork
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [corridor_id, sequence, prev_root, chosen_next_root, issuer]
-              properties:
-                corridor_id:
-                  type: string
-                sequence:
-                  type: integer
-                  minimum: 0
-                prev_root:
-                  type: string
-                  pattern: '^[a-f0-9]{64}$'
-                chosen_next_root:
-                  type: string
-                  pattern: '^[a-f0-9]{64}$'
-                candidates:
-                  type: array
-                  items:
-                    type: object
-                    additionalProperties: false
-                    required: [next_root]
-                    properties:
-                      next_root:
-                        type: string
-                        pattern: '^[a-f0-9]{64}$'
-                      timestamp:
-                        type: string
-                        format: date-time
-                      attestations:
-                        type: array
-                        items:
-                          type: object
-                issuer:
-                  type: string
-                  description: DID of the fork-resolution VC issuer.
+      summary: Compute finality status for a corridor commitment
+      description: |
+        Phase 2 feature. Currently returns 501 Not Implemented.
+        Will compute finality status based on L1 anchor confirmations.
+      operationId: finalityStatus
       responses:
-        '200':
-          description: Fork-resolution Verifiable Credential
+        '501':
+          description: Not implemented — Phase 2 feature
           content:
             application/json:
               schema:
-                $ref: 'https://schemas.momentum-ez.org/mez/vc.corridor-fork-resolution.schema.json'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: '#/components/schemas/ProblemDetail'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /corridor/state/anchor:
-    post:
-      tags: [corridor.state]
-      summary: Anchor a corridor head commitment
-      description: Equivalent to `mez corridor state anchor` (unsigned VC).
-      operationId: anchorHead
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [corridor_id, head_commitment_digest_sha256, chain, issuer]
-              properties:
-                corridor_id:
-                  type: string
-                head_commitment_digest_sha256:
-                  type: string
-                  pattern: '^[a-f0-9]{64}$'
-                chain:
-                  type: object
-                  additionalProperties: false
-                  required: [network]
-                  properties:
-                    network:
-                      type: string
-                    chain_id:
-                      type: string
-                    tx_hash:
-                      type: string
-                    block_number:
-                      type: integer
-                      minimum: 0
-                    block_hash:
-                      type: string
-                    block_timestamp:
-                      type: string
-                      format: date-time
-                checkpoint_ref:
-                  $ref: 'https://schemas.momentum-ez.org/mez/artifact-ref.schema.json'
-                issuer:
-                  type: string
-      responses:
-        '200':
-          description: Corridor anchor Verifiable Credential
-          content:
-            application/json:
-              schema:
-                $ref: 'https://schemas.momentum-ez.org/mez/vc.corridor-anchor.schema.json'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /corridor/state/finality-status:
-    post:
-      tags: [corridor.state]
-      summary: Compute corridor finality status for a head
-      description: Equivalent to `mez corridor state finality-status`.
-      operationId: computeFinalityStatus
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [corridor_id, final_state_root, receipt_count, mmr_root, head_commitment_digest_sha256]
-              properties:
-                corridor_id:
-                  type: string
-                as_of:
-                  type: string
-                  format: date-time
-                receipt_count:
-                  type: integer
-                  minimum: 0
-                final_state_root:
-                  type: string
-                  pattern: '^[a-f0-9]{64}$'
-                mmr_root:
-                  type: string
-                  pattern: '^[a-f0-9]{64}$'
-                head_commitment_digest_sha256:
-                  type: string
-                  pattern: '^[a-f0-9]{64}$'
-                evidence:
-                  type: object
-                  additionalProperties: false
-                  properties:
-                    checkpoint:
-                      $ref: 'https://schemas.momentum-ez.org/mez/artifact-ref.schema.json'
-                    watcher_quorum:
-                      type: object
-                      additionalProperties: false
-                      properties:
-                        required_count:
-                          type: integer
-                          minimum: 0
-                        confirmed_count:
-                          type: integer
-                          minimum: 0
-                        quorum_met:
-                          type: boolean
-                    anchors:
-                      type: array
-                      items:
-                        $ref: 'https://schemas.momentum-ez.org/mez/artifact-ref.schema.json'
-                    disputes:
-                      type: array
-                      items:
-                        $ref: 'https://schemas.momentum-ez.org/mez/artifact-ref.schema.json'
-      responses:
-        '200':
-          description: Finality status object
-          content:
-            application/json:
-              schema:
-                $ref: 'https://schemas.momentum-ez.org/mez/corridor.finality-status.schema.json'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '500':
-          $ref: '#/components/responses/InternalError'
 
 components:
   securitySchemes:
@@ -281,9 +257,17 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Zone-issued JWT with role claims (operator, watcher, auditor).
+      description: Zone-issued JWT with role claims (operator, regulator, auditor).
 
   parameters:
+    CorridorId:
+      name: id
+      in: path
+      required: true
+      description: Corridor UUID.
+      schema:
+        type: string
+        format: uuid
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -302,6 +286,12 @@ components:
             $ref: '#/components/schemas/ProblemDetail'
     Unauthorized:
       description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    NotFound:
+      description: Resource not found
       content:
         application/json:
           schema:
@@ -329,42 +319,202 @@ components:
         type:
           type: string
           format: uri
-          description: URI identifying the problem type.
         title:
           type: string
-          description: Short human-readable summary.
         status:
           type: integer
-          description: HTTP status code.
         detail:
           type: string
-          description: Human-readable explanation specific to this occurrence.
         instance:
           type: string
           format: uri
-          description: URI reference for this specific occurrence.
 
-    TransitionEnvelope:
-      $ref: 'https://schemas.momentum-ez.org/mez/transition-envelope.schema.json'
-    CorridorReceiptProposal:
-      $ref: 'https://schemas.momentum-ez.org/mez/corridor.receipt-proposal.schema.json'
-    CorridorForkResolution:
-      $ref: 'https://schemas.momentum-ez.org/mez/corridor.fork-resolution.schema.json'
-    CorridorForkResolutionCredential:
-      $ref: 'https://schemas.momentum-ez.org/mez/vc.corridor-fork-resolution.schema.json'
-    CorridorAnchorCredential:
-      $ref: 'https://schemas.momentum-ez.org/mez/vc.corridor-anchor.schema.json'
-    CorridorFinalityStatus:
-      $ref: 'https://schemas.momentum-ez.org/mez/corridor.finality-status.schema.json'
-    CorridorLifecycle:
-      $ref: 'https://schemas.momentum-ez.org/mez/corridor.lifecycle.schema.json'
-    CorridorLifecycleTransitionCredential:
-      $ref: 'https://schemas.momentum-ez.org/mez/vc.corridor-lifecycle-transition.schema.json'
-    CorridorRoute:
-      $ref: 'https://schemas.momentum-ez.org/mez/corridor.routing.schema.json'
-    WatcherBondCredential:
-      $ref: 'https://schemas.momentum-ez.org/mez/vc.watcher-bond.schema.json'
-    DisputeClaimCredential:
-      $ref: 'https://schemas.momentum-ez.org/mez/vc.dispute-claim.schema.json'
-    ArbitrationAwardCredential:
-      $ref: 'https://schemas.momentum-ez.org/mez/vc.arbitration-award.schema.json'
+    CreateCorridorRequest:
+      type: object
+      additionalProperties: false
+      required: [jurisdiction_a, jurisdiction_b]
+      properties:
+        jurisdiction_a:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Jurisdiction identifier for zone A.
+        jurisdiction_b:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Jurisdiction identifier for zone B.
+
+    TransitionCorridorRequest:
+      type: object
+      additionalProperties: false
+      required: [target_state]
+      properties:
+        target_state:
+          type: string
+          enum: [DRAFT, PENDING, ACTIVE, HALTED, SUSPENDED, DEPRECATED]
+          description: Target corridor lifecycle state.
+        evidence_digest:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: SHA-256 hex digest of the evidence supporting this transition.
+        reason:
+          type: string
+          description: Human-readable reason for the transition.
+
+    ProposeReceiptRequest:
+      type: object
+      additionalProperties: false
+      required: [corridor_id, payload]
+      properties:
+        corridor_id:
+          type: string
+          format: uuid
+          description: Corridor to append this receipt to.
+        payload:
+          type: object
+          description: Transaction payload to commit to the receipt chain.
+        lawpack_digest_set:
+          type: array
+          items:
+            type: string
+          description: Lawpack digest set governing this receipt.
+        ruleset_digest_set:
+          type: array
+          items:
+            type: string
+          description: Ruleset digest set governing this receipt.
+
+    ReceiptProposalResponse:
+      type: object
+      additionalProperties: false
+      required: [corridor_id, sequence, prev_root, next_root, mmr_root, chain_height, timestamp]
+      properties:
+        corridor_id:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          minimum: 0
+          description: Sequence number of this receipt in the chain (0-indexed).
+        prev_root:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: Hash-chain head (final_state_root) before this receipt.
+        next_root:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: Canonical digest of the receipt payload.
+        mmr_root:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: Current MMR root after appending.
+        chain_height:
+          type: integer
+          minimum: 0
+          description: Current chain height after appending.
+        timestamp:
+          type: string
+          format: date-time
+          description: Receipt creation timestamp.
+
+    ForkResolveRequest:
+      type: object
+      additionalProperties: false
+      required: [branch_a, branch_b]
+      properties:
+        branch_a:
+          $ref: '#/components/schemas/ForkBranchInput'
+        branch_b:
+          $ref: '#/components/schemas/ForkBranchInput'
+
+    ForkBranchInput:
+      type: object
+      additionalProperties: false
+      required: [receipt_digest, timestamp, next_root]
+      properties:
+        receipt_digest:
+          type: string
+          minLength: 1
+          description: Hex digest of the branch's receipt content.
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the branch's receipt.
+        next_root:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: The receipt's next_root digest.
+
+    ForkResolveResponse:
+      type: object
+      additionalProperties: false
+      required: [winning_branch, losing_branch, resolution_reason]
+      properties:
+        winning_branch:
+          type: string
+          description: Digest of the winning branch.
+        losing_branch:
+          type: string
+          description: Digest of the losing branch.
+        resolution_reason:
+          type: string
+          description: Reason the winning branch was selected.
+
+    CorridorRecord:
+      type: object
+      additionalProperties: false
+      required: [id, jurisdiction_a, jurisdiction_b, state, transition_log, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        jurisdiction_a:
+          type: string
+        jurisdiction_b:
+          type: string
+        state:
+          type: string
+          enum: [DRAFT, PENDING, ACTIVE, HALTED, SUSPENDED, DEPRECATED]
+          description: Current corridor lifecycle state.
+        transition_log:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransitionRecord'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TransitionRecord:
+      type: object
+      additionalProperties: false
+      required: [from_state, to_state, timestamp]
+      properties:
+        from_state:
+          type: string
+          enum: [DRAFT, PENDING, ACTIVE, HALTED, SUSPENDED, DEPRECATED]
+        to_state:
+          type: string
+          enum: [DRAFT, PENDING, ACTIVE, HALTED, SUSPENDED, DEPRECATED]
+        timestamp:
+          type: string
+          format: date-time
+        evidence_digest:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+
+    PaginatedCorridorList:
+      type: object
+      additionalProperties: false
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CorridorRecord'
+        total:
+          type: integer
+          minimum: 0

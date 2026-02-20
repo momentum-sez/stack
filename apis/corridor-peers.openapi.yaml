@@ -1,0 +1,407 @@
+openapi: 3.1.0
+info:
+  title: MEZ Corridor Peers API
+  version: 0.4.44
+  description: |
+    Inter-zone corridor peer exchange protocol (P0-CORRIDOR-NET-001).
+    Handles zone-to-zone corridor proposals, acceptances, receipt
+    exchange, and watcher attestation delivery.
+
+    All peer messages are Ed25519-signed over canonical JSON payloads.
+    Signature verification is performed server-side before processing.
+  license:
+    name: BUSL-1.1
+    identifier: BUSL-1.1
+
+servers:
+  - url: https://{zone_host}/api
+    variables:
+      zone_host:
+        default: localhost:8080
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/corridors/peers:
+    get:
+      summary: List known corridor peers
+      operationId: listPeers
+      responses:
+        '200':
+          description: List of known peers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PeerSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/corridors/peers/{zone_id}:
+    get:
+      summary: Get a specific peer by zone ID
+      operationId: getPeer
+      parameters:
+        - name: zone_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Zone ID of the peer.
+      responses:
+        '200':
+          description: Peer details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeerSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/corridors/peers/propose:
+    post:
+      summary: Receive a corridor proposal from a peer zone
+      operationId: proposeCorridor
+      description: |
+        When a remote zone wants to establish a corridor with this zone,
+        it sends a signed CorridorProposal. This endpoint validates the
+        Ed25519 signature, validates the proposal structure, and registers
+        the peer in Proposing status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorridorProposal'
+      responses:
+        '200':
+          description: Proposal received
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposalResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/corridors/peers/accept:
+    post:
+      summary: Receive a corridor acceptance from a peer zone
+      operationId: acceptCorridor
+      description: |
+        After this zone proposes a corridor to a remote zone, the remote
+        zone responds with a signed CorridorAcceptance. This endpoint
+        verifies the signature, validates the acceptance, and activates
+        the peer connection.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorridorAcceptance'
+      responses:
+        '200':
+          description: Acceptance processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptanceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/corridors/peers/receipts:
+    post:
+      summary: Receive an inbound receipt from a peer zone
+      operationId: receiveReceipt
+      description: |
+        Receives a receipt produced by a peer zone, verifies its Ed25519
+        signature over the receipt digest, validates chain integrity
+        (sequence continuity, prev_root linkage), and appends to the
+        local receipt chain.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InboundReceipt'
+      responses:
+        '200':
+          description: Receipt processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InboundReceiptResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/corridors/peers/attestations:
+    post:
+      summary: Receive a watcher attestation from a peer zone
+      operationId: receiveAttestation
+      description: |
+        Receives a watcher attestation over a corridor receipt chain
+        height. Verifies the Ed25519 signature and records the
+        attestation for fork resolution evidence.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InboundAttestation'
+      responses:
+        '200':
+          description: Attestation received
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [received]
+                properties:
+                  received:
+                    type: boolean
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Zone-issued JWT with role claims (operator, regulator, auditor).
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    UnprocessableEntity:
+      description: Signature verification failed or invalid message structure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+  schemas:
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Details for HTTP APIs.
+      additionalProperties: false
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+
+    PeerSummary:
+      type: object
+      additionalProperties: false
+      required: [zone_id, jurisdiction_id, endpoint_url, status, corridor_ids]
+      properties:
+        zone_id:
+          type: string
+        jurisdiction_id:
+          type: string
+        endpoint_url:
+          type: string
+        status:
+          type: string
+          description: Peer status (Proposing, Active, Disconnected).
+        corridor_ids:
+          type: array
+          items:
+            type: string
+        last_seen:
+          type: string
+          format: date-time
+
+    CorridorProposal:
+      type: object
+      additionalProperties: false
+      required: [corridor_id, proposer_jurisdiction_id, proposer_zone_id, proposer_verifying_key_hex, proposer_did, responder_jurisdiction_id, proposed_at, signature]
+      properties:
+        corridor_id:
+          type: string
+          description: Proposed corridor ID.
+        proposer_jurisdiction_id:
+          type: string
+        proposer_zone_id:
+          type: string
+        proposer_verifying_key_hex:
+          type: string
+          description: Ed25519 verifying key of the proposer (hex).
+        proposer_did:
+          type: string
+        responder_jurisdiction_id:
+          type: string
+        proposed_at:
+          type: string
+          format: date-time
+        parameters:
+          type: object
+          additionalProperties: true
+          description: Corridor parameters (lawpack domains, compliance requirements).
+        signature:
+          type: string
+          description: Ed25519 signature over the canonical proposal payload (hex).
+
+    ProposalResponse:
+      type: object
+      additionalProperties: false
+      required: [received, status]
+      properties:
+        received:
+          type: boolean
+        status:
+          type: string
+        message:
+          type: string
+
+    CorridorAcceptance:
+      type: object
+      additionalProperties: false
+      required: [corridor_id, responder_zone_id, responder_verifying_key_hex, responder_did, genesis_root_hex, accepted_at, signature]
+      properties:
+        corridor_id:
+          type: string
+        responder_zone_id:
+          type: string
+        responder_verifying_key_hex:
+          type: string
+          description: Ed25519 verifying key of the responder (hex).
+        responder_did:
+          type: string
+        genesis_root_hex:
+          type: string
+          description: Genesis root for the corridor (both zones must agree).
+        accepted_at:
+          type: string
+          format: date-time
+        signature:
+          type: string
+          description: Ed25519 signature over the canonical acceptance payload (hex).
+
+    AcceptanceResponse:
+      type: object
+      additionalProperties: false
+      required: [received, corridor_id, peer_status]
+      properties:
+        received:
+          type: boolean
+        corridor_id:
+          type: string
+        peer_status:
+          type: string
+
+    InboundReceipt:
+      type: object
+      additionalProperties: false
+      required: [corridor_id, origin_zone_id, sequence, receipt_json, receipt_digest, signature, produced_at]
+      properties:
+        corridor_id:
+          type: string
+        origin_zone_id:
+          type: string
+        sequence:
+          type: integer
+          minimum: 0
+        receipt_json:
+          type: object
+          description: The full serialized receipt.
+        receipt_digest:
+          type: string
+          description: SHA-256 digest of the receipt.
+        signature:
+          type: string
+          description: Ed25519 signature of the receipt digest by the origin zone.
+        produced_at:
+          type: string
+          format: date-time
+
+    InboundReceiptResult:
+      type: object
+      additionalProperties: false
+      required: [accepted, chain_height]
+      properties:
+        accepted:
+          type: boolean
+        chain_height:
+          type: integer
+          minimum: 0
+        mmr_root:
+          type: string
+        rejection_reason:
+          type: string
+
+    InboundAttestation:
+      type: object
+      additionalProperties: false
+      required: [corridor_id, watcher_id, attested_height, attested_root_hex, signature, attested_at]
+      properties:
+        corridor_id:
+          type: string
+        watcher_id:
+          type: string
+        attested_height:
+          type: integer
+          minimum: 0
+        attested_root_hex:
+          type: string
+          description: The state root being attested.
+        signature:
+          type: string
+          description: Watcher's Ed25519 signature.
+        attested_at:
+          type: string
+          format: date-time

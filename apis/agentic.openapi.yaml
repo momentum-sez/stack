@@ -1,0 +1,241 @@
+openapi: 3.1.0
+info:
+  title: MEZ Agentic Policy Engine API
+  version: 0.4.44
+  description: |
+    Autonomous policy engine for reactive compliance operations.
+    Accepts environmental triggers, evaluates them against registered
+    policies, and dispatches actions to domain operations.
+
+    When the policy engine produces a Halt or Resume action targeting
+    a corridor, the handler transitions the corridor via the typestate
+    machine. All other actions are recorded as scheduled.
+  license:
+    name: BUSL-1.1
+    identifier: BUSL-1.1
+
+servers:
+  - url: https://{zone_host}/api
+    variables:
+      zone_host:
+        default: localhost:8080
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/triggers:
+    post:
+      summary: Submit an environmental trigger for policy evaluation
+      operationId: submitTrigger
+      description: |
+        Evaluates the trigger against all registered policies, resolves
+        conflicts, and dispatches immediate actions. Actions that cannot
+        be executed immediately are scheduled for later execution.
+
+        The reactive bridge transitions corridors directly for Halt and
+        Resume actions. The trigger's audit entry becomes the evidence
+        for corridor transitions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TriggerRequest'
+      responses:
+        '200':
+          description: Trigger evaluated and actions dispatched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TriggerResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/policies:
+    get:
+      summary: List all registered policies
+      operationId: listPolicies
+      responses:
+        '200':
+          description: Policy list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PolicySummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/policies/{id}:
+    delete:
+      summary: Unregister a policy
+      operationId: deletePolicy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Policy identifier.
+      responses:
+        '200':
+          description: Policy removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyDeleteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Zone-issued JWT with role claims (operator, regulator, auditor).
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    UnprocessableEntity:
+      description: Schema validation failed or business rule violation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+  schemas:
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Details for HTTP APIs.
+      additionalProperties: false
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+
+    TriggerRequest:
+      type: object
+      additionalProperties: false
+      required: [trigger_type]
+      properties:
+        trigger_type:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: |
+            Trigger type name (e.g., "sanctions_list_update",
+            "license_status_change", "checkpoint_due", "ruling_received").
+        asset_id:
+          type: string
+          description: Asset or corridor ID affected by this trigger.
+        jurisdiction:
+          type: string
+          maxLength: 255
+          description: Jurisdiction scope for policy filtering.
+        data:
+          type: object
+          description: Trigger payload — event-specific data.
+
+    TriggerResponse:
+      type: object
+      additionalProperties: false
+      required: [trigger_type, actions_produced, actions, audit_entries]
+      properties:
+        trigger_type:
+          type: string
+        actions_produced:
+          type: integer
+          minimum: 0
+          description: Number of actions produced by policy evaluation.
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionResult'
+        audit_entries:
+          type: integer
+          minimum: 0
+          description: Number of recent audit entries (snapshot).
+
+    ActionResult:
+      type: object
+      additionalProperties: false
+      required: [action_id, action_type, status]
+      properties:
+        action_id:
+          type: string
+        action_type:
+          type: string
+          description: Action type (e.g., "halt", "resume", "update_manifest").
+        status:
+          type: string
+          enum: [executed, scheduled, skipped, failed]
+        detail:
+          type: string
+        affected_resource:
+          type: string
+
+    PolicySummary:
+      type: object
+      additionalProperties: false
+      required: [policy_id, trigger_type, action, priority, description]
+      properties:
+        policy_id:
+          type: string
+        trigger_type:
+          type: string
+        action:
+          type: string
+        priority:
+          type: integer
+        description:
+          type: string
+
+    PolicyDeleteResponse:
+      type: object
+      additionalProperties: false
+      required: [removed, policy_id]
+      properties:
+        removed:
+          type: boolean
+        policy_id:
+          type: string

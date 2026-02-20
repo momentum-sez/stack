@@ -1,0 +1,353 @@
+openapi: 3.1.0
+info:
+  title: MEZ GovOS Console API
+  version: 0.4.44
+  description: |
+    Pakistan GovOS experience layer dashboards. Provides four read-only
+    dashboard views aggregating data from the EZ Stack's stores and
+    Mass APIs:
+
+    1. GovOS Console — 40+ ministries overview and operational dashboard
+    2. Tax & Revenue — Tax collection metrics, withholding, GDP tracking
+    3. Digital Free Zone — Entity registry, incentives, zone compliance
+    4. Citizen Tax & Services — Citizen-facing obligations and filing
+
+    The Regulator Console (dashboard #5) is in regulator-console.openapi.yaml.
+  license:
+    name: BUSL-1.1
+    identifier: BUSL-1.1
+
+servers:
+  - url: https://{zone_host}/api
+    variables:
+      zone_host:
+        default: localhost:8080
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/govos/console:
+    get:
+      summary: GovOS Console dashboard for 40+ ministries
+      operationId: govosConsole
+      description: |
+        Returns the top-level GovOS overview dashboard with per-ministry
+        summaries, aggregate compliance rates, and zone-wide statistics.
+        Requires Regulator role.
+      responses:
+        '200':
+          description: GovOS Console dashboard
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GovosConsoleDashboard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/govos/tax-revenue:
+    get:
+      summary: Tax & Revenue dashboard
+      operationId: taxRevenueDashboard
+      description: |
+        Returns tax collection metrics including total withholding,
+        events by category, FBR IRIS report counts, and GDP target
+        rates. Requires Regulator role.
+      responses:
+        '200':
+          description: Tax & Revenue dashboard
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxRevenueDashboard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/govos/freezone:
+    get:
+      summary: Digital Free Zone dashboard
+      operationId: freezoneDashboard
+      description: |
+        Returns free zone statistics including registered entities,
+        active incentive programs, corridor activity, and zone-level
+        compliance posture. Requires Regulator role.
+      responses:
+        '200':
+          description: Digital Free Zone dashboard
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FreeZoneDashboard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/govos/citizen:
+    get:
+      summary: Citizen Tax & Services dashboard
+      operationId: citizenDashboard
+      description: |
+        Returns citizen-facing tax obligations, filing status, and
+        available government services. Requires EntityOperator role.
+      responses:
+        '200':
+          description: Citizen Tax & Services dashboard
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CitizenDashboard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Zone-issued JWT with role claims. GovOS Console, Tax Revenue,
+        and Free Zone dashboards require Regulator role. Citizen
+        dashboard requires EntityOperator role.
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Forbidden:
+      description: Insufficient permissions for this dashboard
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+  schemas:
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Details for HTTP APIs.
+      additionalProperties: false
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+
+    GovosConsoleDashboard:
+      type: object
+      additionalProperties: false
+      required: [snapshot_at, jurisdiction_id, total_entities, total_corridors, total_attestations, ministries, aggregate_compliance_rate]
+      properties:
+        snapshot_at:
+          type: string
+          format: date-time
+        jurisdiction_id:
+          type: string
+        total_entities:
+          type: integer
+          minimum: 0
+        total_corridors:
+          type: integer
+          minimum: 0
+        total_attestations:
+          type: integer
+          minimum: 0
+        ministries:
+          type: array
+          items:
+            $ref: '#/components/schemas/MinistrySummary'
+        aggregate_compliance_rate:
+          type: number
+          minimum: 0
+          maximum: 100
+
+    MinistrySummary:
+      type: object
+      additionalProperties: false
+      required: [ministry_id, name, entity_count, license_count, compliance_rate]
+      properties:
+        ministry_id:
+          type: string
+          description: Ministry identifier (e.g., "pk-mof", "pk-mofa").
+        name:
+          type: string
+        entity_count:
+          type: integer
+          minimum: 0
+        license_count:
+          type: integer
+          minimum: 0
+        compliance_rate:
+          type: number
+          minimum: 0
+          maximum: 100
+
+    TaxRevenueDashboard:
+      type: object
+      additionalProperties: false
+      required: [snapshot_at, jurisdiction_id, total_tax_events, events_by_category, total_withholding, reports_generated, entities_with_ntn, gdp_target_rate]
+      properties:
+        snapshot_at:
+          type: string
+          format: date-time
+        jurisdiction_id:
+          type: string
+        total_tax_events:
+          type: integer
+          minimum: 0
+        events_by_category:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Tax event count grouped by category.
+        total_withholding:
+          type: string
+          description: Formatted total withholding amount (e.g., "1,234,567.89 PKR").
+        reports_generated:
+          type: integer
+          minimum: 0
+        entities_with_ntn:
+          type: integer
+          minimum: 0
+        gdp_target_rate:
+          type: string
+
+    FreeZoneDashboard:
+      type: object
+      additionalProperties: false
+      required: [snapshot_at, zone_id, registered_entities, active_incentives, corridor_count, compliance_posture]
+      properties:
+        snapshot_at:
+          type: string
+          format: date-time
+        zone_id:
+          type: string
+          description: Zone identifier (e.g., "PK-PEZ", "PK-REZ").
+        registered_entities:
+          type: integer
+          minimum: 0
+        active_incentives:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncentiveProgram'
+        corridor_count:
+          type: integer
+          minimum: 0
+        compliance_posture:
+          $ref: '#/components/schemas/ZoneCompliancePosture'
+
+    IncentiveProgram:
+      type: object
+      additionalProperties: false
+      required: [program_id, name, tax_holiday_years, customs_duty_exempt, enrolled_entities]
+      properties:
+        program_id:
+          type: string
+        name:
+          type: string
+        tax_holiday_years:
+          type: integer
+          minimum: 0
+        customs_duty_exempt:
+          type: boolean
+        enrolled_entities:
+          type: integer
+          minimum: 0
+
+    ZoneCompliancePosture:
+      type: object
+      additionalProperties: false
+      required: [compliance_rate, entities_with_issues, weakest_domains]
+      properties:
+        compliance_rate:
+          type: number
+          minimum: 0
+          maximum: 100
+        entities_with_issues:
+          type: integer
+          minimum: 0
+        weakest_domains:
+          type: array
+          items:
+            type: string
+
+    CitizenDashboard:
+      type: object
+      additionalProperties: false
+      required: [snapshot_at, available_services, service_categories, filing_status]
+      properties:
+        snapshot_at:
+          type: string
+          format: date-time
+        available_services:
+          type: integer
+          minimum: 0
+        service_categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceCategory'
+        filing_status:
+          $ref: '#/components/schemas/FilingStatusSummary'
+
+    ServiceCategory:
+      type: object
+      additionalProperties: false
+      required: [category_id, name, service_count, online_filing]
+      properties:
+        category_id:
+          type: string
+        name:
+          type: string
+        service_count:
+          type: integer
+          minimum: 0
+        online_filing:
+          type: boolean
+
+    FilingStatusSummary:
+      type: object
+      additionalProperties: false
+      required: [tax_year, filing_deadline, filed_count, outstanding_count]
+      properties:
+        tax_year:
+          type: string
+        filing_deadline:
+          type: string
+        filed_count:
+          type: integer
+          minimum: 0
+        outstanding_count:
+          type: integer
+          minimum: 0

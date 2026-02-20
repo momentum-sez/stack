@@ -1,0 +1,326 @@
+openapi: 3.1.0
+info:
+  title: MEZ Identity Verification API
+  version: 0.4.44
+  description: |
+    Pakistan national identity verification endpoints. Provides
+    CNIC verification (via NADRA), NTN verification (via FBR IRIS),
+    per-entity identity aggregation, and service status monitoring.
+
+    These are EZ-Stack-owned endpoints that integrate with Pakistan
+    national systems. Mass identity-info is accessed separately via
+    the mass-node proxy endpoints.
+  license:
+    name: BUSL-1.1
+    identifier: BUSL-1.1
+
+servers:
+  - url: https://{zone_host}/api
+    variables:
+      zone_host:
+        default: localhost:8080
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/identity/cnic/verify:
+    post:
+      summary: Verify a CNIC via NADRA
+      operationId: verifyCnic
+      description: |
+        Validates a Pakistan CNIC (13-digit number) against the NADRA
+        adapter. Returns the verification result including name match
+        and registration status.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CnicVerifyRequest'
+      responses:
+        '200':
+          description: CNIC verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CnicVerifyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/identity/ntn/verify:
+    post:
+      summary: Verify an NTN via FBR IRIS
+      operationId: verifyNtn
+      description: |
+        Validates a Pakistan NTN (7-digit number) against the FBR IRIS
+        adapter. Returns the verification result including entity name
+        match and filing status.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NtnVerifyRequest'
+      responses:
+        '200':
+          description: NTN verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NtnVerifyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/identity/entity/{entity_id}:
+    get:
+      summary: Get aggregated identity information for an entity
+      operationId: getEntityIdentity
+      description: |
+        Returns all identity verifications associated with an entity,
+        including CNIC, NTN, and any Mass identity-info references.
+      parameters:
+        - name: entity_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Entity UUID.
+      responses:
+        '200':
+          description: Entity identity information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityIdentityResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/identity/status:
+    get:
+      summary: Identity service status
+      operationId: identityServiceStatus
+      description: |
+        Returns the status of identity verification adapters
+        (NADRA, FBR IRIS) including connectivity and last check time.
+      responses:
+        '200':
+          description: Identity service status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityServiceStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Zone-issued JWT with role claims (operator, regulator, auditor).
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Client-generated UUID for at-most-once delivery.
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    UnprocessableEntity:
+      description: Schema validation failed or business rule violation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+  schemas:
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Details for HTTP APIs.
+      additionalProperties: false
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+
+    CnicVerifyRequest:
+      type: object
+      additionalProperties: false
+      required: [cnic]
+      properties:
+        cnic:
+          type: string
+          pattern: '^\d{13}$'
+          description: Pakistan CNIC (exactly 13 digits).
+        entity_id:
+          type: string
+          format: uuid
+          description: Entity to associate this verification with.
+        name:
+          type: string
+          description: Name for name-matching verification.
+
+    CnicVerifyResponse:
+      type: object
+      additionalProperties: false
+      required: [cnic, verified, source]
+      properties:
+        cnic:
+          type: string
+        verified:
+          type: boolean
+        source:
+          type: string
+          description: Verification source (e.g., "nadra_adapter").
+        name_match:
+          type: boolean
+        registration_status:
+          type: string
+        verified_at:
+          type: string
+          format: date-time
+
+    NtnVerifyRequest:
+      type: object
+      additionalProperties: false
+      required: [ntn]
+      properties:
+        ntn:
+          type: string
+          pattern: '^\d{7}$'
+          description: Pakistan NTN (exactly 7 digits).
+        entity_id:
+          type: string
+          format: uuid
+          description: Entity to associate this verification with.
+        entity_name:
+          type: string
+          description: Entity name for name-matching verification.
+
+    NtnVerifyResponse:
+      type: object
+      additionalProperties: false
+      required: [ntn, verified, source]
+      properties:
+        ntn:
+          type: string
+        verified:
+          type: boolean
+        source:
+          type: string
+          description: Verification source (e.g., "fbr_iris_adapter").
+        name_match:
+          type: boolean
+        filer_status:
+          type: string
+          enum: [filer, late_filer, non_filer]
+        verified_at:
+          type: string
+          format: date-time
+
+    EntityIdentityResponse:
+      type: object
+      additionalProperties: false
+      required: [entity_id, verifications]
+      properties:
+        entity_id:
+          type: string
+          format: uuid
+        cnic:
+          type: string
+        ntn:
+          type: string
+        filer_status:
+          type: string
+        verifications:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              type:
+                type: string
+              value:
+                type: string
+              verified:
+                type: boolean
+              source:
+                type: string
+              verified_at:
+                type: string
+                format: date-time
+
+    IdentityServiceStatus:
+      type: object
+      additionalProperties: false
+      required: [services]
+      properties:
+        services:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, status]
+            properties:
+              name:
+                type: string
+                description: Service name (e.g., "nadra", "fbr_iris").
+              status:
+                type: string
+                enum: [available, degraded, unavailable]
+              last_checked:
+                type: string
+                format: date-time

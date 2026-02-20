@@ -143,6 +143,7 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
             validity_period_years: None,
         },
         // ── Insurance ──────────────────────────────────────────────────
+        // Direct Insurer — Insurance Act (Cap 142) s8
         LicenseTypeDefinition {
             license_type_id: "sg-mas:direct-insurer".to_string(),
             name: "Direct Insurer License".to_string(),
@@ -154,11 +155,20 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 "life_insurance".to_string(),
                 "general_insurance".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("minimum_paid_up_capital_sgd".to_string(), serde_json::json!("5000000")),
+                ("minimum_fund_requirement_life_sgd".to_string(), serde_json::json!("10000000")),
+                ("minimum_fund_requirement_general_sgd".to_string(), serde_json::json!("5000000")),
+                ("capital_adequacy_ratio".to_string(), serde_json::json!("Per MAS Notice 133 on Valuation and Capital Framework for Insurers")),
+                ("actuarial_function_required".to_string(), serde_json::json!("Appointed actuary required per Insurance Act s31")),
+                ("statutory_reference".to_string(), serde_json::json!("Insurance Act (Cap 142) s8; MAS Notice 133")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("MAS Notice 314 on AML/CFT")),
+            ].into_iter().collect(),
             application_fee: BTreeMap::new(),
             annual_fee: BTreeMap::new(),
             validity_period_years: None,
         },
+        // Reinsurer — Insurance Act (Cap 142) s8
         LicenseTypeDefinition {
             license_type_id: "sg-mas:reinsurer".to_string(),
             name: "Reinsurer License".to_string(),
@@ -169,11 +179,17 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 "reinsurance".to_string(),
                 "retrocession".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("minimum_paid_up_capital_sgd".to_string(), serde_json::json!("10000000")),
+                ("solvency_margin_required".to_string(), serde_json::json!("Per MAS Notice 133 on Valuation and Capital Framework")),
+                ("statutory_reference".to_string(), serde_json::json!("Insurance Act (Cap 142) s8; MAS Notice 133")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("MAS Notice 314 on AML/CFT")),
+            ].into_iter().collect(),
             application_fee: BTreeMap::new(),
             annual_fee: BTreeMap::new(),
             validity_period_years: None,
         },
+        // Insurance Broker — Insurance Act (Cap 142) s35G
         LicenseTypeDefinition {
             license_type_id: "sg-mas:insurance-broker".to_string(),
             name: "Insurance Broker Registration".to_string(),
@@ -184,11 +200,17 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 "insurance_broking".to_string(),
                 "risk_advisory".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("minimum_paid_up_capital_sgd".to_string(), serde_json::json!("300000")),
+                ("professional_indemnity_insurance".to_string(), serde_json::json!("PII coverage required per Insurance (Insurance Brokers) Regulations")),
+                ("statutory_reference".to_string(), serde_json::json!("Insurance Act (Cap 142) s35G; Insurance (Insurance Brokers) Regulations")),
+                ("fit_and_proper".to_string(), serde_json::json!("MAS Guidelines on Fit and Proper Criteria")),
+            ].into_iter().collect(),
             application_fee: BTreeMap::new(),
             annual_fee: BTreeMap::new(),
             validity_period_years: Some(3),
         },
+        // Lloyd's Asia — Insurance Act (Cap 142)
         LicenseTypeDefinition {
             license_type_id: "sg-mas:lloyds-asia".to_string(),
             name: "Lloyd's Asia Scheme Registration".to_string(),
@@ -200,7 +222,11 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 "specialty_insurance".to_string(),
                 "marine_insurance".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("singapore_trust_fund_required".to_string(), serde_json::json!("Singapore Trust Fund maintained per Insurance Act s35ZC")),
+                ("statutory_reference".to_string(), serde_json::json!("Insurance Act (Cap 142) Part IIA — Lloyd's Asia Scheme")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("MAS Notice 314 on AML/CFT")),
+            ].into_iter().collect(),
             application_fee: BTreeMap::new(),
             annual_fee: BTreeMap::new(),
             validity_period_years: None,
@@ -284,6 +310,7 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 .collect(),
             validity_period_years: None,
         },
+        // CMS REIT Management — SFA s86, Code on Collective Investment Schemes
         LicenseTypeDefinition {
             license_type_id: "sg-mas:cms-reit-management".to_string(),
             name: "CMS License — REIT Management".to_string(),
@@ -294,7 +321,12 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 "reit_management".to_string(),
                 "property_fund_management".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("minimum_base_capital_sgd".to_string(), serde_json::json!("1000000")),
+                ("statutory_reference".to_string(), serde_json::json!("Securities and Futures Act (Cap 289) s86; Code on Collective Investment Schemes — REIT provisions")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("MAS Notice SFA 04-N02")),
+                ("property_fund_guidelines".to_string(), serde_json::json!("MAS Property Fund Appendix to CIS Code")),
+            ].into_iter().collect(),
             application_fee: [("SGD".to_string(), "1000".to_string())]
                 .into_iter()
                 .collect(),
@@ -303,6 +335,7 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 .collect(),
             validity_period_years: None,
         },
+        // CMS Credit Rating — SFA s86
         LicenseTypeDefinition {
             license_type_id: "sg-mas:cms-credit-rating".to_string(),
             name: "CMS License — Providing Credit Rating Services".to_string(),
@@ -312,7 +345,12 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
             permitted_activities: vec![
                 "credit_rating".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("minimum_base_capital_sgd".to_string(), serde_json::json!("1000000")),
+                ("independence_requirements".to_string(), serde_json::json!("Conflicts of interest policy per SFA s86 and CRA Code of Conduct")),
+                ("statutory_reference".to_string(), serde_json::json!("Securities and Futures Act (Cap 289) s86; SFA (Credit Rating Agencies) Regulations")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("MAS Notice SFA 04-N02")),
+            ].into_iter().collect(),
             application_fee: [("SGD".to_string(), "1000".to_string())]
                 .into_iter()
                 .collect(),
@@ -321,6 +359,7 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 .collect(),
             validity_period_years: None,
         },
+        // CMS Custodial Services — SFA s86
         LicenseTypeDefinition {
             license_type_id: "sg-mas:cms-custodial".to_string(),
             name: "CMS License — Providing Custodial Services".to_string(),
@@ -333,7 +372,12 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 "securities_custody".to_string(),
                 "fund_administration".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("minimum_base_capital_sgd".to_string(), serde_json::json!("5000000")),
+                ("client_asset_segregation".to_string(), serde_json::json!("Client assets segregated from proprietary per SFA s104")),
+                ("statutory_reference".to_string(), serde_json::json!("Securities and Futures Act (Cap 289) s86, s104; SFA (Licensing and Conduct of Business) Regulations")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("MAS Notice SFA 04-N02")),
+            ].into_iter().collect(),
             application_fee: [("SGD".to_string(), "1000".to_string())]
                 .into_iter()
                 .collect(),
@@ -393,16 +437,21 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 .collect(),
             validity_period_years: None,
         },
+        // Domestic Money Transfer — Payment Services Act 2019 s6 (SPI)
         LicenseTypeDefinition {
             license_type_id: "sg-mas:sps-domestic-transfer".to_string(),
             name: "SPS License — Domestic Money Transfer".to_string(),
-            description: "Payment services license for domestic money transfer".to_string(),
+            description: "Standard payment institution license for domestic money transfer".to_string(),
             regulator_id: "sg-mas".to_string(),
             category: Some("financial".to_string()),
             permitted_activities: vec![
                 "domestic_money_transfer".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("minimum_base_capital_sgd".to_string(), serde_json::json!("100000")),
+                ("statutory_reference".to_string(), serde_json::json!("Payment Services Act 2019 s6; PS Regulations 2019")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("MAS Notice PSN02 on AML/CFT")),
+            ].into_iter().collect(),
             application_fee: [("SGD".to_string(), "1000".to_string())]
                 .into_iter()
                 .collect(),
@@ -411,17 +460,22 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 .collect(),
             validity_period_years: None,
         },
+        // Merchant Acquisition — Payment Services Act 2019 s6 (SPI)
         LicenseTypeDefinition {
             license_type_id: "sg-mas:sps-merchant-acquisition".to_string(),
             name: "SPS License — Merchant Acquisition".to_string(),
-            description: "Payment services license for merchant acquisition services".to_string(),
+            description: "Standard payment institution license for merchant acquisition services".to_string(),
             regulator_id: "sg-mas".to_string(),
             category: Some("financial".to_string()),
             permitted_activities: vec![
                 "merchant_acquisition".to_string(),
                 "payment_processing".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("minimum_base_capital_sgd".to_string(), serde_json::json!("100000")),
+                ("statutory_reference".to_string(), serde_json::json!("Payment Services Act 2019 s6; PS Regulations 2019")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("MAS Notice PSN02 on AML/CFT")),
+            ].into_iter().collect(),
             application_fee: [("SGD".to_string(), "1000".to_string())]
                 .into_iter()
                 .collect(),
@@ -430,17 +484,23 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 .collect(),
             validity_period_years: None,
         },
+        // E-Money Issuance — Payment Services Act 2019 s6 (MPI)
         LicenseTypeDefinition {
             license_type_id: "sg-mas:sps-e-money-issuance".to_string(),
             name: "SPS License — E-Money Issuance".to_string(),
-            description: "Payment services license for e-money issuance".to_string(),
+            description: "Major payment institution license for e-money issuance".to_string(),
             regulator_id: "sg-mas".to_string(),
             category: Some("financial".to_string()),
             permitted_activities: vec![
                 "e_money_issuance".to_string(),
                 "stored_value_facility".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("minimum_base_capital_sgd".to_string(), serde_json::json!("250000")),
+                ("float_safeguarding".to_string(), serde_json::json!("Outstanding e-money float must be safeguarded per MAS Notice PSN06")),
+                ("statutory_reference".to_string(), serde_json::json!("Payment Services Act 2019 s6; MAS Notice PSN06 on Safeguarding of Money")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("MAS Notice PSN02 on AML/CFT")),
+            ].into_iter().collect(),
             application_fee: [("SGD".to_string(), "1000".to_string())]
                 .into_iter()
                 .collect(),
@@ -478,6 +538,7 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 .collect(),
             validity_period_years: None,
         },
+        // Money-Lending — Moneylenders Act (Cap 188)
         LicenseTypeDefinition {
             license_type_id: "sg-mas:sps-money-lending".to_string(),
             name: "SPS License — Money-Lending".to_string(),
@@ -489,12 +550,18 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 "money_lending".to_string(),
                 "personal_loans".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("minimum_paid_up_capital_sgd".to_string(), serde_json::json!("300000")),
+                ("interest_rate_cap".to_string(), serde_json::json!("4% per month per Moneylenders Rules 2009")),
+                ("statutory_reference".to_string(), serde_json::json!("Moneylenders Act (Cap 188); Moneylenders Rules 2009")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("MAS Notice PSN02 on AML/CFT")),
+            ].into_iter().collect(),
             application_fee: BTreeMap::new(),
             annual_fee: BTreeMap::new(),
             validity_period_years: Some(1),
         },
         // ── Trust, FA, VCC ─────────────────────────────────────────────
+        // Trust Company — Trust Companies Act (Cap 336)
         LicenseTypeDefinition {
             license_type_id: "sg-mas:trust-company".to_string(),
             name: "Trust Company License".to_string(),
@@ -506,11 +573,18 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 "trust_administration".to_string(),
                 "estate_management".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("minimum_paid_up_capital_sgd".to_string(), serde_json::json!("250000")),
+                ("professional_indemnity_insurance".to_string(), serde_json::json!("PII coverage required per Trust Companies Act s7")),
+                ("statutory_reference".to_string(), serde_json::json!("Trust Companies Act (Cap 336) s5; Trust Companies Regulations")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("MAS Notice TCA-N03 on AML/CFT")),
+                ("fit_and_proper".to_string(), serde_json::json!("MAS Guidelines on Fit and Proper Criteria")),
+            ].into_iter().collect(),
             application_fee: BTreeMap::new(),
             annual_fee: BTreeMap::new(),
             validity_period_years: None,
         },
+        // Financial Adviser — Financial Advisers Act (Cap 110)
         LicenseTypeDefinition {
             license_type_id: "sg-mas:financial-adviser".to_string(),
             name: "Financial Adviser License".to_string(),
@@ -522,11 +596,17 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 "financial_advisory".to_string(),
                 "investment_product_distribution".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("minimum_base_capital_sgd".to_string(), serde_json::json!("150000")),
+                ("professional_indemnity_insurance".to_string(), serde_json::json!("PII coverage required per FAA Regulations")),
+                ("statutory_reference".to_string(), serde_json::json!("Financial Advisers Act (Cap 110) s6; FAA Regulations")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("MAS Notice FAA-N06 on AML/CFT")),
+            ].into_iter().collect(),
             application_fee: BTreeMap::new(),
             annual_fee: BTreeMap::new(),
             validity_period_years: None,
         },
+        // VCC — Variable Capital Companies Act 2018
         LicenseTypeDefinition {
             license_type_id: "sg-mas:vcc".to_string(),
             name: "Variable Capital Company (VCC) Registration".to_string(),
@@ -539,11 +619,17 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 "sub_fund_creation".to_string(),
                 "umbrella_fund_operation".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("registered_office_in_singapore".to_string(), serde_json::json!("Registered office must be in Singapore")),
+                ("fund_manager_requirement".to_string(), serde_json::json!("Must be managed by a licensed/registered fund manager in Singapore")),
+                ("statutory_reference".to_string(), serde_json::json!("Variable Capital Companies Act 2018; VCC Regulations 2020")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("MAS Notice VCC-N01 on AML/CFT")),
+            ].into_iter().collect(),
             application_fee: BTreeMap::new(),
             annual_fee: BTreeMap::new(),
             validity_period_years: None,
         },
+        // DPT Service Provider — Payment Services Act 2019 (full scope)
         LicenseTypeDefinition {
             license_type_id: "sg-mas:dpt-service-provider".to_string(),
             name: "Digital Payment Token Service Provider License".to_string(),
@@ -558,7 +644,13 @@ pub fn mas_license_types() -> Vec<LicenseTypeDefinition> {
                 "dpt_custody".to_string(),
                 "dpt_transfer".to_string(),
             ],
-            requirements: BTreeMap::new(),
+            requirements: [
+                ("minimum_base_capital_sgd".to_string(), serde_json::json!("250000")),
+                ("customer_asset_safeguarding".to_string(), serde_json::json!("Segregation and custody of customer DPTs per MAS Notice PSN08")),
+                ("technology_risk_management".to_string(), serde_json::json!("Per MAS Technology Risk Management Guidelines; cyber-resilience")),
+                ("statutory_reference".to_string(), serde_json::json!("Payment Services Act 2019 s6; MAS Notice PSN08 on Safeguarding")),
+                ("aml_cft_program_required".to_string(), serde_json::json!("MAS Notice PSN02 on AML/CFT; FATF Travel Rule compliance")),
+            ].into_iter().collect(),
             application_fee: BTreeMap::new(),
             annual_fee: BTreeMap::new(),
             validity_period_years: None,
@@ -1037,16 +1129,36 @@ mod tests {
     #[test]
     fn financial_license_types_have_requirements() {
         let key_ids = [
+            // Banking
             "sg-mas:full-bank",
             "sg-mas:wholesale-bank",
             "sg-mas:merchant-bank",
             "sg-mas:digital-bank",
+            // Insurance
+            "sg-mas:direct-insurer",
+            "sg-mas:reinsurer",
+            "sg-mas:insurance-broker",
+            "sg-mas:lloyds-asia",
+            // Capital Markets Services
             "sg-mas:cms-dealing",
             "sg-mas:cms-advising",
             "sg-mas:cms-fund-management",
+            "sg-mas:cms-reit-management",
+            "sg-mas:cms-credit-rating",
+            "sg-mas:cms-custodial",
+            // Payment Services
             "sg-mas:sps-money-changing",
             "sg-mas:sps-cross-border-transfer",
+            "sg-mas:sps-domestic-transfer",
+            "sg-mas:sps-merchant-acquisition",
+            "sg-mas:sps-e-money-issuance",
             "sg-mas:sps-dpt",
+            "sg-mas:sps-money-lending",
+            // Trust, FA, VCC, DPT
+            "sg-mas:trust-company",
+            "sg-mas:financial-adviser",
+            "sg-mas:vcc",
+            "sg-mas:dpt-service-provider",
         ];
         let all = singapore_license_types();
         for id in &key_ids {
@@ -1054,5 +1166,42 @@ mod tests {
                 .unwrap_or_else(|| panic!("missing license type: {id}"));
             assert!(!lt.requirements.is_empty(), "{id} should have non-empty requirements");
         }
+    }
+
+    #[test]
+    fn direct_insurer_has_capital_requirements() {
+        let types = mas_license_types();
+        let insurer = types.iter().find(|t| t.license_type_id == "sg-mas:direct-insurer")
+            .expect("missing direct insurer");
+        assert!(insurer.requirements.contains_key("minimum_paid_up_capital_sgd"), "missing capital req");
+        assert_eq!(insurer.requirements["minimum_paid_up_capital_sgd"], serde_json::json!("5000000"));
+        assert!(insurer.requirements.contains_key("actuarial_function_required"), "missing actuarial req");
+    }
+
+    #[test]
+    fn cms_custodial_has_capital_requirements() {
+        let types = mas_license_types();
+        let cust = types.iter().find(|t| t.license_type_id == "sg-mas:cms-custodial")
+            .expect("missing CMS custodial");
+        assert!(cust.requirements.contains_key("minimum_base_capital_sgd"), "missing capital req");
+        assert_eq!(cust.requirements["minimum_base_capital_sgd"], serde_json::json!("5000000"));
+    }
+
+    #[test]
+    fn e_money_issuance_has_safeguarding_requirement() {
+        let types = mas_license_types();
+        let emoney = types.iter().find(|t| t.license_type_id == "sg-mas:sps-e-money-issuance")
+            .expect("missing e-money issuance");
+        assert!(emoney.requirements.contains_key("float_safeguarding"), "missing float safeguarding");
+        assert!(emoney.requirements.contains_key("minimum_base_capital_sgd"), "missing capital req");
+    }
+
+    #[test]
+    fn trust_company_has_capital_requirements() {
+        let types = mas_license_types();
+        let trust = types.iter().find(|t| t.license_type_id == "sg-mas:trust-company")
+            .expect("missing trust company");
+        assert!(trust.requirements.contains_key("minimum_paid_up_capital_sgd"), "missing capital req");
+        assert_eq!(trust.requirements["minimum_paid_up_capital_sgd"], serde_json::json!("250000"));
     }
 }

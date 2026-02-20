@@ -36,3 +36,4 @@ pub mod regulator;
 pub mod settlement;
 pub mod smart_assets;
 pub mod tax;
+pub mod trade;

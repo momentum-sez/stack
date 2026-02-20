@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use mez_agentic::{PolicyEngine, TaxPipeline};
-use mez_corridor::{InboundAttestation, PeerRegistry, ReceiptChain};
+use mez_corridor::{InboundAttestation, PeerRegistry, ReceiptChain, TradeFlowManager};
 use mez_crypto::SigningKey;
 use mez_state::{DynCorridorState, TransitionRecord};
 use parking_lot::{Mutex, RwLock};
@@ -527,6 +527,12 @@ pub struct AppState {
     /// Keyed by corridor ID. Each corridor accumulates attestations from independent watchers.
     pub attestation_log: Arc<RwLock<HashMap<String, Vec<InboundAttestation>>>>,
 
+    // -- Trade flow manager --
+    /// In-memory trade flow lifecycle manager. Thread-safe via DashMap.
+    /// Manages creation, transition validation, and querying of trade flows
+    /// across all four archetypes (Export, Import, LetterOfCredit, OpenAccount).
+    pub trade_flow_manager: Arc<TradeFlowManager>,
+
     // -- Database persistence (optional) --
     /// PostgreSQL connection pool for durable state persistence.
     /// When `Some`, corridor, smart asset, attestation, and audit data is
@@ -654,6 +660,7 @@ impl AppState {
             peer_registry: Arc::new(RwLock::new(PeerRegistry::new())),
             corridor_genesis_roots: Arc::new(RwLock::new(HashMap::new())),
             attestation_log: Arc::new(RwLock::new(HashMap::new())),
+            trade_flow_manager: Arc::new(TradeFlowManager::new()),
             db_pool,
             mass_client,
             zone_signing_key: Arc::new(zone_signing_key),
@@ -726,11 +733,21 @@ impl AppState {
             self.tax_events.insert(record.id, record);
         }
 
+        // Load trade flows
+        let trade_flows = crate::db::trade::load_all_trade_flows(pool)
+            .await
+            .map_err(|e| format!("failed to load trade flows: {e}"))?;
+        let trade_flow_count = trade_flows.len();
+        for record in trade_flows {
+            self.trade_flow_manager.insert(record);
+        }
+
         tracing::info!(
             corridors = corridor_count,
             smart_assets = asset_count,
             attestations = attestation_count,
             tax_events = tax_event_count,
+            trade_flows = trade_flow_count,
             "Hydrated EZ Stack stores from database"
         );
 

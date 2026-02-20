@@ -43,6 +43,8 @@ pub mod payment_rail;
 pub mod receipt;
 pub mod registry;
 pub mod swift;
+pub mod trade;
+pub mod trade_manager;
 
 // Re-export primary types.
 pub use anchor::{AnchorCommitment, AnchorError, AnchorReceipt, AnchorTarget, MockAnchorTarget};
@@ -80,6 +82,13 @@ pub use registry::{
     generate_corridor_id,
 };
 pub use swift::{SettlementInstruction, SettlementRail, SettlementRailError, SwiftPacs008};
+pub use trade::{
+    ArtifactRef, BillOfLading, BolEndorsement, BolGoods, InvoiceLineItem, LcAmendmentDetails,
+    LcDocumentRequirement, LetterOfCredit, TradeAmount, TradeError, TradeFlowState, TradeFlowType,
+    TradeInvoice, TradeParty, TradePartyAddress, TradeTransitionPayload,
+    compute_trade_document_digest, validate_transition,
+};
+pub use trade_manager::{TradeFlowManager, TradeFlowRecord, TradeTransitionRecord};
 
 use thiserror::Error;
 

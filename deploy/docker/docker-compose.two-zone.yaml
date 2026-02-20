@@ -1,26 +1,40 @@
 # MEZ Stack — Two-Zone Integration Test Compose
 #
-# Deploys two independent MEZ zones (PK-SIFC and AE-DIFC) that can
-# establish an inter-zone corridor and exchange receipts over the
-# internal Docker network.
+# Deploys two independent MEZ zones that can establish an inter-zone
+# corridor and exchange receipts over the internal Docker network.
+#
+# Zone configuration is driven by environment variables, enabling any
+# pair of jurisdictions to be deployed — not limited to PK-SIFC/AE-DIFC.
 #
 # This compose file validates the P0-CORRIDOR-NET-001 inter-zone protocol:
-#   1. Zone A (PK-SIFC) proposes a corridor to Zone B (AE-DIFC)
+#   1. Zone A proposes a corridor to Zone B
 #   2. Zone B accepts the proposal
 #   3. Both zones exchange receipts via the peer exchange API
 #   4. Watcher attestations can be delivered between zones
 #
+# Environment variables (with defaults for backward compatibility):
+#   ZONE_A_ZONE_ID     — Zone A identifier (default: org.momentum.mez.zone.pk-sifc)
+#   ZONE_A_JURISDICTION — Zone A jurisdiction (default: pk)
+#   ZONE_A_PROFILE      — Zone A profile (default: sovereign-govos)
+#   ZONE_B_ZONE_ID     — Zone B identifier (default: org.momentum.mez.zone.ae-difc)
+#   ZONE_B_JURISDICTION — Zone B jurisdiction (default: ae-difc)
+#   ZONE_B_PROFILE      — Zone B profile (default: digital-financial-center)
+#   CORRIDOR_ID         — Corridor identifier (default: auto-generated from jurisdictions)
+#
 # Usage:
+#   # Default (PK-SIFC <-> AE-DIFC):
 #   docker compose -f docker-compose.two-zone.yaml up -d
-#   # Wait for both zones to be healthy, then run the integration test:
-#   ./scripts/test-two-zone.sh
-#   docker compose -f docker-compose.two-zone.yaml down -v
+#
+#   # Singapore <-> Hong Kong:
+#   ZONE_A_ZONE_ID=org.momentum.mez.zone.sg ZONE_A_JURISDICTION=sg ZONE_A_PROFILE=digital-financial-center \
+#   ZONE_B_ZONE_ID=org.momentum.mez.zone.hk ZONE_B_JURISDICTION=hk ZONE_B_PROFILE=digital-financial-center \
+#   docker compose -f docker-compose.two-zone.yaml up -d
 
 name: mez-two-zone
 
 services:
   # ============================================
-  # ZONE A — Pakistan SIFC
+  # ZONE A
   # ============================================
 
   zone-a:
@@ -32,16 +46,16 @@ services:
     ports:
       - "8080:8080"
     environment:
-      MEZ_ZONE_ID: org.momentum.mez.zone.pk-sifc
-      MEZ_JURISDICTION: pk
-      MEZ_PROFILE: sovereign-govos
+      MEZ_ZONE_ID: ${ZONE_A_ZONE_ID:-org.momentum.mez.zone.pk-sifc}
+      MEZ_JURISDICTION: ${ZONE_A_JURISDICTION:-pk}
+      MEZ_PROFILE: ${ZONE_A_PROFILE:-sovereign-govos}
       MEZ_HOST: "0.0.0.0"
       MEZ_PORT: "8080"
       MEZ_LOG_LEVEL: debug
       AUTH_TOKEN: ${ZONE_A_AUTH_TOKEN:?ZONE_A_AUTH_TOKEN must be set}
       DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-a:5432/mez"
-      MEZ_CORRIDOR_ID: org.momentum.mez.corridor.pk-ae.cross-border
-      MEZ_WATCHER_ID: watcher-pk-001
+      MEZ_CORRIDOR_ID: ${CORRIDOR_ID:-org.momentum.mez.corridor.cross-border}
+      MEZ_WATCHER_ID: watcher-a-001
       MEZ_BOND_AMOUNT: "100000"
       MEZ_METRICS_ENABLED: "true"
     depends_on:
@@ -78,7 +92,7 @@ services:
       start_period: 5s
 
   # ============================================
-  # ZONE B — UAE DIFC
+  # ZONE B
   # ============================================
 
   zone-b:
@@ -90,16 +104,16 @@ services:
     ports:
       - "8081:8080"
     environment:
-      MEZ_ZONE_ID: org.momentum.mez.zone.ae-difc
-      MEZ_JURISDICTION: ae-difc
-      MEZ_PROFILE: digital-financial-center
+      MEZ_ZONE_ID: ${ZONE_B_ZONE_ID:-org.momentum.mez.zone.ae-difc}
+      MEZ_JURISDICTION: ${ZONE_B_JURISDICTION:-ae-difc}
+      MEZ_PROFILE: ${ZONE_B_PROFILE:-digital-financial-center}
       MEZ_HOST: "0.0.0.0"
       MEZ_PORT: "8080"
       MEZ_LOG_LEVEL: debug
       AUTH_TOKEN: ${ZONE_B_AUTH_TOKEN:?ZONE_B_AUTH_TOKEN must be set}
       DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-b:5432/mez"
-      MEZ_CORRIDOR_ID: org.momentum.mez.corridor.pk-ae.cross-border
-      MEZ_WATCHER_ID: watcher-ae-001
+      MEZ_CORRIDOR_ID: ${CORRIDOR_ID:-org.momentum.mez.corridor.cross-border}
+      MEZ_WATCHER_ID: watcher-b-001
       MEZ_BOND_AMOUNT: "100000"
       MEZ_METRICS_ENABLED: "true"
     depends_on:

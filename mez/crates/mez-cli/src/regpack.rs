@@ -9,19 +9,22 @@
 //! # Build and store the Pakistan financial regpack:
 //! mez regpack build --jurisdiction pk --domain financial
 //!
-//! # Build and store the Pakistan sanctions regpack:
-//! mez regpack build --jurisdiction pk --domain sanctions
+//! # Build all available regpacks for any supported jurisdiction:
+//! mez regpack build --jurisdiction ae --all-domains --store
+//! mez regpack build --jurisdiction sg --all-domains --store
+//! mez regpack build --jurisdiction hk --all-domains --store
+//! mez regpack build --jurisdiction ky --all-domains --store
 //!
-//! # Build all available regpacks for a jurisdiction:
-//! mez regpack build --jurisdiction pk --all-domains
+//! # List available jurisdictions:
+//! mez regpack list
 //! ```
 
 use std::path::Path;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 
-use mez_pack::regpack::pakistan::{build_pakistan_regpack, build_pakistan_sanctions_regpack};
+use mez_pack::regpack;
 
 /// Regpack subcommand arguments.
 #[derive(Args, Debug)]
@@ -35,7 +38,7 @@ pub struct RegpackArgs {
 pub enum RegpackCommand {
     /// Build a content-addressed regpack artifact for a jurisdiction and domain.
     Build {
-        /// Jurisdiction ID (e.g., pk, ae-difc).
+        /// Jurisdiction ID (e.g., pk, ae, sg, hk, ky).
         #[arg(long)]
         jurisdiction: String,
 
@@ -53,6 +56,9 @@ pub enum RegpackCommand {
         #[arg(long)]
         store: bool,
     },
+
+    /// List all jurisdictions with available regpack content.
+    List,
 }
 
 /// Execute the regpack subcommand.
@@ -64,7 +70,25 @@ pub fn run_regpack(args: &RegpackArgs, repo_root: &Path) -> Result<u8> {
             all_domains,
             store,
         } => run_build(jurisdiction, domain.as_deref(), *all_domains, *store, repo_root),
+        RegpackCommand::List => run_list(),
     }
+}
+
+fn run_list() -> Result<u8> {
+    let jurisdictions = regpack::available_jurisdictions();
+    println!("Available jurisdictions with regpack content:");
+    println!();
+    for j in &jurisdictions {
+        println!(
+            "  {:<6} {} (domains: {})",
+            j.jurisdiction_id,
+            j.jurisdiction_name,
+            j.available_domains.join(", ")
+        );
+    }
+    println!();
+    println!("Total: {} jurisdictions", jurisdictions.len());
+    Ok(0)
 }
 
 fn run_build(
@@ -75,10 +99,18 @@ fn run_build(
     repo_root: &Path,
 ) -> Result<u8> {
     let domains: Vec<&str> = if all_domains {
-        match jurisdiction {
-            "pk" => vec!["financial", "sanctions"],
-            _ => bail!("No regpack content available for jurisdiction '{jurisdiction}'"),
-        }
+        regpack::domains_for_jurisdiction(jurisdiction)
+            .ok_or_else(|| {
+                let available = regpack::available_jurisdictions()
+                    .iter()
+                    .map(|j| j.jurisdiction_id.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                anyhow::anyhow!(
+                    "No regpack content available for jurisdiction '{jurisdiction}'. \
+                     Available: {available}"
+                )
+            })?
     } else {
         vec![domain.context("--domain is required when --all-domains is not set")?]
     };
@@ -111,76 +143,11 @@ fn run_build(
 
 /// Build a regpack for a specific jurisdiction and domain, returning
 /// the digest hex and the serialized JSON bytes.
+///
+/// Delegates to the multi-jurisdiction dispatch in `mez_pack::regpack`.
 fn build_regpack_for(jurisdiction: &str, domain: &str) -> Result<(String, Vec<u8>)> {
-    match (jurisdiction, domain) {
-        ("pk", "financial") => {
-            let (regpack, metadata, sanctions, deadlines, reporting, wht) =
-                build_pakistan_regpack().context("failed to build Pakistan financial regpack")?;
-
-            let digest_hex = regpack
-                .digest
-                .as_ref()
-                .context("regpack has no digest")?
-                .to_hex();
-
-            // Build the CAS-storable JSON artifact.
-            let artifact = serde_json::json!({
-                "regpack_id": metadata.regpack_id,
-                "jurisdiction_id": metadata.jurisdiction_id,
-                "domain": metadata.domain,
-                "as_of_date": metadata.as_of_date,
-                "snapshot_type": metadata.snapshot_type,
-                "sources": metadata.sources,
-                "includes": metadata.includes,
-                "created_at": metadata.created_at,
-                "expires_at": metadata.expires_at,
-                "digest_sha256": digest_hex,
-                "sanctions_snapshot": sanctions,
-                "regulators": mez_pack::regpack::pakistan::pakistan_regulators(),
-                "compliance_deadlines": deadlines,
-                "reporting_requirements": reporting,
-                "withholding_tax_rates": wht,
-            });
-
-            let json_bytes = serde_json::to_vec_pretty(&artifact)
-                .context("failed to serialize regpack artifact")?;
-
-            Ok((digest_hex, json_bytes))
-        }
-        ("pk", "sanctions") => {
-            let (regpack, metadata, sanctions) =
-                build_pakistan_sanctions_regpack()
-                    .context("failed to build Pakistan sanctions regpack")?;
-
-            let digest_hex = regpack
-                .digest
-                .as_ref()
-                .context("regpack has no digest")?
-                .to_hex();
-
-            let artifact = serde_json::json!({
-                "regpack_id": metadata.regpack_id,
-                "jurisdiction_id": metadata.jurisdiction_id,
-                "domain": metadata.domain,
-                "as_of_date": metadata.as_of_date,
-                "snapshot_type": metadata.snapshot_type,
-                "sources": metadata.sources,
-                "includes": metadata.includes,
-                "created_at": metadata.created_at,
-                "expires_at": metadata.expires_at,
-                "digest_sha256": digest_hex,
-                "sanctions_snapshot": sanctions,
-            });
-
-            let json_bytes = serde_json::to_vec_pretty(&artifact)
-                .context("failed to serialize sanctions regpack artifact")?;
-
-            Ok((digest_hex, json_bytes))
-        }
-        _ => bail!(
-            "No regpack content available for jurisdiction '{jurisdiction}' domain '{domain}'"
-        ),
-    }
+    regpack::build_regpack_artifact(jurisdiction, domain)
+        .map_err(|e| anyhow::anyhow!("failed to build regpack for {jurisdiction}/{domain}: {e}"))
 }
 
 #[cfg(test)]
@@ -192,13 +159,44 @@ mod tests {
         let (hex, bytes) = build_regpack_for("pk", "financial").unwrap();
         assert_eq!(hex.len(), 64, "digest must be 64 hex chars");
         assert!(!bytes.is_empty());
-        // Verify it's valid JSON.
         let _: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     }
 
     #[test]
     fn build_pk_sanctions_returns_digest() {
         let (hex, bytes) = build_regpack_for("pk", "sanctions").unwrap();
+        assert_eq!(hex.len(), 64, "digest must be 64 hex chars");
+        assert!(!bytes.is_empty());
+        let _: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    }
+
+    #[test]
+    fn build_ae_financial_returns_digest() {
+        let (hex, bytes) = build_regpack_for("ae", "financial").unwrap();
+        assert_eq!(hex.len(), 64, "digest must be 64 hex chars");
+        assert!(!bytes.is_empty());
+        let _: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    }
+
+    #[test]
+    fn build_sg_financial_returns_digest() {
+        let (hex, bytes) = build_regpack_for("sg", "financial").unwrap();
+        assert_eq!(hex.len(), 64, "digest must be 64 hex chars");
+        assert!(!bytes.is_empty());
+        let _: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    }
+
+    #[test]
+    fn build_hk_financial_returns_digest() {
+        let (hex, bytes) = build_regpack_for("hk", "financial").unwrap();
+        assert_eq!(hex.len(), 64, "digest must be 64 hex chars");
+        assert!(!bytes.is_empty());
+        let _: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    }
+
+    #[test]
+    fn build_ky_financial_returns_digest() {
+        let (hex, bytes) = build_regpack_for("ky", "financial").unwrap();
         assert_eq!(hex.len(), 64, "digest must be 64 hex chars");
         assert!(!bytes.is_empty());
         let _: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
@@ -221,5 +219,31 @@ mod tests {
         let (fin_hex, _) = build_regpack_for("pk", "financial").unwrap();
         let (san_hex, _) = build_regpack_for("pk", "sanctions").unwrap();
         assert_ne!(fin_hex, san_hex);
+    }
+
+    #[test]
+    fn all_jurisdictions_build_financial_regpack() {
+        for j in regpack::available_jurisdictions() {
+            let result = build_regpack_for(j.jurisdiction_id, "financial");
+            assert!(
+                result.is_ok(),
+                "failed to build financial regpack for {}: {:?}",
+                j.jurisdiction_id,
+                result.err()
+            );
+        }
+    }
+
+    #[test]
+    fn all_jurisdictions_build_sanctions_regpack() {
+        for j in regpack::available_jurisdictions() {
+            let result = build_regpack_for(j.jurisdiction_id, "sanctions");
+            assert!(
+                result.is_ok(),
+                "failed to build sanctions regpack for {}: {:?}",
+                j.jurisdiction_id,
+                result.err()
+            );
+        }
     }
 }

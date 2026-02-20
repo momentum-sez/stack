@@ -3,7 +3,7 @@ jurisdiction_id: hk
 zone_name: Hong Kong SAR
 profile:
   profile_id: org.momentum.mez.profile.digital-financial-center
-  version: 0.4.44
+  version: "0.4.44"
 
 jurisdiction_stack:
   - hk
@@ -12,13 +12,39 @@ lawpack_domains:
   - civil
   - financial
 
-overlays: []
-params_overrides: {}
+licensepack_domains:
+  - financial
+  - corporate
+
+licensepack_refresh_policy:
+  financial: "hourly, max 4h staleness"
+
+regpacks:
+  - domain: financial
+    jurisdiction_id: hk
+    as_of_date: "2026-01-15"
+  - domain: sanctions
+    jurisdiction_id: hk
+    as_of_date: "2026-01-15"
+
+domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+  - consumer_protection
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.usdc-cross-border
 
+corridor_peers: []
 trust_anchors: []
+
 key_rotation_policy:
   default:
     rotation_days: 90

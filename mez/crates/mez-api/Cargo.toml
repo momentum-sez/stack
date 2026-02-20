@@ -13,7 +13,6 @@ path = "src/main.rs"
 [features]
 default = ["jurisdiction-pk"]
 jurisdiction-pk = ["mez-agentic/jurisdiction-pk"]
-swagger = []
 
 [dependencies]
 # Internal crates
@@ -26,7 +25,6 @@ mez-state = { workspace = true }
 mez-mass-client = { workspace = true }
 mez-agentic = { workspace = true }
 mez-pack = { workspace = true }
-mez-compliance = { workspace = true }
 
 # Cryptography
 rand_core = { workspace = true }

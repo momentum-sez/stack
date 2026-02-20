@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: MEZ
+    folder: MEZ Stack
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

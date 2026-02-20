@@ -51,11 +51,13 @@ pub mod orchestration;
 pub mod routes;
 pub mod state;
 
+use std::collections::HashMap;
+
 use axum::extract::{DefaultBodyLimit, State};
 use axum::http::StatusCode;
 use axum::middleware::from_fn;
 use axum::response::IntoResponse;
-use axum::Router;
+use axum::{Extension, Router};
 use tower_http::trace::TraceLayer;
 
 use crate::auth::AuthConfig;
@@ -63,16 +65,25 @@ use crate::middleware::metrics::ApiMetrics;
 use crate::middleware::rate_limit::{RateLimitConfig, RateLimiter};
 use crate::state::AppState;
 
+/// Check if metrics are enabled via the `MEZ_METRICS_ENABLED` env var.
+/// Defaults to `true` when the variable is absent or set to anything other than `"false"`.
+fn metrics_enabled() -> bool {
+    std::env::var("MEZ_METRICS_ENABLED")
+        .map(|v| v.to_lowercase() != "false")
+        .unwrap_or(true)
+}
+
 /// Assemble the full application router with all routes and middleware.
 ///
-/// Health probes (`/health/*`) are mounted outside the auth middleware
-/// so they remain accessible without credentials.
+/// Health probes (`/health/*`) and `/metrics` are mounted outside the auth
+/// middleware so they remain accessible without credentials.
 pub fn app(state: AppState) -> Router {
     let auth_config = AuthConfig {
         token: state.config.auth_token.clone(),
     };
     let metrics = ApiMetrics::new();
     let limiter = RateLimiter::new(RateLimitConfig::default());
+    let metrics_on = metrics_enabled();
 
     // Authenticated API routes.
     //
@@ -110,24 +121,187 @@ pub fn app(state: AppState) -> Router {
     #[cfg(feature = "jurisdiction-pk")]
     let api = api.merge(routes::govos::router());
 
-    let api = api
+    let mut api = api
         .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
         .layer(from_fn(middleware::rate_limit::rate_limit_middleware))
-        .layer(from_fn(auth::auth_middleware))
-        .layer(from_fn(middleware::metrics::metrics_middleware))
+        .layer(from_fn(auth::auth_middleware));
+
+    // Only register the metrics middleware when metrics are enabled.
+    if metrics_on {
+        api = api
+            .layer(from_fn(middleware::metrics::metrics_middleware))
+            .layer(axum::Extension(metrics.clone()));
+    }
+
+    let api = api
         .layer(TraceLayer::new_for_http())
         .layer(axum::Extension(auth_config))
-        .layer(axum::Extension(metrics))
         .layer(axum::Extension(limiter))
         .with_state(state.clone());
 
     // Unauthenticated health probes — readiness checks actual service health.
-    let health = Router::new()
+    let mut unauthenticated = Router::new()
         .route("/health/liveness", axum::routing::get(liveness))
-        .route("/health/readiness", axum::routing::get(readiness))
-        .with_state(state);
+        .route("/health/readiness", axum::routing::get(readiness));
 
-    Router::new().merge(health).merge(api)
+    // Mount /metrics endpoint when metrics are enabled (unauthenticated, like health probes).
+    if metrics_on {
+        unauthenticated = unauthenticated
+            .route("/metrics", axum::routing::get(prometheus_metrics))
+            .layer(axum::Extension(metrics));
+    }
+
+    let unauthenticated = unauthenticated.with_state(state);
+
+    Router::new().merge(unauthenticated).merge(api)
+}
+
+/// GET /metrics — Prometheus metrics scrape endpoint.
+///
+/// Updates domain gauges from current `AppState` on each scrape (pull model),
+/// then gathers and encodes all metrics in Prometheus text exposition format.
+async fn prometheus_metrics(
+    State(state): State<AppState>,
+    Extension(metrics): Extension<ApiMetrics>,
+) -> impl IntoResponse {
+    // -- Update domain gauges from AppState --
+
+    // Corridors by state.
+    let corridors = state.corridors.list();
+    let mut by_state: HashMap<String, usize> = HashMap::new();
+    for c in &corridors {
+        *by_state.entry(c.state.as_str().to_string()).or_default() += 1;
+    }
+    // Reset all corridor state labels, then set current values.
+    metrics.corridors_total().reset();
+    for (st, count) in &by_state {
+        metrics
+            .corridors_total()
+            .with_label_values(&[st])
+            .set(*count as f64);
+    }
+
+    // Receipt chain heights per corridor.
+    metrics.corridor_receipt_chain_height().reset();
+    let mut total_receipts: u64 = 0;
+    {
+        let chains = state.receipt_chains.read();
+        for c in &corridors {
+            if let Some(chain) = chains.get(&c.id) {
+                let h = chain.height();
+                metrics
+                    .corridor_receipt_chain_height()
+                    .with_label_values(&[&c.id.to_string()])
+                    .set(h as f64);
+                total_receipts += h;
+            }
+        }
+    }
+    metrics
+        .receipt_chain_total_receipts()
+        .set(total_receipts as f64);
+
+    // Assets by compliance status.
+    let assets = state.smart_assets.list();
+    let mut compliant = 0usize;
+    let mut non_compliant = 0usize;
+    let mut pending = 0usize;
+    let mut unevaluated = 0usize;
+    let mut partially_compliant = 0usize;
+    for a in &assets {
+        match a.compliance_status {
+            state::AssetComplianceStatus::Compliant => compliant += 1,
+            state::AssetComplianceStatus::NonCompliant => non_compliant += 1,
+            state::AssetComplianceStatus::Pending => pending += 1,
+            state::AssetComplianceStatus::Unevaluated => unevaluated += 1,
+            state::AssetComplianceStatus::PartiallyCompliant => partially_compliant += 1,
+        }
+    }
+    metrics.assets_total().reset();
+    metrics
+        .assets_total()
+        .with_label_values(&["compliant"])
+        .set(compliant as f64);
+    metrics
+        .assets_total()
+        .with_label_values(&["non_compliant"])
+        .set(non_compliant as f64);
+    metrics
+        .assets_total()
+        .with_label_values(&["pending"])
+        .set(pending as f64);
+    metrics
+        .assets_total()
+        .with_label_values(&["unevaluated"])
+        .set(unevaluated as f64);
+    metrics
+        .assets_total()
+        .with_label_values(&["partially_compliant"])
+        .set(partially_compliant as f64);
+
+    // Attestations total.
+    metrics
+        .attestations_total()
+        .set(state.attestations.len() as f64);
+
+    // Peers by status.
+    {
+        let registry = state.peer_registry.read();
+        let peers = registry.list_peers();
+        let mut peer_counts: HashMap<&str, usize> = HashMap::new();
+        for p in &peers {
+            let status_str = match p.status {
+                mez_corridor::PeerStatus::Discovered => "discovered",
+                mez_corridor::PeerStatus::Proposing => "proposing",
+                mez_corridor::PeerStatus::Active => "active",
+                mez_corridor::PeerStatus::Unreachable => "unreachable",
+                mez_corridor::PeerStatus::Disconnected => "disconnected",
+            };
+            *peer_counts.entry(status_str).or_default() += 1;
+        }
+        metrics.peers_total().reset();
+        for (status, count) in &peer_counts {
+            metrics
+                .peers_total()
+                .with_label_values(&[status])
+                .set(*count as f64);
+        }
+    }
+
+    // Policies and audit trail.
+    {
+        let engine = state.policy_engine.lock();
+        metrics.policies_total().set(engine.policy_count() as f64);
+        metrics
+            .audit_trail_entries_total()
+            .set(engine.audit_trail.len() as f64);
+    }
+
+    // Zone key ephemeral.
+    let ephemeral = match &state.zone {
+        Some(zc) => zc.key_ephemeral,
+        None => std::env::var("ZONE_SIGNING_KEY_HEX").is_err(),
+    };
+    metrics
+        .zone_key_ephemeral()
+        .set(if ephemeral { 1.0 } else { 0.0 });
+
+    // -- Gather and encode --
+    match metrics.gather_and_encode() {
+        Ok(body) => (
+            StatusCode::OK,
+            [(
+                axum::http::header::CONTENT_TYPE,
+                "text/plain; version=0.0.4; charset=utf-8",
+            )],
+            body,
+        )
+            .into_response(),
+        Err(e) => {
+            tracing::error!("Failed to encode Prometheus metrics: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, e).into_response()
+        }
+    }
 }
 
 /// Liveness probe — always returns 200 if the process is running.

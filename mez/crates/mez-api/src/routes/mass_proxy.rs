@@ -52,6 +52,8 @@ use crate::error::AppError;
 use crate::orchestration::{self, OrchestrationEnvelope};
 use crate::state::{AppState, TaxEventRecord};
 
+use super::sovereign_ops;
+
 // ── Input Validation ─────────────────────────────────────────────────
 
 /// Trait for request validation at the HTTP boundary.
@@ -468,7 +470,6 @@ async fn create_entity(
     Json(req): Json<CreateEntityProxyRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
     req.validate().map_err(AppError::Validation)?;
-    let client = require_mass_client(&state)?;
 
     // Step 1: Pre-flight compliance evaluation.
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
@@ -482,26 +483,36 @@ async fn create_entity(
         return Err(AppError::Forbidden(reason));
     }
 
-    // Step 3: Mass API call — map proxy DTO → Swagger-aligned mass-client types.
+    // Step 3: Mass operation — sovereign or proxy.
     let jurisdiction_id = req.jurisdiction_id.clone();
     let legal_name = req.legal_name.clone();
 
-    let mass_req = mez_mass_client::entities::CreateEntityRequest {
-        name: req.legal_name,
-        entity_type: Some(req.entity_type),
-        jurisdiction: Some(req.jurisdiction_id),
-        address: None,
-        tags: vec![],
+    let mass_response = if state.sovereign_mass {
+        sovereign_ops::create_entity(
+            &state,
+            &req.legal_name,
+            Some(&req.jurisdiction_id),
+            Some(&req.entity_type),
+            &[],
+        )
+        .await?
+    } else {
+        let client = require_mass_client(&state)?;
+        let mass_req = mez_mass_client::entities::CreateEntityRequest {
+            name: req.legal_name,
+            entity_type: Some(req.entity_type),
+            jurisdiction: Some(req.jurisdiction_id),
+            address: None,
+            tags: vec![],
+        };
+        let entity = client
+            .entities()
+            .create(&mass_req)
+            .await
+            .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
+        serde_json::to_value(entity)
+            .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?
     };
-
-    let entity = client
-        .entities()
-        .create(&mass_req)
-        .await
-        .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
-
-    let mass_response = serde_json::to_value(entity)
-        .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
 
     // Step 4 & 5: Post-operation orchestration (VC issuance + attestation storage).
     let envelope = orchestration::orchestrate_entity_creation(
@@ -510,6 +521,20 @@ async fn create_entity(
         &legal_name,
         mass_response,
     );
+
+    // Step 6: Audit trail.
+    append_audit(
+        &state,
+        "entity.created",
+        "entity",
+        &envelope,
+        "create",
+        serde_json::json!({
+            "jurisdiction": &jurisdiction_id,
+            "compliance_status": &envelope.compliance.overall_status,
+        }),
+    )
+    .await;
 
     Ok((axum::http::StatusCode::CREATED, Json(envelope)))
 }
@@ -531,8 +556,14 @@ async fn get_entity(
     State(state): State<AppState>,
     Path(id): Path<uuid::Uuid>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let client = require_mass_client(&state)?;
+    if state.sovereign_mass {
+        return match sovereign_ops::get_entity(&state, id)? {
+            Some(entity) => Ok(Json(entity)),
+            None => Err(AppError::not_found(format!("entity {id} not found"))),
+        };
+    }
 
+    let client = require_mass_client(&state)?;
     match client.entities().get(id).await {
         Ok(Some(entity)) => serde_json::to_value(entity)
             .map(Json)
@@ -572,52 +603,80 @@ async fn update_entity(
     Json(req): Json<UpdateEntityProxyRequest>,
 ) -> Result<Json<OrchestrationEnvelope>, AppError> {
     req.validate().map_err(AppError::Validation)?;
-    let client = require_mass_client(&state)?;
 
-    // Step 1: Fetch existing entity to determine jurisdiction.
-    let existing = client
-        .entities()
-        .get(id)
-        .await
-        .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?
-        .ok_or_else(|| AppError::not_found(format!("entity {id} not found")))?;
+    // Determine jurisdiction from existing entity or request.
+    let jurisdiction_id = if state.sovereign_mass {
+        let existing = sovereign_ops::get_entity(&state, id)?
+            .ok_or_else(|| AppError::not_found(format!("entity {id} not found")))?;
+        req.jurisdiction_id
+            .as_deref()
+            .or_else(|| existing.get("jurisdiction").and_then(|v| v.as_str()))
+            .filter(|j| !j.is_empty())
+            .unwrap_or("GLOBAL")
+            .to_string()
+    } else {
+        let client = require_mass_client(&state)?;
+        let existing = client
+            .entities()
+            .get(id)
+            .await
+            .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?
+            .ok_or_else(|| AppError::not_found(format!("entity {id} not found")))?;
+        req.jurisdiction_id
+            .as_deref()
+            .or(existing.jurisdiction.as_deref())
+            .filter(|j| !j.is_empty())
+            .unwrap_or("GLOBAL")
+            .to_string()
+    };
 
-    // Use the request's jurisdiction if provided, else the existing entity's,
-    // else GLOBAL scope (consistent with cap table/consent patterns).
-    let jurisdiction_id = req
-        .jurisdiction_id
-        .as_deref()
-        .or(existing.jurisdiction.as_deref())
-        .filter(|j| !j.is_empty())
-        .unwrap_or("GLOBAL");
-
-    // Step 2: Pre-flight compliance evaluation.
+    // Pre-flight compliance evaluation.
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
-        jurisdiction_id,
+        &jurisdiction_id,
         &id.to_string(),
         orchestration::entity_domains(),
     );
 
-    // Step 3: Hard-block check (sanctions).
+    // Hard-block check (sanctions).
     if let Some(reason) = orchestration::check_hard_blocks(&pre_summary) {
         return Err(AppError::Forbidden(reason));
     }
 
-    // Step 4: Mass API call — convert typed request to JSON for the Mass update endpoint.
-    let body = serde_json::to_value(&req)
-        .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
-    let entity = client
-        .entities()
-        .update(id, &body)
-        .await
-        .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
+    // Mass operation — sovereign or proxy.
+    let mass_response = if state.sovereign_mass {
+        let body = serde_json::to_value(&req)
+            .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
+        sovereign_ops::update_entity(&state, id, &body).await?
+    } else {
+        let client = require_mass_client(&state)?;
+        let body = serde_json::to_value(&req)
+            .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
+        let entity = client
+            .entities()
+            .update(id, &body)
+            .await
+            .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
+        serde_json::to_value(entity)
+            .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?
+    };
 
-    let mass_response = serde_json::to_value(entity)
-        .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
-
-    // Step 5 & 6: Post-operation orchestration (VC issuance + attestation storage).
+    // Post-operation orchestration (VC issuance + attestation storage).
     let envelope =
-        orchestration::orchestrate_entity_update(&state, id, jurisdiction_id, mass_response);
+        orchestration::orchestrate_entity_update(&state, id, &jurisdiction_id, mass_response);
+
+    // Audit trail.
+    append_audit(
+        &state,
+        "entity.updated",
+        "entity",
+        &envelope,
+        "update",
+        serde_json::json!({
+            "jurisdiction": &jurisdiction_id,
+            "compliance_status": &envelope.compliance.overall_status,
+        }),
+    )
+    .await;
 
     Ok(Json(envelope))
 }
@@ -634,8 +693,13 @@ async fn update_entity(
     tag = "entities"
 )]
 async fn list_entities(State(state): State<AppState>) -> Result<Json<serde_json::Value>, AppError> {
-    let client = require_mass_client(&state)?;
+    if state.sovereign_mass {
+        let entities = sovereign_ops::list_entities(&state, None)?;
+        return Ok(Json(serde_json::to_value(entities)
+            .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?));
+    }
 
+    let client = require_mass_client(&state)?;
     let entities = client
         .entities()
         .list(None)
@@ -674,12 +738,8 @@ async fn create_cap_table(
     Json(req): Json<CreateCapTableProxyRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
     req.validate().map_err(AppError::Validation)?;
-    let client = require_mass_client(&state)?;
 
-    // Step 1: Pre-flight compliance evaluation.
-    // TODO(P1-004): The entity's jurisdiction should be fetched from Mass
-    // organization-info by entity_id. For now, ownership operations use
-    // global-scope evaluation until the entity lookup is integrated.
+    // Pre-flight compliance evaluation.
     let entity_id = req.entity_id;
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
         "GLOBAL",
@@ -687,34 +747,60 @@ async fn create_cap_table(
         orchestration::ownership_domains(),
     );
 
-    // Step 2: Hard-block check.
+    // Hard-block check.
     if let Some(reason) = orchestration::check_hard_blocks(&pre_summary) {
         return Err(AppError::Forbidden(reason));
     }
 
-    // Step 3: Mass API call — map proxy DTO → Swagger-aligned mass-client types.
-    let mass_req = mez_mass_client::ownership::CreateCapTableRequest {
-        organization_id: req.entity_id.to_string(),
-        authorized_shares: req.share_classes.first().map(|sc| sc.authorized_shares),
-        options_pool: None,
-        par_value: req
-            .share_classes
-            .first()
-            .and_then(|sc| sc.par_value.clone()),
-        shareholders: vec![],
+    // Mass operation — sovereign or proxy.
+    let mass_response = if state.sovereign_mass {
+        let authorized = req.share_classes.first().map(|sc| sc.authorized_shares).unwrap_or(0);
+        let par_value = req.share_classes.first().and_then(|sc| sc.par_value.as_deref());
+        sovereign_ops::create_cap_table(
+            &state,
+            &entity_id.to_string(),
+            authorized,
+            par_value,
+            None,
+        )
+        .await?
+    } else {
+        let client = require_mass_client(&state)?;
+        let mass_req = mez_mass_client::ownership::CreateCapTableRequest {
+            organization_id: req.entity_id.to_string(),
+            authorized_shares: req.share_classes.first().map(|sc| sc.authorized_shares),
+            options_pool: None,
+            par_value: req
+                .share_classes
+                .first()
+                .and_then(|sc| sc.par_value.clone()),
+            shareholders: vec![],
+        };
+        let cap_table = client
+            .ownership()
+            .create_cap_table(&mass_req)
+            .await
+            .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
+        serde_json::to_value(cap_table)
+            .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?
     };
 
-    let cap_table = client
-        .ownership()
-        .create_cap_table(&mass_req)
-        .await
-        .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
-
-    let mass_response = serde_json::to_value(cap_table)
-        .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
-
-    // Step 4 & 5: Post-operation orchestration.
+    // Post-operation orchestration.
     let envelope = orchestration::orchestrate_cap_table_creation(&state, entity_id, mass_response);
+
+    // Audit trail.
+    append_audit(
+        &state,
+        "ownership.cap_table_created",
+        "cap_table",
+        &envelope,
+        "create",
+        serde_json::json!({
+            "entity_id": entity_id.to_string(),
+            "compliance_status": &envelope.compliance.overall_status,
+        }),
+    )
+    .await;
 
     Ok((axum::http::StatusCode::CREATED, Json(envelope)))
 }
@@ -736,8 +822,17 @@ async fn get_cap_table(
     State(state): State<AppState>,
     Path(id): Path<uuid::Uuid>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let client = require_mass_client(&state)?;
+    if state.sovereign_mass {
+        // In sovereign mode, the path param is the entity UUID — look up by org ID.
+        return match sovereign_ops::get_cap_table_by_org(&state, &id.to_string())? {
+            Some(ct) => Ok(Json(ct)),
+            None => Err(AppError::not_found(format!(
+                "cap table for entity {id} not found"
+            ))),
+        };
+    }
 
+    let client = require_mass_client(&state)?;
     match client.ownership().get_cap_table(id).await {
         Ok(Some(cap_table)) => serde_json::to_value(cap_table)
             .map(Json)
@@ -776,11 +871,8 @@ async fn create_account(
     Json(req): Json<CreateAccountProxyRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
     req.validate().map_err(AppError::Validation)?;
-    let client = require_mass_client(&state)?;
 
-    // Step 1: Pre-flight compliance evaluation.
-    // Infer jurisdiction from the requested currency — this drives compliance
-    // tensor evaluation for the correct jurisdiction (PK, AE, US, CN, etc.).
+    // Pre-flight compliance evaluation.
     let entity_id = req.entity_id;
     let currency = req.currency.clone();
     let inferred_jurisdiction = orchestration::infer_jurisdiction(&currency);
@@ -790,29 +882,46 @@ async fn create_account(
         orchestration::fiscal_account_domains(),
     );
 
-    // Step 2: Hard-block check.
+    // Hard-block check.
     if let Some(reason) = orchestration::check_hard_blocks(&pre_summary) {
         return Err(AppError::Forbidden(reason));
     }
 
-    // Step 3: Mass API call — map proxy DTO → Swagger-aligned mass-client types.
-    // The live treasury-info API requires a treasury_id and idempotency_key.
-    // Use entity_id as the treasury reference and account_type as the
-    // idempotency seed until the proxy DTO evolves to match the Swagger spec.
-    let idempotency_key = format!("{}-{}", req.entity_id, req.account_type);
+    // Mass operation — sovereign or proxy.
+    let mass_response = if state.sovereign_mass {
+        // In sovereign mode, find or create a treasury for this entity.
+        let treasury_id = find_or_create_treasury(&state, &entity_id.to_string()).await?;
+        sovereign_ops::create_account(&state, treasury_id, Some(&req.account_type)).await?
+    } else {
+        let client = require_mass_client(&state)?;
+        let idempotency_key = format!("{}-{}", req.entity_id, req.account_type);
+        let account = client
+            .fiscal()
+            .create_account(req.entity_id, &idempotency_key, Some(&req.account_type))
+            .await
+            .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
+        serde_json::to_value(account)
+            .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?
+    };
 
-    let account = client
-        .fiscal()
-        .create_account(req.entity_id, &idempotency_key, Some(&req.account_type))
-        .await
-        .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
-
-    let mass_response = serde_json::to_value(account)
-        .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
-
-    // Step 4 & 5: Post-operation orchestration.
+    // Post-operation orchestration.
     let envelope =
         orchestration::orchestrate_account_creation(&state, entity_id, &currency, mass_response);
+
+    // Audit trail.
+    append_audit(
+        &state,
+        "fiscal.account_created",
+        "account",
+        &envelope,
+        "create",
+        serde_json::json!({
+            "entity_id": entity_id.to_string(),
+            "currency": &currency,
+            "compliance_status": &envelope.compliance.overall_status,
+        }),
+    )
+    .await;
 
     Ok((axum::http::StatusCode::CREATED, Json(envelope)))
 }
@@ -842,13 +951,12 @@ async fn initiate_payment(
     Json(req): Json<CreatePaymentProxyRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
     req.validate().map_err(AppError::Validation)?;
-    let client = require_mass_client(&state)?;
 
-    // Step 1: Pre-flight compliance evaluation.
-    // Infer jurisdiction from the payment currency for compliance tensor
-    // evaluation. Covers all deployment corridors (PAK↔UAE, PAK↔KSA, PAK↔CHN).
+    // Pre-flight compliance evaluation.
     let from_account_id = req.from_account_id;
     let currency = req.currency.clone();
+    let amount = req.amount.clone();
+    let reference = req.reference.clone();
     let inferred_jurisdiction = orchestration::infer_jurisdiction(&currency);
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
         inferred_jurisdiction,
@@ -856,48 +964,70 @@ async fn initiate_payment(
         orchestration::payment_domains(),
     );
 
-    // Step 2: Hard-block check.
+    // Hard-block check.
     if let Some(reason) = orchestration::check_hard_blocks(&pre_summary) {
         return Err(AppError::Forbidden(reason));
     }
 
-    // Step 3: Mass API call — map proxy DTO → Swagger-aligned mass-client types.
-    let mass_req = mez_mass_client::fiscal::CreatePaymentRequest {
-        source_account_id: req.from_account_id,
-        amount: req.amount,
-        currency: Some(req.currency),
-        reference: Some(req.reference),
-        payment_type: None,
-        description: None,
-        payment_entity: None,
-        idempotency_key: None,
+    // Mass operation — sovereign or proxy.
+    let mass_response = if state.sovereign_mass {
+        sovereign_ops::create_payment(
+            &state,
+            &from_account_id.to_string(),
+            &req.amount,
+            &req.currency,
+            Some(&req.reference),
+        )
+        .await?
+    } else {
+        let client = require_mass_client(&state)?;
+        let mass_req = mez_mass_client::fiscal::CreatePaymentRequest {
+            source_account_id: req.from_account_id,
+            amount: req.amount,
+            currency: Some(req.currency),
+            reference: Some(req.reference),
+            payment_type: None,
+            description: None,
+            payment_entity: None,
+            idempotency_key: None,
+        };
+        let payment = client
+            .fiscal()
+            .create_payment(&mass_req)
+            .await
+            .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
+        serde_json::to_value(payment)
+            .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?
     };
 
-    let payment = client
-        .fiscal()
-        .create_payment(&mass_req)
-        .await
-        .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
-
-    let mass_response = serde_json::to_value(payment)
-        .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
-
-    // Step 4 & 5: Post-operation orchestration.
+    // Post-operation orchestration.
     let envelope =
         orchestration::orchestrate_payment(&state, from_account_id, &currency, mass_response);
 
-    // Step 6: Auto-generate tax event for the payment.
-    //
-    // Every economic activity flowing through the EZ Stack generates a tax
-    // event — this is the core bridge between Mass fiscal operations and the
-    // jurisdictional tax pipeline.
+    // Auto-generate tax event for the payment.
     generate_payment_tax_event(
         &state,
         from_account_id,
-        &mass_req.amount,
+        &amount,
         &currency,
         &envelope.compliance.jurisdiction_id,
-        mass_req.reference.as_deref().unwrap_or(""),
+        &reference,
+    )
+    .await;
+
+    // Audit trail.
+    append_audit(
+        &state,
+        "fiscal.payment_initiated",
+        "payment",
+        &envelope,
+        "create",
+        serde_json::json!({
+            "from_account_id": from_account_id.to_string(),
+            "currency": &currency,
+            "amount": &amount,
+            "compliance_status": &envelope.compliance.overall_status,
+        }),
     )
     .await;
 
@@ -1046,9 +1176,8 @@ async fn verify_identity(
     Json(req): Json<VerifyIdentityProxyRequest>,
 ) -> Result<Json<OrchestrationEnvelope>, AppError> {
     req.validate().map_err(AppError::Validation)?;
-    let client = require_mass_client(&state)?;
 
-    // Step 1: Pre-flight compliance evaluation.
+    // Pre-flight compliance evaluation.
     let identity_type_str = req.identity_type.clone();
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
         "GLOBAL",
@@ -1056,32 +1185,60 @@ async fn verify_identity(
         orchestration::identity_domains(),
     );
 
-    // Step 2: Hard-block check.
+    // Hard-block check.
     if let Some(reason) = orchestration::check_hard_blocks(&pre_summary) {
         return Err(AppError::Forbidden(reason));
     }
 
-    // Step 3: Mass API call — the Swagger-aligned identity client is an
-    // aggregation facade across organization-info and consent-info. Use the
-    // composite identity endpoint which fetches members, board, and shareholders.
-    let org_id = req
-        .linked_ids
-        .first()
-        .map(|lid| lid.id_value.clone())
-        .unwrap_or_else(|| req.identity_type.clone());
+    // Mass operation — sovereign or proxy.
+    let mass_response = if state.sovereign_mass {
+        // In sovereign mode, use identity verification from sovereign_ops.
+        let first_id = req.linked_ids.first();
+        let id_type = first_id.map(|lid| lid.id_type.as_str()).unwrap_or("");
+        let id_value = first_id.map(|lid| lid.id_value.as_str()).unwrap_or("");
 
-    let identity = client
-        .identity()
-        .get_composite_identity(&org_id)
-        .await
-        .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
+        match id_type.to_uppercase().as_str() {
+            "CNIC" => sovereign_ops::verify_cnic(id_value, None)?,
+            "NTN" => sovereign_ops::verify_ntn(id_value, None)?,
+            _ => {
+                // Default to CNIC-style verification for unknown types.
+                sovereign_ops::verify_cnic(id_value, None)?
+            }
+        }
+    } else {
+        let client = require_mass_client(&state)?;
+        let org_id = req
+            .linked_ids
+            .first()
+            .map(|lid| lid.id_value.clone())
+            .unwrap_or_else(|| req.identity_type.clone());
 
-    let mass_response = serde_json::to_value(identity)
-        .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
+        let identity = client
+            .identity()
+            .get_composite_identity(&org_id)
+            .await
+            .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
+        serde_json::to_value(identity)
+            .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?
+    };
 
-    // Step 4 & 5: Post-operation orchestration.
+    // Post-operation orchestration.
     let envelope =
         orchestration::orchestrate_identity_verification(&state, &identity_type_str, mass_response);
+
+    // Audit trail.
+    append_audit(
+        &state,
+        "identity.verified",
+        "identity",
+        &envelope,
+        "verify",
+        serde_json::json!({
+            "identity_type": &identity_type_str,
+            "compliance_status": &envelope.compliance.overall_status,
+        }),
+    )
+    .await;
 
     Ok(Json(envelope))
 }
@@ -1103,10 +1260,15 @@ async fn get_identity(
     State(state): State<AppState>,
     Path(id): Path<uuid::Uuid>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let client = require_mass_client(&state)?;
+    if state.sovereign_mass {
+        // In sovereign mode, return the entity data as identity info.
+        return match sovereign_ops::get_entity(&state, id)? {
+            Some(entity) => Ok(Json(entity)),
+            None => Err(AppError::not_found(format!("identity {id} not found"))),
+        };
+    }
 
-    // The Swagger-aligned identity client aggregates from org-info + consent-info.
-    // Use the UUID as a string organization ID for the composite lookup.
+    let client = require_mass_client(&state)?;
     match client
         .identity()
         .get_composite_identity(&id.to_string())
@@ -1146,9 +1308,8 @@ async fn create_consent(
     Json(req): Json<CreateConsentProxyRequest>,
 ) -> Result<(axum::http::StatusCode, Json<OrchestrationEnvelope>), AppError> {
     req.validate().map_err(AppError::Validation)?;
-    let client = require_mass_client(&state)?;
 
-    // Step 1: Pre-flight compliance evaluation.
+    // Pre-flight compliance evaluation.
     let consent_type_str = req.consent_type.clone();
     let (_tensor, pre_summary) = orchestration::evaluate_compliance(
         "GLOBAL",
@@ -1156,52 +1317,88 @@ async fn create_consent(
         orchestration::consent_domains(),
     );
 
-    // Step 2: Hard-block check.
+    // Hard-block check.
     if let Some(reason) = orchestration::check_hard_blocks(&pre_summary) {
         return Err(AppError::Forbidden(reason));
     }
 
-    // Step 3: Mass API call — map proxy DTO → Swagger-aligned mass-client types.
-    let operation_type: mez_mass_client::consent::MassConsentOperationType =
-        serde_json::from_value(serde_json::Value::String(req.consent_type.clone())).map_err(
-            |e| AppError::Validation(format!("unknown consent type '{}': {e}", req.consent_type,)),
-        )?;
+    // Mass operation — sovereign or proxy.
+    let mass_response = if state.sovereign_mass {
+        let org_id = req
+            .parties
+            .first()
+            .map(|p| p.entity_id.to_string())
+            .unwrap_or_else(|| req.description.clone());
+        let op_type = serde_json::Value::String(req.consent_type.clone());
+        sovereign_ops::create_consent(
+            &state,
+            &org_id,
+            None,
+            Some(&op_type),
+            None,
+            None,
+        )
+        .await?
+    } else {
+        let client = require_mass_client(&state)?;
+        let operation_type: mez_mass_client::consent::MassConsentOperationType =
+            serde_json::from_value(serde_json::Value::String(req.consent_type.clone())).map_err(
+                |e| {
+                    AppError::Validation(format!(
+                        "unknown consent type '{}': {e}",
+                        req.consent_type,
+                    ))
+                },
+            )?;
 
-    // Extract organization_id from the first party, or use description as fallback.
-    let organization_id = req
-        .parties
-        .first()
-        .map(|p| p.entity_id.to_string())
-        .unwrap_or_else(|| req.description.clone());
+        let organization_id = req
+            .parties
+            .first()
+            .map(|p| p.entity_id.to_string())
+            .unwrap_or_else(|| req.description.clone());
 
-    let mass_req = mez_mass_client::consent::CreateConsentRequest {
-        organization_id,
-        operation_type,
-        operation_id: None,
-        num_board_member_approvals_required: None,
-        requested_by: None,
-        signatory: None,
-        expiry_date: None,
-        details: Some(serde_json::json!({
-            "description": req.description,
-            "parties": req.parties.iter().map(|p| {
-                serde_json::json!({ "entity_id": p.entity_id, "role": p.role })
-            }).collect::<Vec<_>>(),
-        })),
+        let mass_req = mez_mass_client::consent::CreateConsentRequest {
+            organization_id,
+            operation_type,
+            operation_id: None,
+            num_board_member_approvals_required: None,
+            requested_by: None,
+            signatory: None,
+            expiry_date: None,
+            details: Some(serde_json::json!({
+                "description": req.description,
+                "parties": req.parties.iter().map(|p| {
+                    serde_json::json!({ "entity_id": p.entity_id, "role": p.role })
+                }).collect::<Vec<_>>(),
+            })),
+        };
+
+        let consent = client
+            .consent()
+            .create(&mass_req)
+            .await
+            .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
+        serde_json::to_value(consent)
+            .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?
     };
 
-    let consent = client
-        .consent()
-        .create(&mass_req)
-        .await
-        .map_err(|e| AppError::upstream(format!("Mass API error: {e}")))?;
-
-    let mass_response = serde_json::to_value(consent)
-        .map_err(|e| AppError::Internal(format!("serialization error: {e}")))?;
-
-    // Step 4 & 5: Post-operation orchestration.
+    // Post-operation orchestration.
     let envelope =
         orchestration::orchestrate_consent_creation(&state, &consent_type_str, mass_response);
+
+    // Audit trail.
+    append_audit(
+        &state,
+        "consent.created",
+        "consent",
+        &envelope,
+        "create",
+        serde_json::json!({
+            "consent_type": &consent_type_str,
+            "compliance_status": &envelope.compliance.overall_status,
+        }),
+    )
+    .await;
 
     Ok((axum::http::StatusCode::CREATED, Json(envelope)))
 }
@@ -1223,8 +1420,16 @@ async fn get_consent(
     State(state): State<AppState>,
     Path(id): Path<uuid::Uuid>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let client = require_mass_client(&state)?;
+    if state.sovereign_mass {
+        return match sovereign_ops::get_consent(&state, id)? {
+            Some(consent) => Ok(Json(consent)),
+            None => Err(AppError::not_found(format!(
+                "consent request {id} not found"
+            ))),
+        };
+    }
 
+    let client = require_mass_client(&state)?;
     match client.consent().get(id).await {
         Ok(Some(consent)) => serde_json::to_value(consent)
             .map(Json)
@@ -1234,6 +1439,76 @@ async fn get_consent(
         ))),
         Err(e) => Err(AppError::upstream(format!("Mass API error: {e}"))),
     }
+}
+
+// ── SOVEREIGN HELPERS ──────────────────────────────────────────────────
+
+/// Append an audit event after a successful orchestration write.
+///
+/// Logs but never fails the request — audit is a post-operation side effect.
+async fn append_audit(
+    state: &AppState,
+    event_type: &str,
+    resource_type: &str,
+    envelope: &OrchestrationEnvelope,
+    action: &str,
+    metadata: serde_json::Value,
+) {
+    if let Some(ref pool) = state.db_pool {
+        let resource_id = envelope
+            .mass_response
+            .get("id")
+            .and_then(|v| v.as_str())
+            .and_then(|s| s.parse::<uuid::Uuid>().ok())
+            .unwrap_or_else(uuid::Uuid::new_v4);
+
+        let event = crate::db::audit::AuditEvent {
+            event_type: event_type.to_string(),
+            actor_did: Some(state.zone_did.clone()),
+            resource_type: resource_type.to_string(),
+            resource_id,
+            action: action.to_string(),
+            metadata,
+        };
+
+        if let Err(e) = crate::db::audit::append(pool, event).await {
+            tracing::warn!(error = %e, event_type, "Failed to append audit event");
+        }
+    }
+}
+
+/// Find an existing treasury for an entity, or create one.
+///
+/// In sovereign mode, `create_account` needs a treasury UUID but the
+/// orchestrated endpoint only has `entity_id`. This helper searches
+/// existing treasuries or creates one on the fly.
+async fn find_or_create_treasury(
+    state: &AppState,
+    entity_id: &str,
+) -> Result<uuid::Uuid, AppError> {
+    // Check existing treasuries for one belonging to this entity.
+    for treasury in state.mass_treasuries.list() {
+        if treasury
+            .get("entityId")
+            .and_then(|v| v.as_str())
+            .map(|v| v == entity_id)
+            .unwrap_or(false)
+        {
+            if let Some(id_str) = treasury.get("id").and_then(|v| v.as_str()) {
+                if let Ok(id) = id_str.parse::<uuid::Uuid>() {
+                    return Ok(id);
+                }
+            }
+        }
+    }
+
+    // None found — create one.
+    let treasury = sovereign_ops::create_treasury(state, entity_id, None, None).await?;
+    treasury
+        .get("id")
+        .and_then(|v| v.as_str())
+        .and_then(|s| s.parse::<uuid::Uuid>().ok())
+        .ok_or_else(|| AppError::Internal("failed to parse created treasury id".to_string()))
 }
 
 #[cfg(test)]

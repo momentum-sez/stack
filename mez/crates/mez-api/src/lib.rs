@@ -96,17 +96,25 @@ pub fn app(state: AppState) -> Router {
     //
     // Auth runs BEFORE rate limiting so unauthenticated requests are rejected
     // without consuming rate limit quota (prevents DoS via auth bypass).
-    // Sovereign Mass mode: serve Mass primitives directly from in-memory stores
-    // backed by Postgres. Proxy mode: delegate to centralized Mass APIs.
-    let mass_routes = if state.sovereign_mass {
-        tracing::info!("Sovereign Mass mode enabled — serving Mass primitives locally");
-        routes::mass_sovereign::sovereign_mass_router()
-    } else {
-        routes::mass_proxy::router()
-    };
+    // Orchestrated /v1/* endpoints always mount — in proxy mode they call
+    // Mass APIs via mez-mass-client; in sovereign mode they branch to
+    // sovereign_ops for local CRUD (same orchestration pipeline either way).
+    let mass_routes = routes::mass_proxy::router();
 
-    let api = Router::new()
-        .merge(mass_routes)
+    let mut api = Router::new()
+        .merge(mass_routes);
+
+    // Sovereign Mass mode: additionally mount the direct Mass API surface
+    // at /organization-info/*, /treasury-info/*, etc. for inter-zone access.
+    // The /v1/* orchestrated endpoints are always available.
+    if state.sovereign_mass {
+        tracing::info!(
+            "Sovereign Mass mode — mounting direct Mass API surface + orchestrated /v1/* endpoints"
+        );
+        api = api.merge(routes::mass_sovereign::sovereign_mass_router());
+    }
+
+    let api = api
         // Identity orchestration — P1-005: CNIC/NTN verification,
         // consolidated entity identity, service status.
         .merge(routes::identity::router())

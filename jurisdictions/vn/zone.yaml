@@ -1,0 +1,54 @@
+# Zone Manifest: Vietnam
+#
+# Vietnam zone.
+# SBV + SSC framework; emerging digital asset regulation.
+# Van Don, Phu Quoc, Bac Van Phong special economic zones.
+#
+# jurisdiction_stack: vn
+
+zone_id: org.momentum.mez.zone.vn
+jurisdiction_id: vn
+zone_name: Vietnam
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - vn
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  sbv:
+    enabled: false
+    endpoint: "${SBV_URL:-}"
+  ssc:
+    enabled: false
+    endpoint: "${SSC_URL:-}"
+  gdt_vn:
+    enabled: false
+    endpoint: "${GDT_VN_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

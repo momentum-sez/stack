@@ -1,0 +1,56 @@
+# Zone Manifest: Finland
+#
+# Finland zone.
+# FIN-FSA framework; EU MiCA.
+# Virtual currency provider registration (Act 572/2019).
+#
+# jurisdiction_stack: fi
+
+zone_id: org.momentum.mez.zone.fi
+jurisdiction_id: fi
+zone_name: Finland
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - fi
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  fiva:
+    enabled: false
+    endpoint: "${FIVA_URL:-}"
+  vero:
+    enabled: false
+    endpoint: "${VERO_URL:-}"
+  prh:
+    enabled: false
+    endpoint: "${PRH_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

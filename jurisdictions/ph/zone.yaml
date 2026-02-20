@@ -1,0 +1,54 @@
+# Zone Manifest: Philippines
+#
+# Philippines zone.
+# BSP + SEC framework; CEZA economic zone.
+# BSP Circular 1108 (virtual asset service providers).
+#
+# jurisdiction_stack: ph
+
+zone_id: org.momentum.mez.zone.ph
+jurisdiction_id: ph
+zone_name: Philippines
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - ph
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  bsp:
+    enabled: false
+    endpoint: "${BSP_URL:-}"
+  sec_ph:
+    enabled: false
+    endpoint: "${SEC_PH_URL:-}"
+  bir:
+    enabled: false
+    endpoint: "${BIR_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

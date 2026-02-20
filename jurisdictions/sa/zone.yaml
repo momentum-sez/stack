@@ -1,0 +1,59 @@
+# Zone Manifest: Saudi Arabia
+#
+# Saudi Arabia zone.
+# CMA + SAMA framework; Vision 2030 digital economy.
+# Regulatory sandbox for fintech (SAMA Sandbox).
+#
+# jurisdiction_stack: sa
+
+zone_id: org.momentum.mez.zone.sa
+jurisdiction_id: sa
+zone_name: Saudi Arabia
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - sa
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  sama:
+    enabled: false
+    endpoint: "${SAMA_URL:-}"
+  cma_sa:
+    enabled: false
+    endpoint: "${CMA_SA_URL:-}"
+  zatca:
+    enabled: false
+    endpoint: "${ZATCA_URL:-}"
+  mc:
+    enabled: false
+    endpoint: "${MC_SA_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

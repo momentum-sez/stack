@@ -1,0 +1,50 @@
+# Zone Manifest: Tunisia
+#
+# Tunisia zone.
+# BCT framework; emerging fintech regulation.
+#
+# jurisdiction_stack: tn
+
+zone_id: org.momentum.mez.zone.tn
+jurisdiction_id: tn
+zone_name: Tunisia
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - tn
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  bct:
+    enabled: false
+    endpoint: "${BCT_URL:-}"
+  cmf_tn:
+    enabled: false
+    endpoint: "${CMF_TN_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

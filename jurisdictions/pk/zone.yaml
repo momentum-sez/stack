@@ -1,0 +1,68 @@
+# Zone Manifest: Pakistan
+#
+# Pakistan federal zone. Parent jurisdiction for pk-sifc.
+# Regulatory: SBP (central bank), SECP (securities), FBR (tax), NADRA (identity).
+#
+# jurisdiction_stack: pk
+
+zone_id: org.momentum.mez.zone.pk
+jurisdiction_id: pk
+zone_name: Pakistan
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - pk
+
+lawpack_domains:
+  - civil
+  - financial
+  - tax
+  - aml
+
+regpacks:
+  - domain: financial
+    jurisdiction_id: pk
+    regpack_digest_sha256: "444ddded8419d9dedf8344a54063d7cd80c0148338c78bbe77a47baa44dd392f"
+    as_of_date: "2026-01-15"
+  - domain: sanctions
+    jurisdiction_id: pk
+    regpack_digest_sha256: "e59056a2b9bdbf3e452857b1cbdc06b5cdff3e29f56de1e235475e8a4a57506f"
+    as_of_date: "2026-01-15"
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  fbr_iris:
+    enabled: false
+    endpoint: "${FBR_IRIS_URL:-}"
+  sbp_raast:
+    enabled: false
+    endpoint: "${SBP_RAAST_URL:-}"
+  nadra:
+    enabled: false
+    endpoint: "${NADRA_API_URL:-}"
+  secp:
+    enabled: false
+    endpoint: "${SECP_API_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

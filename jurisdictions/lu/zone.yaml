@@ -1,0 +1,70 @@
+# Zone Manifest: Luxembourg
+#
+# Luxembourg zone.
+# CSSF framework; EU MiCA implementation.
+# Fund domiciliation hub; securitization law center.
+#
+# jurisdiction_stack: lu
+
+zone_id: org.momentum.mez.zone.lu
+jurisdiction_id: lu
+zone_name: Luxembourg
+
+profile:
+  profile_id: org.momentum.mez.profile.digital-financial-center
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - lu
+
+lawpack_domains:
+  - civil
+  - financial
+
+licensepack_domains:
+  - financial
+  - corporate
+
+licensepack_refresh_policy:
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+  financial:
+    frequency: hourly
+    max_staleness_hours: 4
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+  - consumer_protection
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin
+
+national_adapters:
+  cssf:
+    enabled: false
+    endpoint: "${CSSF_URL:-}"
+  acd:
+    enabled: false
+    endpoint: "${ACD_URL:-}"
+  rcsl:
+    enabled: false
+    endpoint: "${RCSL_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

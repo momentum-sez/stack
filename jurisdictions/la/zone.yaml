@@ -1,0 +1,48 @@
+# Zone Manifest: Laos
+#
+# Laos zone.
+# BOL framework; emerging digital economy.
+# Lao-China Railway Special Economic Zones.
+#
+# jurisdiction_stack: la
+
+zone_id: org.momentum.mez.zone.la
+jurisdiction_id: la
+zone_name: Laos
+
+profile:
+  profile_id: org.momentum.mez.profile.minimal-mvp
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - la
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  bol:
+    enabled: false
+    endpoint: "${BOL_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

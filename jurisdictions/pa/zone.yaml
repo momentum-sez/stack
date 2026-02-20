@@ -1,0 +1,54 @@
+# Zone Manifest: Panama
+#
+# Panama zone.
+# SMV + SBP framework; Ley 129 (crypto law).
+# Panama Pacifico Special Economic Area; Colon Free Zone.
+#
+# jurisdiction_stack: pa
+
+zone_id: org.momentum.mez.zone.pa
+jurisdiction_id: pa
+zone_name: Panama
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - pa
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  smv:
+    enabled: false
+    endpoint: "${SMV_URL:-}"
+  sbp:
+    enabled: false
+    endpoint: "${SBP_PA_URL:-}"
+  dgi_pa:
+    enabled: false
+    endpoint: "${DGI_PA_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

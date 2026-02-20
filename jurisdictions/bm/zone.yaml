@@ -1,0 +1,67 @@
+# Zone Manifest: Bermuda
+#
+# Bermuda zone.
+# BMA framework; Digital Asset Business Act 2018.
+# Class F (full) and Class M (modified) DABA licenses.
+#
+# jurisdiction_stack: bm
+
+zone_id: org.momentum.mez.zone.bm
+jurisdiction_id: bm
+zone_name: Bermuda
+
+profile:
+  profile_id: org.momentum.mez.profile.digital-financial-center
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - bm
+
+lawpack_domains:
+  - civil
+  - financial
+
+licensepack_domains:
+  - financial
+  - corporate
+
+licensepack_refresh_policy:
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+  financial:
+    frequency: hourly
+    max_staleness_hours: 4
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+  - consumer_protection
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin
+
+national_adapters:
+  bma:
+    enabled: false
+    endpoint: "${BMA_URL:-}"
+  roc_bm:
+    enabled: false
+    endpoint: "${ROC_BM_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

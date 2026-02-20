@@ -1,0 +1,56 @@
+# Zone Manifest: Sweden
+#
+# Sweden zone.
+# Finansinspektionen framework; EU MiCA.
+# Riksbank e-krona CBDC pilot; Swish instant payments.
+#
+# jurisdiction_stack: se
+
+zone_id: org.momentum.mez.zone.se
+jurisdiction_id: se
+zone_name: Sweden
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - se
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  fi_se:
+    enabled: false
+    endpoint: "${FI_SE_URL:-}"
+  skatteverket:
+    enabled: false
+    endpoint: "${SKATTEVERKET_URL:-}"
+  bolagsverket:
+    enabled: false
+    endpoint: "${BOLAGSVERKET_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

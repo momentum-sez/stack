@@ -1,0 +1,56 @@
+# Zone Manifest: Ras Al Khaimah
+#
+# Ras Al Khaimah emirate zone.
+# Emerging free zone hub; RAKEZ and RAK ICC.
+#
+# jurisdiction_stack: ae > ae-rak
+
+zone_id: org.momentum.mez.zone.ae.rak
+jurisdiction_id: ae-rak
+zone_name: Ras Al Khaimah
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - ae
+  - ae-rak
+
+lawpack_domains:
+  - civil
+  - financial
+
+regpacks:
+  - domain: financial
+    jurisdiction_id: ae
+    regpack_digest_sha256: "5ce776c2d59b4fd9ec1f6bdaea7317550fd0b7d1792be86a475b4db6602a685b"
+    as_of_date: "2026-01-15"
+  - domain: sanctions
+    jurisdiction_id: ae
+    regpack_digest_sha256: "34bb8fcb760935931216ab810fb3e66caa6980125f7e88f588eed8a0747509c0"
+    as_of_date: "2026-01-15"
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  rak_ded:
+    enabled: false
+    endpoint: "${RAK_DED_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

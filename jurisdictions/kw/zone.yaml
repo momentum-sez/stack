@@ -1,0 +1,51 @@
+# Zone Manifest: Kuwait
+#
+# Kuwait zone.
+# CBK + CMA framework; restrictive crypto stance.
+# Law 7/2010 (Capital Markets Authority).
+#
+# jurisdiction_stack: kw
+
+zone_id: org.momentum.mez.zone.kw
+jurisdiction_id: kw
+zone_name: Kuwait
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - kw
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  cbk:
+    enabled: false
+    endpoint: "${CBK_URL:-}"
+  cma_kw:
+    enabled: false
+    endpoint: "${CMA_KW_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

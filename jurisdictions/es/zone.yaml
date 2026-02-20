@@ -1,0 +1,54 @@
+# Zone Manifest: Spain
+#
+# Spain zone.
+# CNMV + BdE framework; EU MiCA implementation.
+# Regulatory sandbox (Ley Sandbox 2020).
+#
+# jurisdiction_stack: es
+
+zone_id: org.momentum.mez.zone.es
+jurisdiction_id: es
+zone_name: Spain
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - es
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  cnmv:
+    enabled: false
+    endpoint: "${CNMV_URL:-}"
+  bde:
+    enabled: false
+    endpoint: "${BDE_URL:-}"
+  aeat:
+    enabled: false
+    endpoint: "${AEAT_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

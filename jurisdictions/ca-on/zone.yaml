@@ -1,0 +1,54 @@
+# Zone Manifest: Ontario
+#
+# Ontario zone.
+# OSC framework; provincial securities overlay.
+# Securities Act (Ontario); crypto-asset trading platform guidance.
+#
+# jurisdiction_stack: ca > ca-on
+
+zone_id: org.momentum.mez.zone.ca.on
+jurisdiction_id: ca-on
+zone_name: Ontario
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - ca
+  - ca-on
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  osc:
+    enabled: false
+    endpoint: "${OSC_URL:-}"
+  fsra_on:
+    enabled: false
+    endpoint: "${FSRA_ON_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

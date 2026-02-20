@@ -1,0 +1,51 @@
+# Zone Manifest: Taiwan
+#
+# Taiwan zone.
+# FSC framework; virtual asset guidance.
+# Emerging VASP registration framework.
+#
+# jurisdiction_stack: tw
+
+zone_id: org.momentum.mez.zone.tw
+jurisdiction_id: tw
+zone_name: Taiwan
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - tw
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  fsc_tw:
+    enabled: false
+    endpoint: "${FSC_TW_URL:-}"
+  mof_tw:
+    enabled: false
+    endpoint: "${MOF_TW_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

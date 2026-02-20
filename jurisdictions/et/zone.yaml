@@ -1,0 +1,50 @@
+# Zone Manifest: Ethiopia
+#
+# Ethiopia zone.
+# NBE framework; Hawassa Industrial Park SEZ.
+#
+# jurisdiction_stack: et
+
+zone_id: org.momentum.mez.zone.et
+jurisdiction_id: et
+zone_name: Ethiopia
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - et
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  nbe:
+    enabled: false
+    endpoint: "${NBE_URL:-}"
+  erca:
+    enabled: false
+    endpoint: "${ERCA_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

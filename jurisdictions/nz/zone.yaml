@@ -1,0 +1,51 @@
+# Zone Manifest: New Zealand
+#
+# New Zealand zone.
+# FMA framework; Financial Markets Conduct Act 2013.
+# Pragmatic approach to digital asset regulation.
+#
+# jurisdiction_stack: nz
+
+zone_id: org.momentum.mez.zone.nz
+jurisdiction_id: nz
+zone_name: New Zealand
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - nz
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  fma_nz:
+    enabled: false
+    endpoint: "${FMA_NZ_URL:-}"
+  ird:
+    enabled: false
+    endpoint: "${IRD_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

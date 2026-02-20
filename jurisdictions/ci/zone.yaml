@@ -1,0 +1,50 @@
+# Zone Manifest: Cote d'Ivoire
+#
+# Cote d'Ivoire zone.
+# BCEAO framework; Abidjan financial center.
+#
+# jurisdiction_stack: ci
+
+zone_id: org.momentum.mez.zone.ci
+jurisdiction_id: ci
+zone_name: Cote d'Ivoire
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - ci
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  bceao:
+    enabled: false
+    endpoint: "${BCEAO_URL:-}"
+  dgi_ci:
+    enabled: false
+    endpoint: "${DGI_CI_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

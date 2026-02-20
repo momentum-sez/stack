@@ -1,0 +1,51 @@
+# Zone Manifest: Trinidad and Tobago
+#
+# Trinidad and Tobago zone.
+# CBTT + TTSEC framework.
+# Financial Institutions Act; FATF Caribbean member.
+#
+# jurisdiction_stack: tt
+
+zone_id: org.momentum.mez.zone.tt
+jurisdiction_id: tt
+zone_name: Trinidad and Tobago
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - tt
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  cbtt:
+    enabled: false
+    endpoint: "${CBTT_URL:-}"
+  ttsec:
+    enabled: false
+    endpoint: "${TTSEC_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

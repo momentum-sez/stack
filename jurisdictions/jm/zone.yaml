@@ -1,0 +1,54 @@
+# Zone Manifest: Jamaica
+#
+# Jamaica zone.
+# BOJ + FSC framework; JAM-DEX CBDC.
+# Securities Act; emerging crypto regulation.
+#
+# jurisdiction_stack: jm
+
+zone_id: org.momentum.mez.zone.jm
+jurisdiction_id: jm
+zone_name: Jamaica
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - jm
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  boj:
+    enabled: false
+    endpoint: "${BOJ_URL:-}"
+  fsc_jm:
+    enabled: false
+    endpoint: "${FSC_JM_URL:-}"
+  taj:
+    enabled: false
+    endpoint: "${TAJ_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

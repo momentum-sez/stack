@@ -1,0 +1,51 @@
+# Zone Manifest: Grenada
+#
+# Grenada zone.
+# GARFIN regulatory authority; ECCB monetary union.
+# International Financial Services Act.
+#
+# jurisdiction_stack: gd
+
+zone_id: org.momentum.mez.zone.gd
+jurisdiction_id: gd
+zone_name: Grenada
+
+profile:
+  profile_id: org.momentum.mez.profile.minimal-mvp
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - gd
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  eccb:
+    enabled: false
+    endpoint: "${ECCB_URL:-}"
+  garfin:
+    enabled: false
+    endpoint: "${GARFIN_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

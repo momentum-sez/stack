@@ -1,0 +1,54 @@
+# Zone Manifest: Thailand
+#
+# Thailand zone.
+# SEC Thailand + BOT framework.
+# Digital Asset Business Royal Decree B.E. 2561 (2018).
+#
+# jurisdiction_stack: th
+
+zone_id: org.momentum.mez.zone.th
+jurisdiction_id: th
+zone_name: Thailand
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - th
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  sec_th:
+    enabled: false
+    endpoint: "${SEC_TH_URL:-}"
+  bot:
+    enabled: false
+    endpoint: "${BOT_URL:-}"
+  rd_th:
+    enabled: false
+    endpoint: "${RD_TH_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

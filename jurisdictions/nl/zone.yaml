@@ -1,0 +1,56 @@
+# Zone Manifest: Netherlands
+#
+# Netherlands zone.
+# DNB + AFM framework; Wet op het financieel toezicht.
+# EU PSD2 payment innovation hub.
+#
+# jurisdiction_stack: nl
+
+zone_id: org.momentum.mez.zone.nl
+jurisdiction_id: nl
+zone_name: Netherlands
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - nl
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  dnb:
+    enabled: false
+    endpoint: "${DNB_URL:-}"
+  afm:
+    enabled: false
+    endpoint: "${AFM_URL:-}"
+  kvk:
+    enabled: false
+    endpoint: "${KVK_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

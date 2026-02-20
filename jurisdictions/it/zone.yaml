@@ -1,0 +1,54 @@
+# Zone Manifest: Italy
+#
+# Italy zone.
+# Consob + Banca d'Italia framework.
+# EU MiCA implementation; fintech sandbox.
+#
+# jurisdiction_stack: it
+
+zone_id: org.momentum.mez.zone.it
+jurisdiction_id: it
+zone_name: Italy
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - it
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  consob:
+    enabled: false
+    endpoint: "${CONSOB_URL:-}"
+  bdi:
+    enabled: false
+    endpoint: "${BDI_URL:-}"
+  ade:
+    enabled: false
+    endpoint: "${ADE_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

@@ -1,0 +1,64 @@
+# Zone Manifest: Antigua and Barbuda
+#
+# Antigua and Barbuda zone.
+# FSRC framework; Virtual Asset Business Act 2022.
+# Citizenship by Investment Programme.
+#
+# jurisdiction_stack: ag
+
+zone_id: org.momentum.mez.zone.ag
+jurisdiction_id: ag
+zone_name: Antigua and Barbuda
+
+profile:
+  profile_id: org.momentum.mez.profile.digital-financial-center
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - ag
+
+lawpack_domains:
+  - civil
+  - financial
+
+licensepack_domains:
+  - financial
+  - corporate
+
+licensepack_refresh_policy:
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+  financial:
+    frequency: hourly
+    max_staleness_hours: 4
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+  - consumer_protection
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin
+
+national_adapters:
+  fsrc:
+    enabled: false
+    endpoint: "${FSRC_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

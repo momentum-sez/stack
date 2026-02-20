@@ -1,0 +1,56 @@
+# Zone Manifest: Japan
+#
+# Japan zone.
+# FSA framework; Payment Services Act; FIEA.
+# Virtual asset exchange registration (JVCEA self-regulation).
+#
+# jurisdiction_stack: jp
+
+zone_id: org.momentum.mez.zone.jp
+jurisdiction_id: jp
+zone_name: Japan
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - jp
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  fsa_japan:
+    enabled: false
+    endpoint: "${FSA_JP_URL:-}"
+  nta:
+    enabled: false
+    endpoint: "${NTA_URL:-}"
+  moj_jp:
+    enabled: false
+    endpoint: "${MOJ_JP_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

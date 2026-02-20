@@ -1,0 +1,48 @@
+# Zone Manifest: Nepal
+#
+# Nepal zone.
+# NRB framework; emerging digital payments.
+# Payment and Settlement Act 2019.
+#
+# jurisdiction_stack: np
+
+zone_id: org.momentum.mez.zone.np
+jurisdiction_id: np
+zone_name: Nepal
+
+profile:
+  profile_id: org.momentum.mez.profile.minimal-mvp
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - np
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  nrb:
+    enabled: false
+    endpoint: "${NRB_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

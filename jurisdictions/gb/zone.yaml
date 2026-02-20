@@ -1,0 +1,59 @@
+# Zone Manifest: United Kingdom
+#
+# United Kingdom zone.
+# FCA framework; Financial Services and Markets Act 2000.
+# Crypto-asset registration regime (MLR 2017 as amended).
+#
+# jurisdiction_stack: gb
+
+zone_id: org.momentum.mez.zone.gb
+jurisdiction_id: gb
+zone_name: United Kingdom
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - gb
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  fca:
+    enabled: false
+    endpoint: "${FCA_URL:-}"
+  hmrc:
+    enabled: false
+    endpoint: "${HMRC_URL:-}"
+  companies_house:
+    enabled: false
+    endpoint: "${COMPANIES_HOUSE_URL:-}"
+  pra:
+    enabled: false
+    endpoint: "${PRA_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

@@ -1,0 +1,56 @@
+# Zone Manifest: Denmark
+#
+# Denmark zone.
+# Finanstilsynet framework; EU MiCA.
+# Danish Financial Business Act; NemID/MitID digital identity.
+#
+# jurisdiction_stack: dk
+
+zone_id: org.momentum.mez.zone.dk
+jurisdiction_id: dk
+zone_name: Denmark
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - dk
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  dfsa:
+    enabled: false
+    endpoint: "${DFSA_DK_URL:-}"
+  skat:
+    enabled: false
+    endpoint: "${SKAT_URL:-}"
+  erst:
+    enabled: false
+    endpoint: "${ERST_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

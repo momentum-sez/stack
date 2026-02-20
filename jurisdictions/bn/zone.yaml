@@ -1,0 +1,48 @@
+# Zone Manifest: Brunei
+#
+# Brunei zone.
+# AMBD framework; emerging fintech sandbox.
+# Securities Markets Order 2013.
+#
+# jurisdiction_stack: bn
+
+zone_id: org.momentum.mez.zone.bn
+jurisdiction_id: bn
+zone_name: Brunei
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - bn
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  ambd:
+    enabled: false
+    endpoint: "${AMBD_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

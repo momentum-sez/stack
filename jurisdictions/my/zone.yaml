@@ -1,0 +1,59 @@
+# Zone Manifest: Malaysia
+#
+# Malaysia zone.
+# SC Malaysia + BNM framework; Labuan offshore.
+# Islamic Financial Services Act 2013 (IFSA).
+#
+# jurisdiction_stack: my
+
+zone_id: org.momentum.mez.zone.my
+jurisdiction_id: my
+zone_name: Malaysia
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - my
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  sc_my:
+    enabled: false
+    endpoint: "${SC_MY_URL:-}"
+  bnm:
+    enabled: false
+    endpoint: "${BNM_URL:-}"
+  lhdn:
+    enabled: false
+    endpoint: "${LHDN_URL:-}"
+  ssm:
+    enabled: false
+    endpoint: "${SSM_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

@@ -1,9 +1,17 @@
+# Zone Manifest: Colorado
+#
+# DORA framework; Colorado Digital Token Act.
+# Securities exemption for certain utility tokens.
+#
+# jurisdiction_stack: us > us-co
+
 zone_id: org.momentum.mez.zone.us.co
 jurisdiction_id: us-co
 zone_name: Colorado
+
 profile:
-  profile_id: org.momentum.mez.profile.digital-financial-center
-  version: 0.4.44
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
 
 jurisdiction_stack:
   - us
@@ -13,16 +21,34 @@ lawpack_domains:
   - civil
   - financial
 
-overlays: []
-params_overrides: {}
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
 
+national_adapters:
+  fincen:
+    enabled: false
+    endpoint: "${FINCEN_URL:-}"
+  irs:
+    enabled: false
+    endpoint: "${IRS_URL:-}"
+  dora_co:
+    enabled: false
+    endpoint: "${DORA_CO_URL:-}"
+
 trust_anchors: []
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

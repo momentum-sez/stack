@@ -1,0 +1,34 @@
+# Composition Spec: Islamic Finance Digital Hub
+#
+# Shariah-compliant digital finance. DIFC common law + Bahrain crypto + Malaysia IFSA + Saudi CMA.
+#
+#   - corporate_formation <- ae-dubai-difc
+#   - civic_code <- ae-dubai-difc
+#   - digital_assets <- bh
+#   - arbitration <- ae-dubai-difc
+#   - tax <- ae
+#   - aml_cft <- ae
+#   - licensing <- my
+#   - securities <- sa
+
+zone_name: Islamic Finance Digital Hub
+zone_id: org.momentum.mez.zone.synthetic.islamic-finance-hub
+jurisdiction_id: synth-islamic-finance-hub
+primary_jurisdiction: ae
+layers:
+  - domain: corporate_formation
+    source: ae-dubai-difc
+  - domain: civic_code
+    source: ae-dubai-difc
+  - domain: digital_assets
+    source: bh
+  - domain: arbitration
+    source: ae-dubai-difc
+  - domain: tax
+    source: ae
+  - domain: aml_cft
+    source: ae
+  - domain: licensing
+    source: my
+  - domain: securities
+    source: sa

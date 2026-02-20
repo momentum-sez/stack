@@ -1,0 +1,68 @@
+# Zone Manifest: Gibraltar
+#
+# Gibraltar zone.
+# GFSC DLT Provider framework; established crypto regulation.
+# Financial Services (Distributed Ledger Technology Providers) Regulations 2020.
+#
+# jurisdiction_stack: gb > gb-gi
+
+zone_id: org.momentum.mez.zone.gb.gi
+jurisdiction_id: gb-gi
+zone_name: Gibraltar
+
+profile:
+  profile_id: org.momentum.mez.profile.digital-financial-center
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - gb
+  - gb-gi
+
+lawpack_domains:
+  - civil
+  - financial
+
+licensepack_domains:
+  - financial
+  - corporate
+
+licensepack_refresh_policy:
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+  financial:
+    frequency: hourly
+    max_staleness_hours: 4
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+  - consumer_protection
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin
+
+national_adapters:
+  gfsc:
+    enabled: false
+    endpoint: "${GFSC_URL:-}"
+  tax_gi:
+    enabled: false
+    endpoint: "${TAX_GI_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

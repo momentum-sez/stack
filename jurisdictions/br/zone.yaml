@@ -1,9 +1,18 @@
+# Zone Manifest: Brazil
+#
+# Brazil zone.
+# BCB + CVM framework; crypto asset law (Lei 14.478/2022).
+# PIX instant payment system; 150M+ users.
+#
+# jurisdiction_stack: br
+
 zone_id: org.momentum.mez.zone.br
 jurisdiction_id: br
 zone_name: Brazil
+
 profile:
-  profile_id: org.momentum.mez.profile.sovereign-nation
-  version: 0.4.44
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
 
 jurisdiction_stack:
   - br
@@ -11,17 +20,38 @@ jurisdiction_stack:
 lawpack_domains:
   - civil
   - financial
+  - tax
 
-overlays: []
-params_overrides: {}
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
 
+national_adapters:
+  bcb:
+    enabled: false
+    endpoint: "${BCB_URL:-}"
+  cvm:
+    enabled: false
+    endpoint: "${CVM_URL:-}"
+  receita_federal:
+    enabled: false
+    endpoint: "${RECEITA_URL:-}"
+
 trust_anchors: []
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

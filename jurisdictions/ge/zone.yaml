@@ -1,0 +1,51 @@
+# Zone Manifest: Georgia
+#
+# Georgia zone.
+# NBG framework; crypto-friendly tax regime.
+# 0% personal income tax on crypto gains; flat 20% corporate.
+#
+# jurisdiction_stack: ge
+
+zone_id: org.momentum.mez.zone.ge
+jurisdiction_id: ge
+zone_name: Georgia
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - ge
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  nbg:
+    enabled: false
+    endpoint: "${NBG_URL:-}"
+  rs_ge:
+    enabled: false
+    endpoint: "${RS_GE_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

@@ -1,0 +1,50 @@
+# Zone Manifest: Senegal
+#
+# Senegal zone.
+# BCEAO (WAEMU central bank) framework; Dakar fintech hub.
+#
+# jurisdiction_stack: sn
+
+zone_id: org.momentum.mez.zone.sn
+jurisdiction_id: sn
+zone_name: Senegal
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - sn
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  bceao:
+    enabled: false
+    endpoint: "${BCEAO_URL:-}"
+  dgid:
+    enabled: false
+    endpoint: "${DGID_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

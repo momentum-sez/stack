@@ -1,0 +1,54 @@
+# Zone Manifest: Colombia
+#
+# Colombia zone.
+# SFC + BanRep framework; regulatory sandbox.
+# Decree 1357/2018 (crowdfunding); emerging crypto regulation.
+#
+# jurisdiction_stack: co
+
+zone_id: org.momentum.mez.zone.co
+jurisdiction_id: co
+zone_name: Colombia
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - co
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  sfc:
+    enabled: false
+    endpoint: "${SFC_URL:-}"
+  banrep:
+    enabled: false
+    endpoint: "${BANREP_URL:-}"
+  dian:
+    enabled: false
+    endpoint: "${DIAN_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

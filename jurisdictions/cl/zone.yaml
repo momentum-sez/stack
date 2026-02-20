@@ -1,0 +1,54 @@
+# Zone Manifest: Chile
+#
+# Chile zone.
+# CMF + BCCh framework; FinTech Law (Ley 21.521/2023).
+# Ley 18.045 (Securities Market Law).
+#
+# jurisdiction_stack: cl
+
+zone_id: org.momentum.mez.zone.cl
+jurisdiction_id: cl
+zone_name: Chile
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - cl
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  cmf_cl:
+    enabled: false
+    endpoint: "${CMF_CL_URL:-}"
+  bcch:
+    enabled: false
+    endpoint: "${BCCH_URL:-}"
+  sii:
+    enabled: false
+    endpoint: "${SII_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

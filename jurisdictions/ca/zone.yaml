@@ -1,0 +1,56 @@
+# Zone Manifest: Canada
+#
+# Canada zone.
+# CSA + OSFI framework; MSB registration.
+# Canadian Securities Administrators; FINTRAC AML oversight.
+#
+# jurisdiction_stack: ca
+
+zone_id: org.momentum.mez.zone.ca
+jurisdiction_id: ca
+zone_name: Canada
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - ca
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  osfi:
+    enabled: false
+    endpoint: "${OSFI_URL:-}"
+  fintrac:
+    enabled: false
+    endpoint: "${FINTRAC_URL:-}"
+  cra:
+    enabled: false
+    endpoint: "${CRA_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

@@ -1,0 +1,56 @@
+# Zone Manifest: Mexico
+#
+# Mexico zone.
+# CNBV + Banxico framework; Ley Fintech (2018).
+# ITF (Instituciones de Tecnologia Financiera) licensing.
+#
+# jurisdiction_stack: mx
+
+zone_id: org.momentum.mez.zone.mx
+jurisdiction_id: mx
+zone_name: Mexico
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - mx
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  cnbv:
+    enabled: false
+    endpoint: "${CNBV_URL:-}"
+  banxico:
+    enabled: false
+    endpoint: "${BANXICO_URL:-}"
+  sat:
+    enabled: false
+    endpoint: "${SAT_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

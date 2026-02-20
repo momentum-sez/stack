@@ -1,0 +1,56 @@
+# Zone Manifest: Bahrain
+#
+# Bahrain federal zone.
+# CBB framework; fintech sandbox; first GCC crypto-asset regulation.
+# FATF mutual evaluation 2018.
+#
+# jurisdiction_stack: bh
+
+zone_id: org.momentum.mez.zone.bh
+jurisdiction_id: bh
+zone_name: Bahrain
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - bh
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  cbb:
+    enabled: false
+    endpoint: "${CBB_URL:-}"
+  sijilat:
+    enabled: false
+    endpoint: "${SIJILAT_URL:-}"
+  nbr:
+    enabled: false
+    endpoint: "${NBR_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

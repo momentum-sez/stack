@@ -1,0 +1,56 @@
+# Zone Manifest: Australia
+#
+# Australia zone.
+# ASIC + APRA framework; Corporations Act 2001.
+# Token mapping consultation; digital asset licensing proposal.
+#
+# jurisdiction_stack: au
+
+zone_id: org.momentum.mez.zone.au
+jurisdiction_id: au
+zone_name: Australia
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - au
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  asic:
+    enabled: false
+    endpoint: "${ASIC_URL:-}"
+  apra:
+    enabled: false
+    endpoint: "${APRA_URL:-}"
+  ato:
+    enabled: false
+    endpoint: "${ATO_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

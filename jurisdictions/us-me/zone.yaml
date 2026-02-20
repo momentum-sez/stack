@@ -1,9 +1,16 @@
+# Zone Manifest: Maine
+#
+# US state zone for Maine.
+#
+# jurisdiction_stack: us > us-me
+
 zone_id: org.momentum.mez.zone.us.me
 jurisdiction_id: us-me
 zone_name: Maine
+
 profile:
-  profile_id: org.momentum.mez.profile.digital-financial-center
-  version: 0.4.44
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
 
 jurisdiction_stack:
   - us
@@ -13,16 +20,34 @@ lawpack_domains:
   - civil
   - financial
 
-overlays: []
-params_overrides: {}
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
 
+national_adapters:
+  fincen:
+    enabled: false
+    endpoint: "${FINCEN_URL:-}"
+  irs:
+    enabled: false
+    endpoint: "${IRS_URL:-}"
+  obfr_me:
+    enabled: false
+    endpoint: "${OBFR_ME_URL:-}"
+
 trust_anchors: []
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

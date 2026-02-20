@@ -1,0 +1,51 @@
+# Zone Manifest: Saint Lucia
+#
+# Saint Lucia zone.
+# FSRA framework; ECCB monetary union.
+# International Business Companies Act.
+#
+# jurisdiction_stack: lc
+
+zone_id: org.momentum.mez.zone.lc
+jurisdiction_id: lc
+zone_name: Saint Lucia
+
+profile:
+  profile_id: org.momentum.mez.profile.minimal-mvp
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - lc
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  eccb:
+    enabled: false
+    endpoint: "${ECCB_URL:-}"
+  fsra_lc:
+    enabled: false
+    endpoint: "${FSRA_LC_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

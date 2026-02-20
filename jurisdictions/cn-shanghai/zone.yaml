@@ -1,9 +1,18 @@
+# Zone Manifest: Shanghai
+#
+# Shanghai zone.
+# China's financial center; Shanghai FTZ.
+# Lujiazui Financial District; Lin-gang Special Area.
+#
+# jurisdiction_stack: cn > cn-shanghai
+
 zone_id: org.momentum.mez.zone.cn.shanghai
 jurisdiction_id: cn-shanghai
-zone_name: Shanghai Free Trade Zone
+zone_name: Shanghai
+
 profile:
-  profile_id: org.momentum.mez.profile.free-trade-zone
-  version: 0.4.44
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
 
 jurisdiction_stack:
   - cn
@@ -13,16 +22,33 @@ lawpack_domains:
   - civil
   - financial
 
-overlays: []
-params_overrides: {}
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
 
+national_adapters:
+  pboc:
+    enabled: false
+    endpoint: "${PBOC_URL:-}"
+  sse:
+    enabled: false
+    endpoint: "${SSE_URL:-}"
+
 trust_anchors: []
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

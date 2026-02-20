@@ -1,0 +1,54 @@
+# Zone Manifest: Morocco
+#
+# Morocco zone.
+# Bank Al-Maghrib + AMMC framework.
+# Casablanca Finance City.
+#
+# jurisdiction_stack: ma
+
+zone_id: org.momentum.mez.zone.ma
+jurisdiction_id: ma
+zone_name: Morocco
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - ma
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  bam:
+    enabled: false
+    endpoint: "${BAM_URL:-}"
+  ammc:
+    enabled: false
+    endpoint: "${AMMC_URL:-}"
+  dgi_ma:
+    enabled: false
+    endpoint: "${DGI_MA_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

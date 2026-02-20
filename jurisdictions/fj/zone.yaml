@@ -1,0 +1,48 @@
+# Zone Manifest: Fiji
+#
+# Fiji zone.
+# RBF framework; Pacific Islands economic hub.
+# Financial Transactions Reporting Act 2004.
+#
+# jurisdiction_stack: fj
+
+zone_id: org.momentum.mez.zone.fj
+jurisdiction_id: fj
+zone_name: Fiji
+
+profile:
+  profile_id: org.momentum.mez.profile.minimal-mvp
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - fj
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  rbf:
+    enabled: false
+    endpoint: "${RBF_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

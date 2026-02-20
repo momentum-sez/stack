@@ -1,0 +1,56 @@
+# Zone Manifest: South Korea
+#
+# South Korea zone.
+# FSC/FSS framework; Virtual Asset User Protection Act 2023.
+# Specific Financial Information Act (reporting obligations).
+#
+# jurisdiction_stack: kr
+
+zone_id: org.momentum.mez.zone.kr
+jurisdiction_id: kr
+zone_name: South Korea
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - kr
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  fsc_kr:
+    enabled: false
+    endpoint: "${FSC_KR_URL:-}"
+  fss:
+    enabled: false
+    endpoint: "${FSS_URL:-}"
+  nts_kr:
+    enabled: false
+    endpoint: "${NTS_KR_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

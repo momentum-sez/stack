@@ -1,0 +1,53 @@
+# Zone Manifest: Oman
+#
+# Oman zone.
+# CBO + CMA framework; Duqm Special Economic Zone.
+#
+# jurisdiction_stack: om
+
+zone_id: org.momentum.mez.zone.om
+jurisdiction_id: om
+zone_name: Oman
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - om
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  cbo:
+    enabled: false
+    endpoint: "${CBO_URL:-}"
+  cma_oman:
+    enabled: false
+    endpoint: "${CMA_OMAN_URL:-}"
+  moci_oman:
+    enabled: false
+    endpoint: "${MOCI_OMAN_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

@@ -1,0 +1,48 @@
+# Zone Manifest: Dominica
+#
+# Dominica zone.
+# ECCB framework; Offshore Banking Act.
+# OECS monetary union member.
+#
+# jurisdiction_stack: dm
+
+zone_id: org.momentum.mez.zone.dm
+jurisdiction_id: dm
+zone_name: Dominica
+
+profile:
+  profile_id: org.momentum.mez.profile.minimal-mvp
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - dm
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  eccb:
+    enabled: false
+    endpoint: "${ECCB_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

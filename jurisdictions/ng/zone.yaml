@@ -1,0 +1,59 @@
+# Zone Manifest: Nigeria
+#
+# Nigeria zone.
+# CBN + SEC framework; Lekki Free Zone.
+# SEC Rules on Digital Assets 2022.
+#
+# jurisdiction_stack: ng
+
+zone_id: org.momentum.mez.zone.ng
+jurisdiction_id: ng
+zone_name: Nigeria
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - ng
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  cbn:
+    enabled: false
+    endpoint: "${CBN_URL:-}"
+  sec_ng:
+    enabled: false
+    endpoint: "${SEC_NG_URL:-}"
+  firs:
+    enabled: false
+    endpoint: "${FIRS_URL:-}"
+  cac:
+    enabled: false
+    endpoint: "${CAC_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

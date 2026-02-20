@@ -1,0 +1,34 @@
+# Composition Spec: East African Innovation Hub
+#
+# East African fintech innovation. Kenya M-PESA + Rwanda fintech sandbox + Tanzania EPZ + Uganda CMA.
+#
+#   - corporate_formation <- ke
+#   - civic_code <- ke
+#   - digital_assets <- rw
+#   - tax <- rw
+#   - aml_cft <- ke
+#   - payment_rails <- ke
+#   - licensing <- tz
+#   - securities <- ug
+
+zone_name: East African Innovation Hub
+zone_id: org.momentum.mez.zone.synthetic.east-african-innovation
+jurisdiction_id: synth-east-african-innovation
+primary_jurisdiction: ke
+layers:
+  - domain: corporate_formation
+    source: ke
+  - domain: civic_code
+    source: ke
+  - domain: digital_assets
+    source: rw
+  - domain: tax
+    source: rw
+  - domain: aml_cft
+    source: ke
+  - domain: payment_rails
+    source: ke
+  - domain: licensing
+    source: tz
+  - domain: securities
+    source: ug

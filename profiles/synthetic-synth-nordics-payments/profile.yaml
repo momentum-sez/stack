@@ -1,0 +1,61 @@
+# Profile: Nordic Payments Innovation Zone (Synthetic)
+#
+# Synthetic zone profile composed from regulatory primitives.
+# Each regulatory domain is sourced from a different jurisdiction.
+#
+# Layers:
+#   corporate_formation <- se
+#   civic_code <- dk
+#   tax <- fi
+#   aml_cft <- no
+#   payment_rails <- se
+#   licensing <- ee
+#   data_privacy <- fi
+#   securities <- dk
+
+profile_id: org.momentum.mez.profile.synthetic-synth-nordics-payments
+profile_name: Nordic Payments Innovation Zone
+version: "0.4.44"
+zone_type: synthetic
+
+composition:
+  - domain: corporate_formation
+    source: se
+  - domain: civic_code
+    source: dk
+  - domain: tax
+    source: fi
+  - domain: aml_cft
+    source: no
+  - domain: payment_rails
+    source: se
+  - domain: licensing
+    source: ee
+  - domain: data_privacy
+    source: fi
+  - domain: securities
+    source: dk
+
+modules:
+  - id: org.momentum.mez.legal.core
+    variant: synthetic-composed
+  - id: org.momentum.mez.legal.commercial-code
+    variant: se-corp
+  - id: org.momentum.mez.tax
+    variant: fi-tax
+    parameters:
+      source_jurisdiction: "fi"
+  - id: org.momentum.mez.reg.aml-cft
+    variant: risk-based
+    parameters:
+      kyc_tier: 3
+      edd_threshold_usd: 10000
+      source_jurisdiction: "no"
+  - id: org.momentum.mez.fin.payments-adapter
+    variant: iso20022-mapping
+  - id: org.momentum.mez.corridor.swift
+    variant: iso20022-cross-border
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin

@@ -1,0 +1,51 @@
+# Zone Manifest: Sri Lanka
+#
+# Sri Lanka zone.
+# CBSL + SEC framework; Colombo Port City SEZ.
+# Payment and Settlement Systems Act.
+#
+# jurisdiction_stack: lk
+
+zone_id: org.momentum.mez.zone.lk
+jurisdiction_id: lk
+zone_name: Sri Lanka
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - lk
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  cbsl:
+    enabled: false
+    endpoint: "${CBSL_URL:-}"
+  sec_lk:
+    enabled: false
+    endpoint: "${SEC_LK_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

@@ -1,0 +1,48 @@
+# Zone Manifest: Vanuatu
+#
+# Vanuatu zone.
+# RBV framework; Financial Dealers Licensing Act.
+# Pacific Islands financial center.
+#
+# jurisdiction_stack: vu
+
+zone_id: org.momentum.mez.zone.vu
+jurisdiction_id: vu
+zone_name: Vanuatu
+
+profile:
+  profile_id: org.momentum.mez.profile.minimal-mvp
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - vu
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  rbv:
+    enabled: false
+    endpoint: "${RBV_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

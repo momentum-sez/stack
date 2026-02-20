@@ -1,0 +1,56 @@
+# Zone Manifest: Switzerland
+#
+# Switzerland zone.
+# FINMA framework; DLT Act 2021.
+# Established crypto regulation; token classification guidance.
+#
+# jurisdiction_stack: ch
+
+zone_id: org.momentum.mez.zone.ch
+jurisdiction_id: ch
+zone_name: Switzerland
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - ch
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  finma:
+    enabled: false
+    endpoint: "${FINMA_URL:-}"
+  estv:
+    enabled: false
+    endpoint: "${ESTV_URL:-}"
+  zefix:
+    enabled: false
+    endpoint: "${ZEFIX_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

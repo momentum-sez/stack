@@ -1,0 +1,31 @@
+# Composition Spec: Caribbean Digital Asset Cluster
+#
+# Caribbean digital asset hub. Cayman funds + Bermuda DABA + Bahamas DARE + BVI VASP Act.
+#
+#   - corporate_formation <- ky
+#   - digital_assets <- bm
+#   - tax <- ky
+#   - aml_cft <- ky
+#   - securities <- bs
+#   - licensing <- vg
+#   - arbitration <- bb
+
+zone_name: Caribbean Digital Asset Cluster
+zone_id: org.momentum.mez.zone.synthetic.caribbean-digital-cluster
+jurisdiction_id: synth-caribbean-digital-cluster
+primary_jurisdiction: ky
+layers:
+  - domain: corporate_formation
+    source: ky
+  - domain: digital_assets
+    source: bm
+  - domain: tax
+    source: ky
+  - domain: aml_cft
+    source: ky
+  - domain: securities
+    source: bs
+  - domain: licensing
+    source: vg
+  - domain: arbitration
+    source: bb

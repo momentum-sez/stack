@@ -1,9 +1,18 @@
+# Zone Manifest: Shenzhen
+#
+# Shenzhen zone.
+# Tech innovation hub; Shenzhen SEZ.
+# Qianhai cooperation zone; e-CNY pilot city.
+#
+# jurisdiction_stack: cn > cn-shenzhen
+
 zone_id: org.momentum.mez.zone.cn.shenzhen
 jurisdiction_id: cn-shenzhen
-zone_name: Shenzhen Economic Zone
+zone_name: Shenzhen
+
 profile:
-  profile_id: org.momentum.mez.profile.economic-zone
-  version: 0.4.44
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
 
 jurisdiction_stack:
   - cn
@@ -13,16 +22,31 @@ lawpack_domains:
   - civil
   - financial
 
-overlays: []
-params_overrides: {}
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
 
+national_adapters:
+  pboc:
+    enabled: false
+    endpoint: "${PBOC_URL:-}"
+  szse:
+    enabled: false
+    endpoint: "${SZSE_URL:-}"
+
 trust_anchors: []
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

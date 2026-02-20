@@ -1,9 +1,17 @@
+# Zone Manifest: New York
+#
+# NYDFS BitLicense framework (23 NYCRR 200).
+# Most stringent US crypto regulation; money transmitter licensing.
+#
+# jurisdiction_stack: us > us-ny
+
 zone_id: org.momentum.mez.zone.us.ny
 jurisdiction_id: us-ny
 zone_name: New York
+
 profile:
-  profile_id: org.momentum.mez.profile.digital-financial-center
-  version: 0.4.44
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
 
 jurisdiction_stack:
   - us
@@ -13,16 +21,34 @@ lawpack_domains:
   - civil
   - financial
 
-overlays: []
-params_overrides: {}
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
 
+national_adapters:
+  fincen:
+    enabled: false
+    endpoint: "${FINCEN_URL:-}"
+  irs:
+    enabled: false
+    endpoint: "${IRS_URL:-}"
+  nydfs:
+    enabled: false
+    endpoint: "${NYDFS_URL:-}"
+
 trust_anchors: []
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

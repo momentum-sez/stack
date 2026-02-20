@@ -1,0 +1,53 @@
+# Zone Manifest: Jordan
+#
+# Jordan zone.
+# CBJ + JSC framework; Aqaba Special Economic Zone.
+#
+# jurisdiction_stack: jo
+
+zone_id: org.momentum.mez.zone.jo
+jurisdiction_id: jo
+zone_name: Jordan
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - jo
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  cbj:
+    enabled: false
+    endpoint: "${CBJ_URL:-}"
+  jsc:
+    enabled: false
+    endpoint: "${JSC_URL:-}"
+  istd:
+    enabled: false
+    endpoint: "${ISTD_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

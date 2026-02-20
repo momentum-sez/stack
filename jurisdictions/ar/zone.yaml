@@ -1,0 +1,54 @@
+# Zone Manifest: Argentina
+#
+# Argentina zone.
+# CNV + BCRA framework; digital asset PSP rules.
+# Resolution 994/2024 (VASP obligations).
+#
+# jurisdiction_stack: ar
+
+zone_id: org.momentum.mez.zone.ar
+jurisdiction_id: ar
+zone_name: Argentina
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - ar
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  cnv:
+    enabled: false
+    endpoint: "${CNV_URL:-}"
+  bcra:
+    enabled: false
+    endpoint: "${BCRA_URL:-}"
+  afip:
+    enabled: false
+    endpoint: "${AFIP_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

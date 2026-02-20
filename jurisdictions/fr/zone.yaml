@@ -1,0 +1,56 @@
+# Zone Manifest: France
+#
+# France zone.
+# AMF + ACPR framework; PACTE Law (2019).
+# DASP (Digital Asset Service Provider) registration.
+#
+# jurisdiction_stack: fr
+
+zone_id: org.momentum.mez.zone.fr
+jurisdiction_id: fr
+zone_name: France
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - fr
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  amf:
+    enabled: false
+    endpoint: "${AMF_URL:-}"
+  acpr:
+    enabled: false
+    endpoint: "${ACPR_URL:-}"
+  dgfip:
+    enabled: false
+    endpoint: "${DGFIP_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

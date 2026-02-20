@@ -1,0 +1,54 @@
+# Zone Manifest: Bangladesh
+#
+# Bangladesh zone.
+# Bangladesh Bank framework; mobile financial services.
+# bKash/Nagad mobile money ecosystem.
+#
+# jurisdiction_stack: bd
+
+zone_id: org.momentum.mez.zone.bd
+jurisdiction_id: bd
+zone_name: Bangladesh
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - bd
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  bb:
+    enabled: false
+    endpoint: "${BB_URL:-}"
+  bsec:
+    enabled: false
+    endpoint: "${BSEC_URL:-}"
+  nbr_bd:
+    enabled: false
+    endpoint: "${NBR_BD_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

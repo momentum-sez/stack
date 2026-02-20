@@ -1,0 +1,63 @@
+# Profile: Latin America Trade Zone (Synthetic)
+#
+# Synthetic zone profile composed from regulatory primitives.
+# Each regulatory domain is sourced from a different jurisdiction.
+#
+# Layers:
+#   corporate_formation <- pa
+#   civic_code <- br
+#   tax <- uy
+#   aml_cft <- br
+#   payment_rails <- br
+#   securities <- cl
+#   arbitration <- mx
+#   licensing <- co
+
+profile_id: org.momentum.mez.profile.synthetic-synth-latam-trade-zone
+profile_name: Latin America Trade Zone
+version: "0.4.44"
+zone_type: synthetic
+
+composition:
+  - domain: corporate_formation
+    source: pa
+  - domain: civic_code
+    source: br
+  - domain: tax
+    source: uy
+  - domain: aml_cft
+    source: br
+  - domain: payment_rails
+    source: br
+  - domain: securities
+    source: cl
+  - domain: arbitration
+    source: mx
+  - domain: licensing
+    source: co
+
+modules:
+  - id: org.momentum.mez.legal.core
+    variant: synthetic-composed
+  - id: org.momentum.mez.legal.commercial-code
+    variant: pa-corp
+  - id: org.momentum.mez.tax
+    variant: uy-tax
+    parameters:
+      source_jurisdiction: "uy"
+  - id: org.momentum.mez.reg.aml-cft
+    variant: risk-based
+    parameters:
+      kyc_tier: 3
+      edd_threshold_usd: 10000
+      source_jurisdiction: "br"
+  - id: org.momentum.mez.legal.dispute-resolution
+    variant: mx-arbitration
+  - id: org.momentum.mez.fin.payments-adapter
+    variant: iso20022-mapping
+  - id: org.momentum.mez.corridor.swift
+    variant: iso20022-cross-border
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin

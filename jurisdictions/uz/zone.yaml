@@ -1,0 +1,51 @@
+# Zone Manifest: Uzbekistan
+#
+# Uzbekistan zone.
+# CBU framework; crypto-mining legalization.
+# Presidential decree on digital economy development.
+#
+# jurisdiction_stack: uz
+
+zone_id: org.momentum.mez.zone.uz
+jurisdiction_id: uz
+zone_name: Uzbekistan
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - uz
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  cbu:
+    enabled: false
+    endpoint: "${CBU_URL:-}"
+  cma_uz:
+    enabled: false
+    endpoint: "${CMA_UZ_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

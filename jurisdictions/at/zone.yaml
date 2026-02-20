@@ -1,0 +1,51 @@
+# Zone Manifest: Austria
+#
+# Austria zone.
+# FMA framework; EU MiCA implementation.
+# Progressive approach to digital assets.
+#
+# jurisdiction_stack: at
+
+zone_id: org.momentum.mez.zone.at
+jurisdiction_id: at
+zone_name: Austria
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - at
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  fma_at:
+    enabled: false
+    endpoint: "${FMA_AT_URL:-}"
+  bmf_at:
+    enabled: false
+    endpoint: "${BMF_AT_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

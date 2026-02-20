@@ -1,9 +1,18 @@
+# Zone Manifest: Ireland
+#
+# Ireland zone.
+# CBI framework; EU MiCA implementation.
+# 12.5% corporate tax; IFSC Dublin; fund domiciliation hub.
+#
+# jurisdiction_stack: ie
+
 zone_id: org.momentum.mez.zone.ie
 jurisdiction_id: ie
 zone_name: Ireland
+
 profile:
-  profile_id: org.momentum.mez.profile.sovereign-nation
-  version: 0.4.44
+  profile_id: org.momentum.mez.profile.digital-financial-center
+  version: "0.4.44"
 
 jurisdiction_stack:
   - ie
@@ -12,16 +21,50 @@ lawpack_domains:
   - civil
   - financial
 
-overlays: []
-params_overrides: {}
+licensepack_domains:
+  - financial
+  - corporate
+
+licensepack_refresh_policy:
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+  financial:
+    frequency: hourly
+    max_staleness_hours: 4
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+  - consumer_protection
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin
+
+national_adapters:
+  cbi_ie:
+    enabled: false
+    endpoint: "${CBI_IE_URL:-}"
+  revenue_ie:
+    enabled: false
+    endpoint: "${REVENUE_IE_URL:-}"
+  cro_ie:
+    enabled: false
+    endpoint: "${CRO_IE_URL:-}"
 
 trust_anchors: []
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

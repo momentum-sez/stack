@@ -1,0 +1,34 @@
+# Composition Spec: Indo-Pacific Trade Corridor
+#
+# India GIFT City to ASEAN/Oceania trade. IFSCA + Singapore MAS + Australia ASIC + NZ FMA.
+#
+#   - corporate_formation <- in-gift
+#   - civic_code <- sg
+#   - digital_assets <- sg
+#   - tax <- sg
+#   - aml_cft <- sg
+#   - securities <- au
+#   - payment_rails <- sg
+#   - data_privacy <- nz
+
+zone_name: Indo-Pacific Trade Corridor
+zone_id: org.momentum.mez.zone.synthetic.indo-pacific-trade
+jurisdiction_id: synth-indo-pacific-trade
+primary_jurisdiction: sg
+layers:
+  - domain: corporate_formation
+    source: in-gift
+  - domain: civic_code
+    source: sg
+  - domain: digital_assets
+    source: sg
+  - domain: tax
+    source: sg
+  - domain: aml_cft
+    source: sg
+  - domain: securities
+    source: au
+  - domain: payment_rails
+    source: sg
+  - domain: data_privacy
+    source: nz

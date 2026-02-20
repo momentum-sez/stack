@@ -1,0 +1,70 @@
+# Zone Manifest: Estonia
+#
+# Estonia zone.
+# EFSA framework; EU MiCA implementation.
+# e-Residency digital-first company formation program.
+#
+# jurisdiction_stack: ee
+
+zone_id: org.momentum.mez.zone.ee
+jurisdiction_id: ee
+zone_name: Estonia
+
+profile:
+  profile_id: org.momentum.mez.profile.digital-financial-center
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - ee
+
+lawpack_domains:
+  - civil
+  - financial
+
+licensepack_domains:
+  - financial
+  - corporate
+
+licensepack_refresh_policy:
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+  financial:
+    frequency: hourly
+    max_staleness_hours: 4
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+  - consumer_protection
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin
+
+national_adapters:
+  efsa:
+    enabled: false
+    endpoint: "${EFSA_URL:-}"
+  emta:
+    enabled: false
+    endpoint: "${EMTA_URL:-}"
+  rik:
+    enabled: false
+    endpoint: "${RIK_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

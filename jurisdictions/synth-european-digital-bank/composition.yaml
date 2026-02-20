@@ -1,0 +1,34 @@
+# Composition Spec: European Digital Banking Zone
+#
+# Pan-European digital banking charter. Combines Estonia e-Residency with Luxembourg financial center infrastructure.
+#
+#   - corporate_formation <- ee
+#   - civic_code <- lu
+#   - digital_assets <- ch-zug
+#   - tax <- ie
+#   - aml_cft <- lu
+#   - licensing <- gb
+#   - data_privacy <- de
+#   - payment_rails <- nl
+
+zone_name: European Digital Banking Zone
+zone_id: org.momentum.mez.zone.synthetic.european-digital-bank
+jurisdiction_id: synth-european-digital-bank
+primary_jurisdiction: lu
+layers:
+  - domain: corporate_formation
+    source: ee
+  - domain: civic_code
+    source: lu
+  - domain: digital_assets
+    source: ch-zug
+  - domain: tax
+    source: ie
+  - domain: aml_cft
+    source: lu
+  - domain: licensing
+    source: gb
+  - domain: data_privacy
+    source: de
+  - domain: payment_rails
+    source: nl

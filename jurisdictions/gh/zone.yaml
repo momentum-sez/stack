@@ -1,0 +1,54 @@
+# Zone Manifest: Ghana
+#
+# Ghana zone.
+# BOG + SEC framework; emerging digital asset regulation.
+# Mobile money interoperability platform (GhIPSS).
+#
+# jurisdiction_stack: gh
+
+zone_id: org.momentum.mez.zone.gh
+jurisdiction_id: gh
+zone_name: Ghana
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - gh
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  bog:
+    enabled: false
+    endpoint: "${BOG_URL:-}"
+  sec_gh:
+    enabled: false
+    endpoint: "${SEC_GH_URL:-}"
+  gra:
+    enabled: false
+    endpoint: "${GRA_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

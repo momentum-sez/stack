@@ -1,0 +1,54 @@
+# Zone Manifest: Rwanda
+#
+# Rwanda zone.
+# BNR + CMA framework; Kigali International Financial Centre.
+# BNR Regulation No. 12/2021 on Fintech.
+#
+# jurisdiction_stack: rw
+
+zone_id: org.momentum.mez.zone.rw
+jurisdiction_id: rw
+zone_name: Rwanda
+
+profile:
+  profile_id: org.momentum.mez.profile.sovereign-govos
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - rw
+
+lawpack_domains:
+  - civil
+  - financial
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - corporate
+  - licensing
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+national_adapters:
+  bnr:
+    enabled: false
+    endpoint: "${BNR_URL:-}"
+  cma_rw:
+    enabled: false
+    endpoint: "${CMA_RW_URL:-}"
+  rra:
+    enabled: false
+    endpoint: "${RRA_URL:-}"
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

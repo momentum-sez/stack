@@ -1,9 +1,18 @@
+# Zone Manifest: Astana International Financial Centre
+#
+# Astana International Financial Centre (AIFC).
+# AFSA regulated; English common law jurisdiction.
+# AIFC Framework for Regulation of Digital Assets.
+#
+# jurisdiction_stack: kz > kz-aifc
+
 zone_id: org.momentum.mez.zone.kz.aifc
 jurisdiction_id: kz-aifc
 zone_name: Astana International Financial Centre
+
 profile:
   profile_id: org.momentum.mez.profile.digital-financial-center
-  version: 0.4.44
+  version: "0.4.44"
 
 jurisdiction_stack:
   - kz
@@ -13,16 +22,44 @@ lawpack_domains:
   - civil
   - financial
 
-overlays: []
-params_overrides: {}
+licensepack_domains:
+  - financial
+  - corporate
+
+licensepack_refresh_policy:
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+  financial:
+    frequency: hourly
+    max_staleness_hours: 4
+
+# Regpack builder needed
+
+compliance_domains:
+  - aml
+  - kyc
+  - sanctions
+  - tax
+  - securities
+  - corporate
+  - licensing
+  - data_privacy
+  - consumer_protection
 
 corridors:
   - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin
+
+national_adapters:
+  afsa:
+    enabled: false
+    endpoint: "${AFSA_URL:-}"
 
 trust_anchors: []
-key_rotation_policy:
-  default:
-    rotation_days: 90
-    grace_days: 14
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
 
 lockfile_path: stack.lock

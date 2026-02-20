@@ -391,8 +391,8 @@ This is the ordered sequence of work items. Dependencies are noted. Each item in
 ### Phase D: API & Integration Surface (MOSTLY COMPLETED)
 
 ```
-17. P1-API-001      — PARTIAL: smart-assets + corridor-state contract-grade; regulator-console v0.3.0 with compliance endpoint
-18. P1-API-002      — OPEN: Pin Mass API specs in-repo
+17. P1-API-001      — CLOSED: All four OpenAPI specs contract-grade (commit 6bd628d)
+18. P1-API-002      — CLOSED: Mass API specs pinned in-repo (commit 6bd628d)
 19. P1-NAMING-001   — OPEN: Publish canonical terminology glossary
 20. P1-DEPLOY-002   — CLOSED: Deploy scripts aligned with single-binary architecture; two-zone compose credential-hardened
 ```
@@ -411,7 +411,7 @@ This is the ordered sequence of work items. Dependencies are noted. Each item in
 24. P0-IDENTITY-001    — OPEN: Ship real Identity service (Mass-side dependency)
 25. P0-CORRIDOR-NET-001 — CLOSED: Inter-zone protocol with handshake (commit 6ea3f8e)
 26. P0-PACK-001        — CLOSED: Pakistan Pack Trilogy (commit b996ecc)
-27. P2-NATIONAL-001    — PARTIAL: FBR IRIS + SECP adapters implemented; SBP Raast pending
+27. P2-NATIONAL-001    — CLOSED: All four national adapters complete (commit 620bb1d)
 ```
 
 ### NEW: Phase G — Pragmatic Deployment (NOW — Weeks 1-4)
@@ -424,7 +424,7 @@ This is the ordered sequence of work items. Dependencies are noted. Each item in
 29. CAS digest computation for regpacks — CLOSED: mez regpack build --jurisdiction pk --all-domains --store
 30. Zone bootstrap CLI — CLOSED: mez regpack build + mez lock + sovereign-govos profile + docs/ZONE-BOOTSTRAP-GUIDE.md
 31. Corridor establishment walkthrough — CLOSED: documented in docs/ZONE-BOOTSTRAP-GUIDE.md
-32. OpenAPI spec promotion — PARTIAL: regulator-console v0.3.0 with compliance endpoint; smart-assets already contract-grade
+32. OpenAPI spec promotion — CLOSED: All specs contract-grade (commit 6bd628d)
 33. Compliance query endpoint — CLOSED: GET /v1/compliance/{entity_id} in regulator router + OpenAPI spec
 34. Pakistan national system adapter interfaces (trait contracts + mocks) — CLOSED (FBR IRIS + SECP)
 ```
@@ -528,7 +528,7 @@ Based on synthesized audit findings. Status: ✅ Implemented | 🟡 Partial | �
 | 31-35 | Watcher economy | ✅ | ~~P0-FORK-001~~ CLOSED | Evidence-driven fork resolution with signed attestations |
 | 36-40 | Anchoring / ZK | 🔴 | P0-ANCHOR-001, P0-CRYPTO-001/002 | ZK policy fail-closed (P0-ZK-001 CLOSED); crypto stubs remain |
 | 41-45 | Deployment / infra | ✅ | ~~P0-DEPLOY-001~~ CLOSED | No default creds, zone manifests, two-zone compose, deploy scripts |
-| 46-48 | National integration | 🟡 | P2-NATIONAL-001 | FBR IRIS + SECP adapters (trait + mock); NADRA adapter exists; SBP Raast pending |
+| 46-48 | National integration | ✅ | ~~P2-NATIONAL-001~~ CLOSED | All four national adapters complete: FBR IRIS, SECP, NADRA, SBP Raast (commit 620bb1d) |
 
 ---
 
@@ -564,9 +564,9 @@ Based on synthesized audit findings. Status: ✅ Implemented | 🟡 Partial | �
 - ~~P0-TENSOR-001~~ CLOSED: 20-domain exhaustive evaluation, Pending default
 
 **Remaining for Phase 2:**
-- [ ] End-to-end two-zone corridor test with real receipt exchange
-- [ ] Cross-zone compliance query endpoint
-- [ ] Corridor health monitoring dashboard
+- [x] End-to-end two-zone corridor test with real receipt exchange (commit 620bb1d)
+- [x] Cross-zone compliance query endpoint (commit 0563021)
+- [x] Corridor health monitoring dashboard (Prometheus exporter + Grafana provisioning)
 
 ### Phase 3 — Production (PARTIALLY BLOCKED)
 

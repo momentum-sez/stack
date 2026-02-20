@@ -85,6 +85,7 @@ clap = { version = "4", features = ["derive"] }
 # Observability
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+prometheus = "0.13"
 
 # OpenAPI
 utoipa = { version = "4", features = ["axum_extras", "chrono", "uuid"] }

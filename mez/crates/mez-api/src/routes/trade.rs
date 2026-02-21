@@ -21,6 +21,7 @@ use axum::{Json, Router};
 use mez_core::ComplianceDomain;
 use mez_corridor::{TradeFlowType, TradeParty, TradeTransitionPayload};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::db;
@@ -33,25 +34,33 @@ use crate::state::AppState;
 // ---------------------------------------------------------------------------
 
 /// Request to create a new trade flow.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateTradeFlowRequest {
+    /// Flow type: "export", "import", "letter_of_credit", or "open_account".
+    #[schema(value_type = String)]
     pub flow_type: TradeFlowType,
+    /// Seller party identification.
+    #[schema(value_type = Object)]
     pub seller: TradeParty,
+    /// Buyer party identification.
+    #[schema(value_type = Object)]
     pub buyer: TradeParty,
     #[serde(default)]
     pub jurisdiction_id: Option<String>,
 }
 
 /// Request to submit a transition to a trade flow.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct SubmitTransitionRequest {
+    /// Transition payload specific to the transition type.
+    #[schema(value_type = Object)]
     pub payload: TradeTransitionPayload,
     #[serde(default)]
     pub jurisdiction_id: Option<String>,
 }
 
 /// Response envelope for trade flow operations.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct TradeFlowResponse {
     pub flow: serde_json::Value,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -93,6 +102,16 @@ pub fn router() -> Router<AppState> {
 // ---------------------------------------------------------------------------
 
 /// POST /v1/trade/flows — Create a new trade flow.
+#[utoipa::path(
+    post,
+    path = "/v1/trade/flows",
+    request_body = CreateTradeFlowRequest,
+    responses(
+        (status = 201, description = "Trade flow created", body = TradeFlowResponse),
+        (status = 403, description = "Compliance hard-block", body = crate::error::ErrorBody),
+    ),
+    tag = "trade"
+)]
 async fn create_trade_flow(
     State(state): State<AppState>,
     Json(req): Json<CreateTradeFlowRequest>,
@@ -166,6 +185,14 @@ async fn create_trade_flow(
 }
 
 /// GET /v1/trade/flows — List all trade flows.
+#[utoipa::path(
+    get,
+    path = "/v1/trade/flows",
+    responses(
+        (status = 200, description = "List of trade flows"),
+    ),
+    tag = "trade"
+)]
 async fn list_trade_flows(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, AppError> {
@@ -184,6 +211,16 @@ async fn list_trade_flows(
 }
 
 /// GET /v1/trade/flows/:flow_id — Get a trade flow by ID.
+#[utoipa::path(
+    get,
+    path = "/v1/trade/flows/{flow_id}",
+    params(("flow_id" = Uuid, Path, description = "Trade flow UUID")),
+    responses(
+        (status = 200, description = "Trade flow details"),
+        (status = 404, description = "Trade flow not found", body = crate::error::ErrorBody),
+    ),
+    tag = "trade"
+)]
 async fn get_trade_flow(
     State(state): State<AppState>,
     Path(flow_id): Path<Uuid>,
@@ -200,6 +237,19 @@ async fn get_trade_flow(
 }
 
 /// POST /v1/trade/flows/:flow_id/transitions — Submit a transition.
+#[utoipa::path(
+    post,
+    path = "/v1/trade/flows/{flow_id}/transitions",
+    params(("flow_id" = Uuid, Path, description = "Trade flow UUID")),
+    request_body = SubmitTransitionRequest,
+    responses(
+        (status = 200, description = "Transition applied", body = TradeFlowResponse),
+        (status = 404, description = "Trade flow not found", body = crate::error::ErrorBody),
+        (status = 403, description = "Compliance hard-block", body = crate::error::ErrorBody),
+        (status = 422, description = "Invalid transition", body = crate::error::ErrorBody),
+    ),
+    tag = "trade"
+)]
 async fn submit_transition(
     State(state): State<AppState>,
     Path(flow_id): Path<Uuid>,
@@ -290,6 +340,16 @@ async fn submit_transition(
 }
 
 /// GET /v1/trade/flows/:flow_id/transitions — List transitions for a flow.
+#[utoipa::path(
+    get,
+    path = "/v1/trade/flows/{flow_id}/transitions",
+    params(("flow_id" = Uuid, Path, description = "Trade flow UUID")),
+    responses(
+        (status = 200, description = "List of transitions for the flow"),
+        (status = 404, description = "Trade flow not found", body = crate::error::ErrorBody),
+    ),
+    tag = "trade"
+)]
 async fn list_transitions(
     State(state): State<AppState>,
     Path(flow_id): Path<Uuid>,

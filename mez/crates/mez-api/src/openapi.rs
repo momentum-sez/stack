@@ -82,6 +82,7 @@ impl Modify for SecurityAddon {
         crate::routes::corridors::fork_resolve,
         crate::routes::corridors::anchor_commitment,
         crate::routes::corridors::finality_status,
+        crate::routes::corridors::corridor_health,
         // ── Settlement ──────────────────────────────────────────────────
         crate::routes::settlement::compute_settlement,
         crate::routes::settlement::find_route,
@@ -116,6 +117,27 @@ impl Modify for SecurityAddon {
         crate::routes::compliance_query::query_jurisdiction,
         crate::routes::compliance_query::query_entity,
         crate::routes::compliance_query::query_corridor,
+        // ── Trade Flow Instruments ────────────────────────────────────────
+        crate::routes::trade::create_trade_flow,
+        crate::routes::trade::list_trade_flows,
+        crate::routes::trade::get_trade_flow,
+        crate::routes::trade::submit_transition,
+        crate::routes::trade::list_transitions,
+        // ── Agentic Policy Engine ────────────────────────────────────────
+        crate::routes::agentic::submit_trigger,
+        crate::routes::agentic::list_policies,
+        crate::routes::agentic::delete_policy,
+        // ── Watcher Economy ──────────────────────────────────────────────
+        crate::routes::watchers::register_watcher,
+        crate::routes::watchers::list_watchers,
+        crate::routes::watchers::get_watcher,
+        crate::routes::watchers::bond_watcher,
+        crate::routes::watchers::activate_watcher,
+        crate::routes::watchers::slash_watcher,
+        crate::routes::watchers::rebond_watcher,
+        crate::routes::watchers::unbond_watcher,
+        crate::routes::watchers::complete_unbond_watcher,
+        crate::routes::watchers::record_attestation,
     ),
     components(
         schemas(
@@ -154,6 +176,8 @@ impl Modify for SecurityAddon {
             crate::routes::corridors::ReceiptChainResponse,
             crate::routes::corridors::ReceiptEntry,
             crate::routes::corridors::CheckpointResponse,
+            crate::routes::corridors::CorridorHealthResponse,
+            crate::routes::corridors::CorridorHealthEntry,
             // ── Settlement DTOs ─────────────────────────────────────────
             crate::routes::settlement::SettlementComputeRequest,
             crate::routes::settlement::ObligationInput,
@@ -210,6 +234,23 @@ impl Modify for SecurityAddon {
             crate::routes::compliance_query::ComplianceDomainInfo,
             crate::routes::compliance_query::EntityComplianceResponse,
             crate::routes::compliance_query::EntityDomainEntry,
+            // ── Trade Flow DTOs ──────────────────────────────────────────
+            crate::routes::trade::CreateTradeFlowRequest,
+            crate::routes::trade::SubmitTransitionRequest,
+            crate::routes::trade::TradeFlowResponse,
+            // ── Agentic DTOs ────────────────────────────────────────────
+            crate::routes::agentic::TriggerRequest,
+            crate::routes::agentic::TriggerResponse,
+            crate::routes::agentic::ActionResult,
+            crate::routes::agentic::ActionStatus,
+            // ── Watcher Economy DTOs ────────────────────────────────────
+            crate::routes::watchers::WatcherResponse,
+            crate::routes::watchers::WatcherListResponse,
+            crate::routes::watchers::BondRequest,
+            crate::routes::watchers::SlashRequest,
+            crate::routes::watchers::RebondRequest,
+            crate::routes::watchers::SlashResponse,
+            crate::routes::watchers::UnbondResponse,
         ),
     ),
     modifiers(&SecurityAddon),
@@ -227,6 +268,9 @@ impl Modify for SecurityAddon {
         (name = "smart_assets", description = "Smart Asset lifecycle — genesis, registry submission, compliance evaluation"),
         (name = "regulator", description = "Regulator Console — attestation queries, compliance summaries, zone dashboard"),
         (name = "compliance", description = "Compliance Query API — tensor evaluation, entity compliance, bilateral corridor compliance"),
+        (name = "trade", description = "Trade Flow Instruments — export, import, letter of credit, and open account lifecycle"),
+        (name = "agentic", description = "Agentic Policy Engine — trigger evaluation, policy management, autonomous corridor reactions"),
+        (name = "watchers", description = "Watcher Economy — bonding, slashing, activation, attestation lifecycle for corridor watchers"),
     )
 )]
 pub struct ApiDoc;

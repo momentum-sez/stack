@@ -52,7 +52,7 @@
             {"type": "string"},
             {
               "allOf": [
-                {"$ref": "artifact-ref.schema.json"},
+                {"$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"},
                 {
                   "properties": {"artifact_type": {"const": "vc"}},
                   "required": ["artifact_type", "digest_sha256"]
@@ -104,7 +104,7 @@
               "evidence": {
                 "description": "Optional evidence artifacts supporting the authority claim (appointment letters, gazette notices, etc.).",
                 "type": "array",
-                "items": {"$ref": "artifact-ref.schema.json"}
+                "items": {"$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"}
               }
             },
             "additionalProperties": true

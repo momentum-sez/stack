@@ -1,8 +1,8 @@
 # Pragmatic Deployment Roadmap: AWS of Economic Zones
 
-**Date:** 2026-02-19
-**Codebase State:** v0.4.44-GENESIS | 4,666+ tests | 0 failures | Clean build
-**Commits:** 147 total | 16 Rust crates | ~74K lines production code
+**Date:** 2026-02-21
+**Codebase State:** v0.4.44-GENESIS | 4,683+ tests | 0 failures | Clean build
+**Commits:** 147+ total | 16 Rust crates | ~74K lines production code
 
 ---
 
@@ -76,8 +76,8 @@ to "functional prototype with production-grade internals." Here is what is real:
 | Real anchor target (L1 finality) | Mock (`always confirmed`) | Medium — AFC tier not needed for LVC/EFC operations |
 | Identity service (Mass-side) | Facade over other Mass services | HIGH for sovereign deployment |
 | Pakistan national adapters | Types defined, no HTTP clients | HIGH for GovOS launch |
-| OpenAPI specs | Contract-grade (50+ endpoints, security scheme, all schemas) | LOW — promotion complete |
-| Schema URI consistency | `momentum-ez.org` vs `schemas.momentum-ez.org` | Low — internal only for now |
+| OpenAPI specs | Contract-grade (60+ endpoints, security scheme, all schemas, trade/agentic/watcher routes) | LOW — promotion complete |
+| Schema URI consistency | RESOLVED — all `$ref` values use full `schemas.momentum-ez.org` URIs | CLOSED |
 
 ---
 
@@ -160,10 +160,10 @@ demonstrating the network effect thesis.
 
 | Task | What | Why |
 |---|---|---|
-| Watcher bond economics | Real bonding/slashing/reward implementation | Watcher economy is revenue model |
+| Watcher bond economics | REST API: register, bond, activate, slash, rebond, unbond + 10 OpenAPI endpoints | **IMPLEMENTED** — full lifecycle with 4 slashing conditions |
 | Multi-zone orchestration | Kubernetes operator or Terraform module for N-zone deployment | Can't scale with docker-compose |
-| Corridor health monitoring | Dashboard showing receipt chain height, checkpoint frequency, compliance state | Operators need visibility |
-| Cross-zone compliance evaluation | Tensor evaluation that spans corridor endpoints | Proves bilateral compliance |
+| Corridor health monitoring | `GET /v1/corridors/health` — per-corridor status, receipt chain heights, peer count, watcher count | **IMPLEMENTED** — aggregated health endpoint |
+| Cross-zone compliance evaluation | Tensor evaluation that spans corridor endpoints | **IMPLEMENTED** — `GET /v1/compliance/corridor/{id}` |
 
 ### Priority 5: Cryptographic Completion (Parallel Track)
 
@@ -292,7 +292,8 @@ its own Mass APIs. The corridor mesh IS the Jurisdictional DAG in practice.
 
 Requires:
 - [ ] Multi-zone Kubernetes orchestration (N sovereign Mass deployments)
-- [ ] Watcher bond economics (real staking/slashing)
+- [x] Watcher bond economics (real staking/slashing) — REST API with full lifecycle + 4 slashing conditions
+- [x] Corridor health monitoring — aggregated health endpoint with per-corridor status
 - [ ] BBS+ for privacy-preserving KYC across corridors
 - [ ] Real ZK backend for settlement proofs
 - [ ] The federation of sovereign zones → this is Mass Protocol emerging from the ground up
@@ -370,9 +371,9 @@ For the "AWS of EZ" thesis to be proven, track:
 | Metric | Target | Current |
 |---|---|---|
 | Time to deploy a zone | < 30 minutes | ~1 hour (manual YAML + docker-compose) |
-| Jurisdictions with real pack content | 5+ | 1 (Pakistan) with 70+ licensepack shells |
+| Jurisdictions with real pack content | 5+ | 5 (Pakistan, UAE, Singapore, Hong Kong, Cayman) + 70+ licensepack shells |
 | Active corridors (receipt chain height > 0) | 10+ | 0 (testing only) |
-| Tests passing | 100% | 100% (4,666+/4,666+) |
+| Tests passing | 100% | 100% (4,683+/4,683+) |
 | Compliance domains with real evaluation | 20/20 | 8/20 (original 8 attested, 12 extended pending) |
 | External integrators onboarded | 3+ | 0 (scaffold APIs) |
 | Sovereign deployments live | 1+ | 0 (sandbox ready) |

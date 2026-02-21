@@ -38,3 +38,4 @@ pub mod settlement;
 pub mod smart_assets;
 pub mod tax;
 pub mod trade;
+pub mod watchers;

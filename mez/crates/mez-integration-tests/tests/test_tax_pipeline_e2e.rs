@@ -19,7 +19,7 @@ use uuid::Uuid;
 /// event creation → withholding computation → report generation.
 #[test]
 fn pakistan_goods_payment_full_pipeline() {
-    let pipeline = TaxPipeline::pakistan();
+    let pipeline = TaxPipeline::for_jurisdiction("PK", mez_agentic::tax::pakistan_standard_rules());
 
     // 1. Create a tax event (simulating a Mass fiscal API observation).
     let entity_id = Uuid::new_v4();
@@ -79,7 +79,7 @@ fn pakistan_goods_payment_full_pipeline() {
 /// Non-filer rate should be double the filer rate (Pakistan tax policy).
 #[test]
 fn pakistan_non_filer_double_rate() {
-    let pipeline = TaxPipeline::pakistan();
+    let pipeline = TaxPipeline::for_jurisdiction("PK", mez_agentic::tax::pakistan_standard_rules());
 
     let event = TaxEvent::new(
         Uuid::new_v4(),
@@ -103,7 +103,7 @@ fn pakistan_non_filer_double_rate() {
 /// All five tax categories should be exercisable through the pipeline.
 #[test]
 fn pakistan_all_tax_categories_exercised() {
-    let pipeline = TaxPipeline::pakistan();
+    let pipeline = TaxPipeline::for_jurisdiction("PK", mez_agentic::tax::pakistan_standard_rules());
 
     // Income tax: payment for goods.
     let event = TaxEvent::new(
@@ -183,7 +183,7 @@ fn pakistan_all_tax_categories_exercised() {
 /// Multiple events for the same entity should aggregate correctly in a report.
 #[test]
 fn report_aggregates_multiple_events() {
-    let pipeline = TaxPipeline::pakistan();
+    let pipeline = TaxPipeline::for_jurisdiction("PK", mez_agentic::tax::pakistan_standard_rules());
     let entity_id = Uuid::new_v4();
 
     let events = vec![
@@ -232,7 +232,7 @@ fn report_aggregates_multiple_events() {
 /// The withholding engine should load Pakistan rules by default.
 #[test]
 fn withholding_engine_has_pakistan_rules() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", mez_agentic::tax::pakistan_standard_rules());
     let rules = engine.rules_for_jurisdiction("PK");
     assert!(
         !rules.is_empty(),

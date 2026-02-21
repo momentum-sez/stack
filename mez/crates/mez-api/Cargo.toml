@@ -10,9 +10,6 @@ license.workspace = true
 name = "mez-api"
 path = "src/main.rs"
 
-[features]
-default = ["jurisdiction-pk"]
-jurisdiction-pk = ["mez-agentic/jurisdiction-pk"]
 
 [dependencies]
 # Internal crates

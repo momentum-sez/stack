@@ -136,10 +136,9 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::watchers::router())
         .merge(openapi::router());
 
-    // GovOS Console — M-009: Pakistan sovereign deployment dashboards
+    // GovOS Console — sovereign deployment dashboards for national system adapters
     // (GovOS Console, Tax & Revenue, Digital Free Zone, Citizen Services).
-    // Gated behind `jurisdiction-pk` feature — not compiled for non-Pakistan zones.
-    #[cfg(feature = "jurisdiction-pk")]
+    // Available to all zones that deploy with a sovereign-govos profile.
     let api = api.merge(routes::govos::router());
 
     let mut api = api

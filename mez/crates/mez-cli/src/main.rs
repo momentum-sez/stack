@@ -18,6 +18,7 @@ use mez_cli::lock::{run_lock, LockArgs};
 use mez_cli::regpack::{run_regpack, RegpackArgs};
 use mez_cli::signing::{run_signing, SigningArgs};
 use mez_cli::validate::{run_validate, ValidateArgs};
+use mez_cli::zone_init::{run_zone_init, ZoneInitArgs};
 
 /// MEZ Stack CLI — v0.4.44 GENESIS
 ///
@@ -67,6 +68,11 @@ enum Commands {
     /// Zone composition and synthetic zone generation.
     Zone(ZoneArgs),
 
+    /// Bootstrap a new Economic Zone with real CAS digests and deploy config.
+    ///
+    /// One-command zone deployment — the "AWS of Economic Zones" entry point.
+    Init(ZoneInitArgs),
+
     /// Deploy infrastructure generation (Docker Compose for N zones).
     Deploy(DeployArgs),
 }
@@ -105,6 +111,7 @@ fn main() -> ExitCode {
         Commands::Regpack(args) => run_regpack(&args, &repo_root),
         Commands::Signing(args) => run_signing(&args, &repo_root),
         Commands::Zone(args) => run_zone(&args, &repo_root),
+        Commands::Init(args) => run_zone_init(&args, &repo_root),
         Commands::Deploy(args) => run_deploy(&args, &repo_root),
     };
 

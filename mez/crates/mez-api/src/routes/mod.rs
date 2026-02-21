@@ -23,6 +23,7 @@
 //!   obligation tracking, and FBR IRIS report generation.
 
 pub mod agentic;
+pub mod compliance_query;
 pub mod corridors;
 pub mod credentials;
 #[cfg(feature = "jurisdiction-pk")]

@@ -32,6 +32,7 @@ pub mod lock;
 pub mod regpack;
 pub mod signing;
 pub mod validate;
+pub mod zone_init;
 
 use std::path::{Path, PathBuf};
 

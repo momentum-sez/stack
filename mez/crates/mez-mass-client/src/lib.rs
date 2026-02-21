@@ -28,6 +28,7 @@ pub mod entities;
 pub mod error;
 pub mod fbr;
 pub mod fiscal;
+pub mod http_adapters;
 pub mod identity;
 pub mod nadra;
 pub mod ownership;

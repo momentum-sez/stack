@@ -14,7 +14,8 @@ use uuid::Uuid;
 
 use crate::auth::CallerIdentity;
 use crate::compliance::{
-    apply_attestations, build_evaluation_result, build_tensor, AttestationInput,
+    apply_jurisdiction_attestations, build_jurisdiction_evaluation_result,
+    build_jurisdiction_tensor, AttestationInput,
 };
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
@@ -249,10 +250,10 @@ async fn evaluate_compliance(
         return Err(AppError::NotFound(format!("asset {id} not found")));
     }
 
-    // Build and evaluate the compliance tensor using the shared logic.
-    let mut tensor = build_tensor(&asset.jurisdiction_id);
-    apply_attestations(&mut tensor, &req.attestations);
-    let eval = build_evaluation_result(&tensor, &asset, id);
+    // Build and evaluate a jurisdiction-scoped compliance tensor.
+    let mut tensor = build_jurisdiction_tensor(&asset.jurisdiction_id);
+    apply_jurisdiction_attestations(&mut tensor, &req.attestations);
+    let eval = build_jurisdiction_evaluation_result(&tensor, &asset, id);
 
     Ok(Json(ComplianceEvalResponse {
         asset_id: id,

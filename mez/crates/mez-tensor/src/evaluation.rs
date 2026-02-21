@@ -326,28 +326,137 @@ fn evaluate_attested_domain(ctx: &EvaluationContext) -> (ComplianceState, Option
 
 /// Evaluation logic for the 12 extended domains from `tools/mez/composition.py`.
 ///
-/// These domains are defined in the composition specification but do not
-/// yet have full evaluation implementations. Fail-closed: returns `Pending`
-/// when no stored state exists, preventing unimplemented domains from being
-/// treated as passing. See P0-TENSOR-001.
+/// Each domain implements attestation-driven evaluation with domain-specific
+/// metadata requirements. The evaluation follows the same fail-closed principle
+/// as the original 8 domains: no attestation → `Pending`, expired attestation
+/// → `NonCompliant`.
+///
+/// ## Domain-Specific Metadata Keys
+///
+/// Each extended domain may check for specific metadata keys that indicate
+/// the entity's relationship to that domain. If the metadata indicates the
+/// domain is irrelevant to the entity (e.g., no employees → Employment is
+/// not applicable), the evaluator returns `NotApplicable` with a signed
+/// policy artifact reference in metadata.
+///
+/// ## Security Invariant
+///
+/// `NotApplicable` is only returned when `ctx.metadata` contains an explicit
+/// `"{domain}_not_applicable"` key with a policy artifact reference. Without
+/// this key, the domain defaults to `Pending` (fail-closed per P0-TENSOR-001).
 fn evaluate_extended_domain(
     domain: ComplianceDomain,
     ctx: &EvaluationContext,
 ) -> (ComplianceState, Option<String>) {
-    // If a state has been explicitly stored, return it.
+    // If a state has been explicitly stored, validate attestation freshness
+    // just as the original 8 domains do. A stale attestation on a passing
+    // state must revert to NonCompliant.
     if let Some(state) = ctx.current_state {
+        let now = chrono::Utc::now();
+        let has_stale = ctx.attestations.iter().any(|a| a.is_expired(&now));
+        if has_stale && state.is_passing() {
+            return (
+                ComplianceState::NonCompliant,
+                Some("attestation_expired".into()),
+            );
+        }
         return (state, None);
     }
 
-    tracing::warn!(
-        domain = %domain,
-        entity_id = %ctx.entity_id,
-        "domain evaluation not yet implemented — returning Pending (fail-closed)"
-    );
-    (
-        ComplianceState::Pending,
-        Some("not_implemented".into()),
-    )
+    // Check if the domain has been explicitly declared not applicable via
+    // a signed policy artifact (the metadata key acts as the reference).
+    let na_key = format!("{}_not_applicable", domain.as_str());
+    if ctx.metadata.contains_key(&na_key) {
+        return (
+            ComplianceState::NotApplicable,
+            Some("policy_artifact".into()),
+        );
+    }
+
+    // No stored state — evaluate based on attestation evidence.
+    if ctx.attestations.is_empty() {
+        // Domain-specific metadata check: if the domain has a recognized
+        // metadata key indicating active engagement, return Pending with
+        // a specific reason. Otherwise, return Pending with the domain
+        // indicator so the caller knows what attestation is required.
+        let reason = extended_domain_pending_reason(domain, ctx);
+        return (ComplianceState::Pending, Some(reason));
+    }
+
+    // Attestations exist — check freshness.
+    let now = chrono::Utc::now();
+    let all_fresh = ctx.attestations.iter().all(|a| !a.is_expired(&now));
+    if all_fresh {
+        (ComplianceState::Compliant, Some("attested".into()))
+    } else {
+        (
+            ComplianceState::NonCompliant,
+            Some("attestation_expired".into()),
+        )
+    }
+}
+
+/// Produce a domain-specific pending reason that tells the caller exactly
+/// what attestation evidence is required to resolve the pending state.
+fn extended_domain_pending_reason(domain: ComplianceDomain, ctx: &EvaluationContext) -> String {
+    match domain {
+        ComplianceDomain::Licensing => {
+            if ctx.metadata.contains_key("license_type") {
+                "awaiting_license_verification".into()
+            } else {
+                "no_license_attestation".into()
+            }
+        }
+        ComplianceDomain::Banking => {
+            if ctx.metadata.contains_key("bank_license_id") {
+                "awaiting_capital_adequacy_attestation".into()
+            } else {
+                "no_banking_attestation".into()
+            }
+        }
+        ComplianceDomain::Payments => {
+            if ctx.metadata.contains_key("psp_license_id") {
+                "awaiting_psp_compliance_attestation".into()
+            } else {
+                "no_payments_attestation".into()
+            }
+        }
+        ComplianceDomain::Clearing => "no_clearing_attestation".into(),
+        ComplianceDomain::Settlement => "no_settlement_attestation".into(),
+        ComplianceDomain::DigitalAssets => {
+            if ctx.metadata.contains_key("token_classification") {
+                "awaiting_digital_asset_classification_attestation".into()
+            } else {
+                "no_digital_asset_attestation".into()
+            }
+        }
+        ComplianceDomain::Employment => {
+            if ctx.metadata.contains_key("employee_count") {
+                "awaiting_labor_compliance_attestation".into()
+            } else {
+                "no_employment_attestation".into()
+            }
+        }
+        ComplianceDomain::Immigration => "no_immigration_attestation".into(),
+        ComplianceDomain::Ip => "no_ip_attestation".into(),
+        ComplianceDomain::ConsumerProtection => "no_consumer_protection_attestation".into(),
+        ComplianceDomain::Arbitration => {
+            if ctx.metadata.contains_key("arbitration_framework") {
+                "awaiting_arbitration_framework_attestation".into()
+            } else {
+                "no_arbitration_attestation".into()
+            }
+        }
+        ComplianceDomain::Trade => {
+            if ctx.metadata.contains_key("trade_license_id") {
+                "awaiting_trade_compliance_attestation".into()
+            } else {
+                "no_trade_attestation".into()
+            }
+        }
+        // Original 8 domains are handled by evaluate_attested_domain, never reach here.
+        _ => "no_attestation".into(),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -584,9 +693,9 @@ mod tests {
             metadata: HashMap::new(),
         };
         let (state, reason) = evaluate_domain_default(ComplianceDomain::Banking, &ctx);
-        // P0-TENSOR-001: fail-closed — unimplemented domains return Pending, not NotApplicable
+        // P0-TENSOR-001: fail-closed — extended domains return Pending, not NotApplicable
         assert_eq!(state, ComplianceState::Pending);
-        assert_eq!(reason.as_deref(), Some("not_implemented"));
+        assert_eq!(reason.as_deref(), Some("no_banking_attestation"));
     }
 
     #[test]
@@ -889,6 +998,155 @@ mod tests {
             assert!(
                 !state.is_passing(),
                 "Pending must not pass compliance check"
+            );
+        }
+    }
+
+    // ── Extended domain evaluation — attestation-driven tests ────────
+
+    #[test]
+    fn extended_domain_fresh_attestation_returns_compliant() {
+        let extended_domains = [
+            ComplianceDomain::Licensing,
+            ComplianceDomain::Banking,
+            ComplianceDomain::Payments,
+            ComplianceDomain::Clearing,
+            ComplianceDomain::Settlement,
+            ComplianceDomain::DigitalAssets,
+            ComplianceDomain::Employment,
+            ComplianceDomain::Immigration,
+            ComplianceDomain::Ip,
+            ComplianceDomain::ConsumerProtection,
+            ComplianceDomain::Arbitration,
+            ComplianceDomain::Trade,
+        ];
+
+        for domain in extended_domains {
+            let ctx = EvaluationContext {
+                entity_id: "entity-with-attestation".into(),
+                current_state: None,
+                attestations: vec![AttestationRef {
+                    attestation_id: format!("att-{}", domain.as_str()),
+                    attestation_type: format!("{}_compliance", domain.as_str()),
+                    issuer_did: "did:example:regulator".into(),
+                    issued_at: "2026-01-01T00:00:00Z".into(),
+                    expires_at: Some("2099-01-01T00:00:00Z".into()),
+                    digest: "abc123".into(),
+                }],
+                metadata: HashMap::new(),
+            };
+
+            let (state, reason) = evaluate_domain_default(domain, &ctx);
+            assert_eq!(
+                state,
+                ComplianceState::Compliant,
+                "extended domain {:?} with fresh attestation should be Compliant",
+                domain
+            );
+            assert_eq!(reason.as_deref(), Some("attested"));
+        }
+    }
+
+    #[test]
+    fn extended_domain_stale_attestation_no_stored_state() {
+        let ctx = EvaluationContext {
+            entity_id: "entity-stale".into(),
+            current_state: None,
+            attestations: vec![AttestationRef {
+                attestation_id: "att-expired".into(),
+                attestation_type: "licensing_compliance".into(),
+                issuer_did: "did:example:regulator".into(),
+                issued_at: "2020-01-01T00:00:00Z".into(),
+                expires_at: Some("2020-06-01T00:00:00Z".into()),
+                digest: "abc123".into(),
+            }],
+            metadata: HashMap::new(),
+        };
+        let (state, reason) = evaluate_domain_default(ComplianceDomain::Licensing, &ctx);
+        assert_eq!(state, ComplianceState::NonCompliant);
+        assert_eq!(reason.as_deref(), Some("attestation_expired"));
+    }
+
+    #[test]
+    fn extended_domain_stale_attestation_overrides_passing_stored_state() {
+        let ctx = EvaluationContext {
+            entity_id: "entity-stale-override".into(),
+            current_state: Some(ComplianceState::Compliant),
+            attestations: vec![AttestationRef {
+                attestation_id: "att-expired".into(),
+                attestation_type: "banking_compliance".into(),
+                issuer_did: "did:example:regulator".into(),
+                issued_at: "2020-01-01T00:00:00Z".into(),
+                expires_at: Some("2020-06-01T00:00:00Z".into()),
+                digest: "abc123".into(),
+            }],
+            metadata: HashMap::new(),
+        };
+        let (state, reason) = evaluate_domain_default(ComplianceDomain::Banking, &ctx);
+        assert_eq!(state, ComplianceState::NonCompliant);
+        assert_eq!(reason.as_deref(), Some("attestation_expired"));
+    }
+
+    #[test]
+    fn extended_domain_not_applicable_requires_policy_artifact() {
+        // Without the policy artifact key, must be Pending.
+        let ctx_no_policy = EvaluationContext {
+            entity_id: "entity-no-policy".into(),
+            current_state: None,
+            attestations: vec![],
+            metadata: HashMap::new(),
+        };
+        let (state, _) = evaluate_domain_default(ComplianceDomain::Employment, &ctx_no_policy);
+        assert_eq!(state, ComplianceState::Pending);
+
+        // With the policy artifact key, can return NotApplicable.
+        let mut metadata = HashMap::new();
+        metadata.insert(
+            "employment_not_applicable".to_string(),
+            serde_json::json!("policy:no-employees:signed-2026-01-15"),
+        );
+        let ctx_with_policy = EvaluationContext {
+            entity_id: "entity-with-policy".into(),
+            current_state: None,
+            attestations: vec![],
+            metadata,
+        };
+        let (state, reason) =
+            evaluate_domain_default(ComplianceDomain::Employment, &ctx_with_policy);
+        assert_eq!(state, ComplianceState::NotApplicable);
+        assert_eq!(reason.as_deref(), Some("policy_artifact"));
+    }
+
+    #[test]
+    fn extended_domain_specific_pending_reasons() {
+        let test_cases: Vec<(ComplianceDomain, &str, &str, &str)> = vec![
+            (ComplianceDomain::Licensing, "license_type", "banking_license", "awaiting_license_verification"),
+            (ComplianceDomain::Banking, "bank_license_id", "BL-001", "awaiting_capital_adequacy_attestation"),
+            (ComplianceDomain::Payments, "psp_license_id", "PSP-001", "awaiting_psp_compliance_attestation"),
+            (ComplianceDomain::DigitalAssets, "token_classification", "security_token", "awaiting_digital_asset_classification_attestation"),
+            (ComplianceDomain::Employment, "employee_count", "50", "awaiting_labor_compliance_attestation"),
+            (ComplianceDomain::Arbitration, "arbitration_framework", "UNCITRAL", "awaiting_arbitration_framework_attestation"),
+            (ComplianceDomain::Trade, "trade_license_id", "TL-001", "awaiting_trade_compliance_attestation"),
+        ];
+
+        for (domain, key, value, expected_reason) in test_cases {
+            let mut metadata = HashMap::new();
+            metadata.insert(key.to_string(), serde_json::json!(value));
+            let ctx = EvaluationContext {
+                entity_id: "entity-metadata".into(),
+                current_state: None,
+                attestations: vec![],
+                metadata,
+            };
+            let (state, reason) = evaluate_domain_default(domain, &ctx);
+            assert_eq!(state, ComplianceState::Pending);
+            assert_eq!(
+                reason.as_deref(),
+                Some(expected_reason),
+                "domain {:?} with metadata key '{}' should give reason '{}'",
+                domain,
+                key,
+                expected_reason
             );
         }
     }

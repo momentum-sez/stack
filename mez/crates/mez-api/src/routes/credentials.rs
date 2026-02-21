@@ -27,8 +27,8 @@ use mez_core::Timestamp;
 use mez_vc::{ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential};
 
 use crate::compliance::{
-    apply_attestations, build_evaluation_result, build_tensor, AttestationInput,
-    ComplianceEvalResult,
+    apply_jurisdiction_attestations, build_jurisdiction_evaluation_result,
+    build_jurisdiction_tensor, AttestationInput, ComplianceEvalResult,
 };
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
@@ -165,10 +165,10 @@ async fn issue_compliance_credential(
         .get(&id)
         .ok_or_else(|| AppError::NotFound(format!("asset {id} not found")))?;
 
-    let mut tensor = build_tensor(&asset.jurisdiction_id);
-    apply_attestations(&mut tensor, &req.attestations);
+    let mut tensor = build_jurisdiction_tensor(&asset.jurisdiction_id);
+    apply_jurisdiction_attestations(&mut tensor, &req.attestations);
 
-    let evaluation = build_evaluation_result(&tensor, &asset, id);
+    let evaluation = build_jurisdiction_evaluation_result(&tensor, &asset, id);
 
     let slice = tensor.full_slice();
     let aggregate = slice.aggregate_state();

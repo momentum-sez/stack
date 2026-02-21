@@ -39,8 +39,9 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+use mez_compliance::RegpackJurisdiction;
 use mez_core::ComplianceDomain;
-use mez_tensor::{ComplianceState, ComplianceTensor, DefaultJurisdiction, JurisdictionConfig};
+use mez_tensor::{ComplianceState, ComplianceTensor, JurisdictionConfig};
 use mez_vc::credential::{ContextValue, CredentialTypeValue, ProofValue, VerifiableCredential};
 use mez_vc::proof::ProofType;
 
@@ -153,16 +154,18 @@ const HARD_BLOCK_DOMAINS: &[ComplianceDomain] = &[ComplianceDomain::Sanctions];
 // Compliance evaluation
 // ---------------------------------------------------------------------------
 
-/// Build a compliance tensor for a jurisdiction and evaluate all 20 domains.
+/// Build a jurisdiction-scoped compliance tensor and evaluate all 20 domains.
 ///
-/// Returns the tensor and a compliance summary. Falls back to `"UNKNOWN"`
-/// jurisdiction if the input fails validation.
+/// Uses `RegpackJurisdiction` to scope evaluation to applicable domains.
+/// Non-applicable domains are `NotApplicable` (not false-pending), giving
+/// accurate compliance status per jurisdiction. Falls back to all-20-domain
+/// evaluation for unknown jurisdictions (fail-closed).
 pub fn evaluate_compliance(
     jurisdiction_id: &str,
     entity_id: &str,
     relevant_domains: &[ComplianceDomain],
-) -> (ComplianceTensor<DefaultJurisdiction>, ComplianceSummary) {
-    let tensor = crate::compliance::build_tensor(jurisdiction_id);
+) -> (ComplianceTensor<RegpackJurisdiction>, ComplianceSummary) {
+    let tensor = crate::compliance::build_jurisdiction_tensor(jurisdiction_id);
 
     // Evaluate all domains for this entity.
     let all_results = tensor.evaluate_all(entity_id);

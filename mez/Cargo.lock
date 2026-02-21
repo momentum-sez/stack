@@ -1378,6 +1378,7 @@ dependencies = [
  "chrono",
  "http-body-util",
  "mez-agentic",
+ "mez-compliance",
  "mez-core",
  "mez-corridor",
  "mez-crypto",

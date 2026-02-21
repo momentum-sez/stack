@@ -13,6 +13,8 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use mez_core::{ComplianceDomain, JurisdictionId};
+use mez_compliance::RegpackJurisdiction;
+use mez_pack::regpack;
 use mez_tensor::{ComplianceState, ComplianceTensor, DefaultJurisdiction};
 
 use crate::state::SmartAssetRecord;
@@ -70,6 +72,136 @@ pub fn build_tensor(jurisdiction_id: &str) -> ComplianceTensor<DefaultJurisdicti
     });
     let jurisdiction = DefaultJurisdiction::new(jid);
     ComplianceTensor::new(jurisdiction)
+}
+
+/// Build a jurisdiction-scoped compliance tensor using regpack domain declarations.
+///
+/// Unlike [`build_tensor`] which evaluates all 20 domains equally, this function
+/// consults the regpack registry to determine which domains are applicable for
+/// the jurisdiction. Non-applicable domains are initialized as `NotApplicable`,
+/// providing accurate compliance status rather than false-pending on irrelevant domains.
+///
+/// Falls back to all 20 domains if the jurisdiction has no regpack content (fail-closed).
+pub fn build_jurisdiction_tensor(jurisdiction_id: &str) -> ComplianceTensor<RegpackJurisdiction> {
+    let jid = JurisdictionId::new(jurisdiction_id).unwrap_or_else(|_| {
+        JurisdictionId::new("UNKNOWN").expect("BUG: hardcoded 'UNKNOWN' rejected")
+    });
+
+    let domain_names = jurisdiction_applicable_domains(jurisdiction_id);
+    let jurisdiction = RegpackJurisdiction::from_domain_names(jid, &domain_names);
+    ComplianceTensor::new(jurisdiction)
+}
+
+/// Resolve the applicable compliance domains for a jurisdiction from regpack content.
+///
+/// The regpack registry uses broad categories ("financial", "sanctions");
+/// these are expanded to specific `ComplianceDomain` variants. Unknown
+/// jurisdictions evaluate all 20 domains (fail-closed).
+pub fn jurisdiction_applicable_domains(jurisdiction_id: &str) -> Vec<String> {
+    let regpack_domains = regpack::domains_for_jurisdiction(jurisdiction_id);
+
+    match regpack_domains {
+        Some(domains) => {
+            let mut applicable = Vec::new();
+            for domain_category in domains {
+                match domain_category {
+                    "financial" => {
+                        applicable.extend_from_slice(&[
+                            "aml".to_string(),
+                            "kyc".to_string(),
+                            "tax".to_string(),
+                            "corporate".to_string(),
+                            "banking".to_string(),
+                            "payments".to_string(),
+                            "licensing".to_string(),
+                            "securities".to_string(),
+                        ]);
+                    }
+                    "sanctions" => {
+                        applicable.push("sanctions".to_string());
+                    }
+                    other => {
+                        applicable.push(other.to_string());
+                    }
+                }
+            }
+            applicable.sort();
+            applicable.dedup();
+            applicable
+        }
+        None => {
+            ComplianceDomain::all()
+                .iter()
+                .map(|d| d.as_str().to_string())
+                .collect()
+        }
+    }
+}
+
+/// Apply attestations to a jurisdiction-scoped tensor.
+pub fn apply_jurisdiction_attestations(
+    tensor: &mut ComplianceTensor<RegpackJurisdiction>,
+    attestations: &HashMap<String, AttestationInput>,
+) {
+    for (domain_str, input) in attestations {
+        let domain: ComplianceDomain = match domain_str.parse() {
+            Ok(d) => d,
+            Err(_) => continue,
+        };
+        let state = match parse_status(&input.status) {
+            Some(s) => s,
+            None => continue,
+        };
+        tensor.set(domain, state, Vec::new(), None);
+    }
+}
+
+/// Build an evaluation result from a jurisdiction-scoped tensor and asset.
+pub fn build_jurisdiction_evaluation_result(
+    tensor: &ComplianceTensor<RegpackJurisdiction>,
+    asset: &SmartAssetRecord,
+    asset_id: Uuid,
+) -> ComplianceEvalResult {
+    let slice = tensor.full_slice();
+    let aggregate = slice.aggregate_state();
+    let commitment = tensor
+        .commit()
+        .map_err(|e| {
+            tracing::warn!(error = %e, "tensor commitment failed — response will omit commitment");
+            e
+        })
+        .ok();
+
+    let mut domain_results = HashMap::new();
+    let mut passing_domains = Vec::new();
+    let mut blocking_domains = Vec::new();
+
+    for &domain in ComplianceDomain::all() {
+        let state = tensor.get(domain);
+        let state_str = format!("{state:?}").to_lowercase();
+        domain_results.insert(domain.as_str().to_string(), state_str);
+
+        if state.is_passing() {
+            passing_domains.push(domain.as_str().to_string());
+        } else {
+            blocking_domains.push(domain.as_str().to_string());
+        }
+    }
+
+    passing_domains.sort();
+    blocking_domains.sort();
+
+    ComplianceEvalResult {
+        asset_id,
+        jurisdiction_id: asset.jurisdiction_id.clone(),
+        overall_status: format!("{aggregate:?}").to_lowercase(),
+        domain_results,
+        domain_count: 20,
+        passing_domains,
+        blocking_domains,
+        tensor_commitment: commitment.map(|c| c.to_hex()),
+        evaluated_at: Utc::now(),
+    }
 }
 
 /// Parse a status string into a `ComplianceState`.

@@ -231,7 +231,7 @@
           "description": "Source notes"
         },
         "artifact_ref": {
-          "$ref": "artifact-ref.schema.json",
+          "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json",
           "description": "Reference to raw artifact in CAS"
         }
       }

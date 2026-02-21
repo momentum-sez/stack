@@ -134,6 +134,16 @@ pub fn router() -> Router<AppState> {
 /// a corridor, the handler transitions the corridor via the typestate
 /// machine (`DynCorridorState::valid_transitions`). The trigger's audit
 /// entry becomes the evidence for the corridor transition.
+#[utoipa::path(
+    post,
+    path = "/v1/triggers",
+    request_body = TriggerRequest,
+    responses(
+        (status = 200, description = "Trigger evaluated and actions dispatched", body = TriggerResponse),
+        (status = 422, description = "Validation error", body = crate::error::ErrorBody),
+    ),
+    tag = "agentic"
+)]
 async fn submit_trigger(
     State(state): State<AppState>,
     body: Result<Json<TriggerRequest>, JsonRejection>,
@@ -179,6 +189,14 @@ async fn submit_trigger(
 }
 
 /// GET /v1/policies — List all registered policies.
+#[utoipa::path(
+    get,
+    path = "/v1/policies",
+    responses(
+        (status = 200, description = "List of registered policies"),
+    ),
+    tag = "agentic"
+)]
 async fn list_policies(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<serde_json::Value>>, AppError> {
@@ -202,6 +220,16 @@ async fn list_policies(
 }
 
 /// DELETE /v1/policies/:id — Unregister a policy.
+#[utoipa::path(
+    delete,
+    path = "/v1/policies/{id}",
+    params(("id" = String, Path, description = "Policy identifier")),
+    responses(
+        (status = 200, description = "Policy removed"),
+        (status = 404, description = "Policy not found", body = crate::error::ErrorBody),
+    ),
+    tag = "agentic"
+)]
 async fn delete_policy(
     State(state): State<AppState>,
     Path(policy_id): Path<String>,

@@ -274,6 +274,7 @@ pub fn router() -> Router<AppState> {
         .route("/v1/corridors/state/fork-resolve", post(fork_resolve))
         .route("/v1/corridors/state/anchor", post(anchor_commitment))
         .route("/v1/corridors/state/finality-status", post(finality_status))
+        .route("/v1/corridors/health", get(corridor_health))
 }
 
 /// POST /v1/corridors — Create a new corridor.
@@ -845,6 +846,126 @@ async fn finality_status(
     Err(AppError::NotImplemented(
         "Finality computation is a Phase 2 feature".to_string(),
     ))
+}
+
+// ---------------------------------------------------------------------------
+// Corridor Health Monitoring
+// ---------------------------------------------------------------------------
+
+/// Per-corridor health status including receipt chain and compliance state.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CorridorHealthEntry {
+    /// Corridor UUID.
+    pub corridor_id: Uuid,
+    /// Jurisdiction A.
+    pub jurisdiction_a: String,
+    /// Jurisdiction B.
+    pub jurisdiction_b: String,
+    /// Current lifecycle state (DRAFT, PENDING, ACTIVE, HALTED, SUSPENDED, DEPRECATED).
+    pub state: String,
+    /// Number of receipts in the chain. 0 if no chain exists.
+    pub receipt_chain_height: u64,
+    /// Number of state transitions recorded.
+    pub transition_count: usize,
+    /// Whether the corridor is operational (ACTIVE state with a receipt chain).
+    pub operational: bool,
+    /// When the corridor was last updated.
+    pub updated_at: String,
+}
+
+/// Aggregated corridor network health summary.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CorridorHealthResponse {
+    /// Total number of corridors.
+    pub total_corridors: usize,
+    /// Corridors by lifecycle state.
+    pub by_state: std::collections::HashMap<String, usize>,
+    /// Total receipts across all corridor chains.
+    pub total_receipts: u64,
+    /// Number of corridors that are operational.
+    pub operational_count: usize,
+    /// Per-corridor health details.
+    pub corridors: Vec<CorridorHealthEntry>,
+    /// Zone DID.
+    pub zone_did: String,
+    /// Connected peers count.
+    pub peer_count: usize,
+    /// Active watcher count.
+    pub watcher_count: usize,
+    /// Generated at timestamp (ISO 8601).
+    pub generated_at: String,
+}
+
+/// GET /v1/corridors/health — Corridor network health monitoring.
+///
+/// Returns aggregated health metrics across all corridors: receipt chain
+/// heights, lifecycle states, operational status, peer connectivity,
+/// and watcher participation.
+#[utoipa::path(
+    get,
+    path = "/v1/corridors/health",
+    responses(
+        (status = 200, description = "Corridor network health", body = CorridorHealthResponse),
+    ),
+    tag = "corridors"
+)]
+pub async fn corridor_health(
+    State(state): State<AppState>,
+) -> Json<CorridorHealthResponse> {
+    let corridors = state.corridors.list();
+    let chains = state.receipt_chains.read();
+
+    let mut by_state: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut total_receipts: u64 = 0;
+    let mut operational_count: usize = 0;
+    let mut entries = Vec::with_capacity(corridors.len());
+
+    for c in &corridors {
+        let state_str = c.state.as_str().to_string();
+        *by_state.entry(state_str.clone()).or_default() += 1;
+
+        let chain_height = chains
+            .get(&c.id)
+            .map(|chain| chain.height())
+            .unwrap_or(0);
+        total_receipts += chain_height;
+
+        let operational = c.state == DynCorridorState::Active && chain_height > 0;
+        if operational {
+            operational_count += 1;
+        }
+
+        entries.push(CorridorHealthEntry {
+            corridor_id: c.id,
+            jurisdiction_a: c.jurisdiction_a.clone(),
+            jurisdiction_b: c.jurisdiction_b.clone(),
+            state: state_str,
+            receipt_chain_height: chain_height,
+            transition_count: c.transition_log.len(),
+            operational,
+            updated_at: c.updated_at.to_rfc3339(),
+        });
+    }
+
+    let peer_count = state.peer_registry.read().list_peers().len();
+    let watcher_count = state
+        .watchers
+        .list()
+        .iter()
+        .filter(|w| w.watcher.state == mez_state::watcher::WatcherState::Active)
+        .count();
+
+    Json(CorridorHealthResponse {
+        total_corridors: corridors.len(),
+        by_state,
+        total_receipts,
+        operational_count,
+        corridors: entries,
+        zone_did: state.zone_did.clone(),
+        peer_count,
+        watcher_count,
+        generated_at: Utc::now().to_rfc3339(),
+    })
 }
 
 #[cfg(test)]

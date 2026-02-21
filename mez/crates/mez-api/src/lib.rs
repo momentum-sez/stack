@@ -29,6 +29,7 @@
 //! | `/v1/tax/*`           | [`routes::tax`]            | Tax Pipeline (EZ)  |
 //! | `/v1/regulator/*`     | [`routes::regulator`]      | Regulator (EZ)     |
 //! | `/v1/govos/*`         | [`routes::govos`]          | GovOS Console (EZ) |
+//! | `/v1/watchers/*`      | [`routes::watchers`]       | Watcher Economy (EZ) |
 //!
 //! ## Middleware Stack (execution order)
 //!
@@ -132,6 +133,7 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::peers::router())
         .merge(routes::trade::router())
         .merge(routes::compliance_query::router())
+        .merge(routes::watchers::router())
         .merge(openapi::router());
 
     // GovOS Console — M-009: Pakistan sovereign deployment dashboards

@@ -70,7 +70,7 @@
     },
     "smart_asset_transitions": {
       "type": "array",
-      "items": { "$ref": "artifact-ref.schema.json" },
+      "items": { "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json" },
       "description": "Smart Asset transition receipts executing settlement"
     },
     "confidentiality_level": {

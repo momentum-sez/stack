@@ -40,7 +40,7 @@
       "description": "Individual evidence items in this package"
     },
     "witness_bundle_ref": {
-      "$ref": "artifact-ref.schema.json",
+      "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json",
       "description": "Complete witness bundle containing all artifacts"
     },
     "submission_signature": {
@@ -85,7 +85,7 @@
           "description": "Human-readable description of the evidence"
         },
         "artifact_ref": {
-          "$ref": "artifact-ref.schema.json",
+          "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json",
           "description": "Reference to the evidence artifact in CAS"
         },
         "relevance": {
@@ -114,7 +114,7 @@
           "description": "Type of authenticity proof"
         },
         "proof_ref": {
-          "$ref": "artifact-ref.schema.json",
+          "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json",
           "description": "Reference to the proof artifact"
         }
       }

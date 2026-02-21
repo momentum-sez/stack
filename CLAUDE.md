@@ -11,7 +11,7 @@
 
 A Rust workspace that provides **jurisdictional orchestration** for Mass — Momentum's five programmable primitives (Entities, Ownership, Fiscal, Identity, Consent). Mass is Java/Spring Boot, live, processing real capital. This repo sits above Mass and adds compliance intelligence, corridor management, and cryptographic provenance.
 
-17 crates, 159K lines of Rust, 4,601 tests, zero Python.
+17 crates, 159K lines of Rust, 4,683 tests, zero Python.
 
 ## II. THE BOUNDARY
 
@@ -165,7 +165,7 @@ Two deployment modes:
 | Agentic policy engine | **IMPLEMENTED** | mez-agentic |
 | Arbitration system | **IMPLEMENTED** | mez-arbitration |
 | Migration saga (8 phases) | **IMPLEMENTED** | CAS + idempotent compensation + EffectExecutor |
-| Watcher economy (bonds/slashing) | **IMPLEMENTED** | mez-state/watcher.rs |
+| Watcher economy (bonds/slashing) | **IMPLEMENTED** | mez-state/watcher.rs + REST API (10 endpoints) |
 | National system adapters (PK) | **IMPLEMENTED** | FBR IRIS, SECP, SBP Raast, NADRA (trait + mock) |
 | Payment rail adapters (Raast, SWIFT, Circle) | **STUB** | Trait defined, no real HTTP impl |
 | BBS+ selective disclosure | **STUB** | Trait only (feature-gated) |
@@ -259,8 +259,8 @@ All P0 findings from the institutional readiness audit have been addressed excep
 | P0-CRYPTO-002 | BBS+ stub (feature-gated) | P0 | Deferred Phase 4 |
 | P0-ANCHOR-001 | Anchor target is mock | P0 | Deferred Phase 4 |
 | P0-IDENTITY-001 | No dedicated Mass identity service | P0 | Mass-side dependency |
-| P1-SCHEMA-002 | Schema URI inconsistency (partial) | P1 | protocol |
-| P1-SCHEMA-003 | Some additionalProperties:true remain | P1 | protocol |
+| P1-SCHEMA-002 | ~~Schema URI inconsistency~~ **RESOLVED** — all `$ref` values use full `schemas.momentum-ez.org` URIs | P1 | protocol |
+| P1-SCHEMA-003 | additionalProperties — security-critical schemas locked; non-critical schemas remain extensible | P1 | protocol |
 | P1-NAMING-001 | Terminology glossary needed | P1 | protocol |
 
 ### Deployment Phase Gates
@@ -287,6 +287,7 @@ All P0 findings from the institutional readiness audit have been addressed excep
 | Zone composition | `mez/crates/mez-corridor/src/composition.rs` |
 | Corridor registry | `mez/crates/mez-corridor/src/registry.rs` |
 | Pack validation | `mez/crates/mez-pack/src/validation.rs` |
+| Watcher economy API | `mez/crates/mez-api/src/routes/watchers.rs` |
 | Schema validator | `mez/crates/mez-schema/src/validate.rs` |
 | Corridor FSM (spec) | `governance/corridor.lifecycle.state-machine.v2.json` |
 | Normative spec | `spec/` (24 chapters) |

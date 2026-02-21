@@ -498,6 +498,7 @@ pub struct AppState {
     pub smart_assets: Store<SmartAssetRecord>,
     pub attestations: Store<AttestationRecord>,
     pub tax_events: Store<TaxEventRecord>,
+    pub watchers: Store<crate::routes::watchers::WatcherRecord>,
 
     // -- Tax collection pipeline --
     /// The tax collection pipeline orchestrator. Contains the withholding
@@ -652,6 +653,7 @@ impl AppState {
             smart_assets: Store::new(),
             attestations: Store::new(),
             tax_events: Store::new(),
+            watchers: Store::new(),
             #[cfg(feature = "jurisdiction-pk")]
             tax_pipeline: Arc::new(Mutex::new(TaxPipeline::pakistan())),
             #[cfg(not(feature = "jurisdiction-pk"))]

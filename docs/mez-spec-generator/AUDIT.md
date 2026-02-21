@@ -19,7 +19,7 @@ The `mez-spec-generator` is a ~9,100-line Node.js project (70 chapter files, 3 l
 | **P2 — Nice to fix** | 4 | All open |
 
 **Additional fixes applied 2026-02-19:**
-- All codebase statistics updated: 151K lines, 4,073 tests, 323 modules, 113 integration test files, 154 source files
+- All codebase statistics updated: 164K lines, 4,683 tests, 323 modules, 210 zones, 322 source files, 17 crates
 - ComplianceDomain names corrected across chapters 07, 10, 11, 12 to match mez-core enum (20 real variants)
 - ComplianceState lattice corrected: 5 states (not 7) matching mez-tensor implementation
 - PHOENIX codename removed from Chapter 02 heading
@@ -98,12 +98,13 @@ Formerly thin chapters now use tables and structured content (see P0-001 resolut
 
 ### P1-004: Statistics Accuracy — **RESOLVED**
 
-All hardcoded statistics updated to match actual codebase measurements (2026-02-19):
-- 151K lines (was ~74K)
-- 4,073 tests (was 3,800+)
+All hardcoded statistics updated to match actual codebase measurements (2026-02-21):
+- 164K lines (was 151K)
+- 4,683 tests (was 4,073)
 - 323 modules (was 298)
-- 154 source files (was 136)
-- 113 integration test files (was 107)
+- 322 source files (was 154)
+- 210 zone definitions (was 100)
+- 17 crates (was 16)
 
 ### P1-005: Part XV Naming — OPEN
 

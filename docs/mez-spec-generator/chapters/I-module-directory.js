@@ -66,6 +66,6 @@ module.exports = function build_appendixI() {
       [1800, 1000, 6560]
     ),
 
-    p("Total workspace: 151,000 lines of Rust across 154 source files in 16 crates, with 4,073 tests (including the mez-integration-tests crate with 113 test files)."),
+    p("Total workspace: 164,000 lines of Rust across 322 source files in 17 crates, with 4,683 tests (including the mez-integration-tests crate with 113 test files)."),
   ];
 };

@@ -4,7 +4,7 @@ module.exports = function build_appendixE() {
   return [
     chapterHeading("Appendix E: Rust Crate Dependency Graph"),
 
-    p("The 16-crate workspace forms a directed acyclic graph rooted at mez-core (zero internal dependencies) and culminating at mez-api (the composition point). The following tree shows the primary dependency paths; transitive dependencies are elided for clarity."),
+    p("The 17-crate workspace forms a directed acyclic graph rooted at mez-core (zero internal dependencies) and culminating at mez-api (the composition point). The following tree shows the primary dependency paths; transitive dependencies are elided for clarity."),
 
     ...codeBlock(
       "mez-api (Axum HTTP server \u2014 composition point)\n" +

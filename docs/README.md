@@ -1,6 +1,6 @@
 # Documentation
 
-**Momentum EZ Stack** v0.4.44 GENESIS
+**Momentum EZ Stack** v0.4.44 GENESIS — 17 crates, 164K lines, 4,683 tests, 210 zones
 
 ---
 
@@ -9,9 +9,11 @@
 | If you want to... | Read |
 |---|---|
 | Build, test, and run the stack | [Getting Started](./getting-started.md) |
+| Deploy a zone from scratch | [Zone Bootstrap Guide](./ZONE-BOOTSTRAP-GUIDE.md) |
 | Understand the system design | [Architecture Overview](./architecture/OVERVIEW.md) |
 | Look up a specific crate's API | [Crate Reference](./architecture/CRATE-REFERENCE.md) |
 | Read the protocol specification | [Specification](../spec/) |
+| Understand the deployment strategy | [Deployment Roadmap](./PRAGMATIC-DEPLOYMENT-ROADMAP.md) |
 
 ---
 
@@ -20,6 +22,7 @@
 | Document | Scope |
 |----------|-------|
 | [Architecture Overview](./architecture/OVERVIEW.md) | Two-system design, data flow, the Mass/EZ boundary, cryptographic invariants |
+| [Architecture Summary](./ARCHITECTURE.md) | System layers, compliance tensor, corridors, design principles |
 | [Crate Reference](./architecture/CRATE-REFERENCE.md) | Per-crate API surface: key types, traits, public functions |
 | [Mass Integration](./architecture/MASS-INTEGRATION.md) | How the EZ Stack maps onto the five Mass primitives |
 | [Security Model](./architecture/SECURITY-MODEL.md) | Trust boundaries, threat model, verification modes |
@@ -62,7 +65,7 @@
 
 ## Specification
 
-24 normative chapters in [`spec/`](../spec/). Implementation decisions defer to spec.
+25 normative chapters in [`spec/`](../spec/). Implementation decisions defer to spec.
 
 | # | Chapter |
 |---|---------|
@@ -121,9 +124,12 @@ Working examples in [`docs/examples/`](./examples/):
 
 | Resource | Scope |
 |----------|-------|
-| [Docker Compose](../deploy/docker/) | Single-binary stack with Prometheus |
+| [Docker Compose](../deploy/docker/) | Single-binary stack with Prometheus and Grafana |
+| [Two-Zone Compose](../deploy/docker/docker-compose.two-zone.yaml) | Sovereign corridor testing (PK-SIFC + AE-DIFC) |
 | [Kubernetes](../deploy/k8s/) | Production manifests |
 | [AWS Terraform](../deploy/aws/terraform/) | EKS + RDS + KMS infrastructure |
+| [Deploy Scripts](../deploy/scripts/) | Zone deployment and demo scripts |
+| [Zone Bootstrap Guide](./ZONE-BOOTSTRAP-GUIDE.md) | End-to-end zone deployment walkthrough |
 | [Deployment Roadmap](./PRAGMATIC-DEPLOYMENT-ROADMAP.md) | Phase gates and priorities |
 
 ---
@@ -135,3 +141,11 @@ Working examples in [`docs/examples/`](./examples/):
 | [Deployment Roadmap](./PRAGMATIC-DEPLOYMENT-ROADMAP.md) | Pragmatic path to production |
 | [AWS of Economic Zones](./roadmap/AWS_OF_ECONOMIC_ZONES.md) | Strategic vision and gap analysis |
 | [Production-Grade Spec](./roadmap/PRODUCTION_GRADE_SPEC.md) | North stars for production evolution |
+
+---
+
+## Tooling
+
+| Tool | Location | Purpose |
+|------|----------|---------|
+| [Spec Generator](./mez-spec-generator/) | `docs/mez-spec-generator/` | Generates the GENESIS specification `.docx` from 70 chapter files |

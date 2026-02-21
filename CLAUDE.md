@@ -11,7 +11,7 @@
 
 A Rust workspace that provides **jurisdictional orchestration** for Mass — Momentum's five programmable primitives (Entities, Ownership, Fiscal, Identity, Consent). Mass is Java/Spring Boot, live, processing real capital. This repo sits above Mass and adds compliance intelligence, corridor management, and cryptographic provenance.
 
-17 crates, 159K lines of Rust, 4,683 tests, zero Python.
+17 crates, 164K lines of Rust, 4,683 tests, zero Python.
 
 ## II. THE BOUNDARY
 
@@ -87,7 +87,7 @@ mez-core (leaf — zero internal deps)
 ```bash
 cargo check --workspace              # zero warnings required
 cargo clippy --workspace -- -D warnings  # zero diagnostics required
-cargo test --workspace               # all 4,601 tests must pass
+cargo test --workspace               # all 4,683 tests must pass
 ```
 
 After any code change, run all three. No exceptions.

@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-21
 **Codebase State:** v0.4.44-GENESIS | 4,683+ tests | 0 failures | Clean build
-**Commits:** 147+ total | 16 Rust crates | ~74K lines production code
+**Commits:** 156+ total | 17 Rust crates | 164K lines production code
 
 ---
 
@@ -94,8 +94,8 @@ to "functional prototype with production-grade internals." Here is what is real:
 | CloudFormation | Zone manifest YAML + stack.lock | Working |
 | S3 (content addressed) | CAS store (SHA-256 content digests) | Working |
 | CloudWatch | Prometheus + Grafana observability stack | Working |
-| AWS Marketplace | Module registry (298 modules, 16 families) | Working |
-| Region | Jurisdiction (with lawpack, regpack, licensepack) | 70+ defined |
+| AWS Marketplace | Module registry (323 modules, 16 families) | Working |
+| Region | Jurisdiction (with lawpack, regpack, licensepack) | 210 defined |
 | Availability Zone | Zone profile (6 types: financial center, trade hub, govos...) | Working |
 
 ### What Makes This Pragmatically Deployable Today

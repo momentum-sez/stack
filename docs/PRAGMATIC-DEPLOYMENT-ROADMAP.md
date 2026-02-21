@@ -1,7 +1,7 @@
 # Pragmatic Deployment Roadmap: AWS of Economic Zones
 
 **Date:** 2026-02-19
-**Codebase State:** v0.4.44-GENESIS | 4,073 tests | 0 failures | Clean build
+**Codebase State:** v0.4.44-GENESIS | 4,666+ tests | 0 failures | Clean build
 **Commits:** 147 total | 16 Rust crates | ~74K lines production code
 
 ---
@@ -76,7 +76,7 @@ to "functional prototype with production-grade internals." Here is what is real:
 | Real anchor target (L1 finality) | Mock (`always confirmed`) | Medium — AFC tier not needed for LVC/EFC operations |
 | Identity service (Mass-side) | Facade over other Mass services | HIGH for sovereign deployment |
 | Pakistan national adapters | Types defined, no HTTP clients | HIGH for GovOS launch |
-| OpenAPI specs | Scaffold-grade | Medium — blocks external integrator onboarding |
+| OpenAPI specs | Contract-grade (50+ endpoints, security scheme, all schemas) | LOW — promotion complete |
 | Schema URI consistency | `momentum-ez.org` vs `schemas.momentum-ez.org` | Low — internal only for now |
 
 ---
@@ -248,16 +248,14 @@ decentralized execution vision — it's not a detour, it's the path.
 **What**: Single-zone deployment with MEZ Stack pointing to centralized Mass APIs,
 demonstrating compliance tensor, receipt chain, and zone manifest lifecycle.
 
-Entry criteria already met:
-- [x] Clean build, 4,073 tests passing
+Entry criteria met:
+- [x] Clean build, 4,666+ tests passing
 - [x] Default credentials eliminated
 - [x] Mass API health gating
 - [x] Receipt chain spec-conformant
 - [x] Zone manifest + deploy script
-
-Remaining:
-- [ ] End-to-end demo script
-- [ ] CAS digest computation for regpacks (currently zero-filled)
+- [x] End-to-end demo script (`scripts/e2e-corridor-demo.sh` — 30+ assertions, full lifecycle)
+- [x] CAS digest computation for regpacks (real SHA-256 digests via `mez regpack build`)
 
 ### Phase 2: Two Sovereign Zones, One Corridor (Weeks 2-6)
 
@@ -268,8 +266,8 @@ exchanged and verified bilaterally. This is the first step toward decentralized 
 
 Infrastructure exists (`docker-compose.two-zone.yaml`), needs:
 - [x] Containerized Mass API services deployable per-zone (`mez-mass-stub` crate + `Dockerfile.mass-stub`)
-- [ ] Real corridor establishment flow tested end-to-end
-- [ ] Cross-zone compliance query
+- [x] Real corridor establishment flow tested end-to-end (receipt chain API + checkpoint endpoints + E2E integration tests)
+- [x] Cross-zone compliance query (`GET /v1/compliance/corridor/{id}` — bilateral tensor evaluation)
 - [x] Demo proving sovereign data residency (`sovereign_mass_test.rs` — Zone A's data never leaves Zone A)
 
 ### Phase 3: Sovereign GovOS Pilot (Weeks 4-12)
@@ -374,7 +372,7 @@ For the "AWS of EZ" thesis to be proven, track:
 | Time to deploy a zone | < 30 minutes | ~1 hour (manual YAML + docker-compose) |
 | Jurisdictions with real pack content | 5+ | 1 (Pakistan) with 70+ licensepack shells |
 | Active corridors (receipt chain height > 0) | 10+ | 0 (testing only) |
-| Tests passing | 100% | 100% (4,073/4,073) |
+| Tests passing | 100% | 100% (4,666+/4,666+) |
 | Compliance domains with real evaluation | 20/20 | 8/20 (original 8 attested, 12 extended pending) |
 | External integrators onboarded | 3+ | 0 (scaffold APIs) |
 | Sovereign deployments live | 1+ | 0 (sandbox ready) |

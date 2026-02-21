@@ -976,3 +976,372 @@ async fn test_readiness_probe_fails_with_unreachable_mass_client() {
         "Expected 'mass api unreachable' in body, got: {body}"
     );
 }
+
+// -- End-to-End Corridor Lifecycle (Roadmap Priority 1) -----------------------
+//
+// Proves the full "AWS of Economic Zones" lifecycle:
+// 1. Create corridor between two jurisdictions
+// 2. Walk the typestate machine: DRAFT → PENDING → ACTIVE
+// 3. Exchange cross-border receipts (dual-commitment: hash-chain + MMR)
+// 4. Query the receipt chain and verify cryptographic integrity
+// 5. Create a checkpoint snapshot
+// 6. Query compliance tensor for both jurisdictions
+// 7. Query bilateral corridor compliance
+//
+// This test exercises the API surface that a sovereign operator would use
+// to deploy and operate a cross-border corridor.
+
+#[tokio::test]
+async fn e2e_corridor_lifecycle_receipts_compliance() {
+    let app = test_app();
+
+    // ── Step 1: Create a PK ↔ AE corridor ────────────────────────
+
+    let create_resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/corridors")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    r#"{"jurisdiction_a":"pk","jurisdiction_b":"ae"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(create_resp.status(), StatusCode::CREATED);
+    let corridor: serde_json::Value = body_json(create_resp).await;
+    let corridor_id = corridor["id"].as_str().unwrap().to_string();
+    assert_eq!(corridor["state"], "DRAFT");
+
+    // ── Step 2: DRAFT → PENDING → ACTIVE ─────────────────────────
+
+    let evidence = "a".repeat(64);
+    let pending_resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!("/v1/corridors/{corridor_id}/transition"))
+                .header("content-type", "application/json")
+                .body(Body::from(format!(
+                    r#"{{"target_state":"PENDING","evidence_digest":"{evidence}","reason":"bilateral agreement signed"}}"#
+                )))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(pending_resp.status(), StatusCode::OK);
+    let pending: serde_json::Value = body_json(pending_resp).await;
+    assert_eq!(pending["state"], "PENDING");
+
+    let active_resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!("/v1/corridors/{corridor_id}/transition"))
+                .header("content-type", "application/json")
+                .body(Body::from(format!(
+                    r#"{{"target_state":"ACTIVE","evidence_digest":"{evidence}","reason":"regulatory approval"}}"#
+                )))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(active_resp.status(), StatusCode::OK);
+    let active: serde_json::Value = body_json(active_resp).await;
+    assert_eq!(active["state"], "ACTIVE");
+    assert_eq!(active["transition_log"].as_array().unwrap().len(), 2);
+
+    // ── Step 3: Exchange 5 cross-border receipts ──────────────────
+
+    let mut receipt_next_roots = Vec::new();
+    let mut last_mmr_root = String::new();
+
+    for i in 0..5u32 {
+        let payload = serde_json::json!({
+            "type": "cross_border_transfer",
+            "from_zone": "pk-sifc",
+            "to_zone": "ae-difc",
+            "amount": format!("{}.00", (i + 1) * 10_000),
+            "currency": "USD",
+            "reference": format!("XB-PK-AE-{:04}", i),
+            "beneficiary": format!("entity-{}", i),
+        });
+        let body = serde_json::to_string(&serde_json::json!({
+            "corridor_id": corridor_id,
+            "payload": payload,
+        }))
+        .unwrap();
+
+        let resp = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/v1/corridors/state/propose")
+                    .header("content-type", "application/json")
+                    .body(Body::from(body))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::CREATED);
+
+        let receipt: serde_json::Value = body_json(resp).await;
+        assert_eq!(receipt["sequence"], i);
+        assert_eq!(receipt["chain_height"], i + 1);
+        let next_root = receipt["next_root"].as_str().unwrap().to_string();
+        assert_eq!(next_root.len(), 64);
+        receipt_next_roots.push(next_root);
+
+        let mmr = receipt["mmr_root"].as_str().unwrap().to_string();
+        if !last_mmr_root.is_empty() {
+            assert_ne!(mmr, last_mmr_root, "MMR root must change with each receipt");
+        }
+        last_mmr_root = mmr;
+    }
+
+    // All next_roots must be unique (different payloads → different digests).
+    let unique: std::collections::HashSet<&String> = receipt_next_roots.iter().collect();
+    assert_eq!(unique.len(), 5, "all receipt digests must be unique");
+
+    // ── Step 4: Query receipt chain ───────────────────────────────
+
+    let chain_resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(format!("/v1/corridors/{corridor_id}/receipts"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(chain_resp.status(), StatusCode::OK);
+    let chain: serde_json::Value = body_json(chain_resp).await;
+    assert_eq!(chain["chain_height"], 5);
+    assert_eq!(chain["receipts"].as_array().unwrap().len(), 5);
+
+    let genesis_root = chain["genesis_root"].as_str().unwrap();
+    let final_root = chain["final_state_root"].as_str().unwrap();
+    let chain_mmr = chain["mmr_root"].as_str().unwrap();
+
+    // Genesis root is 64-char hex.
+    assert_eq!(genesis_root.len(), 64);
+    // Final root differs from genesis (chain advanced).
+    assert_ne!(genesis_root, final_root);
+    // MMR root is 64-char hex.
+    assert_eq!(chain_mmr.len(), 64);
+    // MMR root matches the last receipt's MMR root.
+    assert_eq!(chain_mmr, last_mmr_root);
+
+    // Verify chain linkage: receipt[0].prev_root != receipt[1].prev_root.
+    let receipts = chain["receipts"].as_array().unwrap();
+    assert_ne!(
+        receipts[0]["prev_root"], receipts[1]["prev_root"],
+        "consecutive receipts must have different prev_roots"
+    );
+
+    // ── Step 5: Create checkpoint ────────────────────────────────
+
+    let cp_resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/v1/corridors/{corridor_id}/checkpoint"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(cp_resp.status(), StatusCode::CREATED);
+    let checkpoint: serde_json::Value = body_json(cp_resp).await;
+    assert_eq!(checkpoint["receipt_count"], 5);
+    assert_eq!(checkpoint["checkpoint_count"], 1);
+    assert_eq!(checkpoint["checkpoint_type"], "MEZCorridorStateCheckpoint");
+    // Checkpoint commits to the same state as the chain query.
+    assert_eq!(
+        checkpoint["final_state_root"].as_str().unwrap(),
+        final_root
+    );
+    assert_eq!(checkpoint["mmr_root"].as_str().unwrap(), chain_mmr);
+    assert_eq!(
+        checkpoint["genesis_root"].as_str().unwrap(),
+        genesis_root
+    );
+
+    // ── Step 6: Query compliance tensor for both jurisdictions ────
+
+    let pk_resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/v1/compliance/pk")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(pk_resp.status(), StatusCode::OK);
+    let pk_compliance: serde_json::Value = body_json(pk_resp).await;
+    assert_eq!(pk_compliance["jurisdiction_id"], "pk");
+    assert_eq!(pk_compliance["total_domains"], 20);
+    // Pakistan has 9 applicable domains (blocking) + 11 not-applicable (passing).
+    assert!(pk_compliance["passing_count"].as_u64().unwrap() > 0);
+    assert!(pk_compliance["blocking_count"].as_u64().unwrap() > 0);
+
+    let ae_resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/v1/compliance/ae")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(ae_resp.status(), StatusCode::OK);
+    let ae_compliance: serde_json::Value = body_json(ae_resp).await;
+    assert_eq!(ae_compliance["jurisdiction_id"], "ae");
+    assert_eq!(ae_compliance["total_domains"], 20);
+
+    // ── Step 7: Query bilateral corridor compliance ──────────────
+
+    let bilateral_resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(format!("/v1/compliance/corridor/{corridor_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(bilateral_resp.status(), StatusCode::OK);
+    let bilateral: serde_json::Value = body_json(bilateral_resp).await;
+    assert_eq!(bilateral["corridor_id"], corridor_id);
+    assert_eq!(bilateral["jurisdiction_a"]["jurisdiction_id"], "pk");
+    assert_eq!(bilateral["jurisdiction_b"]["jurisdiction_id"], "ae");
+    // Both jurisdictions have applicable domains that are pending,
+    // so the corridor is not fully compliant yet.
+    assert_eq!(bilateral["corridor_compliant"], false);
+    // Cross-blocking domains exist (the union of blocking domains across both).
+    assert!(
+        bilateral["cross_blocking_domains"]
+            .as_array()
+            .unwrap()
+            .len()
+            > 0
+    );
+
+    // ── Step 8: Verify corridor compliance domains ───────────────
+
+    let domains_resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/v1/compliance/domains")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(domains_resp.status(), StatusCode::OK);
+    let domains: serde_json::Value = body_json(domains_resp).await;
+    assert_eq!(domains.as_array().unwrap().len(), 20);
+}
+
+// -- End-to-End: Receipt Pagination -------------------------------------------
+
+#[tokio::test]
+async fn e2e_receipt_pagination_across_api() {
+    let app = test_app();
+
+    // Create corridor.
+    let create_resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/corridors")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    r#"{"jurisdiction_a":"sg","jurisdiction_b":"hk"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let corridor: serde_json::Value = body_json(create_resp).await;
+    let corridor_id = corridor["id"].as_str().unwrap().to_string();
+
+    // Propose 10 receipts.
+    for i in 0..10u32 {
+        let body = serde_json::to_string(&serde_json::json!({
+            "corridor_id": corridor_id,
+            "payload": {"seq": i, "data": format!("batch-{i}")},
+        }))
+        .unwrap();
+        let resp = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/v1/corridors/state/propose")
+                    .header("content-type", "application/json")
+                    .body(Body::from(body))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::CREATED);
+    }
+
+    // Page 1: first 3 receipts.
+    let resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(format!(
+                    "/v1/corridors/{corridor_id}/receipts?limit=3&offset=0"
+                ))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let page1: serde_json::Value = body_json(resp).await;
+    assert_eq!(page1["chain_height"], 10);
+    assert_eq!(page1["receipts"].as_array().unwrap().len(), 3);
+    assert_eq!(page1["receipts"][0]["sequence"], 0);
+    assert_eq!(page1["receipts"][2]["sequence"], 2);
+
+    // Page 4: receipts 9 (only 1 left).
+    let resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(format!(
+                    "/v1/corridors/{corridor_id}/receipts?limit=3&offset=9"
+                ))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let page4: serde_json::Value = body_json(resp).await;
+    assert_eq!(page4["receipts"].as_array().unwrap().len(), 1);
+    assert_eq!(page4["receipts"][0]["sequence"], 9);
+}

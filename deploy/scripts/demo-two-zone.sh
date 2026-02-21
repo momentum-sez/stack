@@ -493,7 +493,61 @@ BODY=$(curl -s -w "\n%{http_code}" \
 STATUS=$(echo "$BODY" | tail -1)
 check "Zone A compliance summary" "200" "$STATUS"
 
-# ── Step 15: List Corridors ───────────────────────────────────────────────
+# ── Step 15: Compliance Query — Jurisdiction Tensor ─────────────────────
+
+step "Query compliance tensor for each jurisdiction"
+
+BODY=$(curl -s -w "\n%{http_code}" \
+    "$ZONE_A/v1/compliance/$ZONE_A_JURISDICTION" \
+    -H "Authorization: Bearer $ZONE_A_AUTH_TOKEN" 2>/dev/null || echo -e "\n000")
+STATUS=$(echo "$BODY" | tail -1)
+RESPONSE=$(echo "$BODY" | sed '$d')
+check "Zone A compliance tensor query" "200" "$STATUS"
+
+if [ "$STATUS" = "200" ]; then
+    echo -e "  ${BLUE}Tensor snapshot (Zone A — $ZONE_A_JURISDICTION):${NC}"
+    echo "$RESPONSE" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+print(f'    Jurisdiction:   {d.get(\"jurisdiction_id\", \"N/A\")}')
+print(f'    Overall status: {d.get(\"overall_status\", \"N/A\")}')
+print(f'    Passing:        {d.get(\"passing_count\", 0)}/{d.get(\"total_domains\", 0)}')
+print(f'    Blocking:       {d.get(\"blocking_count\", 0)}/{d.get(\"total_domains\", 0)}')
+tc = d.get('tensor_commitment', 'N/A') or 'N/A'
+print(f'    Commitment:     {tc[:40]}...')
+" 2>/dev/null || echo "    (Could not parse tensor response)"
+fi
+
+BODY=$(curl -s -w "\n%{http_code}" \
+    "$ZONE_B/v1/compliance/$ZONE_B_JURISDICTION" \
+    -H "Authorization: Bearer $ZONE_B_AUTH_TOKEN" 2>/dev/null || echo -e "\n000")
+STATUS=$(echo "$BODY" | tail -1)
+check "Zone B compliance tensor query" "200" "$STATUS"
+
+# ── Step 16: Compliance Query — All Domains ──────────────────────────
+
+step "List all 20 compliance domains"
+
+BODY=$(curl -s -w "\n%{http_code}" \
+    "$ZONE_A/v1/compliance/domains" \
+    -H "Authorization: Bearer $ZONE_A_AUTH_TOKEN" 2>/dev/null || echo -e "\n000")
+STATUS=$(echo "$BODY" | tail -1)
+RESPONSE=$(echo "$BODY" | sed '$d')
+check "Compliance domains list" "200" "$STATUS"
+
+if [ "$STATUS" = "200" ]; then
+    DOMAIN_COUNT=$(echo "$RESPONSE" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "?")
+    echo -e "  ${BLUE}Domains returned: $DOMAIN_COUNT${NC}"
+    if [ "$DOMAIN_COUNT" = "20" ]; then
+        echo -e "  ${GREEN}✓ PASS${NC} All 20 compliance domains returned"
+        PASS=$((PASS + 1))
+    else
+        echo -e "  ${RED}✗ FAIL${NC} Expected 20 domains, got $DOMAIN_COUNT"
+        FAIL=$((FAIL + 1))
+    fi
+fi
+
+# ── Step 17: List Corridors ───────────────────────────────────────────────
 
 step "List corridors on both zones"
 
@@ -520,7 +574,7 @@ echo ""
 TOTAL=$((PASS + FAIL))
 echo -e "  Tests:  ${GREEN}$PASS passed${NC}, ${RED}$FAIL failed${NC} out of $TOTAL"
 echo ""
-echo -e "  ${BOLD}Phase 1 Exit Criteria Demonstrated:${NC}"
+echo -e "  ${BOLD}Phase 1 + Phase 2 Exit Criteria Demonstrated:${NC}"
 echo -e "    ${GREEN}✓${NC} Two zones deployed ($ZONE_A_JURISDICTION + $ZONE_B_JURISDICTION)"
 echo -e "    ${GREEN}✓${NC} Inter-zone corridor established (propose → accept)"
 echo -e "    ${GREEN}✓${NC} Receipt exchanged across zones"
@@ -528,6 +582,8 @@ echo -e "    ${GREEN}✓${NC} Replay protection verified (duplicate rejected)"
 echo -e "    ${GREEN}✓${NC} Watcher attestation delivered"
 echo -e "    ${GREEN}✓${NC} Smart asset created with compliance evaluation"
 echo -e "    ${GREEN}✓${NC} Regulator dashboard operational"
+echo -e "    ${GREEN}✓${NC} Compliance tensor queried per jurisdiction (20 domains)"
+echo -e "    ${GREEN}✓${NC} All 20 compliance domains enumerable via API"
 echo ""
 
 if [ "$FAIL" -gt 0 ]; then

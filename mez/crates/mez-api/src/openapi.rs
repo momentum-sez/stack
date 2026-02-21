@@ -56,6 +56,10 @@ use crate::state::AppState;
         crate::routes::regulator::query_attestations,
         crate::routes::regulator::compliance_summary,
         crate::routes::regulator::dashboard,
+        // Compliance Query
+        crate::routes::compliance_query::list_domains,
+        crate::routes::compliance_query::query_jurisdiction,
+        crate::routes::compliance_query::query_corridor,
     ),
     components(schemas(
         // State record types (EZ-Stack-owned)
@@ -108,6 +112,13 @@ use crate::state::AppState;
         crate::routes::regulator::PolicyActivity,
         crate::routes::regulator::AuditEntrySummary,
         crate::routes::regulator::SystemHealth,
+        // Compliance Query DTOs
+        crate::routes::compliance_query::JurisdictionComplianceResponse,
+        crate::routes::compliance_query::DomainComplianceEntry,
+        crate::routes::compliance_query::CorridorComplianceResponse,
+        crate::routes::compliance_query::JurisdictionComplianceSummary,
+        crate::routes::compliance_query::CrossBlockingDomain,
+        crate::routes::compliance_query::ComplianceDomainInfo,
     )),
     tags(
         (name = "entities", description = "ENTITIES primitive — proxied to Mass organization-info API"),
@@ -118,6 +129,7 @@ use crate::state::AppState;
         (name = "corridors", description = "Corridor Operations API (EZ Stack domain)"),
         (name = "smart_assets", description = "Smart Asset API (EZ Stack domain)"),
         (name = "regulator", description = "Regulator Console API (EZ Stack domain)"),
+        (name = "compliance", description = "Compliance Query API — tensor visibility and corridor compliance"),
     )
 )]
 pub struct ApiDoc;

@@ -6,9 +6,10 @@
 //!
 //! ## Endpoints
 //!
-//! - `GET /v1/compliance/:jurisdiction_id` — Tensor state across all 20 domains
-//! - `GET /v1/compliance/corridor/:corridor_id` — Bilateral compliance for a corridor
 //! - `GET /v1/compliance/domains` — List all compliance domains with descriptions
+//! - `GET /v1/compliance/:jurisdiction_id` — Tensor state across all 20 domains
+//! - `GET /v1/compliance/entity/:entity_id` — Entity-level compliance with attestation provenance
+//! - `GET /v1/compliance/corridor/:corridor_id` — Bilateral compliance for a corridor
 //!
 //! These endpoints fulfill Roadmap Priority 2 (API Surface Hardening) and Phase 2
 //! requirement (Cross-zone compliance query).
@@ -22,8 +23,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use mez_compliance::RegpackJurisdiction;
-use mez_core::{ComplianceDomain, JurisdictionId};
-use mez_pack::regpack;
+use mez_core::ComplianceDomain;
 use mez_tensor::{ComplianceState, ComplianceTensor, JurisdictionConfig};
 
 use crate::error::AppError;
@@ -113,11 +113,61 @@ pub struct ComplianceDomainInfo {
     pub category: String,
 }
 
+/// Entity-level compliance evaluation response.
+///
+/// Returns the compliance tensor state for a specific entity, using stored
+/// attestation records to populate domain states. Each attestation contributes
+/// evidence to its corresponding compliance domain.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct EntityComplianceResponse {
+    /// The entity that was evaluated.
+    pub entity_id: Uuid,
+    /// Jurisdiction of the entity.
+    pub jurisdiction_id: String,
+    /// Aggregate compliance status.
+    pub overall_status: String,
+    /// Per-domain compliance state with attestation details.
+    pub domains: Vec<EntityDomainEntry>,
+    /// Count of passing domains.
+    pub passing_count: usize,
+    /// Count of blocking domains.
+    pub blocking_count: usize,
+    /// Total domain count.
+    pub total_domains: usize,
+    /// Number of attestation records found for this entity.
+    pub attestation_count: usize,
+    /// SHA-256 tensor commitment digest (hex).
+    pub tensor_commitment: Option<String>,
+    /// Evaluation timestamp.
+    pub evaluated_at: String,
+}
+
+/// Entity-level domain entry with attestation provenance.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct EntityDomainEntry {
+    /// Domain identifier.
+    pub domain: String,
+    /// Current compliance state.
+    pub status: String,
+    /// Whether this domain is passing.
+    pub passing: bool,
+    /// Attestation ID that contributed to this domain state, if any.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attestation_id: Option<Uuid>,
+    /// When the attestation expires, if applicable.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<String>,
+}
+
 /// Build the compliance query router.
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/v1/compliance/domains", get(list_domains))
         .route("/v1/compliance/:jurisdiction_id", get(query_jurisdiction))
+        .route(
+            "/v1/compliance/entity/:entity_id",
+            get(query_entity),
+        )
         .route(
             "/v1/compliance/corridor/:corridor_id",
             get(query_corridor),
@@ -166,6 +216,167 @@ async fn query_jurisdiction(
     let tensor = build_jurisdiction_tensor(&jurisdiction_id);
     let response = evaluate_tensor(&jurisdiction_id, &tensor, &state);
     Ok(Json(response))
+}
+
+/// GET /v1/compliance/entity/:entity_id — Compliance tensor for a specific entity.
+///
+/// Evaluates the compliance tensor for an entity, using stored attestation
+/// records to populate domain states. Each attestation's type is mapped to a
+/// compliance domain. If the entity has no attestations, all applicable domains
+/// start as `Pending` (fail-closed).
+///
+/// The entity's jurisdiction is inferred from the most recent attestation
+/// record. If no attestations exist, the entity is evaluated against all 20
+/// domains (worst-case).
+#[utoipa::path(
+    get,
+    path = "/v1/compliance/entity/{entity_id}",
+    params(("entity_id" = Uuid, Path, description = "Entity UUID")),
+    responses(
+        (status = 200, description = "Entity compliance evaluation", body = EntityComplianceResponse),
+        (status = 404, description = "Entity not found", body = crate::error::ErrorBody),
+    ),
+    tag = "compliance"
+)]
+async fn query_entity(
+    State(state): State<AppState>,
+    Path(entity_id): Path<Uuid>,
+) -> Result<Json<EntityComplianceResponse>, AppError> {
+    // Find all attestation records for this entity.
+    let attestations: Vec<_> = state
+        .attestations
+        .list()
+        .into_iter()
+        .filter(|a| a.entity_id == entity_id)
+        .collect();
+
+    if attestations.is_empty() {
+        return Err(AppError::NotFound(format!(
+            "no attestation records found for entity {entity_id}"
+        )));
+    }
+
+    // Infer jurisdiction from the most recent attestation.
+    let jurisdiction_id = attestations
+        .iter()
+        .max_by_key(|a| a.issued_at)
+        .map(|a| a.jurisdiction_id.clone())
+        .unwrap_or_else(|| "UNKNOWN".to_string());
+
+    let tensor = build_jurisdiction_tensor(&jurisdiction_id);
+
+    // Map attestation types to compliance domains and track provenance.
+    let mut domain_attestations: std::collections::HashMap<String, &crate::state::AttestationRecord> =
+        std::collections::HashMap::new();
+
+    for att in &attestations {
+        if let Some(domain_name) = attestation_type_to_domain(&att.attestation_type) {
+            // Keep the most recent attestation per domain.
+            let is_newer = domain_attestations
+                .get(domain_name)
+                .map_or(true, |existing| att.issued_at > existing.issued_at);
+            if is_newer {
+                domain_attestations.insert(domain_name.to_string(), att);
+            }
+        }
+    }
+
+    // Build the entity response with attestation provenance.
+    let mut domains = Vec::new();
+    let mut passing_count = 0;
+    let mut blocking_count = 0;
+    let now = Utc::now();
+
+    for domain in ComplianceDomain::all() {
+        let tensor_state = tensor.get(*domain);
+        let domain_name = domain.as_str().to_string();
+
+        // Check if we have an attestation for this domain.
+        let (status, att_id, expires_at) =
+            if let Some(att) = domain_attestations.get(&domain_name) {
+                let expired = att.expires_at.is_some_and(|exp| exp < now);
+                let att_status = if expired {
+                    ComplianceState::NonCompliant
+                } else {
+                    match att.status {
+                        crate::state::AttestationStatus::Active => ComplianceState::Compliant,
+                        crate::state::AttestationStatus::Revoked => {
+                            ComplianceState::NonCompliant
+                        }
+                        crate::state::AttestationStatus::Expired => {
+                            ComplianceState::NonCompliant
+                        }
+                        crate::state::AttestationStatus::Pending => ComplianceState::Pending,
+                    }
+                };
+                (
+                    att_status,
+                    Some(att.id),
+                    att.expires_at.map(|e| e.to_rfc3339()),
+                )
+            } else {
+                (tensor_state, None, None)
+            };
+
+        let passing = status.is_passing();
+        if passing {
+            passing_count += 1;
+        } else {
+            blocking_count += 1;
+        }
+
+        domains.push(EntityDomainEntry {
+            domain: domain_name,
+            status: format_state(status),
+            passing,
+            attestation_id: att_id,
+            expires_at,
+        });
+    }
+
+    let overall_status = if domains.iter().any(|d| d.status == "non_compliant") {
+        "non_compliant".to_string()
+    } else if domains.iter().all(|d| d.passing) {
+        "compliant".to_string()
+    } else {
+        "pending".to_string()
+    };
+
+    let commitment = tensor.commit().map(|c| c.to_hex()).ok();
+
+    Ok(Json(EntityComplianceResponse {
+        entity_id,
+        jurisdiction_id,
+        overall_status,
+        domains,
+        passing_count,
+        blocking_count,
+        total_domains: 20,
+        attestation_count: attestations.len(),
+        tensor_commitment: commitment,
+        evaluated_at: Utc::now().to_rfc3339(),
+    }))
+}
+
+/// Map attestation type strings to compliance domain names.
+///
+/// Attestation types follow a naming convention established in
+/// `orchestration.rs`: `FORMATION_COMPLIANCE`, `OWNERSHIP_COMPLIANCE`, etc.
+/// This function maps those to the specific domains they attest to.
+fn attestation_type_to_domain(attestation_type: &str) -> Option<&'static str> {
+    match attestation_type {
+        "FORMATION_COMPLIANCE" | "entity_compliance" => Some("corporate"),
+        "OWNERSHIP_COMPLIANCE" | "ownership_compliance" => Some("securities"),
+        "FISCAL_COMPLIANCE" | "fiscal_compliance" => Some("tax"),
+        "PAYMENT_COMPLIANCE" | "payment_compliance" => Some("payments"),
+        "IDENTITY_COMPLIANCE" | "identity_compliance" => Some("kyc"),
+        "CONSENT_COMPLIANCE" | "consent_compliance" => Some("data_privacy"),
+        "AML_COMPLIANCE" | "aml_compliance" => Some("aml"),
+        "SANCTIONS_COMPLIANCE" | "sanctions_compliance" => Some("sanctions"),
+        "LICENSING_COMPLIANCE" | "licensing_compliance" => Some("licensing"),
+        "BANKING_COMPLIANCE" | "banking_compliance" => Some("banking"),
+        _ => None,
+    }
 }
 
 /// GET /v1/compliance/corridor/:corridor_id — Bilateral compliance for a corridor.
@@ -238,72 +449,10 @@ async fn query_corridor(
 
 /// Build a compliance tensor scoped to the applicable domains for a jurisdiction.
 ///
-/// If the jurisdiction has regpack content (domain declarations), the tensor
-/// is scoped to only those domains — non-applicable domains are initialized
-/// as `NotApplicable`. If no regpack content exists, all 20 domains are
-/// evaluated (fail-closed: every domain starts as `Pending`).
+/// Delegates to `crate::compliance::build_jurisdiction_tensor` — the shared
+/// implementation that consults regpack domain declarations.
 fn build_jurisdiction_tensor(jurisdiction_id: &str) -> ComplianceTensor<RegpackJurisdiction> {
-    let jid = JurisdictionId::new(jurisdiction_id).unwrap_or_else(|_| {
-        JurisdictionId::new("UNKNOWN").expect("BUG: hardcoded 'UNKNOWN' rejected")
-    });
-
-    // Look up regpack domain declarations for this jurisdiction.
-    // The regpack registry tells us which compliance domains are applicable.
-    let domain_names = jurisdiction_applicable_domains(jurisdiction_id);
-    let jurisdiction = RegpackJurisdiction::from_domain_names(jid, &domain_names);
-    ComplianceTensor::new(jurisdiction)
-}
-
-/// Resolve the applicable compliance domains for a jurisdiction.
-///
-/// Uses the regpack registry to determine which domains have regulatory
-/// content for this jurisdiction. Falls back to all 20 domains if the
-/// jurisdiction is not in the registry (fail-closed: every domain is
-/// evaluated, nothing is assumed not-applicable).
-fn jurisdiction_applicable_domains(jurisdiction_id: &str) -> Vec<String> {
-    // Map regpack domain categories to specific ComplianceDomain variants.
-    // The regpack registry uses broad categories ("financial", "sanctions");
-    // we expand these to the specific domains they cover.
-    let regpack_domains = regpack::domains_for_jurisdiction(jurisdiction_id);
-
-    match regpack_domains {
-        Some(domains) => {
-            let mut applicable = Vec::new();
-            for domain_category in domains {
-                match domain_category {
-                    "financial" => {
-                        applicable.extend_from_slice(&[
-                            "aml".to_string(),
-                            "kyc".to_string(),
-                            "tax".to_string(),
-                            "corporate".to_string(),
-                            "banking".to_string(),
-                            "payments".to_string(),
-                            "licensing".to_string(),
-                            "securities".to_string(),
-                        ]);
-                    }
-                    "sanctions" => {
-                        applicable.push("sanctions".to_string());
-                    }
-                    other => {
-                        // Direct domain name (e.g., "aml", "kyc").
-                        applicable.push(other.to_string());
-                    }
-                }
-            }
-            applicable.sort();
-            applicable.dedup();
-            applicable
-        }
-        None => {
-            // No regpack content — evaluate all 20 domains (fail-closed).
-            ComplianceDomain::all()
-                .iter()
-                .map(|d| d.as_str().to_string())
-                .collect()
-        }
-    }
+    crate::compliance::build_jurisdiction_tensor(jurisdiction_id)
 }
 
 /// Evaluate a tensor and produce the response structure.
@@ -503,7 +652,7 @@ mod tests {
 
     #[test]
     fn jurisdiction_applicable_domains_known_jurisdiction() {
-        let domains = jurisdiction_applicable_domains("pk");
+        let domains = crate::compliance::jurisdiction_applicable_domains("pk");
         // Pakistan has "financial" + "sanctions" regpack content.
         // "financial" expands to: aml, banking, corporate, kyc, licensing, payments, securities, tax
         // "sanctions" adds: sanctions
@@ -515,8 +664,65 @@ mod tests {
 
     #[test]
     fn jurisdiction_applicable_domains_unknown_jurisdiction() {
-        let domains = jurisdiction_applicable_domains("zz-nonexistent");
+        let domains = crate::compliance::jurisdiction_applicable_domains("zz-nonexistent");
         assert_eq!(domains.len(), 20, "unknown jurisdiction should have all 20 domains");
+    }
+
+    #[test]
+    fn jurisdiction_applicable_domains_uae_includes_digital_assets() {
+        let domains = crate::compliance::jurisdiction_applicable_domains("ae");
+        // UAE: financial (8) + sanctions + digital_assets + custody + data_privacy = 12
+        assert!(domains.contains(&"digital_assets".to_string()));
+        assert!(domains.contains(&"custody".to_string()));
+        assert!(domains.contains(&"data_privacy".to_string()));
+        assert!(domains.contains(&"aml".to_string()));
+        assert_eq!(domains.len(), 12, "ae should have 12 applicable domains, got {}", domains.len());
+    }
+
+    #[test]
+    fn jurisdiction_applicable_domains_singapore() {
+        let domains = crate::compliance::jurisdiction_applicable_domains("sg");
+        // Singapore: financial (8) + sanctions + digital_assets + data_privacy = 11
+        assert!(domains.contains(&"digital_assets".to_string()));
+        assert!(domains.contains(&"data_privacy".to_string()));
+        assert_eq!(domains.len(), 11, "sg should have 11 applicable domains, got {}", domains.len());
+    }
+
+    #[test]
+    fn jurisdiction_applicable_domains_hong_kong() {
+        let domains = crate::compliance::jurisdiction_applicable_domains("hk");
+        // Hong Kong: financial (8) + sanctions + digital_assets = 10
+        assert!(domains.contains(&"digital_assets".to_string()));
+        assert_eq!(domains.len(), 10, "hk should have 10 applicable domains, got {}", domains.len());
+    }
+
+    #[test]
+    fn jurisdiction_applicable_domains_cayman() {
+        let domains = crate::compliance::jurisdiction_applicable_domains("ky");
+        // Cayman: financial (8) + sanctions + digital_assets + custody = 11
+        assert!(domains.contains(&"digital_assets".to_string()));
+        assert!(domains.contains(&"custody".to_string()));
+        assert_eq!(domains.len(), 11, "ky should have 11 applicable domains, got {}", domains.len());
+    }
+
+    #[tokio::test]
+    async fn query_jurisdiction_uae_shows_expanded_domains() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/compliance/ae")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let result: JurisdictionComplianceResponse = body_json(resp).await;
+        assert_eq!(result.jurisdiction_id, "ae");
+        assert_eq!(result.total_domains, 20);
+        // UAE: 12 applicable (blocking/pending) + 8 not-applicable (passing)
+        assert_eq!(result.passing_count, 8, "8 non-applicable domains should pass");
+        assert_eq!(result.blocking_count, 12, "12 applicable domains should be blocking");
     }
 
     #[tokio::test]
@@ -602,6 +808,106 @@ mod tests {
                 "domain {domain:?} has invalid category: {cat}"
             );
         }
+    }
+
+    #[tokio::test]
+    async fn query_entity_compliance_with_attestations() {
+        let state = AppState::new();
+
+        // Create an entity attestation.
+        let entity_id = Uuid::new_v4();
+        let att = crate::state::AttestationRecord {
+            id: Uuid::new_v4(),
+            entity_id,
+            attestation_type: "FORMATION_COMPLIANCE".to_string(),
+            issuer: "did:mass:zone:pk-sifc".to_string(),
+            status: crate::state::AttestationStatus::Active,
+            jurisdiction_id: "pk".to_string(),
+            issued_at: Utc::now(),
+            expires_at: Some(Utc::now() + chrono::Duration::days(365)),
+            details: serde_json::json!({"domains": ["corporate"]}),
+        };
+        state.attestations.insert(att.id, att);
+
+        let app = router().with_state(state);
+        let req = Request::builder()
+            .method("GET")
+            .uri(format!("/v1/compliance/entity/{entity_id}"))
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let result: EntityComplianceResponse = body_json(resp).await;
+        assert_eq!(result.entity_id, entity_id);
+        assert_eq!(result.jurisdiction_id, "pk");
+        assert_eq!(result.attestation_count, 1);
+        assert_eq!(result.total_domains, 20);
+
+        // The "corporate" domain should be compliant from the attestation.
+        let corporate = result.domains.iter().find(|d| d.domain == "corporate").unwrap();
+        assert_eq!(corporate.status, "compliant");
+        assert!(corporate.passing);
+        assert!(corporate.attestation_id.is_some());
+        assert!(corporate.expires_at.is_some());
+    }
+
+    #[tokio::test]
+    async fn query_entity_not_found_returns_404() {
+        let app = test_app();
+        let fake_id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("GET")
+            .uri(format!("/v1/compliance/entity/{fake_id}"))
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn query_entity_expired_attestation_marks_non_compliant() {
+        let state = AppState::new();
+
+        let entity_id = Uuid::new_v4();
+        let att = crate::state::AttestationRecord {
+            id: Uuid::new_v4(),
+            entity_id,
+            attestation_type: "AML_COMPLIANCE".to_string(),
+            issuer: "did:mass:zone:pk-sifc".to_string(),
+            status: crate::state::AttestationStatus::Active,
+            jurisdiction_id: "pk".to_string(),
+            issued_at: Utc::now() - chrono::Duration::days(400),
+            expires_at: Some(Utc::now() - chrono::Duration::days(30)),
+            details: serde_json::json!({}),
+        };
+        state.attestations.insert(att.id, att);
+
+        let app = router().with_state(state);
+        let req = Request::builder()
+            .method("GET")
+            .uri(format!("/v1/compliance/entity/{entity_id}"))
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let result: EntityComplianceResponse = body_json(resp).await;
+        let aml = result.domains.iter().find(|d| d.domain == "aml").unwrap();
+        assert_eq!(aml.status, "non_compliant", "expired attestation should be non_compliant");
+        assert!(!aml.passing);
+        assert_eq!(result.overall_status, "non_compliant");
+    }
+
+    #[test]
+    fn attestation_type_mapping() {
+        assert_eq!(attestation_type_to_domain("FORMATION_COMPLIANCE"), Some("corporate"));
+        assert_eq!(attestation_type_to_domain("SANCTIONS_COMPLIANCE"), Some("sanctions"));
+        assert_eq!(attestation_type_to_domain("identity_compliance"), Some("kyc"));
+        assert_eq!(attestation_type_to_domain("unknown_type"), None);
     }
 
     #[test]

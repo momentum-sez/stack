@@ -1557,32 +1557,70 @@ pub struct JurisdictionRegpackInfo {
 }
 
 /// All jurisdictions with regpack content available.
+///
+/// Domain categories use two conventions:
+/// - Broad categories like "financial" expand to 8 specific domains
+///   (aml, kyc, tax, corporate, banking, payments, licensing, securities)
+/// - Specific domain names map directly to `ComplianceDomain` variants
+///
+/// This allows jurisdictions with specialized regulatory frameworks (e.g.,
+/// ADGM/DIFC digital asset regulation, CIMA fund custody rules) to declare
+/// additional applicable domains beyond the standard financial + sanctions.
 pub fn available_jurisdictions() -> Vec<JurisdictionRegpackInfo> {
     vec![
         JurisdictionRegpackInfo {
             jurisdiction_id: "pk",
             jurisdiction_name: "Pakistan",
+            // SBP, SECP, FBR, FMU — full financial regulation + sanctions
             available_domains: &["financial", "sanctions"],
         },
         JurisdictionRegpackInfo {
             jurisdiction_id: "ae",
             jurisdiction_name: "United Arab Emirates",
-            available_domains: &["financial", "sanctions"],
+            // CBUAE, SCA, ADGM FSRA, DIFC DFSA — financial regulation + VARA
+            // digital assets framework + data protection (Federal Decree-Law 45/2021)
+            available_domains: &[
+                "financial",
+                "sanctions",
+                "digital_assets",
+                "custody",
+                "data_privacy",
+            ],
         },
         JurisdictionRegpackInfo {
             jurisdiction_id: "sg",
             jurisdiction_name: "Singapore",
-            available_domains: &["financial", "sanctions"],
+            // MAS — Payment Services Act, Securities and Futures Act
+            // PDPA for data protection, Digital Token offerings
+            available_domains: &[
+                "financial",
+                "sanctions",
+                "digital_assets",
+                "data_privacy",
+            ],
         },
         JurisdictionRegpackInfo {
             jurisdiction_id: "hk",
             jurisdiction_name: "Hong Kong SAR",
-            available_domains: &["financial", "sanctions"],
+            // HKMA, SFC — Securities and Futures Ordinance, AML Ordinance
+            // Virtual asset service provider licensing (VASP)
+            available_domains: &[
+                "financial",
+                "sanctions",
+                "digital_assets",
+            ],
         },
         JurisdictionRegpackInfo {
             jurisdiction_id: "ky",
             jurisdiction_name: "Cayman Islands",
-            available_domains: &["financial", "sanctions"],
+            // CIMA — Monetary Authority, Banks and Trust Companies Act
+            // Mutual Funds Act, Virtual Asset (Service Providers) Act
+            available_domains: &[
+                "financial",
+                "sanctions",
+                "digital_assets",
+                "custody",
+            ],
         },
     ]
 }

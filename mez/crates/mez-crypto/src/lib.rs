@@ -11,17 +11,19 @@
 //!   artifacts by their content digest.
 //! - **SHA-256 digest computation** from [`CanonicalBytes`](mez_core::CanonicalBytes),
 //!   producing [`ContentDigest`](mez_core::ContentDigest) values.
+//! - **HSM/KMS key management** abstraction supporting software, AWS KMS,
+//!   and AWS CloudHSM backends.
 //!
 //! ## Phase 4 Extensions
 //!
-//! BBS+ selective disclosure and Poseidon2 hashing are available as stub
-//! modules behind Cargo feature flags. Enable `poseidon2` or `bbs-plus`
-//! to compile the type signatures; concrete implementations will land
-//! when the ZK proof system activates in Phase 4.
+//! BBS+ selective disclosure and Poseidon2 hashing are available behind
+//! Cargo feature flags. Enable `poseidon2` or `bbs-plus` to compile the
+//! production implementations.
 
 pub mod cas;
 pub mod ed25519;
 pub mod error;
+pub mod hsm;
 pub mod mmr;
 pub mod sha256;
 
@@ -35,5 +37,6 @@ pub mod bbs;
 pub use cas::{ArtifactRef, ArtifactType, ContentAddressedStore};
 pub use ed25519::{Ed25519Signature, SigningKey, VerifyingKey};
 pub use error::CryptoError;
+pub use hsm::{KeyAlgorithm, KeyMetadata, KeyProvider, ProviderType, SoftwareKeyProvider};
 pub use mmr::MerkleMountainRange;
 pub use sha256::sha256_digest;

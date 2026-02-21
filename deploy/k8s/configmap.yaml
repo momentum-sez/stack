@@ -21,3 +21,5 @@ data:
   # Watcher configuration
   watcher-id: "watcher-pk-001"
   bond-amount: "100000"
+  # Key provider backend: software (dev), aws-kms (prod), aws-cloudhsm (high-sec)
+  key-provider: "software"

@@ -1,0 +1,21 @@
+# MEZ Stack — PodDisruptionBudgets
+#
+# Ensures minimum availability during voluntary disruptions (node drain,
+# cluster upgrades, rolling deployments). At least 1 mez-api pod must
+# remain running at all times.
+#
+# Apply: kubectl apply -f deploy/k8s/pdb.yaml
+
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mez-api-pdb
+  namespace: mez
+  labels:
+    app: mez-api
+    component: availability
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: mez-api

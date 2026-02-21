@@ -1,0 +1,100 @@
+# MEZ Stack — NetworkPolicy for Pod Isolation
+#
+# Implements defense-in-depth by restricting pod-to-pod communication:
+# - mez-api pods can only receive traffic on port 8080 from the ingress
+#   controller and within the mez namespace.
+# - Egress is limited to the mez namespace (for inter-service comms),
+#   DNS (kube-dns), and the database/cache ports.
+#
+# Apply: kubectl apply -f deploy/k8s/network-policy.yaml
+
+# ── Default deny all ingress in the mez namespace ────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: mez
+  labels:
+    app: mez-stack
+    component: network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+
+---
+
+# ── Allow ingress to mez-api from ingress controller and namespace ───────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mez-api-ingress
+  namespace: mez
+  labels:
+    app: mez-api
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: mez-api
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow traffic from ingress controller (any namespace with ingress label)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow traffic from within the mez namespace (health checks, probes)
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+
+---
+
+# ── Restrict mez-api egress ─────────────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mez-api-egress
+  namespace: mez
+  labels:
+    app: mez-api
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: mez-api
+  policyTypes:
+    - Egress
+  egress:
+    # DNS resolution (kube-dns)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # PostgreSQL (port 5432) — any destination (RDS is outside cluster)
+    - ports:
+        - protocol: TCP
+          port: 5432
+    # Redis (port 6379) — any destination (ElastiCache is outside cluster)
+    - ports:
+        - protocol: TCP
+          port: 6379
+    # HTTPS egress for Mass API proxy calls and AWS KMS
+    - ports:
+        - protocol: TCP
+          port: 443
+    # Within mez namespace (inter-pod communication)
+    - to:
+        - podSelector: {}

@@ -1,0 +1,54 @@
+# MEZ Stack — HorizontalPodAutoscaler
+#
+# Automatically scales mez-api replicas based on CPU and memory utilization.
+# - Min replicas: 2 (matches PDB minAvailable for HA)
+# - Max replicas: 10 (cost ceiling)
+# - Target CPU: 70% (scale before saturation)
+# - Target memory: 80% (prevent OOM before limit)
+# - Scale-down stabilization: 300s (prevent flapping)
+#
+# Requires metrics-server in the cluster.
+#
+# Apply: kubectl apply -f deploy/k8s/hpa.yaml
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: mez-api-hpa
+  namespace: mez
+  labels:
+    app: mez-api
+    component: autoscaling
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: mez-api
+  minReplicas: 2
+  maxReplicas: 10
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

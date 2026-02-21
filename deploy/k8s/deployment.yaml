@@ -78,7 +78,7 @@ spec:
                 configMapKeyRef:
                   name: mez-config
                   key: profile
-            # Database credentials from Secret
+            # Database credentials from Secret (managed by ExternalSecrets in prod)
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -90,6 +90,33 @@ spec:
                 secretKeyRef:
                   name: mez-secrets
                   key: jwt-secret
+            # Zone signing key (managed by ExternalSecrets in prod)
+            - name: ZONE_SIGNING_KEY_HEX
+              valueFrom:
+                secretKeyRef:
+                  name: mez-signing-key
+                  key: signing-key-hex
+                  optional: true
+            # Key provider backend (software | aws-kms | aws-cloudhsm)
+            - name: MEZ_KEY_PROVIDER
+              valueFrom:
+                configMapKeyRef:
+                  name: mez-config
+                  key: key-provider
+                  optional: true
+            # Mass API credentials (managed by ExternalSecrets in prod)
+            - name: MASS_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: mez-mass-credentials
+                  key: mass-api-token
+                  optional: true
+            - name: AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: mez-mass-credentials
+                  key: auth-token
+                  optional: true
           # Health probes
           livenessProbe:
             httpGet:

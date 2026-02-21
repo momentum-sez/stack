@@ -143,6 +143,7 @@ impl Modify for SecurityAddon {
             crate::routes::mass_proxy::CreateConsentProxyRequest,
             crate::routes::mass_proxy::ConsentPartyInput,
             // ── Corridor DTOs ───────────────────────────────────────────
+            crate::routes::corridors::PaginationParams,
             crate::routes::corridors::CreateCorridorRequest,
             crate::routes::corridors::TransitionCorridorRequest,
             crate::routes::corridors::ProposeReceiptRequest,

@@ -23,7 +23,7 @@ use crate::state::{AppState, CorridorRecord};
 use axum::extract::rejection::JsonRejection;
 
 /// Pagination parameters for list endpoints.
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, ToSchema)]
 pub struct PaginationParams {
     /// Maximum number of items to return (default: 100, max: 1000).
     pub limit: Option<usize>,

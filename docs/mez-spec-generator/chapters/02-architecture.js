@@ -59,7 +59,7 @@ module.exports = function build_chapter02() {
     // --- 2.2.1 Rust Crate Map ---
     h3("2.2.1 Rust Crate Map"),
 
-    p("The Rust implementation is organized as a Cargo workspace with 16 crates totaling 151,000 lines and 4,073 tests. Each crate maps to a specific domain within the Stack architecture."),
+    p("The Rust implementation is organized as a Cargo workspace with 17 crates totaling 164,000 lines and 4,683 tests. Each crate maps to a specific domain within the Stack architecture."),
 
     table(
       ["Crate", "Lines", "Purpose"],
@@ -91,7 +91,7 @@ module.exports = function build_chapter02() {
     ...codeBlock(
 `momentum-ez/stack/
 \u251c\u2500\u2500 mez/                       # Rust workspace root
-\u2502   \u251c\u2500\u2500 Cargo.toml              # Workspace manifest (16 crates)
+\u2502   \u251c\u2500\u2500 Cargo.toml              # Workspace manifest (17 crates)
 \u2502   \u2514\u2500\u2500 crates/
 \u2502       \u251c\u2500\u2500 mez-core/          # Foundation (zero internal deps)
 \u2502       \u251c\u2500\u2500 mez-crypto/        # Cryptographic primitives

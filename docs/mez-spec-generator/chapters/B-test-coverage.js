@@ -7,7 +7,7 @@ module.exports = function build_appendixB() {
     // --- Test Methodology ---
     h2("B.1 Test Methodology"),
     p(
-      "The EZ Stack employs a multi-tier testing methodology with 4,073 tests executed " +
+      "The EZ Stack employs a multi-tier testing methodology with 4,683 tests executed " +
       "via cargo test --workspace. Tests span seven campaigns developed during the production " +
       "hardening phase, covering unit, integration, property-based, and contract tests. All tests " +
       "run in the standard Rust test harness with no external test frameworks."
@@ -116,7 +116,7 @@ mod tests {
 
     // --- Coverage Summary Table ---
     h2("B.3 Coverage by Crate"),
-    p("Test counts are derived from #[test] and #[tokio::test] annotations across the workspace. Total: 4,073 tests."),
+    p("Test counts are derived from #[test] and #[tokio::test] annotations across the workspace. Total: 4,683 tests."),
     table(
       ["Crate", "Approx. Tests", "Key Coverage Areas"],
       [

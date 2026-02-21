@@ -65,14 +65,14 @@ module.exports = function build_chapter56() {
         ["Combined Corridor Volume", "$38.6B", "Total annual bilateral trade volume across all three corridors (PAK-UAE $10.1B + PAK-KSA $5.4B + PAK-CHN $23.1B)"],
         ["Module Families", "16", "Distinct module families in the EZ Stack covering compliance, crypto, corridors, credentials, and orchestration"],
         ["Total Modules", "323", "Individual modules across all 16 module families in the workspace"],
-        ["Test Coverage", "4,073 tests, 100%", "Total test count (#[test] + #[tokio::test]) across the 16-crate Rust workspace with full pass rate"],
+        ["Test Coverage", "4,683 tests, 100%", "Total test count (#[test] + #[tokio::test]) across the 17-crate Rust workspace with full pass rate"],
       ],
       [2200, 1800, 5360]
     ),
 
     p_runs([
       bold("Infrastructure scale. "),
-      "The 16 module families decompose into the following crate structure: mez-core (MCF canonical digest, compliance domains, sovereignty enforcement), mez-crypto (Ed25519, MMR, CAS, SHA-256), mez-vc (W3C Verifiable Credentials), mez-tensor (compliance tensor, manifold), mez-pack (lawpacks, regpacks, licensepacks, composition engine), mez-corridor (dual-commitment receipt chains, fork resolution, netting, payment rails), mez-state (FSM, migration saga, watcher economy), mez-agentic (trigger taxonomy, policy evaluation, tax pipeline), mez-arbitration (disputes, evidence, escrow), mez-schema (116 JSON schemas, Draft 2020-12), mez-zkp (proof system trait, production policy, 5 circuit modules), mez-compliance (jurisdiction-aware evaluators), mez-mass-client (typed HTTP client for all five Mass primitives, NADRA adapter), mez-api (Axum HTTP server with Postgres persistence, 10 route groups), and mez-cli (validation, lockfiles, corridor lifecycle, signing). Each crate maintains its own test suite contributing to the aggregate 4,073 test count."
+      "The 16 module families decompose into the following crate structure: mez-core (MCF canonical digest, compliance domains, sovereignty enforcement), mez-crypto (Ed25519, MMR, CAS, SHA-256), mez-vc (W3C Verifiable Credentials), mez-tensor (compliance tensor, manifold), mez-pack (lawpacks, regpacks, licensepacks, composition engine), mez-corridor (dual-commitment receipt chains, fork resolution, netting, payment rails), mez-state (FSM, migration saga, watcher economy), mez-agentic (trigger taxonomy, policy evaluation, tax pipeline), mez-arbitration (disputes, evidence, escrow), mez-schema (116 JSON schemas, Draft 2020-12), mez-zkp (proof system trait, production policy, 5 circuit modules), mez-compliance (jurisdiction-aware evaluators), mez-mass-client (typed HTTP client for all five Mass primitives, NADRA adapter), mez-mass-stub (standalone Mass API stub server for dev/testing), mez-api (Axum HTTP server with Postgres persistence, 10 route groups), mez-cli (validation, lockfiles, corridor lifecycle, signing), and mez-integration-tests (cross-crate test suite). Each crate maintains its own test suite contributing to the aggregate 4,683 test count."
     ]),
 
     // --- 56.3 Growth Trajectory ---

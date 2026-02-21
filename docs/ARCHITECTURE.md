@@ -1,6 +1,6 @@
 # Architecture
 
-**Momentum EZ Stack** v0.4.44 GENESIS — 16 crates, 151K lines of Rust, 4,073 tests
+**Momentum EZ Stack** v0.4.44 GENESIS — 17 crates, 164K lines of Rust, 4,683 tests
 
 This document describes the system architecture. For per-crate API details, see [Crate Reference](./architecture/CRATE-REFERENCE.md). For the Mass integration boundary, see [Mass Integration](./architecture/MASS-INTEGRATION.md).
 

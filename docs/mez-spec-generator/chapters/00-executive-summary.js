@@ -4,7 +4,7 @@ module.exports = function build_executive_summary() {
   return [
     chapterHeading("Executive Summary"),
 
-    p("The Momentum Open Source EZ Stack (version 0.4.44, GENESIS) is a software system for instantiating cryptographically auditable, compliance-enforcing Economic Zones. It is implemented in Rust (2021 edition), organized as 16 crates totaling 151,000 lines of code with 4,073 tests. This specification documents its complete technical architecture in 56 chapters across 18 Parts, plus 11 appendices."),
+    p("The Momentum Open Source EZ Stack (version 0.4.44, GENESIS) is a software system for instantiating cryptographically auditable, compliance-enforcing Economic Zones. It is implemented in Rust (2021 edition), organized as 17 crates totaling 164,000 lines of code with 4,683 tests. This specification documents its complete technical architecture in 56 chapters across 18 Parts, plus 11 appendices."),
 
     p("The architecture enforces a strict separation between two systems. Mass provides five jurisdiction-agnostic programmable primitives (Entities, Ownership, Fiscal, Identity, Consent) deployed as live Java/Spring Boot production APIs. The MEZ Stack is the jurisdictional orchestration layer that makes those primitives compliance-aware through a compliance tensor (\u00a710), pack trilogy (\u00a76), corridor system (\u00a722), and verifiable credentials (\u00a743). This separation is the central architectural invariant: Mass owns business object CRUD; the MEZ Stack owns jurisdictional context, compliance evaluation, and cryptographic attestation."),
 
@@ -55,7 +55,7 @@ module.exports = function build_executive_summary() {
       ],
       [2400, 1800, 5160]
     ),
-    p("The complete v0.4.44 implementation comprises sixteen module families totaling 323 modules across 151,000 lines of Rust (154 source files, 16 crates), with 4,073 tests covering all critical paths."),
+    p("The complete v0.4.44 implementation comprises sixteen module families totaling 323 modules across 164,000 lines of Rust (322 source files, 17 crates), with 4,683 tests covering all critical paths."),
 
     h3("Document Organization"),
 

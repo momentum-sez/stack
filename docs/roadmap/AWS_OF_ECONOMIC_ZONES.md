@@ -10,7 +10,7 @@
 
 ### What Exists (genuinely impressive)
 
-The Momentum EZ Stack is not vaporware. It is a 109K-line Rust workspace with 3,029+ passing tests, zero `unsafe` blocks, zero production `unwrap()` calls, and a clean 16-crate dependency DAG. The codebase has undergone a complete Python-to-Rust migration, seven systematic test campaigns, and multiple audit-driven hardening passes. This is real engineering.
+The Momentum EZ Stack is not vaporware. It is a 164K-line Rust workspace with 4,683 passing tests, zero `unsafe` blocks, zero production `unwrap()` calls, and a clean 17-crate dependency DAG. The codebase has undergone a complete Python-to-Rust migration, seven systematic test campaigns, and multiple audit-driven hardening passes. This is real engineering.
 
 **Concrete, working capabilities:**
 
@@ -28,7 +28,7 @@ The Momentum EZ Stack is not vaporware. It is a 109K-line Rust workspace with 3,
 | Arbitration system | Implemented | Dispute lifecycle, evidence, escrow, enforcement |
 | JSON Schema validation (116 schemas, Draft 2020-12) | Production-grade | $ref resolution, CI gates |
 | Docker/K8s/Terraform deployment | Implemented | Single binary + Postgres + Prometheus + Grafana |
-| Module system (146 modules, 16 families) | Architecture complete | YAML descriptors, profile composition |
+| Module system (323 modules, 16 families) | Architecture complete | YAML descriptors, profile composition |
 
 ### What Is Not Yet Deployed (the gap — and the plan)
 
@@ -95,7 +95,7 @@ This command should:
 | CloudFormation template | zone.yaml + stack.lock | Implemented |
 | VPC (network isolation) | Zone boundary + data sovereignty | Implemented (SovereigntyPolicy) |
 | IAM (identity/auth) | VC-based identity + Ed25519 signing | Implemented |
-| Marketplace (modules) | Module system (146 modules, 16 families) | Architecture complete, no real content |
+| Marketplace (modules) | Module system (323 modules, 16 families) | Architecture complete, no real content |
 | Inter-region networking | Corridor P2P protocol | **Not implemented** |
 | Load balancer | Single binary, no horizontal scaling | Partial |
 | CloudWatch (monitoring) | Prometheus + Grafana | Implemented |

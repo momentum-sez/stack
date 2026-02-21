@@ -22,8 +22,8 @@ Build, test, run the API server, use the CLI.
 git clone https://github.com/momentum-ez/stack.git
 cd stack/mez
 
-cargo build --workspace                     # build all 16 crates
-cargo test  --workspace                     # run 4,073 tests
+cargo build --workspace                     # build all 17 crates
+cargo test  --workspace                     # run 4,683 tests
 cargo clippy --workspace -- -D warnings     # zero warnings policy
 cargo doc --workspace --no-deps --open      # generate rustdoc
 ```
@@ -34,14 +34,14 @@ cargo doc --workspace --no-deps --open      # generate rustdoc
 
 | Directory | Contents |
 |-----------|----------|
-| `mez/` | Rust workspace — 16 crates, 151K lines |
+| `mez/` | Rust workspace — 17 crates, 164K lines |
 | `modules/` | 323 zone modules across 16 families |
 | `schemas/` | 116 JSON Schema files (Draft 2020-12) |
-| `spec/` | 24 normative specification chapters |
+| `spec/` | 25 normative specification chapters |
 | `apis/` | OpenAPI 3.x specifications |
 | `deploy/` | Docker, Kubernetes, Terraform manifests |
 | `contexts/` | Zone composition contexts |
-| `jurisdictions/` | 100 zone definitions (US states, UAE free zones, PK, CN, etc.) |
+| `jurisdictions/` | 210 zone definitions (US states, UAE free zones, PK, SG, etc.) |
 | `dist/artifacts/` | Content-addressed built artifacts |
 | `governance/` | Lifecycle state machines, changelog |
 | `docs/` | This documentation |

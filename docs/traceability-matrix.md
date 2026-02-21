@@ -2,7 +2,7 @@
 
 Maps each specification chapter in `spec/` to its Rust implementation in `mez/crates/`. This is the authoritative reference for understanding which code implements which spec requirements.
 
-Generated from the v0.4.44 GENESIS codebase. The workspace contains 16 crates (151K lines, 4,073 tests).
+Generated from the v0.4.44 GENESIS codebase. The workspace contains 17 crates (164K lines, 4,683 tests).
 
 ---
 

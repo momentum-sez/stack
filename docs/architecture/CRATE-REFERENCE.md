@@ -1,6 +1,6 @@
 # Crate reference
 
-Per-crate API surface for the 16 crates in the `mez/` workspace. Each section lists the crate's purpose, key types, public functions, and invariants enforced by the type system.
+Per-crate API surface for the 17 crates in the `mez/` workspace. Each section lists the crate's purpose, key types, public functions, and invariants enforced by the type system.
 
 For the full architecture context, see [Architecture Overview](./OVERVIEW.md).
 

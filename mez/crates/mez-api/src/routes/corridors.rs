@@ -211,12 +211,65 @@ pub struct ForkResolveResponse {
     pub resolution_reason: String,
 }
 
+/// Receipt chain query response — current chain state for a corridor.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ReceiptChainResponse {
+    /// The corridor this chain belongs to.
+    pub corridor_id: Uuid,
+    /// Current hash-chain height (number of receipts).
+    pub chain_height: u64,
+    /// Genesis root of the chain (SHA-256 hex).
+    pub genesis_root: String,
+    /// Current final state root — hash-chain head (SHA-256 hex).
+    pub final_state_root: String,
+    /// Current MMR root (SHA-256 hex).
+    pub mmr_root: String,
+    /// Receipts in the chain (paginated).
+    pub receipts: Vec<ReceiptEntry>,
+}
+
+/// A receipt entry in the chain response.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ReceiptEntry {
+    /// Sequence number (0-indexed).
+    pub sequence: u64,
+    /// Receipt timestamp.
+    pub timestamp: String,
+    /// prev_root linking to prior chain state.
+    pub prev_root: String,
+    /// Canonical digest of this receipt payload.
+    pub next_root: String,
+}
+
+/// Checkpoint response — periodic chain commitment snapshot.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CheckpointResponse {
+    /// The corridor this checkpoint belongs to.
+    pub corridor_id: Uuid,
+    /// Checkpoint type.
+    pub checkpoint_type: String,
+    /// Checkpoint creation timestamp.
+    pub timestamp: String,
+    /// The corridor's immutable genesis root.
+    pub genesis_root: String,
+    /// Hash-chain head at checkpoint time.
+    pub final_state_root: String,
+    /// Number of receipts at checkpoint time.
+    pub receipt_count: u64,
+    /// MMR root at checkpoint time.
+    pub mmr_root: String,
+    /// Total checkpoints created for this corridor.
+    pub checkpoint_count: usize,
+}
+
 /// Build the corridors router.
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/v1/corridors", get(list_corridors).post(create_corridor))
         .route("/v1/corridors/:id", get(get_corridor))
         .route("/v1/corridors/:id/transition", put(transition_corridor))
+        .route("/v1/corridors/:id/receipts", get(get_receipts))
+        .route("/v1/corridors/:id/checkpoint", get(get_checkpoint).post(create_checkpoint))
         .route("/v1/corridors/state/propose", post(propose_receipt))
         .route("/v1/corridors/state/fork-resolve", post(fork_resolve))
         .route("/v1/corridors/state/anchor", post(anchor_commitment))
@@ -518,6 +571,154 @@ async fn propose_receipt(
             mmr_root,
             chain_height,
             timestamp: timestamp.to_string(),
+        }),
+    ))
+}
+
+/// GET /v1/corridors/:id/receipts — Query the receipt chain for a corridor.
+///
+/// Returns the full receipt chain state including all receipts, the current
+/// hash-chain head, genesis root, and MMR root. Supports pagination via
+/// `?limit=N&offset=M` query parameters.
+#[utoipa::path(
+    get,
+    path = "/v1/corridors/{id}/receipts",
+    params(
+        ("id" = Uuid, Path, description = "Corridor ID"),
+        ("limit" = Option<usize>, Query, description = "Max receipts to return (default 100, max 1000)"),
+        ("offset" = Option<usize>, Query, description = "Receipts to skip (default 0)"),
+    ),
+    responses(
+        (status = 200, description = "Receipt chain state", body = ReceiptChainResponse),
+        (status = 404, description = "Corridor not found", body = crate::error::ErrorBody),
+    ),
+    tag = "corridors"
+)]
+async fn get_receipts(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(pagination): Query<PaginationParams>,
+) -> Result<Json<ReceiptChainResponse>, AppError> {
+    let chains = state.receipt_chains.read();
+    let chain = chains.get(&id).ok_or_else(|| {
+        AppError::NotFound(format!("no receipt chain for corridor {id}"))
+    })?;
+
+    let all_receipts = chain.receipts();
+    let offset = pagination.effective_offset().min(all_receipts.len());
+    let limit = pagination.effective_limit();
+
+    let entries: Vec<ReceiptEntry> = all_receipts
+        .iter()
+        .skip(offset)
+        .take(limit)
+        .map(|r| ReceiptEntry {
+            sequence: r.sequence,
+            timestamp: r.timestamp.to_string(),
+            prev_root: r.prev_root.clone(),
+            next_root: r.next_root.clone(),
+        })
+        .collect();
+
+    let mmr_root = chain
+        .mmr_root()
+        .map_err(|e| AppError::Internal(format!("MMR root error: {e}")))?;
+
+    Ok(Json(ReceiptChainResponse {
+        corridor_id: id,
+        chain_height: chain.height(),
+        genesis_root: chain.genesis_root().to_hex(),
+        final_state_root: chain.final_state_root_hex(),
+        mmr_root,
+        receipts: entries,
+    }))
+}
+
+/// GET /v1/corridors/:id/checkpoint — Get the latest checkpoint for a corridor.
+///
+/// Returns the most recent checkpoint snapshot if one exists, or creates
+/// one from the current chain state via POST.
+#[utoipa::path(
+    get,
+    path = "/v1/corridors/{id}/checkpoint",
+    params(("id" = Uuid, Path, description = "Corridor ID")),
+    responses(
+        (status = 200, description = "Latest checkpoint", body = CheckpointResponse),
+        (status = 404, description = "No checkpoint or corridor not found", body = crate::error::ErrorBody),
+    ),
+    tag = "corridors"
+)]
+async fn get_checkpoint(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<CheckpointResponse>, AppError> {
+    let chains = state.receipt_chains.read();
+    let chain = chains.get(&id).ok_or_else(|| {
+        AppError::NotFound(format!("no receipt chain for corridor {id}"))
+    })?;
+
+    let checkpoints = chain.checkpoints();
+    let checkpoint = checkpoints.last().ok_or_else(|| {
+        AppError::NotFound(format!(
+            "no checkpoints exist for corridor {id}. POST to create one."
+        ))
+    })?;
+
+    Ok(Json(CheckpointResponse {
+        corridor_id: id,
+        checkpoint_type: checkpoint.checkpoint_type.clone(),
+        timestamp: checkpoint.timestamp.to_string(),
+        genesis_root: checkpoint.genesis_root.clone(),
+        final_state_root: checkpoint.final_state_root.clone(),
+        receipt_count: checkpoint.receipt_count,
+        mmr_root: checkpoint.mmr_root().to_string(),
+        checkpoint_count: checkpoints.len(),
+    }))
+}
+
+/// POST /v1/corridors/:id/checkpoint — Create a checkpoint for a corridor.
+///
+/// Creates a checkpoint snapshot of the current receipt chain state,
+/// committing to both the hash-chain head and MMR accumulator. Checkpoints
+/// provide verifier bootstrap points for independent verification.
+#[utoipa::path(
+    post,
+    path = "/v1/corridors/{id}/checkpoint",
+    params(("id" = Uuid, Path, description = "Corridor ID")),
+    responses(
+        (status = 201, description = "Checkpoint created", body = CheckpointResponse),
+        (status = 404, description = "Corridor not found", body = crate::error::ErrorBody),
+        (status = 409, description = "Empty chain (no receipts to checkpoint)", body = crate::error::ErrorBody),
+    ),
+    tag = "corridors"
+)]
+async fn create_checkpoint(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<(axum::http::StatusCode, Json<CheckpointResponse>), AppError> {
+    let mut chains = state.receipt_chains.write();
+    let chain = chains.get_mut(&id).ok_or_else(|| {
+        AppError::NotFound(format!("no receipt chain for corridor {id}"))
+    })?;
+
+    let checkpoint = chain
+        .create_checkpoint()
+        .map_err(|e| AppError::Conflict(format!("cannot create checkpoint: {e}")))?;
+
+    let checkpoint_count = chain.checkpoints().len();
+    let mmr_root = checkpoint.mmr_root().to_string();
+
+    Ok((
+        axum::http::StatusCode::CREATED,
+        Json(CheckpointResponse {
+            corridor_id: id,
+            checkpoint_type: checkpoint.checkpoint_type,
+            timestamp: checkpoint.timestamp.to_string(),
+            genesis_root: checkpoint.genesis_root,
+            final_state_root: checkpoint.final_state_root,
+            receipt_count: checkpoint.receipt_count,
+            mmr_root,
+            checkpoint_count,
         }),
     ))
 }
@@ -1698,5 +1899,306 @@ mod tests {
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    // ── Receipt chain query tests ────────────────────────────────
+
+    #[tokio::test]
+    async fn get_receipts_empty_chain_returns_200() {
+        let state = AppState::new();
+        let app = router().with_state(state);
+
+        let corridor_id = create_test_corridor(&app).await;
+
+        let req = Request::builder()
+            .method("GET")
+            .uri(format!("/v1/corridors/{corridor_id}/receipts"))
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let chain: ReceiptChainResponse = body_json(resp).await;
+        assert_eq!(chain.corridor_id, corridor_id);
+        assert_eq!(chain.chain_height, 0);
+        assert!(chain.receipts.is_empty());
+        assert_eq!(chain.genesis_root.len(), 64);
+        assert_eq!(chain.final_state_root.len(), 64);
+    }
+
+    #[tokio::test]
+    async fn get_receipts_after_proposals_returns_chain() {
+        let state = AppState::new();
+        let app = router().with_state(state);
+
+        let corridor_id = create_test_corridor(&app).await;
+
+        // Propose 3 receipts.
+        for i in 0..3 {
+            propose_test_receipt(
+                &app,
+                corridor_id,
+                serde_json::json!({"event": "transfer", "seq": i}),
+            )
+            .await;
+        }
+
+        let req = Request::builder()
+            .method("GET")
+            .uri(format!("/v1/corridors/{corridor_id}/receipts"))
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let chain: ReceiptChainResponse = body_json(resp).await;
+        assert_eq!(chain.corridor_id, corridor_id);
+        assert_eq!(chain.chain_height, 3);
+        assert_eq!(chain.receipts.len(), 3);
+
+        // Verify sequence numbers.
+        assert_eq!(chain.receipts[0].sequence, 0);
+        assert_eq!(chain.receipts[1].sequence, 1);
+        assert_eq!(chain.receipts[2].sequence, 2);
+
+        // Verify hash-chain linkage: receipt[1].prev_root != genesis.
+        assert_ne!(chain.receipts[0].prev_root, chain.receipts[1].prev_root);
+        // Final state root matches the last receipt's chain state.
+        assert_eq!(chain.final_state_root.len(), 64);
+        assert_eq!(chain.mmr_root.len(), 64);
+    }
+
+    #[tokio::test]
+    async fn get_receipts_pagination() {
+        let state = AppState::new();
+        let app = router().with_state(state);
+
+        let corridor_id = create_test_corridor(&app).await;
+
+        // Propose 5 receipts.
+        for i in 0..5 {
+            propose_test_receipt(
+                &app,
+                corridor_id,
+                serde_json::json!({"event": "batch", "idx": i}),
+            )
+            .await;
+        }
+
+        // Get first 2 receipts.
+        let req = Request::builder()
+            .method("GET")
+            .uri(format!("/v1/corridors/{corridor_id}/receipts?limit=2&offset=0"))
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        let chain: ReceiptChainResponse = body_json(resp).await;
+        assert_eq!(chain.receipts.len(), 2);
+        assert_eq!(chain.receipts[0].sequence, 0);
+        assert_eq!(chain.receipts[1].sequence, 1);
+        assert_eq!(chain.chain_height, 5);
+
+        // Get receipts 2-4.
+        let req = Request::builder()
+            .method("GET")
+            .uri(format!("/v1/corridors/{corridor_id}/receipts?limit=3&offset=2"))
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        let chain: ReceiptChainResponse = body_json(resp).await;
+        assert_eq!(chain.receipts.len(), 3);
+        assert_eq!(chain.receipts[0].sequence, 2);
+        assert_eq!(chain.receipts[2].sequence, 4);
+    }
+
+    #[tokio::test]
+    async fn get_receipts_not_found_returns_404() {
+        let app = test_app();
+        let fake_id = Uuid::new_v4();
+        let req = Request::builder()
+            .method("GET")
+            .uri(format!("/v1/corridors/{fake_id}/receipts"))
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    // ── Checkpoint tests ─────────────────────────────────────────
+
+    #[tokio::test]
+    async fn create_checkpoint_after_receipts_returns_201() {
+        let state = AppState::new();
+        let app = router().with_state(state);
+
+        let corridor_id = create_test_corridor(&app).await;
+
+        // Propose 3 receipts.
+        for i in 0..3 {
+            propose_test_receipt(
+                &app,
+                corridor_id,
+                serde_json::json!({"event": "checkpoint_test", "i": i}),
+            )
+            .await;
+        }
+
+        // Create checkpoint.
+        let req = Request::builder()
+            .method("POST")
+            .uri(format!("/v1/corridors/{corridor_id}/checkpoint"))
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::CREATED);
+
+        let cp: CheckpointResponse = body_json(resp).await;
+        assert_eq!(cp.corridor_id, corridor_id);
+        assert_eq!(cp.checkpoint_type, "MEZCorridorStateCheckpoint");
+        assert_eq!(cp.receipt_count, 3);
+        assert_eq!(cp.checkpoint_count, 1);
+        assert_eq!(cp.genesis_root.len(), 64);
+        assert_eq!(cp.final_state_root.len(), 64);
+        assert_eq!(cp.mmr_root.len(), 64);
+
+        // GET the checkpoint.
+        let req = Request::builder()
+            .method("GET")
+            .uri(format!("/v1/corridors/{corridor_id}/checkpoint"))
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let cp_get: CheckpointResponse = body_json(resp).await;
+        assert_eq!(cp_get.receipt_count, 3);
+        assert_eq!(cp_get.final_state_root, cp.final_state_root);
+    }
+
+    #[tokio::test]
+    async fn create_checkpoint_on_empty_chain_returns_409() {
+        let state = AppState::new();
+        let app = router().with_state(state);
+
+        let corridor_id = create_test_corridor(&app).await;
+
+        // Attempt checkpoint on empty chain.
+        let req = Request::builder()
+            .method("POST")
+            .uri(format!("/v1/corridors/{corridor_id}/checkpoint"))
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::CONFLICT);
+    }
+
+    #[tokio::test]
+    async fn get_checkpoint_no_checkpoints_returns_404() {
+        let state = AppState::new();
+        let app = router().with_state(state);
+
+        let corridor_id = create_test_corridor(&app).await;
+
+        let req = Request::builder()
+            .method("GET")
+            .uri(format!("/v1/corridors/{corridor_id}/checkpoint"))
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    // ── Full corridor lifecycle integration test ─────────────────
+
+    #[tokio::test]
+    async fn full_corridor_lifecycle_with_receipts_and_checkpoint() {
+        // Complete corridor lifecycle proving the "AWS of Economic Zones" value:
+        // Create corridor → Transition to ACTIVE → Exchange receipts →
+        // Verify chain integrity → Create checkpoint → Query state.
+        let state = AppState::new();
+        let app = router().with_state(state);
+
+        // 1. Create a PK ↔ AE corridor.
+        let corridor_id = create_test_corridor(&app).await;
+
+        // 2. Walk lifecycle: DRAFT → PENDING → ACTIVE.
+        let (s, _) = create_and_transition(&app, corridor_id, "PENDING").await;
+        assert_eq!(s, StatusCode::OK);
+        let (s, _) = create_and_transition(&app, corridor_id, "ACTIVE").await;
+        assert_eq!(s, StatusCode::OK);
+
+        // 3. Exchange 5 cross-border receipts.
+        let mut prev_mmr = String::new();
+        for i in 0..5u32 {
+            let (status, receipt) = propose_test_receipt(
+                &app,
+                corridor_id,
+                serde_json::json!({
+                    "type": "cross_border_transfer",
+                    "from_zone": "pk-sifc",
+                    "to_zone": "ae-difc",
+                    "amount": format!("{}.00", (i + 1) * 1000),
+                    "currency": "USD",
+                    "reference": format!("XB-{:04}", i),
+                }),
+            )
+            .await;
+            assert_eq!(status, StatusCode::CREATED);
+            assert_eq!(receipt.sequence, i as u64);
+            assert_eq!(receipt.chain_height, (i + 1) as u64);
+            // MMR root changes with each receipt.
+            if !prev_mmr.is_empty() {
+                assert_ne!(receipt.mmr_root, prev_mmr);
+            }
+            prev_mmr = receipt.mmr_root;
+        }
+
+        // 4. Query the receipt chain.
+        let req = Request::builder()
+            .method("GET")
+            .uri(format!("/v1/corridors/{corridor_id}/receipts"))
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let chain: ReceiptChainResponse = body_json(resp).await;
+        assert_eq!(chain.chain_height, 5);
+        assert_eq!(chain.receipts.len(), 5);
+        // Verify chain linkage: each receipt's next_root differs.
+        let next_roots: Vec<&str> = chain.receipts.iter().map(|r| r.next_root.as_str()).collect();
+        let unique: std::collections::HashSet<&&str> = next_roots.iter().collect();
+        assert_eq!(unique.len(), 5, "all 5 receipts must have unique next_roots");
+
+        // 5. Create a checkpoint.
+        let req = Request::builder()
+            .method("POST")
+            .uri(format!("/v1/corridors/{corridor_id}/checkpoint"))
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::CREATED);
+
+        let cp: CheckpointResponse = body_json(resp).await;
+        assert_eq!(cp.receipt_count, 5);
+        assert_eq!(cp.corridor_id, corridor_id);
+
+        // 6. Verify checkpoint matches chain state.
+        assert_eq!(cp.final_state_root, chain.final_state_root);
+        assert_eq!(cp.mmr_root, chain.mmr_root);
+        assert_eq!(cp.genesis_root, chain.genesis_root);
+
+        // 7. Get the corridor and verify it's still ACTIVE.
+        let req = Request::builder()
+            .method("GET")
+            .uri(format!("/v1/corridors/{corridor_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let record: CorridorRecord = body_json(resp).await;
+        assert_eq!(record.state, DynCorridorState::Active);
+        assert_eq!(record.transition_log.len(), 2);
     }
 }

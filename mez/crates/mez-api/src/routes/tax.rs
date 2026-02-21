@@ -7,7 +7,7 @@
 //! - **GET `/v1/tax/events/:id`** — Get a specific tax event by ID
 //! - **POST `/v1/tax/withhold`** — Compute withholding for a tax event
 //! - **GET `/v1/tax/obligations/:entity_id`** — Get tax obligations for an entity
-//! - **POST `/v1/tax/report`** — Generate a tax report for FBR IRIS submission
+//! - **POST `/v1/tax/report`** — Generate a tax report for tax authority submission
 //! - **GET `/v1/tax/rules`** — List loaded withholding rules for a jurisdiction
 //!
 //! ## Architecture
@@ -107,12 +107,24 @@ impl Validate for CreateTaxEventRequest {
         if self.event_type.len() > 100 {
             return Err("event_type must not exceed 100 characters".to_string());
         }
-        // Validate NTN format if provided.
-        // Pakistan NTN is exactly 7 digits (FBR format).
-        #[cfg(feature = "jurisdiction-pk")]
+        // Validate NTN format if provided (jurisdiction-specific).
         if let Some(ref ntn) = self.ntn {
-            if ntn.len() != 7 || !ntn.chars().all(|c| c.is_ascii_digit()) {
-                return Err("ntn must be exactly 7 digits".to_string());
+            match self.jurisdiction_id.as_str() {
+                // Pakistan NTN: exactly 7 digits (FBR format).
+                "PK" => {
+                    if ntn.len() != 7 || !ntn.chars().all(|c| c.is_ascii_digit()) {
+                        return Err("PK NTN must be exactly 7 digits".to_string());
+                    }
+                }
+                // Other jurisdictions: basic non-empty validation.
+                _ => {
+                    if ntn.trim().is_empty() {
+                        return Err("ntn must not be empty when provided".to_string());
+                    }
+                    if ntn.len() > 50 {
+                        return Err("ntn must not exceed 50 characters".to_string());
+                    }
+                }
             }
         }
         // Validate filer_status if provided.
@@ -571,7 +583,7 @@ async fn get_tax_obligations(
     }))
 }
 
-/// POST /v1/tax/report — Generate a tax report for FBR IRIS submission.
+/// POST /v1/tax/report — Generate a tax report for tax authority submission.
 ///
 /// Aggregates all tax events for the specified entity and period into a
 /// report suitable for submission to the tax authority.
@@ -678,15 +690,9 @@ async fn list_withholding_rules(
 ) -> Result<Json<Vec<WithholdingRuleResponse>>, AppError> {
     let pipeline = state.tax_pipeline.lock();
 
-    #[cfg(feature = "jurisdiction-pk")]
-    let default_jurisdiction = "PK";
-    #[cfg(not(feature = "jurisdiction-pk"))]
-    let default_jurisdiction = "";
-
-    let jurisdiction = params
-        .jurisdiction_id
-        .as_deref()
-        .unwrap_or(default_jurisdiction);
+    // No default jurisdiction — rules are always jurisdiction-specific.
+    // If no jurisdiction_id is provided, return an empty rule set.
+    let jurisdiction = params.jurisdiction_id.as_deref().unwrap_or("");
 
     let rules = pipeline.engine.rules_for_jurisdiction(jurisdiction);
     let responses: Vec<WithholdingRuleResponse> = rules
@@ -805,7 +811,6 @@ mod tests {
         super::router().with_state(state)
     }
 
-    #[cfg(feature = "jurisdiction-pk")]
     #[tokio::test]
     async fn create_tax_event_goods_filer() {
         let app = test_app();
@@ -847,7 +852,6 @@ mod tests {
         assert_eq!(result.withholdings[0].rate_percent, "4.5");
     }
 
-    #[cfg(feature = "jurisdiction-pk")]
     #[tokio::test]
     async fn create_tax_event_nonfiler_double_rate() {
         let app = test_app();
@@ -911,7 +915,6 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
-    #[cfg(feature = "jurisdiction-pk")]
     #[tokio::test]
     async fn create_tax_event_rejects_invalid_ntn() {
         let app = test_app();
@@ -981,7 +984,6 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }
 
-    #[cfg(feature = "jurisdiction-pk")]
     #[tokio::test]
     async fn compute_withholding_dry_run() {
         let app = test_app();
@@ -1019,7 +1021,6 @@ mod tests {
         assert_eq!(results[0].withholding_amount, "4000.00");
     }
 
-    #[cfg(feature = "jurisdiction-pk")]
     #[tokio::test]
     async fn list_withholding_rules_pakistan() {
         let app = test_app();

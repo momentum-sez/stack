@@ -20,13 +20,12 @@
 //! - `agentic` — Autonomous policy engine: trigger ingestion, policy management,
 //!   and reactive corridor transitions via the typestate machine.
 //! - `tax` — Tax collection pipeline: event recording, withholding computation,
-//!   obligation tracking, and FBR IRIS report generation.
+//!   obligation tracking, and tax authority report generation.
 
 pub mod agentic;
 pub mod compliance_query;
 pub mod corridors;
 pub mod credentials;
-#[cfg(feature = "jurisdiction-pk")]
 pub mod govos;
 pub mod identity;
 pub mod mass_proxy;

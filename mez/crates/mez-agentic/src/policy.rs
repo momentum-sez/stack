@@ -977,7 +977,7 @@ pub fn extended_policies() -> BTreeMap<String, Policy> {
             PolicyAction::Halt,
         )
         .with_description(
-            "Halt operations for entities exceeding withholding threshold without NTN registration",
+            "Halt operations for entities exceeding withholding threshold without tax registration (PK: 500K PKR)",
         )
         .with_condition(Condition::And {
             conditions: vec![
@@ -991,6 +991,7 @@ pub fn extended_policies() -> BTreeMap<String, Policy> {
                 },
             ],
         })
+        .with_jurisdiction_scope(vec!["PK".into()])
         .with_authorization(AuthorizationRequirement::Quorum)
         .with_priority(85),
     );
@@ -1003,12 +1004,13 @@ pub fn extended_policies() -> BTreeMap<String, Policy> {
             PolicyAction::UpdateManifest,
         )
         .with_description(
-            "Require quorum approval for withholding on high-value transactions (>10M PKR)",
+            "Require quorum approval for withholding on high-value transactions (PK: >10M PKR)",
         )
         .with_condition(Condition::Threshold {
             field: "transaction_amount".into(),
             threshold: serde_json::json!(10_000_000),
         })
+        .with_jurisdiction_scope(vec!["PK".into()])
         .with_authorization(AuthorizationRequirement::Quorum)
         .with_priority(90),
     );

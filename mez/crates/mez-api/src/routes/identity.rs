@@ -6,9 +6,8 @@
 //! ## Architecture
 //!
 //! These routes extend the generic identity orchestration in `mass_proxy.rs`
-//! with Pakistan GovOS-specific verification flows: CNIC (NADRA) and NTN
-//! (FBR IRIS). Each write operation follows the orchestration pipeline
-//! defined in [`crate::orchestration`]:
+//! with national identity adapter verification flows. Each write operation
+//! follows the orchestration pipeline defined in [`crate::orchestration`]:
 //!
 //! 1. Validate the request (format checks)
 //! 2. Evaluate compliance tensor across identity-relevant domains
@@ -16,14 +15,22 @@
 //! 4. Store attestation via [`crate::orchestration::store_attestation`]
 //! 5. Return enriched response with compliance summary
 //!
-//! ## Integration Points
+//! ## National Identity Adapters
 //!
-//! | Operation | Pakistan GovOS Integration |
-//! |-----------|--------------------------|
-//! | CNIC verify | NADRA (via organization-info or identity-info) |
-//! | NTN verify | FBR IRIS (via organization-info or identity-info) |
-//! | KYC/KYB | consent-info or identity-info |
-//! | Entity identity | Consolidated view across services |
+//! Each jurisdiction implements verification endpoints for its national identity
+//! systems. The pattern is: validate format → evaluate compliance → delegate to
+//! national authority via Mass → store attestation → return enriched response.
+//!
+//! | Jurisdiction | Operation | National System |
+//! |-------------|-----------|-----------------|
+//! | PK | CNIC verify | NADRA |
+//! | PK | NTN verify | FBR IRIS |
+//! | (all) | KYC/KYB | consent-info or identity-info |
+//! | (all) | Entity identity | Consolidated view across services |
+//!
+//! To add a new jurisdiction's identity verification, create similar adapter
+//! endpoints following this pattern (e.g., `/v1/identity/aadhaar/verify` for
+//! India, `/v1/identity/emirates-id/verify` for UAE).
 
 use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, State};
@@ -68,7 +75,7 @@ fn require_mass_client(state: &AppState) -> Result<&mez_mass_client::MassClient,
 // Request / Response types
 // ---------------------------------------------------------------------------
 
-/// Request to verify a CNIC number against NADRA records.
+/// Request to verify a Pakistan CNIC number against NADRA records.
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CnicVerifyRequest {
     /// CNIC number (13 digits, with or without dashes).
@@ -108,7 +115,7 @@ pub struct CnicVerifyResponse {
     pub verified_at: String,
 }
 
-/// Request to verify an NTN against FBR IRIS records.
+/// Request to verify a Pakistan NTN against FBR IRIS records.
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct NtnVerifyRequest {
     /// NTN number (7 digits).
@@ -235,7 +242,10 @@ impl Validate for NtnVerifyRequest {
 // Handlers
 // ---------------------------------------------------------------------------
 
-/// POST /v1/identity/cnic/verify — Verify a CNIC number with KYC compliance.
+/// POST /v1/identity/cnic/verify — Verify a Pakistan CNIC number with KYC compliance.
+///
+/// Pakistan national identity adapter: CNIC (Computerized National Identity Card)
+/// verification via NADRA (National Database and Registration Authority).
 ///
 /// Orchestration flow:
 /// 1. Validate CNIC format (13 digits)
@@ -316,7 +326,10 @@ async fn verify_cnic(
     }))
 }
 
-/// POST /v1/identity/ntn/verify — Verify an NTN number with tax compliance.
+/// POST /v1/identity/ntn/verify — Verify a Pakistan NTN number with tax compliance.
+///
+/// Pakistan national identity adapter: NTN (National Tax Number) verification
+/// via FBR IRIS (Federal Board of Revenue Integrated Revenue Information System).
 ///
 /// Orchestration flow:
 /// 1. Validate NTN format (7 digits)

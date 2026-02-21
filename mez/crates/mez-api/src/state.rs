@@ -654,10 +654,7 @@ impl AppState {
             attestations: Store::new(),
             tax_events: Store::new(),
             watchers: Store::new(),
-            #[cfg(feature = "jurisdiction-pk")]
-            tax_pipeline: Arc::new(Mutex::new(TaxPipeline::pakistan())),
-            #[cfg(not(feature = "jurisdiction-pk"))]
-            tax_pipeline: Arc::new(Mutex::new(TaxPipeline::default())),
+            tax_pipeline: Arc::new(Mutex::new(Self::init_tax_pipeline())),
             receipt_chains: Arc::new(RwLock::new(HashMap::new())),
             peer_registry: Arc::new(RwLock::new(PeerRegistry::new())),
             corridor_genesis_roots: Arc::new(RwLock::new(HashMap::new())),
@@ -686,6 +683,84 @@ impl AppState {
             mass_shareholders_by_org: Arc::new(RwLock::new(HashMap::new())),
             mass_auth_token,
         })
+    }
+
+    /// Initialize the tax pipeline by loading withholding rules for all
+    /// available jurisdictions.
+    ///
+    /// Loads rules from two sources:
+    /// 1. Compiled reference rules (Pakistan baseline from `pakistan_standard_rules()`)
+    /// 2. JSON data files from `modules/tax/withholding-rules/jurisdictions/*/withholding-rules.json`
+    ///
+    /// JSON files take precedence: if a jurisdiction has both compiled and
+    /// file-based rules, the file-based rules are used.
+    fn init_tax_pipeline() -> TaxPipeline {
+        use mez_agentic::tax::WithholdingEngine;
+
+        let mut engine = WithholdingEngine::new();
+
+        // Load compiled reference rules as baseline.
+        engine.load_rules("PK", mez_agentic::tax::pakistan_standard_rules());
+
+        // Attempt to load rules from data files. Each subdirectory under the
+        // withholding-rules/jurisdictions/ path is treated as a jurisdiction ID.
+        let rules_base = std::path::Path::new("modules/tax/withholding-rules/jurisdictions");
+        if rules_base.is_dir() {
+            if let Ok(entries) = std::fs::read_dir(rules_base) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if !path.is_dir() {
+                        continue;
+                    }
+
+                    let jurisdiction_id = match path.file_name().and_then(|n| n.to_str()) {
+                        Some(id) => id.to_uppercase(),
+                        None => continue,
+                    };
+
+                    let rules_file = path.join("withholding-rules.json");
+                    if !rules_file.exists() {
+                        continue;
+                    }
+
+                    match std::fs::read_to_string(&rules_file) {
+                        Ok(json) => match WithholdingEngine::parse_rules_json(&json) {
+                            Ok(rules) => {
+                                let count = rules.len();
+                                engine.load_rules(&jurisdiction_id, rules);
+                                tracing::info!(
+                                    jurisdiction = %jurisdiction_id,
+                                    rule_count = count,
+                                    path = %rules_file.display(),
+                                    "loaded withholding rules from data file"
+                                );
+                            }
+                            Err(e) => {
+                                tracing::warn!(
+                                    jurisdiction = %jurisdiction_id,
+                                    path = %rules_file.display(),
+                                    error = %e,
+                                    "failed to parse withholding rules JSON — using compiled rules if available"
+                                );
+                            }
+                        },
+                        Err(e) => {
+                            tracing::warn!(
+                                jurisdiction = %jurisdiction_id,
+                                path = %rules_file.display(),
+                                error = %e,
+                                "failed to read withholding rules file"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        let total = engine.rule_count();
+        tracing::info!(total_rules = total, "tax pipeline initialized");
+
+        TaxPipeline::new(engine)
     }
 
     /// Hydrate in-memory stores from the database.

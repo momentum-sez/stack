@@ -242,7 +242,7 @@ fn pakistan_standard_rules_cover_major_sections() {
 /// PKR 100,000 gross * 4.5% = PKR 4,500 withholding, PKR 95,500 net.
 #[test]
 fn withholding_goods_filer_section_153() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     let entity_id = Uuid::new_v4();
     let event = TaxEvent::new(
@@ -280,7 +280,7 @@ fn withholding_goods_filer_section_153() {
 /// tax registration on the Active Taxpayer List (ATL).
 #[test]
 fn withholding_goods_nonfiler_double_rate() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     let event = TaxEvent::new(
         Uuid::new_v4(),
@@ -324,7 +324,7 @@ fn withholding_goods_nonfiler_double_rate() {
 /// filer at 8.0%, non-filer at 16.0%. Both adjustable (not final tax).
 #[test]
 fn withholding_services_filer_vs_nonfiler() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     let filer_event = TaxEvent::new(
         Uuid::new_v4(),
@@ -375,7 +375,7 @@ fn withholding_services_filer_vs_nonfiler() {
 /// filer at 15.0%, non-filer at 30.0%. Both are final tax (no further liability).
 #[test]
 fn withholding_profit_on_debt_is_final_tax() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     let filer_event = TaxEvent::new(
         Uuid::new_v4(),
@@ -420,7 +420,7 @@ fn withholding_profit_on_debt_is_final_tax() {
 /// filer at 15.0%, non-filer at 30.0%. Both are final tax.
 #[test]
 fn withholding_dividend_rates_and_final_tax() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     let filer_event = TaxEvent::new(
         Uuid::new_v4(),
@@ -457,7 +457,7 @@ fn withholding_dividend_rates_and_final_tax() {
 /// 20.0% for all filer statuses (residents paying non-residents). Final tax.
 #[test]
 fn withholding_crossborder_uniform_rate() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     for filer_status in &[
         FilerStatus::Filer,
@@ -500,7 +500,7 @@ fn withholding_crossborder_uniform_rate() {
 /// threshold produce zero withholding.
 #[test]
 fn withholding_salary_threshold_filtering() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     // Below threshold: PKR 40,000 (below 50,000/month threshold per S149).
     let below_event = TaxEvent::new(
@@ -547,7 +547,7 @@ fn withholding_salary_threshold_filtering() {
 /// filer at 15%, non-filer at 30%. Both are adjustable (not final tax).
 #[test]
 fn withholding_rent_adjustable_not_final() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     let filer_event = TaxEvent::new(
         Uuid::new_v4(),
@@ -592,7 +592,7 @@ fn withholding_rent_adjustable_not_final() {
 /// all filer statuses. Sales tax is final (no adjustability).
 #[test]
 fn withholding_sales_tax_standard_rate() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     // Supply of goods.
     let goods_event = TaxEvent::new(
@@ -640,7 +640,7 @@ fn withholding_sales_tax_standard_rate() {
 /// for the event's jurisdiction. This is correct behavior — not an error.
 #[test]
 fn withholding_unknown_jurisdiction_yields_zero() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     let event = TaxEvent::new(
         Uuid::new_v4(),
@@ -663,7 +663,7 @@ fn withholding_unknown_jurisdiction_yields_zero() {
 /// (graceful degradation, not a panic).
 #[test]
 fn withholding_unparseable_amount_yields_zero() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     let event = TaxEvent::new(
         Uuid::new_v4(),
@@ -687,7 +687,7 @@ fn withholding_unparseable_amount_yields_zero() {
 /// reproducibility and is the tax pipeline analog of Theorem 17.1.
 #[test]
 fn withholding_computation_is_deterministic() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
     let entity_id = Uuid::new_v4();
 
     let event = TaxEvent::new(
@@ -733,7 +733,7 @@ fn withholding_computation_is_deterministic() {
 /// all Pakistan rules where both appear in applicable_filer_status.
 #[test]
 fn late_filer_matches_nonfiler_rules() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     let late_event = TaxEvent::new(
         Uuid::new_v4(),
@@ -957,7 +957,7 @@ fn multiple_matching_rules_accumulate_sorted() {
 /// Validates small decimal PKR amounts are handled with correct precision.
 #[test]
 fn withholding_small_decimal_amount() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     let event = TaxEvent::new(
         Uuid::new_v4(),
@@ -994,7 +994,7 @@ fn withholding_small_decimal_amount() {
 #[test]
 fn report_aggregates_multiple_event_types() {
     let entity_id = Uuid::new_v4();
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     // Event 1: Payment for goods (S153, 4.5% filer)
     let event1 = TaxEvent::new(
@@ -1083,7 +1083,7 @@ fn report_aggregates_multiple_event_types() {
 #[test]
 fn report_aggregates_same_section_events() {
     let entity_id = Uuid::new_v4();
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     // Two separate goods payments, both under S153(1)(a).
     let event1 = TaxEvent::new(
@@ -1176,7 +1176,7 @@ fn report_empty_results_produces_zero_report() {
 #[test]
 fn report_line_item_totals_sum_to_report_totals() {
     let entity_id = Uuid::new_v4();
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     let events = vec![
         TaxEvent::new(
@@ -1253,12 +1253,12 @@ fn report_line_item_totals_sum_to_report_totals() {
 // Full Pipeline (TaxPipeline orchestrator)
 // ===========================================================================
 
-/// Validates the full pipeline orchestration: TaxPipeline::pakistan() creates
+/// Validates the full pipeline orchestration: TaxPipeline::for_jurisdiction("PK", pakistan_standard_rules()) creates
 /// a pipeline with Pakistan rules pre-loaded and process_event routes
 /// through the withholding engine correctly.
 #[test]
 fn pipeline_pakistan_full_flow() {
-    let pipeline = TaxPipeline::pakistan();
+    let pipeline = TaxPipeline::for_jurisdiction("PK", pakistan_standard_rules());
     let entity_id = Uuid::new_v4();
 
     let event = TaxEvent::new(
@@ -1330,7 +1330,7 @@ fn pipeline_default_no_rules_yields_empty() {
 /// goods payments, service payments, dividends, rent, and supply of goods.
 #[test]
 fn end_to_end_multi_event_pipeline_to_report() {
-    let pipeline = TaxPipeline::pakistan();
+    let pipeline = TaxPipeline::for_jurisdiction("PK", pakistan_standard_rules());
     let entity_id = Uuid::new_v4();
 
     // Simulate a month of economic activity for a single entity.
@@ -1545,7 +1545,7 @@ fn amount_parse_format_roundtrip() {
 /// event types and filer statuses.
 #[test]
 fn withholding_gross_equals_withholding_plus_net() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     let test_cases: Vec<(TaxEventType, FilerStatus, &str)> = vec![
         (TaxEventType::PaymentForGoods, FilerStatus::Filer, "100000"),
@@ -1838,7 +1838,7 @@ fn tax_event_serde_roundtrip_preserves_all_fields() {
 /// are serialized in API responses and stored for audit.
 #[test]
 fn withholding_result_serde_roundtrip() {
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     let event = TaxEvent::new(
         Uuid::new_v4(),
@@ -1872,7 +1872,7 @@ fn withholding_result_serde_roundtrip() {
 #[test]
 fn tax_report_serde_roundtrip() {
     let entity_id = Uuid::new_v4();
-    let engine = WithholdingEngine::with_pakistan_rules();
+    let engine = WithholdingEngine::with_rules("PK", pakistan_standard_rules());
 
     let event = TaxEvent::new(
         entity_id,

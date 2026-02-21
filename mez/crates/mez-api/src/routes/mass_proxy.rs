@@ -1455,12 +1455,23 @@ async fn append_audit(
     metadata: serde_json::Value,
 ) {
     if let Some(ref pool) = state.db_pool {
-        let resource_id = envelope
+        let resource_id = match envelope
             .mass_response
             .get("id")
             .and_then(|v| v.as_str())
             .and_then(|s| s.parse::<uuid::Uuid>().ok())
-            .unwrap_or_else(uuid::Uuid::new_v4);
+        {
+            Some(id) => id,
+            None => {
+                let fallback = uuid::Uuid::new_v4();
+                tracing::warn!(
+                    event_type,
+                    fallback_id = %fallback,
+                    "Mass API response missing parseable 'id' for audit — using generated fallback"
+                );
+                fallback
+            }
+        };
 
         let event = crate::db::audit::AuditEvent {
             event_type: event_type.to_string(),

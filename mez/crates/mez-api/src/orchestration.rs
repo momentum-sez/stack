@@ -611,7 +611,15 @@ fn issue_and_store(
         }
     };
 
-    let entity_uuid = Uuid::parse_str(entity_reference).unwrap_or_else(|_| Uuid::new_v4());
+    let entity_uuid = Uuid::parse_str(entity_reference).unwrap_or_else(|_| {
+        let fallback = Uuid::new_v4();
+        tracing::warn!(
+            entity_reference,
+            fallback_id = %fallback,
+            "entity reference is not a valid UUID — using generated fallback for attestation"
+        );
+        fallback
+    });
 
     let attestation_id = store_attestation(
         state,

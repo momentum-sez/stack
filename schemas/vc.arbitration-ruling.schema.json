@@ -116,7 +116,8 @@
           "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json",
           "description": "Reference to the full PDF award document"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "proof": {
       "description": "Institution's signature on the ruling",
@@ -129,7 +130,7 @@
       ]
     }
   },
-  "additionalProperties": true,
+  "additionalProperties": false,
   "$defs": {
     "arbitrator": {
       "type": "object",

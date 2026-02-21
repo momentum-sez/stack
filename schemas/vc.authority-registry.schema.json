@@ -107,11 +107,11 @@
                 "items": {"$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json"}
               }
             },
-            "additionalProperties": true
+            "additionalProperties": false
           }
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "proof": {
       "oneOf": [
@@ -120,5 +120,5 @@
       ]
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

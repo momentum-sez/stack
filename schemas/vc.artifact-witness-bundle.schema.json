@@ -84,7 +84,7 @@
           "type": "string"
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "proof": {
       "oneOf": [
@@ -97,5 +97,5 @@
       ]
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

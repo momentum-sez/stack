@@ -249,7 +249,7 @@
           ]
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "proof": {
       "description": "DataIntegrityProof (JCS + Ed25519) or array of proofs.",
@@ -266,5 +266,5 @@
       ]
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

@@ -87,7 +87,7 @@
                     "type": "string"
                   }
                 },
-                "additionalProperties": true
+                "additionalProperties": false
               }
             },
             "authority_registry_ref": {
@@ -104,7 +104,7 @@
               "additionalProperties": true
             }
           },
-          "additionalProperties": true
+          "additionalProperties": false
         }
       }
     }

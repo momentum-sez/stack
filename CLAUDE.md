@@ -260,7 +260,7 @@ All P0 findings from the institutional readiness audit have been addressed excep
 | P0-ANCHOR-001 | Anchor target is mock | P0 | Deferred Phase 4 |
 | P0-IDENTITY-001 | No dedicated Mass identity service | P0 | Mass-side dependency |
 | P1-SCHEMA-002 | ~~Schema URI inconsistency~~ **RESOLVED** — all `$ref` values use full `schemas.momentum-ez.org` URIs | P1 | protocol |
-| P1-SCHEMA-003 | additionalProperties — security-critical schemas locked; non-critical schemas remain extensible | P1 | protocol |
+| P1-SCHEMA-003 | ~~additionalProperties~~ **RESOLVED** — all security-critical schemas (trust-anchors, key-rotation, VC attestations, receipts, evidence packages, proof bindings) locked with `additionalProperties: false`; non-critical schemas remain extensible | P1 | protocol |
 | P1-NAMING-001 | Terminology glossary needed | P1 | protocol |
 
 ### Deployment Phase Gates

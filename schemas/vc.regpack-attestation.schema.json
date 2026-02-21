@@ -42,7 +42,8 @@
           "properties": {
             "artifact_type": { "const": "regpack" },
             "digest_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
-          }
+          },
+          "additionalProperties": false
         },
         "jurisdiction_id": {
           "type": "string"
@@ -79,13 +80,15 @@
           "properties": {
             "valid_until": { "type": "string", "format": "date-time" },
             "refresh_interval_hours": { "type": "integer" }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "proof": {
       "description": "DataIntegrityProof for the credential."
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

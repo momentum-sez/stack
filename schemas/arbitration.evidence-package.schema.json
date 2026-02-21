@@ -51,9 +51,11 @@
         "created": { "type": "string", "format": "date-time" },
         "verificationMethod": { "type": "string" },
         "proofValue": { "type": "string" }
-      }
+      },
+      "additionalProperties": false
     }
   },
+  "additionalProperties": false,
   "$defs": {
     "EvidenceItem": {
       "type": "object",
@@ -96,7 +98,8 @@
           "$ref": "#/$defs/AuthenticityAttestation",
           "description": "Attestation proving authenticity of the evidence"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "AuthenticityAttestation": {
       "type": "object",
@@ -117,7 +120,8 @@
           "$ref": "https://schemas.momentum-ez.org/mez/artifact-ref.schema.json",
           "description": "Reference to the proof artifact"
         }
-      }
+      },
+      "additionalProperties": false
     }
   }
 }

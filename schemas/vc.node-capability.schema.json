@@ -82,7 +82,7 @@
           "description": "Optional evidence blobs/refs (e.g., remote attestation reports)."
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "proof": {
       "type": "object",
@@ -111,8 +111,8 @@
           "type": "string"
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

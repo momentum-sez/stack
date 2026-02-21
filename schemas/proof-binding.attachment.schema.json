@@ -22,7 +22,7 @@
         "artifact_type",
         "digest_sha256"
       ],
-      "additionalProperties": true
+      "additionalProperties": false
     }
   ]
 }

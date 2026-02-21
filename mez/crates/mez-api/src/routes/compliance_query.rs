@@ -21,10 +21,11 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use mez_core::ComplianceDomain;
-use mez_tensor::{ComplianceState, ComplianceTensor, DefaultJurisdiction};
+use mez_compliance::RegpackJurisdiction;
+use mez_core::{ComplianceDomain, JurisdictionId};
+use mez_pack::regpack;
+use mez_tensor::{ComplianceState, ComplianceTensor, JurisdictionConfig};
 
-use crate::compliance::build_tensor;
 use crate::error::AppError;
 use crate::state::AppState;
 
@@ -162,7 +163,7 @@ async fn query_jurisdiction(
     State(state): State<AppState>,
     Path(jurisdiction_id): Path<String>,
 ) -> Result<Json<JurisdictionComplianceResponse>, AppError> {
-    let tensor = build_tensor(&jurisdiction_id);
+    let tensor = build_jurisdiction_tensor(&jurisdiction_id);
     let response = evaluate_tensor(&jurisdiction_id, &tensor, &state);
     Ok(Json(response))
 }
@@ -191,8 +192,8 @@ async fn query_corridor(
         .get(&corridor_id)
         .ok_or_else(|| AppError::NotFound(format!("corridor {corridor_id} not found")))?;
 
-    let tensor_a = build_tensor(&corridor.jurisdiction_a);
-    let tensor_b = build_tensor(&corridor.jurisdiction_b);
+    let tensor_a = build_jurisdiction_tensor(&corridor.jurisdiction_a);
+    let tensor_b = build_jurisdiction_tensor(&corridor.jurisdiction_b);
 
     let eval_a = evaluate_tensor(&corridor.jurisdiction_a, &tensor_a, &state);
     let eval_b = evaluate_tensor(&corridor.jurisdiction_b, &tensor_b, &state);
@@ -235,10 +236,80 @@ async fn query_corridor(
     Ok(Json(response))
 }
 
+/// Build a compliance tensor scoped to the applicable domains for a jurisdiction.
+///
+/// If the jurisdiction has regpack content (domain declarations), the tensor
+/// is scoped to only those domains — non-applicable domains are initialized
+/// as `NotApplicable`. If no regpack content exists, all 20 domains are
+/// evaluated (fail-closed: every domain starts as `Pending`).
+fn build_jurisdiction_tensor(jurisdiction_id: &str) -> ComplianceTensor<RegpackJurisdiction> {
+    let jid = JurisdictionId::new(jurisdiction_id).unwrap_or_else(|_| {
+        JurisdictionId::new("UNKNOWN").expect("BUG: hardcoded 'UNKNOWN' rejected")
+    });
+
+    // Look up regpack domain declarations for this jurisdiction.
+    // The regpack registry tells us which compliance domains are applicable.
+    let domain_names = jurisdiction_applicable_domains(jurisdiction_id);
+    let jurisdiction = RegpackJurisdiction::from_domain_names(jid, &domain_names);
+    ComplianceTensor::new(jurisdiction)
+}
+
+/// Resolve the applicable compliance domains for a jurisdiction.
+///
+/// Uses the regpack registry to determine which domains have regulatory
+/// content for this jurisdiction. Falls back to all 20 domains if the
+/// jurisdiction is not in the registry (fail-closed: every domain is
+/// evaluated, nothing is assumed not-applicable).
+fn jurisdiction_applicable_domains(jurisdiction_id: &str) -> Vec<String> {
+    // Map regpack domain categories to specific ComplianceDomain variants.
+    // The regpack registry uses broad categories ("financial", "sanctions");
+    // we expand these to the specific domains they cover.
+    let regpack_domains = regpack::domains_for_jurisdiction(jurisdiction_id);
+
+    match regpack_domains {
+        Some(domains) => {
+            let mut applicable = Vec::new();
+            for domain_category in domains {
+                match domain_category {
+                    "financial" => {
+                        applicable.extend_from_slice(&[
+                            "aml".to_string(),
+                            "kyc".to_string(),
+                            "tax".to_string(),
+                            "corporate".to_string(),
+                            "banking".to_string(),
+                            "payments".to_string(),
+                            "licensing".to_string(),
+                            "securities".to_string(),
+                        ]);
+                    }
+                    "sanctions" => {
+                        applicable.push("sanctions".to_string());
+                    }
+                    other => {
+                        // Direct domain name (e.g., "aml", "kyc").
+                        applicable.push(other.to_string());
+                    }
+                }
+            }
+            applicable.sort();
+            applicable.dedup();
+            applicable
+        }
+        None => {
+            // No regpack content — evaluate all 20 domains (fail-closed).
+            ComplianceDomain::all()
+                .iter()
+                .map(|d| d.as_str().to_string())
+                .collect()
+        }
+    }
+}
+
 /// Evaluate a tensor and produce the response structure.
-fn evaluate_tensor(
+fn evaluate_tensor<J: JurisdictionConfig>(
     jurisdiction_id: &str,
-    tensor: &ComplianceTensor<DefaultJurisdiction>,
+    tensor: &ComplianceTensor<J>,
     _state: &AppState,
 ) -> JurisdictionComplianceResponse {
     let mut domains = Vec::new();
@@ -397,11 +468,55 @@ mod tests {
         assert_eq!(result.jurisdiction_id, "pk");
         assert_eq!(result.total_domains, 20);
         assert_eq!(result.domains.len(), 20);
-        // New tensor starts with all domains Pending.
-        assert_eq!(result.blocking_count, 20);
-        assert_eq!(result.passing_count, 0);
+        // Pakistan has regpack content for "financial" + "sanctions" domains,
+        // which expands to 9 applicable domains. The remaining 11 are NotApplicable.
+        assert!(result.passing_count > 0, "non-applicable domains should be passing");
+        assert!(result.blocking_count > 0, "applicable domains should be pending/blocking");
+        assert_eq!(
+            result.passing_count + result.blocking_count,
+            20,
+            "passing + blocking must equal 20"
+        );
+        // Overall status is Pending (not all domains pass, but none are NonCompliant).
         assert_eq!(result.overall_status, "pending");
         assert!(result.tensor_commitment.is_some());
+    }
+
+    #[tokio::test]
+    async fn query_unknown_jurisdiction_evaluates_all_20_domains() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("GET")
+            .uri("/v1/compliance/zz-unknown")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let result: JurisdictionComplianceResponse = body_json(resp).await;
+        assert_eq!(result.jurisdiction_id, "zz-unknown");
+        // Unknown jurisdictions: all 20 domains evaluated (fail-closed).
+        assert_eq!(result.blocking_count, 20);
+        assert_eq!(result.passing_count, 0);
+    }
+
+    #[test]
+    fn jurisdiction_applicable_domains_known_jurisdiction() {
+        let domains = jurisdiction_applicable_domains("pk");
+        // Pakistan has "financial" + "sanctions" regpack content.
+        // "financial" expands to: aml, banking, corporate, kyc, licensing, payments, securities, tax
+        // "sanctions" adds: sanctions
+        assert!(domains.contains(&"aml".to_string()));
+        assert!(domains.contains(&"sanctions".to_string()));
+        assert!(domains.contains(&"banking".to_string()));
+        assert!(domains.len() == 9, "pk should have 9 applicable domains, got {}", domains.len());
+    }
+
+    #[test]
+    fn jurisdiction_applicable_domains_unknown_jurisdiction() {
+        let domains = jurisdiction_applicable_domains("zz-nonexistent");
+        assert_eq!(domains.len(), 20, "unknown jurisdiction should have all 20 domains");
     }
 
     #[tokio::test]
@@ -438,8 +553,13 @@ mod tests {
         assert_eq!(result.corridor_id, record.id);
         assert_eq!(result.jurisdiction_a.jurisdiction_id, "pk");
         assert_eq!(result.jurisdiction_b.jurisdiction_id, "ae");
-        assert!(!result.corridor_compliant, "new corridor should not be compliant (all domains pending)");
-        assert_eq!(result.cross_blocking_domains.len(), 20);
+        assert!(!result.corridor_compliant, "new corridor should not be compliant (applicable domains pending)");
+        // Both pk and ae have regpack content, so only applicable domains are blocking.
+        // The cross_blocking_domains list contains domains that are blocking in EITHER jurisdiction.
+        assert!(
+            !result.cross_blocking_domains.is_empty(),
+            "corridor should have blocking domains"
+        );
     }
 
     #[tokio::test]

@@ -284,12 +284,19 @@ impl SmartAssetRegistryVc {
     /// Wrap an existing VC, validating that its credential subject
     /// deserializes as a valid [`SmartAssetRegistrySubject`].
     pub fn from_vc(vc: VerifiableCredential) -> Result<Self, VcError> {
-        let _subject: SmartAssetRegistrySubject =
+        let subject: SmartAssetRegistrySubject =
             serde_json::from_value(vc.credential_subject.clone()).map_err(|e| {
                 VcError::SchemaValidation(format!(
                     "credentialSubject is not a valid SmartAssetRegistrySubject: {e}"
                 ))
             })?;
+        // P2-SA-002: Validate asset_id format — same check as new().
+        if !Self::is_valid_sha256_hex(&subject.asset_id) {
+            return Err(VcError::SchemaValidation(format!(
+                "asset_id must be 64 lowercase hex chars, got: {:?}",
+                subject.asset_id
+            )));
+        }
         Ok(Self { vc })
     }
 

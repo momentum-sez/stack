@@ -312,8 +312,12 @@ impl EscrowAccount {
                 status: self.status.as_str().to_string(),
             });
         }
-        self.deposited_amount = amount.clone();
-        self.held_amount = amount.clone();
+        // Store the canonicalized integer string, not the original input.
+        // This ensures consistency with partial_release() and full_release()
+        // which also use parse_amount() on held_amount.
+        let canonical_amount = format!("{parsed}");
+        self.deposited_amount = canonical_amount.clone();
+        self.held_amount = canonical_amount;
         self.status = EscrowStatus::Funded;
         self.transactions.push(EscrowTransaction {
             transaction_type: TransactionType::Deposit,

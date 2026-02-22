@@ -95,7 +95,7 @@ impl AwsKmsEnvelopeKeyProvider {
 
         let seed_bytes = plaintext.as_ref();
         if seed_bytes.len() != 32 {
-            return Err(CryptoError::InvalidPublicKey(format!(
+            return Err(CryptoError::InvalidSigningKey(format!(
                 "KMS decrypted seed is {} bytes, expected 32",
                 seed_bytes.len()
             )));
@@ -130,7 +130,7 @@ impl AwsKmsEnvelopeKeyProvider {
         // Try base64 decoding. We use a simple implementation to avoid
         // adding a base64 crate dependency.
         let encrypted = base64_decode(base64_ciphertext).map_err(|e| {
-            CryptoError::HexDecode(format!("base64 decode failed: {e}"))
+            CryptoError::Base64Decode(format!("base64 decode failed: {e}"))
         })?;
 
         Self::from_encrypted_seed(&encrypted, kms_key_id, region).await

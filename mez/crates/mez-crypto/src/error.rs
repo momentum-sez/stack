@@ -20,9 +20,17 @@ pub enum CryptoError {
     #[error("invalid Ed25519 public key: {0}")]
     InvalidPublicKey(String),
 
+    /// Invalid Ed25519 signing key / seed material.
+    #[error("invalid Ed25519 signing key: {0}")]
+    InvalidSigningKey(String),
+
     /// Hex decoding error.
     #[error("hex decode error: {0}")]
     HexDecode(String),
+
+    /// Base64 decoding error.
+    #[error("base64 decode error: {0}")]
+    Base64Decode(String),
 
     /// MMR operation error.
     #[error("MMR error: {0}")]

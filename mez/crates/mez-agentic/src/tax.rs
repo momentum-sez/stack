@@ -621,7 +621,8 @@ impl WithholdingEngine {
         // Withholding = gross * rate / 10000 (basis points).
         // Round down (truncate) — withholding should never exceed the rate.
         // Use i128 intermediate to avoid overflow on large gross * rate products.
-        let withholding_cents = ((gross_cents as i128 * rate_bps as i128) / 10000) as i64;
+        let withholding_i128 = (gross_cents as i128 * rate_bps as i128) / 10000;
+        let withholding_cents = withholding_i128.clamp(i64::MIN as i128, i64::MAX as i128) as i64;
         let net_cents = gross_cents - withholding_cents;
 
         Some(WithholdingResult {

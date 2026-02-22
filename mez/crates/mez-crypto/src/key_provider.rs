@@ -122,7 +122,7 @@ impl EnvKeyProvider {
 
         let bytes = crate::ed25519::hex_to_bytes(&hex)?;
         let seed: [u8; 32] = bytes.try_into().map_err(|_| {
-            CryptoError::InvalidPublicKey(format!(
+            CryptoError::InvalidSigningKey(format!(
                 "expected 32 bytes (64 hex chars) in {var_name}, got {} bytes",
                 hex.len() / 2
             ))

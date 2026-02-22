@@ -13,6 +13,8 @@ use std::collections::hash_map::Entry;
 
 use axum::extract::{Path, State};
 use axum::extract::rejection::JsonRejection;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
@@ -186,7 +188,7 @@ async fn get_peer(
     path = "/v1/corridors/peers/propose",
     request_body = CorridorProposal,
     responses(
-        (status = 200, description = "Proposal received", body = ProposalResponse),
+        (status = 201, description = "Proposal received", body = ProposalResponse),
         (status = 422, description = "Invalid proposal"),
     ),
     tag = "corridor-peers"
@@ -194,7 +196,7 @@ async fn get_peer(
 async fn propose_corridor(
     State(state): State<AppState>,
     body: Result<Json<CorridorProposal>, JsonRejection>,
-) -> Result<Json<ProposalResponse>, AppError> {
+) -> Result<impl IntoResponse, AppError> {
     let proposal = extract_json(body)?;
 
     // Structural validation.
@@ -225,14 +227,14 @@ async fn propose_corridor(
         "Corridor proposal received from peer"
     );
 
-    Ok(Json(ProposalResponse {
+    Ok((StatusCode::CREATED, Json(ProposalResponse {
         received: true,
         status: "proposing".to_string(),
         message: Some(format!(
             "Proposal for corridor {} received. Awaiting acceptance.",
             proposal.corridor_id
         )),
-    }))
+    })))
 }
 
 /// Receive a corridor acceptance from a peer zone.
@@ -244,7 +246,7 @@ async fn propose_corridor(
     path = "/v1/corridors/peers/accept",
     request_body = CorridorAcceptance,
     responses(
-        (status = 200, description = "Acceptance processed", body = AcceptanceResponse),
+        (status = 201, description = "Acceptance processed", body = AcceptanceResponse),
         (status = 404, description = "Peer not found"),
         (status = 422, description = "Invalid acceptance"),
     ),
@@ -253,13 +255,13 @@ async fn propose_corridor(
 async fn accept_corridor(
     State(state): State<AppState>,
     body: Result<Json<CorridorAcceptance>, JsonRejection>,
-) -> Result<Json<AcceptanceResponse>, AppError> {
+) -> Result<impl IntoResponse, AppError> {
     let acceptance = extract_json(body)?;
 
-    if acceptance.corridor_id.is_empty() {
+    if acceptance.corridor_id.trim().is_empty() {
         return Err(AppError::Validation("empty corridor_id".to_string()));
     }
-    if acceptance.responder_zone_id.is_empty() {
+    if acceptance.responder_zone_id.trim().is_empty() {
         return Err(AppError::Validation(
             "empty responder_zone_id".to_string(),
         ));
@@ -310,11 +312,11 @@ async fn accept_corridor(
         "Corridor acceptance received — peer activated"
     );
 
-    Ok(Json(AcceptanceResponse {
+    Ok((StatusCode::CREATED, Json(AcceptanceResponse {
         received: true,
         corridor_id: acceptance.corridor_id,
         peer_status: "active".to_string(),
-    }))
+    })))
 }
 
 /// Receive an inbound receipt from a peer zone.
@@ -468,17 +470,17 @@ async fn receive_attestation(
 ) -> Result<Json<serde_json::Value>, AppError> {
     let attestation = extract_json(body)?;
 
-    if attestation.corridor_id.is_empty() {
+    if attestation.corridor_id.trim().is_empty() {
         return Err(AppError::Validation(
             "empty corridor_id".to_string(),
         ));
     }
-    if attestation.watcher_id.is_empty() {
+    if attestation.watcher_id.trim().is_empty() {
         return Err(AppError::Validation(
             "empty watcher_id".to_string(),
         ));
     }
-    if attestation.signature.is_empty() {
+    if attestation.signature.trim().is_empty() {
         return Err(AppError::Validation(
             "empty signature".to_string(),
         ));
@@ -671,7 +673,7 @@ mod tests {
             .body(Body::from(serde_json::to_vec(&proposal).unwrap()))
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::CREATED);
 
         let body = axum::body::to_bytes(resp.into_body(), usize::MAX)
             .await
@@ -763,7 +765,7 @@ mod tests {
             .body(Body::from(serde_json::to_vec(&acceptance).unwrap()))
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::CREATED);
 
         // Verify peer was registered.
         let registry = state.peer_registry.read();

@@ -177,6 +177,11 @@ pub fn merkle_root(commitments: &[TensorCommitment]) -> Option<String> {
     while leaves.len() > 1 {
         let mut next_level = Vec::with_capacity(leaves.len() / 2);
         for chunk in leaves.chunks(2) {
+            // Defensive: padding guarantees chunks of 2, but guard against logic errors.
+            if chunk.len() < 2 {
+                tracing::error!("merkle_root: chunk has fewer than 2 elements after padding");
+                return None;
+            }
             // Decode hex digests to raw bytes for byte-level concatenation.
             let left = match hex_to_bytes(&chunk[0]) {
                 Some(b) => b,

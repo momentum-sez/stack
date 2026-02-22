@@ -306,21 +306,26 @@ struct OrgListQuery {
 async fn org_list(
     State(state): State<AppState>,
     Query(query): Query<OrgListQuery>,
-) -> Json<Value> {
+) -> Result<Json<Value>, (StatusCode, String)> {
     let all = state.mass_organizations.list();
     let results: Vec<Value> = match query.ids {
         Some(ids_str) => {
             let ids: Vec<Uuid> = ids_str
                 .split(',')
-                .filter_map(|s| s.trim().parse().ok())
-                .collect();
+                .map(|s| {
+                    let trimmed = s.trim();
+                    trimmed.parse::<Uuid>().map_err(|_| {
+                        (StatusCode::UNPROCESSABLE_ENTITY, format!("invalid UUID in ids parameter: {trimmed:?}"))
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?;
             ids.iter()
                 .filter_map(|id| state.mass_organizations.get(id))
                 .collect()
         }
         None => all,
     };
-    Json(json!(results))
+    Ok(Json(json!(results)))
 }
 
 async fn org_search(

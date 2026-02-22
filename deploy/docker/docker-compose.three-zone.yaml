@@ -53,7 +53,7 @@ services:
       MEZ_PROFILE: ${ZONE_A_PROFILE:-sovereign-govos-pk}
       MEZ_HOST: "0.0.0.0"
       MEZ_PORT: "8080"
-      MEZ_LOG_LEVEL: debug
+      MEZ_LOG_LEVEL: ${MEZ_LOG_LEVEL:-info}
       AUTH_TOKEN: ${ZONE_A_AUTH_TOKEN:?ZONE_A_AUTH_TOKEN must be set}
       DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-a:5432/mez"
       MEZ_WATCHER_ID: watcher-a-001
@@ -110,7 +110,7 @@ services:
       MEZ_PROFILE: ${ZONE_B_PROFILE:-sovereign-govos-ae}
       MEZ_HOST: "0.0.0.0"
       MEZ_PORT: "8080"
-      MEZ_LOG_LEVEL: debug
+      MEZ_LOG_LEVEL: ${MEZ_LOG_LEVEL:-info}
       AUTH_TOKEN: ${ZONE_B_AUTH_TOKEN:?ZONE_B_AUTH_TOKEN must be set}
       DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-b:5432/mez"
       MEZ_WATCHER_ID: watcher-b-001
@@ -167,7 +167,7 @@ services:
       MEZ_PROFILE: ${ZONE_C_PROFILE:-sovereign-govos-sg}
       MEZ_HOST: "0.0.0.0"
       MEZ_PORT: "8080"
-      MEZ_LOG_LEVEL: debug
+      MEZ_LOG_LEVEL: ${MEZ_LOG_LEVEL:-info}
       AUTH_TOKEN: ${ZONE_C_AUTH_TOKEN:?ZONE_C_AUTH_TOKEN must be set}
       DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-c:5432/mez"
       MEZ_WATCHER_ID: watcher-c-001

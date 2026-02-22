@@ -103,7 +103,17 @@ pub async fn list(
     .fetch_all(pool)
     .await?;
 
-    Ok(rows.into_iter().filter_map(|r| r.into_record()).collect())
+    let mut records = Vec::with_capacity(rows.len());
+    for row in rows {
+        match row.into_record() {
+            Some(record) => records.push(record),
+            None => {
+                // into_record() already logs a warning; escalate to error for visibility
+                tracing::error!("skipping smart asset row with invalid asset_type during list query");
+            }
+        }
+    }
+    Ok(records)
 }
 
 /// Load all smart assets from the database into the in-memory store on startup.
@@ -116,7 +126,16 @@ pub async fn load_all(pool: &PgPool) -> Result<Vec<SmartAssetRecord>, sqlx::Erro
     .fetch_all(pool)
     .await?;
 
-    Ok(rows.into_iter().filter_map(|r| r.into_record()).collect())
+    let mut records = Vec::with_capacity(rows.len());
+    for row in rows {
+        match row.into_record() {
+            Some(record) => records.push(record),
+            None => {
+                tracing::error!("skipping smart asset row with invalid asset_type during load_all");
+            }
+        }
+    }
+    Ok(records)
 }
 
 fn compliance_status_to_str(status: AssetComplianceStatus) -> &'static str {

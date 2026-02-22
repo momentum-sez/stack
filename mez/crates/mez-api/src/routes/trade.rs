@@ -178,7 +178,7 @@ async fn create_trade_flow(
         )
         .await
         {
-            tracing::warn!(error = %e, flow_id = %flow_id, "failed to append audit event for trade flow creation");
+            tracing::error!(error = %e, flow_id = %flow_id, "failed to append audit event for trade flow creation — audit trail data loss");
         }
     }
 
@@ -332,7 +332,7 @@ async fn submit_transition(
         )
         .await
         {
-            tracing::warn!(error = %e, flow_id = %flow_id, "failed to append audit event for trade transition");
+            tracing::error!(error = %e, flow_id = %flow_id, "failed to append audit event for trade transition — audit trail data loss");
         }
     }
 

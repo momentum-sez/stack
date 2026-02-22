@@ -150,6 +150,7 @@ for i in $(seq 0 $((N - 1))); do
     ZONE_TOKENS[$i]="$token"
     echo -e "  ${GREEN}✓${NC} $env_name generated (${#token} chars)"
     echo "$token" > "/tmp/mez-demo-zone-${i}-token"
+    chmod 600 "/tmp/mez-demo-zone-${i}-token"
 done
 
 # ── Step 3: Deploy N-Zone Stack ──────────────────────────────────────────

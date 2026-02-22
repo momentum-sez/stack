@@ -59,7 +59,7 @@ services:
       MEZ_PROFILE: ${ZONE_A_PROFILE:-sovereign-govos-pk}
       MEZ_HOST: "0.0.0.0"
       MEZ_PORT: "8080"
-      MEZ_LOG_LEVEL: debug
+      MEZ_LOG_LEVEL: ${MEZ_LOG_LEVEL:-info}
       AUTH_TOKEN: ${ZONE_A_AUTH_TOKEN:?ZONE_A_AUTH_TOKEN must be set}
       DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-a:5432/mez"
       MEZ_CORRIDOR_ID: ${CORRIDOR_ID:-org.momentum.mez.corridor.cross-border}
@@ -125,7 +125,7 @@ services:
       MEZ_PROFILE: ${ZONE_B_PROFILE:-digital-financial-center}
       MEZ_HOST: "0.0.0.0"
       MEZ_PORT: "8080"
-      MEZ_LOG_LEVEL: debug
+      MEZ_LOG_LEVEL: ${MEZ_LOG_LEVEL:-info}
       AUTH_TOKEN: ${ZONE_B_AUTH_TOKEN:?ZONE_B_AUTH_TOKEN must be set}
       DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-b:5432/mez"
       MEZ_CORRIDOR_ID: ${CORRIDOR_ID:-org.momentum.mez.corridor.cross-border}

@@ -164,6 +164,13 @@ impl AuditTrail {
         if self.entries.len() > self.max_entries {
             let trim_count = self.max_entries / 10;
             let trim_count = trim_count.max(1);
+            tracing::warn!(
+                trim_count,
+                total = self.entries.len(),
+                max_entries = self.max_entries,
+                "audit trail circular buffer exceeded capacity — trimming oldest entries; \
+                 ensure entries were persisted to durable storage before this point"
+            );
             self.entries.drain(..trim_count);
         }
     }

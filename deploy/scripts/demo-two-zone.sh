@@ -189,9 +189,11 @@ echo -e "  ${GREEN}✓${NC} POSTGRES_PASSWORD generated (${#POSTGRES_PASSWORD} c
 echo -e "  ${GREEN}✓${NC} ZONE_A_AUTH_TOKEN generated (${#ZONE_A_AUTH_TOKEN} chars)"
 echo -e "  ${GREEN}✓${NC} ZONE_B_AUTH_TOKEN generated (${#ZONE_B_AUTH_TOKEN} chars)"
 
-# Save tokens for the test phase
+# Save tokens for the test phase (restrictive permissions to prevent leaks)
 echo "$ZONE_A_AUTH_TOKEN" > /tmp/mez-demo-zone-a-token
+chmod 600 /tmp/mez-demo-zone-a-token
 echo "$ZONE_B_AUTH_TOKEN" > /tmp/mez-demo-zone-b-token
+chmod 600 /tmp/mez-demo-zone-b-token
 
 # ── Step 2: Deploy Two-Zone Stack ─────────────────────────────────────────
 

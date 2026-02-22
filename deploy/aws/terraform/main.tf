@@ -381,7 +381,7 @@ resource "aws_db_instance" "mez" {
   publicly_accessible    = false
 
   backup_retention_period = 30
-  backup_window          = "03:00-04:00"
+  backup_window          = "02:00-03:00"
   maintenance_window     = "Mon:04:00-Mon:05:00"
 
   deletion_protection = var.environment == "prod"

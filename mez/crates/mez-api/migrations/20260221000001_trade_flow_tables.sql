@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS trade_flows (
 
 CREATE TABLE IF NOT EXISTS trade_transitions (
     transition_id UUID PRIMARY KEY,
-    flow_id UUID NOT NULL REFERENCES trade_flows(flow_id),
+    flow_id UUID NOT NULL REFERENCES trade_flows(flow_id) ON DELETE RESTRICT,
     kind TEXT NOT NULL,
     from_state TEXT NOT NULL,
     to_state TEXT NOT NULL,
@@ -24,4 +24,6 @@ CREATE TABLE IF NOT EXISTS trade_transitions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_trade_transitions_flow_id ON trade_transitions(flow_id);
+CREATE INDEX IF NOT EXISTS idx_trade_flows_corridor_id ON trade_flows(corridor_id);
+CREATE INDEX IF NOT EXISTS idx_trade_flows_created_at ON trade_flows(created_at);
+CREATE INDEX IF NOT EXISTS idx_trade_transitions_flow_id ON trade_transitions(flow_id);

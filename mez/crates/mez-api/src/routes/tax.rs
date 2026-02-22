@@ -73,18 +73,19 @@ pub struct CreateTaxEventRequest {
 
 impl Validate for CreateTaxEventRequest {
     fn validate(&self) -> Result<(), String> {
-        if self.jurisdiction_id.trim().is_empty() {
+        let jurisdiction_id = self.jurisdiction_id.trim();
+        if jurisdiction_id.is_empty() {
             return Err("jurisdiction_id must not be empty".to_string());
         }
-        if self.jurisdiction_id.len() > 10 {
+        if jurisdiction_id.len() > 10 {
             return Err("jurisdiction_id must not exceed 10 characters".to_string());
         }
-        if self.gross_amount.trim().is_empty() {
+        let gross_amount = self.gross_amount.trim();
+        if gross_amount.is_empty() {
             return Err("gross_amount must not be empty".to_string());
         }
         // Validate gross_amount is a parseable, finite, non-negative number.
-        let trimmed = self.gross_amount.trim();
-        match trimmed.parse::<f64>() {
+        match gross_amount.parse::<f64>() {
             Ok(v) if !v.is_finite() => {
                 return Err("gross_amount must be a finite number".to_string());
             }
@@ -96,21 +97,25 @@ impl Validate for CreateTaxEventRequest {
             }
             _ => {}
         }
-        if self.currency.trim().is_empty() || self.currency.len() > 5 {
+        let currency = self.currency.trim();
+        if currency.is_empty() || currency.len() > 5 {
             return Err("currency must be 1-5 characters".to_string());
         }
-        if self.tax_year.trim().is_empty() || self.tax_year.len() > 20 {
+        let tax_year = self.tax_year.trim();
+        if tax_year.is_empty() || tax_year.len() > 20 {
             return Err("tax_year must be 1-20 characters".to_string());
         }
-        if self.event_type.trim().is_empty() {
+        let event_type = self.event_type.trim();
+        if event_type.is_empty() {
             return Err("event_type must not be empty".to_string());
         }
-        if self.event_type.len() > 100 {
+        if event_type.len() > 100 {
             return Err("event_type must not exceed 100 characters".to_string());
         }
         // Validate NTN format if provided (jurisdiction-specific).
         if let Some(ref ntn) = self.ntn {
-            match self.jurisdiction_id.as_str() {
+            let ntn = ntn.trim();
+            match jurisdiction_id {
                 // Pakistan NTN: exactly 7 digits (FBR format).
                 "PK" => {
                     if ntn.len() != 7 || !ntn.chars().all(|c| c.is_ascii_digit()) {
@@ -119,7 +124,7 @@ impl Validate for CreateTaxEventRequest {
                 }
                 // Other jurisdictions: basic non-empty validation.
                 _ => {
-                    if ntn.trim().is_empty() {
+                    if ntn.is_empty() {
                         return Err("ntn must not be empty when provided".to_string());
                     }
                     if ntn.len() > 50 {

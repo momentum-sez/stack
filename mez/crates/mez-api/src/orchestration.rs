@@ -632,7 +632,11 @@ fn issue_and_store(
         serde_json::json!({
             "operation": vc_type,
             "overall_status": summary.overall_status,
+            "domain_results": summary.domain_results,
+            "passing_domains": summary.passing_domains,
             "blocking_domains": summary.blocking_domains,
+            "hard_blocks": summary.hard_blocks,
+            "tensor_commitment": summary.tensor_commitment,
         }),
     );
 

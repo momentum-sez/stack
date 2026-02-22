@@ -67,32 +67,36 @@ trait Validate {
 
 impl Validate for CreateEntityProxyRequest {
     fn validate(&self) -> Result<(), String> {
-        if self.entity_type.trim().is_empty() {
+        let entity_type = self.entity_type.trim();
+        if entity_type.is_empty() {
             return Err("entity_type must not be empty".into());
         }
-        if self.entity_type.len() > 100 {
+        if entity_type.len() > 100 {
             return Err("entity_type must not exceed 100 characters".into());
         }
-        if self.legal_name.trim().is_empty() {
+        let legal_name = self.legal_name.trim();
+        if legal_name.is_empty() {
             return Err("legal_name must not be empty".into());
         }
-        if self.legal_name.len() > 1000 {
+        if legal_name.len() > 1000 {
             return Err("legal_name must not exceed 1000 characters".into());
         }
-        if self.jurisdiction_id.trim().is_empty() {
+        let jurisdiction_id = self.jurisdiction_id.trim();
+        if jurisdiction_id.is_empty() {
             return Err("jurisdiction_id must not be empty".into());
         }
-        if self.jurisdiction_id.len() > 100 {
+        if jurisdiction_id.len() > 100 {
             return Err("jurisdiction_id must not exceed 100 characters".into());
         }
         if self.beneficial_owners.len() > 100 {
             return Err("beneficial_owners must not exceed 100 entries".into());
         }
         for (i, bo) in self.beneficial_owners.iter().enumerate() {
-            if bo.name.trim().is_empty() {
+            let name = bo.name.trim();
+            if name.is_empty() {
                 return Err(format!("beneficial_owners[{i}].name must not be empty"));
             }
-            if bo.name.len() > 500 {
+            if name.len() > 500 {
                 return Err(format!(
                     "beneficial_owners[{i}].name must not exceed 500 characters"
                 ));
@@ -116,10 +120,11 @@ impl Validate for CreateCapTableProxyRequest {
             return Err("share_classes must not exceed 50 entries".into());
         }
         for (i, sc) in self.share_classes.iter().enumerate() {
-            if sc.name.trim().is_empty() {
+            let name = sc.name.trim();
+            if name.is_empty() {
                 return Err(format!("share_classes[{i}].name must not be empty"));
             }
-            if sc.name.len() > 200 {
+            if name.len() > 200 {
                 return Err(format!(
                     "share_classes[{i}].name must not exceed 200 characters"
                 ));
@@ -137,16 +142,18 @@ impl Validate for CreateCapTableProxyRequest {
 
 impl Validate for CreateAccountProxyRequest {
     fn validate(&self) -> Result<(), String> {
-        if self.account_type.trim().is_empty() {
+        let account_type = self.account_type.trim();
+        if account_type.is_empty() {
             return Err("account_type must not be empty".into());
         }
-        if self.account_type.len() > 100 {
+        if account_type.len() > 100 {
             return Err("account_type must not exceed 100 characters".into());
         }
-        if self.currency.trim().is_empty() {
+        let currency = self.currency.trim();
+        if currency.is_empty() {
             return Err("currency must not be empty".into());
         }
-        if self.currency.len() > 10 {
+        if currency.len() > 10 {
             return Err("currency must not exceed 10 characters".into());
         }
         Ok(())
@@ -155,22 +162,25 @@ impl Validate for CreateAccountProxyRequest {
 
 impl Validate for CreatePaymentProxyRequest {
     fn validate(&self) -> Result<(), String> {
-        if self.amount.trim().is_empty() {
+        let amount = self.amount.trim();
+        if amount.is_empty() {
             return Err("amount must not be empty".into());
         }
-        if self.amount.len() > 50 {
+        if amount.len() > 50 {
             return Err("amount must not exceed 50 characters".into());
         }
-        if self.currency.trim().is_empty() {
+        let currency = self.currency.trim();
+        if currency.is_empty() {
             return Err("currency must not be empty".into());
         }
-        if self.currency.len() > 10 {
+        if currency.len() > 10 {
             return Err("currency must not exceed 10 characters".into());
         }
-        if self.reference.trim().is_empty() {
+        let reference = self.reference.trim();
+        if reference.is_empty() {
             return Err("reference must not be empty".into());
         }
-        if self.reference.len() > 500 {
+        if reference.len() > 500 {
             return Err("reference must not exceed 500 characters".into());
         }
         Ok(())
@@ -179,10 +189,11 @@ impl Validate for CreatePaymentProxyRequest {
 
 impl Validate for VerifyIdentityProxyRequest {
     fn validate(&self) -> Result<(), String> {
-        if self.identity_type.trim().is_empty() {
+        let identity_type = self.identity_type.trim();
+        if identity_type.is_empty() {
             return Err("identity_type must not be empty".into());
         }
-        if self.identity_type.len() > 100 {
+        if identity_type.len() > 100 {
             return Err("identity_type must not exceed 100 characters".into());
         }
         if self.linked_ids.len() > 50 {
@@ -213,7 +224,8 @@ impl Validate for UpdateEntityProxyRequest {
             return Err("at least one field must be provided for update".into());
         }
         if let Some(ref name) = self.legal_name {
-            if name.trim().is_empty() {
+            let name = name.trim();
+            if name.is_empty() {
                 return Err("legal_name must not be empty when provided".into());
             }
             if name.len() > 1000 {
@@ -221,7 +233,8 @@ impl Validate for UpdateEntityProxyRequest {
             }
         }
         if let Some(ref et) = self.entity_type {
-            if et.trim().is_empty() {
+            let et = et.trim();
+            if et.is_empty() {
                 return Err("entity_type must not be empty when provided".into());
             }
             if et.len() > 100 {
@@ -229,7 +242,8 @@ impl Validate for UpdateEntityProxyRequest {
             }
         }
         if let Some(ref jid) = self.jurisdiction_id {
-            if jid.trim().is_empty() {
+            let jid = jid.trim();
+            if jid.is_empty() {
                 return Err("jurisdiction_id must not be empty when provided".into());
             }
             if jid.len() > 100 {
@@ -241,10 +255,11 @@ impl Validate for UpdateEntityProxyRequest {
                 return Err("beneficial_owners must not exceed 100 entries".into());
             }
             for (i, bo) in owners.iter().enumerate() {
-                if bo.name.trim().is_empty() {
+                let name = bo.name.trim();
+                if name.is_empty() {
                     return Err(format!("beneficial_owners[{i}].name must not be empty"));
                 }
-                if bo.name.len() > 500 {
+                if name.len() > 500 {
                     return Err(format!(
                         "beneficial_owners[{i}].name must not exceed 500 characters"
                     ));
@@ -267,16 +282,18 @@ impl Validate for UpdateEntityProxyRequest {
 
 impl Validate for CreateConsentProxyRequest {
     fn validate(&self) -> Result<(), String> {
-        if self.consent_type.trim().is_empty() {
+        let consent_type = self.consent_type.trim();
+        if consent_type.is_empty() {
             return Err("consent_type must not be empty".into());
         }
-        if self.consent_type.len() > 200 {
+        if consent_type.len() > 200 {
             return Err("consent_type must not exceed 200 characters".into());
         }
-        if self.description.trim().is_empty() {
+        let description = self.description.trim();
+        if description.is_empty() {
             return Err("description must not be empty".into());
         }
-        if self.description.len() > 5000 {
+        if description.len() > 5000 {
             return Err("description must not exceed 5000 characters".into());
         }
         if self.parties.is_empty() {
@@ -1497,7 +1514,7 @@ async fn append_audit(
         };
 
         if let Err(e) = crate::db::audit::append(pool, event).await {
-            tracing::warn!(error = %e, event_type, "Failed to append audit event");
+            tracing::error!(error = %e, event_type, "Failed to append audit event — audit trail data loss");
         }
     }
 }

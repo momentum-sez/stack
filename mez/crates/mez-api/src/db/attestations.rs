@@ -8,12 +8,16 @@ use uuid::Uuid;
 
 use crate::state::{AttestationRecord, AttestationStatus};
 
-/// Insert a new attestation record.
+/// Insert a new attestation record (upsert — safe for retries).
 pub async fn insert(pool: &PgPool, record: &AttestationRecord) -> Result<(), sqlx::Error> {
     sqlx::query(
         "INSERT INTO attestations (id, entity_id, attestation_type, issuer, status,
          jurisdiction_id, issued_at, expires_at, details)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         ON CONFLICT (id) DO UPDATE SET
+            status = EXCLUDED.status,
+            details = EXCLUDED.details,
+            expires_at = EXCLUDED.expires_at",
     )
     .bind(record.id)
     .bind(record.entity_id)

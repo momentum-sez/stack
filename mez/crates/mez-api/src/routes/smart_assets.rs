@@ -36,16 +36,18 @@ pub struct CreateAssetRequest {
 
 impl Validate for CreateAssetRequest {
     fn validate(&self) -> Result<(), String> {
-        if self.asset_type.trim().is_empty() {
+        let asset_type = self.asset_type.trim();
+        if asset_type.is_empty() {
             return Err("asset_type must not be empty".to_string());
         }
-        if self.asset_type.len() > 255 {
+        if asset_type.len() > 255 {
             return Err("asset_type must not exceed 255 characters".to_string());
         }
-        if self.jurisdiction_id.trim().is_empty() {
+        let jurisdiction_id = self.jurisdiction_id.trim();
+        if jurisdiction_id.is_empty() {
             return Err("jurisdiction_id must not be empty".to_string());
         }
-        if self.jurisdiction_id.len() > 255 {
+        if jurisdiction_id.len() > 255 {
             return Err("jurisdiction_id must not exceed 255 characters".to_string());
         }
         Ok(())

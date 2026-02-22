@@ -142,11 +142,17 @@ pub fn apply_jurisdiction_attestations(
     for (domain_str, input) in attestations {
         let domain: ComplianceDomain = match domain_str.parse() {
             Ok(d) => d,
-            Err(_) => continue,
+            Err(_) => {
+                tracing::warn!(domain = %domain_str, "Unknown compliance domain in attestation — skipping");
+                continue;
+            }
         };
         let state = match parse_status(&input.status) {
             Some(s) => s,
-            None => continue,
+            None => {
+                tracing::warn!(domain = %domain_str, status = %input.status, "Unknown attestation status — skipping");
+                continue;
+            }
         };
         tensor.set(domain, state, Vec::new(), None);
     }
@@ -223,11 +229,17 @@ pub fn apply_attestations(
     for (domain_str, input) in attestations {
         let domain: ComplianceDomain = match domain_str.parse() {
             Ok(d) => d,
-            Err(_) => continue,
+            Err(_) => {
+                tracing::warn!(domain = %domain_str, "Unknown compliance domain in attestation — skipping");
+                continue;
+            }
         };
         let state = match parse_status(&input.status) {
             Some(s) => s,
-            None => continue,
+            None => {
+                tracing::warn!(domain = %domain_str, status = %input.status, "Unknown attestation status — skipping");
+                continue;
+            }
         };
         tensor.set(domain, state, Vec::new(), None);
     }

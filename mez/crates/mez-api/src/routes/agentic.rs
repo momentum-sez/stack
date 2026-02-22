@@ -50,10 +50,11 @@ pub struct TriggerRequest {
 
 impl Validate for TriggerRequest {
     fn validate(&self) -> Result<(), String> {
-        if self.trigger_type.trim().is_empty() {
+        let trigger_type = self.trigger_type.trim();
+        if trigger_type.is_empty() {
             return Err("trigger_type must not be empty".to_string());
         }
-        if self.trigger_type.len() > 255 {
+        if trigger_type.len() > 255 {
             return Err("trigger_type must not exceed 255 characters".to_string());
         }
         if let Some(ref j) = self.jurisdiction {

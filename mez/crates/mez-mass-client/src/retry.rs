@@ -24,11 +24,11 @@ where
     F: Fn() -> Fut,
     Fut: std::future::Future<Output = Result<reqwest::Response, reqwest::Error>>,
 {
-    let mut last_err = None;
-    for attempt in 0..=MAX_RETRIES {
+    // Retry attempts with backoff, then one final attempt without retry.
+    for attempt in 0..MAX_RETRIES {
         match f().await {
             Ok(resp) => return Ok(resp),
-            Err(e) if attempt < MAX_RETRIES => {
+            Err(e) => {
                 let delay = Duration::from_millis(BASE_DELAY_MS * 2u64.pow(attempt));
                 tracing::warn!(
                     attempt = attempt + 1,
@@ -36,12 +36,11 @@ where
                     "Mass API HTTP request failed, retrying in {delay:?}: {e}"
                 );
                 tokio::time::sleep(delay).await;
-                last_err = Some(e);
             }
-            Err(e) => return Err(e),
         }
     }
-    Err(last_err.expect("retry loop executed at least once"))
+    // Final attempt — no more retries.
+    f().await
 }
 
 #[cfg(test)]

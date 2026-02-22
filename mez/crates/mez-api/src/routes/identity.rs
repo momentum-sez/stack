@@ -196,10 +196,11 @@ impl Validate for CnicVerifyRequest {
                 digits.len()
             ));
         }
-        if self.full_name.trim().is_empty() {
+        let full_name = self.full_name.trim();
+        if full_name.is_empty() {
             return Err("full_name must not be empty".into());
         }
-        if self.full_name.len() > 500 {
+        if full_name.len() > 500 {
             return Err("full_name must not exceed 500 characters".into());
         }
         if let Some(ref dob) = self.date_of_birth {
@@ -225,10 +226,11 @@ impl Validate for NtnVerifyRequest {
                 digits.len()
             ));
         }
-        if self.entity_name.trim().is_empty() {
+        let entity_name = self.entity_name.trim();
+        if entity_name.is_empty() {
             return Err("entity_name must not be empty".into());
         }
-        if self.entity_name.len() > 1000 {
+        if entity_name.len() > 1000 {
             return Err("entity_name must not exceed 1000 characters".into());
         }
         if let Some(ref jid) = self.jurisdiction_id {

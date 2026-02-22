@@ -37,7 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_corridors_jurisdictions ON corridors(jurisdiction
 
 CREATE TABLE IF NOT EXISTS corridor_receipts (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    corridor_id         UUID NOT NULL REFERENCES corridors(id),
+    corridor_id         UUID NOT NULL REFERENCES corridors(id) ON DELETE RESTRICT,
     sequence_number     BIGINT NOT NULL,
     payload             JSONB NOT NULL,
     receipt_digest      VARCHAR(64) NOT NULL,

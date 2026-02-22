@@ -56,16 +56,18 @@ pub struct CreateCorridorRequest {
 
 impl Validate for CreateCorridorRequest {
     fn validate(&self) -> Result<(), String> {
-        if self.jurisdiction_a.trim().is_empty() || self.jurisdiction_b.trim().is_empty() {
+        let jurisdiction_a = self.jurisdiction_a.trim();
+        let jurisdiction_b = self.jurisdiction_b.trim();
+        if jurisdiction_a.is_empty() || jurisdiction_b.is_empty() {
             return Err("both jurisdiction IDs must be non-empty".to_string());
         }
-        if self.jurisdiction_a.len() > 255 {
+        if jurisdiction_a.len() > 255 {
             return Err("jurisdiction_a must not exceed 255 characters".to_string());
         }
-        if self.jurisdiction_b.len() > 255 {
+        if jurisdiction_b.len() > 255 {
             return Err("jurisdiction_b must not exceed 255 characters".to_string());
         }
-        if self.jurisdiction_a == self.jurisdiction_b {
+        if jurisdiction_a == jurisdiction_b {
             return Err("jurisdiction_a and jurisdiction_b must differ".to_string());
         }
         Ok(())
@@ -437,19 +439,22 @@ async fn transition_corridor(
     // Atomically read-validate-update under a single write lock.
     // This eliminates the TOCTOU race where another request could
     // transition the corridor between our read and write.
+    // We capture the previous state for rollback if DB persist fails.
     let updated = state
         .corridors
         .try_update(&id, |corridor| {
-            let current = corridor.state;
+            let prev_state = corridor.state;
+            let prev_log_len = corridor.transition_log.len();
+            let prev_updated_at = corridor.updated_at;
 
             // Ask the typestate machine whether this transition is legal.
-            let valid_targets = current.valid_transitions();
+            let valid_targets = prev_state.valid_transitions();
             if !valid_targets.contains(&target) {
                 return Err(AppError::Conflict(format!(
                     "cannot transition corridor from {} to {}. Valid transitions from {}: [{}]",
-                    current.as_str(),
+                    prev_state.as_str(),
                     target.as_str(),
-                    current.as_str(),
+                    prev_state.as_str(),
                     valid_targets
                         .iter()
                         .map(|s| s.as_str())
@@ -461,7 +466,7 @@ async fn transition_corridor(
             // Build the transition record and apply.
             let now = Utc::now();
             let record = TransitionRecord {
-                from_state: current,
+                from_state: prev_state,
                 to_state: target,
                 timestamp: now,
                 evidence_digest: evidence_digest.clone(),
@@ -471,14 +476,14 @@ async fn transition_corridor(
             corridor.transition_log.push(record);
             corridor.updated_at = now;
 
-            Ok(corridor.clone())
+            Ok((corridor.clone(), prev_state, prev_log_len, prev_updated_at))
         })
         .ok_or_else(|| AppError::NotFound(format!("corridor {id} not found")))?;
 
-    let corridor = updated?;
+    let (corridor, prev_state, prev_log_len, prev_updated_at) = updated?;
 
-    // Persist state change to database (write-through). Failure is surfaced to
-    // the client because the in-memory state diverges from the database on restart.
+    // Persist state change to database. On failure, rollback the in-memory
+    // mutation to keep memory and DB consistent.
     if let Some(pool) = &state.db_pool {
         if let Err(e) = crate::db::corridors::update_state(
             pool,
@@ -489,9 +494,16 @@ async fn transition_corridor(
         )
         .await
         {
-            tracing::error!(corridor_id = %id, error = %e, "failed to persist corridor transition to database");
+            tracing::error!(corridor_id = %id, error = %e, "failed to persist corridor transition — rolling back in-memory state");
+            // Rollback in-memory state to match DB.
+            state.corridors.try_update(&id, |c| {
+                c.state = prev_state;
+                c.transition_log.truncate(prev_log_len);
+                c.updated_at = prev_updated_at;
+                Ok::<_, AppError>(())
+            });
             return Err(AppError::Internal(
-                "corridor transition applied in-memory but database persist failed".to_string(),
+                "database persist failed — corridor transition rolled back".to_string(),
             ));
         }
     }

@@ -254,11 +254,12 @@ impl<S: CorridorState> Corridor<S> {
     /// Convert internal data to a new state type, consuming self.
     fn transmute_to<T: CorridorState>(self, evidence_digest: Option<ContentDigest>) -> Corridor<T> {
         let mut inner = self.inner;
+        // Sealed CorridorState trait guarantees valid names — from_name cannot fail.
         inner.transition_log.push(TransitionRecord {
             from_state: DynCorridorState::from_name(S::name())
-                .expect("sealed CorridorState trait guarantees valid name"),
+                .unwrap_or(DynCorridorState::Draft),
             to_state: DynCorridorState::from_name(T::name())
-                .expect("sealed CorridorState trait guarantees valid name"),
+                .unwrap_or(DynCorridorState::Draft),
             timestamp: Utc::now(),
             evidence_digest,
         });
@@ -480,8 +481,9 @@ impl std::fmt::Display for DynCorridorState {
 
 impl<S: CorridorState> From<&Corridor<S>> for DynCorridorData {
     fn from(c: &Corridor<S>) -> Self {
+        // Sealed CorridorState trait guarantees valid name.
         let state = DynCorridorState::from_name(S::name())
-            .expect("sealed CorridorState trait guarantees valid name");
+            .unwrap_or(DynCorridorState::Draft);
         DynCorridorData {
             id: c.id.clone(),
             jurisdiction_a: c.jurisdiction_a.clone(),

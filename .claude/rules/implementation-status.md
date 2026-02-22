@@ -18,7 +18,7 @@ Docker Compose (1/2/3-zone), AWS Terraform, K8s manifests, deploy script, Mass A
 
 These have correct types and tests but business logic needs deepening:
 
-- Compliance tensor extended 12 domains: exhaustive match exists, but returns Pending without checking jurisdiction rules
+- Compliance tensor extended 12 domains: metadata-driven business rule validation for all 12 (licensing expiry, Basel III CAR, float safeguarding, settlement cycles, token classification, labor/immigration status, arbitration frameworks, trade sanctions screening). Deep logic validates metadata against domain-specific rules but jurisdiction-specific regulator mapping not yet wired (e.g., "which CAR threshold for pk vs ae")
 - Trade flow instruments: 4 archetypes, 10 transitions typed — no FSM enforcement of ordering
 - Sovereign Mass persistence: in-memory + Postgres CRUD — no business validation
 - Agentic policy engine: trigger ingestion works; reactive execution limited

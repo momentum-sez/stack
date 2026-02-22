@@ -446,12 +446,11 @@ async fn get_entity_identity(
 
     let identity_values: Vec<serde_json::Value> = identities
         .into_iter()
-        .filter_map(|id| {
+        .map(|id| {
             serde_json::to_value(&id)
-                .map_err(|e| tracing::warn!(error = %e, "failed to serialize identity record"))
-                .ok()
+                .map_err(|e| AppError::Internal(format!("failed to serialize identity record: {e}")))
         })
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
     // Fetch attestations from EZ Stack for this entity.
     let attestations: Vec<serde_json::Value> = state
@@ -459,12 +458,11 @@ async fn get_entity_identity(
         .list()
         .into_iter()
         .filter(|a| a.entity_id == entity_id)
-        .filter_map(|a| {
+        .map(|a| {
             serde_json::to_value(&a)
-                .map_err(|e| tracing::warn!(error = %e, "failed to serialize attestation record"))
-                .ok()
+                .map_err(|e| AppError::Internal(format!("failed to serialize attestation record: {e}")))
         })
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
     let dedicated = client.identity().has_dedicated_service();
 

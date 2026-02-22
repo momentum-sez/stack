@@ -205,17 +205,16 @@ async fn list_trade_flows(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, AppError> {
     let flows = state.trade_flow_manager.list_flows();
+    let total = flows.len();
     let values: Vec<serde_json::Value> = flows
         .iter()
         .map(|f| {
             serde_json::to_value(f).map_err(|e| {
-                tracing::warn!(error = %e, "failed to serialize trade flow record");
-                e
+                AppError::Internal(format!("failed to serialize trade flow record: {e}"))
             })
         })
-        .filter_map(Result::ok)
-        .collect();
-    Ok(Json(serde_json::json!({ "flows": values, "total": values.len() })))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Json(serde_json::json!({ "flows": values, "total": total })))
 }
 
 /// GET /v1/trade/flows/:flow_id — Get a trade flow by ID.
@@ -372,12 +371,10 @@ async fn list_transitions(
         .iter()
         .map(|t| {
             serde_json::to_value(t).map_err(|e| {
-                tracing::warn!(error = %e, "failed to serialize trade transition record");
-                e
+                AppError::Internal(format!("failed to serialize trade transition record: {e}"))
             })
         })
-        .filter_map(Result::ok)
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(Json(serde_json::json!({
         "flow_id": flow_id,

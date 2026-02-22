@@ -196,6 +196,10 @@ impl SchemaValidator {
         let mut filename_to_id = HashMap::new();
 
         if !schema_dir.is_dir() {
+            eprintln!(
+                "WARNING: schema directory '{}' does not exist — schema validation will be unavailable",
+                schema_dir.display()
+            );
             return Ok(Self {
                 schema_dir,
                 schema_map: Arc::new(schema_map),

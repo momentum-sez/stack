@@ -346,12 +346,12 @@ pub fn validate_domain_string(domain: &str) -> Option<ComplianceDomain> {
         return Some(d);
     }
 
-    // Common aliases used in zone manifests
+    // Common aliases used in zone manifests (hyphenated and underscore variants).
     match domain {
         "aml-cft" | "aml_cft" => Some(ComplianceDomain::Aml),
-        "data-privacy" => Some(ComplianceDomain::DataPrivacy),
-        "digital-assets" => Some(ComplianceDomain::DigitalAssets),
-        "consumer-protection" => Some(ComplianceDomain::ConsumerProtection),
+        "data-privacy" | "data_privacy" => Some(ComplianceDomain::DataPrivacy),
+        "digital-assets" | "digital_assets" => Some(ComplianceDomain::DigitalAssets),
+        "consumer-protection" | "consumer_protection" => Some(ComplianceDomain::ConsumerProtection),
         "financial" => None, // Broader category, not a specific domain
         "civil" => None,
         "labor" => Some(ComplianceDomain::Employment),

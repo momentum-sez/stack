@@ -14,16 +14,23 @@
 # zone boundaries by design.
 #
 # Environment variables (with defaults for backward compatibility):
-#   ZONE_A_ZONE_ID     — Zone A identifier (default: org.momentum.mez.zone.pk-sifc)
-#   ZONE_A_JURISDICTION — Zone A jurisdiction (default: pk)
-#   ZONE_A_PROFILE      — Zone A profile (default: sovereign-govos-pk)
-#   ZONE_B_ZONE_ID     — Zone B identifier (default: org.momentum.mez.zone.ae-difc)
-#   ZONE_B_JURISDICTION — Zone B jurisdiction (default: ae-difc)
-#   ZONE_B_PROFILE      — Zone B profile (default: digital-financial-center)
-#   CORRIDOR_ID         — Corridor identifier (default: auto-generated from jurisdictions)
+#   ZONE_A_ZONE_ID          — Zone A identifier (default: org.momentum.mez.zone.pk-sifc)
+#   ZONE_A_JURISDICTION     — Zone A jurisdiction (default: pk)
+#   ZONE_A_PROFILE          — Zone A profile (default: sovereign-govos-pk)
+#   ZONE_A_AUTH_TOKEN       — Zone A auth token (REQUIRED)
+#   ZONE_A_MASS_API_TOKEN   — Zone A Mass API token (REQUIRED)
+#   ZONE_B_ZONE_ID          — Zone B identifier (default: org.momentum.mez.zone.ae-difc)
+#   ZONE_B_JURISDICTION     — Zone B jurisdiction (default: ae-difc)
+#   ZONE_B_PROFILE          — Zone B profile (default: digital-financial-center)
+#   ZONE_B_AUTH_TOKEN       — Zone B auth token (REQUIRED)
+#   ZONE_B_MASS_API_TOKEN   — Zone B Mass API token (REQUIRED)
+#   POSTGRES_PASSWORD       — Postgres password (REQUIRED)
+#   CORRIDOR_ID             — Corridor identifier (default: auto-generated from jurisdictions)
 #
 # Usage:
-#   # Default (PK-SIFC <-> AE-DIFC):
+#   # Default (PK-SIFC <-> AE-DIFC) — set required secrets first:
+#   export POSTGRES_PASSWORD=... ZONE_A_AUTH_TOKEN=... ZONE_A_MASS_API_TOKEN=... \
+#          ZONE_B_AUTH_TOKEN=... ZONE_B_MASS_API_TOKEN=...
 #   docker compose -f docker-compose.two-zone.yaml up -d
 #
 #   # Singapore <-> Hong Kong:
@@ -67,7 +74,7 @@ services:
       MASS_CONSENT_INFO_URL: "http://localhost:8080"
       MASS_INVESTMENT_INFO_URL: "http://localhost:8080"
       MASS_TEMPLATING_URL: "http://localhost:8080"
-      MASS_API_TOKEN: "sovereign-zone-a-token"
+      MASS_API_TOKEN: ${ZONE_A_MASS_API_TOKEN:?ZONE_A_MASS_API_TOKEN must be set}
     depends_on:
       postgres-a:
         condition: service_healthy
@@ -133,7 +140,7 @@ services:
       MASS_CONSENT_INFO_URL: "http://localhost:8080"
       MASS_INVESTMENT_INFO_URL: "http://localhost:8080"
       MASS_TEMPLATING_URL: "http://localhost:8080"
-      MASS_API_TOKEN: "sovereign-zone-b-token"
+      MASS_API_TOKEN: ${ZONE_B_MASS_API_TOKEN:?ZONE_B_MASS_API_TOKEN must be set}
     depends_on:
       postgres-b:
         condition: service_healthy

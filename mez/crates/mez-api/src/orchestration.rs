@@ -32,7 +32,7 @@
 //!   included in the response as warnings but do not block. This allows
 //!   entities to be formed and then brought into compliance iteratively.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -61,7 +61,7 @@ pub struct ComplianceSummary {
     /// Aggregate compliance status across all 20 domains.
     pub overall_status: String,
     /// Per-domain compliance status.
-    pub domain_results: HashMap<String, String>,
+    pub domain_results: BTreeMap<String, String>,
     /// Domains that are in a passing state (compliant, exempt, not_applicable).
     pub passing_domains: Vec<String>,
     /// Domains that are blocking (non_compliant or pending).
@@ -170,7 +170,7 @@ pub fn evaluate_compliance(
     // Evaluate all domains for this entity.
     let all_results = tensor.evaluate_all(entity_id);
 
-    let mut domain_results = HashMap::new();
+    let mut domain_results = BTreeMap::new();
     let mut passing_domains = Vec::new();
     let mut blocking_domains = Vec::new();
     let mut hard_blocks = Vec::new();
@@ -779,7 +779,7 @@ mod tests {
         let summary = ComplianceSummary {
             jurisdiction_id: "PK".to_string(),
             overall_status: "non_compliant".to_string(),
-            domain_results: HashMap::new(),
+            domain_results: BTreeMap::new(),
             passing_domains: vec![],
             blocking_domains: vec!["sanctions".to_string()],
             hard_blocks: vec!["sanctions".to_string()],

@@ -653,7 +653,7 @@ fn log_zone_banner(
     println!("│  DID:           {:<33}│", did_short);
     println!(
         "│  Domains:       {:<33}│",
-        format!("{} ({}/20)", domain_display, domain_count)
+        format!("{} ({}/{})", domain_display, domain_count, ComplianceDomain::all().len())
     );
     println!("│  Sanctions:     {:<33}│", sanctions_display);
     println!("│  Signing Key:   {:<33}│", key_source);

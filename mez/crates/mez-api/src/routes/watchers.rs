@@ -66,6 +66,7 @@ pub struct WatcherResponse {
 
 /// Request to post a bond for a watcher.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct BondRequest {
     /// Amount of stake to bond (in smallest currency unit). Must be > 0.
     pub stake: u64,
@@ -73,6 +74,7 @@ pub struct BondRequest {
 
 /// Request to slash a watcher for a protocol violation.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct SlashRequest {
     /// The slashing condition. One of: "equivocation", "availability_failure",
     /// "false_attestation", "collusion".
@@ -84,6 +86,7 @@ pub struct SlashRequest {
 
 /// Request to re-bond after being slashed.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct RebondRequest {
     /// Additional stake to add (in smallest currency unit). Must be > 0.
     pub additional_stake: u64,
@@ -264,6 +267,9 @@ async fn bond_watcher(
     Path(watcher_id): Path<Uuid>,
     Json(req): Json<BondRequest>,
 ) -> Result<Json<WatcherResponse>, AppError> {
+    if req.stake == 0 {
+        return Err(AppError::Validation("stake must be greater than 0".to_string()));
+    }
     let result = state.watchers.try_update(&watcher_id, |record| {
         record.watcher.bond(req.stake).map_err(|e| e.to_string())?;
         record.updated_at = Utc::now();
@@ -372,6 +378,9 @@ async fn rebond_watcher(
     Path(watcher_id): Path<Uuid>,
     Json(req): Json<RebondRequest>,
 ) -> Result<Json<WatcherResponse>, AppError> {
+    if req.additional_stake == 0 {
+        return Err(AppError::Validation("additional_stake must be greater than 0".to_string()));
+    }
     let result = state.watchers.try_update(&watcher_id, |record| {
         record
             .watcher

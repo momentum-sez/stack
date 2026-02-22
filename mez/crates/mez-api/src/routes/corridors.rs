@@ -48,6 +48,7 @@ impl PaginationParams {
 
 /// Request to create a corridor.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateCorridorRequest {
     pub jurisdiction_a: String,
     pub jurisdiction_b: String,
@@ -73,6 +74,7 @@ impl Validate for CreateCorridorRequest {
 
 /// Request to transition a corridor's state.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct TransitionCorridorRequest {
     /// Target state name: PENDING, ACTIVE, HALTED, SUSPENDED, DEPRECATED.
     pub target_state: String,
@@ -119,6 +121,7 @@ impl Validate for TransitionCorridorRequest {
 /// the cross-border transaction event. The server computes the canonical
 /// digest, validates chain integrity, and appends to the MMR.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ProposeReceiptRequest {
     /// The corridor to append this receipt to.
     pub corridor_id: Uuid,
@@ -163,6 +166,7 @@ pub struct ReceiptProposalResponse {
 
 /// Fork resolution request — two competing branches to resolve.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ForkResolveRequest {
     /// First competing branch.
     pub branch_a: ForkBranchInput,
@@ -179,6 +183,7 @@ pub struct ForkResolveRequest {
 /// registered watchers. The API accepts attestation data that will
 /// be verified server-side.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ForkBranchInput {
     /// Hex digest of the branch's receipt content.
     pub receipt_digest: String,

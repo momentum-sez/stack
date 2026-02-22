@@ -26,6 +26,7 @@ use axum::extract::rejection::JsonRejection;
 
 /// Request to create a smart asset genesis.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateAssetRequest {
     pub asset_type: String,
     pub jurisdiction_id: String,
@@ -53,6 +54,7 @@ impl Validate for CreateAssetRequest {
 
 /// Compliance evaluation request.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ComplianceEvalRequest {
     /// Domains to evaluate (currently ignored — all 20 domains are always evaluated).
     #[serde(default)]
@@ -96,6 +98,7 @@ pub struct ComplianceEvalResponse {
 
 /// Anchor verification request.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct AnchorVerifyRequest {
     pub anchor_digest: String,
     pub chain: String,

@@ -17,7 +17,7 @@ pub async fn insert(pool: &PgPool, record: &CorridorRecord) -> Result<(), sqlx::
         .map_err(|e| sqlx::Error::Protocol(format!("failed to serialize corridor state: {e}")))?
         .as_str()
         .map(String::from)
-        .unwrap_or_else(|| format!("{:?}", record.state));
+        .unwrap_or_else(|| format!("{}", record.state));
     let transition_log = serde_json::to_value(&record.transition_log)
         .map_err(|e| sqlx::Error::Protocol(format!("failed to serialize corridor transition_log: {e}")))?;
 

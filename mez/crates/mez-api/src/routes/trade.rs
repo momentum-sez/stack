@@ -35,6 +35,7 @@ use crate::state::AppState;
 
 /// Request to create a new trade flow.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateTradeFlowRequest {
     /// Flow type: "export", "import", "letter_of_credit", or "open_account".
     #[schema(value_type = String)]
@@ -51,6 +52,7 @@ pub struct CreateTradeFlowRequest {
 
 /// Request to submit a transition to a trade flow.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct SubmitTransitionRequest {
     /// Transition payload specific to the transition type.
     #[schema(value_type = Object)]
@@ -116,6 +118,12 @@ async fn create_trade_flow(
     State(state): State<AppState>,
     Json(req): Json<CreateTradeFlowRequest>,
 ) -> Result<impl IntoResponse, AppError> {
+    if req.seller.party_id.trim().is_empty() {
+        return Err(AppError::Validation("seller.party_id must not be empty".to_string()));
+    }
+    if req.buyer.party_id.trim().is_empty() {
+        return Err(AppError::Validation("buyer.party_id must not be empty".to_string()));
+    }
     let jurisdiction = req.jurisdiction_id.as_deref().unwrap_or("pk-sifc");
 
     // Pre-flight compliance evaluation.
@@ -318,7 +326,7 @@ async fn submit_transition(
                 action: "transition".to_string(),
                 metadata: serde_json::json!({
                     "flow_type": record.flow_type,
-                    "from_state": record.transitions.last().map(|t| format!("{:?}", t.from_state)),
+                    "from_state": record.transitions.last().map(|t| format!("{}", t.from_state)),
                     "to_state": record.state,
                 }),
             },

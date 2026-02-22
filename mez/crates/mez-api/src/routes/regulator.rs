@@ -25,6 +25,7 @@ use axum::extract::rejection::JsonRejection;
 
 /// Query attestations request.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct QueryAttestationsRequest {
     #[serde(default)]
     pub jurisdiction_id: Option<String>,
@@ -693,16 +694,16 @@ async fn entity_compliance(
     // For each domain, pick the most recent attestation.
     let mut domains: Vec<DomainComplianceStatus> = domain_map
         .into_iter()
-        .map(|(domain, mut atts)| {
+        .filter_map(|(domain, mut atts)| {
             atts.sort_by(|a, b| b.issued_at.cmp(&a.issued_at));
-            let latest = atts[0];
-            DomainComplianceStatus {
+            let latest = atts.first()?;
+            Some(DomainComplianceStatus {
                 domain,
-                status: format!("{:?}", latest.status),
+                status: format!("{}", latest.status),
                 issuer: Some(latest.issuer.clone()),
                 issued_at: Some(latest.issued_at),
                 expires_at: latest.expires_at,
-            }
+            })
         })
         .collect();
     domains.sort_by(|a, b| a.domain.cmp(&b.domain));

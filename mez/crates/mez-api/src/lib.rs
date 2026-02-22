@@ -53,7 +53,7 @@ pub mod orchestration;
 pub mod routes;
 pub mod state;
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use axum::extract::{DefaultBodyLimit, State};
 use axum::http::StatusCode;
@@ -188,7 +188,7 @@ async fn prometheus_metrics(
 
     // Corridors by state.
     let corridors = state.corridors.list();
-    let mut by_state: HashMap<String, usize> = HashMap::new();
+    let mut by_state: BTreeMap<String, usize> = BTreeMap::new();
     for c in &corridors {
         *by_state.entry(c.state.as_str().to_string()).or_default() += 1;
     }
@@ -268,7 +268,7 @@ async fn prometheus_metrics(
     {
         let registry = state.peer_registry.read();
         let peers = registry.list_peers();
-        let mut peer_counts: HashMap<&str, usize> = HashMap::new();
+        let mut peer_counts: BTreeMap<&str, usize> = BTreeMap::new();
         for p in &peers {
             let status_str = match p.status {
                 mez_corridor::PeerStatus::Discovered => "discovered",

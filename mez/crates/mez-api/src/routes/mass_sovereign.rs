@@ -394,6 +394,14 @@ async fn treasury_create(
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
+    if entity_id.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "entityId is required"})),
+        )
+            .into_response();
+    }
+
     let treasury = json!({
         "id": id.to_string(),
         "referenceId": null,
@@ -482,6 +490,21 @@ async fn payment_create(
     let now = Utc::now().to_rfc3339();
 
     let account_id = body.get("sourceAccountId").and_then(|v| v.as_str());
+    if account_id.map_or(true, |a| a.is_empty()) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "sourceAccountId is required"})),
+        )
+            .into_response();
+    }
+    let amount = body.get("amount").and_then(|v| v.as_str());
+    if amount.map_or(true, |a| a.is_empty()) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "amount is required"})),
+        )
+            .into_response();
+    }
     let entity_id = account_id
         .and_then(|aid| aid.parse::<Uuid>().ok())
         .and_then(|aid| {
@@ -533,6 +556,13 @@ async fn tax_event_create(
         .get("entity_id")
         .and_then(|v| v.as_str())
         .unwrap_or("");
+    if entity_id.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "entity_id is required"})),
+        )
+            .into_response();
+    }
     let event_type = body
         .get("event_type")
         .and_then(|v| v.as_str())
@@ -650,7 +680,15 @@ async fn withholding_compute(Json(body): Json<Value>) -> Response {
         (_, _) => 9.0,
     };
 
-    let gross: f64 = transaction_amount_str.parse().unwrap_or(0.0);
+    let gross: f64 = match transaction_amount_str.parse() {
+        Ok(v) => v,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"error": format!("invalid transaction_amount: {transaction_amount_str:?}")})),
+            ).into_response();
+        }
+    };
     let withholding = gross * rate_percent / 100.0;
     let net = gross - withholding;
 
@@ -683,6 +721,14 @@ async fn consent_create(
         .get("organizationId")
         .and_then(|v| v.as_str())
         .unwrap_or("");
+
+    if org_id.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "organizationId is required"})),
+        )
+            .into_response();
+    }
 
     let consent = json!({
         "id": id.to_string(),
@@ -720,12 +766,20 @@ async fn consent_approve(
 ) -> Response {
     let result = state.mass_consents.update(&id, |consent| {
         if let Some(obj) = consent.as_object_mut() {
-            obj.insert("status".to_string(), json!("APPROVED"));
             let count = obj
                 .get("approvalCount")
                 .and_then(|v| v.as_u64())
-                .unwrap_or(0);
-            obj.insert("approvalCount".to_string(), json!(count + 1));
+                .unwrap_or(0)
+                + 1;
+            obj.insert("approvalCount".to_string(), json!(count));
+
+            let required = obj
+                .get("numVotesRequired")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(1);
+            if count >= required {
+                obj.insert("status".to_string(), json!("APPROVED"));
+            }
             obj.insert("updatedAt".to_string(), json!(Utc::now().to_rfc3339()));
         }
     });
@@ -739,6 +793,11 @@ async fn consent_approve(
                 .to_string();
             let operation_id = consent.get("operationId").cloned();
             let operation_type = consent.get("operationType").cloned();
+            let status = consent
+                .get("status")
+                .and_then(|v| v.as_str())
+                .unwrap_or("PENDING");
+            let majority_reached = status == "APPROVED";
 
             persist!(state, crate::db::mass_primitives::save_consent, id, &consent);
 
@@ -749,7 +808,7 @@ async fn consent_approve(
                 "vote": "APPROVED",
                 "votedBy": "system",
                 "operationType": operation_type,
-                "majorityReached": true,
+                "majorityReached": majority_reached,
                 "createdAt": Utc::now().to_rfc3339()
             });
 
@@ -765,12 +824,20 @@ async fn consent_reject(
 ) -> Response {
     let result = state.mass_consents.update(&id, |consent| {
         if let Some(obj) = consent.as_object_mut() {
-            obj.insert("status".to_string(), json!("REJECTED"));
             let count = obj
                 .get("rejectionCount")
                 .and_then(|v| v.as_u64())
-                .unwrap_or(0);
-            obj.insert("rejectionCount".to_string(), json!(count + 1));
+                .unwrap_or(0)
+                + 1;
+            obj.insert("rejectionCount".to_string(), json!(count));
+
+            let required = obj
+                .get("numVotesRequired")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(1);
+            if count >= required {
+                obj.insert("status".to_string(), json!("REJECTED"));
+            }
             obj.insert("updatedAt".to_string(), json!(Utc::now().to_rfc3339()));
         }
     });
@@ -784,6 +851,11 @@ async fn consent_reject(
                 .to_string();
             let operation_id = consent.get("operationId").cloned();
             let operation_type = consent.get("operationType").cloned();
+            let status = consent
+                .get("status")
+                .and_then(|v| v.as_str())
+                .unwrap_or("PENDING");
+            let majority_reached = status == "REJECTED";
 
             persist!(state, crate::db::mass_primitives::save_consent, id, &consent);
 
@@ -794,7 +866,7 @@ async fn consent_reject(
                 "vote": "REJECTED",
                 "votedBy": "system",
                 "operationType": operation_type,
-                "majorityReached": false,
+                "majorityReached": majority_reached,
                 "createdAt": Utc::now().to_rfc3339()
             });
 
@@ -854,6 +926,13 @@ async fn cap_table_create(
         .get("organizationId")
         .and_then(|v| v.as_str())
         .unwrap_or("");
+    if org_id.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "organizationId is required"})),
+        )
+            .into_response();
+    }
     let authorized_shares = body
         .get("authorizedShares")
         .and_then(|v| v.as_u64())
@@ -1128,7 +1207,11 @@ async fn template_sign(
     state.mass_submissions.write().insert(id.clone(), submission.clone());
     if let Some(ref pool) = state.db_pool {
         if let Err(e) = crate::db::mass_primitives::save_submission(pool, &id, &submission).await {
-            tracing::warn!(error = %e, "sovereign mass: failed to persist submission");
+            tracing::error!(error = %e, "sovereign mass: failed to persist submission");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "database persist failed"})),
+            ).into_response();
         }
     }
     (StatusCode::CREATED, Json(submission)).into_response()

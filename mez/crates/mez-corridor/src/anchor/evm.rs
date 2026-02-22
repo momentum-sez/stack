@@ -253,7 +253,7 @@ impl EvmAnchorTarget {
         let status_hex = receipt
             .get("status")
             .and_then(|s| s.as_str())
-            .unwrap_or("0x0");
+            .ok_or_else(|| AnchorError::Rejected("receipt missing 'status' field".to_string()))?;
         if status_hex == "0x0" {
             return Ok(AnchorStatus::Failed);
         }
@@ -263,7 +263,7 @@ impl EvmAnchorTarget {
             .get("blockNumber")
             .and_then(|b| b.as_str())
             .and_then(|s| u64::from_str_radix(s.trim_start_matches("0x"), 16).ok())
-            .unwrap_or(0);
+            .ok_or_else(|| AnchorError::Rejected("receipt missing or invalid 'blockNumber'".to_string()))?;
 
         // Get current block number.
         let current_block_val = self
@@ -272,7 +272,10 @@ impl EvmAnchorTarget {
         let current_block = current_block_val
             .as_str()
             .and_then(|s| u64::from_str_radix(s.trim_start_matches("0x"), 16).ok())
-            .unwrap_or(0);
+            .ok_or_else(|| AnchorError::ChainUnavailable {
+                chain: self.config.chain_name.clone(),
+                reason: "failed to parse eth_blockNumber response".to_string(),
+            })?;
 
         let confirmations = current_block.saturating_sub(tx_block);
 

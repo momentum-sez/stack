@@ -30,6 +30,7 @@ use crate::state::AppState;
 
 /// Request to compute a settlement plan from obligations.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct SettlementComputeRequest {
     /// The obligations to net. Each obligation is a directed payment
     /// between two parties in a specific currency.
@@ -72,6 +73,7 @@ impl Validate for SettlementComputeRequest {
 
 /// A single obligation input for settlement computation.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ObligationInput {
     /// The party that owes.
     pub from_party: String,
@@ -121,6 +123,7 @@ pub struct SettlementLegResponse {
 
 /// Request to find the optimal route between two jurisdictions.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct RouteRequest {
     /// Source jurisdiction identifier.
     pub source: String,
@@ -169,6 +172,7 @@ pub struct RouteHopResponse {
 
 /// Request to generate SWIFT pacs.008 payment instructions.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct InstructionRequest {
     /// BIC of the instructing agent (default: "MEZUS33").
     pub instructing_agent_bic: Option<String>,
@@ -207,6 +211,7 @@ impl Validate for InstructionRequest {
 
 /// A single settlement leg for SWIFT instruction generation.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct InstructionLeg {
     pub from_party: String,
     pub from_bic: String,

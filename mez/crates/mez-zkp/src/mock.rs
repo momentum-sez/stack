@@ -227,6 +227,9 @@ mod hex_bytes {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
+        if s.len() % 2 != 0 {
+            return Err(serde::de::Error::custom("hex string must have even length"));
+        }
         (0..s.len())
             .step_by(2)
             .map(|i| u8::from_str_radix(&s[i..i + 2], 16).map_err(serde::de::Error::custom))

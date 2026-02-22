@@ -22,7 +22,9 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+
+use parking_lot::RwLock;
 
 use serde_json::Value;
 use thiserror::Error;
@@ -168,11 +170,7 @@ pub struct SchemaValidator {
 
 impl std::fmt::Debug for SchemaValidator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let cached = self
-            .compiled_cache
-            .read()
-            .map(|c| c.len())
-            .unwrap_or(0);
+        let cached = self.compiled_cache.read().len();
         f.debug_struct("SchemaValidator")
             .field("schema_dir", &self.schema_dir)
             .field("schema_count", &self.schema_map.len())
@@ -304,7 +302,7 @@ impl SchemaValidator {
         // P1-PERF-001: Check the compiled validator cache (read lock — allows
         // concurrent readers).
         {
-            let cache = self.compiled_cache.read().unwrap_or_else(|e| e.into_inner());
+            let cache = self.compiled_cache.read();
             if let Some(compiled) = cache.get(schema_id) {
                 return Self::run_validation(compiled, value, schema_id);
             }
@@ -333,10 +331,7 @@ impl SchemaValidator {
         // Insert into cache (write lock). Use entry API to avoid overwriting
         // if another thread compiled the same schema concurrently.
         {
-            let mut cache = self
-                .compiled_cache
-                .write()
-                .unwrap_or_else(|e| e.into_inner());
+            let mut cache = self.compiled_cache.write();
             cache.entry(schema_id.to_string()).or_insert(compiled);
         }
 

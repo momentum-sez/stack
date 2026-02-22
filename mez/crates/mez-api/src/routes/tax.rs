@@ -43,6 +43,7 @@ use axum::extract::rejection::JsonRejection;
 
 /// Request to record a tax event.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateTaxEventRequest {
     /// Entity subject to the tax event.
     pub entity_id: Uuid,
@@ -139,6 +140,7 @@ impl Validate for CreateTaxEventRequest {
 
 /// Request to generate a tax report.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct GenerateReportRequest {
     /// Entity this report covers.
     pub entity_id: Uuid,
@@ -790,7 +792,10 @@ fn aggregate_withholdings(withholdings: &[WithholdingResult], gross: &str) -> (S
 /// Delegates to [`mez_agentic::tax::parse_amount`] — the canonical
 /// fixed-precision parser — with a fallback of 0 for invalid strings.
 fn parse_amount_or_zero(s: &str) -> i64 {
-    parse_amount(s).unwrap_or(0)
+    parse_amount(s).unwrap_or_else(|| {
+        tracing::warn!(amount = %s, "failed to parse amount — defaulting to 0");
+        0
+    })
 }
 
 // ---------------------------------------------------------------------------

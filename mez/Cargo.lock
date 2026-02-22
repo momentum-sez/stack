@@ -2136,6 +2136,7 @@ version = "0.4.44"
 dependencies = [
  "jsonschema",
  "mez-core",
+ "parking_lot",
  "proptest",
  "serde",
  "serde_json",

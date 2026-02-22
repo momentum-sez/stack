@@ -36,6 +36,7 @@ use axum::extract::rejection::JsonRejection;
 
 /// Request to submit an environmental trigger for policy evaluation.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct TriggerRequest {
     /// Trigger type name (e.g., "sanctions_list_update", "license_status_change").
     pub trigger_type: String,

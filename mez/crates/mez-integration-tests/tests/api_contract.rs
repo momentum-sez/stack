@@ -1749,7 +1749,7 @@ async fn regulator_query_with_domain_filter() {
     let resp = app
         .oneshot(post_json(
             "/v1/regulator/query/attestations",
-            json!({"domain": "kyc", "limit": 10}),
+            json!({"attestation_type": "kyc", "limit": 10}),
         ))
         .await
         .unwrap();

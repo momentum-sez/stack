@@ -16,13 +16,14 @@ use uuid::Uuid;
 use crate::error::AppError;
 use crate::state::AppState;
 
-/// Persist to Postgres if db_pool is available. Logs errors but does not
-/// fail the request — the in-memory store is the source of truth.
+/// Persist to Postgres if db_pool is available. Returns an error
+/// if persistence fails — the in-memory and database stores must stay in sync.
 macro_rules! persist {
     ($state:expr, $save_fn:path, $($args:expr),+) => {
         if let Some(ref pool) = $state.db_pool {
             if let Err(e) = $save_fn(pool, $($args),+).await {
-                tracing::warn!(error = %e, "sovereign_ops: failed to persist");
+                tracing::error!(error = %e, "sovereign_ops: failed to persist to database");
+                return Err(AppError::Internal(format!("database persist failed: {e}")));
             }
         }
     };
@@ -383,7 +384,7 @@ pub fn compute_withholding(
     currency: &str,
     transaction_type: &str,
     ntn: Option<&str>,
-) -> Value {
+) -> Result<Value, AppError> {
     let (filer_status, ntn_status_str) = match ntn {
         Some(n) if !n.is_empty() => match n.as_bytes().first() {
             Some(b'0') => ("NonFiler", "NonFiler"),
@@ -408,13 +409,15 @@ pub fn compute_withholding(
         (_, _) => 9.0,
     };
 
-    let gross: f64 = transaction_amount.parse().unwrap_or(0.0);
+    let gross: f64 = transaction_amount.parse().map_err(|_| {
+        AppError::Validation(format!("invalid transaction_amount: {transaction_amount:?}"))
+    })?;
     let withholding = gross * rate_percent / 100.0;
     let net = gross - withholding;
 
     let now = Utc::now().to_rfc3339();
 
-    json!({
+    Ok(json!({
         "entity_id": entity_id,
         "gross_amount": format!("{gross:.2}"),
         "withholding_amount": format!("{withholding:.2}"),
@@ -424,5 +427,5 @@ pub fn compute_withholding(
         "withholding_type": transaction_type,
         "ntn_status": ntn_status_str,
         "computed_at": now
-    })
+    }))
 }

@@ -77,6 +77,7 @@ fn require_mass_client(state: &AppState) -> Result<&mez_mass_client::MassClient,
 
 /// Request to verify a Pakistan CNIC number against NADRA records.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CnicVerifyRequest {
     /// CNIC number (13 digits, with or without dashes).
     pub cnic: String,
@@ -117,6 +118,7 @@ pub struct CnicVerifyResponse {
 
 /// Request to verify a Pakistan NTN against FBR IRIS records.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct NtnVerifyRequest {
     /// NTN number (7 digits).
     pub ntn: String,
@@ -442,7 +444,11 @@ async fn get_entity_identity(
 
     let identity_values: Vec<serde_json::Value> = identities
         .into_iter()
-        .filter_map(|id| serde_json::to_value(id).ok())
+        .filter_map(|id| {
+            serde_json::to_value(&id)
+                .map_err(|e| tracing::warn!(error = %e, "failed to serialize identity record"))
+                .ok()
+        })
         .collect();
 
     // Fetch attestations from EZ Stack for this entity.
@@ -451,7 +457,11 @@ async fn get_entity_identity(
         .list()
         .into_iter()
         .filter(|a| a.entity_id == entity_id)
-        .filter_map(|a| serde_json::to_value(a).ok())
+        .filter_map(|a| {
+            serde_json::to_value(&a)
+                .map_err(|e| tracing::warn!(error = %e, "failed to serialize attestation record"))
+                .ok()
+        })
         .collect();
 
     let dedicated = client.identity().has_dedicated_service();

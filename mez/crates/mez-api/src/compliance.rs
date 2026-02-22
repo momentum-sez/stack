@@ -5,7 +5,7 @@
 //! evaluation endpoint (smart_assets) and the credential issuance endpoint
 //! (credentials).
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -43,7 +43,7 @@ pub struct ComplianceEvalResult {
     /// Aggregate compliance status across all 20 domains.
     pub overall_status: String,
     /// Per-domain compliance status.
-    pub domain_results: HashMap<String, String>,
+    pub domain_results: BTreeMap<String, String>,
     /// Total number of domains evaluated.
     pub domain_count: usize,
     /// Domains that are in a passing state (compliant, exempt, not_applicable).
@@ -168,7 +168,7 @@ pub fn build_jurisdiction_evaluation_result(
         })
         .ok();
 
-    let mut domain_results = HashMap::new();
+    let mut domain_results = BTreeMap::new();
     let mut passing_domains = Vec::new();
     let mut blocking_domains = Vec::new();
 
@@ -249,7 +249,7 @@ pub fn build_evaluation_result(
         })
         .ok();
 
-    let mut domain_results = HashMap::new();
+    let mut domain_results = BTreeMap::new();
     let mut passing_domains = Vec::new();
     let mut blocking_domains = Vec::new();
 

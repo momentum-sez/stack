@@ -1256,9 +1256,9 @@ fn parse_rate_bps(rate_str: &str) -> Option<i64> {
             1 => frac_str.parse::<i64>().ok()? * 10,
             _ => frac_str[..2].parse::<i64>().ok()?,
         };
-        Some(integer_part.saturating_mul(100).saturating_add(frac))
+        integer_part.checked_mul(100).and_then(|v| v.checked_add(frac))
     } else {
-        Some(rate_str.parse::<i64>().ok()?.saturating_mul(100))
+        rate_str.parse::<i64>().ok()?.checked_mul(100)
     }
 }
 

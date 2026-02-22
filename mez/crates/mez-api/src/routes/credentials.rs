@@ -40,6 +40,7 @@ use crate::state::AppState;
 
 /// Request body for compliance credential issuance.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ComplianceCredentialRequest {
     /// Entity ID for entity-specific evaluation.
     pub entity_id: Option<Uuid>,
@@ -197,7 +198,7 @@ async fn issue_compliance_credential(
         "evaluation_aggregate": evaluation.overall_status,
         "tensor_commitment": evaluation.tensor_commitment,
         "evaluated_at": now.to_string(),
-        "domain_count": 20,
+        "domain_count": evaluation.domain_count,
         "passing_domains": evaluation.passing_domains,
     });
 

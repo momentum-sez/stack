@@ -330,6 +330,7 @@ fn require_mass_client(state: &AppState) -> Result<&mez_mass_client::MassClient,
 
 /// Request to create an entity via the Mass API proxy.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateEntityProxyRequest {
     pub entity_type: String,
     pub legal_name: String,
@@ -343,6 +344,7 @@ pub struct CreateEntityProxyRequest {
 /// Accepts the same fields as creation, all optional. At least one field
 /// must be provided (an empty update is semantically meaningless).
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateEntityProxyRequest {
     /// New legal name for the entity.
     #[serde(default)]
@@ -366,6 +368,7 @@ pub struct UpdateEntityProxyRequest {
 
 /// Beneficial owner input.
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct BeneficialOwnerInput {
     pub name: String,
     pub ownership_percentage: String,
@@ -377,6 +380,7 @@ pub struct BeneficialOwnerInput {
 
 /// Request to create a cap table via the Mass API proxy.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateCapTableProxyRequest {
     pub entity_id: uuid::Uuid,
     pub share_classes: Vec<ShareClassInput>,
@@ -384,6 +388,7 @@ pub struct CreateCapTableProxyRequest {
 
 /// Share class input for cap table creation.
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ShareClassInput {
     pub name: String,
     pub authorized_shares: u64,
@@ -395,6 +400,7 @@ pub struct ShareClassInput {
 
 /// Request to create a fiscal account via the Mass API proxy.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateAccountProxyRequest {
     pub entity_id: uuid::Uuid,
     pub account_type: String,
@@ -405,6 +411,7 @@ pub struct CreateAccountProxyRequest {
 
 /// Request to initiate a payment via the Mass API proxy.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreatePaymentProxyRequest {
     pub from_account_id: uuid::Uuid,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -416,6 +423,7 @@ pub struct CreatePaymentProxyRequest {
 
 /// Request to verify an identity via the Mass API proxy.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct VerifyIdentityProxyRequest {
     pub identity_type: String,
     pub linked_ids: Vec<LinkedIdInput>,
@@ -423,6 +431,7 @@ pub struct VerifyIdentityProxyRequest {
 
 /// Linked external ID input.
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct LinkedIdInput {
     pub id_type: String,
     pub id_value: String,
@@ -430,6 +439,7 @@ pub struct LinkedIdInput {
 
 /// Request to create a consent request via the Mass API proxy.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateConsentProxyRequest {
     pub consent_type: String,
     pub description: String,
@@ -438,6 +448,7 @@ pub struct CreateConsentProxyRequest {
 
 /// Consent party input.
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ConsentPartyInput {
     pub entity_id: uuid::Uuid,
     pub role: String,
@@ -1200,9 +1211,10 @@ async fn verify_identity(
         match id_type.to_uppercase().as_str() {
             "CNIC" => sovereign_ops::verify_cnic(id_value, None)?,
             "NTN" => sovereign_ops::verify_ntn(id_value, None)?,
-            _ => {
-                // Default to CNIC-style verification for unknown types.
-                sovereign_ops::verify_cnic(id_value, None)?
+            other => {
+                return Err(AppError::Validation(format!(
+                    "unsupported identity type: {other:?} (supported: CNIC, NTN)"
+                )));
             }
         }
     } else {

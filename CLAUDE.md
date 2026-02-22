@@ -1,307 +1,273 @@
-# CLAUDE.md — Momentum EZ Stack v0.4.44 GENESIS
+# CLAUDE.md — Momentum EZ Stack
 
-**Repository:** `momentum-ez/stack`
-**Version:** 0.4.44-GENESIS
-**License:** BUSL-1.1
-**Architecture:** Rust workspace (single `mez-api` binary) + 210 zone definitions + 323 modules + 116 schemas
+> Instructions for Claude Code sessions operating on this repository.
+> **Repository:** `momentum-sez/stack` · **License:** BUSL-1.1
 
 ---
 
-## I. WHAT THIS IS
+## I. WHAT THIS REPO IS
 
-A Rust workspace that provides **jurisdictional orchestration** for Mass — Momentum's five programmable primitives (Entities, Ownership, Fiscal, Identity, Consent). Mass is Java/Spring Boot, live, processing real capital. This repo sits above Mass and adds compliance intelligence, corridor management, and cryptographic provenance.
+A Rust workspace that deploys **jurisdictional infrastructure as code** — compliance evaluation, cross-border corridors, cryptographic credentials, and capital flow orchestration. The product vision: "the AWS of Economic Zones." One command deploys a sovereign zone with compliance intelligence, corridor connectivity, and verifiable audit trails.
 
-17 crates, 164K lines of Rust, 4,683 tests, zero Python.
+The workspace produces a single binary (`mez-api`) that serves all HTTP routes, plus a CLI (`mez-cli`) for offline zone management.
 
-## II. THE BOUNDARY
+**17 crates. ~164K lines of Rust. ~4,700 tests. Zero Python.**
 
-**Mass APIs** (Java, NOT in this repo) own CRUD for five primitives:
+---
 
-| Primitive | Service | Base URL |
-|-----------|---------|----------|
-| Entities | organization-info | `organization-info.api.mass.inc/organization-info/` |
-| Ownership | investment-info | `investment-info-production-*.herokuapp.com/investment-info/` |
-| Fiscal | treasury-info | `treasury-info.api.mass.inc/treasury-info/` |
-| Identity | **No dedicated service yet** — split across consent-info + org-info | — |
-| Consent | consent-info | `consent.api.mass.inc/consent-info/` |
-
-API path convention: `{base_url}/{context-path}/api/v1/{resource}`
-
-**This repo** (Rust) owns jurisdictional intelligence:
-
-- Compliance tensor evaluation (20 domains, exhaustive match)
-- Pack Trilogy (lawpacks, regpacks, licensepacks)
-- Corridor state machines and receipt chains
-- Trade flow instruments (4 archetypes, 10 transition types)
-- Verifiable Credential issuance
-- Orchestration pipeline: compliance eval -> Mass API call -> VC -> attestation
-- Smart Asset lifecycle, watcher economy, arbitration
-- Zone composition algebra and corridor mesh
-- Deployment tooling (Docker, Terraform, K8s)
-
-**The rule**: If it's "create/read/update/delete a business object" -> Mass. If it's "evaluate whether that operation is compliant in this jurisdiction" -> this repo. `mez-mass-client` is the sole authorized gateway to Mass APIs. No other crate may call Mass directly.
-
-## III. CRATE MAP
-
-```
-mez-core             Foundation. CanonicalBytes, ComplianceDomain (20 variants),
-                      identifier newtypes, MezError, Timestamp, data sovereignty.
-                      ZERO internal deps.
-
-mez-crypto           Ed25519 (Zeroize), MMR, CAS, constant-time comparison.
-mez-vc               W3C Verifiable Credentials, Ed25519Signature2020.
-mez-tensor           Compliance Tensor V2, Manifold (Dijkstra path optimization).
-mez-pack             Pack Trilogy processing, multi-jurisdiction composition engine.
-mez-state            Typestate FSMs: corridor, migration, entity, license, watcher.
-mez-corridor         Corridor lifecycle, receipt chains, fork resolution, netting,
-                      SWIFT pacs.008, trade flow instruments, inter-zone protocol.
-mez-agentic          Autonomous policy engine, trigger taxonomy, tax event generation.
-mez-arbitration      Dispute lifecycle, escrow, institution registry.
-mez-compliance       Jurisdiction config bridge (regpack -> tensor).
-mez-schema           JSON Schema validation (116 schemas, Draft 2020-12).
-mez-zkp              ZK proof traits + stubs (Groth16, PLONK — mock only).
-mez-mass-client      Typed HTTP client for Mass APIs. Depends on mez-core only.
-mez-mass-stub        Standalone Mass API stub server for dev/testing without Postgres.
-mez-api              Axum HTTP server. Sole composition point — depends on all above.
-mez-cli              CLI: zone validate/build/lock/sign, VC keygen/sign/verify,
-                      corridor mesh, regpack build.
-mez-integration-tests  Cross-crate integration test suite.
-```
-
-Dependency DAG:
-```
-mez-core (leaf — zero internal deps)
-├── mez-crypto, mez-tensor, mez-pack, mez-state, mez-schema, mez-agentic
-├── mez-vc (core + crypto)
-├── mez-corridor (core + crypto + state)
-├── mez-arbitration (core + crypto + vc)
-├── mez-compliance (core + tensor + pack)
-├── mez-zkp (core + crypto)
-├── mez-mass-client (core only — newtypes)
-├── mez-mass-stub (core + mass-client)
-└── mez-api (ALL crates — sole composition point)
-```
-
-## IV. BUILD & VERIFY
+## II. BUILD & VERIFY
 
 ```bash
-cargo check --workspace              # zero warnings required
+cargo check --workspace                  # zero warnings required
 cargo clippy --workspace -- -D warnings  # zero diagnostics required
-cargo test --workspace               # all 4,683 tests must pass
+cargo test --workspace                   # all tests must pass
 ```
 
-After any code change, run all three. No exceptions.
+Run all three after any code change. No exceptions.
 
-## V. INVARIANTS (violating any is a blocking failure)
+---
 
-1. **`mez-core` has zero internal crate dependencies.** External: serde, serde_json, thiserror, chrono, uuid, sha2 only.
+## III. ARCHITECTURE
 
-2. **`mez-mass-client` depends only on `mez-core`** (for identifier newtypes). Never import tensors, corridors, packs, VCs, or other domain crates.
+### The Mass/EZ Boundary
 
-3. **No dependency cycles.** `mez-api` is the sole composition root. No other crate depends on it.
+**Mass** (Java/Spring Boot, NOT in this repo) owns CRUD for five primitives:
 
-4. **All SHA-256 flows through `mez-core::digest`.** Three tiers:
-   - Domain objects: `CanonicalBytes::new()` -> `sha256_digest()`
-   - Raw bytes: `sha256_raw()`
-   - Streaming: `Sha256Accumulator`
-   - `sha2::Sha256` direct usage appears ONLY in `mez-core/src/digest.rs` and `mez-crypto/src/mmr.rs`.
-   - Verify: `grep -rn "use sha2" crates/ --include="*.rs"` — hits outside those two files are bugs.
+| Primitive | Mass Service |
+|-----------|-------------|
+| Entities | `organization-info.api.mass.inc` |
+| Ownership | `investment-info` (Heroku) |
+| Fiscal | `treasury-info.api.mass.inc` |
+| Identity | Split across consent-info + org-info (no dedicated service yet) |
+| Consent | `consent.api.mass.inc` |
 
-5. **ComplianceDomain has exactly 20 variants**, defined once in `mez-core/src/domain.rs`. Every `match` is exhaustive. Compile-time assertion enforces COUNT == 20.
+**This repo** owns compliance intelligence and orchestration:
+- Compliance tensor evaluation (20 domains, exhaustive match, fail-closed)
+- Pack Trilogy (lawpacks, regpacks, licensepacks)
+- Corridor state machines and receipt chains (MMR + hash-chain)
+- Verifiable Credential issuance (Ed25519)
+- Trade flow instruments
+- Orchestration pipeline: compliance eval → Mass API call → VC → attestation
 
-6. **Zero `unwrap()` in production code.** All `.unwrap()` must be inside `#[cfg(test)]`. Use `?`, `.map_err()`, `.ok_or_else()`, or `expect("reason")` for static values.
+**The boundary rule:** CRUD → Mass. Compliance/orchestration → this repo. `mez-mass-client` is the sole authorized gateway to Mass APIs.
 
-7. **Zero `unimplemented!()` or `todo!()` outside tests.** Stubs return `MezError::NotImplemented` (HTTP 501).
-
-8. **`serde_json` must not enable `preserve_order`.** CI guard exists. Digest corruption if violated.
-
-9. **No default credentials in deploy paths.** All compose/deploy files use `${VAR:?must be set}`.
-
-10. **Receipt chain invariants:**
-    - `receipt.prev_root == final_state_root` (hash-chain continuity)
-    - `receipt.next_root == SHA256(JCS(payload_without_proof_and_next_root))`
-    - `mmr_root() == MMR(next_roots)`
-
-11. **Compliance tensor fail-closed:** Production mode: all mandatory domains evaluated, no empty slices. `NotApplicable` requires signed policy artifact.
-
-12. **ZK proof policy fail-closed:** Release builds reject mock proof types.
-
-## VI. ORCHESTRATION PATTERN
-
-Every **write** endpoint in sovereign/proxy mode follows:
+### Crate Dependency DAG
 
 ```
-1. Pre-flight compliance -> evaluate tensor across relevant domains for jurisdiction
-2. Hard-block check -> Sanctions NonCompliant = reject (legal requirement)
-3. Mass API call -> delegate via mez-mass-client (proxy) or sovereign_ops (sovereign)
-4. VC issuance -> sign compliance attestation as Verifiable Credential
-5. Attestation storage -> persist to Postgres for regulator queries
-6. Return OrchestrationEnvelope { mass_response, compliance, credential, attestation_id }
+mez-core (ZERO internal deps — foundation types, CanonicalBytes, ComplianceDomain(20), digest)
+├── mez-crypto       (Ed25519/zeroize, MMR, CAS, SHA-256)
+├── mez-tensor       (Compliance Tensor V2, Dijkstra manifold)
+├── mez-pack         (lawpack/regpack/licensepack processing)
+├── mez-state        (typestate FSMs: corridor, entity, migration, watcher)
+├── mez-schema       (116 JSON Schemas, Draft 2020-12)
+├── mez-agentic      (policy engine, 20 triggers, tax pipeline)
+├── mez-vc           (W3C Verifiable Credentials — core + crypto)
+├── mez-corridor     (receipt chains, fork resolution, netting — core + crypto + state)
+├── mez-arbitration  (dispute lifecycle, escrow — core + crypto + vc)
+├── mez-compliance   (regpack → tensor bridge — core + tensor + pack)
+├── mez-zkp          (sealed ProofSystem trait — core + crypto; STUBS ONLY)
+├── mez-mass-client  (typed HTTP client for Mass — core ONLY)
+├── mez-mass-stub    (dev Mass API server — core + mass-client)
+├── mez-cli          (offline zone/vc/regpack/corridor CLI)
+├── mez-api          (Axum HTTP server — depends on ALL crates, sole composition point)
+└── mez-integration-tests (cross-crate test suite)
 ```
 
-**Read** endpoints (GET) are pass-through — no compliance eval needed on reads.
+### Orchestration Pipeline
 
-Two deployment modes:
-- `SOVEREIGN_MASS=true`: Zone IS the Mass server. Postgres-backed. No external Mass dependency.
+Every **write** endpoint follows:
+```
+Request → Auth (constant-time bearer) → Compliance Tensor (20 domains)
+  → Sanctions hard-block (NonCompliant = reject)
+  → Mass API call (proxy or sovereign Postgres)
+  → VC issuance (Ed25519-signed attestation)
+  → Attestation storage (Postgres)
+  → Response (OrchestrationEnvelope)
+```
+
+**Read** endpoints are pass-through — no compliance eval.
+
+### Two Deployment Modes
+
+- `SOVEREIGN_MASS=true`: Zone IS the Mass server. mez-api serves all primitive routes directly, Postgres-backed.
 - `SOVEREIGN_MASS=false`: Zone proxies to centralized Mass APIs via `mez-mass-client`.
 
-## VII. WHAT IS REAL vs. STUB vs. PLANNED
+---
 
-| Capability | Status | Notes |
-|-----------|--------|-------|
-| Pack Trilogy (law/reg/licensepacks) | **IMPLEMENTED** | mez-pack, composition engine, Pakistan content |
-| Compliance Tensor (20 domains) | **IMPLEMENTED** | mez-tensor, fail-closed on extended domains |
-| Corridor FSM (typestate) | **IMPLEMENTED** | mez-state — compile-time invalid transition prevention |
-| Receipt chain + MMR | **IMPLEMENTED** | Dual commitment: hash-chain + MMR inclusion proofs |
-| Fork resolution (evidence-driven) | **IMPLEMENTED** | Signed watcher attestations, timestamp bounds |
-| Content-addressed artifacts | **IMPLEMENTED** | mez-crypto/cas.rs |
-| Verifiable Credentials (Ed25519) | **IMPLEMENTED** | mez-vc |
-| Write-path orchestration (5 primitives) | **IMPLEMENTED** | Both proxy and sovereign modes |
-| Trade flow instruments | **IMPLEMENTED** | 4 archetypes, 10 transitions, Postgres persistence |
-| Tax pipeline (Pakistan) | **IMPLEMENTED** | mez-agentic + mez-api/routes/tax.rs |
-| Inter-zone corridor protocol | **IMPLEMENTED** | Handshake, receipt exchange, corridor registry |
-| Zone composition algebra | **IMPLEMENTED** | 6-layer type system, corridor mesh, 210 zones |
-| Data sovereignty enforcement | **IMPLEMENTED** | mez-core/src/sovereignty.rs |
-| Agentic policy engine | **IMPLEMENTED** | mez-agentic |
-| Arbitration system | **IMPLEMENTED** | mez-arbitration |
-| Migration saga (8 phases) | **IMPLEMENTED** | CAS + idempotent compensation + EffectExecutor |
-| Watcher economy (bonds/slashing) | **IMPLEMENTED** | mez-state/watcher.rs + REST API (10 endpoints) |
-| National system adapters (PK) | **IMPLEMENTED** | FBR IRIS, SECP, SBP Raast, NADRA (trait + mock) |
-| Payment rail adapters (Raast, SWIFT, Circle) | **STUB** | Trait defined, no real HTTP impl |
-| BBS+ selective disclosure | **STUB** | Trait only (feature-gated) |
-| ZK circuits (12 types) | **STUB** | Mock implementations, fail-closed in release |
-| Poseidon2 hash | **STUB** | Returns NotImplemented (feature-gated) |
-| Identity as dedicated Mass service | **PLANNED** | No identity-info.api.mass.inc yet |
-| Smart Asset VM (SAVM) | **PLANNED** | No code exists |
-| MASS L1 settlement layer | **PLANNED** | No code exists |
+## IV. INVARIANTS
 
-**Rule**: Do not write code that assumes STUB or PLANNED capabilities exist. STUB features return `MezError::NotImplemented`. PLANNED features have no code.
+Violating any is a blocking failure.
 
-## VIII. ANTI-SLOP PROTOCOL
+1. **`mez-core` has zero internal crate dependencies.** External: serde, serde_json, thiserror, chrono, uuid, sha2 only.
+2. **`mez-mass-client` depends only on `mez-core`** (for newtypes). Never import tensors, corridors, packs, VCs.
+3. **No dependency cycles.** `mez-api` is the sole composition root.
+4. **SHA-256 flows through `mez-core::digest`.** Direct `sha2::Sha256` usage only in `mez-core/src/digest.rs` and `mez-crypto/src/mmr.rs`. Verify: `grep -rn "use sha2" crates/ --include="*.rs"`.
+5. **ComplianceDomain has exactly 20 variants**, defined once in `mez-core/src/domain.rs`. Every `match` is exhaustive. Compile-time assertion enforces COUNT == 20.
+6. **Zero `unwrap()` in production code.** All `.unwrap()` must be inside `#[cfg(test)]`.
+7. **Zero `unimplemented!()` or `todo!()` outside tests.** Stubs return `MezError::NotImplemented`.
+8. **`serde_json` must not enable `preserve_order`.** Digest corruption if violated.
+9. **No default credentials in deploy paths.** All compose/deploy files use `${VAR:?must be set}`.
+10. **Receipt chain continuity:** `receipt.prev_root == final_state_root`, `receipt.next_root == SHA256(JCS(payload))`, `mmr_root() == MMR(next_roots)`.
+11. **Compliance tensor fail-closed:** All mandatory domains evaluated, no empty slices. `NotApplicable` requires signed artifact.
+12. **ZK proofs fail-closed:** Release builds reject mock proof types.
 
-Before writing any code, verify it earns its existence. Kill on sight:
+---
 
-- Functions never called outside their module
-- Types that duplicate another type with trivially different field names
-- Match arms that all return the same value
-- Tests that assert `true == true` or test only JSON deserialization with no logic
-- Doc comments that restate the function signature
-- `#[allow(dead_code)]` — if dead, delete it
-- Mock impls that return `Ok(())` without exercising logic
-- Compliance evals that return `Compliant` for all domains without checking
-- VC issuance without actual compliance verification
-- Corridor transitions that skip FSM validation
-- Constants referenced only in tests
-- Trait impls with exactly one implementor "for future genericity"
+## V. WHAT IS REAL vs. WHAT IS NOT
 
-## IX. CODE REVIEW GATES
+Be honest about status. Do not write code that assumes stubs or planned features work.
 
-Before any merge:
+### Implemented and Tested
 
-- [ ] No new `unwrap()` outside `#[cfg(test)]`
-- [ ] No `unimplemented!()`/`todo!()` in production paths
-- [ ] No `anyhow` outside `mez-cli`
-- [ ] No `std::sync::RwLock` — use `parking_lot`
-- [ ] No SHA-256 bypassing `mez-core::digest`
-- [ ] No Mass CRUD duplicated in EZ Stack
-- [ ] No Python added
-- [ ] No direct `reqwest` to Mass outside `mez-mass-client`
-- [ ] Error types carry diagnostic context
-- [ ] Naming: Momentum (never "Momentum Protocol"), Mass (never "Mass Protocol" casually), domains end `.inc`
-- [ ] New types use mez-core newtypes (not raw String/Uuid)
+| Capability | Evidence |
+|-----------|---------|
+| Compliance tensor (20 domains, fail-closed) | `mez-tensor/src/evaluation.rs` — exhaustive match, Merkle commitments |
+| Receipt chain (dual-commitment: hash-chain + MMR) | `mez-corridor/src/receipt.rs` — golden vectors, adversarial tests |
+| Fork resolution (evidence-driven) | `mez-corridor/src/fork.rs` — signed attestations, timestamp bounds |
+| Canonicalization (MCF = JCS + float reject + datetime normalize) | `mez-core/src/canonical.rs` |
+| Ed25519, MMR, CAS | `mez-crypto/` |
+| W3C Verifiable Credentials | `mez-vc/` |
+| Typestate FSMs (corridor, entity, migration, watcher) | `mez-state/` — invalid transitions = compile errors |
+| Pack Trilogy processing | `mez-pack/` — lawpacks (PK), regpacks, 70+ licensepacks |
+| Agentic policy engine | `mez-agentic/` — 20 triggers, tax pipeline |
+| Arbitration system | `mez-arbitration/` — dispute lifecycle, escrow |
+| Inter-zone corridor protocol | `mez-corridor/src/network.rs` — handshake, receipt exchange |
+| Trade flow instruments | `mez-corridor/src/trade.rs` — 4 archetypes, 10 transitions |
+| JSON Schema validation (116 schemas) | `mez-schema/` — Draft 2020-12, cached validators |
+| Write-path orchestration | `mez-api/src/orchestration.rs` — both proxy and sovereign modes |
+| Sovereign Mass persistence | `mez-api/migrations/` — Postgres-backed 5-primitive CRUD |
+| Zone manifest system | `mez-pack/src/zone_manifest.rs` — 6 profiles |
+| HTTP API (50+ endpoints) | `mez-api/src/routes/` — corridors, compliance, watchers, trade, tax, etc. |
+| Docker Compose (1-zone, 2-zone, 3-zone) | `deploy/docker/` |
+| AWS Terraform (EKS + RDS + KMS) | `deploy/aws/terraform/` |
+| K8s manifests | `deploy/k8s/` |
 
-## X. NAMING
+### Stubs (return NotImplemented)
 
-| Term | Correct | Never |
-|------|---------|-------|
-| **Momentum** | "Momentum is a $1B+ venture fund and studio." | "Momentum Protocol" |
-| **Mass** | "Mass provides five programmable primitives." | — |
-| **Mass Protocol** | Only when discussing L1 settlement layer, ZKP circuits | In sales, README, casual usage |
-| **momentum.inc** | Momentum's domain | momentum.xyz, .io, .com |
-| **mass.inc** | Mass's domain | mass.xyz, .io |
+| Capability | Notes |
+|-----------|-------|
+| ZK proof circuits (12 types) | Mock implementations. Fail-closed in release builds. |
+| BBS+ selective disclosure | Feature-gated trait only. |
+| Poseidon2 hash | Feature-gated, returns NotImplemented. |
+| Payment rail adapters (Raast, SWIFT, Circle) | Trait defined, no HTTP implementation. |
+| National system adapters (FBR, SECP, NADRA) | Trait + type definitions, no real HTTP calls. |
 
-## XI. PRIORITY ORDER
+### Does Not Exist
 
-When conflicts arise:
+| Capability | Notes |
+|-----------|-------|
+| Identity as dedicated Mass service | Split across consent-info + org-info. |
+| Smart Asset VM (SAVM) | No code. |
+| MASS L1 settlement layer | No code. |
+| CI/CD pipeline for Docker image builds | No GitHub Actions / ECR push automation. |
+| Web UI / operator dashboard | CLI and API only. |
 
-1. **Security** — keys, secrets, auth, constant-time ops
-2. **Correctness** — tensor eval, receipt chain linking, canonical digests
-3. **Mass/EZ boundary** — no CRUD duplication, clean orchestration
-4. **Deployment blockers** — resolve open items
-5. **Code quality** — dead code, slop, untested paths
+---
 
-## XII. AUDIT STATUS
+## VI. DEPLOYMENT REALITY
 
-### Resolved (Phases A-H complete)
+### What works today
 
-All P0 findings from the institutional readiness audit have been addressed except the items listed under "Open" below. Key closures:
+```bash
+# Local: single zone with Postgres + Prometheus + Grafana
+cd deploy/docker && docker compose up -d
 
-- **P0-CORRIDOR-001..004**: Receipt chain implements dual-commitment model (hash-chain + MMR). Schema-conformant receipts and checkpoints with proof fields.
-- **P0-CANON-001**: Momentum Canonical Form (MCF) documented as normative extension of JCS (ADR-002).
-- **P0-FORK-001**: Evidence-driven fork resolution with signed watcher attestations, timestamp bounds.
-- **P0-MIGRATION-001**: CAS + idempotent compensation + EffectExecutor trait + property tests.
-- **P0-TENSOR-001**: Fail-closed on extended domains (Pending default, empty slice = error).
-- **P0-ZK-001**: Fail-closed production policy (ProofPolicy, release rejects mock).
-- **P0-DEPLOY-001**: Secret injection, no default credentials.
-- **P0-PACK-001**: Pakistan Pack Trilogy (lawpacks, regpacks, licensepacks).
-- **P0-CORRIDOR-NET-001**: Inter-zone corridor protocol with handshake + receipt exchange.
-- **P1-CLI-001**: Evidence-gated corridor transitions.
-- **P1-SCHEMA-001**: Draft 2020-12 compilation in CI.
-- **P1-GOV-001**: Deprecated v1 state machine quarantined.
-- **P1-PERF-001**: Cached compiled schema validators.
-- **P1-API-001/002**: Contract-grade OpenAPI specs, Mass API specs pinned.
+# Local: two sovereign zones with corridor
+cd deploy/docker && docker compose -f docker-compose.two-zone.yaml up -d
 
-### Open
+# Scripted zone deploy with key generation
+./deploy/scripts/deploy-zone.sh sovereign-govos-pk org.momentum.mez.zone.pk-sifc pk
+```
 
-| ID | Issue | Severity | Owner |
-|----|-------|----------|-------|
-| P0-CRYPTO-001 | Poseidon2 stub (feature-gated) | P0 | Deferred Phase 4 |
-| P0-CRYPTO-002 | BBS+ stub (feature-gated) | P0 | Deferred Phase 4 |
-| P0-ANCHOR-001 | Anchor target is mock | P0 | Deferred Phase 4 |
-| P0-IDENTITY-001 | No dedicated Mass identity service | P0 | Mass-side dependency |
-| P1-SCHEMA-002 | ~~Schema URI inconsistency~~ **RESOLVED** — all `$ref` values use full `schemas.momentum-ez.org` URIs | P1 | protocol |
-| P1-SCHEMA-003 | ~~additionalProperties~~ **RESOLVED** — all security-critical schemas (trust-anchors, key-rotation, VC attestations, receipts, evidence packages, proof bindings) locked with `additionalProperties: false`; non-critical schemas remain extensible | P1 | protocol |
-| P1-NAMING-001 | Terminology glossary needed | P1 | protocol |
+### What is needed for AWS production deployment
 
-### Deployment Phase Gates
+1. Build and push Docker image to ECR (Dockerfile exists and works)
+2. Fill in `terraform.tfvars` with AWS specifics
+3. `terraform apply` provisions EKS + RDS + KMS + S3 + ALB
+4. `kubectl apply -f deploy/k8s/` deploys mez-api
 
-- **Phase 1 (Controlled Sandbox)**: READY. All entry criteria met.
-- **Phase 2 (Corridor Activation)**: READY. All blockers resolved.
-- **Phase 3 (Production)**: BLOCKED by identity service, real anchor target, HSM/KMS, external pen test.
-- **Phase 4 (Cross-Border Expansion)**: Requires Poseidon2, BBS+, real ZK backends, watcher bond economics.
-
-## XIII. KEY FILES
+### Key files
 
 | Purpose | Path |
 |---------|------|
 | Workspace manifest | `mez/Cargo.toml` |
 | API entry point | `mez/crates/mez-api/src/main.rs` |
 | Orchestration pipeline | `mez/crates/mez-api/src/orchestration.rs` |
-| Proxy routes | `mez/crates/mez-api/src/routes/mass_proxy.rs` |
-| Sovereign routes | `mez/crates/mez-api/src/routes/mass_sovereign.rs` |
+| App state | `mez/crates/mez-api/src/state.rs` |
+| Routes | `mez/crates/mez-api/src/routes/*.rs` |
+| DB migrations | `mez/crates/mez-api/migrations/` |
 | Compliance tensor | `mez/crates/mez-tensor/src/evaluation.rs` |
 | Receipt chain | `mez/crates/mez-corridor/src/receipt.rs` |
 | Fork resolution | `mez/crates/mez-corridor/src/fork.rs` |
-| Trade flow engine | `mez/crates/mez-corridor/src/trade.rs` |
+| Trade flows | `mez/crates/mez-corridor/src/trade.rs` |
 | Canonical bytes | `mez/crates/mez-core/src/canonical.rs` |
-| Zone composition | `mez/crates/mez-corridor/src/composition.rs` |
-| Corridor registry | `mez/crates/mez-corridor/src/registry.rs` |
-| Pack validation | `mez/crates/mez-pack/src/validation.rs` |
-| Watcher economy API | `mez/crates/mez-api/src/routes/watchers.rs` |
-| Schema validator | `mez/crates/mez-schema/src/validate.rs` |
-| Corridor FSM (spec) | `governance/corridor.lifecycle.state-machine.v2.json` |
-| Normative spec | `spec/` (24 chapters) |
-| JSON schemas | `schemas/` (116 files, Draft 2020-12) |
-| OpenAPI specs | `apis/` (4 contract-grade specs) |
+| Dockerfile | `deploy/docker/Dockerfile` |
+| Docker Compose | `deploy/docker/docker-compose.yaml` |
+| Terraform (AWS) | `deploy/aws/terraform/main.tf`, `kubernetes.tf` |
+| K8s manifests | `deploy/k8s/` |
+| Deploy script | `deploy/scripts/deploy-zone.sh` |
 | Zone definitions | `jurisdictions/` (210 zones) |
 | Module descriptors | `modules/` (323 across 16 families) |
-| Deploy configs | `deploy/docker/`, `deploy/aws/terraform/` |
-| Deployment roadmap | `docs/PRAGMATIC-DEPLOYMENT-ROADMAP.md` |
-| Zone bootstrap guide | `docs/ZONE-BOOTSTRAP-GUIDE.md` |
+| JSON schemas | `schemas/` (116 files) |
+| Normative spec | `spec/` (24 chapters) |
+| Bug ledger | `mez/crates/mez-integration-tests/BUG_LEDGER.md` |
 
 ---
 
-**End of CLAUDE.md**
+## VII. CODE QUALITY RULES
 
-Momentum · `momentum.inc`
-Mass · `mass.inc`
+### Before writing code
+
+- Read existing code first. Never propose changes to code you haven't read.
+- Verify new code earns its existence (see anti-slop list below).
+- Run `cargo check && cargo clippy -- -D warnings && cargo test` after changes.
+
+### Anti-slop (kill on sight)
+
+- Functions never called outside their module
+- Types that duplicate another type with trivially different fields
+- Match arms that all return the same value
+- Tests that assert `true == true` or only test JSON round-trip with no logic
+- Doc comments that restate the function signature
+- `#[allow(dead_code)]` — if dead, delete it
+- Mock impls that return `Ok(())` without exercising logic
+- Compliance evals that return `Compliant` for all domains without checking
+- Constants referenced only in tests
+- Trait impls with exactly one implementor "for future genericity"
+
+### Code review gates
+
+- No new `unwrap()` outside `#[cfg(test)]`
+- No `unimplemented!()`/`todo!()` in production paths
+- No `anyhow` outside `mez-cli`
+- No `std::sync::RwLock` — use `parking_lot`
+- No SHA-256 bypassing `mez-core::digest`
+- No Mass CRUD duplicated in EZ Stack
+- No Python
+- No direct `reqwest` to Mass outside `mez-mass-client`
+- Error types carry diagnostic context
+- New types use `mez-core` newtypes (not raw String/Uuid)
+
+---
+
+## VIII. NAMING
+
+| Term | Correct | Never |
+|------|---------|-------|
+| Momentum | "Momentum is a $1B+ venture fund and studio." | "Momentum Protocol" |
+| Mass | "Mass provides five programmable primitives." | — |
+| Mass Protocol | Only when discussing L1 settlement layer | In casual usage |
+| momentum.inc | Momentum's domain | momentum.xyz, .io, .com |
+| mass.inc | Mass's domain | mass.xyz, .io |
+
+---
+
+## IX. PRIORITY ORDER
+
+When conflicts arise:
+
+1. **Security** — keys, secrets, auth, constant-time ops
+2. **Correctness** — tensor eval, receipt chain, canonical digests
+3. **Mass/EZ boundary** — no CRUD duplication, clean orchestration
+4. **Deployment** — anything blocking `deploy-zone.sh` or Terraform
+5. **Code quality** — dead code, slop, untested paths

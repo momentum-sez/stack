@@ -6,6 +6,11 @@ nav:
   - Home: README.md
   - Docs:
       - Getting started: docs/getting-started.md
+      - Architecture: docs/ARCHITECTURE.md
+      - Zone bootstrap: docs/ZONE-BOOTSTRAP-GUIDE.md
+      - Deployment roadmap: docs/PRAGMATIC-DEPLOYMENT-ROADMAP.md
+      - Error taxonomy: docs/ERRORS.md
+      - Traceability: docs/traceability-matrix.md
       - Authoring:
           - Modules: docs/authoring/modules.md
           - Akoma: docs/authoring/akoma.md
@@ -16,28 +21,28 @@ nav:
           - Overview: docs/corridors/overview.md
           - Playbooks: docs/corridors/playbooks.md
       - Attestations: docs/attestations/catalog.md
-  - Roadmap:
-      - Production-grade evolution spec: docs/roadmap/PRODUCTION_GRADE_SPEC.md
-      - Pre-0.5 master roadmap: docs/roadmap/ROADMAP_PRE_0.5.md
-      - v0.4.42 roadmap: docs/roadmap/ROADMAP_V043_WEBHOOK_MONITORS.md
   - Spec:
+      - Terminology: spec/00-terminology.md
       - Mission: spec/01-mission.md
       - Invariants: spec/02-invariants.md
       - Standard structure: spec/03-standard-structure.md
       - Design rubric: spec/04-design-rubric.md
+      - Repo layout: spec/10-repo-layout.md
       - Architecture overview: spec/11-architecture-overview.md
       - Mass primitives mapping: spec/12-mass-primitives-mapping.md
-      - Regulator console: spec/71-regulator-console.md
-      - Provenance: spec/90-provenance.md
-      - Lockfile: spec/95-lockfile.md
-
-      - Terminology: spec/00-terminology.md
-      - Repo layout: spec/10-repo-layout.md
+      - Agentic: spec/17-agentic.md
       - Module system: spec/20-module-system.md
       - Templating & overlays: spec/22-templating-and-overlays.md
       - Profile system: spec/30-profile-system.md
       - Corridors: spec/40-corridors.md
-      - Civic governance: spec/60-governance.md
-      - Network diffusion: spec/61-network-diffusion.md
+      - Nodes: spec/41-nodes.md
       - Conformance: spec/50-conformance.md
+      - Governance: spec/60-governance.md
+      - Network diffusion: spec/61-network-diffusion.md
+      - Regulator console: spec/71-regulator-console.md
       - Security & privacy: spec/80-security-privacy.md
+      - Provenance: spec/90-provenance.md
+      - Lockfile: spec/95-lockfile.md
+      - Lawpacks: spec/96-lawpacks.md
+      - Artifacts: spec/97-artifacts.md
+      - Licensepacks: spec/98-licensepacks.md

@@ -134,6 +134,8 @@ pub trait AnchorTarget: private::Sealed {
 mod private {
     pub trait Sealed {}
     impl Sealed for super::MockAnchorTarget {}
+    #[cfg(feature = "evm-anchor")]
+    impl Sealed for super::EvmAnchorTarget {}
 }
 
 /// Mock L1 anchor target for Phase 1 development and testing.
@@ -194,6 +196,14 @@ impl AnchorTarget for MockAnchorTarget {
         &self.chain_id
     }
 }
+
+// ─── EVM JSON-RPC Anchor Target ─────────────────────────────────────────
+
+#[cfg(feature = "evm-anchor")]
+mod evm;
+
+#[cfg(feature = "evm-anchor")]
+pub use evm::{EvmAnchorConfig, EvmAnchorTarget};
 
 #[cfg(test)]
 mod tests {

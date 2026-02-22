@@ -14,6 +14,9 @@ poseidon2 = []
 # Phase 4: BBS+ selective disclosure signatures for Verifiable Credentials.
 # Contains only type signatures — implementation not yet available.
 bbs-plus = []
+# AWS KMS envelope encryption for Ed25519 key protection at rest.
+# Uses aws-sdk-kms to decrypt key material that is stored encrypted.
+aws-kms = ["dep:aws-sdk-kms", "dep:aws-config", "dep:tokio"]
 
 [dependencies]
 mez-core = { workspace = true }
@@ -24,6 +27,9 @@ rand_core = { workspace = true }
 zeroize = { workspace = true }
 subtle = { workspace = true }
 thiserror = { workspace = true }
+aws-sdk-kms = { version = "1", optional = true }
+aws-config = { version = "1", optional = true }
+tokio = { workspace = true, optional = true }
 
 [dev-dependencies]
 sha2 = { workspace = true }

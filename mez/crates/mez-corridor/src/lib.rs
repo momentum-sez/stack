@@ -48,6 +48,8 @@ pub mod trade_manager;
 
 // Re-export primary types.
 pub use anchor::{AnchorCommitment, AnchorError, AnchorReceipt, AnchorTarget, MockAnchorTarget};
+#[cfg(feature = "evm-anchor")]
+pub use anchor::{EvmAnchorConfig, EvmAnchorTarget};
 pub use bridge::{BridgeEdge, BridgeRoute, CorridorBridge};
 pub use fork::{
     ForkBranch, ForkDetector, ForkError, ForkResolution, ResolutionReason, WatcherAttestation,

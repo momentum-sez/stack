@@ -21,7 +21,9 @@ use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use mez_agentic::{PolicyEngine, TaxPipeline};
-use mez_corridor::{InboundAttestation, PeerRegistry, ReceiptChain, TradeFlowManager};
+use mez_corridor::{
+    anchor::MockAnchorTarget, InboundAttestation, PeerRegistry, ReceiptChain, TradeFlowManager,
+};
 use mez_crypto::SigningKey;
 use mez_state::{DynCorridorState, TransitionRecord};
 use parking_lot::{Mutex, RwLock};
@@ -528,6 +530,12 @@ pub struct AppState {
     /// Keyed by corridor ID. Each corridor accumulates attestations from independent watchers.
     pub attestation_log: Arc<RwLock<HashMap<String, Vec<InboundAttestation>>>>,
 
+    // -- L1 anchor target --
+    /// L1 chain anchor target for corridor checkpoint settlement.
+    /// Phase 1 uses `MockAnchorTarget` (deterministic, no real L1).
+    /// Phase 2 will support `EvmAnchorTarget` behind the `evm-anchor` feature.
+    pub anchor_target: Arc<MockAnchorTarget>,
+
     // -- Trade flow manager --
     /// In-memory trade flow lifecycle manager. Thread-safe via DashMap.
     /// Manages creation, transition validation, and querying of trade flows
@@ -664,6 +672,7 @@ impl AppState {
             peer_registry: Arc::new(RwLock::new(PeerRegistry::new())),
             corridor_genesis_roots: Arc::new(RwLock::new(HashMap::new())),
             attestation_log: Arc::new(RwLock::new(HashMap::new())),
+            anchor_target: Arc::new(MockAnchorTarget::new("mock-local")),
             trade_flow_manager: Arc::new(TradeFlowManager::new()),
             disputes: Store::new(),
             db_pool,

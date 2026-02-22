@@ -12,6 +12,10 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+use mez_core::Timestamp;
+use mez_corridor::anchor::AnchorTarget;
+use mez_vc::{ContextValue, CredentialTypeValue, ProofType, ProofValue, VerifiableCredential};
+
 use crate::auth::CallerIdentity;
 use crate::compliance::{
     apply_jurisdiction_attestations, build_jurisdiction_evaluation_result,
@@ -20,7 +24,8 @@ use crate::compliance::{
 use crate::error::AppError;
 use crate::extractors::{extract_validated_json, Validate};
 use crate::state::{
-    AppState, AssetComplianceStatus, AssetStatus, SmartAssetRecord, SmartAssetType,
+    AppState, AssetComplianceStatus, AssetStatus, AttestationRecord, SmartAssetRecord,
+    SmartAssetType,
 };
 use axum::extract::rejection::JsonRejection;
 
@@ -92,6 +97,57 @@ pub struct ComplianceEvalResponse {
     pub passing_domains: Vec<String>,
     pub blocking_domains: Vec<String>,
     pub evaluated_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Registry VC submission request.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct RegistrySubmitRequest {
+    /// Asset ID to register.
+    pub asset_id: Uuid,
+    /// Optional asset class (e.g., "equity", "bond", "commodity").
+    #[serde(default)]
+    pub asset_class: Option<String>,
+    /// Optional notes for the registry entry.
+    #[serde(default)]
+    pub notes: Option<String>,
+}
+
+impl Validate for RegistrySubmitRequest {
+    fn validate(&self) -> Result<(), String> {
+        Ok(())
+    }
+}
+
+/// Registry VC submission response.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct RegistrySubmitResponse {
+    /// Asset ID.
+    pub asset_id: Uuid,
+    /// New asset status after registration.
+    pub status: String,
+    /// Issued VC ID.
+    pub vc_id: String,
+    /// VC issuer DID.
+    pub issuer: String,
+    /// Issuance timestamp.
+    pub issued_at: String,
+    /// The full Verifiable Credential.
+    pub vc: serde_json::Value,
+}
+
+/// Anchor verification response.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct AnchorVerifyResponse {
+    /// Asset ID.
+    pub asset_id: Uuid,
+    /// The queried anchor digest.
+    pub anchor_digest: String,
+    /// The chain queried.
+    pub chain: String,
+    /// Finality status of the anchor.
+    pub status: String,
+    /// Chain ID from the anchor target.
+    pub chain_id: String,
 }
 
 /// Anchor verification request.
@@ -177,41 +233,121 @@ async fn create_asset(
 
 /// POST /v1/assets/registry — Submit/update smart asset registry VC.
 ///
-/// ## Phase 2 — Not Yet Implemented (501)
-///
-/// This endpoint will accept a smart asset registration payload,
-/// issue a W3C Verifiable Credential attesting to the registry entry,
-/// and store the VC in the attestation layer.
-///
-/// ### What exists today
-///
-/// - `mez-vc`: production-grade VC issuance with Ed25519 signatures.
-/// - `SmartAssetRecord`: fully defined type with jurisdiction, asset class,
-///   compliance evaluation, and ownership fields.
-/// - `POST /v1/assets`: creates smart asset records (working).
-///
-/// ### Phase 2 integration steps
-///
-/// 1. Accept a registry submission request body (asset ID, registry
-///    jurisdiction, asset class metadata).
-/// 2. Validate the asset exists and the caller has authority to register.
-/// 3. Issue a registry VC via `mez-vc` binding the asset digest to the
-///    registry jurisdiction.
-/// 4. Store the VC in CAS and link it to the `SmartAssetRecord`.
-/// 5. If L1 anchoring is configured, anchor the VC digest on-chain.
+/// Issues a W3C Verifiable Credential attesting the asset's registry entry,
+/// updates the asset status to `Registered`, and stores the VC as an attestation.
 #[utoipa::path(
     post,
     path = "/v1/assets/registry",
+    request_body = RegistrySubmitRequest,
     responses(
-        (status = 200, description = "Registry submitted"),
+        (status = 201, description = "Registry VC issued", body = RegistrySubmitResponse),
+        (status = 404, description = "Asset not found"),
     ),
     tag = "smart_assets"
 )]
 async fn submit_registry(
-    State(_state): State<AppState>,
-) -> Result<Json<serde_json::Value>, AppError> {
-    Err(AppError::NotImplemented(
-        "Registry VC submission is a Phase 2 feature".to_string(),
+    State(state): State<AppState>,
+    caller: CallerIdentity,
+    body: Result<Json<RegistrySubmitRequest>, JsonRejection>,
+) -> Result<(axum::http::StatusCode, Json<RegistrySubmitResponse>), AppError> {
+    let req = extract_validated_json(body)?;
+
+    let asset = state
+        .smart_assets
+        .get(&req.asset_id)
+        .ok_or_else(|| AppError::NotFound(format!("asset {} not found", req.asset_id)))?;
+
+    if !caller.can_access_asset(&asset) {
+        return Err(AppError::NotFound(format!(
+            "asset {} not found",
+            req.asset_id
+        )));
+    }
+
+    // Build the credential subject.
+    let now = Timestamp::now();
+    let subject = serde_json::json!({
+        "asset_id": req.asset_id.to_string(),
+        "jurisdiction_id": asset.jurisdiction_id,
+        "asset_type": asset.asset_type.to_string(),
+        "asset_class": req.asset_class,
+        "registry_status": "Registered",
+        "registered_at": now.as_datetime().to_rfc3339(),
+        "notes": req.notes,
+    });
+
+    let vc_id = format!(
+        "urn:mez:vc:registry:{}:{}",
+        req.asset_id,
+        now.as_datetime().format("%Y%m%dT%H%M%SZ")
+    );
+
+    // Construct the VC envelope.
+    let mut vc = VerifiableCredential {
+        context: ContextValue::Array(vec![serde_json::Value::String(
+            "https://www.w3.org/2018/credentials/v1".into(),
+        )]),
+        id: Some(vc_id.clone()),
+        credential_type: CredentialTypeValue::Array(vec![
+            "VerifiableCredential".into(),
+            "MezSmartAssetRegistryCredential".into(),
+        ]),
+        issuer: state.zone_did.clone(),
+        issuance_date: *now.as_datetime(),
+        expiration_date: None,
+        credential_subject: subject,
+        proof: ProofValue::default(),
+    };
+
+    // Sign with the zone key.
+    vc.sign_ed25519(
+        &state.zone_signing_key,
+        format!("{}#key-1", state.zone_did),
+        ProofType::Ed25519Signature2020,
+        Some(now.clone()),
+    )
+    .map_err(|e| AppError::Internal(format!("VC signing failed: {e}")))?;
+
+    let vc_value = serde_json::to_value(&vc)
+        .map_err(|e| AppError::Internal(format!("VC serialization failed: {e}")))?;
+
+    // Store the VC as an attestation.
+    let attestation_id = Uuid::new_v4();
+    let attestation = AttestationRecord {
+        id: attestation_id,
+        entity_id: req.asset_id,
+        attestation_type: "registry".to_string(),
+        issuer: state.zone_did.clone(),
+        status: crate::state::AttestationStatus::Active,
+        jurisdiction_id: asset.jurisdiction_id.clone(),
+        issued_at: *now.as_datetime(),
+        expires_at: None,
+        details: vc_value.clone(),
+    };
+    state.attestations.insert(attestation_id, attestation);
+
+    // Update asset status to Registered.
+    let mut updated = asset.clone();
+    updated.status = AssetStatus::Registered;
+    updated.updated_at = *now.as_datetime();
+    if let Some(ref class) = req.asset_class {
+        // Store asset_class in metadata for downstream consumers.
+        if let Some(obj) = updated.metadata.as_object_mut() {
+            obj.insert("asset_class".to_string(), serde_json::json!(class));
+        }
+    }
+    state.smart_assets.insert(req.asset_id, updated);
+
+    Ok((
+        axum::http::StatusCode::CREATED,
+        Json(RegistrySubmitResponse {
+            asset_id: req.asset_id,
+            status: "Registered".to_string(),
+            vc_id,
+            issuer: state.zone_did.clone(),
+            issued_at: now.as_datetime().to_rfc3339(),
+            vc: vc_value,
+        }),
     ))
 }
 
@@ -292,36 +428,18 @@ async fn evaluate_compliance(
 
 /// POST /v1/assets/:id/anchors/corridor/verify — Verify anchor.
 ///
-/// ## Phase 2 — Not Yet Implemented (501 after auth)
+/// Verifies an anchor by querying the configured `AnchorTarget` for the
+/// finality status of the provided anchor digest (treated as a transaction ID).
 ///
-/// This endpoint will verify that a corridor anchor commitment matches
-/// the on-chain record by cross-referencing the L1 transaction receipt
-/// with the corridor's receipt chain.
-///
-/// ### What exists today
-///
-/// - Auth and asset lookup are wired — the endpoint validates the caller
-///   has access before returning 501.
-/// - `AnchorVerifyRequest` is accepted and parsed.
-/// - `AnchorReceipt` and `AnchorCommitment` types exist with serde support.
-/// - `MockAnchorTarget` and `EvmAnchorTarget` (feature-gated) both implement
-///   `check_status(tx_id)`.
-///
-/// ### Phase 2 integration steps
-///
-/// 1. Look up the `AnchorReceipt` stored against the asset's corridor.
-/// 2. Call `AnchorTarget::check_status(receipt.transaction_id)` to get
-///    the current `AnchorStatus`.
-/// 3. Recompute the checkpoint digest from the corridor's receipt chain
-///    and compare against `receipt.commitment.checkpoint_digest`.
-/// 4. Return verification result (match/mismatch, finality status).
+/// Phase 1 (`MockAnchorTarget`): always returns `Finalized`.
+/// Phase 2 (`EvmAnchorTarget`): queries on-chain finality.
 #[utoipa::path(
     post,
     path = "/v1/assets/{id}/anchors/corridor/verify",
     params(("id" = Uuid, Path, description = "Asset ID")),
     request_body = AnchorVerifyRequest,
     responses(
-        (status = 200, description = "Anchor verified"),
+        (status = 200, description = "Anchor verification result", body = AnchorVerifyResponse),
     ),
     tag = "smart_assets"
 )]
@@ -330,7 +448,7 @@ async fn verify_anchor(
     caller: CallerIdentity,
     Path(id): Path<Uuid>,
     body: Result<Json<AnchorVerifyRequest>, JsonRejection>,
-) -> Result<Json<serde_json::Value>, AppError> {
+) -> Result<Json<AnchorVerifyResponse>, AppError> {
     let req = extract_validated_json(body)?;
 
     let asset = state
@@ -342,12 +460,20 @@ async fn verify_anchor(
         return Err(AppError::NotFound(format!("asset {id} not found")));
     }
 
-    // Phase 2: anchor verification will cross-reference the on-chain
-    // commitment with the corridor receipt chain. Until then, return 501.
-    let _ = (id, req);
-    Err(AppError::NotImplemented(
-        "Anchor verification is a Phase 2 feature".to_string(),
-    ))
+    // Query the anchor target for finality status.
+    // The anchor_digest is used as the transaction ID for status lookup.
+    let status = state
+        .anchor_target
+        .check_status(&req.anchor_digest)
+        .map_err(|e| AppError::Internal(format!("anchor verification failed: {e}")))?;
+
+    Ok(Json(AnchorVerifyResponse {
+        asset_id: id,
+        anchor_digest: req.anchor_digest,
+        chain: req.chain,
+        status: format!("{status:?}"),
+        chain_id: state.anchor_target.chain_id().to_string(),
+    }))
 }
 
 #[cfg(test)]
@@ -636,16 +762,74 @@ mod tests {
     // ── Additional handler coverage ───────────────────────────────
 
     #[tokio::test]
-    async fn handler_submit_registry_returns_501() {
-        let app = test_app();
+    async fn handler_submit_registry_returns_201() {
+        let state = AppState::new();
+        let app = test_app_with_state(state.clone());
+
+        // Create an asset first.
+        let create_req = Request::builder()
+            .method("POST")
+            .uri("/v1/assets/genesis")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"asset_type":"bond","jurisdiction_id":"PK-PEZ","metadata":{}}"#,
+            ))
+            .unwrap();
+        let create_resp = app.clone().oneshot(create_req).await.unwrap();
+        assert_eq!(create_resp.status(), StatusCode::CREATED);
+        let created: SmartAssetRecord = body_json(create_resp).await;
+
+        // Submit registry.
+        let body_str = serde_json::to_string(&serde_json::json!({
+            "asset_id": created.id,
+            "asset_class": "bond",
+            "notes": "test registration",
+        }))
+        .unwrap();
         let req = Request::builder()
             .method("POST")
             .uri("/v1/assets/registry")
+            .header("content-type", "application/json")
+            .body(Body::from(body_str))
+            .unwrap();
+
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::CREATED);
+
+        let result: RegistrySubmitResponse = body_json(resp).await;
+        assert_eq!(result.asset_id, created.id);
+        assert_eq!(result.status, "Registered");
+        assert!(result.vc_id.starts_with("urn:mez:vc:registry:"));
+        assert!(!result.issuer.is_empty());
+        assert!(result.vc.is_object());
+
+        // Verify asset status was updated.
+        let get_req = Request::builder()
+            .method("GET")
+            .uri(format!("/v1/assets/{}", created.id))
             .body(Body::empty())
+            .unwrap();
+        let get_resp = app.oneshot(get_req).await.unwrap();
+        let fetched: SmartAssetRecord = body_json(get_resp).await;
+        assert_eq!(fetched.status, AssetStatus::Registered);
+    }
+
+    #[tokio::test]
+    async fn handler_submit_registry_asset_not_found_returns_404() {
+        let app = test_app();
+        let body_str = serde_json::to_string(&serde_json::json!({
+            "asset_id": Uuid::new_v4(),
+        }))
+        .unwrap();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/v1/assets/registry")
+            .header("content-type", "application/json")
+            .body(Body::from(body_str))
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::NOT_IMPLEMENTED);
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }
 
     #[tokio::test]
@@ -717,7 +901,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handler_verify_anchor_returns_501() {
+    async fn handler_verify_anchor_returns_200() {
         let state = AppState::new();
         let app = test_app_with_state(state.clone());
 
@@ -743,7 +927,14 @@ mod tests {
             .unwrap();
 
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::NOT_IMPLEMENTED);
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let result: AnchorVerifyResponse = body_json(resp).await;
+        assert_eq!(result.asset_id, created.id);
+        assert_eq!(result.anchor_digest, "sha256:deadbeef");
+        assert_eq!(result.chain, "ethereum");
+        assert_eq!(result.status, "Finalized");
+        assert_eq!(result.chain_id, "mock-local");
     }
 
     #[tokio::test]

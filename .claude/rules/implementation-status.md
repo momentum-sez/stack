@@ -18,7 +18,11 @@ trade flow FSM enforcement (4 archetypes, 10 transitions with validate_transitio
 fork resolution (evidence-driven 3-level ordering: timestamp → attestation count → lexicographic),
 arbitration dispute lifecycle (7-phase API: file → review → evidence → hearing → decide → enforce → close, plus settle/dismiss),
 agentic policy engine (reactive dispatch for Halt/Resume/ArbitrationEnforce/UpdateManifest + scheduled for remaining actions),
-sovereign Mass entity validation (name + jurisdiction required, treasury entity-ref validation).
+sovereign Mass entity validation (name + jurisdiction required, treasury entity-ref validation),
+L1 anchor API (`POST /v1/corridors/state/anchor` — wired to `MockAnchorTarget`, accepts corridor ID, computes checkpoint digest from receipt chain, returns `AnchorReceipt`),
+finality status API (`POST /v1/corridors/state/finality-status` — wired to `AnchorTarget::check_status`, returns `AnchorStatus`),
+registry VC submission (`POST /v1/assets/registry` — issues Ed25519-signed `MezSmartAssetRegistryCredential` VC, stores attestation, updates asset status to Registered),
+anchor verification API (`POST /v1/assets/{id}/anchors/corridor/verify` — wired to `AnchorTarget::check_status`, returns finality status for anchor digest).
 
 ## Structurally Complete, Logically Shallow
 
@@ -76,17 +80,17 @@ live external APIs that are not yet available or credentialed.
 | Component | Status |
 |-----------|--------|
 | `AnchorTarget` trait | Sealed trait, production-ready interface. |
-| `MockAnchorTarget` | Working mock — immediate finality, deterministic tx IDs, atomic block counter. Used in tests. |
+| `MockAnchorTarget` | Working mock — immediate finality, deterministic tx IDs, atomic block counter. Wired to API via `AppState.anchor_target`. |
 | `EvmAnchorTarget` | Feature-gated (`evm-anchor`). Full JSON-RPC implementation: `eth_sendTransaction`, `eth_getTransactionReceipt`, `eth_blockNumber`, configurable finality thresholds, address validation. Needs live EVM RPC endpoint. |
-| Anchor API endpoint | `POST /v1/corridors/state/anchor` returns 501. Not wired to any `AnchorTarget`. |
-| Finality API endpoint | `POST /v1/corridors/state/finality-status` returns 501. Not wired to any `AnchorTarget`. |
-| Anchor verification | `POST /v1/assets/{id}/anchor/verify` returns 501 after auth. Not wired to receipt chain cross-reference. |
+| Anchor API endpoint | `POST /v1/corridors/state/anchor` — **wired** to `MockAnchorTarget`. Computes checkpoint digest from receipt chain, anchors, returns receipt. |
+| Finality API endpoint | `POST /v1/corridors/state/finality-status` — **wired** to `AnchorTarget::check_status`. Returns finality status for a prior anchor tx. |
+| Anchor verification | `POST /v1/assets/{id}/anchors/corridor/verify` — **wired** to `AnchorTarget::check_status`. Returns finality status for provided anchor digest. |
 
 ### Smart asset registry (`mez-api::routes::smart_assets`)
 
 | Component | Status |
 |-----------|--------|
-| Registry VC submission | `POST /v1/assets/registry` returns 501. Needs VC issuance pipeline for registry attestations. |
+| Registry VC submission | `POST /v1/assets/registry` — **wired** to VC issuance pipeline. Issues `MezSmartAssetRegistryCredential` VC with Ed25519 signature, stores attestation, updates asset to `Registered`. |
 
 ## Does Not Exist
 

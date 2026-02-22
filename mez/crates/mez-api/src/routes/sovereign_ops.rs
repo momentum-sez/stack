@@ -97,16 +97,25 @@ pub fn get_entity(state: &AppState, id: Uuid) -> Result<Option<Value>, AppError>
 }
 
 /// List entities from the sovereign store, with optional ID filter.
+///
+/// When listing all entities (no ID filter), results are capped at 1000
+/// to prevent unbounded response payloads. Callers needing full pagination
+/// should use the ID-filtered variant.
 pub fn list_entities(state: &AppState, ids: Option<&[Uuid]>) -> Result<Vec<Value>, AppError> {
+    const MAX_LIST: usize = 1000;
     match ids {
         Some(id_list) => {
             let results: Vec<Value> = id_list
                 .iter()
+                .take(MAX_LIST)
                 .filter_map(|id| state.mass_organizations.get(id))
                 .collect();
             Ok(results)
         }
-        None => Ok(state.mass_organizations.list()),
+        None => {
+            let all = state.mass_organizations.list();
+            Ok(all.into_iter().take(MAX_LIST).collect())
+        }
     }
 }
 

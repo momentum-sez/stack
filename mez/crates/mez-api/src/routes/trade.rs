@@ -13,6 +13,7 @@
 //! | `POST` | `/v1/trade/flows/:flow_id/transitions` | `submit_transition` |
 //! | `GET` | `/v1/trade/flows/:flow_id/transitions` | `list_transitions` |
 
+use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
@@ -26,6 +27,7 @@ use uuid::Uuid;
 
 use crate::db;
 use crate::error::AppError;
+use crate::extractors::{extract_validated_json, Validate};
 use crate::orchestration::{self, ComplianceSummary};
 use crate::state::AppState;
 
@@ -50,6 +52,21 @@ pub struct CreateTradeFlowRequest {
     pub jurisdiction_id: Option<String>,
 }
 
+impl Validate for CreateTradeFlowRequest {
+    fn validate(&self) -> Result<(), String> {
+        if self.seller.party_id.trim().is_empty() {
+            return Err("seller.party_id must not be empty".to_string());
+        }
+        if self.buyer.party_id.trim().is_empty() {
+            return Err("buyer.party_id must not be empty".to_string());
+        }
+        if self.seller.party_id == self.buyer.party_id {
+            return Err("seller and buyer party_id must differ".to_string());
+        }
+        Ok(())
+    }
+}
+
 /// Request to submit a transition to a trade flow.
 #[derive(Debug, Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -59,6 +76,14 @@ pub struct SubmitTransitionRequest {
     pub payload: TradeTransitionPayload,
     #[serde(default)]
     pub jurisdiction_id: Option<String>,
+}
+
+impl Validate for SubmitTransitionRequest {
+    fn validate(&self) -> Result<(), String> {
+        // Payload-level validation is handled by the trade flow manager;
+        // here we just ensure the request envelope is structurally sound.
+        Ok(())
+    }
 }
 
 /// Response envelope for trade flow operations.
@@ -116,14 +141,9 @@ pub fn router() -> Router<AppState> {
 )]
 async fn create_trade_flow(
     State(state): State<AppState>,
-    Json(req): Json<CreateTradeFlowRequest>,
+    body: Result<Json<CreateTradeFlowRequest>, JsonRejection>,
 ) -> Result<impl IntoResponse, AppError> {
-    if req.seller.party_id.trim().is_empty() {
-        return Err(AppError::Validation("seller.party_id must not be empty".to_string()));
-    }
-    if req.buyer.party_id.trim().is_empty() {
-        return Err(AppError::Validation("buyer.party_id must not be empty".to_string()));
-    }
+    let req = extract_validated_json(body)?;
     let jurisdiction = req.jurisdiction_id.as_deref().unwrap_or("pk-sifc");
 
     // Pre-flight compliance evaluation.
@@ -263,8 +283,9 @@ async fn get_trade_flow(
 async fn submit_transition(
     State(state): State<AppState>,
     Path(flow_id): Path<Uuid>,
-    Json(req): Json<SubmitTransitionRequest>,
+    body: Result<Json<SubmitTransitionRequest>, JsonRejection>,
 ) -> Result<impl IntoResponse, AppError> {
+    let req = extract_validated_json(body)?;
     let jurisdiction = req.jurisdiction_id.as_deref().unwrap_or("pk-sifc");
 
     // Pre-flight compliance evaluation.

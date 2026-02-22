@@ -52,3 +52,80 @@ spec:
                 name: mez-api
                 port:
                   name: http
+
+---
+
+# NetworkPolicy — restrict traffic to/from mez-api pods.
+# Only allow ingress from the ingress controller namespace and
+# egress to the PostgreSQL database and DNS.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mez-api
+  namespace: mez
+  labels:
+    app: mez-api
+spec:
+  podSelector:
+    matchLabels:
+      app: mez-api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from the ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - port: 8080
+          protocol: TCP
+    # Allow Prometheus scraping
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - port: 8080
+          protocol: TCP
+  egress:
+    # DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # PostgreSQL (RDS or in-cluster)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - port: 5432
+          protocol: TCP
+    # External HTTPS (Mass APIs, anchor targets)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - port: 443
+          protocol: TCP
+
+---
+
+# PodDisruptionBudget — ensure at least 1 pod is always available
+# during voluntary disruptions (node drains, upgrades).
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mez-api
+  namespace: mez
+  labels:
+    app: mez-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: mez-api

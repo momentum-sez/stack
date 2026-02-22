@@ -111,6 +111,19 @@ impl Validate for AnchorVerifyRequest {
         if self.anchor_digest.trim().is_empty() {
             return Err("anchor_digest must not be empty".to_string());
         }
+        if self.chain.trim().is_empty() {
+            return Err("chain must not be empty".to_string());
+        }
+        // Restrict to supported chain identifiers.
+        const SUPPORTED_CHAINS: &[&str] = &["ethereum", "arbitrum", "base", "polygon"];
+        let chain = self.chain.trim().to_lowercase();
+        if !SUPPORTED_CHAINS.contains(&chain.as_str()) {
+            return Err(format!(
+                "unsupported chain '{}' — supported: {}",
+                self.chain.trim(),
+                SUPPORTED_CHAINS.join(", ")
+            ));
+        }
         Ok(())
     }
 }

@@ -64,12 +64,16 @@ fn from_hex(s: &str) -> Result<Vec<u8>, CryptoError> {
 }
 
 /// Validate that a string is 64 lowercase hex chars (32 bytes).
+///
+/// Rejects uppercase hex to enforce consistency with the canonical
+/// lowercase output of `to_hex()` and `sha256_digest()`.
 fn is_hex_32(s: &str) -> bool {
     let s = s.trim();
     if s.len() != 64 {
         return false;
     }
-    s.chars().all(|c| c.is_ascii_hexdigit())
+    s.chars()
+        .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
 }
 
 // ---------------------------------------------------------------------------
@@ -1301,15 +1305,16 @@ mod tests {
     }
 
     #[test]
-    fn mmr_leaf_hash_accepts_uppercase_hex() {
-        // is_hex_32 checks c.is_ascii_hexdigit() which accepts A-F.
-        // from_hex lowercases before decode, so uppercase input produces
-        // the same hash as the equivalent lowercase input.
+    fn mmr_leaf_hash_rejects_uppercase_hex() {
+        // is_hex_32 now rejects uppercase hex to enforce consistency with the
+        // canonical lowercase output of to_hex() and sha256_digest().
         let nr = "FEA5396A7F4325C408B1B65B33A4D77BA5486CEBA941804D8889A8546CFBAB96";
-        let hash = mmr_leaf_hash(nr).expect("uppercase hex should be accepted");
-        assert_eq!(
-            hash,
-            "29534994a3ad2af6dd418f46d4093897971cd14bea312167ad82c4b31dbbfcec"
+        assert!(
+            mmr_leaf_hash(nr).is_err(),
+            "uppercase hex should be rejected"
         );
+        // The lowercase equivalent should work.
+        let nr_lower = nr.to_lowercase();
+        assert!(mmr_leaf_hash(&nr_lower).is_ok());
     }
 }

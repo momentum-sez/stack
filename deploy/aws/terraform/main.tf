@@ -391,6 +391,12 @@ resource "aws_db_instance" "mez" {
   performance_insights_enabled    = true
   performance_insights_kms_key_id = var.enable_encryption ? aws_kms_key.mez.arn : null
 
+  # Enable IAM database authentication for credential-free pod access.
+  iam_database_authentication_enabled = true
+
+  # Export logs to CloudWatch for auditing and monitoring.
+  enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
+
   tags = {
     Name = "mez-${var.zone_id}-postgres"
   }
@@ -497,6 +503,32 @@ resource "aws_s3_bucket_public_access_block" "artifacts" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
+}
+
+# Deny non-HTTPS access to the artifacts bucket.
+resource "aws_s3_bucket_policy" "artifacts_https_only" {
+  bucket = aws_s3_bucket.artifacts.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "DenyInsecureTransport"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource = [
+          aws_s3_bucket.artifacts.arn,
+          "${aws_s3_bucket.artifacts.arn}/*"
+        ]
+        Condition = {
+          Bool = {
+            "aws:SecureTransport" = "false"
+          }
+        }
+      }
+    ]
+  })
 }
 
 # -----------------------------------------------------------------------------

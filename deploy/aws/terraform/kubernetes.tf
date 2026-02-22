@@ -1,5 +1,12 @@
 # Kubernetes Resources for MEZ Zone
-# Deploys all zone services to EKS
+#
+# Deploys a single mez-api binary to EKS. All five Mass primitive APIs,
+# corridor operations, compliance evaluation, and watcher economy are
+# served from this one process (ADR-001: Single Binary Over Microservices).
+#
+# Architecture:
+#   1x mez-api deployment (2-3 replicas) + RDS Postgres + ElastiCache Redis
+#   All routes: /v1/entities, /v1/corridors, /v1/compliance, /health, /metrics
 
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
@@ -57,38 +64,43 @@ resource "kubernetes_config_map" "zone_config" {
     MEZ_PROFILE      = var.profile
     MEZ_ENVIRONMENT  = var.environment
     MEZ_LOG_LEVEL    = var.environment == "prod" ? "info" : "debug"
+    MEZ_HOST         = "0.0.0.0"
+    MEZ_PORT         = "8080"
+    SOVEREIGN_MASS   = "true"
   }
 }
 
 # -----------------------------------------------------------------------------
-# Secret for Database Credentials
+# Secret for Database & Auth Credentials
 # -----------------------------------------------------------------------------
 
-resource "kubernetes_secret" "db_credentials" {
+resource "kubernetes_secret" "mez_credentials" {
   metadata {
-    name      = "db-credentials"
+    name      = "mez-credentials"
     namespace = kubernetes_namespace.mez.metadata[0].name
   }
 
   data = {
-    DATABASE_URL = "postgresql://mez:${random_password.rds.result}@${aws_db_instance.mez.endpoint}/mez"
-    REDIS_URL    = "rediss://${aws_elasticache_replication_group.mez.primary_endpoint_address}:6379"
+    DATABASE_URL   = "postgresql://mez:${random_password.rds.result}@${aws_db_instance.mez.endpoint}/mez"
+    REDIS_URL      = "rediss://${aws_elasticache_replication_group.mez.primary_endpoint_address}:6379"
+    AUTH_TOKEN     = var.auth_token
+    MASS_API_TOKEN = var.mass_api_token
   }
 
   type = "Opaque"
 }
 
 # -----------------------------------------------------------------------------
-# Zone Authority Deployment
+# mez-api Deployment — single binary serving all routes
 # -----------------------------------------------------------------------------
 
-resource "kubernetes_deployment" "zone_authority" {
+resource "kubernetes_deployment" "mez_api" {
   metadata {
-    name      = "zone-authority"
+    name      = "mez-api"
     namespace = kubernetes_namespace.mez.metadata[0].name
 
     labels = {
-      app       = "zone-authority"
+      app       = "mez-api"
       component = "core"
     }
   }
@@ -96,26 +108,40 @@ resource "kubernetes_deployment" "zone_authority" {
   spec {
     replicas = var.environment == "prod" ? 3 : 2
 
+    strategy {
+      type = "RollingUpdate"
+      rolling_update {
+        max_unavailable = 0
+        max_surge       = 1
+      }
+    }
+
     selector {
       match_labels = {
-        app = "zone-authority"
+        app = "mez-api"
       }
     }
 
     template {
       metadata {
         labels = {
-          app       = "zone-authority"
+          app       = "mez-api"
           component = "core"
+        }
+
+        annotations = {
+          "prometheus.io/scrape" = "true"
+          "prometheus.io/port"   = "8080"
+          "prometheus.io/path"   = "/metrics"
         }
       }
 
       spec {
-        service_account_name = kubernetes_service_account.zone_authority.metadata[0].name
+        service_account_name = kubernetes_service_account.mez_api.metadata[0].name
 
         container {
-          name  = "zone-authority"
-          image = "${var.ecr_registry}/mez-zone-authority:${var.image_tag}"
+          name  = "mez-api"
+          image = "${var.ecr_registry}/mez-api:${var.image_tag}"
 
           port {
             container_port = 8080
@@ -130,8 +156,26 @@ resource "kubernetes_deployment" "zone_authority" {
 
           env_from {
             secret_ref {
-              name = kubernetes_secret.db_credentials.metadata[0].name
+              name = kubernetes_secret.mez_credentials.metadata[0].name
             }
+          }
+
+          # In sovereign mode, Mass client URLs point to self
+          env {
+            name  = "MASS_ORG_INFO_URL"
+            value = "http://localhost:8080"
+          }
+          env {
+            name  = "MASS_TREASURY_INFO_URL"
+            value = "http://localhost:8080"
+          }
+          env {
+            name  = "MASS_CONSENT_INFO_URL"
+            value = "http://localhost:8080"
+          }
+          env {
+            name  = "MASS_INVESTMENT_INFO_URL"
+            value = "http://localhost:8080"
           }
 
           resources {
@@ -147,20 +191,32 @@ resource "kubernetes_deployment" "zone_authority" {
 
           liveness_probe {
             http_get {
-              path = "/health/live"
+              path = "/health/liveness"
               port = 8080
             }
-            initial_delay_seconds = 30
+            initial_delay_seconds = 15
             period_seconds       = 10
+            failure_threshold    = 3
           }
 
           readiness_probe {
             http_get {
-              path = "/health/ready"
+              path = "/health/readiness"
               port = 8080
             }
             initial_delay_seconds = 5
             period_seconds       = 5
+            failure_threshold    = 3
+          }
+
+          startup_probe {
+            http_get {
+              path = "/health/liveness"
+              port = 8080
+            }
+            initial_delay_seconds = 5
+            period_seconds       = 5
+            failure_threshold    = 12
           }
 
           security_context {
@@ -175,15 +231,19 @@ resource "kubernetes_deployment" "zone_authority" {
   }
 }
 
-resource "kubernetes_service" "zone_authority" {
+# -----------------------------------------------------------------------------
+# Service
+# -----------------------------------------------------------------------------
+
+resource "kubernetes_service" "mez_api" {
   metadata {
-    name      = "zone-authority"
+    name      = "mez-api"
     namespace = kubernetes_namespace.mez.metadata[0].name
   }
 
   spec {
     selector = {
-      app = "zone-authority"
+      app = "mez-api"
     }
 
     port {
@@ -197,333 +257,22 @@ resource "kubernetes_service" "zone_authority" {
 }
 
 # -----------------------------------------------------------------------------
-# Entity Registry Deployment
+# Service Account with IRSA
 # -----------------------------------------------------------------------------
 
-resource "kubernetes_deployment" "entity_registry" {
+resource "kubernetes_service_account" "mez_api" {
   metadata {
-    name      = "entity-registry"
-    namespace = kubernetes_namespace.mez.metadata[0].name
-
-    labels = {
-      app       = "entity-registry"
-      component = "registry"
-    }
-  }
-
-  spec {
-    replicas = var.environment == "prod" ? 3 : 2
-
-    selector {
-      match_labels = {
-        app = "entity-registry"
-      }
-    }
-
-    template {
-      metadata {
-        labels = {
-          app       = "entity-registry"
-          component = "registry"
-        }
-      }
-
-      spec {
-        container {
-          name  = "entity-registry"
-          image = "${var.ecr_registry}/mez-zone-authority:${var.image_tag}"
-          args  = ["python", "-m", "tools.mez", "entity-registry", "serve", "--port", "8083"]
-
-          port {
-            container_port = 8083
-            name          = "http"
-          }
-
-          env_from {
-            config_map_ref {
-              name = kubernetes_config_map.zone_config.metadata[0].name
-            }
-          }
-
-          env_from {
-            secret_ref {
-              name = kubernetes_secret.db_credentials.metadata[0].name
-            }
-          }
-
-          resources {
-            requests = {
-              cpu    = "250m"
-              memory = "256Mi"
-            }
-            limits = {
-              cpu    = "1000m"
-              memory = "1Gi"
-            }
-          }
-
-          liveness_probe {
-            http_get {
-              path = "/health"
-              port = 8083
-            }
-            initial_delay_seconds = 30
-            period_seconds       = 10
-          }
-        }
-      }
-    }
-  }
-}
-
-resource "kubernetes_service" "entity_registry" {
-  metadata {
-    name      = "entity-registry"
-    namespace = kubernetes_namespace.mez.metadata[0].name
-  }
-
-  spec {
-    selector = {
-      app = "entity-registry"
-    }
-
-    port {
-      port        = 8083
-      target_port = 8083
-    }
-
-    type = "ClusterIP"
-  }
-}
-
-# -----------------------------------------------------------------------------
-# License Registry Deployment
-# -----------------------------------------------------------------------------
-
-resource "kubernetes_deployment" "license_registry" {
-  metadata {
-    name      = "license-registry"
-    namespace = kubernetes_namespace.mez.metadata[0].name
-
-    labels = {
-      app       = "license-registry"
-      component = "registry"
-    }
-  }
-
-  spec {
-    replicas = var.environment == "prod" ? 3 : 2
-
-    selector {
-      match_labels = {
-        app = "license-registry"
-      }
-    }
-
-    template {
-      metadata {
-        labels = {
-          app       = "license-registry"
-          component = "registry"
-        }
-      }
-
-      spec {
-        container {
-          name  = "license-registry"
-          image = "${var.ecr_registry}/mez-zone-authority:${var.image_tag}"
-          args  = ["python", "-m", "tools.licensepack", "serve", "--port", "8084"]
-
-          port {
-            container_port = 8084
-            name          = "http"
-          }
-
-          env_from {
-            config_map_ref {
-              name = kubernetes_config_map.zone_config.metadata[0].name
-            }
-          }
-
-          env_from {
-            secret_ref {
-              name = kubernetes_secret.db_credentials.metadata[0].name
-            }
-          }
-
-          resources {
-            requests = {
-              cpu    = "250m"
-              memory = "256Mi"
-            }
-            limits = {
-              cpu    = "1000m"
-              memory = "1Gi"
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-# -----------------------------------------------------------------------------
-# Corridor Node Deployment
-# -----------------------------------------------------------------------------
-
-resource "kubernetes_deployment" "corridor_node" {
-  metadata {
-    name      = "corridor-node"
-    namespace = kubernetes_namespace.mez.metadata[0].name
-
-    labels = {
-      app       = "corridor-node"
-      component = "corridor"
-    }
-  }
-
-  spec {
-    replicas = var.environment == "prod" ? 3 : 1
-
-    selector {
-      match_labels = {
-        app = "corridor-node"
-      }
-    }
-
-    template {
-      metadata {
-        labels = {
-          app       = "corridor-node"
-          component = "corridor"
-        }
-      }
-
-      spec {
-        container {
-          name  = "corridor-node"
-          image = "${var.ecr_registry}/mez-corridor-node:${var.image_tag}"
-
-          port {
-            container_port = 8081
-            name          = "http"
-          }
-
-          env_from {
-            config_map_ref {
-              name = kubernetes_config_map.zone_config.metadata[0].name
-            }
-          }
-
-          env_from {
-            secret_ref {
-              name = kubernetes_secret.db_credentials.metadata[0].name
-            }
-          }
-
-          resources {
-            requests = {
-              cpu    = "500m"
-              memory = "512Mi"
-            }
-            limits = {
-              cpu    = "2000m"
-              memory = "2Gi"
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-# -----------------------------------------------------------------------------
-# Watcher Deployment
-# -----------------------------------------------------------------------------
-
-resource "kubernetes_deployment" "watcher" {
-  metadata {
-    name      = "watcher"
-    namespace = kubernetes_namespace.mez.metadata[0].name
-
-    labels = {
-      app       = "watcher"
-      component = "corridor"
-    }
-  }
-
-  spec {
-    replicas = var.environment == "prod" ? 3 : 1
-
-    selector {
-      match_labels = {
-        app = "watcher"
-      }
-    }
-
-    template {
-      metadata {
-        labels = {
-          app       = "watcher"
-          component = "corridor"
-        }
-      }
-
-      spec {
-        container {
-          name  = "watcher"
-          image = "${var.ecr_registry}/mez-watcher:${var.image_tag}"
-
-          port {
-            container_port = 8082
-            name          = "http"
-          }
-
-          env_from {
-            config_map_ref {
-              name = kubernetes_config_map.zone_config.metadata[0].name
-            }
-          }
-
-          env_from {
-            secret_ref {
-              name = kubernetes_secret.db_credentials.metadata[0].name
-            }
-          }
-
-          resources {
-            requests = {
-              cpu    = "250m"
-              memory = "256Mi"
-            }
-            limits = {
-              cpu    = "1000m"
-              memory = "1Gi"
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-# -----------------------------------------------------------------------------
-# Service Accounts with IRSA
-# -----------------------------------------------------------------------------
-
-resource "kubernetes_service_account" "zone_authority" {
-  metadata {
-    name      = "zone-authority"
+    name      = "mez-api"
     namespace = kubernetes_namespace.mez.metadata[0].name
 
     annotations = {
-      "eks.amazonaws.com/role-arn" = aws_iam_role.zone_authority.arn
+      "eks.amazonaws.com/role-arn" = aws_iam_role.mez_api.arn
     }
   }
 }
 
-resource "aws_iam_role" "zone_authority" {
-  name = "mez-${var.zone_id}-zone-authority"
+resource "aws_iam_role" "mez_api" {
+  name = "mez-${var.zone_id}-api"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -536,7 +285,7 @@ resource "aws_iam_role" "zone_authority" {
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringEquals = {
-            "${module.eks.oidc_provider}:sub" = "system:serviceaccount:mez:zone-authority"
+            "${module.eks.oidc_provider}:sub" = "system:serviceaccount:mez:mez-api"
           }
         }
       }
@@ -544,9 +293,9 @@ resource "aws_iam_role" "zone_authority" {
   })
 }
 
-resource "aws_iam_role_policy" "zone_authority_s3" {
+resource "aws_iam_role_policy" "mez_api_s3" {
   name = "s3-access"
-  role = aws_iam_role.zone_authority.id
+  role = aws_iam_role.mez_api.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -586,12 +335,12 @@ resource "kubernetes_ingress_v1" "mez" {
     namespace = kubernetes_namespace.mez.metadata[0].name
 
     annotations = {
-      "kubernetes.io/ingress.class"               = "alb"
-      "alb.ingress.kubernetes.io/scheme"          = "internet-facing"
-      "alb.ingress.kubernetes.io/target-type"     = "ip"
-      "alb.ingress.kubernetes.io/healthcheck-path" = "/health"
-      "alb.ingress.kubernetes.io/certificate-arn" = var.acm_certificate_arn
-      "alb.ingress.kubernetes.io/ssl-policy"      = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+      "kubernetes.io/ingress.class"                = "alb"
+      "alb.ingress.kubernetes.io/scheme"           = "internet-facing"
+      "alb.ingress.kubernetes.io/target-type"      = "ip"
+      "alb.ingress.kubernetes.io/healthcheck-path" = "/health/liveness"
+      "alb.ingress.kubernetes.io/certificate-arn"  = var.acm_certificate_arn
+      "alb.ingress.kubernetes.io/ssl-policy"       = "ELBSecurityPolicy-TLS13-1-2-2021-06"
     }
   }
 
@@ -600,57 +349,16 @@ resource "kubernetes_ingress_v1" "mez" {
       host = var.zone_domain
 
       http {
+        # Single backend — mez-api serves all routes
         path {
-          path      = "/api/zone/*"
+          path      = "/"
           path_type = "Prefix"
 
           backend {
             service {
-              name = kubernetes_service.zone_authority.metadata[0].name
+              name = kubernetes_service.mez_api.metadata[0].name
               port {
                 number = 8080
-              }
-            }
-          }
-        }
-
-        path {
-          path      = "/api/entities/*"
-          path_type = "Prefix"
-
-          backend {
-            service {
-              name = kubernetes_service.entity_registry.metadata[0].name
-              port {
-                number = 8083
-              }
-            }
-          }
-        }
-
-        path {
-          path      = "/api/licenses/*"
-          path_type = "Prefix"
-
-          backend {
-            service {
-              name = "license-registry"
-              port {
-                number = 8084
-              }
-            }
-          }
-        }
-
-        path {
-          path      = "/api/corridors/*"
-          path_type = "Prefix"
-
-          backend {
-            service {
-              name = "corridor-node"
-              port {
-                number = 8081
               }
             }
           }
@@ -660,21 +368,17 @@ resource "kubernetes_ingress_v1" "mez" {
   }
 
   depends_on = [
-    kubernetes_deployment.zone_authority,
-    kubernetes_deployment.entity_registry,
-    kubernetes_deployment.license_registry,
-    kubernetes_deployment.corridor_node,
+    kubernetes_deployment.mez_api,
   ]
 }
 
 # -----------------------------------------------------------------------------
-# Additional Variables
+# Variables
 # -----------------------------------------------------------------------------
 
 variable "ecr_registry" {
-  description = "ECR registry URL"
+  description = "ECR registry URL (e.g., 123456789.dkr.ecr.us-east-1.amazonaws.com)"
   type        = string
-  default     = ""
 }
 
 variable "image_tag" {
@@ -690,9 +394,20 @@ variable "acm_certificate_arn" {
 }
 
 variable "zone_domain" {
-  description = "Domain name for the zone"
+  description = "Domain name for the zone (e.g., pk-sifc.zone.momentum.inc)"
   type        = string
-  default     = "zone.example.com"
+}
+
+variable "auth_token" {
+  description = "Bearer token for API authentication"
+  type        = string
+  sensitive   = true
+}
+
+variable "mass_api_token" {
+  description = "Token for Mass API authentication"
+  type        = string
+  sensitive   = true
 }
 
 # -----------------------------------------------------------------------------
@@ -700,6 +415,11 @@ variable "zone_domain" {
 # -----------------------------------------------------------------------------
 
 output "ingress_hostname" {
-  description = "Ingress hostname"
+  description = "ALB hostname for the zone"
   value       = kubernetes_ingress_v1.mez.status[0].load_balancer[0].ingress[0].hostname
+}
+
+output "api_endpoint" {
+  description = "Full API endpoint URL"
+  value       = "https://${var.zone_domain}"
 }

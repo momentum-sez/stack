@@ -1,6 +1,6 @@
-# MEZ Rust Workspace — v0.4.44 GENESIS
+# MEZ Rust Workspace
 
-The native Rust implementation of the Momentum EZ Stack. 17 crates, 159K lines, 4,601 tests.
+The Rust implementation of the Momentum EZ Stack. 17 crates, ~164K lines, ~4,700 tests.
 
 ---
 

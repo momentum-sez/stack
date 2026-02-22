@@ -17,6 +17,27 @@ use anyhow::{bail, Context, Result};
 use clap::{Args, Subcommand, ValueEnum};
 use rand_core::OsRng;
 
+/// Write a file with restrictive permissions (owner-only read/write).
+///
+/// Private keys and JWK files must not be world-readable.
+#[cfg(unix)]
+fn write_secret_file(path: &Path, contents: &str) -> std::io::Result<()> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+    let mut f = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(path)?;
+    f.write_all(contents.as_bytes())
+}
+
+#[cfg(not(unix))]
+fn write_secret_file(path: &Path, contents: &str) -> std::io::Result<()> {
+    std::fs::write(path, contents)
+}
+
 use mez_core::CanonicalBytes;
 use mez_crypto::{Ed25519Signature, SigningKey, VerifyingKey};
 
@@ -130,7 +151,7 @@ fn cmd_keygen(output_dir: &Path, prefix: &str) -> Result<u8> {
     let sk_path = output_dir.join(format!("{prefix}.key"));
     let vk_path = output_dir.join(format!("{prefix}.pub"));
 
-    std::fs::write(&sk_path, &sk_hex)
+    write_secret_file(&sk_path, &sk_hex)
         .with_context(|| format!("failed to write private key: {}", sk_path.display()))?;
     std::fs::write(&vk_path, &vk_hex)
         .with_context(|| format!("failed to write public key: {}", vk_path.display()))?;
@@ -172,7 +193,7 @@ fn cmd_keygen_jwk(output_dir: &Path, prefix: &str) -> Result<u8> {
 
     let jwk_path = output_dir.join(format!("{prefix}.jwk"));
     let jwk_str = serde_json::to_string_pretty(&jwk).context("failed to serialize JWK")?;
-    std::fs::write(&jwk_path, &jwk_str)
+    write_secret_file(&jwk_path, &jwk_str)
         .with_context(|| format!("failed to write JWK: {}", jwk_path.display()))?;
 
     println!("OK: generated Ed25519 keypair (JWK format)");

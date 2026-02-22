@@ -212,8 +212,8 @@ pub fn run_corridor(args: &CorridorArgs, repo_root: &Path) -> Result<u8> {
 /// Rejects IDs containing path separators, parent-directory traversals,
 /// or other characters that could escape the state directory.
 fn validate_corridor_id(id: &str) -> Result<()> {
-    if id.is_empty() {
-        bail!("corridor ID must not be empty");
+    if id.is_empty() || id.trim().is_empty() {
+        bail!("corridor ID must not be empty or whitespace-only");
     }
     if id.contains('/') || id.contains('\\') || id.contains('\0') {
         bail!("corridor ID contains invalid path characters: {id:?}");
@@ -251,9 +251,6 @@ fn cmd_create(
     std::fs::create_dir_all(state_dir).context("failed to create corridor state directory")?;
 
     let state_file = corridor_state_file(state_dir, id)?;
-    if state_file.exists() {
-        bail!("corridor already exists: {id}");
-    }
 
     let now = chrono::Utc::now();
     let data = DynCorridorData {
@@ -269,7 +266,14 @@ fn cmd_create(
     };
 
     let json = serde_json::to_string_pretty(&data)?;
-    std::fs::write(&state_file, json)?;
+    // Atomic create: create_new fails if the file already exists, avoiding TOCTOU race.
+    use std::io::Write;
+    let mut f = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&state_file)
+        .with_context(|| format!("corridor already exists or cannot be created: {id}"))?;
+    f.write_all(json.as_bytes())?;
 
     println!("OK: created corridor {id} in DRAFT state");
     Ok(0)

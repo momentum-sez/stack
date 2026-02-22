@@ -277,7 +277,7 @@ async fn org_delete(
     Path(id): Path<Uuid>,
 ) -> Response {
     match state.organizations().remove(&id) {
-        Some(_) => StatusCode::OK.into_response(),
+        Some(_) => StatusCode::NO_CONTENT.into_response(),
         None => StatusCode::NOT_FOUND.into_response(),
     }
 }
@@ -291,10 +291,12 @@ async fn org_list(
     State(state): State<AppState>,
     Query(query): Query<OrgListQuery>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
+    const MAX_LIST: usize = 1000;
     let results: Vec<Value> = match query.ids {
         Some(ids_str) => {
             let ids: Vec<Uuid> = ids_str
                 .split(',')
+                .take(MAX_LIST)
                 .map(|s| {
                     let trimmed = s.trim();
                     trimmed.parse::<Uuid>().map_err(|_| {
@@ -309,6 +311,7 @@ async fn org_list(
         None => state
             .organizations()
             .iter()
+            .take(MAX_LIST)
             .map(|e| e.value().clone())
             .collect(),
     };
@@ -331,7 +334,8 @@ async fn org_search(
     let size = body
         .get("size")
         .and_then(|v| v.as_u64())
-        .unwrap_or(10) as usize;
+        .unwrap_or(10)
+        .min(100) as usize;
 
     let all: Vec<Value> = state
         .organizations()
@@ -576,6 +580,7 @@ async fn tax_events_list(
     State(state): State<AppState>,
     Query(params): Query<TaxEventsQuery>,
 ) -> Json<Value> {
+    const MAX_LIST: usize = 1000;
     let results: Vec<Value> = state
         .tax_events()
         .iter()
@@ -603,6 +608,7 @@ async fn tax_events_list(
             }
             true
         })
+        .take(MAX_LIST)
         .collect();
     Json(json!(results))
 }
@@ -661,7 +667,14 @@ async fn withholding_compute(Json(body): Json<Value>) -> Response {
         (_, _) => 9.0,
     };
 
-    let gross: f64 = transaction_amount_str.parse().unwrap_or(0.0);
+    let gross: f64 = match transaction_amount_str.parse() {
+        Ok(v) if f64::is_finite(v) => v,
+        _ => {
+            return (StatusCode::UNPROCESSABLE_ENTITY, Json(json!({
+                "error": "invalid transaction_amount: must be a finite number"
+            }))).into_response();
+        }
+    };
     let withholding = gross * rate_percent / 100.0;
     let net = gross - withholding;
 
@@ -819,6 +832,7 @@ async fn consent_list_by_org(
     State(state): State<AppState>,
     Path(org_id): Path<String>,
 ) -> Json<Value> {
+    const MAX_LIST: usize = 1000;
     let results: Vec<Value> = state
         .consents()
         .iter()
@@ -829,6 +843,7 @@ async fn consent_list_by_org(
                 .map(|v| v == org_id)
                 .unwrap_or(false)
         })
+        .take(MAX_LIST)
         .collect();
     Json(json!(results))
 }
@@ -1333,7 +1348,7 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let resp = app.clone().oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::NO_CONTENT);
 
         // Get after delete → 404
         let req = axum::http::Request::builder()

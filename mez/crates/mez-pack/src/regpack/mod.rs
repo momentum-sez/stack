@@ -260,13 +260,15 @@ impl SanctionsChecker {
         // Exact match
         if let Some(indices) = self.name_index.get(&norm_name) {
             for &idx in indices {
-                matches.push(SanctionsMatch {
-                    entry: self.entries[idx].clone(),
-                    match_type: "exact_name".to_string(),
-                    score: 1.0,
-                    identifier_type: None,
-                });
-                max_score = 1.0;
+                if let Some(entry) = self.entries.get(idx) {
+                    matches.push(SanctionsMatch {
+                        entry: entry.clone(),
+                        match_type: "exact_name".to_string(),
+                        score: 1.0,
+                        identifier_type: None,
+                    });
+                    max_score = 1.0;
+                }
             }
         }
 
@@ -278,12 +280,14 @@ impl SanctionsChecker {
                 let score = Self::fuzzy_score(name, norm_target);
                 if score >= threshold {
                     for &idx in indices {
-                        matches.push(SanctionsMatch {
-                            entry: self.entries[idx].clone(),
-                            match_type: "fuzzy_name".to_string(),
-                            score,
-                            identifier_type: None,
-                        });
+                        if let Some(entry) = self.entries.get(idx) {
+                            matches.push(SanctionsMatch {
+                                entry: entry.clone(),
+                                match_type: "fuzzy_name".to_string(),
+                                score,
+                                identifier_type: None,
+                            });
+                        }
                     }
                     max_score = max_score.max(score);
                 }
@@ -299,13 +303,15 @@ impl SanctionsChecker {
                     .unwrap_or_default();
                 if let Some(indices) = self.id_index.get(&id_val) {
                     for &idx in indices {
-                        matches.push(SanctionsMatch {
-                            entry: self.entries[idx].clone(),
-                            match_type: "identifier".to_string(),
-                            score: 1.0,
-                            identifier_type: ident.get("type").cloned(),
-                        });
-                        max_score = 1.0;
+                        if let Some(entry) = self.entries.get(idx) {
+                            matches.push(SanctionsMatch {
+                                entry: entry.clone(),
+                                match_type: "identifier".to_string(),
+                                score: 1.0,
+                                identifier_type: ident.get("type").cloned(),
+                            });
+                            max_score = 1.0;
+                        }
                     }
                 }
             }

@@ -274,10 +274,16 @@ impl CronSchedule {
         // Don't fire twice for the same time slot.
         match self.last_fired {
             Some(last) => {
-                // Truncate to minutes for comparison.
-                let now_slot = now.date_naive().and_hms_opt(now.hour(), now.minute(), 0);
-                let last_slot = last.date_naive().and_hms_opt(last.hour(), last.minute(), 0);
-                now_slot != last_slot
+                // Truncate to minutes for comparison. If truncation fails
+                // (should never happen with valid hour/minute), refuse to
+                // double-fire by returning false.
+                match (
+                    now.date_naive().and_hms_opt(now.hour(), now.minute(), 0),
+                    last.date_naive().and_hms_opt(last.hour(), last.minute(), 0),
+                ) {
+                    (Some(now_slot), Some(last_slot)) => now_slot != last_slot,
+                    _ => false,
+                }
             }
             None => true,
         }

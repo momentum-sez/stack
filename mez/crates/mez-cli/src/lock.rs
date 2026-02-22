@@ -97,9 +97,13 @@ pub fn run_lock(args: &LockArgs, repo_root: &Path) -> Result<u8> {
         .unwrap_or("stack.lock");
 
     // Validate lockfile_path does not escape the zone directory.
-    if lockfile_path_from_zone.contains("..") {
+    if lockfile_path_from_zone.contains("..")
+        || lockfile_path_from_zone.starts_with('/')
+        || lockfile_path_from_zone.starts_with('\\')
+        || lockfile_path_from_zone.contains('\0')
+    {
         bail!(
-            "lockfile_path in zone YAML contains path traversal: {:?}",
+            "lockfile_path in zone YAML contains path traversal or absolute path: {:?}",
             lockfile_path_from_zone
         );
     }

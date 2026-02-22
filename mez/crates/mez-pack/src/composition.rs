@@ -742,13 +742,19 @@ pub fn load_composition_from_value(data: &serde_json::Value) -> PackResult<ZoneC
     let zone_id = obj
         .get("zone_id")
         .and_then(|v| v.as_str())
-        .unwrap_or("")
+        .filter(|s| !s.trim().is_empty())
+        .ok_or_else(|| PackError::SchemaViolation {
+            message: "zone_id must be a non-empty string".to_string(),
+        })?
         .to_string();
 
     let name = obj
         .get("name")
         .and_then(|v| v.as_str())
-        .unwrap_or("")
+        .filter(|s| !s.trim().is_empty())
+        .ok_or_else(|| PackError::SchemaViolation {
+            message: "name must be a non-empty string".to_string(),
+        })?
         .to_string();
 
     let description = obj
@@ -820,7 +826,10 @@ fn parse_layer(value: &serde_json::Value) -> PackResult<JurisdictionLayer> {
     let jurisdiction_id = obj
         .get("jurisdiction_id")
         .and_then(|v| v.as_str())
-        .unwrap_or("")
+        .filter(|s| !s.trim().is_empty())
+        .ok_or_else(|| PackError::SchemaViolation {
+            message: "layer jurisdiction_id must be a non-empty string".to_string(),
+        })?
         .to_string();
 
     let domains: Vec<ComplianceDomain> = match obj.get("domains") {

@@ -1,0 +1,64 @@
+# MEZ Stack — Network Policy
+#
+# Restricts traffic to the mez namespace:
+# - mez-api pods accept ingress only on port 8080 from the ingress controller
+#   and from other mez-api pods (for peer-to-peer corridor traffic).
+# - mez-api pods can make egress to PostgreSQL (5432), Redis (6379),
+#   DNS (53), and external HTTPS (443) for Mass API calls.
+#
+# Apply: kubectl apply -f deploy/k8s/network-policy.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mez-api-ingress
+  namespace: mez
+  labels:
+    app: mez-api
+spec:
+  podSelector:
+    matchLabels:
+      app: mez-api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from ingress controller.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow traffic from other mez-api pods (inter-zone corridor protocol).
+    - from:
+        - podSelector:
+            matchLabels:
+              app: mez-api
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # DNS resolution.
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # PostgreSQL.
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Redis (ElastiCache).
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 6379
+    # External HTTPS (Mass API, gov adapters, sanctions lists).
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443

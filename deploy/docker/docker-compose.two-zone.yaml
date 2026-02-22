@@ -24,12 +24,14 @@
 #   ZONE_B_PROFILE          — Zone B profile (default: digital-financial-center)
 #   ZONE_B_AUTH_TOKEN       — Zone B auth token (REQUIRED)
 #   ZONE_B_MASS_API_TOKEN   — Zone B Mass API token (REQUIRED)
-#   POSTGRES_PASSWORD       — Postgres password (REQUIRED)
+#   ZONE_A_POSTGRES_PASSWORD — Zone A Postgres password (REQUIRED)
+#   ZONE_B_POSTGRES_PASSWORD — Zone B Postgres password (REQUIRED)
 #   CORRIDOR_ID             — Corridor identifier (default: auto-generated from jurisdictions)
 #
 # Usage:
 #   # Default (PK-SIFC <-> AE-DIFC) — set required secrets first:
-#   export POSTGRES_PASSWORD=... ZONE_A_AUTH_TOKEN=... ZONE_A_MASS_API_TOKEN=... \
+#   export ZONE_A_POSTGRES_PASSWORD=... ZONE_B_POSTGRES_PASSWORD=... \
+#          ZONE_A_AUTH_TOKEN=... ZONE_A_MASS_API_TOKEN=... \
 #          ZONE_B_AUTH_TOKEN=... ZONE_B_MASS_API_TOKEN=...
 #   docker compose -f docker-compose.two-zone.yaml up -d
 #
@@ -61,7 +63,7 @@ services:
       MEZ_PORT: "8080"
       MEZ_LOG_LEVEL: ${MEZ_LOG_LEVEL:-info}
       AUTH_TOKEN: ${ZONE_A_AUTH_TOKEN:?ZONE_A_AUTH_TOKEN must be set}
-      DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-a:5432/mez"
+      DATABASE_URL: "postgresql://mez:${ZONE_A_POSTGRES_PASSWORD:?ZONE_A_POSTGRES_PASSWORD must be set}@postgres-a:5432/mez"
       MEZ_CORRIDOR_ID: ${CORRIDOR_ID:-org.momentum.mez.corridor.cross-border}
       MEZ_WATCHER_ID: watcher-a-001
       MEZ_BOND_AMOUNT: "100000"
@@ -93,7 +95,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: mez
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_PASSWORD: ${ZONE_A_POSTGRES_PASSWORD:?ZONE_A_POSTGRES_PASSWORD must be set}
       POSTGRES_DB: mez
     volumes:
       - postgres-a-data:/var/lib/postgresql/data
@@ -127,7 +129,7 @@ services:
       MEZ_PORT: "8080"
       MEZ_LOG_LEVEL: ${MEZ_LOG_LEVEL:-info}
       AUTH_TOKEN: ${ZONE_B_AUTH_TOKEN:?ZONE_B_AUTH_TOKEN must be set}
-      DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-b:5432/mez"
+      DATABASE_URL: "postgresql://mez:${ZONE_B_POSTGRES_PASSWORD:?ZONE_B_POSTGRES_PASSWORD must be set}@postgres-b:5432/mez"
       MEZ_CORRIDOR_ID: ${CORRIDOR_ID:-org.momentum.mez.corridor.cross-border}
       MEZ_WATCHER_ID: watcher-b-001
       MEZ_BOND_AMOUNT: "100000"
@@ -159,7 +161,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: mez
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_PASSWORD: ${ZONE_B_POSTGRES_PASSWORD:?ZONE_B_POSTGRES_PASSWORD must be set}
       POSTGRES_DB: mez
     volumes:
       - postgres-b-data:/var/lib/postgresql/data

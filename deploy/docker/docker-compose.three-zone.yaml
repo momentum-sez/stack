@@ -21,11 +21,13 @@
 #   ZONE_B_ZONE_ID, ZONE_B_JURISDICTION, ZONE_B_PROFILE
 #   ZONE_C_ZONE_ID, ZONE_C_JURISDICTION, ZONE_C_PROFILE
 #   ZONE_A_AUTH_TOKEN, ZONE_B_AUTH_TOKEN, ZONE_C_AUTH_TOKEN (required)
-#   POSTGRES_PASSWORD (required)
+#   ZONE_A_POSTGRES_PASSWORD, ZONE_B_POSTGRES_PASSWORD, ZONE_C_POSTGRES_PASSWORD (required)
 #
 # Usage:
-#   # Generate credentials:
-#   export POSTGRES_PASSWORD=$(openssl rand -base64 24)
+#   # Generate credentials (per-zone passwords for data sovereignty):
+#   export ZONE_A_POSTGRES_PASSWORD=$(openssl rand -base64 24)
+#   export ZONE_B_POSTGRES_PASSWORD=$(openssl rand -base64 24)
+#   export ZONE_C_POSTGRES_PASSWORD=$(openssl rand -base64 24)
 #   export ZONE_A_AUTH_TOKEN=$(openssl rand -base64 32)
 #   export ZONE_B_AUTH_TOKEN=$(openssl rand -base64 32)
 #   export ZONE_C_AUTH_TOKEN=$(openssl rand -base64 32)
@@ -55,7 +57,7 @@ services:
       MEZ_PORT: "8080"
       MEZ_LOG_LEVEL: ${MEZ_LOG_LEVEL:-info}
       AUTH_TOKEN: ${ZONE_A_AUTH_TOKEN:?ZONE_A_AUTH_TOKEN must be set}
-      DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-a:5432/mez"
+      DATABASE_URL: "postgresql://mez:${ZONE_A_POSTGRES_PASSWORD:?ZONE_A_POSTGRES_PASSWORD must be set}@postgres-a:5432/mez"
       MEZ_WATCHER_ID: watcher-a-001
       MEZ_BOND_AMOUNT: "100000"
       MEZ_METRICS_ENABLED: "true"
@@ -78,7 +80,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: mez
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_PASSWORD: ${ZONE_A_POSTGRES_PASSWORD:?ZONE_A_POSTGRES_PASSWORD must be set}
       POSTGRES_DB: mez
     volumes:
       - postgres-a-data:/var/lib/postgresql/data
@@ -112,7 +114,7 @@ services:
       MEZ_PORT: "8080"
       MEZ_LOG_LEVEL: ${MEZ_LOG_LEVEL:-info}
       AUTH_TOKEN: ${ZONE_B_AUTH_TOKEN:?ZONE_B_AUTH_TOKEN must be set}
-      DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-b:5432/mez"
+      DATABASE_URL: "postgresql://mez:${ZONE_B_POSTGRES_PASSWORD:?ZONE_B_POSTGRES_PASSWORD must be set}@postgres-b:5432/mez"
       MEZ_WATCHER_ID: watcher-b-001
       MEZ_BOND_AMOUNT: "100000"
       MEZ_METRICS_ENABLED: "true"
@@ -135,7 +137,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: mez
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_PASSWORD: ${ZONE_B_POSTGRES_PASSWORD:?ZONE_B_POSTGRES_PASSWORD must be set}
       POSTGRES_DB: mez
     volumes:
       - postgres-b-data:/var/lib/postgresql/data
@@ -169,7 +171,7 @@ services:
       MEZ_PORT: "8080"
       MEZ_LOG_LEVEL: ${MEZ_LOG_LEVEL:-info}
       AUTH_TOKEN: ${ZONE_C_AUTH_TOKEN:?ZONE_C_AUTH_TOKEN must be set}
-      DATABASE_URL: "postgresql://mez:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres-c:5432/mez"
+      DATABASE_URL: "postgresql://mez:${ZONE_C_POSTGRES_PASSWORD:?ZONE_C_POSTGRES_PASSWORD must be set}@postgres-c:5432/mez"
       MEZ_WATCHER_ID: watcher-c-001
       MEZ_BOND_AMOUNT: "100000"
       MEZ_METRICS_ENABLED: "true"
@@ -192,7 +194,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: mez
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_PASSWORD: ${ZONE_C_POSTGRES_PASSWORD:?ZONE_C_POSTGRES_PASSWORD must be set}
       POSTGRES_DB: mez
     volumes:
       - postgres-c-data:/var/lib/postgresql/data

@@ -44,6 +44,7 @@ use mez_core::{JurisdictionId, MigrationId};
 /// jurisdiction asset migration. Terminal states represent final
 /// outcomes (success or various failure modes).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub enum MigrationState {
     // Forward phases (ordered)
     /// Migration initiated, awaiting compliance evaluation.
@@ -188,6 +189,7 @@ pub enum MigrationError {
 /// Unlike the Python implementation (audit §5.5), the error_detail
 /// field preserves diagnostic context instead of swallowing exceptions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CompensationRecord {
     /// The state from which compensation was triggered.
     pub from_state: MigrationState,

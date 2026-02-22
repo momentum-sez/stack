@@ -99,6 +99,7 @@ impl std::fmt::Display for ProofPurpose {
 /// Implements the proof object from `tools/vc.py:add_ed25519_proof()` and
 /// `tools/vc.py:_validate_proof_object()`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Proof {
     /// The proof type (Ed25519, BBS+).
     #[serde(rename = "type")]
@@ -123,6 +124,31 @@ pub struct Proof {
 }
 
 impl Proof {
+    /// Validate that a proof_value is well-formed hex for Ed25519 (128 lowercase hex chars).
+    fn validate_proof_value(proof_value: &str) -> Result<(), String> {
+        if proof_value.trim().is_empty() {
+            return Err("proof_value must not be empty".to_string());
+        }
+        if proof_value.len() != 128 {
+            return Err(format!(
+                "proof_value must be 128 hex chars (64 bytes), got {}",
+                proof_value.len()
+            ));
+        }
+        if !proof_value.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()) {
+            return Err("proof_value must be lowercase hex".to_string());
+        }
+        Ok(())
+    }
+
+    /// Validate that a verification_method is non-empty.
+    fn validate_verification_method(vm: &str) -> Result<(), String> {
+        if vm.trim().is_empty() {
+            return Err("verification_method must not be empty".to_string());
+        }
+        Ok(())
+    }
+
     /// Create a new Ed25519Signature2020 proof.
     ///
     /// # Arguments
@@ -130,37 +156,51 @@ impl Proof {
     /// * `verification_method` — DID URL of the signing key
     /// * `proof_value` — Hex-encoded Ed25519 signature (128 hex chars)
     /// * `created` — Optional creation timestamp; defaults to current UTC time
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `verification_method` is empty or `proof_value`
+    /// is not exactly 128 lowercase hex characters.
     pub fn new_ed25519(
         verification_method: String,
         proof_value: String,
         created: Option<Timestamp>,
-    ) -> Self {
+    ) -> Result<Self, String> {
+        Self::validate_verification_method(&verification_method)?;
+        Self::validate_proof_value(&proof_value)?;
         let ts = created.unwrap_or_else(Timestamp::now);
-        Self {
+        Ok(Self {
             proof_type: ProofType::Ed25519Signature2020,
             created: *ts.as_datetime(),
             verification_method,
             proof_purpose: ProofPurpose::AssertionMethod,
             proof_value,
-        }
+        })
     }
 
     /// Create a new proof using the MEZ-specific Ed25519 proof type.
     ///
     /// Uses `MezEd25519Signature2025` for compatibility with the Python layer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `verification_method` is empty or `proof_value`
+    /// is not exactly 128 lowercase hex characters.
     pub fn new_mez_ed25519(
         verification_method: String,
         proof_value: String,
         created: Option<Timestamp>,
-    ) -> Self {
+    ) -> Result<Self, String> {
+        Self::validate_verification_method(&verification_method)?;
+        Self::validate_proof_value(&proof_value)?;
         let ts = created.unwrap_or_else(Timestamp::now);
-        Self {
+        Ok(Self {
             proof_type: ProofType::MezEd25519Signature2025,
             created: *ts.as_datetime(),
             verification_method,
             proof_purpose: ProofPurpose::AssertionMethod,
             proof_value,
-        }
+        })
     }
 }
 
@@ -224,7 +264,7 @@ mod tests {
 
     #[test]
     fn proof_json_field_names_match_w3c_spec() {
-        let proof = Proof::new_ed25519("did:key:z6Mk123#key-1".to_string(), "00".repeat(64), None);
+        let proof = Proof::new_ed25519("did:key:z6Mk123#key-1".to_string(), "00".repeat(64), None).unwrap();
 
         let val = serde_json::to_value(&proof).unwrap();
         assert!(val.get("type").is_some());
@@ -305,7 +345,7 @@ mod tests {
             "did:key:z6MkRoundtrip#key-1".to_string(),
             "aa".repeat(64),
             None,
-        );
+        ).unwrap();
 
         let json_str = serde_json::to_string(&proof).unwrap();
         let deserialized: Proof = serde_json::from_str(&json_str).unwrap();
@@ -323,7 +363,7 @@ mod tests {
     #[test]
     fn proof_mez_ed25519_serde_roundtrip() {
         let proof =
-            Proof::new_mez_ed25519("did:key:z6MkMez#key-1".to_string(), "bb".repeat(64), None);
+            Proof::new_mez_ed25519("did:key:z6MkMez#key-1".to_string(), "bb".repeat(64), None).unwrap();
 
         let json_str = serde_json::to_string(&proof).unwrap();
         let deserialized: Proof = serde_json::from_str(&json_str).unwrap();
@@ -355,7 +395,7 @@ mod tests {
             "did:key:z6MkTs#key-1".to_string(),
             "cc".repeat(64),
             Some(ts.clone()),
-        );
+        ).unwrap();
         assert_eq!(proof.created, *ts.as_datetime());
     }
 
@@ -366,7 +406,7 @@ mod tests {
             "did:key:z6MkTs#key-1".to_string(),
             "dd".repeat(64),
             Some(ts.clone()),
-        );
+        ).unwrap();
         assert_eq!(proof.created, *ts.as_datetime());
         assert_eq!(proof.proof_type, ProofType::MezEd25519Signature2025);
     }

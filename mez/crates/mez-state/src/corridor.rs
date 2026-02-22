@@ -182,6 +182,7 @@ pub struct DeprecationEvidence {
 /// timestamp, and the digest of the evidence that authorized it. This
 /// provides a complete audit trail for regulatory review.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct TransitionRecord {
     /// State before the transition.
     pub from_state: DynCorridorState,
@@ -255,11 +256,14 @@ impl<S: CorridorState> Corridor<S> {
     fn transmute_to<T: CorridorState>(self, evidence_digest: Option<ContentDigest>) -> Corridor<T> {
         let mut inner = self.inner;
         // Sealed CorridorState trait guarantees valid names — from_name cannot fail.
+        // Use expect() rather than unwrap_or(Draft) so a missing name in
+        // from_name is caught immediately instead of silently corrupting the
+        // audit trail with a wrong Draft state.
         inner.transition_log.push(TransitionRecord {
             from_state: DynCorridorState::from_name(S::name())
-                .unwrap_or(DynCorridorState::Draft),
+                .expect("sealed CorridorState trait guarantees valid state name"),
             to_state: DynCorridorState::from_name(T::name())
-                .unwrap_or(DynCorridorState::Draft),
+                .expect("sealed CorridorState trait guarantees valid state name"),
             timestamp: Utc::now(),
             evidence_digest,
         });
@@ -381,6 +385,7 @@ impl Corridor<Halted> {
 /// is known; use `DynCorridorData` for storage and API serialization
 /// where the state arrives as a string.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct DynCorridorData {
     /// Unique corridor identifier.
     pub id: CorridorId,
@@ -483,7 +488,7 @@ impl<S: CorridorState> From<&Corridor<S>> for DynCorridorData {
     fn from(c: &Corridor<S>) -> Self {
         // Sealed CorridorState trait guarantees valid name.
         let state = DynCorridorState::from_name(S::name())
-            .unwrap_or(DynCorridorState::Draft);
+            .expect("sealed CorridorState trait guarantees valid state name");
         DynCorridorData {
             id: c.id.clone(),
             jurisdiction_a: c.jurisdiction_a.clone(),

@@ -87,6 +87,7 @@ pub struct ProofResult {
 /// Serde rename attributes map between Rust snake_case and the W3C VC
 /// JSON field names (camelCase / `@`-prefixed).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct VerifiableCredential {
     /// JSON-LD context URIs.
     #[serde(rename = "@context")]
@@ -435,7 +436,7 @@ mod tests {
             "did:key:z6MkFake#key-1".to_string(),
             "00".repeat(64),
             None,
-        )));
+        ).unwrap()));
 
         let input_after = vc.signing_input().unwrap();
         assert_eq!(input_before.as_bytes(), input_after.as_bytes());
@@ -656,8 +657,8 @@ mod tests {
 
     #[test]
     fn proof_value_push_converts_single_to_array() {
-        let p1 = Proof::new_ed25519("vm1".to_string(), "aa".repeat(64), None);
-        let p2 = Proof::new_ed25519("vm2".to_string(), "bb".repeat(64), None);
+        let p1 = Proof::new_ed25519("vm1".to_string(), "aa".repeat(64), None).unwrap();
+        let p2 = Proof::new_ed25519("vm2".to_string(), "bb".repeat(64), None).unwrap();
 
         let mut pv = ProofValue::Single(Box::new(p1));
         assert_eq!(pv.as_list().len(), 1);
@@ -709,14 +710,14 @@ mod tests {
 
     #[test]
     fn proof_value_single_not_empty() {
-        let p = Proof::new_ed25519("vm1".into(), "aa".repeat(64), None);
+        let p = Proof::new_ed25519("vm1".into(), "aa".repeat(64), None).unwrap();
         let pv = ProofValue::Single(Box::new(p));
         assert!(!pv.is_empty());
     }
 
     #[test]
     fn proof_value_into_list_single() {
-        let p = Proof::new_ed25519("vm1".into(), "aa".repeat(64), None);
+        let p = Proof::new_ed25519("vm1".into(), "aa".repeat(64), None).unwrap();
         let pv = ProofValue::Single(Box::new(p));
         let list = pv.into_list();
         assert_eq!(list.len(), 1);
@@ -724,8 +725,8 @@ mod tests {
 
     #[test]
     fn proof_value_into_list_array() {
-        let p1 = Proof::new_ed25519("vm1".into(), "aa".repeat(64), None);
-        let p2 = Proof::new_ed25519("vm2".into(), "bb".repeat(64), None);
+        let p1 = Proof::new_ed25519("vm1".into(), "aa".repeat(64), None).unwrap();
+        let p2 = Proof::new_ed25519("vm2".into(), "bb".repeat(64), None).unwrap();
         let pv = ProofValue::Array(vec![p1, p2]);
         let list = pv.into_list();
         assert_eq!(list.len(), 2);

@@ -197,6 +197,7 @@ MASS_TIMEOUT_SECS=30
 GRAFANA_PASSWORD=$GENERATED_GRAFANA_PASSWORD
 EOF
 
+chmod 600 "$DEPLOY_DIR/.env"
 echo -e "${GREEN}Environment configuration created${NC}"
 echo -e "${YELLOW}Auth token saved to .env (use this for API access)${NC}"
 

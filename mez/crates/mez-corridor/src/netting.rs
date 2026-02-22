@@ -368,7 +368,7 @@ impl NettingEngine {
                 if payers[pi].1 == 0 {
                     pi += 1;
                 }
-                if ri < receivers.len() && receivers[ri].1 == 0 {
+                if pi < payers.len() && ri < receivers.len() && receivers[ri].1 == 0 {
                     ri += 1;
                 }
             }

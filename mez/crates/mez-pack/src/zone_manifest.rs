@@ -304,11 +304,13 @@ impl ZoneManifest {
                 let rotation_days = inner
                     .get("rotation_days")
                     .and_then(|v| v.as_u64())
-                    .unwrap_or(90) as u32;
+                    .unwrap_or(90)
+                    .min(u32::MAX as u64) as u32;
                 let grace_days = inner
                     .get("grace_days")
                     .and_then(|v| v.as_u64())
-                    .unwrap_or(14) as u32;
+                    .unwrap_or(14)
+                    .min(u32::MAX as u64) as u32;
                 KeyRotationPolicy {
                     rotation_days,
                     grace_days,
@@ -455,7 +457,7 @@ impl NetworkTopology {
         // Zone services
         for (i, zone) in self.zones.iter().enumerate() {
             let suffix = zone_service_suffix(&zone.zone_id);
-            let port = 8080 + i as u16;
+            let port = 8080 + u16::try_from(i).unwrap_or(0);
             let deployment = zone.deployment.as_ref();
             let image = deployment
                 .map(|d| d.docker_image.as_str())

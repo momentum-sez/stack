@@ -92,8 +92,8 @@ fn run_generate(
             jurisdiction_id: jid.clone(),
             zone_id,
             zone_type,
-            api_port: 8080 + idx as u16,
-            pg_port: 5432 + idx as u16,
+            api_port: 8080 + u16::try_from(idx).unwrap_or(0),
+            pg_port: 5432 + u16::try_from(idx).unwrap_or(0),
         });
     }
 

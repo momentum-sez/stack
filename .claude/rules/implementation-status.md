@@ -25,12 +25,68 @@ sovereign Mass entity validation (name + jurisdiction required, treasury entity-
 These have correct types and tests but business logic needs deepening:
 
 - Compliance tensor extended 12 domains: metadata-driven business rule validation for all 12 (licensing expiry, Basel III CAR, float safeguarding, settlement cycles, token classification, labor/immigration status, arbitration frameworks, trade sanctions screening). Deep logic validates metadata against domain-specific rules but jurisdiction-specific regulator mapping not yet wired (e.g., "which CAR threshold for pk vs ae")
-- National adapters (FBR, SECP, NADRA, Raast): HTTP wrappers exist — depend on live gov APIs
 - Inter-zone corridor protocol: tested in-process — not tested across real network
 
-## Stubs (return NotImplemented)
+## Mock Adapters (working test logic, awaiting live backends)
 
-ZK proof circuits (mock, fail-closed in release). BBS+ (feature-gated trait). Poseidon2 (feature-gated). SWIFT/Circle payment adapters (trait only). Smart asset registry VC submission (Phase 2). Corridor L1 anchoring and finality computation (Phase 2). Anchor verification (Phase 2).
+These have full trait definitions, error types, data models, serde round-trip tests, and
+deterministic mock implementations. They function correctly in tests and dev but depend on
+live external APIs that are not yet available or credentialed.
+
+### National regulatory adapters (`mez-mass-client`)
+
+| Adapter | Trait | Mock | Status |
+|---------|-------|------|--------|
+| FBR IRIS (tax authority) | `FbrIrisAdapter` | `MockFbrIrisAdapter` — NTN verification, tax event submission, withholding rate queries (S153/S149 rates), taxpayer profiles | Awaiting live FBR IRIS API credentials |
+| NADRA (identity) | `NadraAdapter` | `MockNadraAdapter` — CNIC verification, biometric match simulation | Awaiting live NADRA e-Sahulat API |
+| SECP (corporate registry) | `SecpAdapter` | `MockSecpAdapter` — company verification, director lookup | Awaiting live SECP eServices API |
+| SBP Raast (payments) | `RaastAdapter` | `MockRaastAdapter` — IBAN validation, payment initiation, status checks, alias lookup (mobile/CNIC) | Awaiting live SBP Raast API |
+
+### Payment rail adapters (`mez-corridor::payment_rail`)
+
+| Adapter | Mock | Status |
+|---------|------|--------|
+| `RaastAdapter` | Returns `NotConfigured` | Thin corridor-layer stub; real logic lives in `mez-mass-client::raast::MockRaastAdapter` |
+| `RtgsAdapter` | Returns `NotConfigured` | Thin corridor-layer stub; needs RTGS network credentials |
+| `CircleUsdcAdapter` | Returns `NotConfigured` | Thin corridor-layer stub; needs Circle API credentials |
+
+## Stubs (return NotImplemented / feature-gated)
+
+### ZK proof backends (`mez-zkp`)
+
+| Component | Location | Phase | Status |
+|-----------|----------|-------|--------|
+| `MockProofSystem` | `mez-zkp::mock` | 1 (active) | SHA-256 deterministic proofs, NO zero-knowledge. Fail-closed in release builds via CI guard. |
+| `ProofSystem` trait | `mez-zkp::traits` | 1 | Sealed trait with `prove`/`verify`/`setup` — only `MockProofSystem`, `Groth16ProofSystem`, `PlonkProofSystem` can implement. |
+| `Groth16ProofSystem` | `mez-zkp::groth16` | 2 | Feature-gated (`groth16`). Types compile, `prove`/`verify`/`setup` return `NotImplemented`. Awaits `ark-groth16` + `ark-bn254`. |
+| `PlonkProofSystem` | `mez-zkp::plonk` | 2 | Feature-gated (`plonk`). Types compile, `prove`/`verify`/`setup` return `NotImplemented`. Awaits `halo2_proofs`. |
+| Circuit data models | `mez-zkp::circuits::{compliance,identity,settlement,migration}` | 1 | 12 circuit structs with public inputs, witness fields, constraint count estimates, serde round-trip tests. Data model only — no R1CS/Plonkish constraints. |
+| Proof policy engine | `mez-zkp::policy` | 1 | `ProofPolicy` decides which `ProofSystem` to use per circuit type. Currently always selects `MockProofSystem`. |
+| CDB Poseidon2 path | `mez-zkp::cdb` | 4 | `#[cfg(feature = "poseidon2")]` codepath in CDB bridge is identity — compiles but does nothing until Poseidon2 lands. |
+
+### Cryptographic primitives (`mez-crypto`)
+
+| Component | Feature flag | Phase | Status |
+|-----------|-------------|-------|--------|
+| BBS+ signatures | `bbs-plus` | 4 | `bbs_sign`, `bbs_create_proof`, `bbs_verify_proof` all return `NotImplemented`. Types (`BbsSignature`, `BbsProof`, `BbsSigningKey`, `BbsVerifyingKey`) compile. Awaits `bbs` or `bbs-plus` crate. |
+| Poseidon2 hash | `poseidon2` | 4 | `poseidon2_digest`, `poseidon2_node_hash` return `NotImplemented`. `Poseidon2Digest` type compiles. Awaits `poseidon2-plonky2` or equivalent. |
+
+### L1 anchoring (`mez-corridor::anchor`)
+
+| Component | Status |
+|-----------|--------|
+| `AnchorTarget` trait | Sealed trait, production-ready interface. |
+| `MockAnchorTarget` | Working mock — immediate finality, deterministic tx IDs, atomic block counter. Used in tests. |
+| `EvmAnchorTarget` | Feature-gated (`evm-anchor`). Full JSON-RPC implementation: `eth_sendTransaction`, `eth_getTransactionReceipt`, `eth_blockNumber`, configurable finality thresholds, address validation. Needs live EVM RPC endpoint. |
+| Anchor API endpoint | `POST /v1/corridors/state/anchor` returns 501. Not wired to any `AnchorTarget`. |
+| Finality API endpoint | `POST /v1/corridors/state/finality-status` returns 501. Not wired to any `AnchorTarget`. |
+| Anchor verification | `POST /v1/assets/{id}/anchor/verify` returns 501 after auth. Not wired to receipt chain cross-reference. |
+
+### Smart asset registry (`mez-api::routes::smart_assets`)
+
+| Component | Status |
+|-----------|--------|
+| Registry VC submission | `POST /v1/assets/registry` returns 501. Needs VC issuance pipeline for registry attestations. |
 
 ## Does Not Exist
 

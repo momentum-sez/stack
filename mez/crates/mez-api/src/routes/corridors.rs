@@ -814,7 +814,30 @@ async fn fork_resolve(
     }))
 }
 
-/// POST /v1/corridors/state/anchor — Anchor corridor commitment.
+/// POST /v1/corridors/state/anchor — Anchor corridor commitment to L1.
+///
+/// ## Phase 2 — Not Yet Implemented (501)
+///
+/// This endpoint will accept a corridor checkpoint digest and anchor it
+/// to an L1 chain via the `AnchorTarget` trait (`mez-corridor::anchor`).
+///
+/// ### What exists today
+///
+/// - `MockAnchorTarget`: working mock with deterministic tx IDs and atomic
+///   block counter (used in tests).
+/// - `EvmAnchorTarget`: feature-gated (`evm-anchor`) JSON-RPC implementation
+///   for Ethereum, Arbitrum, Base, Polygon. Calls `recordDigest(bytes32)` on
+///   a target contract. Supports configurable finality thresholds.
+/// - `AnchorCommitment`, `AnchorReceipt`, `AnchorStatus` types: fully defined
+///   with serde support.
+///
+/// ### Phase 2 integration steps
+///
+/// 1. Add `AnchorTarget` (or `Arc<dyn AnchorTarget>`) to `AppState`.
+/// 2. Accept `AnchorCommitment` as request body (checkpoint_digest, chain_id,
+///    checkpoint_height).
+/// 3. Call `target.anchor(commitment)` and return `AnchorReceipt` as response.
+/// 4. Persist the receipt in the corridor's receipt chain metadata.
 #[utoipa::path(
     post,
     path = "/v1/corridors/state/anchor",
@@ -831,7 +854,28 @@ async fn anchor_commitment(
     ))
 }
 
-/// POST /v1/corridors/state/finality-status — Compute finality status.
+/// POST /v1/corridors/state/finality-status — Query L1 finality status.
+///
+/// ## Phase 2 — Not Yet Implemented (501)
+///
+/// This endpoint will query the finality status of a previously anchored
+/// corridor checkpoint by calling `AnchorTarget::check_status(tx_id)`.
+///
+/// ### What exists today
+///
+/// - `AnchorStatus` enum: `Pending`, `Confirmed`, `Finalized`, `Failed`.
+/// - `MockAnchorTarget::check_status`: always returns `Finalized`.
+/// - `EvmAnchorTarget::check_status`: queries `eth_getTransactionReceipt`
+///   and `eth_blockNumber`, compares block confirmations against configurable
+///   thresholds (`confirmations_for_confirmed`, `confirmations_for_finalized`).
+///
+/// ### Phase 2 integration steps
+///
+/// 1. Accept a transaction ID (from a prior `AnchorReceipt`) as request body.
+/// 2. Look up the corresponding `AnchorTarget` from `AppState`.
+/// 3. Call `target.check_status(tx_id)` and return the `AnchorStatus`.
+/// 4. If `Finalized`, update the corridor's receipt chain metadata to record
+///    settlement finality.
 #[utoipa::path(
     post,
     path = "/v1/corridors/state/finality-status",

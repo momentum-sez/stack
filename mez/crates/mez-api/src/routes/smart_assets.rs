@@ -176,6 +176,29 @@ async fn create_asset(
 }
 
 /// POST /v1/assets/registry — Submit/update smart asset registry VC.
+///
+/// ## Phase 2 — Not Yet Implemented (501)
+///
+/// This endpoint will accept a smart asset registration payload,
+/// issue a W3C Verifiable Credential attesting to the registry entry,
+/// and store the VC in the attestation layer.
+///
+/// ### What exists today
+///
+/// - `mez-vc`: production-grade VC issuance with Ed25519 signatures.
+/// - `SmartAssetRecord`: fully defined type with jurisdiction, asset class,
+///   compliance evaluation, and ownership fields.
+/// - `POST /v1/assets`: creates smart asset records (working).
+///
+/// ### Phase 2 integration steps
+///
+/// 1. Accept a registry submission request body (asset ID, registry
+///    jurisdiction, asset class metadata).
+/// 2. Validate the asset exists and the caller has authority to register.
+/// 3. Issue a registry VC via `mez-vc` binding the asset digest to the
+///    registry jurisdiction.
+/// 4. Store the VC in CAS and link it to the `SmartAssetRecord`.
+/// 5. If L1 anchoring is configured, anchor the VC digest on-chain.
 #[utoipa::path(
     post,
     path = "/v1/assets/registry",
@@ -268,6 +291,30 @@ async fn evaluate_compliance(
 }
 
 /// POST /v1/assets/:id/anchors/corridor/verify — Verify anchor.
+///
+/// ## Phase 2 — Not Yet Implemented (501 after auth)
+///
+/// This endpoint will verify that a corridor anchor commitment matches
+/// the on-chain record by cross-referencing the L1 transaction receipt
+/// with the corridor's receipt chain.
+///
+/// ### What exists today
+///
+/// - Auth and asset lookup are wired — the endpoint validates the caller
+///   has access before returning 501.
+/// - `AnchorVerifyRequest` is accepted and parsed.
+/// - `AnchorReceipt` and `AnchorCommitment` types exist with serde support.
+/// - `MockAnchorTarget` and `EvmAnchorTarget` (feature-gated) both implement
+///   `check_status(tx_id)`.
+///
+/// ### Phase 2 integration steps
+///
+/// 1. Look up the `AnchorReceipt` stored against the asset's corridor.
+/// 2. Call `AnchorTarget::check_status(receipt.transaction_id)` to get
+///    the current `AnchorStatus`.
+/// 3. Recompute the checkpoint digest from the corridor's receipt chain
+///    and compare against `receipt.commitment.checkpoint_digest`.
+/// 4. Return verification result (match/mismatch, finality status).
 #[utoipa::path(
     post,
     path = "/v1/assets/{id}/anchors/corridor/verify",

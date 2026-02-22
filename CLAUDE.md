@@ -117,30 +117,41 @@ Violating any is a blocking failure.
 
 Be honest about status. Do not write code that assumes stubs or planned features work.
 
-### Implemented and Tested
+### Implemented — Production-Grade
 
 | Capability | Evidence |
 |-----------|---------|
-| Compliance tensor (20 domains, fail-closed) | `mez-tensor/src/evaluation.rs` — exhaustive match, Merkle commitments |
-| Receipt chain (dual-commitment: hash-chain + MMR) | `mez-corridor/src/receipt.rs` — golden vectors, adversarial tests |
-| Fork resolution (evidence-driven) | `mez-corridor/src/fork.rs` — signed attestations, timestamp bounds |
-| Canonicalization (MCF = JCS + float reject + datetime normalize) | `mez-core/src/canonical.rs` |
-| Ed25519, MMR, CAS | `mez-crypto/` |
-| W3C Verifiable Credentials | `mez-vc/` |
 | Typestate FSMs (corridor, entity, migration, watcher) | `mez-state/` — invalid transitions = compile errors |
-| Pack Trilogy processing | `mez-pack/` — lawpacks (PK), regpacks, 70+ licensepacks |
-| Agentic policy engine | `mez-agentic/` — 20 triggers, tax pipeline |
-| Arbitration system | `mez-arbitration/` — dispute lifecycle, escrow |
-| Inter-zone corridor protocol | `mez-corridor/src/network.rs` — handshake, receipt exchange |
-| Trade flow instruments | `mez-corridor/src/trade.rs` — 4 archetypes, 10 transitions |
+| Receipt chain (dual-commitment: hash-chain + MMR) | `mez-corridor/src/receipt.rs` — golden vectors, adversarial tests |
+| Ed25519 signing, MMR, CAS | `mez-crypto/` |
+| Canonicalization (MCF = JCS + float reject + datetime normalize) | `mez-core/src/canonical.rs` |
+| W3C Verifiable Credentials | `mez-vc/` — Ed25519Signature2020 |
+| Compliance tensor structure (20 domains, exhaustive match) | `mez-tensor/src/evaluation.rs` — lattice composition, fail-closed |
 | JSON Schema validation (116 schemas) | `mez-schema/` — Draft 2020-12, cached validators |
-| Write-path orchestration | `mez-api/src/orchestration.rs` — both proxy and sovereign modes |
-| Sovereign Mass persistence | `mez-api/migrations/` — Postgres-backed 5-primitive CRUD |
-| Zone manifest system | `mez-pack/src/zone_manifest.rs` — 6 profiles |
-| HTTP API (50+ endpoints) | `mez-api/src/routes/` — corridors, compliance, watchers, trade, tax, etc. |
+| Pack Trilogy processing | `mez-pack/` — lawpacks (PK), regpacks, 70+ licensepacks |
+| Database persistence (SQLx + Postgres) | `mez-api/migrations/` — 4 migration files, compile-time checked |
+| Write-path orchestration pipeline | `mez-api/src/orchestration.rs` — eval → Mass call → VC → attest |
+| HTTP API (50+ endpoints) with auth and metrics | `mez-api/src/routes/` |
 | Docker Compose (1-zone, 2-zone, 3-zone) | `deploy/docker/` |
-| AWS Terraform (EKS + RDS + KMS) | `deploy/aws/terraform/` |
+| AWS Terraform (EKS + RDS + KMS + S3 + ALB) | `deploy/aws/terraform/` |
 | K8s manifests | `deploy/k8s/` |
+| Deploy script (key gen, secret injection, health wait) | `deploy/scripts/deploy-zone.sh` |
+| Mass API typed HTTP client | `mez-mass-client/` — reqwest with retries and timeouts |
+
+### Implemented — Structurally Complete, Logically Shallow
+
+These have correct types, tests, and wiring, but business logic needs deepening.
+
+| Capability | What exists | What's shallow |
+|-----------|------------|----------------|
+| Compliance tensor (extended 12 domains) | Exhaustive match, Pending default | No real evaluation logic — returns Pending without checking jurisdiction rules |
+| Trade flow instruments | 4 archetypes, 10 transitions, Postgres persistence | Type structures only — no FSM enforcement of transition ordering |
+| Sovereign Mass persistence | In-memory + Postgres sync for 5 primitives | Thin CRUD — no business validation (e.g., treasury without parent org) |
+| Agentic policy engine | 20 triggers, evaluation, scheduling, audit | Trigger ingestion works; reactive policy execution is limited |
+| Arbitration system | 7-phase dispute lifecycle, escrow, evidence | No end-to-end dispute resolution flow wired in API |
+| Fork resolution | Evidence-driven logic with signed attestations | Typed but not wired into live corridor operations |
+| National system adapters (FBR, SECP, NADRA, Raast) | Real HTTP client wrappers exist | Depend on live government APIs — return ServiceUnavailable gracefully |
+| Inter-zone corridor protocol | Handshake, receipt exchange, replay protection | Tested in-process; not tested across real network |
 
 ### Stubs (return NotImplemented)
 
@@ -149,8 +160,7 @@ Be honest about status. Do not write code that assumes stubs or planned features
 | ZK proof circuits (12 types) | Mock implementations. Fail-closed in release builds. |
 | BBS+ selective disclosure | Feature-gated trait only. |
 | Poseidon2 hash | Feature-gated, returns NotImplemented. |
-| Payment rail adapters (Raast, SWIFT, Circle) | Trait defined, no HTTP implementation. |
-| National system adapters (FBR, SECP, NADRA) | Trait + type definitions, no real HTTP calls. |
+| Payment rail adapters (SWIFT, Circle) | Trait defined, no HTTP implementation. |
 
 ### Does Not Exist
 

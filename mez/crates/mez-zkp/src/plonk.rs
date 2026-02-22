@@ -72,8 +72,36 @@ pub struct PlonkCircuit {
 
 /// PLONK proof system implementation.
 ///
-/// Phase 2: Integrates with `halo2_proofs` for real PLONK proof
-/// generation and verification with universal trusted setup.
+/// ## Phase 2 — Not Yet Implemented
+///
+/// Both `prove()` and `verify()` return `NotImplemented`. This struct
+/// exists so downstream code (policy engine, circuit registry) can
+/// reference PLONK at compile time without a concrete backend.
+///
+/// ### What exists today
+///
+/// - `PlonkProof`, `PlonkVerifyingKey`, `PlonkProvingKey`: placeholder
+///   types with serde/Clone/Debug.  Ready to swap for halo2 newtypes.
+/// - `PlonkCircuit`: data model with `circuit_id`, `gate_count`,
+///   `public_inputs`.  Maps 1:1 to the 12 circuit data models in
+///   `mez-zkp::circuits`.
+/// - `ProofPolicy` (in `mez-zkp::policy`) already branches on proof-system
+///   type — flip the policy to select `PlonkProofSystem` when ready.
+/// - Sealed `ProofSystem` trait prevents external implementations.
+///
+/// ### Phase 2 integration steps
+///
+/// 1. Add `halo2_proofs = "0.3"` to `mez-zkp/Cargo.toml` behind the
+///    `plonk` feature.
+/// 2. Replace `PlonkProof.proof_bytes` with `halo2_proofs::plonk::Proof`.
+/// 3. Replace key types with `halo2_proofs::plonk::{ProvingKey, VerifyingKey}`.
+/// 4. Implement `prove()`: compile `PlonkCircuit` to a halo2 `Circuit`,
+///    call `create_proof(&params, &pk, &[circuit], &[&instances], &mut rng, &mut transcript)`.
+/// 5. Implement `verify()`: call `verify_proof(&params, &vk, strategy, &[&instances], &mut transcript)`.
+/// 6. Add a universal SRS generation CLI command in `mez-cli` that
+///    creates params for the maximum circuit size and writes to CAS.
+/// 7. Update `ProofPolicy` to select `PlonkProofSystem` for circuits
+///    that benefit from universal setup (identity, migration).
 pub struct PlonkProofSystem;
 
 impl ProofSystem for PlonkProofSystem {

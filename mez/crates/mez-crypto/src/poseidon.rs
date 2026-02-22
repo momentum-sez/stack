@@ -55,10 +55,31 @@ impl Poseidon2Digest {
 /// ## Phase 4 — Not Yet Implemented
 ///
 /// This function will compute a ZK-friendly Poseidon2 hash suitable
-/// for use inside arithmetic circuits. It currently panics.
+/// for use inside arithmetic circuits.
 ///
 /// The input must be [`CanonicalBytes`] to maintain the same
 /// canonicalization invariant as SHA-256 digest computation.
+///
+/// ### What exists today
+///
+/// - `Poseidon2Digest` type: 32-byte digest with `as_bytes()`, `to_hex()`.
+/// - `mez-zkp::cdb::Cdb::new()` has a `#[cfg(feature = "poseidon2")]`
+///   codepath that currently falls back to identity — it will call this
+///   function once Poseidon2 lands.
+/// - SHA-256 canonicalization pipeline (`CanonicalBytes` → `sha256_digest`)
+///   is production-grade; Poseidon2 slots in as the final step.
+///
+/// ### Phase 4 integration steps
+///
+/// 1. Add `poseidon2` crate (e.g., `poseidon2-plonky2`) to
+///    `mez-crypto/Cargo.toml` behind the `poseidon2` feature.
+/// 2. Implement this function: instantiate the Poseidon2 permutation
+///    with the chosen domain separation, hash `CanonicalBytes`, return
+///    `Poseidon2Digest`.
+/// 3. Implement `poseidon2_node_hash()` for Merkle node hashing.
+/// 4. Update `mez-zkp::cdb::Cdb::new()` to call `poseidon2_digest()`
+///    via `Split256` instead of falling back to identity.
+/// 5. Enable the `poseidon2` feature by default in workspace.
 pub fn poseidon2_digest(
     _data: &CanonicalBytes,
 ) -> Result<Poseidon2Digest, crate::error::CryptoError> {
@@ -72,7 +93,15 @@ pub fn poseidon2_digest(
 /// ## Phase 4 — Not Yet Implemented
 ///
 /// This is the ZK-friendly equivalent of the SHA-256 node hash used
-/// in MMR construction.
+/// in MMR construction. When implemented, `mez-crypto::mmr` can offer
+/// a Poseidon2 MMR variant for proofs that verify inside arithmetic
+/// circuits without SHA-256 gadget overhead.
+///
+/// ### Phase 4 integration steps
+///
+/// 1. Implement: concatenate left + right, hash via Poseidon2 permutation.
+/// 2. Add a `Poseidon2Mmr` type or feature-gated codepath in `mez-crypto::mmr`.
+/// 3. Wire into `mez-zkp::circuits::settlement::MerkleMembershipCircuit`.
 pub fn poseidon2_node_hash(
     _left: &[u8; 32],
     _right: &[u8; 32],

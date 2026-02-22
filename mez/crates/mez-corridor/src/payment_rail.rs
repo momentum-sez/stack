@@ -240,15 +240,31 @@ pub trait PaymentRailAdapter: Send + Sync {
 /// real-time retail payments in PKR. It operates 24/7 and settles in central
 /// bank money.
 ///
-/// This is a thin bridge to the [`PaymentRailAdapter`] trait. The full Raast
-/// adapter with IBAN validation, alias lookup, account verification, and
-/// settlement tracking lives in `mez-mass-client::raast::RaastAdapter` /
-/// `mez-mass-client::raast::MockRaastAdapter`.
+/// ## Phase 2 — Returns `NotConfigured`
 ///
-/// This corridor-layer adapter delegates to the `PaymentRailAdapter` trait
-/// for rail-agnostic orchestration. For Raast-specific operations (alias
-/// lookup, account verification), use the `mez-mass-client::raast` module
-/// directly.
+/// This is a thin corridor-layer bridge. The full Raast adapter lives in
+/// `mez-mass-client::raast` with IBAN validation, alias lookup, account
+/// verification, and settlement tracking (`MockRaastAdapter` for tests).
+///
+/// ### What exists today
+///
+/// - `mez-mass-client::raast::RaastAdapter` trait: production interface
+///   with `initiate_payment`, `check_status`, `verify_account`, `lookup_alias`.
+/// - `mez-mass-client::raast::MockRaastAdapter`: deterministic mock with
+///   IBAN format validation (`PK{check}{bank}{account}`, 24 chars),
+///   payment lifecycle simulation, and alias resolution.
+/// - `PaymentRailAdapter` trait: object-safe, `Send + Sync`.
+///
+/// ### Phase 2 integration steps
+///
+/// 1. Add a `mez-mass-client::raast::RaastAdapter` field to this struct
+///    (injected via corridor configuration).
+/// 2. Bridge `initiate_payment()`: convert `PaymentInstruction` to
+///    Raast-native `RaastPaymentRequest`, delegate to the mass-client adapter.
+/// 3. Bridge `check_status()`: delegate to `mass-client.check_status()`,
+///    map `RaastPaymentStatus` → `PaymentStatus`.
+/// 4. Migrate trait methods to async when workspace MSRV supports
+///    `dyn`-compatible async trait methods.
 pub struct RaastAdapter;
 
 impl PaymentRailAdapter for RaastAdapter {
@@ -285,14 +301,29 @@ impl PaymentRailAdapter for RaastAdapter {
 /// interbank transfers. Each jurisdiction has its own RTGS system (e.g.,
 /// PRISM in Pakistan, Fedwire in the US, CHAPS in the UK).
 ///
-/// **Status: STUB** -- awaiting RTGS gateway API specification from the
-/// relevant central bank.
+/// ## Phase 2 — Returns `NotConfigured`
 ///
-/// When implemented, this adapter will:
-/// - Submit large-value payment instructions via the RTGS gateway
-/// - Track settlement finality through the RTGS status interface
-/// - Map RTGS settlement states to [`PaymentStatus`] variants
-/// - Report RTGS processing fees in [`PaymentResult::fee`]
+/// Awaiting RTGS gateway API specification from the relevant central bank.
+///
+/// ### What exists today
+///
+/// - `PaymentRailAdapter` trait: object-safe interface shared with Raast
+///   and Circle adapters.
+/// - `PaymentInstruction` and `PaymentResult` types with full serde support.
+/// - `PaymentStatus` lifecycle: `Pending` → `Processing` → `Completed`
+///   (or `Failed` / `Reversed`).
+///
+/// ### Phase 2 integration steps
+///
+/// 1. Obtain RTGS gateway SDK or HTTP specification from the central bank
+///    (PRISM for Pakistan, Fedwire for US corridors).
+/// 2. Add an HTTP client field to this struct for the RTGS gateway.
+/// 3. Implement `initiate_payment()`: map `PaymentInstruction` to the
+///    RTGS message format (likely ISO 20022 pacs.009 for large-value).
+/// 4. Implement `check_status()`: query the RTGS gateway for settlement
+///    finality, map to `PaymentStatus`.
+/// 5. Report fees via `PaymentResult::fee`.
+/// 6. Migrate to async when workspace MSRV supports it.
 pub struct RtgsAdapter;
 
 impl PaymentRailAdapter for RtgsAdapter {
@@ -328,14 +359,31 @@ impl PaymentRailAdapter for RtgsAdapter {
 /// low-cost cross-border settlement. The adapter targets the Circle
 /// Payments API for programmatic USDC transfers between Circle wallets.
 ///
-/// **Status: STUB** -- awaiting Circle API key provisioning and
-/// sandbox environment access.
+/// ## Phase 2 — Returns `NotConfigured`
 ///
-/// When implemented, this adapter will:
-/// - Submit USDC transfer instructions via the Circle Payments API
-/// - Poll transfer status via Circle's transfer status endpoint
-/// - Map Circle transfer states to [`PaymentStatus`] variants
-/// - Report Circle processing fees in [`PaymentResult::fee`]
+/// Awaiting Circle API key provisioning and sandbox environment access.
+///
+/// ### What exists today
+///
+/// - `PaymentRailAdapter` trait: object-safe interface shared with Raast
+///   and RTGS adapters.
+/// - `PaymentInstruction`: `from_account` / `to_account` will hold Circle
+///   wallet IDs; `currency` will be `"USD"` (USDC minor units = cents).
+/// - `PaymentStatus` lifecycle maps naturally to Circle transfer states
+///   (pending → processing → complete/failed).
+///
+/// ### Phase 2 integration steps
+///
+/// 1. Add Circle SDK or HTTP client to `mez-corridor/Cargo.toml` behind
+///    an `circle` feature (no direct `reqwest` — route through a typed
+///    client or add to `mez-mass-client`).
+/// 2. Accept Circle API key via environment variable (`CIRCLE_API_KEY`).
+/// 3. Implement `initiate_payment()`: call `POST /v1/transfers` with
+///    source/destination wallet IDs, amount in USD minor units.
+/// 4. Implement `check_status()`: call `GET /v1/transfers/{id}`, map
+///    Circle transfer status to `PaymentStatus`.
+/// 5. Report Circle fees via `PaymentResult::fee`.
+/// 6. Migrate to async when workspace MSRV supports it.
 pub struct CircleUsdcAdapter;
 
 impl PaymentRailAdapter for CircleUsdcAdapter {

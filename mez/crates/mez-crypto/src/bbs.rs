@@ -91,6 +91,27 @@ pub struct BbsVerifyingKey {
 ///
 /// Each message must be [`CanonicalBytes`] to maintain the
 /// canonicalization invariant across the entire stack.
+///
+/// ### What exists today
+///
+/// - `BbsSignature`, `BbsProof`, `BbsSigningKey`, `BbsVerifyingKey` types
+///   compile and implement Debug/Clone.
+/// - `mez-vc` already issues Ed25519-signed VCs; BBS+ will add selective
+///   disclosure as an alternative signature scheme.
+/// - `CanonicalBytes` canonicalization ensures message ordering is
+///   deterministic before signing.
+///
+/// ### Phase 4 integration steps
+///
+/// 1. Add `bbs` or `bbs-plus` crate to `mez-crypto/Cargo.toml` behind
+///    the `bbs-plus` feature.
+/// 2. Replace `BbsSigningKey._private` with the library's secret key type.
+/// 3. Implement `bbs_sign()`: convert `CanonicalBytes` slices to the
+///    library's message format, call the library's `sign()`.
+/// 4. Implement `bbs_create_proof()`: call the library's
+///    `create_proof_of_knowledge()` with disclosed indices.
+/// 5. Implement `bbs_verify_proof()`: call the library's `verify_proof()`.
+/// 6. Wire BBS+ as an alternative VC signature scheme in `mez-vc`.
 pub fn bbs_sign(
     _key: &BbsSigningKey,
     _messages: &[CanonicalBytes],

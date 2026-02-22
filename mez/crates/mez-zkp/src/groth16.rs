@@ -71,8 +71,36 @@ pub struct Groth16Circuit {
 
 /// Groth16 proof system implementation.
 ///
-/// Phase 2: Integrates with `ark-groth16` for real SNARK proof
-/// generation and verification on the BN254 curve.
+/// ## Phase 2 — Not Yet Implemented
+///
+/// Both `prove()` and `verify()` return `NotImplemented`. This struct
+/// exists so downstream code (policy engine, circuit registry) can
+/// reference Groth16 at compile time without a concrete backend.
+///
+/// ### What exists today
+///
+/// - `Groth16Proof`, `Groth16VerifyingKey`, `Groth16ProvingKey`: placeholder
+///   types with serde/Clone/Debug.  Ready to swap for arkworks newtypes.
+/// - `Groth16Circuit`: data model with `circuit_id`, `constraint_count`,
+///   `public_inputs`.  Maps 1:1 to the 12 circuit data models in
+///   `mez-zkp::circuits`.
+/// - `ProofPolicy` (in `mez-zkp::policy`) already branches on proof-system
+///   type — flip the policy to select `Groth16ProofSystem` when ready.
+/// - Sealed `ProofSystem` trait prevents external implementations.
+///
+/// ### Phase 2 integration steps
+///
+/// 1. Add `ark-groth16 = "0.4"` and `ark-bn254 = "0.4"` to
+///    `mez-zkp/Cargo.toml` behind the `groth16` feature.
+/// 2. Replace `Groth16Proof.proof_bytes` with `ark_groth16::Proof<Bn254>`.
+/// 3. Replace key types with `ark_groth16::{ProvingKey, VerifyingKey}<Bn254>`.
+/// 4. Implement `prove()`: compile `Groth16Circuit` to an arkworks
+///    `ConstraintSynthesizer`, call `Groth16::prove(&pk, circuit, &mut rng)`.
+/// 5. Implement `verify()`: call `Groth16::verify(&vk, &public_inputs, &proof)`.
+/// 6. Add a trusted-setup CLI command in `mez-cli` that generates
+///    `(pk, vk)` per circuit type and writes them to CAS.
+/// 7. Update `ProofPolicy` to select `Groth16ProofSystem` for circuits
+///    that require constant-size proofs (compliance, sanctions).
 pub struct Groth16ProofSystem;
 
 impl ProofSystem for Groth16ProofSystem {

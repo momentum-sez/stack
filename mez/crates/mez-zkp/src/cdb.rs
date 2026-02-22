@@ -52,6 +52,33 @@ impl Cdb {
     /// Phase 1: Returns the input digest unchanged (identity function).
     /// Phase 2 (`poseidon2` feature): Applies `Poseidon2(Split256(digest))`.
     ///
+    /// ## Poseidon2 path — identity stub
+    ///
+    /// The `#[cfg(feature = "poseidon2")]` codepath compiles but falls back
+    /// to identity (no actual Poseidon2 hashing). This is by design: the
+    /// feature flag exists so downstream code can be written and compiled
+    /// against the Poseidon2 API before the hash function is available.
+    ///
+    /// ### What exists today
+    ///
+    /// - `mez-crypto::poseidon::poseidon2_digest()`: type-correct stub that
+    ///   returns `CryptoError::NotImplemented`.
+    /// - `mez-crypto::poseidon::Poseidon2Digest`: 32-byte digest type with
+    ///   `as_bytes()` and `to_hex()`.
+    /// - `ContentDigest` type-safety: only `sha256_digest(CanonicalBytes)`
+    ///   can produce a `ContentDigest`, preventing raw-byte bypass.
+    ///
+    /// ### Phase 2 integration steps
+    ///
+    /// 1. Implement `mez-crypto::poseidon::poseidon2_digest()` (Phase 4 dep).
+    /// 2. In this function's `poseidon2` codepath: split the 256-bit
+    ///    SHA-256 digest into two 128-bit halves (`Split256`).
+    /// 3. Hash the halves via `poseidon2_node_hash(left, right)`.
+    /// 4. Wrap the result as a new `ContentDigest` (may require a
+    ///    `ContentDigest::from_poseidon2()` constructor on `mez-core`).
+    /// 5. Verify CDB determinism: same input always produces same output
+    ///    regardless of Poseidon2 feature state (add cross-feature test).
+    ///
     /// # Arguments
     ///
     /// * `digest` — A [`ContentDigest`] produced from properly canonicalized data.

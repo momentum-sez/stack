@@ -134,6 +134,7 @@ pub fn app(state: AppState) -> Router {
         .merge(routes::trade::router())
         .merge(routes::compliance_query::router())
         .merge(routes::watchers::router())
+        .merge(routes::arbitration::router())
         .merge(openapi::router());
 
     // GovOS Console — sovereign deployment dashboards for national system adapters

@@ -1,0 +1,50 @@
+# MEZ Stack — Horizontal Pod Autoscaler
+#
+# Scales mez-api between 2 and 10 replicas based on CPU and memory
+# utilization. The compliance tensor evaluation and sanctions screening
+# are CPU-bound; large batch operations may spike memory.
+#
+# Requires: metrics-server deployed in the cluster.
+#
+# Apply: kubectl apply -f deploy/k8s/hpa.yaml
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: mez-api
+  namespace: mez
+  labels:
+    app: mez-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: mez-api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120

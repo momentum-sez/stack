@@ -23,6 +23,7 @@ mez-mass-client = { workspace = true }
 mez-agentic = { workspace = true }
 mez-pack = { workspace = true }
 mez-compliance = { workspace = true }
+mez-arbitration = { workspace = true }
 
 # Cryptography
 rand_core = { workspace = true }

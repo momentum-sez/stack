@@ -350,6 +350,7 @@ async fn sovereign_mass_data_isolation_via_mez_api() {
             "/organization-info/api/v1/organization/create",
             &json!({
                 "name": "Zone A Corp",
+                "jurisdiction": "ae-difc",
                 "tags": []
             }),
         ))
@@ -402,6 +403,7 @@ async fn sovereign_mass_simulated_restart_stores_clear_correctly() {
             "/organization-info/api/v1/organization/create",
             &json!({
                 "name": "Restart Corp",
+                "jurisdiction": "pk-sifc",
                 "tags": []
             }),
         ))

@@ -435,18 +435,17 @@ pub fn orchestrate_cap_table_creation(
 ) -> OrchestrationEnvelope {
     let entity_id_str = entity_id.to_string();
 
-    // TODO(P1-004): Fetch entity's jurisdiction from Mass organization-info
-    // by entity_id. For now, ownership operations use GLOBAL-scope evaluation
-    // (same as the handler's pre-flight check in mass_proxy.rs).
-    let jurisdiction_id = "GLOBAL";
+    // P1-004: Look up entity's jurisdiction from sovereign Mass stores.
+    // Falls back to GLOBAL for entities not in the local store (proxy mode).
+    let jurisdiction_id = lookup_entity_jurisdiction(state, entity_id);
 
     let (_tensor, summary) =
-        evaluate_compliance(jurisdiction_id, &entity_id_str, OWNERSHIP_DOMAINS);
+        evaluate_compliance(&jurisdiction_id, &entity_id_str, OWNERSHIP_DOMAINS);
 
     let (credential, attestation_id) = issue_and_store(
         state,
         vc_types::OWNERSHIP_COMPLIANCE,
-        jurisdiction_id,
+        &jurisdiction_id,
         &entity_id_str,
         &entity_id_str,
         &summary,
@@ -583,6 +582,27 @@ pub fn orchestrate_consent_creation(
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+/// Look up an entity's jurisdiction from sovereign Mass stores.
+///
+/// Checks the local sovereign Mass organization store for the entity's
+/// jurisdiction. Falls back to "GLOBAL" when:
+/// - Running in proxy mode (entities are in remote Mass)
+/// - Entity not found in local store
+/// - Entity has no jurisdiction field
+///
+/// This resolves P1-004: cap table and ownership operations now use the
+/// entity's actual jurisdiction rather than a hardcoded "GLOBAL".
+fn lookup_entity_jurisdiction(state: &AppState, entity_id: Uuid) -> String {
+    if let Some(org) = state.mass_organizations.get(&entity_id) {
+        if let Some(jurisdiction) = org.get("jurisdiction").and_then(|v| v.as_str()) {
+            if !jurisdiction.is_empty() {
+                return jurisdiction.to_string();
+            }
+        }
+    }
+    "GLOBAL".to_string()
+}
 
 /// Issue a VC and store an attestation record. Returns both or logs warnings
 /// on failure (graceful degradation — never blocks the Mass API response).

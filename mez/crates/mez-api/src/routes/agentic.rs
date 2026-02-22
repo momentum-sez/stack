@@ -10,10 +10,11 @@
 //!
 //! ## Reactive Bridge
 //!
-//! When the policy engine produces a `Halt` or `Resume` action targeting
-//! a corridor, the handler transitions the corridor via the typestate
-//! machine (`DynCorridorState::valid_transitions`). All other actions
-//! are recorded as "scheduled" — awaiting future executors.
+//! The dispatcher wires policy actions to domain operations:
+//! - `Halt`/`Resume` — corridor state transitions + smart asset suspend/resume.
+//! - `ArbitrationEnforce` — advance a dispute to Enforced state.
+//! - `UpdateManifest` — update smart asset metadata.
+//! - Remaining actions are recorded as "scheduled" for domain-specific executors.
 
 use axum::extract::{Path, State};
 use axum::routing::{delete, get, post};
@@ -255,16 +256,37 @@ async fn delete_policy(
 
 /// Dispatch a scheduled action to the appropriate domain operation.
 ///
-/// For this release, only `Halt` and `Resume` are wired to corridor
-/// transitions. All other actions are recorded as "scheduled" pending
-/// future executors.
+/// Wired executors:
+/// - `Halt` / `Resume` — corridor state transitions + smart asset suspend/resume.
+/// - `ArbitrationEnforce` — advance a dispute to Enforced state.
+/// - `UpdateManifest` — update smart asset metadata.
+///
+/// Remaining actions are recorded as "scheduled" pending domain-specific executors.
 async fn dispatch_action(state: &AppState, action: &ScheduledAction) -> ActionResult {
     match action.action {
         PolicyAction::Halt => {
-            dispatch_corridor_transition(state, action, DynCorridorState::Halted).await
+            // Try corridor first, then smart asset.
+            let corridor_result =
+                dispatch_corridor_transition(state, action, DynCorridorState::Halted).await;
+            if corridor_result.status == ActionStatus::Executed {
+                return corridor_result;
+            }
+            // If corridor dispatch skipped (not found), try as smart asset suspend.
+            dispatch_asset_status_change(state, action, crate::state::AssetStatus::Suspended).await
         }
         PolicyAction::Resume => {
-            dispatch_corridor_transition(state, action, DynCorridorState::Active).await
+            let corridor_result =
+                dispatch_corridor_transition(state, action, DynCorridorState::Active).await;
+            if corridor_result.status == ActionStatus::Executed {
+                return corridor_result;
+            }
+            dispatch_asset_status_change(state, action, crate::state::AssetStatus::Active).await
+        }
+        PolicyAction::ArbitrationEnforce => {
+            dispatch_arbitration_enforce(state, action).await
+        }
+        PolicyAction::UpdateManifest => {
+            dispatch_update_manifest(state, action).await
         }
         _ => {
             // Action type has no executor yet. Record as scheduled.
@@ -273,7 +295,7 @@ async fn dispatch_action(state: &AppState, action: &ScheduledAction) -> ActionRe
                 action_type: action.action.as_str().to_string(),
                 status: ActionStatus::Scheduled,
                 detail: Some(format!(
-                    "action '{}' recorded but no executor wired yet",
+                    "action '{}' scheduled for domain-specific executor",
                     action.action.as_str()
                 )),
                 affected_resource: None,
@@ -392,6 +414,186 @@ async fn dispatch_corridor_transition(
                 "corridor {} disappeared during transition",
                 corridor_id
             )),
+            affected_resource: None,
+        },
+    }
+}
+
+/// Dispatch an asset status change (Halt → Suspended, Resume → Active).
+async fn dispatch_asset_status_change(
+    state: &AppState,
+    action: &ScheduledAction,
+    target_status: crate::state::AssetStatus,
+) -> ActionResult {
+    let asset_id = match uuid::Uuid::parse_str(&action.asset_id) {
+        Ok(id) => id,
+        Err(_) => {
+            return ActionResult {
+                action_id: action.action_id.clone(),
+                action_type: action.action.as_str().to_string(),
+                status: ActionStatus::Skipped,
+                detail: Some(format!(
+                    "asset_id '{}' is not a valid UUID",
+                    action.asset_id
+                )),
+                affected_resource: None,
+            };
+        }
+    };
+
+    let updated = state.smart_assets.update(&asset_id, |asset| {
+        asset.status = target_status;
+        asset.updated_at = Utc::now();
+    });
+
+    match updated {
+        Some(_) => ActionResult {
+            action_id: action.action_id.clone(),
+            action_type: action.action.as_str().to_string(),
+            status: ActionStatus::Executed,
+            detail: Some(format!(
+                "asset {} status changed to {}",
+                asset_id, target_status
+            )),
+            affected_resource: Some(asset_id.to_string()),
+        },
+        None => ActionResult {
+            action_id: action.action_id.clone(),
+            action_type: action.action.as_str().to_string(),
+            status: ActionStatus::Skipped,
+            detail: Some(format!(
+                "neither corridor nor asset found for '{}'",
+                action.asset_id
+            )),
+            affected_resource: None,
+        },
+    }
+}
+
+/// Dispatch ArbitrationEnforce: advance a dispute to the Enforced state.
+async fn dispatch_arbitration_enforce(
+    state: &AppState,
+    action: &ScheduledAction,
+) -> ActionResult {
+    let dispute_id = match uuid::Uuid::parse_str(&action.asset_id) {
+        Ok(id) => id,
+        Err(_) => {
+            return ActionResult {
+                action_id: action.action_id.clone(),
+                action_type: action.action.as_str().to_string(),
+                status: ActionStatus::Skipped,
+                detail: Some(format!(
+                    "asset_id '{}' is not a valid dispute UUID",
+                    action.asset_id
+                )),
+                affected_resource: None,
+            };
+        }
+    };
+
+    let evidence_data = serde_json::json!({
+        "policy_id": action.policy_id,
+        "action_id": action.action_id,
+        "trigger": "agentic_arbitration_enforce",
+    });
+    let digest = CanonicalBytes::new(&evidence_data)
+        .ok()
+        .map(|c| sha256_digest(&c));
+
+    let result = state.disputes.try_update(&dispute_id, |dispute| {
+        if dispute.state != mez_arbitration::DisputeState::Decided {
+            return Err(format!(
+                "dispute {} is in state {}, expected DECIDED for enforcement",
+                dispute_id,
+                dispute.state.as_str()
+            ));
+        }
+        let enforcement_digest = digest.clone().unwrap_or_else(|| {
+            let fallback = CanonicalBytes::new(&serde_json::json!({"fallback": true}))
+                .expect("static JSON is valid");
+            sha256_digest(&fallback)
+        });
+        dispute
+            .enforce(mez_arbitration::EnforcementInitiationEvidence {
+                enforcement_order_digest: enforcement_digest,
+            })
+            .map_err(|e| e.to_string())
+    });
+
+    match result {
+        Some(Ok(())) => ActionResult {
+            action_id: action.action_id.clone(),
+            action_type: action.action.as_str().to_string(),
+            status: ActionStatus::Executed,
+            detail: Some(format!("dispute {} advanced to ENFORCED", dispute_id)),
+            affected_resource: Some(dispute_id.to_string()),
+        },
+        Some(Err(reason)) => ActionResult {
+            action_id: action.action_id.clone(),
+            action_type: action.action.as_str().to_string(),
+            status: ActionStatus::Skipped,
+            detail: Some(reason),
+            affected_resource: None,
+        },
+        None => ActionResult {
+            action_id: action.action_id.clone(),
+            action_type: action.action.as_str().to_string(),
+            status: ActionStatus::Skipped,
+            detail: Some(format!("dispute {} not found", dispute_id)),
+            affected_resource: None,
+        },
+    }
+}
+
+/// Dispatch UpdateManifest: update smart asset metadata with policy-driven changes.
+async fn dispatch_update_manifest(
+    state: &AppState,
+    action: &ScheduledAction,
+) -> ActionResult {
+    let asset_id = match uuid::Uuid::parse_str(&action.asset_id) {
+        Ok(id) => id,
+        Err(_) => {
+            return ActionResult {
+                action_id: action.action_id.clone(),
+                action_type: action.action.as_str().to_string(),
+                status: ActionStatus::Skipped,
+                detail: Some(format!(
+                    "asset_id '{}' is not a valid asset UUID",
+                    action.asset_id
+                )),
+                affected_resource: None,
+            };
+        }
+    };
+
+    let updated = state.smart_assets.update(&asset_id, |asset| {
+        // Record the policy-driven manifest update in the asset metadata.
+        if let Some(obj) = asset.metadata.as_object_mut() {
+            obj.insert(
+                "last_manifest_update".to_string(),
+                serde_json::json!({
+                    "policy_id": action.policy_id,
+                    "action_id": action.action_id,
+                    "updated_at": Utc::now().to_rfc3339(),
+                }),
+            );
+        }
+        asset.updated_at = Utc::now();
+    });
+
+    match updated {
+        Some(_) => ActionResult {
+            action_id: action.action_id.clone(),
+            action_type: action.action.as_str().to_string(),
+            status: ActionStatus::Executed,
+            detail: Some(format!("asset {} manifest updated", asset_id)),
+            affected_resource: Some(asset_id.to_string()),
+        },
+        None => ActionResult {
+            action_id: action.action_id.clone(),
+            action_type: action.action.as_str().to_string(),
+            status: ActionStatus::Skipped,
+            detail: Some(format!("asset {} not found", asset_id)),
             affected_resource: None,
         },
     }
@@ -720,14 +922,26 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
 
         let resp: TriggerResponse = body_json(response).await;
-        // At least some actions should exist (from extended policies).
-        // If actions exist that aren't Halt/Resume, they should be "scheduled".
+        // Actions dispatched with wired executors (halt, resume,
+        // arbitration_enforce, update_manifest) will be Skipped when the
+        // target resource doesn't exist. Remaining action types without
+        // executors are Scheduled for future domain-specific processing.
+        let wired_actions = ["halt", "resume", "arbitration_enforce", "update_manifest"];
         for action in &resp.actions {
-            if action.action_type != "halt" && action.action_type != "resume" {
+            if wired_actions.contains(&action.action_type.as_str()) {
+                assert!(
+                    action.status == ActionStatus::Executed
+                        || action.status == ActionStatus::Skipped,
+                    "wired action '{}' should be executed or skipped, got: {:?}",
+                    action.action_type,
+                    action.status
+                );
+            } else {
                 assert_eq!(
                     action.status,
                     ActionStatus::Scheduled,
-                    "non-halt/resume action should be scheduled, got: {:?}",
+                    "unwired action '{}' should be scheduled, got: {:?}",
+                    action.action_type,
                     action.status
                 );
             }

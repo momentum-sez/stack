@@ -534,6 +534,11 @@ pub struct AppState {
     /// across all four archetypes (Export, Import, LetterOfCredit, OpenAccount).
     pub trade_flow_manager: Arc<TradeFlowManager>,
 
+    // -- Dispute lifecycle --
+    /// In-memory dispute store for the arbitration lifecycle.
+    /// Disputes are filed, advanced through 7 phases, settled, or dismissed.
+    pub disputes: Store<mez_arbitration::Dispute>,
+
     // -- Database persistence (optional) --
     /// PostgreSQL connection pool for durable state persistence.
     /// When `Some`, corridor, smart asset, attestation, and audit data is
@@ -660,6 +665,7 @@ impl AppState {
             corridor_genesis_roots: Arc::new(RwLock::new(HashMap::new())),
             attestation_log: Arc::new(RwLock::new(HashMap::new())),
             trade_flow_manager: Arc::new(TradeFlowManager::new()),
+            disputes: Store::new(),
             db_pool,
             mass_client,
             zone_signing_key: Arc::new(zone_signing_key),

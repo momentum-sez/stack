@@ -310,6 +310,17 @@ async fn create_corridor(
         updated_at: now,
     };
 
+    // Persist to database first — ensures durability before updating in-memory
+    // state. If DB fails, no stale in-memory record exists.
+    if let Some(pool) = &state.db_pool {
+        if let Err(e) = crate::db::corridors::insert(pool, &record).await {
+            tracing::error!(corridor_id = %id, error = %e, "failed to persist corridor to database");
+            return Err(AppError::Internal(
+                "database persist failed — corridor not created".to_string(),
+            ));
+        }
+    }
+
     state.corridors.insert(id, record.clone());
 
     // Initialize an empty receipt chain for this corridor.
@@ -321,17 +332,6 @@ async fn create_corridor(
     let genesis_root = sha256_digest(&genesis_canonical);
     let chain = ReceiptChain::new(CorridorId::from_uuid(id), genesis_root);
     state.receipt_chains.write().insert(id, chain);
-
-    // Persist to database (write-through). Failure is surfaced to the client
-    // because the in-memory record would be lost on restart, causing silent data loss.
-    if let Some(pool) = &state.db_pool {
-        if let Err(e) = crate::db::corridors::insert(pool, &record).await {
-            tracing::error!(corridor_id = %id, error = %e, "failed to persist corridor to database");
-            return Err(AppError::Internal(
-                "corridor recorded in-memory but database persist failed".to_string(),
-            ));
-        }
-    }
 
     Ok((axum::http::StatusCode::CREATED, Json(record)))
 }

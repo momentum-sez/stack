@@ -1150,14 +1150,16 @@ async fn generate_payment_tax_event(
         "auto-generated tax event from payment orchestration"
     );
 
-    state.tax_events.insert(record.id, record.clone());
-
-    // Persist to database (write-through).
+    // Persist to database first — ensures durability before updating in-memory state.
     if let Some(pool) = &state.db_pool {
         if let Err(e) = crate::db::tax_events::insert(pool, &record).await {
             tracing::error!(tax_event_id = %record.id, error = %e, "failed to persist auto-generated tax event");
+            // Note: this is a fire-and-forget side effect of payment orchestration,
+            // so we log the error but don't fail the parent payment operation.
         }
     }
+
+    state.tax_events.insert(record.id, record.clone());
 }
 
 // ── IDENTITY HANDLERS ───────────────────────────────────────────────

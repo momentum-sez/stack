@@ -218,17 +218,32 @@ fn load_zone_manifest(path: &Path) -> Result<ZoneManifest, BootstrapError> {
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
+    if zone_id.is_empty() {
+        return Err(BootstrapError::InvalidManifest {
+            errors: vec!["zone_id is required and must not be empty".to_string()],
+        });
+    }
     let jurisdiction_id = zone_value
         .get("jurisdiction_id")
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
+    if jurisdiction_id.is_empty() {
+        return Err(BootstrapError::InvalidManifest {
+            errors: vec!["jurisdiction_id is required and must not be empty".to_string()],
+        });
+    }
 
     // Extract applicable domains from lawpack_domains or profile.
     let applicable_domains = extract_applicable_domains(&zone_value);
 
     // Resolve regpack references.
-    let regpack_refs = mez_pack::regpack::resolve_regpack_refs(&zone_value).unwrap_or_default();
+    let regpack_refs = mez_pack::regpack::resolve_regpack_refs(&zone_value)
+        .map_err(|e| {
+            tracing::warn!(error = %e, "regpack resolution failed — proceeding without regpacks");
+            e
+        })
+        .unwrap_or_default();
 
     let manifest_dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
 

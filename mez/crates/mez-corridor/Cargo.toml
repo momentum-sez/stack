@@ -6,6 +6,11 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[features]
+default = []
+# Enable real EVM JSON-RPC anchor target for L1 settlement finality.
+evm-anchor = ["dep:reqwest", "dep:tokio"]
+
 [dependencies]
 mez-core = { workspace = true }
 mez-state = { workspace = true }
@@ -17,6 +22,8 @@ thiserror = { workspace = true }
 uuid = { workspace = true }
 tracing = { workspace = true }
 dashmap = { workspace = true }
+reqwest = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
 
 [dev-dependencies]
 proptest = { workspace = true }

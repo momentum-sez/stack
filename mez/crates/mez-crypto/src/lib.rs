@@ -31,9 +31,14 @@ pub mod poseidon;
 #[cfg(feature = "bbs-plus")]
 pub mod bbs;
 
+pub mod key_provider;
+
 // Re-export primary types.
 pub use cas::{ArtifactRef, ArtifactType, ContentAddressedStore};
 pub use ed25519::{Ed25519Signature, SigningKey, VerifyingKey};
 pub use error::CryptoError;
+pub use key_provider::{EnvKeyProvider, KeyProvider, LocalKeyProvider};
+#[cfg(feature = "aws-kms")]
+pub use key_provider::AwsKmsEnvelopeKeyProvider;
 pub use mmr::MerkleMountainRange;
 pub use sha256::sha256_digest;

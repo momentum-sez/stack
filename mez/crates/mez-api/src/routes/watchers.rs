@@ -336,6 +336,18 @@ async fn slash_watcher(
     Path(watcher_id): Path<Uuid>,
     Json(req): Json<SlashRequest>,
 ) -> Result<Json<SlashResponse>, AppError> {
+    if let Some(ref digest) = req.evidence_digest {
+        let trimmed = digest.trim();
+        if trimmed.len() != 64
+            || !trimmed
+                .chars()
+                .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+        {
+            return Err(AppError::Validation(
+                "evidence_digest must be 64 lowercase hex characters (SHA-256)".to_string(),
+            ));
+        }
+    }
     let condition = parse_slashing_condition(&req.condition)?;
 
     let result = state.watchers.try_update(&watcher_id, |record| {

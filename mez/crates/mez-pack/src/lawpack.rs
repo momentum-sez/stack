@@ -115,7 +115,7 @@ impl LawpackRef {
     /// Returns [`PackError::InvalidLawpackRef`] if the format is wrong
     /// or the digest is not a valid SHA-256 hex string.
     pub fn parse(s: &str) -> PackResult<Self> {
-        let parts: Vec<&str> = s.split(':').filter(|p| !p.trim().is_empty()).collect();
+        let parts: Vec<&str> = s.split(':').collect();
         if parts.len() != 3 {
             return Err(PackError::InvalidLawpackRef {
                 input: s.to_string(),
@@ -125,6 +125,18 @@ impl LawpackRef {
         let jid = parts[0].trim().to_string();
         let domain = parts[1].trim().to_string();
         let digest = parts[2].trim().to_string();
+        if jid.is_empty() {
+            return Err(PackError::InvalidLawpackRef {
+                input: s.to_string(),
+                reason: "jurisdiction_id must not be empty".to_string(),
+            });
+        }
+        if domain.is_empty() {
+            return Err(PackError::InvalidLawpackRef {
+                input: s.to_string(),
+                reason: "domain must not be empty".to_string(),
+            });
+        }
         if !parser::is_valid_sha256(&digest) {
             return Err(PackError::InvalidDigest { digest });
         }
@@ -443,29 +455,50 @@ pub fn canonical_sha256(value: &serde_json::Value) -> PackResult<String> {
 pub fn resolve_lawpack_refs(zone: &serde_json::Value) -> PackResult<Vec<LawpackRef>> {
     let mut refs = Vec::new();
     if let Some(lawpacks) = zone.get("lawpacks").and_then(|v| v.as_array()) {
-        for lp in lawpacks {
+        for (i, lp) in lawpacks.iter().enumerate() {
             let jid = lp
                 .get("jurisdiction_id")
                 .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
+                .map(|s| s.trim())
+                .unwrap_or("");
             let domain = lp
                 .get("domain")
                 .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
+                .map(|s| s.trim())
+                .unwrap_or("");
             let digest = lp
                 .get("lawpack_digest_sha256")
                 .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-            if !digest.is_empty() && parser::is_valid_sha256(&digest) {
-                refs.push(LawpackRef {
-                    jurisdiction_id: jid,
-                    domain,
-                    lawpack_digest_sha256: digest,
-                });
+                .map(|s| s.trim())
+                .unwrap_or("");
+            if digest.is_empty() || !parser::is_valid_sha256(digest) {
+                tracing::warn!(
+                    index = i,
+                    digest = %digest,
+                    "skipping lawpack entry with missing or invalid digest"
+                );
+                continue;
             }
+            if jid.is_empty() {
+                tracing::warn!(
+                    index = i,
+                    "skipping lawpack entry with missing jurisdiction_id"
+                );
+                continue;
+            }
+            if domain.is_empty() {
+                tracing::warn!(
+                    index = i,
+                    jurisdiction_id = %jid,
+                    "skipping lawpack entry with missing domain"
+                );
+                continue;
+            }
+            refs.push(LawpackRef {
+                jurisdiction_id: jid.to_string(),
+                domain: domain.to_string(),
+                lawpack_digest_sha256: digest.to_string(),
+            });
         }
     }
     Ok(refs)
@@ -490,12 +523,20 @@ pub fn generate_zone_lock(zone_path: &Path, repo_root: &Path) -> PackResult<serd
     let zone_id = zone
         .get("zone_id")
         .and_then(|v| v.as_str())
-        .unwrap_or("unknown")
+        .filter(|s| !s.trim().is_empty())
+        .ok_or_else(|| PackError::SchemaViolation {
+            message: "zone manifest missing required field: zone_id".to_string(),
+        })?
+        .trim()
         .to_string();
     let jurisdiction_id = zone
         .get("jurisdiction_id")
         .and_then(|v| v.as_str())
-        .unwrap_or("")
+        .filter(|s| !s.trim().is_empty())
+        .ok_or_else(|| PackError::SchemaViolation {
+            message: "zone manifest missing required field: jurisdiction_id".to_string(),
+        })?
+        .trim()
         .to_string();
 
     let lawpack_refs = resolve_lawpack_refs(&zone)?;

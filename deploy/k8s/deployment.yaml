@@ -84,6 +84,12 @@ spec:
                 secretKeyRef:
                   name: mez-secrets
                   key: database-url
+            # Auth token from Secret
+            - name: AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: mez-secrets
+                  key: auth-token
             # JWT signing key from Secret
             - name: MEZ_JWT_SECRET
               valueFrom:

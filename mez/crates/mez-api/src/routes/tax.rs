@@ -324,7 +324,7 @@ pub fn router() -> Router<AppState> {
 async fn create_tax_event(
     State(state): State<AppState>,
     body: Result<Json<CreateTaxEventRequest>, JsonRejection>,
-) -> Result<Json<TaxEventResponse>, AppError> {
+) -> Result<impl axum::response::IntoResponse, AppError> {
     let req = extract_validated_json(body)?;
 
     let event_type = parse_event_type(&req.event_type)?;
@@ -408,10 +408,10 @@ async fn create_tax_event(
 
     state.tax_events.insert(record.id, record.clone());
 
-    Ok(Json(TaxEventResponse {
+    Ok((axum::http::StatusCode::CREATED, Json(TaxEventResponse {
         event: record,
         withholdings: withholding_responses,
-    }))
+    })))
 }
 
 /// GET /v1/tax/events — List tax events with optional filtering.
@@ -849,7 +849,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::CREATED);
 
         let body = resp.into_body().collect().await.unwrap().to_bytes();
         let result: TaxEventResponse = serde_json::from_slice(&body).unwrap();
@@ -888,7 +888,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::CREATED);
 
         let body = resp.into_body().collect().await.unwrap().to_bytes();
         let result: TaxEventResponse = serde_json::from_slice(&body).unwrap();

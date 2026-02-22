@@ -105,12 +105,13 @@ impl Validate for TransitionCorridorRequest {
             )
         })?;
 
-        // Enforce lowercase hex for evidence digests to prevent comparison
-        // mismatches: ContentDigest::to_hex() produces lowercase, so input
-        // must also be lowercase for equality checks to work correctly.
+        // Validate evidence_digest as 64-char lowercase hex SHA-256.
         if let Some(ref hex) = self.evidence_digest {
-            if hex != &hex.to_ascii_lowercase() {
-                return Err("evidence_digest must be lowercase hex".to_string());
+            let trimmed = hex.trim();
+            if !is_valid_sha256_hex(trimmed) {
+                return Err(
+                    "evidence_digest must be 64 lowercase hex characters (SHA-256)".to_string(),
+                );
             }
         }
         Ok(())
@@ -142,6 +143,20 @@ impl Validate for ProposeReceiptRequest {
     fn validate(&self) -> Result<(), String> {
         if self.payload.is_null() {
             return Err("payload must not be null".to_string());
+        }
+        for (i, digest) in self.lawpack_digest_set.iter().enumerate() {
+            if !is_valid_sha256_hex(digest) {
+                return Err(format!(
+                    "lawpack_digest_set[{i}] must be 64 lowercase hex characters"
+                ));
+            }
+        }
+        for (i, digest) in self.ruleset_digest_set.iter().enumerate() {
+            if !is_valid_sha256_hex(digest) {
+                return Err(format!(
+                    "ruleset_digest_set[{i}] must be 64 lowercase hex characters"
+                ));
+            }
         }
         Ok(())
     }
@@ -197,14 +212,44 @@ pub struct ForkBranchInput {
 
 impl Validate for ForkResolveRequest {
     fn validate(&self) -> Result<(), String> {
-        if self.branch_a.receipt_digest.is_empty() || self.branch_b.receipt_digest.is_empty() {
-            return Err("receipt_digest must not be empty".to_string());
-        }
-        if self.branch_a.next_root.is_empty() || self.branch_b.next_root.is_empty() {
-            return Err("next_root must not be empty".to_string());
+        validate_fork_branch("branch_a", &self.branch_a)?;
+        validate_fork_branch("branch_b", &self.branch_b)?;
+        if self.branch_a.receipt_digest == self.branch_b.receipt_digest
+            && self.branch_a.next_root == self.branch_b.next_root
+        {
+            return Err("branch_a and branch_b are identical — not a fork".to_string());
         }
         Ok(())
     }
+}
+
+fn is_valid_sha256_hex(s: &str) -> bool {
+    s.len() == 64
+        && s.chars()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+}
+
+fn validate_fork_branch(name: &str, branch: &ForkBranchInput) -> Result<(), String> {
+    if branch.receipt_digest.is_empty() {
+        return Err(format!("{name}.receipt_digest must not be empty"));
+    }
+    if !is_valid_sha256_hex(&branch.receipt_digest) {
+        return Err(format!(
+            "{name}.receipt_digest must be 64 lowercase hex characters"
+        ));
+    }
+    if branch.next_root.is_empty() {
+        return Err(format!("{name}.next_root must not be empty"));
+    }
+    if !is_valid_sha256_hex(&branch.next_root) {
+        return Err(format!(
+            "{name}.next_root must be 64 lowercase hex characters"
+        ));
+    }
+    if branch.timestamp.is_empty() {
+        return Err(format!("{name}.timestamp must not be empty"));
+    }
+    Ok(())
 }
 
 /// Fork resolution response.
@@ -1049,7 +1094,7 @@ mod tests {
     fn test_transition_corridor_request_valid_active() {
         let req = TransitionCorridorRequest {
             target_state: "ACTIVE".to_string(),
-            evidence_digest: Some("abc123".to_string()),
+            evidence_digest: Some("aa".repeat(32)),
             reason: Some("compliance approved".to_string()),
         };
         assert!(req.validate().is_ok());
@@ -1689,14 +1734,14 @@ mod tests {
 
         let body_str = serde_json::to_string(&serde_json::json!({
             "branch_a": {
-                "receipt_digest": "aaaa",
+                "receipt_digest": "aa".repeat(32),
                 "timestamp": earlier.to_rfc3339(),
-                "next_root": "aa".repeat(32),
+                "next_root": "cc".repeat(32),
             },
             "branch_b": {
-                "receipt_digest": "bbbb",
+                "receipt_digest": "bb".repeat(32),
                 "timestamp": now.to_rfc3339(),
-                "next_root": "bb".repeat(32),
+                "next_root": "dd".repeat(32),
             }
         }))
         .unwrap();
@@ -1729,14 +1774,14 @@ mod tests {
 
         let body_str = serde_json::to_string(&serde_json::json!({
             "branch_a": {
-                "receipt_digest": "aaaa",
+                "receipt_digest": "aa".repeat(32),
                 "timestamp": now.to_rfc3339(),
-                "next_root": "aa".repeat(32),
+                "next_root": "cc".repeat(32),
             },
             "branch_b": {
-                "receipt_digest": "bbbb",
+                "receipt_digest": "bb".repeat(32),
                 "timestamp": close.to_rfc3339(),
-                "next_root": "bb".repeat(32),
+                "next_root": "dd".repeat(32),
             }
         }))
         .unwrap();

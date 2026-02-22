@@ -72,9 +72,12 @@ impl EvmAnchorConfig {
     }
 
     /// Set the finality thresholds.
+    ///
+    /// `finalized` must be >= `confirmed`. If `confirmed` is 0, it is set to 1.
     pub fn with_finality(mut self, confirmed: u64, finalized: u64) -> Self {
+        let confirmed = confirmed.max(1);
         self.confirmations_for_confirmed = confirmed;
-        self.confirmations_for_finalized = finalized;
+        self.confirmations_for_finalized = finalized.max(confirmed);
         self
     }
 }
@@ -112,6 +115,22 @@ impl EvmAnchorTarget {
             .map_err(|e| AnchorError::ChainUnavailable {
                 chain_id: format!("{}: failed to build HTTP client: {e}", config.chain_name),
             })?;
+
+        // Warn if RPC URL is not HTTPS (acceptable for local dev, risky in production).
+        if !config.rpc_url.starts_with("https://") {
+            if config.rpc_url.starts_with("http://") {
+                tracing::warn!(
+                    rpc_url = %config.rpc_url,
+                    chain = %config.chain_name,
+                    "EVM anchor RPC URL uses plain HTTP — credentials and transaction data will be sent unencrypted"
+                );
+            } else {
+                return Err(AnchorError::Rejected(format!(
+                    "invalid RPC URL scheme: {} (must start with https:// or http://)",
+                    config.rpc_url
+                )));
+            }
+        }
 
         // Validate contract address format.
         if !is_valid_eth_address(&config.contract_address) {

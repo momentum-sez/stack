@@ -41,7 +41,23 @@ impl std::fmt::Debug for SanctionsEvaluator {
 
 impl SanctionsEvaluator {
     /// Create a new sanctions evaluator from a loaded checker.
+    ///
+    /// The threshold must be in (0.0, 1.0]. Values outside this range
+    /// are clamped: <= 0.0 becomes 0.01 (match nearly everything),
+    /// > 1.0 becomes 1.0 (exact match only), NaN becomes default 0.7.
     pub fn new(checker: Arc<SanctionsChecker>, threshold: f64) -> Self {
+        let threshold = if threshold.is_nan() {
+            tracing::warn!("SanctionsEvaluator: NaN threshold, using default 0.7");
+            0.7
+        } else if threshold <= 0.0 {
+            tracing::warn!(threshold, "SanctionsEvaluator: threshold <= 0.0, clamping to 0.01");
+            0.01
+        } else if threshold > 1.0 {
+            tracing::warn!(threshold, "SanctionsEvaluator: threshold > 1.0, clamping to 1.0");
+            1.0
+        } else {
+            threshold
+        };
         Self { checker, threshold }
     }
 

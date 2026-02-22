@@ -206,8 +206,11 @@ async fn list_trade_flows(
 ) -> Result<impl IntoResponse, AppError> {
     let flows = state.trade_flow_manager.list_flows();
     let total = flows.len();
+    // Cap the returned list to prevent unbounded response payloads.
+    const MAX_LIST: usize = 1000;
     let values: Vec<serde_json::Value> = flows
         .iter()
+        .take(MAX_LIST)
         .map(|f| {
             serde_json::to_value(f).map_err(|e| {
                 AppError::Internal(format!("failed to serialize trade flow record: {e}"))

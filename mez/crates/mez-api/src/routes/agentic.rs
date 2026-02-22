@@ -58,8 +58,19 @@ impl Validate for TriggerRequest {
             return Err("trigger_type must not exceed 255 characters".to_string());
         }
         if let Some(ref j) = self.jurisdiction {
+            if j.trim().is_empty() {
+                return Err("jurisdiction must not be empty or whitespace-only".to_string());
+            }
             if j.len() > 255 {
                 return Err("jurisdiction must not exceed 255 characters".to_string());
+            }
+        }
+        if let Some(ref a) = self.asset_id {
+            if a.trim().is_empty() {
+                return Err("asset_id must not be empty or whitespace-only".to_string());
+            }
+            if a.len() > 255 {
+                return Err("asset_id must not exceed 255 characters".to_string());
             }
         }
         Ok(())

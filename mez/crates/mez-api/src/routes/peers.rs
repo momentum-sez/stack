@@ -150,7 +150,9 @@ fn canonical_without_signature(obj: &impl Serialize) -> Result<CanonicalBytes, A
 )]
 async fn list_peers(State(state): State<AppState>) -> Json<Vec<PeerSummary>> {
     let registry = state.peer_registry.read();
-    let peers: Vec<PeerSummary> = registry.list_peers().iter().map(|p| PeerSummary::from(*p)).collect();
+    // Cap to prevent unbounded response payloads.
+    const MAX_LIST: usize = 1000;
+    let peers: Vec<PeerSummary> = registry.list_peers().iter().take(MAX_LIST).map(|p| PeerSummary::from(*p)).collect();
     Json(peers)
 }
 

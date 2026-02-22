@@ -879,7 +879,7 @@ pub struct CorridorHealthResponse {
     /// Total number of corridors.
     pub total_corridors: usize,
     /// Corridors by lifecycle state.
-    pub by_state: std::collections::HashMap<String, usize>,
+    pub by_state: std::collections::BTreeMap<String, usize>,
     /// Total receipts across all corridor chains.
     pub total_receipts: u64,
     /// Number of corridors that are operational.
@@ -915,7 +915,7 @@ pub async fn corridor_health(
     let corridors = state.corridors.list();
     let chains = state.receipt_chains.read();
 
-    let mut by_state: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut by_state: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
     let mut total_receipts: u64 = 0;
     let mut operational_count: usize = 0;
     let mut entries = Vec::with_capacity(corridors.len());

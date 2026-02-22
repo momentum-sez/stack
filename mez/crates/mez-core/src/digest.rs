@@ -65,6 +65,17 @@ pub struct ContentDigest {
 }
 
 impl ContentDigest {
+    /// Create the zero digest (all-zero bytes, SHA-256 algorithm).
+    ///
+    /// Used as the genesis root for new receipt chains and as a serde
+    /// default. Avoids fallible `from_hex` for a structurally infallible value.
+    pub fn zero() -> Self {
+        Self {
+            algorithm: DigestAlgorithm::Sha256,
+            bytes: [0u8; 32],
+        }
+    }
+
     /// Access the digest algorithm.
     pub fn algorithm(&self) -> DigestAlgorithm {
         self.algorithm

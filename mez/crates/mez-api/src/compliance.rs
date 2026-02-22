@@ -65,11 +65,8 @@ pub fn build_tensor(jurisdiction_id: &str) -> ComplianceTensor<DefaultJurisdicti
     // rejects empty strings, and "UNKNOWN" is non-empty. However, we
     // avoid unwrap() in library code by providing a hardcoded fallback
     // that cannot fail structurally.
-    let jid = JurisdictionId::new(jurisdiction_id).unwrap_or_else(|_| {
-        // SAFETY: "UNKNOWN" is a non-empty string literal, so this
-        // construction is infallible.
-        JurisdictionId::new("UNKNOWN").expect("BUG: hardcoded 'UNKNOWN' rejected by JurisdictionId")
-    });
+    let jid = JurisdictionId::new(jurisdiction_id)
+        .unwrap_or_else(|_| JurisdictionId::from_static("UNKNOWN"));
     let jurisdiction = DefaultJurisdiction::new(jid);
     ComplianceTensor::new(jurisdiction)
 }
@@ -83,9 +80,8 @@ pub fn build_tensor(jurisdiction_id: &str) -> ComplianceTensor<DefaultJurisdicti
 ///
 /// Falls back to all 20 domains if the jurisdiction has no regpack content (fail-closed).
 pub fn build_jurisdiction_tensor(jurisdiction_id: &str) -> ComplianceTensor<RegpackJurisdiction> {
-    let jid = JurisdictionId::new(jurisdiction_id).unwrap_or_else(|_| {
-        JurisdictionId::new("UNKNOWN").expect("BUG: hardcoded 'UNKNOWN' rejected")
-    });
+    let jid = JurisdictionId::new(jurisdiction_id)
+        .unwrap_or_else(|_| JurisdictionId::from_static("UNKNOWN"));
 
     let domain_names = jurisdiction_applicable_domains(jurisdiction_id);
     let jurisdiction = RegpackJurisdiction::from_domain_names(jid, &domain_names);
@@ -178,7 +174,8 @@ pub fn build_jurisdiction_evaluation_result(
 
     for &domain in ComplianceDomain::all() {
         let state = tensor.get(domain);
-        let state_str = format!("{state:?}").to_lowercase();
+        // Use Display (snake_case: "non_compliant") not Debug (CamelCase: "noncompliant")
+        let state_str = format!("{state}");
         domain_results.insert(domain.as_str().to_string(), state_str);
 
         if state.is_passing() {
@@ -194,9 +191,10 @@ pub fn build_jurisdiction_evaluation_result(
     ComplianceEvalResult {
         asset_id,
         jurisdiction_id: asset.jurisdiction_id.clone(),
-        overall_status: format!("{aggregate:?}").to_lowercase(),
+        // Use Display (snake_case) not Debug (CamelCase) for API consistency
+        overall_status: format!("{aggregate}"),
         domain_results,
-        domain_count: 20,
+        domain_count: ComplianceDomain::all().len(),
         passing_domains,
         blocking_domains,
         tensor_commitment: commitment.map(|c| c.to_hex()),
@@ -257,7 +255,8 @@ pub fn build_evaluation_result(
 
     for &domain in ComplianceDomain::all() {
         let state = tensor.get(domain);
-        let state_str = format!("{state:?}").to_lowercase();
+        // Use Display (snake_case: "non_compliant") not Debug (CamelCase: "noncompliant")
+        let state_str = format!("{state}");
         domain_results.insert(domain.as_str().to_string(), state_str);
 
         if state.is_passing() {
@@ -274,9 +273,10 @@ pub fn build_evaluation_result(
     ComplianceEvalResult {
         asset_id,
         jurisdiction_id: asset.jurisdiction_id.clone(),
-        overall_status: format!("{aggregate:?}").to_lowercase(),
+        // Use Display (snake_case) not Debug (CamelCase) for API consistency
+        overall_status: format!("{aggregate}"),
         domain_results,
-        domain_count: 20,
+        domain_count: ComplianceDomain::all().len(),
         passing_domains,
         blocking_domains,
         tensor_commitment: commitment.map(|c| c.to_hex()),

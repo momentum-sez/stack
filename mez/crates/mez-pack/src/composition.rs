@@ -417,7 +417,7 @@ impl ZoneComposition {
     }
 
     /// Generate `zone.yaml` content from this composition.
-    pub fn to_zone_yaml(&self) -> serde_json::Value {
+    pub fn to_zone_yaml(&self) -> PackResult<serde_json::Value> {
         let mut zone = serde_json::json!({
             "zone_id": self.zone_id,
             "name": self.name,
@@ -444,8 +444,8 @@ impl ZoneComposition {
             .layers
             .iter()
             .flat_map(|l| &l.lawpacks)
-            .map(|lp| serde_json::to_value(lp).expect("static struct — cannot fail"))
-            .collect();
+            .map(|lp| serde_json::to_value(lp).map_err(PackError::from))
+            .collect::<PackResult<Vec<_>>>()?;
         if !lawpacks.is_empty() {
             zone["lawpacks"] = serde_json::Value::Array(lawpacks);
         }
@@ -455,8 +455,8 @@ impl ZoneComposition {
             .layers
             .iter()
             .flat_map(|l| &l.regpacks)
-            .map(|rp| serde_json::to_value(rp).expect("static struct — cannot fail"))
-            .collect();
+            .map(|rp| serde_json::to_value(rp).map_err(PackError::from))
+            .collect::<PackResult<Vec<_>>>()?;
         if !regpacks.is_empty() {
             zone["regpacks"] = serde_json::Value::Array(regpacks);
         }
@@ -466,28 +466,28 @@ impl ZoneComposition {
             .layers
             .iter()
             .flat_map(|l| &l.licensepacks)
-            .map(|lcp| serde_json::to_value(lcp).expect("static struct — cannot fail"))
-            .collect();
+            .map(|lcp| serde_json::to_value(lcp).map_err(PackError::from))
+            .collect::<PackResult<Vec<_>>>()?;
         if !licensepacks.is_empty() {
             zone["licensepacks"] = serde_json::Value::Array(licensepacks);
         }
 
         // Arbitration
         if let Some(arb) = &self.arbitration {
-            zone["arbitration"] = serde_json::to_value(arb).expect("static struct — cannot fail");
+            zone["arbitration"] = serde_json::to_value(arb)?;
         }
 
         // Corridors
         if !self.corridors.is_empty() {
-            zone["corridors"] = serde_json::Value::Array(
-                self.corridors
-                    .iter()
-                    .map(|c| serde_json::to_value(c).expect("static struct — cannot fail"))
-                    .collect(),
-            );
+            let corridor_values: Vec<serde_json::Value> = self
+                .corridors
+                .iter()
+                .map(|c| serde_json::to_value(c).map_err(PackError::from))
+                .collect::<PackResult<Vec<_>>>()?;
+            zone["corridors"] = serde_json::Value::Array(corridor_values);
         }
 
-        zone
+        Ok(zone)
     }
 
     /// Compute canonical digest of the composition.
@@ -531,8 +531,8 @@ impl ZoneComposition {
             .layers
             .iter()
             .flat_map(|l| &l.lawpacks)
-            .map(|lp| serde_json::to_value(lp).expect("static struct — cannot fail"))
-            .collect();
+            .map(|lp| serde_json::to_value(lp).map_err(PackError::from))
+            .collect::<PackResult<Vec<_>>>()?;
         if !lawpacks.is_empty() {
             lock["lawpacks"] = serde_json::Value::Array(lawpacks);
         }
@@ -542,8 +542,8 @@ impl ZoneComposition {
             .layers
             .iter()
             .flat_map(|l| &l.regpacks)
-            .map(|rp| serde_json::to_value(rp).expect("static struct — cannot fail"))
-            .collect();
+            .map(|rp| serde_json::to_value(rp).map_err(PackError::from))
+            .collect::<PackResult<Vec<_>>>()?;
         if !regpacks.is_empty() {
             lock["regpacks"] = serde_json::Value::Array(regpacks);
         }
@@ -553,8 +553,8 @@ impl ZoneComposition {
             .layers
             .iter()
             .flat_map(|l| &l.licensepacks)
-            .map(|lcp| serde_json::to_value(lcp).expect("static struct — cannot fail"))
-            .collect();
+            .map(|lcp| serde_json::to_value(lcp).map_err(PackError::from))
+            .collect::<PackResult<Vec<_>>>()?;
         if !licensepacks.is_empty() {
             lock["licensepacks"] = serde_json::Value::Array(licensepacks);
         }
@@ -1068,7 +1068,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let yaml = zone.to_zone_yaml();
+        let yaml = zone.to_zone_yaml().unwrap();
         assert_eq!(yaml["zone_id"], "test.zone");
         assert_eq!(yaml["name"], "Test Zone");
         assert_eq!(yaml["spec_version"], "0.4.44");

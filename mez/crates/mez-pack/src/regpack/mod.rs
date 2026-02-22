@@ -183,7 +183,7 @@ impl SanctionsChecker {
             // Index identifiers
             for ident in &entry.identifiers {
                 if let Some(val) = ident.get("value") {
-                    let id_val = val.to_uppercase().trim().to_string();
+                    let id_val = val.trim().to_uppercase();
                     if !id_val.is_empty() {
                         self.id_index.entry(id_val).or_default().push(idx);
                     }
@@ -295,7 +295,7 @@ impl SanctionsChecker {
             for ident in idents {
                 let id_val = ident
                     .get("value")
-                    .map(|v| v.to_uppercase().trim().to_string())
+                    .map(|v| v.trim().to_uppercase())
                     .unwrap_or_default();
                 if let Some(indices) = self.id_index.get(&id_val) {
                     for &idx in indices {

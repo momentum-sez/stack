@@ -52,6 +52,19 @@ impl JurisdictionId {
         Ok(Self(trimmed))
     }
 
+    /// Infallible construction for compile-time-known non-empty string literals.
+    ///
+    /// Avoids `.expect()` in production code when the string is statically
+    /// known to be non-empty. Uses `debug_assert!` to catch misuse in
+    /// development. Prefer [`new`](Self::new) for runtime strings.
+    pub fn from_static(s: &str) -> Self {
+        debug_assert!(
+            !s.trim().is_empty(),
+            "JurisdictionId::from_static called with empty string"
+        );
+        Self(s.trim().to_string())
+    }
+
     /// Access the jurisdiction identifier string.
     pub fn as_str(&self) -> &str {
         &self.0

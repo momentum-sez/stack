@@ -213,8 +213,14 @@ async fn list_watchers(
     State(state): State<AppState>,
 ) -> Json<WatcherListResponse> {
     let records = state.watchers.list();
-    let watchers: Vec<WatcherResponse> = records.iter().map(|r| r.to_response()).collect();
-    let total = watchers.len();
+    let total = records.len();
+    // Cap the returned list to prevent unbounded response payloads.
+    const MAX_LIST: usize = 1000;
+    let watchers: Vec<WatcherResponse> = records
+        .iter()
+        .take(MAX_LIST)
+        .map(|r| r.to_response())
+        .collect();
     Json(WatcherListResponse { watchers, total })
 }
 

@@ -270,10 +270,22 @@ impl ZoneManifest {
 
         // Optional: corridor_peers
         let corridor_peers = match obj.get("corridor_peers") {
-            Some(serde_json::Value::Array(arr)) => arr
-                .iter()
-                .filter_map(|v| serde_json::from_value::<CorridorPeerConfig>(v.clone()).ok())
-                .collect(),
+            Some(serde_json::Value::Array(arr)) => {
+                let mut peers = Vec::new();
+                for (i, v) in arr.iter().enumerate() {
+                    match serde_json::from_value::<CorridorPeerConfig>(v.clone()) {
+                        Ok(peer) => peers.push(peer),
+                        Err(e) => {
+                            return Err(PackError::SchemaViolation {
+                                message: format!(
+                                    "corridor_peers[{i}]: invalid peer config: {e}"
+                                ),
+                            });
+                        }
+                    }
+                }
+                peers
+            }
             _ => Vec::new(),
         };
 
@@ -318,9 +330,14 @@ impl ZoneManifest {
         };
 
         // Optional: deployment
-        let deployment = obj
-            .get("deployment")
-            .and_then(|v| serde_json::from_value::<DeploymentConfig>(v.clone()).ok());
+        let deployment = match obj.get("deployment") {
+            Some(v) => Some(serde_json::from_value::<DeploymentConfig>(v.clone()).map_err(
+                |e| PackError::SchemaViolation {
+                    message: format!("invalid deployment config: {e}"),
+                },
+            )?),
+            None => None,
+        };
 
         Ok(ZoneManifest {
             zone_id,

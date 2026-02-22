@@ -50,7 +50,7 @@ pub async fn update_state(
         .map_err(|e| sqlx::Error::Protocol(format!("failed to serialize corridor state: {e}")))?
         .as_str()
         .map(String::from)
-        .unwrap_or_else(|| format!("{state:?}"));
+        .unwrap_or_else(|| format!("{state}"));
     let log_json = serde_json::to_value(transition_log)
         .map_err(|e| sqlx::Error::Protocol(format!("failed to serialize corridor transition_log: {e}")))?;
 

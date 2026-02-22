@@ -4,7 +4,7 @@
 //! to monitor zone activity, compliance status, and audit trails.
 //! Route structure based on apis/regulator-console.openapi.yaml.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use axum::extract::State;
 use axum::routing::{get, post};
@@ -174,7 +174,7 @@ pub struct CorridorOverview {
     pub corridors: Vec<CorridorStatus>,
     /// Count by typestate (e.g. {"ACTIVE": 3, "HALTED": 1}).
     #[schema(value_type = Object)]
-    pub by_state: HashMap<String, usize>,
+    pub by_state: BTreeMap<String, usize>,
     /// Total receipts across all corridors.
     pub total_receipts: usize,
 }
@@ -526,7 +526,7 @@ async fn dashboard(
 
     // ── Corridor Overview ───────────────────────────────────────
     let corridors_list = state.corridors.list();
-    let mut by_state: HashMap<String, usize> = HashMap::new();
+    let mut by_state: BTreeMap<String, usize> = BTreeMap::new();
     let mut total_receipts: usize = 0;
     let mut corridor_statuses: Vec<CorridorStatus> = Vec::with_capacity(corridors_list.len());
 
@@ -681,8 +681,8 @@ async fn entity_compliance(
         .map(|a| a.jurisdiction_id.clone());
 
     // Group attestations by domain (attestation_type).
-    let mut domain_map: std::collections::HashMap<String, Vec<&AttestationRecord>> =
-        std::collections::HashMap::new();
+    let mut domain_map: std::collections::BTreeMap<String, Vec<&AttestationRecord>> =
+        std::collections::BTreeMap::new();
     for att in &entity_attestations {
         domain_map
             .entry(att.attestation_type.clone())

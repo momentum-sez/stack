@@ -143,10 +143,7 @@ impl SovereigntyPolicy {
     /// - Analytics: may be shared with approved corridor partners
     /// - PublicRegulatory: unrestricted (public data)
     pub fn pakistan_govos() -> Self {
-        // SAFETY: "PK" is a non-empty string literal; JurisdictionId::new only
-        // rejects empty strings, so this construction is infallible.
-        let jid = JurisdictionId::new("PK")
-            .expect("BUG: static non-empty string rejected by JurisdictionId::new");
+        let jid = JurisdictionId::from_static("PK");
 
         let mut policy = Self::deny_all(jid);
 

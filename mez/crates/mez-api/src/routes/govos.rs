@@ -17,7 +17,7 @@
 //! These routes provide read-only views aggregating data from the EZ Stack's
 //! in-memory stores and, where configured, from Mass APIs via `mez-mass-client`.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use axum::extract::State;
 use axum::routing::get;
@@ -80,7 +80,7 @@ pub struct TaxRevenueDashboard {
     pub total_tax_events: usize,
     /// Tax events by category.
     #[schema(value_type = Object)]
-    pub events_by_category: HashMap<String, usize>,
+    pub events_by_category: BTreeMap<String, usize>,
     /// Total withholding amount (formatted string, e.g., "1,234,567.89 PKR").
     pub total_withholding: String,
     /// Number of FBR IRIS reports generated.
@@ -288,7 +288,7 @@ async fn tax_revenue_dashboard(
     let events = state.tax_events.list();
     let total_tax_events = events.len();
 
-    let mut events_by_category: HashMap<String, usize> = HashMap::new();
+    let mut events_by_category: BTreeMap<String, usize> = BTreeMap::new();
     let mut total_withholding_cents: i64 = 0;
 
     for event in &events {

@@ -55,14 +55,15 @@ impl std::fmt::Debug for ApiMetrics {
 
 impl ApiMetrics {
     /// Create a new metrics instance with a fresh Prometheus registry.
-    pub fn new() -> Self {
+    ///
+    /// Returns an error if metric creation or registration fails.
+    pub fn try_new() -> Result<Self, prometheus::Error> {
         let registry = Registry::new();
 
         let http_requests_total = IntCounterVec::new(
             Opts::new("mez_http_requests_total", "Total HTTP requests"),
             &["method", "path", "status"],
-        )
-        .expect("metric can be created");
+        )?;
 
         let http_request_duration_seconds = HistogramVec::new(
             prometheus::HistogramOpts::new(
@@ -73,20 +74,17 @@ impl ApiMetrics {
                 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
             ]),
             &["method", "path"],
-        )
-        .expect("metric can be created");
+        )?;
 
         let http_errors_total = IntCounterVec::new(
             Opts::new("mez_http_errors_total", "Total HTTP errors (4xx and 5xx)"),
             &["method", "path", "status"],
-        )
-        .expect("metric can be created");
+        )?;
 
         let corridors_total = GaugeVec::new(
             Opts::new("mez_corridors_total", "Total corridors by state"),
             &["state"],
-        )
-        .expect("metric can be created");
+        )?;
 
         let corridor_receipt_chain_height = GaugeVec::new(
             Opts::new(
@@ -94,90 +92,58 @@ impl ApiMetrics {
                 "Receipt chain height per corridor",
             ),
             &["corridor_id"],
-        )
-        .expect("metric can be created");
+        )?;
 
         let receipt_chain_total_receipts = prometheus::Gauge::new(
             "mez_receipt_chain_total_receipts",
             "Total receipts across all corridors",
-        )
-        .expect("metric can be created");
+        )?;
 
         let assets_total = GaugeVec::new(
             Opts::new("mez_assets_total", "Total assets by compliance status"),
             &["compliance_status"],
-        )
-        .expect("metric can be created");
+        )?;
 
         let attestations_total = prometheus::Gauge::new(
             "mez_attestations_total",
             "Total attestation records",
-        )
-        .expect("metric can be created");
+        )?;
 
         let peers_total = GaugeVec::new(
             Opts::new("mez_peers_total", "Total peers by status"),
             &["status"],
-        )
-        .expect("metric can be created");
+        )?;
 
         let policies_total = prometheus::Gauge::new(
             "mez_policies_total",
             "Total registered policies",
-        )
-        .expect("metric can be created");
+        )?;
 
         let audit_trail_entries_total = prometheus::Gauge::new(
             "mez_audit_trail_entries_total",
             "Total audit trail entries",
-        )
-        .expect("metric can be created");
+        )?;
 
         let zone_key_ephemeral = prometheus::Gauge::new(
             "mez_zone_key_ephemeral",
             "Whether zone signing key is ephemeral (1=ephemeral, 0=real)",
-        )
-        .expect("metric can be created");
+        )?;
 
         // Register all metrics.
-        registry
-            .register(Box::new(http_requests_total.clone()))
-            .expect("metric can be registered");
-        registry
-            .register(Box::new(http_request_duration_seconds.clone()))
-            .expect("metric can be registered");
-        registry
-            .register(Box::new(http_errors_total.clone()))
-            .expect("metric can be registered");
-        registry
-            .register(Box::new(corridors_total.clone()))
-            .expect("metric can be registered");
-        registry
-            .register(Box::new(corridor_receipt_chain_height.clone()))
-            .expect("metric can be registered");
-        registry
-            .register(Box::new(receipt_chain_total_receipts.clone()))
-            .expect("metric can be registered");
-        registry
-            .register(Box::new(assets_total.clone()))
-            .expect("metric can be registered");
-        registry
-            .register(Box::new(attestations_total.clone()))
-            .expect("metric can be registered");
-        registry
-            .register(Box::new(peers_total.clone()))
-            .expect("metric can be registered");
-        registry
-            .register(Box::new(policies_total.clone()))
-            .expect("metric can be registered");
-        registry
-            .register(Box::new(audit_trail_entries_total.clone()))
-            .expect("metric can be registered");
-        registry
-            .register(Box::new(zone_key_ephemeral.clone()))
-            .expect("metric can be registered");
+        registry.register(Box::new(http_requests_total.clone()))?;
+        registry.register(Box::new(http_request_duration_seconds.clone()))?;
+        registry.register(Box::new(http_errors_total.clone()))?;
+        registry.register(Box::new(corridors_total.clone()))?;
+        registry.register(Box::new(corridor_receipt_chain_height.clone()))?;
+        registry.register(Box::new(receipt_chain_total_receipts.clone()))?;
+        registry.register(Box::new(assets_total.clone()))?;
+        registry.register(Box::new(attestations_total.clone()))?;
+        registry.register(Box::new(peers_total.clone()))?;
+        registry.register(Box::new(policies_total.clone()))?;
+        registry.register(Box::new(audit_trail_entries_total.clone()))?;
+        registry.register(Box::new(zone_key_ephemeral.clone()))?;
 
-        Self {
+        Ok(Self {
             inner: Arc::new(Inner {
                 registry,
                 http_requests_total,
@@ -193,7 +159,15 @@ impl ApiMetrics {
                 audit_trail_entries_total,
                 zone_key_ephemeral,
             }),
-        }
+        })
+    }
+
+    /// Create a new metrics instance, panicking on failure.
+    ///
+    /// Convenience wrapper for test and CLI code. Production code should
+    /// prefer [`try_new`](Self::try_new) for graceful error handling.
+    pub fn new() -> Self {
+        Self::try_new().expect("failed to initialize Prometheus metrics")
     }
 
     /// Return current total request count (sum across all labels).

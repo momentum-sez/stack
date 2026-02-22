@@ -546,7 +546,7 @@ impl WithholdingEngine {
         let mut results: Vec<WithholdingResult> = rules
             .iter()
             .filter(|rule| self.rule_matches(rule, event, gross))
-            .map(|rule| self.compute_single(event, rule, gross))
+            .filter_map(|rule| self.compute_single(event, rule, gross))
             .collect();
 
         // Sort by rule_id for deterministic output.
@@ -597,20 +597,34 @@ impl WithholdingEngine {
     }
 
     /// Compute withholding for a single matched rule.
+    ///
+    /// Returns `None` if the rule's rate cannot be parsed — the rule is
+    /// skipped with a warning rather than silently computing 0% withholding.
     fn compute_single(
         &self,
         event: &TaxEvent,
         rule: &WithholdingRule,
         gross_cents: i64,
-    ) -> WithholdingResult {
-        let rate_bps = parse_rate_bps(&rule.rate_percent);
+    ) -> Option<WithholdingResult> {
+        let rate_bps = match parse_rate_bps(&rule.rate_percent) {
+            Some(r) => r,
+            None => {
+                tracing::warn!(
+                    rule_id = %rule.rule_id,
+                    rate = %rule.rate_percent,
+                    "invalid rate string — skipping rule"
+                );
+                return None;
+            }
+        };
 
         // Withholding = gross * rate / 10000 (basis points).
         // Round down (truncate) — withholding should never exceed the rate.
-        let withholding_cents = (gross_cents * rate_bps) / 10000;
+        // Use i128 intermediate to avoid overflow on large gross * rate products.
+        let withholding_cents = ((gross_cents as i128 * rate_bps as i128) / 10000) as i64;
         let net_cents = gross_cents - withholding_cents;
 
-        WithholdingResult {
+        Some(WithholdingResult {
             event_id: event.event_id,
             entity_id: event.entity_id,
             rule_id: rule.rule_id.clone(),
@@ -623,7 +637,7 @@ impl WithholdingEngine {
             statutory_section: rule.statutory_section.clone(),
             is_final_tax: rule.is_final_tax,
             computed_at: Utc::now(),
-        }
+        })
     }
 
     /// Create an engine pre-loaded with rules for the given jurisdiction.
@@ -1228,34 +1242,23 @@ pub fn parse_amount(s: &str) -> Option<i64> {
 /// Parse a rate percentage string into basis points.
 ///
 /// "4.5" → 450 bps, "18.0" → 1800 bps, "15" → 1500 bps.
-fn parse_rate_bps(rate_str: &str) -> i64 {
+///
+/// Returns `None` if the rate string cannot be parsed, rather than silently
+/// defaulting to 0 bps (which would mean 0% withholding — money escaping
+/// the tax net).
+fn parse_rate_bps(rate_str: &str) -> Option<i64> {
     let rate_str = rate_str.trim();
     if let Some(dot_pos) = rate_str.find('.') {
-        let integer_part = rate_str[..dot_pos].parse::<i64>().unwrap_or_else(|_| {
-            tracing::warn!(rate = %rate_str, "invalid integer part in rate — defaulting to 0 bps");
-            0
-        });
+        let integer_part = rate_str[..dot_pos].parse::<i64>().ok()?;
         let frac_str = &rate_str[dot_pos + 1..];
         let frac = match frac_str.len() {
             0 => 0i64,
-            1 => frac_str.parse::<i64>().unwrap_or_else(|_| {
-                tracing::warn!(rate = %rate_str, "invalid fractional part in rate — defaulting to 0");
-                0
-            }) * 10,
-            _ => frac_str[..2].parse::<i64>().unwrap_or_else(|_| {
-                tracing::warn!(rate = %rate_str, "invalid fractional part in rate — defaulting to 0");
-                0
-            }),
+            1 => frac_str.parse::<i64>().ok()? * 10,
+            _ => frac_str[..2].parse::<i64>().ok()?,
         };
-        integer_part.saturating_mul(100).saturating_add(frac)
+        Some(integer_part.saturating_mul(100).saturating_add(frac))
     } else {
-        rate_str
-            .parse::<i64>()
-            .unwrap_or_else(|_| {
-                tracing::warn!(rate = %rate_str, "invalid rate string — defaulting to 0 bps");
-                0
-            })
-            .saturating_mul(100)
+        Some(rate_str.parse::<i64>().ok()?.saturating_mul(100))
     }
 }
 
@@ -1264,7 +1267,8 @@ fn parse_rate_bps(rate_str: &str) -> i64 {
 /// 1000000 → "10000.00", 450 → "4.50"
 pub fn format_amount(cents: i64) -> String {
     let sign = if cents < 0 { "-" } else { "" };
-    let abs = cents.abs();
+    // Use saturating_abs to avoid panic on i64::MIN.
+    let abs = cents.saturating_abs();
     format!("{}{}.{:02}", sign, abs / 100, abs % 100)
 }
 
@@ -1315,17 +1319,25 @@ mod tests {
 
     #[test]
     fn parse_rate_bps_decimal() {
-        assert_eq!(parse_rate_bps("4.5"), 450);
-        assert_eq!(parse_rate_bps("18.0"), 1800);
-        assert_eq!(parse_rate_bps("15.0"), 1500);
-        assert_eq!(parse_rate_bps("8.0"), 800);
-        assert_eq!(parse_rate_bps("0.5"), 50);
+        assert_eq!(parse_rate_bps("4.5"), Some(450));
+        assert_eq!(parse_rate_bps("18.0"), Some(1800));
+        assert_eq!(parse_rate_bps("15.0"), Some(1500));
+        assert_eq!(parse_rate_bps("8.0"), Some(800));
+        assert_eq!(parse_rate_bps("0.5"), Some(50));
     }
 
     #[test]
     fn parse_rate_bps_whole() {
-        assert_eq!(parse_rate_bps("15"), 1500);
-        assert_eq!(parse_rate_bps("20"), 2000);
+        assert_eq!(parse_rate_bps("15"), Some(1500));
+        assert_eq!(parse_rate_bps("20"), Some(2000));
+    }
+
+    #[test]
+    fn parse_rate_bps_invalid_returns_none() {
+        assert_eq!(parse_rate_bps("abc"), None);
+        assert_eq!(parse_rate_bps("abc.def"), None);
+        assert_eq!(parse_rate_bps("12.xx"), None);
+        assert_eq!(parse_rate_bps(""), None);
     }
 
     // -- TaxCategory --

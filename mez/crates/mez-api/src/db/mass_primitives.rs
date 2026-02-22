@@ -451,9 +451,9 @@ pub async fn save_consent(
     let operation_type = value.get("operationType").and_then(|v| v.as_str());
     let status = value.get("status").and_then(|v| v.as_str()).unwrap_or("PENDING");
     let votes = value.get("votes").cloned().unwrap_or(serde_json::json!([]));
-    let num_votes_required = value.get("numVotesRequired").and_then(|v| v.as_i64()).map(|v| v as i32);
-    let approval_count = value.get("approvalCount").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
-    let rejection_count = value.get("rejectionCount").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+    let num_votes_required = value.get("numVotesRequired").and_then(|v| v.as_i64()).map(|v| v.clamp(i32::MIN as i64, i32::MAX as i64) as i32);
+    let approval_count = value.get("approvalCount").and_then(|v| v.as_i64()).unwrap_or(0).clamp(i32::MIN as i64, i32::MAX as i64) as i32;
+    let rejection_count = value.get("rejectionCount").and_then(|v| v.as_i64()).unwrap_or(0).clamp(i32::MIN as i64, i32::MAX as i64) as i32;
     let requested_by = value.get("requestedBy").and_then(|v| v.as_str());
     let created_at = parse_timestamp(value.get("createdAt"));
     let updated_at = parse_timestamp(value.get("updatedAt"));
@@ -859,15 +859,19 @@ struct SubmissionRow {
 // ── Org-keyed Identity Tables ───────────────────────────────────────
 
 /// Save members for an organization (delete + re-insert).
+///
+/// Uses a transaction so the delete + insert is atomic — a partial failure
+/// won't leave the org with zero members.
 pub async fn save_members_by_org(
     pool: &PgPool,
     org_id: &str,
     members: &[serde_json::Value],
 ) -> Result<(), sqlx::Error> {
-    // Delete existing members for this org, then insert new ones.
+    let mut tx = pool.begin().await?;
+
     sqlx::query("DELETE FROM mass_members WHERE org_id = $1")
         .bind(org_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
 
     for member in members {
@@ -878,10 +882,11 @@ pub async fn save_members_by_org(
         .bind(id)
         .bind(org_id)
         .bind(member)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
     }
 
+    tx.commit().await?;
     Ok(())
 }
 
@@ -899,14 +904,18 @@ pub async fn load_all_members_by_org(
 }
 
 /// Save board members for an organization (delete + re-insert).
+///
+/// Uses a transaction so the delete + insert is atomic.
 pub async fn save_board_by_org(
     pool: &PgPool,
     org_id: &str,
     members: &[serde_json::Value],
 ) -> Result<(), sqlx::Error> {
+    let mut tx = pool.begin().await?;
+
     sqlx::query("DELETE FROM mass_board_members WHERE org_id = $1")
         .bind(org_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
 
     for member in members {
@@ -917,10 +926,11 @@ pub async fn save_board_by_org(
         .bind(id)
         .bind(org_id)
         .bind(member)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
     }
 
+    tx.commit().await?;
     Ok(())
 }
 
@@ -938,14 +948,18 @@ pub async fn load_all_board_by_org(
 }
 
 /// Save shareholders for an organization (delete + re-insert).
+///
+/// Uses a transaction so the delete + insert is atomic.
 pub async fn save_shareholders_by_org(
     pool: &PgPool,
     org_id: &str,
     shareholders: &[serde_json::Value],
 ) -> Result<(), sqlx::Error> {
+    let mut tx = pool.begin().await?;
+
     sqlx::query("DELETE FROM mass_shareholders WHERE org_id = $1")
         .bind(org_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
 
     for shareholder in shareholders {
@@ -956,10 +970,11 @@ pub async fn save_shareholders_by_org(
         .bind(id)
         .bind(org_id)
         .bind(shareholder)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
     }
 
+    tx.commit().await?;
     Ok(())
 }
 
@@ -995,9 +1010,22 @@ fn group_by_org(rows: Vec<OrgPayloadRow>) -> Vec<(String, Vec<serde_json::Value>
 // ── Helpers ─────────────────────────────────────────────────────────
 
 /// Parse an RFC 3339 timestamp from a JSON value, defaulting to now.
+///
+/// Logs a warning if a timestamp string is present but malformed, rather
+/// than silently defaulting to `Utc::now()` which would corrupt audit trails.
 fn parse_timestamp(val: Option<&serde_json::Value>) -> chrono::DateTime<chrono::Utc> {
-    val.and_then(|v| v.as_str())
-        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-        .map(|dt| dt.with_timezone(&chrono::Utc))
-        .unwrap_or_else(chrono::Utc::now)
+    match val.and_then(|v| v.as_str()) {
+        Some(s) => match chrono::DateTime::parse_from_rfc3339(s) {
+            Ok(dt) => dt.with_timezone(&chrono::Utc),
+            Err(e) => {
+                tracing::warn!(
+                    timestamp = %s,
+                    error = %e,
+                    "malformed RFC3339 timestamp in database record — defaulting to now"
+                );
+                chrono::Utc::now()
+            }
+        },
+        None => chrono::Utc::now(),
+    }
 }

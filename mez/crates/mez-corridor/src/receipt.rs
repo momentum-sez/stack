@@ -321,9 +321,16 @@ fn normalize_digest_set_in_value(obj: &mut serde_json::Map<String, serde_json::V
 /// the input receipt does not affect the output (both are stripped).
 pub fn compute_next_root(receipt: &CorridorReceipt) -> Result<ContentDigest, ReceiptError> {
     let mut value = serde_json::to_value(receipt)?;
-    let obj = value
-        .as_object_mut()
-        .expect("CorridorReceipt always serializes to a JSON object");
+    let obj = match value.as_object_mut() {
+        Some(o) => o,
+        None => {
+            return Err(ReceiptError::Serialization(
+                <serde_json::Error as serde::ser::Error>::custom(
+                    "CorridorReceipt did not serialize to a JSON object",
+                ),
+            ));
+        }
+    };
 
     // Strip proof and next_root — these are not part of the commitment
     obj.remove("proof");
@@ -343,7 +350,7 @@ pub fn compute_next_root(receipt: &CorridorReceipt) -> Result<ContentDigest, Rec
 
 /// Default zero digest for serde skip deserialization.
 fn zero_digest() -> ContentDigest {
-    ContentDigest::from_hex(&"00".repeat(32)).expect("zero digest is always valid")
+    ContentDigest::zero()
 }
 
 /// MMR commitment object, conformant to `schemas/corridor.checkpoint.schema.json`.

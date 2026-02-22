@@ -113,7 +113,10 @@ impl Timestamp {
 
 /// Truncate a `DateTime<Utc>` to second precision (zero out nanoseconds).
 fn truncate_to_seconds(dt: DateTime<Utc>) -> DateTime<Utc> {
-    dt.with_nanosecond(0).expect("nanosecond=0 is always valid")
+    // with_nanosecond(0) is structurally infallible but returns Option.
+    // Use unwrap_or(dt) as a defensive fallback — the only "failure" mode
+    // is a chrono internal error, in which case the original value is safe.
+    dt.with_nanosecond(0).unwrap_or(dt)
 }
 
 impl std::fmt::Display for Timestamp {

@@ -569,7 +569,7 @@ fn cmd_mesh(repo_root: &Path, zones_csv: Option<&str>, all: bool, format: MeshFo
 
     let stats = registry.corridor_mesh_stats();
     let total_corridors: usize = stats.values().sum();
-    let expected_pairs = zone_ids.len() * (zone_ids.len() - 1) / 2;
+    let expected_pairs = zone_ids.len().saturating_sub(1) * zone_ids.len() / 2;
     eprintln!(
         "Mesh: {} zones, {} corridors ({} pairs)",
         zone_ids.len(),
@@ -1328,7 +1328,7 @@ mod tests {
         );
 
         let mut registry = CorridorRegistry::new();
-        let mut parsed = 0;
+        let mut parsed: usize = 0;
         for jid in &zone_ids {
             match parse_zone_yaml(repo_root, jid) {
                 Ok(entry) => {
@@ -1344,7 +1344,7 @@ mod tests {
         registry.generate_corridors();
         let stats = registry.corridor_mesh_stats();
         let total_corridors: usize = stats.values().sum();
-        let expected = parsed * (parsed - 1) / 2;
+        let expected = parsed.saturating_sub(1) * parsed / 2;
 
         eprintln!(
             "Full mesh: {} zones parsed, {} corridors generated (expected {})",

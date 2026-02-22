@@ -231,17 +231,27 @@ impl Did {
     }
 
     /// Return the DID method (the part between the first and second colons).
+    ///
+    /// Returns `"unknown"` if the DID is structurally malformed (should not
+    /// happen since DIDs are validated at construction).
     pub fn method(&self) -> &str {
         let rest = &self.0[4..]; // after "did:"
-        let colon_pos = rest.find(':').expect("validated at construction");
-        &rest[..colon_pos]
+        match rest.find(':') {
+            Some(pos) => &rest[..pos],
+            None => "unknown",
+        }
     }
 
     /// Return the method-specific identifier (everything after `did:method:`).
+    ///
+    /// Returns the full string after `did:` if the DID is structurally
+    /// malformed (should not happen since DIDs are validated at construction).
     pub fn method_specific_id(&self) -> &str {
         let rest = &self.0[4..]; // after "did:"
-        let colon_pos = rest.find(':').expect("validated at construction");
-        &rest[colon_pos + 1..]
+        match rest.find(':') {
+            Some(pos) => &rest[pos + 1..],
+            None => rest,
+        }
     }
 }
 

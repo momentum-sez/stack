@@ -181,14 +181,21 @@ pub fn sovereign_mass_router() -> Router<AppState> {
 
 // ── Persistence helper ──────────────────────────────────────────────
 
-/// Persist to Postgres if db_pool is available. Logs errors but does not
-/// fail the request — the in-memory store is the source of truth and the
-/// data will be in Postgres on next upsert.
+/// Persist to Postgres if db_pool is available. Returns an error to the
+/// client if persistence fails — the in-memory record would be lost on
+/// restart, causing silent data loss (matches corridors.rs / smart_assets.rs
+/// error-propagation pattern).
 macro_rules! persist {
     ($state:expr, $save_fn:path, $($args:expr),+) => {
         if let Some(ref pool) = $state.db_pool {
             if let Err(e) = $save_fn(pool, $($args),+).await {
-                tracing::warn!(error = %e, "sovereign mass: failed to persist");
+                tracing::error!(error = %e, "sovereign mass: failed to persist to database");
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": "database persist failed"
+                    })),
+                ).into_response();
             }
         }
     };
@@ -208,7 +215,26 @@ async fn org_create(
 ) -> Response {
     let id = Uuid::new_v4();
     let now = Utc::now().to_rfc3339();
-    let name = body.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    let name = body
+        .get("name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim();
+
+    if name.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "name is required and must not be empty"})),
+        )
+            .into_response();
+    }
+    if name.len() > 1000 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "name must not exceed 1000 characters"})),
+        )
+            .into_response();
+    }
 
     let entity = json!({
         "id": id.to_string(),
@@ -313,7 +339,10 @@ async fn org_search(
     let size = body
         .get("size")
         .and_then(|v| v.as_u64())
-        .unwrap_or(10) as usize;
+        .unwrap_or(10)
+        .min(1000) as usize;
+    // Ensure size is at least 1 to avoid division by zero in div_ceil below.
+    let size = size.max(1);
 
     let all: Vec<Value> = state
         .mass_organizations

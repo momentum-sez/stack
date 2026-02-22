@@ -351,7 +351,7 @@ async fn query_entity(
         domains,
         passing_count,
         blocking_count,
-        total_domains: 20,
+        total_domains: ComplianceDomain::all().len(),
         attestation_count: attestations.len(),
         tensor_commitment: commitment,
         evaluated_at: Utc::now().to_rfc3339(),
@@ -495,7 +495,7 @@ fn evaluate_tensor<J: JurisdictionConfig>(
         domains,
         passing_count,
         blocking_count,
-        total_domains: 20,
+        total_domains: ComplianceDomain::all().len(),
         tensor_commitment: commitment,
         evaluated_at: Utc::now().to_rfc3339(),
     }

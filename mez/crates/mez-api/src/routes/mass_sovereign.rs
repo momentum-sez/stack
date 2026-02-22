@@ -206,14 +206,45 @@ async fn org_create(
     State(state): State<AppState>,
     Json(body): Json<Value>,
 ) -> Response {
+    // Business validation: entities require a non-empty name and jurisdiction.
+    let name = match body.get("name").and_then(|v| v.as_str()) {
+        Some(n) if !n.trim().is_empty() => n.trim(),
+        _ => {
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(json!({"error": "name is required and must be a non-empty string"})),
+            )
+                .into_response();
+        }
+    };
+
+    let jurisdiction = match body.get("jurisdiction").and_then(|v| v.as_str()) {
+        Some(j) if !j.trim().is_empty() => j.trim(),
+        _ => {
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(json!({"error": "jurisdiction is required and must be a non-empty string"})),
+            )
+                .into_response();
+        }
+    };
+
+    // Name length constraint (Mass organizations have a 512-char limit).
+    if name.len() > 512 {
+        return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(json!({"error": "name must not exceed 512 characters"})),
+        )
+            .into_response();
+    }
+
     let id = Uuid::new_v4();
     let now = Utc::now().to_rfc3339();
-    let name = body.get("name").and_then(|v| v.as_str()).unwrap_or("");
 
     let entity = json!({
         "id": id.to_string(),
         "name": name,
-        "jurisdiction": body.get("jurisdiction"),
+        "jurisdiction": jurisdiction,
         "status": "ACTIVE",
         "tags": body.get("tags").cloned().unwrap_or_else(|| json!([])),
         "address": body.get("address"),
@@ -358,12 +389,31 @@ async fn treasury_create(
     State(state): State<AppState>,
     Json(body): Json<Value>,
 ) -> Response {
+    // Business validation: treasury requires a valid entityId referencing an existing org.
+    let entity_id = match body.get("entityId").and_then(|v| v.as_str()) {
+        Some(eid) if !eid.trim().is_empty() => eid.trim(),
+        _ => {
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(json!({"error": "entityId is required"})),
+            )
+                .into_response();
+        }
+    };
+
+    // Validate entity exists.
+    if let Ok(entity_uuid) = Uuid::parse_str(entity_id) {
+        if !state.mass_organizations.contains(&entity_uuid) {
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(json!({"error": "entityId references a non-existent organization"})),
+            )
+                .into_response();
+        }
+    }
+
     let id = Uuid::new_v4();
     let now = Utc::now().to_rfc3339();
-    let entity_id = body
-        .get("entityId")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
 
     let treasury = json!({
         "id": id.to_string(),

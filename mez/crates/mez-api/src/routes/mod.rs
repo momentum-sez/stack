@@ -23,6 +23,7 @@
 //!   obligation tracking, and tax authority report generation.
 
 pub mod agentic;
+pub mod arbitration;
 pub mod compliance_query;
 pub mod corridors;
 pub mod credentials;

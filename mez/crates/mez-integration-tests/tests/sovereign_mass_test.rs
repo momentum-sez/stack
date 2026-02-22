@@ -199,7 +199,7 @@ async fn sovereign_mass_independent_creation() {
         .post(format!(
             "http://127.0.0.1:{port_a}/organization-info/api/v1/organization/create"
         ))
-        .json(&json!({"name": "PK Corp", "tags": []}))
+        .json(&json!({"name": "PK Corp", "jurisdiction": "pk-sifc", "tags": []}))
         .send()
         .await
         .unwrap();
@@ -211,7 +211,7 @@ async fn sovereign_mass_independent_creation() {
         .post(format!(
             "http://127.0.0.1:{port_b}/organization-info/api/v1/organization/create"
         ))
-        .json(&json!({"name": "AE Corp", "tags": []}))
+        .json(&json!({"name": "AE Corp", "jurisdiction": "ae-difc", "tags": []}))
         .send()
         .await
         .unwrap();

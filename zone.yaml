@@ -1,0 +1,48 @@
+# Zone Manifest — edit this file to define your economic zone.
+#
+# Schema: schemas/zone.schema.json
+# Docs: https://momentum.inc/docs/zone-configuration
+
+zone_id: org.momentum.mez.zone.example
+jurisdiction_id: example
+zone_name: Example Zone
+
+profile:
+  profile_id: org.momentum.mez.profile.minimal-mvp
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - example
+
+lawpack:
+  statutes: []
+
+lawpack_domains: []
+
+licensepack_domains: []
+
+licensepack_refresh_policy:
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+
+regpacks: []
+
+# Select the compliance domains that apply to your jurisdiction.
+# See README.md for descriptions of each domain.
+compliance_domains:
+  - aml
+  - corporate
+  - kyc
+  - sanctions
+
+corridors: []
+corridor_peers: []
+national_adapters: {}
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

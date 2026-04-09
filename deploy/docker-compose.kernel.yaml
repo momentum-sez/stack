@@ -1,0 +1,247 @@
+# Kernel Topology: unified single-database, write enforcement
+#
+# One PostgreSQL instance owned by mez-api (read-write). Java services
+# connect as read-only and delegate all writes back to mez-api via
+# the kernel internal API.
+#
+# Advantages over full-stack:
+#   - Single source of truth (one database)
+#   - Write enforcement at the DB layer (readonly role)
+#   - Fewer credentials to manage
+#
+# Usage:
+#   docker compose -f docker-compose.kernel.yaml --env-file ../../.env up -d
+
+services:
+  mez-api:
+    image: ghcr.io/momentum-sez/mez-api:${MEZ_VERSION:-0.4.44}
+    ports:
+      - "${PORT:-8080}:8080"
+    env_file: ../../.env
+    environment:
+      ZONE_CONFIG: /zone/zone.yaml
+      OPERATIONS_DIR: /zone/operations
+      DATABASE_URL: postgresql://mez:${POSTGRES_PASSWORD}@kernel-db:5432/mez
+      KERNEL_INTERNAL_TOKEN: ${KERNEL_INTERNAL_TOKEN:?KERNEL_INTERNAL_TOKEN must be set}
+      MASS_ORIGIN: remote
+      MASS_ORG_INFO_URL: http://organization-info:8081
+      MASS_TREASURY_INFO_URL: http://treasury-info:9005
+      MASS_GOVERNANCE_INFO_URL: http://governance-info:8082
+      MASS_INVESTMENT_INFO_URL: http://investment-info:9030
+      MASS_IDENTITY_INFO_URL: http://identity-info:8084
+      MASS_TEMPLATING_URL: http://templating-engine:9015
+      MASS_ATTESTATION_ENGINE_URL: http://attestation-engine:9010
+      MEZ_HOST: 0.0.0.0
+      PORT: 8080
+    volumes:
+      - ../../zone.yaml:/zone/zone.yaml:ro
+      - ../../operations:/zone/operations:ro
+      - ../../lawpacks:/zone/lawpacks:ro
+      - ../../corridors:/zone/corridors:ro
+    depends_on:
+      kernel-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health/liveness"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - kernel-network
+
+  # ── Mass Java Services (read-only DB, writes via kernel API) ──────────────
+
+  organization-info:
+    image: ghcr.io/momentum-sez/organization-info:${MASS_VERSION:-latest}
+    environment:
+      SPRING_PROFILES_ACTIVE: kernel
+      SPRING_DATASOURCE_URL: jdbc:postgresql://kernel-db:5432/mez
+      SPRING_DATASOURCE_USERNAME: readonly
+      SPRING_DATASOURCE_PASSWORD: ${KERNEL_DB_READONLY_PASSWORD:-readonly}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_FLYWAY_ENABLED: "false"
+      KERNEL_BASE_URL: http://mez-api:8080
+      KERNEL_INTERNAL_TOKEN: ${KERNEL_INTERNAL_TOKEN}
+      SERVER_PORT: 8081
+    depends_on:
+      kernel-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8081/organization-info/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - kernel-network
+
+  treasury-info:
+    image: ghcr.io/momentum-sez/treasury-info:${MASS_VERSION:-latest}
+    environment:
+      SPRING_PROFILES_ACTIVE: kernel
+      SPRING_DATASOURCE_URL: jdbc:postgresql://kernel-db:5432/mez
+      SPRING_DATASOURCE_USERNAME: readonly
+      SPRING_DATASOURCE_PASSWORD: ${KERNEL_DB_READONLY_PASSWORD:-readonly}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_FLYWAY_ENABLED: "false"
+      KERNEL_BASE_URL: http://mez-api:8080
+      KERNEL_INTERNAL_TOKEN: ${KERNEL_INTERNAL_TOKEN}
+      SERVER_PORT: 9005
+    depends_on:
+      kernel-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9005/treasury-info/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - kernel-network
+
+  governance-info:
+    image: ghcr.io/momentum-sez/governance-info:${MASS_VERSION:-latest}
+    environment:
+      SPRING_PROFILES_ACTIVE: kernel
+      SPRING_DATASOURCE_URL: jdbc:postgresql://kernel-db:5432/mez
+      SPRING_DATASOURCE_USERNAME: readonly
+      SPRING_DATASOURCE_PASSWORD: ${KERNEL_DB_READONLY_PASSWORD:-readonly}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_FLYWAY_ENABLED: "false"
+      KERNEL_BASE_URL: http://mez-api:8080
+      KERNEL_INTERNAL_TOKEN: ${KERNEL_INTERNAL_TOKEN}
+      SERVER_PORT: 8082
+    depends_on:
+      kernel-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8082/governance-info/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - kernel-network
+
+  investment-info:
+    image: ghcr.io/momentum-sez/investment-info:${MASS_VERSION:-latest}
+    environment:
+      SPRING_PROFILES_ACTIVE: kernel
+      SPRING_DATASOURCE_URL: jdbc:postgresql://kernel-db:5432/mez
+      SPRING_DATASOURCE_USERNAME: readonly
+      SPRING_DATASOURCE_PASSWORD: ${KERNEL_DB_READONLY_PASSWORD:-readonly}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_FLYWAY_ENABLED: "false"
+      KERNEL_BASE_URL: http://mez-api:8080
+      KERNEL_INTERNAL_TOKEN: ${KERNEL_INTERNAL_TOKEN}
+      SERVER_PORT: 9030
+    depends_on:
+      kernel-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9030/investment-info/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - kernel-network
+
+  identity-info:
+    image: ghcr.io/momentum-sez/identity-info:${MASS_VERSION:-latest}
+    environment:
+      SPRING_PROFILES_ACTIVE: kernel
+      SPRING_DATASOURCE_URL: jdbc:postgresql://kernel-db:5432/mez
+      SPRING_DATASOURCE_USERNAME: readonly
+      SPRING_DATASOURCE_PASSWORD: ${KERNEL_DB_READONLY_PASSWORD:-readonly}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_FLYWAY_ENABLED: "false"
+      KERNEL_BASE_URL: http://mez-api:8080
+      KERNEL_INTERNAL_TOKEN: ${KERNEL_INTERNAL_TOKEN}
+      SERVER_PORT: 8084
+    depends_on:
+      kernel-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8084/identity-info/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - kernel-network
+
+  templating-engine:
+    image: ghcr.io/momentum-sez/templating-engine:${MASS_VERSION:-latest}
+    environment:
+      SPRING_PROFILES_ACTIVE: kernel
+      SPRING_DATASOURCE_URL: jdbc:postgresql://kernel-db:5432/mez
+      SPRING_DATASOURCE_USERNAME: readonly
+      SPRING_DATASOURCE_PASSWORD: ${KERNEL_DB_READONLY_PASSWORD:-readonly}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_FLYWAY_ENABLED: "false"
+      KERNEL_BASE_URL: http://mez-api:8080
+      KERNEL_INTERNAL_TOKEN: ${KERNEL_INTERNAL_TOKEN}
+      SERVER_PORT: 9015
+    depends_on:
+      kernel-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9015/templating-engine/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - kernel-network
+
+  attestation-engine:
+    image: ghcr.io/momentum-sez/attestation-engine:${MASS_VERSION:-latest}
+    environment:
+      SPRING_PROFILES_ACTIVE: kernel
+      SPRING_DATASOURCE_URL: jdbc:postgresql://kernel-db:5432/mez
+      SPRING_DATASOURCE_USERNAME: readonly
+      SPRING_DATASOURCE_PASSWORD: ${KERNEL_DB_READONLY_PASSWORD:-readonly}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_FLYWAY_ENABLED: "false"
+      KERNEL_BASE_URL: http://mez-api:8080
+      KERNEL_INTERNAL_TOKEN: ${KERNEL_INTERNAL_TOKEN}
+      SERVER_PORT: 9010
+    depends_on:
+      kernel-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9010/attestation-engine/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - kernel-network
+
+  # ── Database (single instance, mez-api owns writes) ───────────────────────
+
+  kernel-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mez
+      POSTGRES_USER: mez
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - kernel-pgdata:/var/lib/postgresql/data
+      - ./init-db-kernel.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mez"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - kernel-network
+
+volumes:
+  kernel-pgdata:
+
+networks:
+  kernel-network:

@@ -1,0 +1,147 @@
+# entity.incorporate — Default Incorporation Flow
+#
+# Creates an entity (company, partnership, branch) in the zone.
+# Steps: create entity → provision treasury → open account → activate.
+#
+# Jurisdiction-specific overrides belong in separate files:
+#   operations/entity/ae-dubai-difc.yaml
+#   operations/entity/sg.yaml
+#   operations/entity/us-de.yaml
+#
+# The kernel resolves jurisdiction-specific first, then falls back here.
+
+operation: entity.incorporate
+jurisdiction: _default
+version: "1.0"
+legal_basis: "Jurisdiction-specific — consult applicable company law"
+description: "Default incorporation flow"
+ui_family: entity_formation
+
+ui_layout:
+  groups:
+    - id: entity_info
+      label: Entity Details
+      order: 1
+    - id: directors
+      label: Directors & Officers
+      order: 2
+    - id: treasury
+      label: Treasury
+      order: 3
+
+params:
+  required:
+    - name: legal_name
+      type: string
+      description: Legal name of the entity
+      validation:
+        max_length: 256
+      ui_hint: text
+      ui_group: entity_info
+    - name: entity_type
+      type: string
+      enum: [company, partnership, sole_proprietorship, branch]
+      ui_hint: select
+      ui_group: entity_info
+    - name: incorporator_name
+      type: string
+      ui_hint: text
+      ui_group: directors
+    - name: incorporator_email
+      type: string
+      ui_hint: text
+      ui_group: directors
+  optional:
+    - name: treasury_provider
+      type: string
+      enum: [adyen, currency_cloud, wise, mass]
+      default: zone_config
+      ui_hint: select
+      ui_group: treasury
+    - name: treasury_currency
+      type: string
+      default: USD
+      ui_hint: select
+      ui_group: treasury
+    - name: share_classes
+      type: array
+      description: Initial share classes for cap table
+      items:
+        type: object
+        properties:
+          name: { type: string }
+          authorized_shares: { type: integer }
+          par_value: { type: string }
+    - name: initial_directors
+      type: array
+      items: { type: string }
+      ui_group: directors
+    - name: beneficial_owners
+      type: array
+
+steps:
+  - id: entity_create
+    type: create.entity
+    service: organization-info
+    description: Create entity record (DRAFT status)
+    api:
+      method: POST
+      path: /organization-info/api/v1/organization/create
+    params:
+      name: "{params.legal_name}"
+      entityType: "{params.entity_type}"
+      jurisdiction: "{params.jurisdiction}"
+      status: DRAFT
+      beneficial_owners: "{params.beneficial_owners}"
+    compliance_domains: [corporate, aml, sanctions, kyc]
+    on_failure: cancel_operation
+
+  - id: treasury
+    type: create.treasury
+    service: treasury-info
+    depends_on: [entity_create]
+    description: Provision treasury account
+    params:
+      entity_id: "{steps.entity_create.result.id}"
+      type: BASIC
+      context: "{params.treasury_provider}"
+      currency: "{params.treasury_currency}"
+    wait_for: treasury.provisioned
+    timeout: 7d
+    compliance_domains: [banking, aml, sanctions]
+    on_failure: cancel_operation
+
+  - id: account
+    type: create.bank_account
+    service: treasury-info
+    depends_on: [treasury]
+    description: Open bank account under treasury
+    params:
+      entity_id: "{steps.entity_create.result.id}"
+      account_type: checking
+      currency: "{params.treasury_currency}"
+    wait_for: account.opened
+    timeout: 7d
+    compliance_domains: [banking, aml, sanctions, custody]
+
+  - id: activate
+    type: update.entity_status
+    service: organization-info
+    depends_on: [account]
+    description: Activate entity (DRAFT → ACTIVE)
+    api:
+      method: PUT
+      path: "/organization-info/api/v1/organization/{steps.entity_create.result.id}"
+    params:
+      status: ACTIVE
+    compliance_domains: [corporate]
+
+compensation:
+  steps:
+    - when: entity_create.completed
+      action: delete_entity
+      api:
+        method: DELETE
+        path: "/organization-info/api/v1/organization/{steps.entity_create.result.id}"
+    - when: treasury.completed
+      action: close_treasury

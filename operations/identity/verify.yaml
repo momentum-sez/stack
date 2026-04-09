@@ -1,0 +1,71 @@
+# identity.verify — KYC Verification Flow
+#
+# Verify an individual's identity through the zone's KYC provider.
+
+operation: identity.verify
+jurisdiction: _default
+version: "1.0"
+legal_basis: "Jurisdiction-specific KYC/AML legislation"
+description: "KYC identity verification"
+ui_family: identity
+
+params:
+  required:
+    - name: entity_id
+      type: string
+      provided_by: url_path
+      validation:
+        max_length: 255
+      ui_hint: entity_ref
+    - name: individual_name
+      type: string
+      ui_hint: text
+    - name: verification_level
+      type: string
+      enum: [basic, standard, enhanced]
+      default: standard
+      ui_hint: select
+  optional:
+    - name: document_type
+      type: string
+      enum: [passport, national_id, drivers_license]
+      ui_hint: select
+    - name: nationality
+      type: string
+      validation:
+        pattern: "^[A-Z]{2}$"
+      ui_hint: select
+
+steps:
+  - id: sanctions_screening
+    type: screening.sanctions
+    service: identity-info
+    description: "Pre-screen against sanctions lists (hard block)"
+    api:
+      method: POST
+      path: /identity-service/api/v1/verifications
+    params:
+      verification_type: sanctions_screening
+      subject_name: "{params.individual_name}"
+      hard_block: true
+    compliance_domains: [sanctions]
+    on_failure: cancel_operation
+
+  - id: identity_verification
+    type: verify.identity
+    service: identity-info
+    depends_on: [sanctions_screening]
+    description: Submit identity for KYC verification
+    api:
+      method: POST
+      path: /identity-info/api/v1/verifications
+    params:
+      entity_id: "{params.entity_id}"
+      individual_name: "{params.individual_name}"
+      verification_level: "{params.verification_level}"
+      document_type: "{params.document_type}"
+      nationality: "{params.nationality}"
+    wait_for: verification.completed
+    timeout: 30d
+    compliance_domains: [kyc, aml]
+    on_failure: cancel_operation

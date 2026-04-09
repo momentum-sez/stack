@@ -1,0 +1,84 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Trade Zone — Import/export focused with port capabilities
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# Optimized for trade and logistics. Designed for:
+# - Free trade zones and port authorities
+# - Bonded warehousing and customs clearance
+# - Cross-border trade finance corridors
+#
+# 10 compliance domains. Trade and settlement domains active.
+# Customs and port adapters available.
+# ──────────────────────────────────────────────────────────────────────────────
+
+zone_id: org.momentum.mez.zone.example-trade
+jurisdiction_id: example-trade
+zone_name: Trade Zone
+
+profile:
+  profile_id: org.momentum.mez.profile.trade-playbook
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - example-country
+  - example-trade
+
+lawpack:
+  statutes:
+    - Free Trade Zone Act
+    - Customs Act
+    - Companies Act
+    - Anti-Money Laundering Act
+    - Trade Finance Regulations
+
+lawpack_domains:
+  - corporate
+  - trade
+
+licensepack_domains:
+  - corporate
+  - trade
+
+licensepack_refresh_policy:
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+
+regpacks: []
+
+compliance_domains:
+  - aml
+  - corporate
+  - custody
+  - kyc
+  - licensing
+  - payments
+  - sanctions
+  - settlement
+  - tax
+  - trade
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.trade.maritime-freight
+
+corridor_peers: []
+
+national_adapters:
+  customs:
+    enabled: false
+    endpoint: ${CUSTOMS_API_URL:-}
+  port_authority:
+    enabled: false
+    endpoint: ${PORT_AUTHORITY_API_URL:-}
+  trade_registry:
+    enabled: false
+    endpoint: ${TRADE_REGISTRY_API_URL:-}
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

@@ -1,0 +1,68 @@
+# consent.resolution — Board/Member Resolution
+#
+# Create and track a governance resolution (board or member vote).
+
+operation: consent.resolution
+jurisdiction: _default
+version: "1.0"
+legal_basis: "Jurisdiction-specific corporate governance law"
+description: "Create and execute a governance resolution"
+ui_family: governance
+
+params:
+  required:
+    - name: entity_id
+      type: string
+      provided_by: url_path
+      validation:
+        max_length: 255
+      ui_hint: entity_ref
+    - name: resolution_type
+      type: string
+      enum: [board_resolution, member_resolution, special_resolution]
+      ui_hint: select
+    - name: subject
+      type: string
+      description: Subject of the resolution
+      ui_hint: text
+  optional:
+    - name: quorum
+      type: string
+      default: simple_majority
+      enum: [simple_majority, board_majority, supermajority, unanimous]
+      ui_hint: select
+    - name: required_roles
+      type: array
+      items: { type: string }
+    - name: deadline
+      type: string
+      description: "Voting deadline (ISO 8601 datetime)"
+
+steps:
+  - id: entity_verification
+    type: compliance.entity_status_check
+    service: organization-info
+    description: Verify entity is active
+    api:
+      method: GET
+      path: "/organization-info/api/v1/organization/{params.entity_id}"
+    compliance_domains: [corporate]
+    on_failure: cancel_operation
+
+  - id: create_resolution
+    type: consent.create_resolution
+    service: governance-info
+    depends_on: [entity_verification]
+    description: Create the resolution and notify eligible voters
+    params:
+      entity_id: "{params.entity_id}"
+      resolution_type: "{params.resolution_type}"
+      subject: "{params.subject}"
+      quorum: "{params.quorum}"
+      required_roles: "{params.required_roles}"
+      deadline: "{params.deadline}"
+      operationId: "{operation_id}"
+      requestedBy: "{initiator_email}"
+    wait_for: consent.approved
+    timeout: 30d
+    compliance_domains: [corporate]

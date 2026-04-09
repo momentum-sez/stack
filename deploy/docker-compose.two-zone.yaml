@@ -1,0 +1,140 @@
+# Two-Zone Corridor: two independent zones with inter-zone networking
+#
+# Each zone has its own kernel + PostgreSQL. Zones communicate over
+# the corridor network for cross-zone operations and settlement.
+#
+# Zone A: port 8080
+# Zone B: port 8081
+#
+# Usage:
+#   docker compose -f docker-compose.two-zone.yaml --env-file ../../.env up -d
+
+services:
+  # ── Zone A ────────────────────────────────────────────────────────────────
+
+  mez-zone-a:
+    image: ghcr.io/momentum-sez/mez-api:${MEZ_VERSION:-0.4.44}
+    ports:
+      - "8080:8080"
+    environment:
+      MEZ_ZONE_ID: ${ZONE_A_ID:-org.momentum.mez.zone.zone-a}
+      MEZ_JURISDICTION: ${ZONE_A_JURISDICTION:-zone-a}
+      ZONE_CONFIG: /zone/zone.yaml
+      OPERATIONS_DIR: /zone/operations
+      DATABASE_URL: postgresql://mez:${POSTGRES_PASSWORD}@postgres-a:5432/mez
+      AUTH_TOKEN: ${ZONE_A_AUTH_TOKEN:-${AUTH_TOKEN}}
+      ZONE_SIGNING_KEY_HEX: ${ZONE_A_SIGNING_KEY_HEX:-}
+      MASS_ORIGIN: local
+      MEZ_HOST: 0.0.0.0
+      PORT: 8080
+      MEZ_LOG_LEVEL: ${MEZ_LOG_LEVEL:-info}
+    volumes:
+      - ../../zone.yaml:/zone/zone.yaml:ro
+      - ../../operations:/zone/operations:ro
+      - ../../lawpacks:/zone/lawpacks:ro
+      - ../../corridors:/zone/corridors:ro
+    depends_on:
+      postgres-a:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health/liveness"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - zone-a-internal
+      - corridor-net
+
+  postgres-a:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mez
+      POSTGRES_USER: mez
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - pgdata-a:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mez"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - zone-a-internal
+
+  # ── Zone B ────────────────────────────────────────────────────────────────
+
+  mez-zone-b:
+    image: ghcr.io/momentum-sez/mez-api:${MEZ_VERSION:-0.4.44}
+    ports:
+      - "8081:8080"
+    environment:
+      MEZ_ZONE_ID: ${ZONE_B_ID:-org.momentum.mez.zone.zone-b}
+      MEZ_JURISDICTION: ${ZONE_B_JURISDICTION:-zone-b}
+      ZONE_CONFIG: /zone/zone.yaml
+      OPERATIONS_DIR: /zone/operations
+      DATABASE_URL: postgresql://mez:${POSTGRES_PASSWORD}@postgres-b:5432/mez
+      AUTH_TOKEN: ${ZONE_B_AUTH_TOKEN:-${AUTH_TOKEN}}
+      ZONE_SIGNING_KEY_HEX: ${ZONE_B_SIGNING_KEY_HEX:-}
+      MASS_ORIGIN: local
+      MEZ_HOST: 0.0.0.0
+      PORT: 8080
+      MEZ_LOG_LEVEL: ${MEZ_LOG_LEVEL:-info}
+    volumes:
+      - ../../zone.yaml:/zone/zone.yaml:ro
+      - ../../operations:/zone/operations:ro
+      - ../../lawpacks:/zone/lawpacks:ro
+      - ../../corridors:/zone/corridors:ro
+    depends_on:
+      postgres-b:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health/liveness"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - zone-b-internal
+      - corridor-net
+
+  postgres-b:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mez
+      POSTGRES_USER: mez
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata-b:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mez"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - zone-b-internal
+
+  # ── Shared Observability ──────────────────────────────────────────────────
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "127.0.0.1:16686:16686"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    profiles: [observability]
+    restart: unless-stopped
+    networks:
+      - corridor-net
+
+volumes:
+  pgdata-a:
+  pgdata-b:
+
+networks:
+  zone-a-internal:
+  zone-b-internal:
+  corridor-net:
+    driver: bridge

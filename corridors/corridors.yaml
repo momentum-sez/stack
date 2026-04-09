@@ -1,0 +1,31 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Corridor Definitions
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# Define bilateral connections to peer zones. Each corridor specifies:
+# - The peer zone's identity and endpoint
+# - Compliance domains evaluated on cross-zone transactions
+# - Settlement rails available (SWIFT, stablecoin, etc.)
+#
+# Peer endpoint URLs should be set in .env, not hardcoded here.
+# ──────────────────────────────────────────────────────────────────────────────
+
+corridors: []
+
+# Example corridor definition:
+#
+# corridors:
+#   - corridor_id: org.momentum.mez.corridor.your-zone--partner-zone
+#     peer:
+#       zone_id: org.momentum.mez.zone.partner
+#       jurisdiction_id: partner
+#       endpoint_url: ${PEER_PARTNER_URL}
+#     compliance_domains:
+#       - aml
+#       - kyc
+#       - sanctions
+#       - tax
+#       - trade
+#     settlement_rails:
+#       - swift-iso20022
+#       - stablecoin-regulated

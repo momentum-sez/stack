@@ -1,0 +1,222 @@
+# Full Stack: kernel + Mass Java services + PostgreSQL + Redis
+#
+# Runs the complete Mass infrastructure locally. The kernel orchestrates
+# 7 Java microservices for the five primitives (entities, ownership,
+# fiscal, identity, consent) plus templating and attestation.
+#
+# Two PostgreSQL instances:
+#   - postgres (port 5432): mez-api database
+#   - postgres-mass (port 5433): shared by Java services
+#
+# Usage:
+#   docker compose -f docker-compose.full-stack.yaml --env-file ../../.env up -d
+
+services:
+  mez-api:
+    image: ghcr.io/momentum-sez/mez-api:${MEZ_VERSION:-0.4.44}
+    ports:
+      - "${PORT:-8080}:8080"
+    env_file: ../../.env
+    environment:
+      ZONE_CONFIG: /zone/zone.yaml
+      OPERATIONS_DIR: /zone/operations
+      DATABASE_URL: postgresql://mez:${POSTGRES_PASSWORD}@postgres:5432/mez
+      MASS_ORIGIN: remote
+      MASS_ORG_INFO_URL: http://organization-info:8081
+      MASS_TREASURY_INFO_URL: http://treasury-info:9005
+      MASS_GOVERNANCE_INFO_URL: http://governance-info:8082
+      MASS_INVESTMENT_INFO_URL: http://investment-info:9030
+      MASS_IDENTITY_INFO_URL: http://identity-info:8084
+      MASS_TEMPLATING_URL: http://templating-engine:9015
+      MASS_ATTESTATION_ENGINE_URL: http://attestation-engine:9010
+      MASS_TIMEOUT_SECS: 30
+      MEZ_HOST: 0.0.0.0
+      PORT: 8080
+    volumes:
+      - ../../zone.yaml:/zone/zone.yaml:ro
+      - ../../operations:/zone/operations:ro
+      - ../../lawpacks:/zone/lawpacks:ro
+      - ../../corridors:/zone/corridors:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      organization-info:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health/liveness"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Mass Java Services ────────────────────────────────────────────────────
+
+  organization-info:
+    image: ghcr.io/momentum-sez/organization-info:${MASS_VERSION:-latest}
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-mass:5432/mass
+      SPRING_DATASOURCE_USERNAME: mass
+      SPRING_DATASOURCE_PASSWORD: ${MASS_POSTGRES_PASSWORD:?MASS_POSTGRES_PASSWORD must be set}
+      SERVER_PORT: 8081
+    depends_on:
+      postgres-mass:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8081/organization-info/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  treasury-info:
+    image: ghcr.io/momentum-sez/treasury-info:${MASS_VERSION:-latest}
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-mass:5432/mass
+      SPRING_DATASOURCE_USERNAME: mass
+      SPRING_DATASOURCE_PASSWORD: ${MASS_POSTGRES_PASSWORD}
+      SERVER_PORT: 9005
+    depends_on:
+      postgres-mass:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9005/treasury-info/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  governance-info:
+    image: ghcr.io/momentum-sez/governance-info:${MASS_VERSION:-latest}
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-mass:5432/mass
+      SPRING_DATASOURCE_USERNAME: mass
+      SPRING_DATASOURCE_PASSWORD: ${MASS_POSTGRES_PASSWORD}
+      SERVER_PORT: 8082
+    depends_on:
+      postgres-mass:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8082/governance-info/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  investment-info:
+    image: ghcr.io/momentum-sez/investment-info:${MASS_VERSION:-latest}
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-mass:5432/mass
+      SPRING_DATASOURCE_USERNAME: mass
+      SPRING_DATASOURCE_PASSWORD: ${MASS_POSTGRES_PASSWORD}
+      SERVER_PORT: 9030
+    depends_on:
+      postgres-mass:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9030/investment-info/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  identity-info:
+    image: ghcr.io/momentum-sez/identity-info:${MASS_VERSION:-latest}
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-mass:5432/mass
+      SPRING_DATASOURCE_USERNAME: mass
+      SPRING_DATASOURCE_PASSWORD: ${MASS_POSTGRES_PASSWORD}
+      SERVER_PORT: 8084
+    depends_on:
+      postgres-mass:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8084/identity-info/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  templating-engine:
+    image: ghcr.io/momentum-sez/templating-engine:${MASS_VERSION:-latest}
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-mass:5432/mass
+      SPRING_DATASOURCE_USERNAME: mass
+      SPRING_DATASOURCE_PASSWORD: ${MASS_POSTGRES_PASSWORD}
+      SERVER_PORT: 9015
+    depends_on:
+      postgres-mass:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9015/templating-engine/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  attestation-engine:
+    image: ghcr.io/momentum-sez/attestation-engine:${MASS_VERSION:-latest}
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-mass:5432/mass
+      SPRING_DATASOURCE_USERNAME: mass
+      SPRING_DATASOURCE_PASSWORD: ${MASS_POSTGRES_PASSWORD}
+      SERVER_PORT: 9010
+    depends_on:
+      postgres-mass:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9010/attestation-engine/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ── Databases ─────────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mez
+      POSTGRES_USER: mez
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mez"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  postgres-mass:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mass
+      POSTGRES_USER: mass
+      POSTGRES_PASSWORD: ${MASS_POSTGRES_PASSWORD:?MASS_POSTGRES_PASSWORD must be set}
+    volumes:
+      - pgdata-mass:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mass"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  # ── Observability ─────────────────────────────────────────────────────────
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "127.0.0.1:16686:16686"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    profiles: [observability]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  pgdata-mass:

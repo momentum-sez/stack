@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-ez.org/mez/zone-manifest.schema.json",
+  "title": "Zone Manifest",
+  "description": "Configuration schema for an EZ Stack zone.",
+  "type": "object",
+  "required": ["zone_id", "jurisdiction_id", "zone_name", "profile", "compliance_domains"],
+  "properties": {
+    "zone_id": {
+      "type": "string",
+      "pattern": "^org\\.momentum\\.mez\\.zone\\.[a-z0-9][a-z0-9.-]*$",
+      "description": "Fully qualified zone identifier."
+    },
+    "jurisdiction_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "maxLength": 64,
+      "description": "Short jurisdiction code (ISO 3166-1 alpha-2 or composite)."
+    },
+    "zone_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Human-readable zone name."
+    },
+    "profile": {
+      "type": "object",
+      "required": ["profile_id", "version"],
+      "properties": {
+        "profile_id": {
+          "type": "string",
+          "enum": [
+            "org.momentum.mez.profile.minimal-mvp",
+            "org.momentum.mez.profile.digital-native-free-zone",
+            "org.momentum.mez.profile.digital-financial-center",
+            "org.momentum.mez.profile.charter-city",
+            "org.momentum.mez.profile.trade-playbook"
+          ]
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "jurisdiction_stack": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+      "description": "Jurisdiction inheritance chain (general → specific)."
+    },
+    "lawpack": {
+      "type": "object",
+      "properties": {
+        "statutes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Enabling legislation for this zone."
+        }
+      }
+    },
+    "lawpack_domains": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "licensepack_domains": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "licensepack_refresh_policy": {
+      "type": "object",
+      "properties": {
+        "default": { "$ref": "#/$defs/refresh_schedule" }
+      },
+      "additionalProperties": { "$ref": "#/$defs/refresh_schedule" }
+    },
+    "regpacks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/regpack_ref" }
+    },
+    "compliance_domains": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/compliance_domain" },
+      "uniqueItems": true,
+      "description": "Compliance domains evaluated on every mutating operation."
+    },
+    "corridors": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "corridor_peers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/corridor_peer" }
+    },
+    "national_adapters": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/adapter_config" }
+    },
+    "trust_anchors": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "key_management": {
+      "type": "object",
+      "properties": {
+        "rotation_interval_days": { "type": "integer", "minimum": 1 },
+        "grace_period_days": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "lockfile_path": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "compliance_domain": {
+      "type": "string",
+      "enum": [
+        "aml", "arbitration", "banking", "clearing", "consumer_protection",
+        "corporate", "custody", "data_privacy", "digital_assets", "employment",
+        "immigration", "ip", "kyc", "licensing", "payments",
+        "sanctions", "securities", "settlement", "tax", "trade"
+      ]
+    },
+    "regpack_ref": {
+      "type": "object",
+      "required": ["jurisdiction_id", "domain", "regpack_digest_sha256", "as_of_date"],
+      "properties": {
+        "jurisdiction_id": { "type": "string" },
+        "domain": { "type": "string" },
+        "regpack_digest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "as_of_date": { "type": "string", "format": "date" }
+      },
+      "additionalProperties": false
+    },
+    "corridor_peer": {
+      "type": "object",
+      "required": ["zone_id", "jurisdiction_id", "endpoint_url"],
+      "properties": {
+        "zone_id": { "type": "string" },
+        "jurisdiction_id": { "type": "string" },
+        "endpoint_url": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "adapter_config": {
+      "type": "object",
+      "required": ["enabled", "endpoint"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "endpoint": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "refresh_schedule": {
+      "type": "object",
+      "required": ["frequency", "max_staleness_hours"],
+      "properties": {
+        "frequency": { "type": "string", "enum": ["hourly", "daily", "weekly"] },
+        "max_staleness_hours": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

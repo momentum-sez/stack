@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.momentum-ez.org/mez/operation.schema.json",
+  "title": "Operation Definition",
+  "description": "Schema for YAML operation definitions.",
+  "type": "object",
+  "required": ["operation", "steps"],
+  "properties": {
+    "operation": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_-]*$",
+      "description": "Operation identifier (e.g., 'entity.incorporate')."
+    },
+    "jurisdiction": {
+      "type": "string",
+      "default": "_default",
+      "description": "Jurisdiction this definition applies to ('_default' for fallback)."
+    },
+    "version": {
+      "type": "string",
+      "default": "1.0"
+    },
+    "description": { "type": "string" },
+    "legal_basis": { "type": "string" },
+    "ui_family": { "type": "string" },
+    "ui_layout": {
+      "type": "object",
+      "properties": {
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "label"],
+            "properties": {
+              "id": { "type": "string" },
+              "label": { "type": "string" },
+              "order": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "params": {
+      "type": "object",
+      "properties": {
+        "required": { "type": "array", "items": { "$ref": "#/$defs/param" } },
+        "optional": { "type": "array", "items": { "$ref": "#/$defs/param" } }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/step" }
+    },
+    "compensation": {
+      "type": "object",
+      "properties": {
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["when", "action"],
+            "properties": {
+              "when": { "type": "string" },
+              "action": { "type": "string" },
+              "description": { "type": "string" },
+              "api": { "$ref": "#/$defs/api_spec" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "param": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "description": { "type": "string" },
+        "enum": { "type": "array", "items": { "type": "string" } },
+        "default": {},
+        "provided_by": { "type": "string" },
+        "validation": { "type": "object" },
+        "ui_hint": { "type": "string" },
+        "ui_group": { "type": "string" },
+        "ui_order": { "type": "integer" },
+        "items": { "type": "object" }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": ["id", "service"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "description": "Unique step identifier within this operation."
+        },
+        "type": { "type": "string" },
+        "service": {
+          "type": "string",
+          "enum": [
+            "organization-info", "treasury-info", "identity-info",
+            "governance-info", "investment-info", "templating-engine",
+            "attestation-engine"
+          ],
+          "description": "Target Mass service."
+        },
+        "api": { "$ref": "#/$defs/api_spec" },
+        "depends_on": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "description": { "type": "string" },
+        "params": { "type": "object" },
+        "query_params": { "type": "object" },
+        "compliance_domains": {
+          "type": "array",
+          "items": { "$ref": "zone.schema.json#/$defs/compliance_domain" }
+        },
+        "on_failure": {
+          "type": "string",
+          "enum": ["cancel_operation", "skip", "retry"]
+        },
+        "wait_for": { "type": "string" },
+        "timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(m|h|d)$",
+          "description": "Timeout (e.g., '30m', '1h', '7d')."
+        },
+        "condition": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "api_spec": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "required": ["method", "path"],
+          "properties": {
+            "method": { "type": "string", "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"] },
+            "path": { "type": "string", "pattern": "^/" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

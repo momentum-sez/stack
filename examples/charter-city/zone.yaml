@@ -1,0 +1,82 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Charter City — Greenfield jurisdiction with custom legal framework
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# For new jurisdictions building from scratch. Designed for:
+# - Charter cities and special economic zones
+# - Greenfield developments with enabling legislation
+# - Jurisdictions that write their own legal framework
+#
+# 12 compliance domains. Balanced between regulatory rigor and operational
+# speed. Employment and immigration domains active (population management).
+# ──────────────────────────────────────────────────────────────────────────────
+
+zone_id: org.momentum.mez.zone.example-charter
+jurisdiction_id: example-charter
+zone_name: Charter City
+
+profile:
+  profile_id: org.momentum.mez.profile.charter-city
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - example-host-country
+  - example-charter
+
+lawpack:
+  statutes:
+    - Charter City Enabling Act
+    - Zone Governance Ordinance
+    - Business Registration Act
+    - Employment Code
+    - Residency and Immigration Regulations
+    - Tax Code
+
+lawpack_domains:
+  - civil
+  - corporate
+
+licensepack_domains:
+  - corporate
+
+licensepack_refresh_policy:
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+
+regpacks: []
+
+compliance_domains:
+  - aml
+  - corporate
+  - custody
+  - data_privacy
+  - employment
+  - immigration
+  - kyc
+  - licensing
+  - payments
+  - sanctions
+  - settlement
+  - tax
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+
+corridor_peers: []
+
+national_adapters:
+  host_country_immigration:
+    enabled: false
+    endpoint: ${HOST_IMMIGRATION_API_URL:-}
+  host_country_customs:
+    enabled: false
+    endpoint: ${HOST_CUSTOMS_API_URL:-}
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

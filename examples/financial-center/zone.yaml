@@ -1,0 +1,114 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Financial Center — Full regulatory stack for financial services
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# Maximum compliance coverage. Designed for:
+# - International Financial Centers (IFCs)
+# - Free zones with banking and securities regulation
+# - Custody and clearing operations
+#
+# All 20 compliance domains active. Hourly license refresh for financial
+# and securities domains.
+# ──────────────────────────────────────────────────────────────────────────────
+
+zone_id: org.momentum.mez.zone.example-financial
+jurisdiction_id: example-financial
+zone_name: International Financial Center
+
+profile:
+  profile_id: org.momentum.mez.profile.digital-financial-center
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - example-country
+  - example-financial
+
+lawpack:
+  statutes:
+    - Financial Services Act
+    - Banking Act
+    - Securities Act
+    - Companies Act
+    - Anti-Money Laundering Act
+    - Data Protection Act
+    - Consumer Protection Act
+    - Arbitration Act
+
+lawpack_domains:
+  - civil
+  - corporate
+  - financial
+  - aml
+  - tax
+  - digital_assets
+
+licensepack_domains:
+  - financial
+  - corporate
+  - securities
+
+licensepack_refresh_policy:
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+  financial:
+    frequency: hourly
+    max_staleness_hours: 4
+  securities:
+    frequency: hourly
+    max_staleness_hours: 4
+
+regpacks: []
+
+compliance_domains:
+  - aml
+  - arbitration
+  - banking
+  - clearing
+  - consumer_protection
+  - corporate
+  - custody
+  - data_privacy
+  - digital_assets
+  - employment
+  - immigration
+  - ip
+  - kyc
+  - licensing
+  - payments
+  - sanctions
+  - securities
+  - settlement
+  - tax
+  - trade
+
+corridors:
+  - org.momentum.mez.corridor.swift.iso20022-cross-border
+  - org.momentum.mez.corridor.stablecoin.regulated-stablecoin
+
+corridor_peers: []
+
+national_adapters:
+  financial_regulator:
+    enabled: false
+    endpoint: ${FINANCIAL_REGULATOR_API_URL:-}
+  securities_regulator:
+    enabled: false
+    endpoint: ${SECURITIES_REGULATOR_API_URL:-}
+  central_bank:
+    enabled: false
+    endpoint: ${CENTRAL_BANK_API_URL:-}
+  company_registry:
+    enabled: false
+    endpoint: ${COMPANY_REGISTRY_API_URL:-}
+  tax_authority:
+    enabled: false
+    endpoint: ${TAX_AUTHORITY_API_URL:-}
+
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

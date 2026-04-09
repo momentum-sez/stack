@@ -1,0 +1,87 @@
+# ownership.issue-shares — Share Issuance
+#
+# Issue shares in an entity: board resolution → registry filing → cap table update.
+
+operation: ownership.issue-shares
+jurisdiction: _default
+version: "1.0"
+legal_basis: "Jurisdiction-specific company law"
+description: "Issue shares with board approval and registry filing"
+ui_family: capital_change
+
+params:
+  required:
+    - name: entity_id
+      type: string
+      provided_by: url_path
+      validation:
+        max_length: 255
+      ui_hint: entity_ref
+    - name: share_class
+      type: string
+      default: ordinary
+      ui_hint: select
+    - name: number_of_shares
+      type: integer
+      ui_hint: number
+    - name: price_per_share
+      type: string
+      description: Price per share (decimal string)
+      ui_hint: number
+  optional:
+    - name: subscriber_id
+      type: string
+      ui_hint: text
+    - name: currency
+      type: string
+      default: USD
+      validation:
+        pattern: "^[A-Z]{3}$"
+
+steps:
+  - id: entity_verification
+    type: compliance.entity_status_check
+    service: organization-info
+    description: Verify entity is active and in good standing
+    api:
+      method: GET
+      path: "/organization-info/api/v1/organization/{params.entity_id}"
+    compliance_domains: [corporate]
+    on_failure: cancel_operation
+    query_params:
+      require_status: ACTIVE
+
+  - id: board_resolution
+    type: consent.board_resolution
+    service: governance-info
+    depends_on: [entity_verification]
+    description: Board resolution approving share issuance
+    params:
+      operation_type: SHARE_ISSUANCE_BOARD_RESOLUTION
+      entity_id: "{params.entity_id}"
+      quorum: board_majority
+      required_roles: [director]
+      description: "Board resolution: issue {params.number_of_shares} {params.share_class} shares"
+      operationId: "{operation_id}"
+      requestedBy: "{initiator_email}"
+    wait_for: consent.approved
+    timeout: 30d
+    compliance_domains: [corporate]
+    on_failure: cancel_operation
+
+  - id: issue_shares
+    type: create.shares
+    service: investment-info
+    depends_on: [board_resolution]
+    description: Record share issuance on cap table
+    api:
+      method: POST
+      path: /investment-info/api/v1/shares/issue
+    params:
+      entity_id: "{params.entity_id}"
+      share_class: "{params.share_class}"
+      number_of_shares: "{params.number_of_shares}"
+      price_per_share: "{params.price_per_share}"
+      subscriber_id: "{params.subscriber_id}"
+      currency: "{params.currency}"
+    compliance_domains: [corporate, securities]

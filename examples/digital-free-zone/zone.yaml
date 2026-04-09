@@ -1,0 +1,64 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Digital Free Zone — Minimal zone for digital businesses
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# Lightest regulatory footprint. Designed for:
+# - Digital-native companies (SaaS, fintech, AI)
+# - Remote-first jurisdictions
+# - Rapid entity formation (<72 hours)
+#
+# 8 compliance domains. No securities, banking, or clearing requirements.
+# ──────────────────────────────────────────────────────────────────────────────
+
+zone_id: org.momentum.mez.zone.example-digital
+jurisdiction_id: example-digital
+zone_name: Digital Free Zone
+
+profile:
+  profile_id: org.momentum.mez.profile.digital-native-free-zone
+  version: "0.4.44"
+
+jurisdiction_stack:
+  - example-digital
+
+lawpack:
+  statutes:
+    - Digital Economy Act
+    - Companies Ordinance
+    - Data Protection Act
+    - Anti-Money Laundering Regulations
+
+lawpack_domains:
+  - corporate
+  - digital_assets
+
+licensepack_domains:
+  - corporate
+
+licensepack_refresh_policy:
+  default:
+    frequency: daily
+    max_staleness_hours: 24
+
+regpacks: []
+
+compliance_domains:
+  - aml
+  - corporate
+  - data_privacy
+  - digital_assets
+  - kyc
+  - licensing
+  - payments
+  - sanctions
+
+corridors: []
+corridor_peers: []
+national_adapters: {}
+trust_anchors: []
+
+key_management:
+  rotation_interval_days: 90
+  grace_period_days: 14
+
+lockfile_path: stack.lock

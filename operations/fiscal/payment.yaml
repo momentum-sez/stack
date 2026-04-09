@@ -1,0 +1,153 @@
+# fiscal.payment — Default Payment Flow
+#
+# Execute a payment: verify accounts → screen sanctions → execute → record tax.
+#
+# Sanctions screening (step 3) is a hard block — NonCompliant = reject.
+# No override path exists for this step.
+
+operation: fiscal.payment
+jurisdiction: _default
+version: "1.0"
+legal_basis: "Jurisdiction-specific banking, AML, and tax legislation"
+description: "Payment with compliance gates for sanctions, AML, and tax"
+ui_family: fiscal
+
+ui_layout:
+  groups:
+    - id: entity_info
+      label: Entity Details
+      order: 1
+    - id: payment_details
+      label: Payment Details
+      order: 2
+
+params:
+  required:
+    - name: entity_id
+      type: string
+      provided_by: url_path
+      validation:
+        max_length: 255
+      ui_hint: entity_ref
+      ui_group: entity_info
+    - name: recipient_id
+      type: string
+      validation:
+        max_length: 255
+      ui_hint: text
+      ui_group: payment_details
+    - name: amount
+      type: string
+      description: Payment amount (decimal string)
+      ui_hint: number
+      ui_group: payment_details
+    - name: currency
+      type: string
+      validation:
+        pattern: "^[A-Z]{3}$"
+      ui_hint: select
+      ui_group: payment_details
+    - name: payment_type
+      type: string
+      enum: [vendor, salary, service_fee, dividend, interest, rent, loan_repayment]
+      ui_hint: select
+      ui_group: payment_details
+  optional:
+    - name: payment_method
+      type: string
+      default: local_transfer
+      ui_hint: select
+      ui_group: payment_details
+    - name: memo
+      type: string
+      validation:
+        max_length: 512
+      ui_hint: text
+
+steps:
+  - id: payer_verification
+    type: check.treasury_account
+    service: treasury-info
+    description: Verify payer has active treasury with sufficient funds
+    api:
+      method: GET
+      path: /treasury-info/api/v1/treasury/create
+    compliance_domains: [banking]
+    on_failure: cancel_operation
+    query_params:
+      entity_id: "{params.entity_id}"
+      required_status: active
+      minimum_balance: "{params.amount}"
+      currency: "{params.currency}"
+
+  - id: recipient_verification
+    type: check.recipient_identity
+    service: identity-info
+    depends_on: [payer_verification]
+    description: Verify recipient identity
+    api:
+      method: POST
+      path: /identity-service/api/v1/verifications
+    params:
+      verification_type: recipient_aml_screening
+      subject_id: "{params.recipient_id}"
+    compliance_domains: [aml, kyc]
+    on_failure: cancel_operation
+
+  - id: sanctions_screening
+    type: screening.sanctions
+    service: identity-info
+    depends_on: [payer_verification]
+    description: "Screen against sanctions lists (HARD BLOCK — no override)"
+    api:
+      method: POST
+      path: /identity-service/api/v1/verifications
+    params:
+      verification_type: sanctions_screening
+      subject_id: "{params.recipient_id}"
+      hard_block: true
+    compliance_domains: [sanctions]
+    on_failure: cancel_operation
+
+  - id: payment_execute
+    type: execute.payment
+    service: treasury-info
+    depends_on: [sanctions_screening, recipient_verification]
+    description: Execute payment
+    api:
+      method: POST
+      path: /treasury-info/api/v1/transaction/create/payment
+    params:
+      entity_id: "{params.entity_id}"
+      recipient_id: "{params.recipient_id}"
+      transaction_type: "{params.payment_type}"
+      amount: "{params.amount}"
+      currency: "{params.currency}"
+      payment_method: "{params.payment_method}"
+      memo: "{params.memo}"
+    compliance_domains: [payments, banking, aml, sanctions]
+    on_failure: cancel_operation
+
+  - id: tax_event
+    type: create.tax_event
+    service: treasury-info
+    depends_on: [payment_execute]
+    description: Record payment tax event
+    api:
+      method: POST
+      path: /treasury-info/api/v1/charge/create
+    params:
+      entity_id: "{params.entity_id}"
+      event_type: payment_record
+      gross_amount: "{params.amount}"
+      currency: "{params.currency}"
+      tax_year: "{current_year}"
+    compliance_domains: [tax]
+
+compensation:
+  steps:
+    - when: payment_execute.completed
+      action: reverse_payment
+      api:
+        method: POST
+        path: "/treasury-info/api/v1/transaction/{steps.payment_execute.result.id}/cancel"

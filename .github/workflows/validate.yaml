@@ -1,0 +1,32 @@
+name: Validate Zone Configuration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install validators
+        run: pip install check-jsonschema yamllint
+
+      - name: Lint YAML
+        run: yamllint -c .yamllint.yaml zone.yaml operations/ corridors/ examples/
+
+      - name: Validate zone.yaml
+        run: check-jsonschema --schemafile schemas/zone.schema.json zone.yaml
+
+      - name: Validate operations
+        run: |
+          find operations -name "*.yaml" -exec \
+            check-jsonschema --schemafile schemas/operation.schema.json {} \;
+
+      - name: Validate examples
+        run: |
+          find examples -name "zone.yaml" -exec \
+            check-jsonschema --schemafile schemas/zone.schema.json {} \;

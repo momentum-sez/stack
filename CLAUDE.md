@@ -92,3 +92,25 @@ Never silently break the concurrency invariant.
 Mass Protocol EZ Stack — the open-source zone operator kit (Apache-2.0). See
 `~/centcom/CLAUDE.md` for ecosystem context and `~/kernel/CLAUDE.md` for the
 proprietary companion.
+
+## Canonical design sources
+
+The Mass architecture is specified across five standalone documents at repository
+roots. A stack contributor building a zone-operator artifact should read the
+kernel document first and follow pointers as needed:
+
+- `~/kernel/SUPREMUM.md` — kernel design (multi-harbored entity, 23-domain
+  compliance tensor, corridor protocol, proof-producing execution).
+- `~/op/SUPREMUM.md` — Op as a standalone typed bytecode. Stack deployments
+  execute Op programs through the kernel's SAVM.
+- `~/lex/SUPREMUM.md` — Lex as a standalone dependently-typed logic for
+  jurisdictional compliance rules. Lex rules compile to Op.
+- `~/centcom/SUPREMUM.md` — ecosystem design: repo topology, canonical
+  vocabulary, seven-paper research roadmap, multi-harbor network effect.
+- `~/momentum-research/SUPREMUM-ADDENDUM.md` — cross-paper integration note
+  across the seven-paper programme.
+
+Kernel-implementation architecture notes live at
+`~/kernel/docs/architecture/SUPREMUM/` — internal engineering detail, not
+external spec. When stack artifacts reference architecture, cite the root
+canonical `SUPREMUM.md` files above rather than the internal notes directory.

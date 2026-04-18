@@ -71,17 +71,14 @@ configure it — you don't build it.
                │ HTTP calls
                ▼
 ┌─────────────────────────────────────┐
-│  Java services (colocated)          │
+│  Mass Services (hosted by Momentum) │
 │  organization-info  treasury-info   │
 │  identity-info  governance-info     │
 │  investment-info  templating-engine │
 └─────────────────────────────────────┘
 ```
 
-The zone operator deploys the kernel and its Java services together from
-the reference Docker Compose at `deploy/docker-compose.yaml`. The kernel
-calls the Java services over HTTP on the local network. No part of the
-deployment is hosted remotely on the operator's behalf.
+The kernel connects to Mass services over HTTP.
 
 ## Repository Layout
 
@@ -103,7 +100,7 @@ corridors/
   corridors.yaml         Peer zone connections
 adapters/                National system integration configs
 deploy/
-  docker-compose.yaml    Reference deployment (kernel + Java services)
+  docker-compose.yaml    Docker Compose deployment
 schemas/
   zone.schema.json       JSON Schema for zone.yaml validation
   operation.schema.json  JSON Schema for operation YAML validation

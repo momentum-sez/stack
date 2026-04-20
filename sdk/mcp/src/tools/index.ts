@@ -4,3 +4,5 @@ export type {
   ConfigureZoneParams,
   ConfigureZoneResult,
 } from "./configureZone";
+export { initZone } from "./initZone";
+export type { InitZoneParams, InitZoneResult } from "./initZone";

@@ -4,3 +4,5 @@ export type {
   ConfigureZoneParams,
   ConfigureZoneResult,
 } from "./configureZone";
+export { addCorridor } from "./addCorridor";
+export type { AddCorridorParams, AddCorridorResult } from "./addCorridor";

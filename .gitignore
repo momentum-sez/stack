@@ -22,3 +22,6 @@ Thumbs.db
 # Build artifacts
 dist/
 *.wasm
+
+# Node
+node_modules/

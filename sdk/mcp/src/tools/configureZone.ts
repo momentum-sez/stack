@@ -187,7 +187,7 @@ function setValueAtPath(root: unknown, configPath: string, value: unknown) {
 
     const nextValue = Array.isArray(current) && INDEX_RE.test(segment)
       ? current[Number(segment)]
-      : current[segment];
+      : (current as Record<string, unknown>)[segment];
     if (nextValue === undefined || nextValue === null) {
       return {
         ok: false as const,
@@ -211,7 +211,7 @@ function setValueAtPath(root: unknown, configPath: string, value: unknown) {
     return { ok: true as const };
   }
 
-  current[leaf] = value;
+  (current as Record<string, unknown>)[leaf] = value;
   return { ok: true as const };
 }
 

@@ -93,9 +93,29 @@ cd <unique-path>
 Never silently break the concurrency invariant.
 
 <!-- END MULTI-AGENT-CONCURRENCY -->
-Mass Protocol EZ Stack — the open-source zone operator kit (Apache-2.0). See
-`~/centcom/CLAUDE.md` for ecosystem context and `~/kernel/CLAUDE.md` for the
-proprietary companion.
+
+<!-- BEGIN OPEN-SOURCE-WHITELIST (canonical rule — do not remove or edit) -->
+
+## NON-NEGOTIABLE: Open-source whitelist for all public artifacts
+
+**Exactly four repositories are open source and may be cited in any paper, HTML, PDF, email, DOCX, briefing, slide deck, social post, or any other externally-visible artifact:**
+
+- `github.com/momentum-sez/gstore`
+- `github.com/momentum-sez/lex`
+- `github.com/momentum-sez/op`
+- `github.com/momentum-sez/stack`
+
+**Every other repository in the ecosystem is closed source** — `kernel`, `centcom`, `moxie`, `moxie-whitepaper`, `momentum`, `momentum-dev`, `momentum-docs`, and every other sibling — and must **NEVER** appear in any externally-visible artifact. This covers all forms: `~/kernel`, `/Users/raeez/kernel`, bare `kernel/` as a path, prose references to `kernel` as the subject of a mechanization claim, commit hashes, branch names, worktree IDs, crate paths, architectural doc paths, or any other form that reveals closed-repo structure or existence.
+
+Before committing anything intended for an external reader, grep for non-whitelist path forms and treat any hit as a blocker.
+
+When citing mechanizations, implementations, or architectural docs, the canonical location is the open-source repo. If an artifact currently only lives in a closed repo, that is a defect — port it to the appropriate open-source repo first, then cite from there.
+
+**Incident reference:** 2026-04-22, Lex whitepaper shipped on `research.momentum.inc` with closed-repo path citations. Full migration and citation re-pointing followed.
+
+<!-- END OPEN-SOURCE-WHITELIST -->
+
+Mass Protocol EZ Stack — the open-source zone operator kit (Apache-2.0).
 
 ## Canonical design sources
 

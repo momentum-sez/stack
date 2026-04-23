@@ -1,5 +1,13 @@
 # AGENTS.md — stack
 
+> **Canonical ecosystem rules live in `~/ecosystem/INVARIANTS.md` and `~/ecosystem/AGENTS-HARNESS.md`** (Mass / Momentum / Moxie internal masters). This repository is Apache-2.0 public, so the relevant canonical blocks are **inlined verbatim below** to keep external clones self-contained. Changes land in the masters first, then propagate here via the deliberate sync procedure (see `~/ecosystem/survey.sh`).
+>
+> **Mirrors this repo's `CLAUDE.md`** on substance. Before editing code in this repo, read `./CLAUDE.md` — it carries the repo-local layout, commands, doctrine, and conventions. `AGENTS.md` and `CLAUDE.md` must not diverge in facts; they may differ in structure and voice.
+>
+> **Model target.** gpt-5-codex family (current preferred: gpt-5.3-codex or latest; fallback: gpt-5.2-codex), `reasoning_effort=high` or `xhigh` for non-trivial work (Pro-class). Terse, declarative voice (Russian mathematical school; see §IV of the inlined invariants below). No LLM attribution on commits (§VI).
+
+---
+
 Mass Protocol EZ Stack — the open-source (Apache-2.0) zone operator kit.
 10 crates. What operators fork to deploy their own sovereign jurisdictional
 runtime. The runtime is distributed as a Docker image referenced from

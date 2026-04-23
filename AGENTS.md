@@ -1,8 +1,9 @@
 # AGENTS.md — stack
 
 Mass Protocol EZ Stack — the open-source (Apache-2.0) zone operator kit.
-10 crates. What operators fork to deploy their own sovereign jurisdictional kernel.
-Pairs with the proprietary companion at `~/kernel`.
+10 crates. What operators fork to deploy their own sovereign jurisdictional
+runtime. The runtime is distributed as a Docker image referenced from
+`deploy/`; the proprietary tree is not a build dependency of this repository.
 
 This file is the Codex / OpenAI-optimized agent contract. Its factual content
 mirrors `CLAUDE.md` in this repository; its format is engineered for Codex 5.x
@@ -110,19 +111,18 @@ Apache-2.0. **If a change would introduce proprietary content — code, spec fra
 partner-specific configuration, non-Apache licensed dependencies — STOP and
 escalate to the user.** The open-source boundary is the product.
 
-- **READS allowed:** `~/kernel` interfaces this stack pairs with; sibling Apache-2.0
-  repos `~/lex`, `~/gstore`; `~/momentum/CLAUDE.md` for canonical product / fee
-  terminology.
+- **READS allowed:** sibling Apache-2.0 repos (`~/lex`, `~/op`, `~/gstore`).
 - **WRITES allowed:** only Apache-2.0 zone-operator artifacts inside this repo.
-- **NEVER:** import proprietary kernel source; reproduce internal kernel crates
-  (`mez-api`, `mez-api-db`, `mez-orchestration`, route modules, etc.); call
-  microservices (organization-info, investment-info, treasury-info, identity-info,
-  consent-info, governance-info) directly — go through kernel-facing surfaces;
-  add non-Apache-2.0 dependencies.
+- **NEVER:** import any proprietary source tree; reproduce closed-source
+  crates by name; call deployed microservices directly — go through the
+  runtime's HTTP surface; add non-Apache-2.0 dependencies.
 
-The proprietary companion at `~/kernel` is NOT a dependency. It is the closed-source
-sibling. Types may be structurally mirrored (e.g., `ComplianceDomain` variants) to
-preserve wire compatibility, but no code text is copied across the boundary.
+The proprietary runtime is distributed as a Docker image referenced from
+`deploy/docker-compose.yaml`. It is not a build dependency. Foundational
+types (`ComplianceDomain`, `CanonicalBytes`, `sha256_digest`) are shared
+through the public `mez-canonical` crate at `~/lex/crates/mez-canonical`
+so the wire format is identical across the open/closed boundary without
+any code copy.
 
 ---
 
@@ -130,17 +130,20 @@ preserve wire compatibility, but no code text is copied across the boundary.
 
 This repo is one lane in Mass / Momentum / Moxie. Lane: Apache-2.0 zone operator kit.
 
-- `~/stack` — Apache-2.0 zone-operator kit (this repo, 10 crates)
-- `~/kernel` — proprietary Mass kernel (40 Rust crates, 7 Java services, 23 ComplianceDomain variants)
-- `~/lex` — Apache-2.0 Lex language (3 crates, 567 tests)
-- `~/gstore` — Apache-2.0 Merkle-authenticated temporal graph store
-- `~/momentum` — public website (momentum.inc)
-- `~/centcom` — operations dashboard; ecosystem memory canonical
+The four open-source whitelist repositories (Apache-2.0):
 
-Ecosystem map: `~/centcom/metacognition/ecosystem-map.md` (canonical).
+- `~/stack` — zone-operator deployment kit (this repo)
+- `~/lex` — Lex: typed jurisdictional rules (4 crates, 742 tests)
+- `~/op` — Op: typed compliance-carrying workflows
+- `~/gstore` — Merkle-authenticated temporal graph store
 
-See `~/centcom/CLAUDE.md` for ecosystem context and `~/kernel/CLAUDE.md` for the
-proprietary companion.
+Foundational types shared across the four are in `~/lex/crates/mez-canonical`
+(`CanonicalBytes`, `sha256_digest`, `ComplianceDomain`).
+
+Closed-source companion trees exist on the operator's local machine; their
+identities, paths, and crate names must NEVER appear in artifacts shipped
+from this repository. CI enforces this via
+`.github/workflows/forbidden-strings.yml`.
 
 ---
 
@@ -166,19 +169,21 @@ Run all three (check / test / clippy) after any Rust change.
 
 ## Architecture
 
-`stack` is the open-source counterpart of the proprietary kernel. Its role is to
-give third-party zone operators a working kernel they can fork and deploy
-without any proprietary dependency. Shared type vocabulary with the proprietary
-kernel (for wire compatibility) but no code overlap.
+`stack` is the open-source deployment kit for the four-repo public set
+(lex + op + gstore + this). Its role is to give third-party zone operators
+a working runtime they can fork and deploy without any proprietary build
+dependency.
 
 - **10 crates, Apache-2.0**, workspace-managed
-- **Type vocabulary** shared with `~/kernel/mez/crates/mez-core` (compliance
-  domains, money amounts, identity IDs) so corridors and passports remain
-  wire-compatible across the open/closed boundary
-- **Zero proprietary dependencies.** If a dependency appears in `Cargo.lock`
-  that is not Apache-2.0 / MIT / BSD-licensed, it is a license violation
-- **Consumers:** zone operators (governments, private zones, pilot jurisdictions)
-  who want a kernel without contracting for the proprietary one
+- **Type vocabulary** shared with the public `mez-canonical` crate
+  (`~/lex/crates/mez-canonical`) for compliance domains, canonical
+  serialization, and content digests, so corridors and passports remain
+  wire-compatible across the four-repo set
+- **Zero proprietary build dependencies.** If a dependency appears in
+  `Cargo.lock` that is not Apache-2.0 / MIT / BSD-licensed, it is a license
+  violation
+- **Consumers:** zone operators (governments, private zones, pilot
+  jurisdictions) who want a deployable runtime without proprietary licensing
 
 ---
 
@@ -189,9 +194,9 @@ kernel (for wire compatibility) but no code overlap.
   author is the human operator.
 - **No destructive git** — see sentinel block above.
 - **License invariant** — Apache-2.0 everywhere, no exceptions.
-- **No proprietary imports** — never path-depend on `~/kernel` crates,
-  never copy code out of `~/kernel`.
-- **No direct microservice calls** — go through kernel-facing surfaces.
+- **No proprietary imports** — never path-depend on closed-source trees,
+  never copy code from any proprietary source.
+- **No direct microservice calls** — go through the runtime's HTTP surface.
 - **Deployment model** — `develop` is dev staging, `main` is prod staging.
   Never push `main` / `master`. Agents push nothing; only the main thread
   pushes.

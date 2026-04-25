@@ -117,10 +117,11 @@
     "compliance_domain": {
       "type": "string",
       "enum": [
-        "aml", "arbitration", "banking", "clearing", "consumer_protection",
-        "corporate", "custody", "data_privacy", "digital_assets", "employment",
-        "immigration", "ip", "kyc", "licensing", "payments",
-        "sanctions", "securities", "settlement", "tax", "trade"
+        "aml", "anti_bribery", "arbitration", "banking", "clearing",
+        "consumer_protection", "corporate", "custody", "data_privacy",
+        "digital_assets", "employment", "immigration", "insurance", "ip",
+        "kyc", "licensing", "payments", "sanctions", "securities",
+        "settlement", "sharia", "tax", "trade"
       ]
     },
     "regpack_ref": {

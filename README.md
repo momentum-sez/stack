@@ -3,6 +3,14 @@
 Deploy a programmable economic zone on the
 [Mass](https://momentum.inc/mass) infrastructure. Fork, configure, launch.
 
+Stack is the deployment kit for the four-repo open-source set:
+[Lex](https://github.com/momentum-sez/lex) (typed jurisdictional rules) +
+[Op](https://github.com/momentum-sez/op) (typed compliance-carrying
+workflows) + [gstore](https://github.com/momentum-sez/gstore)
+(Merkle-authenticated proof persistence) compose into a runtime that this
+repository configures, deploys, and operates as a sovereign economic zone.
+Fork this repo, edit `zone.yaml`, run `make up`.
+
 ## Prerequisites
 
 - Docker and Docker Compose
@@ -12,7 +20,7 @@ Deploy a programmable economic zone on the
 
 ```bash
 # Fork and clone
-git clone https://github.com/your-org/your-zone.git && cd your-zone
+git clone https://github.com/momentum-sez/stack.git your-zone && cd your-zone
 
 # Configure
 cp .env.example .env
@@ -106,7 +114,7 @@ schemas/
   operation.schema.json  JSON Schema for operation YAML validation
 examples/
   digital-free-zone/     8 compliance domains, lightest footprint
-  financial-center/      20 domains, full regulatory stack
+  financial-center/      23 domains, full regulatory stack
   charter-city/          12 domains, greenfield jurisdiction
   trade-zone/            10 domains, ports and customs
 ```
@@ -121,7 +129,7 @@ Edit `zone.yaml`. The required fields:
 | `jurisdiction_id` | Short code (ISO 3166-1 or composite) | `sc`, `ae-dubai-difc` |
 | `zone_name` | Human-readable name | `Seychelles Sovereign Zone` |
 | `profile.profile_id` | Baseline profile | See [Profiles](#profiles) |
-| `compliance_domains` | Which of 20 domains apply | `[aml, kyc, sanctions, corporate]` |
+| `compliance_domains` | Which of 23 domains apply | `[aml, kyc, sanctions, corporate]` |
 
 ### Profiles
 
@@ -129,7 +137,7 @@ Edit `zone.yaml`. The required fields:
 |---------|---------|----------|
 | `minimal-mvp` | 4 | Development and testing |
 | `digital-native-free-zone` | 8 | Digital businesses, light regulation |
-| `digital-financial-center` | 20 | Financial services, full regulatory |
+| `digital-financial-center` | 23 | Financial services, full regulatory |
 | `charter-city` | 12 | Greenfield jurisdictions |
 | `trade-playbook` | 10 | Import/export, customs, ports |
 
@@ -141,6 +149,7 @@ the domains relevant to your jurisdiction:
 | Domain | What It Covers |
 |--------|---------------|
 | `aml` | Transaction monitoring, suspicious activity reporting |
+| `anti_bribery` | Anti-corruption controls, gifts, facilitation payments |
 | `arbitration` | Dispute resolution frameworks |
 | `banking` | Reserve requirements, capital adequacy |
 | `clearing` | CCP rules, netting, settlement finality |
@@ -151,13 +160,15 @@ the domains relevant to your jurisdiction:
 | `digital_assets` | Token classification, exchange licensing |
 | `employment` | Labor contracts, social security |
 | `immigration` | Work permits, visa sponsorship |
+| `insurance` | Insurance licensing, solvency, policyholder protections |
 | `ip` | Patent, trademark, trade secret |
 | `kyc` | Identity verification, due diligence |
 | `licensing` | Business license validity, renewals |
 | `payments` | PSP licensing, payment instrument rules |
-| `sanctions` | OFAC/UN/EU screening — **hard reject, no override** |
+| `sanctions` | Applicable sanctions-list screening and escalation handling |
 | `securities` | Issuance, trading, disclosure |
 | `settlement` | DvP, settlement cycles |
+| `sharia` | Sharia compliance where applicable |
 | `tax` | Withholding, reporting, filing |
 | `trade` | Import/export controls, customs, tariffs |
 
@@ -306,6 +317,34 @@ Two independent zones (ports 8080 and 8081) with separate databases, connected v
 2. Check [CHANGELOG.md](CHANGELOG.md) for breaking changes
 3. Run `make validate` to verify configuration compatibility
 4. `make down && make up`
+
+## Relation to Lex, Op, gstore
+
+Stack is the operational endpoint of the four-repo open-source set. The
+typed boundaries between the repositories are stable:
+
+- **[Lex](https://github.com/momentum-sez/lex)** — the rule and proof
+  layer. A jurisdictional rule (e.g. "ADGM SPV minimum directors") is a
+  Lex term; the type checker accepts it; the obligation extractor produces
+  proof obligations; the certificate builder issues a signed verdict.
+- **[Op](https://github.com/momentum-sez/op)** — the workflow layer. An
+  operation (e.g. `entity.incorporate`) is an Op program: a typed DAG of
+  steps with effect rows, contracts, and compensation. The Lex obligations
+  appear as `requires` / `ensures` contracts on Op steps.
+- **[gstore](https://github.com/momentum-sez/gstore)** — the persistence
+  layer. The discharge certificates and Op proof bundles produced at
+  runtime land as typed nodes in gstore's authenticated graph; the
+  gstore Merkle Mountain Range root is anchored to public chains on a
+  recurring cadence.
+- **Stack (this repository)** — the configuration and deployment layer.
+  `zone.yaml` declares which jurisdictional profile applies; `operations/`
+  declares the Op programs the zone exposes; `deploy/` runs the runtime
+  that loads them.
+
+Each layer is published, versioned, and replayable independently. A cold
+clone of Stack with `make up` produces a running zone whose every operation
+can be replayed by any peer that has the same Stack configuration, the same
+Lex rule digest, and the same Op program digest.
 
 ## Contributing
 

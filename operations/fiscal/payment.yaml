@@ -98,7 +98,7 @@ steps:
     type: screening.sanctions
     service: identity-info
     depends_on: [payer_verification]
-    description: "Screen against sanctions lists (HARD BLOCK — no override)"
+    description: "Screen against applicable sanctions lists"
     api:
       method: POST
       path: /identity-service/api/v1/verifications

@@ -19,7 +19,7 @@
 ## Reporting Issues
 
 - Configuration bugs: open a GitHub issue with your `zone.yaml` (redact secrets)
-- Kernel bugs: report at the kernel repository (link in README)
+- Runtime bugs: file against the runtime image referenced in `deploy/`
 - Security issues: see [SECURITY.md](SECURITY.md)
 
 ## Code of Conduct

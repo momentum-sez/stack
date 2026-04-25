@@ -7,7 +7,7 @@
 # - Free zones with banking and securities regulation
 # - Custody and clearing operations
 #
-# All 20 compliance domains active. Hourly license refresh for financial
+# All 23 compliance domains active. Hourly license refresh for financial
 # and securities domains.
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -62,6 +62,7 @@ regpacks: []
 
 compliance_domains:
   - aml
+  - anti_bribery
   - arbitration
   - banking
   - clearing
@@ -72,6 +73,7 @@ compliance_domains:
   - digital_assets
   - employment
   - immigration
+  - insurance
   - ip
   - kyc
   - licensing
@@ -79,6 +81,7 @@ compliance_domains:
   - sanctions
   - securities
   - settlement
+  - sharia
   - tax
   - trade
 

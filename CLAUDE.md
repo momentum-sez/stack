@@ -46,6 +46,34 @@ Keep edits inside the requested surface. Avoid unrelated refactors. If a claim c
 
 If a proof, theorem, formal scaffold, executable semantics claim, or paper claim breaks, repair the object. Do not converge by deleting, demoting, or quietly weakening it. If repair cannot be completed, name the exact obstruction and next proof obligation.
 
+## XI. Code-Writing Discipline
+
+Twelve behavioural rules for code-writing agents (Claude, GPT-5-family, any subagent). Reproduced in their cultural form; sources: Karpathy (January 2026), Forrest Chang's CLAUDE.md (January 2026), thirty-codebase six-week empirical extension (May 2026). Bias: caution over speed on non-trivial work.
+
+**Rule 1 — Think Before Coding.** State assumptions explicitly. If uncertain, ask rather than guess. Present multiple interpretations when ambiguity exists. Push back when a simpler approach exists. Stop when confused. Name what's unclear.
+
+**Rule 2 — Simplicity First.** Minimum code that solves the problem. Nothing speculative. No features beyond what was asked. No abstractions for single-use code. Test: would a senior engineer say this is overcomplicated? If yes, simplify.
+
+**Rule 3 — Surgical Changes.** Touch only what you must. Clean up only your own mess. Don't "improve" adjacent code, comments, or formatting. Don't refactor what isn't broken. Match existing style.
+
+**Rule 4 — Goal-Driven Execution.** Define success criteria. Loop until verified. Don't follow steps; define success and iterate. Strong success criteria let you loop independently.
+
+**Rule 5 — Use the model only for judgment calls.** Use the model for classification, drafting, summarization, extraction. Do NOT use the model for routing, retries, deterministic transforms. If code can answer, code answers.
+
+**Rule 6 — Token budgets are not advisory.** Per-task: 4,000 tokens. Per-session: 30,000 tokens. If approaching budget, summarize and start fresh. Surface the breach. Do not silently overrun.
+
+**Rule 7 — Surface conflicts, don't average them.** If two patterns contradict, pick one (more recent / more tested). Explain why. Flag the other for cleanup. Don't blend conflicting patterns.
+
+**Rule 8 — Read before you write.** Before adding code, read exports, immediate callers, shared utilities. "Looks orthogonal" is dangerous. If unsure why code is structured a way, ask.
+
+**Rule 9 — Tests verify intent, not just behaviour.** Tests must encode WHY behaviour matters, not just WHAT it does. A test that can't fail when business logic changes is wrong.
+
+**Rule 10 — Checkpoint after every significant step.** Summarize what was done, what's verified, what's left. Don't continue from a state you can't describe back. If you lose track, stop and restate.
+
+**Rule 11 — Match the codebase's conventions, even if you disagree.** Conformance > taste inside the codebase. If you genuinely think a convention is harmful, surface it. Don't fork silently.
+
+**Rule 12 — Fail loud.** "Completed" is wrong if anything was skipped silently. "Tests pass" is wrong if any were skipped. Default to surfacing uncertainty, not hiding it.
+
 <!-- END INLINED-INVARIANTS -->
 
 ## Harness Discipline
@@ -206,3 +234,20 @@ If counts or paths drift, update `AGENTS.md` and `CLAUDE.md` together.
   runtime, keep this repo to the minimum needed for a self-hosting zone
   deployment and escalate the boundary decision.
 - Never generate Co-Authored-By lines for LLMs in commit messages.
+
+## Code-writing discipline — repo application
+
+Per the inlined `## XI. Code-Writing Discipline` block above. Twelve rules instantiated for stack (zone operator configuration template; Apache-2.0 public):
+
+1. **Think Before Coding.** Every `zone.yaml` edit names the operator decision being expressed (corridor selection, lawpack binding, adapter choice). Every schema change names the affected zone-config surface.
+2. **Simplicity First.** YAML configuration, not code. No speculative configuration ahead of an operator's need. No vendoring proprietary runtime source — pull it as a Docker image at the wire boundary.
+3. **Surgical Changes.** A `zone.yaml` edit does not touch adapters; an adapter change does not touch corridors. Schemas evolve with explicit versioning.
+4. **Goal-Driven Execution.** Success = `zone.yaml` validates against `schemas/`, `make validate` clean, the deployment kit boots and the documented operator flow renders consistently.
+5. **Use the model only for judgment calls.** Zone routing, corridor selection, adapter dispatch are deterministic per config. The model drafts examples and documentation; it does not decide which corridor a request takes.
+6. **Token budgets are not advisory.** Standard for configuration work; checkpoint between `operations/` edits.
+7. **Surface conflicts, don't average them.** Schema wins over example YAML; documented protocol wins over inline commentary. Flag drifting examples for repair.
+8. **Read before you write.** Read `zone.yaml` schema before edits; read `lawpacks/` index before adding a lawpack binding. Mirror proprietary types structurally only — never copy source text.
+9. **Tests verify intent.** Configuration tests encode operator intent (the zone routes correctly under sanctions, the lawpack binds to the right corridor). A test that only checks YAML parses is vacuous.
+10. **Checkpoint after every significant step.** After each `operations/` or adapter edit, restate the boot impact on the runtime.
+11. **Match the codebase's conventions, even if you disagree.** Zone-config style: lowercase-with-dashes keys, explicit version fields, schema references at the top. Mirror types via wire format (JSON schema or Borsh layout), not path dependencies.
+12. **Fail loud.** Never ship a configuration without schema validation. Never silently downgrade a corridor or lawpack. Surface any schema mismatch.

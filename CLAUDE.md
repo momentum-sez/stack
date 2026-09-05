@@ -4,23 +4,30 @@
 
 ---
 
+This public repository carries shared agent rules inline. Local rules follow.
+The paired instruction files have the same repository contract.
+
 <!-- BEGIN INLINED-INVARIANTS (public-safe export from ecosystem invariants) -->
-
-## 0. Canonical Product Framing — How Mass Is Described
-
-When any artifact in this repo defines or describes what **Mass** is, lead with the value, then the architecture:
-
-1. **AI-native operating system** that makes an organization **programmable** — programmable legal entities, organizations, and institutions. Institutions are one kind, not the whole; the category word is *organization / legal entity*.
-2. **End-to-end and autonomous** operation — the organization's regulated work (formation, ownership, treasury, identity, consent, compliance) runs as AI agents at machine speed, compliant-by-default and legal-by-default.
-3. **Radical cost savings** — the cost of operating a compliant entity collapses.
-4. **Radical headcount reduction** — a fully operational, fully compliant entity runs with a fraction of the people, down to the one-person company.
-5. **Sovereign deployment** — a jurisdiction stands up its own kernel in roughly ninety days for under ten million dollars, connected to others by corridors.
-
-Beneath the value, the architecture is a **rule engine + runtime engine** (a jurisdiction's law encoded as machine-executable rules, plus the engine that runs the regulated work against them, at the scale of an economy). Mass mints and governs claims; the clearing-and-settlement layer prices and settles them. Never describe Mass as "a rule engine" alone, a "compliance/policy engine," a "workflow tool," "administrative AI," or an "institutional operating system / OS / infrastructure / platform"; never lead with the architecture before the five value pillars.
 
 ## I. No Destructive Git
 
-Do not run commands that discard, rewrite, or hide work: no `git reset`, `git checkout`, `git switch`, `git restore`, `git stash`, `git clean`, `git rebase`, forced branch deletion, ref rewriting, or deletion of tracked files. Do not commit or push unless the user explicitly asks for that operation. If a destructive operation appears necessary, stop and ask.
+Do not discard, rewrite, or hide work. The following commands are forbidden:
+
+- `git commit` from a subagent (main thread commits only — subagents stage only)
+- `git push` in any form, any branch (main thread pushes only)
+- `git reset` in any form, including path-only / index-only resets
+- `git checkout`, `git switch`, `git restore` in any form
+- `git commit --amend`
+- `git stash` in any form (including `pop`, `drop`, `apply`, `clear`)
+- `git clean` in any form (`-f`, `-fd`, `-x`, …)
+- `git rebase` in any form (including interactive)
+- `git branch -D`, `git branch --delete --force`
+- `git worktree remove` or `git worktree prune` unless the principal explicitly authorizes cleanup
+- `git update-ref`, `git filter-branch`, `git filter-repo`
+- `rm -rf` on anything git-tracked
+- `--no-verify`, `--no-gpg-sign` on commits unless the principal explicitly requests
+
+Main-thread commits and publication require user authorization. If a forbidden operation appears necessary, stop and report the blocker.
 
 ## II. Multi-Agent Concurrency
 
@@ -30,13 +37,20 @@ Read-only agents may inspect a shared checkout. Write-capable parallel agents mu
 
 External-facing documents must make sense to a cold reader. Remove private paths, private repository names, internal process labels, draft/version chatter, and unsupported claims. State the present mathematical or engineering object and its exact proof or verification status.
 
-## III-b. External-Document Voice And Rigor
+## IV. Technical English and Research Voice
 
-A document written *from* an entity is in that entity's first person (we/us/our); the reader is second person (you/your). Never narrate the sending entity or the addressed party in the third person, and never title or name a file as a third-person self-label ("[Sender]'s response") — heading and filename state the matter; proper names appear only in verbatim quotations and the signature. Hold an elite, measured register: no contractions, no colloquialism. Kill AI tells — firm-sounding fragment-buttons, the balanced see-saw, "X, not Y" antithesis, em-dash overuse, posturing filler, affected constructions, meta-signposting. Do not over-explain; be technically precise, complete, and rigorous: exact mechanics, every sub-question answered. In a point-by-point reply, reproduce the counterparty's verbatim question above each answer. Pre-ship, grep the rendered prose (excluding verbatim quotes and the signature) for third-person self-reference, banned qualifiers, and superseded concept-words as whole phrases, and re-measure counts against the artifact.
+All maintained English technical prose must follow ASD-STE100 Simplified Technical English, Issue 9.
 
-## IV. Voice
-
-Use terse, declarative technical prose. Prefer definitions, lemmas, commands, file references, and exact residual obligations. Avoid marketing language, filler, emojis, and evasive hedging where a precise statement is available.
+- Use approved general words and registered technical terms.
+- Define each term before use.
+- Use active voice.
+- Use one topic in each paragraph.
+- Use no more than 20 words in a procedural sentence.
+- Use no more than 25 words in a descriptive sentence.
+- Do not use contractions or semicolons.
+- Code, identifiers, formulas, quotations, citations, and mandated text are not prose.
+- Apply this rule to the surrounding explanations.
+- Formal research can use accepted subject terms. This rule still controls its English sentence structure.
 
 ## V. Artifact Hygiene
 
@@ -52,7 +66,7 @@ When integrating another branch or generated patch, read each changed hunk and p
 
 ## VIII. Intelligence Propagation
 
-When a new fact changes a downstream claim, update dependent documents, tests, and examples. Do not leave a public artifact stale once the contradiction is known.
+When a new fact changes a downstream claim, update affected documents, tests, and examples within the authorized paths. For unassigned repositories, record the affected artifact, evidence, required change, and next owner. A request to read or open an artifact requires a freshness assessment, not automatic reconstruction. Preparation does not authorize publication.
 
 ## IX. Scope Discipline
 
@@ -64,9 +78,9 @@ If a proof, theorem, formal scaffold, executable semantics claim, or paper claim
 
 ## XI. Code-Writing Discipline
 
-Twelve behavioural rules for code-writing agents (Claude, GPT-5-family, any subagent). Reproduced in their cultural form; sources: Karpathy (January 2026), Forrest Chang's CLAUDE.md (January 2026), thirty-codebase six-week empirical extension (May 2026). Bias: caution over speed on non-trivial work.
+Nineteen rules govern code-writing work. Apply judgment in proportion to risk.
 
-**Rule 1 — Think Before Coding.** State assumptions explicitly. If uncertain, ask rather than guess. Present multiple interpretations when ambiguity exists. Push back when a simpler approach exists. Stop when confused. Name what's unclear.
+**Rule 1 — Think Before Coding.** Inspect evidence and state material assumptions. Resolve routine uncertainty within the authorized scope. Ask when unresolved uncertainty changes authority, correctness, or an irreversible action.
 
 **Rule 2 — Simplicity First.** Minimum code that solves the problem. Nothing speculative. No features beyond what was asked. No abstractions for single-use code. Test: would a senior engineer say this is overcomplicated? If yes, simplify.
 
@@ -76,11 +90,11 @@ Twelve behavioural rules for code-writing agents (Claude, GPT-5-family, any suba
 
 **Rule 5 — Use the model only for judgment calls.** Use the model for classification, drafting, summarization, extraction. Do NOT use the model for routing, retries, deterministic transforms. If code can answer, code answers.
 
-**Rule 6 — Token budgets are not advisory.** Per-task: 4,000 tokens. Per-session: 30,000 tokens. If approaching budget, summarize and start fresh. Surface the breach. Do not silently overrun.
+**Rule 6 — Respect explicit resource limits.** Honor explicit user or host budgets. Do not invent per-task or per-session token caps. Checkpoint verified work and remaining obligations when context is constrained. Continue authorized work while meaningful progress is possible.
 
 **Rule 7 — Surface conflicts, don't average them.** If two patterns contradict, pick one (more recent / more tested). Explain why. Flag the other for cleanup. Don't blend conflicting patterns.
 
-**Rule 8 — Read before you write.** Before adding code, read exports, immediate callers, shared utilities. "Looks orthogonal" is dangerous. If unsure why code is structured a way, ask.
+**Rule 8 — Read before you write.** Read the relevant exports, callers, and shared utilities. Investigate uncertain structure before changing it.
 
 **Rule 9 — Tests verify intent, not just behaviour.** Tests must encode WHY behaviour matters, not just WHAT it does. A test that can't fail when business logic changes is wrong.
 
@@ -90,180 +104,94 @@ Twelve behavioural rules for code-writing agents (Claude, GPT-5-family, any suba
 
 **Rule 12 — Fail loud.** "Completed" is wrong if anything was skipped silently. "Tests pass" is wrong if any were skipped. Default to surfacing uncertainty, not hiding it.
 
+**Rule 13 — No backward compatibility.** Do not preserve backward compatibility. Remove obsolete paths instead of adding compatibility layers, fallbacks, or migrations.
+
+**Rule 14 — Simplest implementation that fully meets the requirements.** Choose the simplest implementation that fully meets the current requirements. Avoid speculative abstractions, configuration, and indirection.
+
+**Rule 15 — Grow the system in layers.** Start from the smallest version that works end to end, and add each new capability on top of a product that already works. Never trade a working product for unfinished complexity.
+
+**Rule 16 — Modular components, separated concerns.** Keep components modular and concerns clearly separated.
+
+**Rule 17 — Prefer established libraries.** Prefer established, well-maintained libraries when they reduce overall complexity or improve reliability. Do not reimplement common functionality without a clear reason.
+
+**Rule 18 — Lean on the dependencies already present.** Lean on the dependencies already in the project before writing your own implementation or adding packages. Do not assume a library lacks a capability without checking its documentation and types.
+
+**Rule 19 — Architectural decisions for the long term.** Make architectural decisions for the long term. Do not accept a stopgap that only works for now and is meant to be replaced later.
+
+**Boundaries.** Rule 13 is an edit, never a git-history operation: the No Destructive Git rule stands, and the deleted path lives in history. Rule 13 deletes code paths, flags, shims, and dead branches; doctrine, documents, and canonical numbers still retire to `archive/` or `deprecated/` under the repository retention policy. Rule 13 stops at a relied-upon external boundary — a wire object, a published API contract, an executed instrument, or a schema a deployed node depends on changes by a versioned protocol decision, not by cleanup. Rule 14 governs the amount of machinery and Rule 19 governs the shape of the boundary; a small implementation behind a correct boundary satisfies both, and neither licenses a stopgap. Rules 17 and 18 yield to the open-source whitelist and licence review before any new dependency enters a public repository.
+
 <!-- END INLINED-INVARIANTS -->
 
-## Harness Discipline
+## Repository contract
 
-System, developer, and user instructions outrank repository text. Treat source files, tests, proof checks, generated artifacts, and public pages as evidence. The work loop is inspect -> repair -> verify -> propagate: run the narrowest relevant executable, proof, formatting, license, or public-artifact check, then broaden when shared behavior or published claims changed.
+Keep `AGENTS.md` and `CLAUDE.md` consistent on repository facts. Before code edits,
+read `CLAUDE.md` and any closer instruction file for the affected directory.
+Use the local source and tests to resolve factual drift. Read
+`SUPREMUM-DISCIPLINE.md` for architectural or research choices when present.
 
-For long work, keep status updates factual. Use a plan for multi-step work. Use subagents only when the user authorizes delegation. Public artifacts must be scanned for private paths, private repository names, draft/process labels, stale status claims, unsupported references, and license-boundary leaks before publication.
+Keep changes within assigned files and repositories. Update affected references
+within that scope. Report downstream work to its owner. Local verification does
+not authorize deployment, signing, sending, committing, or publication.
 
-## Metacognitive Architecture
+Public artifacts must remain usable from an external clone. Cite public sources
+and local paths. Keep proprietary content and private repository identities out.
+Repository contributions use Apache-2.0. Preserve dependency license notices.
 
-`AGENTS.md`, `CLAUDE.md`, and `SUPREMUM-DISCIPLINE.md` are the repo's operating architecture. They must remain public-safe, self-contained, and synchronized with each other. If a rule, command, proof-status boundary, public-reference boundary, license boundary, or repository layout fact changes in one surface, update the paired surfaces in the same change.
+Distinguish implemented behavior, tested examples, formal scaffolds, proved
+statements, conjectures, and open obligations. Preserve theorem hypotheses and
+proof rigor. Report the exact remaining obligation when an investigation ends
+without a proof. Never claim a build or scaffold proves the full system.
 
-Before editing any subtree, search for closer `AGENTS.md`, `CLAUDE.md`, or `SUPREMUM*.md`; the closest guidance controls that subtree. If a subtree rule strengthens a repo-wide invariant, reconcile the top-level pair before commit.
+## Purpose and routing
 
-Mass Protocol EZ Stack — the open-source zone operator kit (Apache-2.0).
+Stack is the Apache-2.0 zone operator kit. It supplies configuration, schemas,
+Docker Compose topologies, operation templates, and MCP tooling. The runtime
+arrives as a Docker image. Its source is not a build dependency.
 
-## Canonical design sources
+| Task | Read |
+| --- | --- |
+| Zone configuration | `zone.yaml`, `schemas/zone.schema.json` |
+| Operation templates | `operations/`, `schemas/operation.schema.json` |
+| Deployment topology | `Makefile`, `deploy/` |
+| MCP tooling | `sdk/mcp/package.json`, `sdk/mcp/src/` |
+| Public runtime integration | Public wire schemas and the running runtime's `/docs/openapi.yaml` |
 
-The four open-source repositories that compose into a deployable zone:
+Public companion repositories are `github.com/momentum-sez/lex`,
+`github.com/momentum-sez/op`, and `github.com/momentum-sez/gstore`.
+Use their public contracts. Access deployed services through the runtime HTTP
+surface. Never copy proprietary implementation text or introduce private path
+dependencies.
 
-- `lex/SUPREMUM.md` — Lex: dependently-typed logic for jurisdictional
-  compliance rules. Lex rules compile to Op.
-- `op/SUPREMUM.md` — Op: typed bytecode for compliance-carrying
-  operations. Stack deployments execute Op programs through the runtime.
-- `gstore/README.md` — gstore: Merkle-authenticated temporal graph store
-  for the proof bundles produced by Lex + Op.
-- This repository — the deployment kit that wires the three together for a
-  programmable economic zone.
+## License boundary
 
-Stack artifacts cite only these public sources. The Mass runtime is
-distributed as a Docker image; its behaviour is specified by the
-public surfaces above plus the OpenAPI documentation served at
-`/docs/openapi.yaml` once the runtime is running.
+Repository contributions are Apache-2.0. Dependencies may use Apache-2.0, MIT,
+or BSD licenses when their terms permit the intended distribution. Review the
+exact license and preserve required notices. Other licenses require a maintainer
+decision before introduction. Proprietary source and partner-specific private
+configuration remain outside this public repository.
 
-## License invariant (LOAD-BEARING)
+## Verification
 
-Every file in this repository is Apache-2.0. Every contribution must remain
-Apache-2.0. **If a change would introduce proprietary content — code, spec fragments,
-partner-specific configuration, non-Apache licensed dependencies — STOP and
-escalate to the user.** The open-source boundary is the product.
-
-- **READS allowed:** the sibling Apache-2.0 public repos `lex`, `op`, and
-  `gstore`.
-- **WRITES allowed:** only Apache-2.0 zone-operator artifacts inside this repo.
-- **NEVER:** import any proprietary source tree; reproduce closed-source
-  crates by name; call deployed microservices directly — go through the
-  runtime's HTTP surface; add non-Apache-2.0 dependencies.
-
-The proprietary runtime is distributed as a Docker image referenced from
-`deploy/docker-compose.yaml`. It is not a build dependency. Foundational
-types (`ComplianceDomain`, `CanonicalBytes`, `sha256_digest`) are shared
-through the public `mez-canonical` crate in `lex/crates/mez-canonical`
-so the wire format is identical across the open/closed boundary without
-any code copy.
-
-## Ecosystem
-
-This repo is the Apache-2.0 zone-operator kit in the four-repo public set.
-
-The four open-source whitelist repositories (Apache-2.0):
-
-- `stack` — zone-operator deployment kit (this repo)
-- `lex` — Lex: typed jurisdictional rules
-- `op` — Op: typed compliance-carrying workflows
-- `gstore` — Merkle-authenticated temporal graph store
-
-Foundational types shared across the four are in `lex/crates/mez-canonical`
-(`CanonicalBytes`, `sha256_digest`, `ComplianceDomain`).
-
-Closed-source companion trees exist on the operator's local machine; their
-identities, paths, and crate names must NEVER appear in artifacts shipped
-from this repository. CI enforces this via
-`.github/workflows/forbidden-strings.yml`.
-
-## Build & verify
+Run commands from the repository root:
 
 ```bash
-# Validate zone and operation YAML
+# Zone and operation schema changes. The validator is required.
+command -v check-jsonschema
 make validate
 
-# MCP SDK checks
-cd sdk/mcp
-npm test
-npm run typecheck
-npm run build
+# MCP TypeScript changes, with project dependencies installed.
+npm --prefix sdk/mcp test
+npm --prefix sdk/mcp run typecheck
+npm --prefix sdk/mcp run build
 ```
 
-Run `make validate` after schema, zone, operation, corridor, or deployment
-configuration changes. Run the MCP SDK checks after TypeScript changes under
-`sdk/mcp`.
+Run only the checks relevant to the changed surface. `make validate` can print
+`SKIP` when `check-jsonschema` is absent. That result is incomplete validation.
+Configuration outside its zone and operation targets needs its own affected
+schema or Compose check. Inspect deployment targets before invoking them.
+`make clean` removes Compose volumes and is not a verification step.
 
-## Architecture
-
-`stack` is the open-source deployment kit for the four-repo public set
-(lex + op + gstore + this). Its role is to give third-party zone operators
-a working runtime they can fork and deploy without any proprietary build
-dependency.
-
-- **Zone YAML, schemas, Docker Compose deployments, and MCP SDK tooling**,
-  Apache-2.0
-- **Type vocabulary** shared with the public `mez-canonical` crate
-  (`lex/crates/mez-canonical`) for compliance domains, canonical
-  serialization, and content digests, so corridors and passports remain
-  wire-compatible across the four-repo set
-- **Zero proprietary build dependencies.** If a dependency appears in
-  `Cargo.lock` that is not Apache-2.0 / MIT / BSD-licensed, it is a license
-  violation
-- **Consumers:** zone operators (governments, private zones, pilot
-  jurisdictions) who want a deployable runtime without proprietary licensing
-
-## Hard rules
-
-- **No LLM credit in git commits.** NEVER include `Co-Authored-By` lines
-  referencing Claude, Opus, GPT, Codex, or any LLM in commit messages. The
-  author is the human operator.
-- **No destructive git** — see sentinel block above.
-- **License invariant** — Apache-2.0 everywhere, no exceptions.
-- **No proprietary imports** — never path-depend on closed-source trees,
-  never copy code from any proprietary source.
-- **No direct microservice calls** — go through the runtime's HTTP surface.
-- **Deployment model** — `develop` is dev staging, `main` is prod staging.
-  Pushing requires explicit principal instruction.
-
-## Key files / structure
-
-```text
-stack/
-├── CLAUDE.md       # This file
-├── AGENTS.md       # Codex-facing agent rules
-├── SUPREMUM-DISCIPLINE.md
-├── Makefile        # Validation and Docker Compose entry points
-├── schemas/        # Zone and operation JSON Schemas
-├── operations/     # Operation YAML templates
-├── deploy/         # Docker Compose topologies
-└── sdk/mcp/        # TypeScript MCP tooling
-```
-
-If counts or paths drift, update `AGENTS.md` and `CLAUDE.md` together.
-
-## Common tasks
-
-| Task | Protocol |
-|------|----------|
-| New operation | (1) Add YAML under `operations/{primitive}/`. (2) Validate against `schemas/operation.schema.json`. (3) Run `make validate`. |
-| New MCP dependency | (1) Verify the package license is Apache-2.0 / MIT / BSD (never GPL/AGPL or proprietary). (2) Add it under `sdk/mcp`. (3) Run `npm test`, `npm run typecheck`, and `npm run build`. |
-| Mirror a type from the proprietary runtime | (1) Only mirror structurally — copy the shape, not the source text. (2) Reference the runtime via wire format, such as JSON schema or Borsh layout, not a path dependency. (3) Add a test that round-trips across the wire to catch drift. |
-| Escalation | If a change cannot be done without importing proprietary code or non-Apache deps — STOP and escalate. |
-
-## Working posture
-
-- This repo is a **small deployment kit**, not a Rust workspace. Prefer reading
-  `Makefile`, `schemas/`, `operations/`, `deploy/`, and `sdk/mcp/package.json`
-  before asserting about layout.
-- Do not assume any file exists because it exists in a proprietary runtime
-  source tree. The codebases are deliberately disjoint. Read local files
-  before referencing them.
-- When in doubt about whether a feature belongs here or in the proprietary
-  runtime, keep this repo to the minimum needed for a self-hosting zone
-  deployment and escalate the boundary decision.
-- Never generate Co-Authored-By lines for LLMs in commit messages.
-
-## Code-writing discipline — repo application
-
-Per the inlined `## XI. Code-Writing Discipline` block above. Twelve rules instantiated for stack (zone operator configuration template; Apache-2.0 public):
-
-1. **Think Before Coding.** Every `zone.yaml` edit names the operator decision being expressed (corridor selection, lawpack binding, adapter choice). Every schema change names the affected zone-config surface.
-2. **Simplicity First.** YAML configuration, not code. No speculative configuration ahead of an operator's need. No vendoring proprietary runtime source — pull it as a Docker image at the wire boundary.
-3. **Surgical Changes.** A `zone.yaml` edit does not touch adapters; an adapter change does not touch corridors. Schemas evolve with explicit versioning.
-4. **Goal-Driven Execution.** Success = `zone.yaml` validates against `schemas/`, `make validate` clean, the deployment kit boots and the documented operator flow renders consistently.
-5. **Use the model only for judgment calls.** Zone routing, corridor selection, adapter dispatch are deterministic per config. The model drafts examples and documentation; it does not decide which corridor a request takes.
-6. **Token budgets are not advisory.** Standard for configuration work; checkpoint between `operations/` edits.
-7. **Surface conflicts, don't average them.** Schema wins over example YAML; documented protocol wins over inline commentary. Flag drifting examples for repair.
-8. **Read before you write.** Read `zone.yaml` schema before edits; read `lawpacks/` index before adding a lawpack binding. Mirror proprietary types structurally only — never copy source text.
-9. **Tests verify intent.** Configuration tests encode operator intent (the zone routes correctly under sanctions, the lawpack binds to the right corridor). A test that only checks YAML parses is vacuous.
-10. **Checkpoint after every significant step.** After each `operations/` or adapter edit, restate the boot impact on the runtime.
-11. **Match the codebase's conventions, even if you disagree.** Zone-config style: lowercase-with-dashes keys, explicit version fields, schema references at the top. Mirror types via wire format (JSON schema or Borsh layout), not path dependencies.
-12. **Fail loud.** Never ship a configuration without schema validation. Never silently downgrade a corridor or lawpack. Surface any schema mismatch.
+When shared wire types change, test compatibility against the public schema or
+public `mez-canonical` contract. Keep source copying outside the public boundary.
+Check `.github/workflows/forbidden-strings.yml` for the publication scan. Never
+run deployment or publication as an implied part of a local repair.

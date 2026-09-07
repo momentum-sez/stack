@@ -32,8 +32,8 @@ jobs:
               ':(exclude)CLAUDE.md' \
               ':(exclude)SUPREMUM-DISCIPLINE.md' \
               ':(exclude).github/workflows/forbidden-strings.yml' \
-              ':(exclude)Cargo.lock' \
-              ':(exclude)package-lock.json' \
+              ':(glob,exclude)**/Cargo.lock' \
+              ':(glob,exclude)**/package-lock.json' \
               || true)
             if [ -n "$matches" ]; then
               echo "::error::forbidden-strings matched pattern: $p"
@@ -49,9 +49,9 @@ jobs:
           fi
           non_whitelist=$(git grep -nE 'https://github\.com/|git@github\.com:' -- \
             ':(exclude).github/workflows/forbidden-strings.yml' \
-            ':(exclude)Cargo.lock' \
-            ':(exclude)package-lock.json' \
-            | grep -Ev 'github\.com[/:]momentum-sez/(lex|op|gstore|stack)(\.git)?([/#?[:space:]]|$)' \
+            ':(glob,exclude)**/Cargo.lock' \
+            ':(glob,exclude)**/package-lock.json' \
+            | grep -Ev 'github\.com[/:]momentum-sez/(lex|op|gstore|stack)(\.git)?([/#?[:space:])>]|$)' \
             || true)
           if [ -n "$non_whitelist" ]; then
             echo "::error::non-whitelisted GitHub repository URL"

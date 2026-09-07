@@ -214,6 +214,24 @@ statements, conjectures, and open obligations. Preserve theorem hypotheses and
 proof rigor. Report the exact remaining obligation when an investigation ends
 without a proof. Never claim a build or scaffold proves the full system.
 
+## Integration branch and worktree discipline
+
+The integration branch is `develop`. Release branches change only by
+maintainer decision. Each write-capable agent works in its own worktree on a
+unique branch cut from the integration head. Subagents stage only. The main
+thread reviews, commits, and pushes. A session can end without warning. Write
+verified state and open obligations into a record in the worktree as work
+proceeds, and resume from that record. Commits carry no model or tool
+attribution.
+
+## System role
+
+Lex supplies jurisdictional rule logic. Op carries compliance obligations in
+executable operations. gstore keeps Merkle-authenticated state. Moxie prices
+and clears claims and their derivatives. Mass operates the legal entity behind
+a claim end to end. Recourse administers cases, authority records, outcomes,
+stays, execution coordination, and recovery. This repository owns the zone operator kit only.
+
 ## Purpose and routing
 
 Stack is the Apache-2.0 zone operator kit. It supplies configuration, schemas,
